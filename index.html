@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LSRL Conclusion Trainer</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; }
         .card-flip { transition: transform 0.6s; transform-style: preserve-3d; }
@@ -97,6 +98,12 @@
                         <span id="correlation-streak" class="font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded">0</span>
                     </div>
                 </div>
+                <!-- User Display -->
+                <div id="user-display" class="flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1 cursor-pointer hover:bg-gray-100 transition-colors" title="Click to change username">
+                    <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    <span id="current-username" class="text-sm font-medium text-gray-700">...</span>
+                </div>
+
                 <!-- Settings Button -->
                 <button id="settings-btn" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Settings">
                     <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -293,7 +300,331 @@
         </div>
     </div>
 
+    <!-- Username Modal (shown on first visit) -->
+    <div id="username-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+            <div class="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-4">
+                <h2 class="text-xl font-bold text-white">Welcome to LSRL Trainer!</h2>
+                <p class="text-purple-100 text-sm mt-1">Choose a username to track your progress</p>
+            </div>
+
+            <div class="p-6">
+                <!-- New User Section -->
+                <div id="new-user-section">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Your Username</label>
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="username-input" class="flex-1 border border-gray-300 rounded-lg p-2.5 text-lg font-medium" placeholder="Mango_Tiger" readonly>
+                        <button id="regenerate-username" class="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" title="Generate new username">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Your Name <span class="text-gray-400 font-normal">(optional)</span></label>
+                        <input type="text" id="realname-input" class="w-full border border-gray-300 rounded-lg p-2" placeholder="First name or nickname">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-gray-400 font-normal">(to log back in)</span></label>
+                        <input type="password" id="password-input" class="w-full border border-gray-300 rounded-lg p-2" placeholder="Choose a password">
+                    </div>
+                </div>
+
+                <!-- Divider -->
+                <div class="flex items-center gap-3 my-4">
+                    <div class="flex-1 border-t border-gray-200"></div>
+                    <span class="text-sm text-gray-400">or sign in</span>
+                    <div class="flex-1 border-t border-gray-200"></div>
+                </div>
+
+                <!-- Existing User Section -->
+                <div id="existing-user-section">
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Existing User</label>
+                        <select id="existing-user-select" class="w-full border border-gray-300 rounded-lg p-2 bg-white">
+                            <option value="">Select your username...</option>
+                        </select>
+                    </div>
+
+                    <div id="existing-password-section" class="mb-4 hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="existing-password-input" class="w-full border border-gray-300 rounded-lg p-2" placeholder="Enter your password">
+                    </div>
+                </div>
+
+                <button id="username-submit" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 rounded-lg transition-all">
+                    Let's Go!
+                </button>
+
+                <p id="username-error" class="text-red-500 text-sm mt-2 hidden"></p>
+            </div>
+        </div>
+    </div>
+
     <script>
+    // ============== DEXIE DATABASE (IndexedDB) ==============
+    const db = new Dexie('LSRLTrainer');
+
+    db.version(1).stores({
+        // Current user identity: { key: 'identity', value: { username, realName, ... } }
+        meta: 'key',
+        // Local progress cache (mirrors Supabase when connected)
+        progress: '++id, username, completed_at',
+        // Cached user settings (API keys backup)
+        settings: 'username',
+        // Sync tracking: { key: 'lastSync', value: timestamp }
+        sync: 'key'
+    });
+
+    // Database helper functions
+    const dbHelpers = {
+        // Get current user identity
+        async getIdentity() {
+            const record = await db.meta.get('identity');
+            return record?.value || null;
+        },
+
+        // Set current user identity
+        async setIdentity(identity) {
+            await db.meta.put({ key: 'identity', value: identity });
+        },
+
+        // Save progress locally
+        async saveProgress(progressData) {
+            const record = {
+                ...progressData,
+                completed_at: new Date().toISOString()
+            };
+            return await db.progress.add(record);
+        },
+
+        // Get all progress for a user
+        async getProgress(username) {
+            return await db.progress.where('username').equals(username).toArray();
+        },
+
+        // Get user stats
+        async getStats(username) {
+            const progress = await this.getProgress(username);
+            const stats = {
+                totalStars: { gold: 0, silver: 0, bronze: 0, tin: 0 },
+                totalAttempts: progress.length,
+                perfectRuns: 0,
+                streaks: { slope: 0, intercept: 0, correlation: 0 }
+            };
+
+            for (const p of progress) {
+                if (p.star_type && stats.totalStars[p.star_type] !== undefined) {
+                    stats.totalStars[p.star_type]++;
+                }
+                if (p.all_correct) stats.perfectRuns++;
+            }
+
+            return stats;
+        },
+
+        // Save settings locally
+        async saveSettings(username, settings) {
+            await db.settings.put({ username, ...settings, updated_at: new Date().toISOString() });
+        },
+
+        // Get settings for a user
+        async getSettings(username) {
+            return await db.settings.get(username);
+        },
+
+        // Migrate from localStorage (one-time migration)
+        async migrateFromLocalStorage() {
+            const migrated = localStorage.getItem('dexie_migrated');
+            if (migrated) return;
+
+            console.log('Migrating localStorage to IndexedDB...');
+
+            // Migrate streaks
+            const streaks = {
+                slope: parseInt(localStorage.getItem('slopeStreak') || '0'),
+                intercept: parseInt(localStorage.getItem('interceptStreak') || '0'),
+                correlation: parseInt(localStorage.getItem('correlationStreak') || '0')
+            };
+            await db.meta.put({ key: 'streaks', value: streaks });
+
+            // Migrate stars
+            const stars = {
+                gold: parseInt(localStorage.getItem('goldStars') || '0'),
+                silver: parseInt(localStorage.getItem('silverStars') || '0'),
+                bronze: parseInt(localStorage.getItem('bronzeStars') || '0'),
+                tin: parseInt(localStorage.getItem('tinStars') || '0')
+            };
+            await db.meta.put({ key: 'stars', value: stars });
+
+            // Migrate API settings
+            const apiSettings = {
+                provider: localStorage.getItem('apiProvider') || 'gemini',
+                geminiKey: localStorage.getItem('geminiApiKey') || '',
+                groqKey: localStorage.getItem('groqApiKey') || ''
+            };
+            await db.meta.put({ key: 'apiSettings', value: apiSettings });
+
+            localStorage.setItem('dexie_migrated', 'true');
+            console.log('Migration complete!');
+        }
+    };
+
+    // Run migration on load
+    dbHelpers.migrateFromLocalStorage().catch(err => {
+        console.error('Migration failed:', err);
+    });
+
+    // ============== USERNAME GENERATOR ==============
+    const FRUITS = [
+        'Apple', 'Mango', 'Kiwi', 'Strawberry', 'Banana',
+        'Orange', 'Grape', 'Peach', 'Cherry', 'Lemon',
+        'Lime', 'Melon', 'Papaya', 'Coconut', 'Pineapple'
+    ];
+
+    const ANIMALS = [
+        'Tiger', 'Bear', 'Wolf', 'Dolphin', 'Eagle',
+        'Panda', 'Koala', 'Fox', 'Owl', 'Hawk',
+        'Lion', 'Shark', 'Whale', 'Otter', 'Falcon'
+    ];
+
+    function generateUsername() {
+        const fruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+        const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+        return `${fruit}_${animal}`;
+    }
+
+    // Current user state
+    let currentUser = null;
+
+    // Username modal controller
+    const usernameModal = {
+        modal: null,
+        usernameInput: null,
+        realnameInput: null,
+        passwordInput: null,
+        existingSelect: null,
+        existingPasswordInput: null,
+        existingPasswordSection: null,
+        submitBtn: null,
+        errorEl: null,
+
+        init() {
+            this.modal = document.getElementById('username-modal');
+            this.usernameInput = document.getElementById('username-input');
+            this.realnameInput = document.getElementById('realname-input');
+            this.passwordInput = document.getElementById('password-input');
+            this.existingSelect = document.getElementById('existing-user-select');
+            this.existingPasswordInput = document.getElementById('existing-password-input');
+            this.existingPasswordSection = document.getElementById('existing-password-section');
+            this.submitBtn = document.getElementById('username-submit');
+            this.errorEl = document.getElementById('username-error');
+
+            // Generate initial username
+            this.usernameInput.value = generateUsername();
+
+            // Regenerate button
+            document.getElementById('regenerate-username').addEventListener('click', () => {
+                this.usernameInput.value = generateUsername();
+            });
+
+            // Existing user dropdown change
+            this.existingSelect.addEventListener('change', () => {
+                if (this.existingSelect.value) {
+                    this.existingPasswordSection.classList.remove('hidden');
+                } else {
+                    this.existingPasswordSection.classList.add('hidden');
+                }
+            });
+
+            // Submit button
+            this.submitBtn.addEventListener('click', () => this.submit());
+
+            // User display click (re-open modal)
+            document.getElementById('user-display').addEventListener('click', () => {
+                this.show();
+            });
+        },
+
+        show() {
+            this.modal.classList.remove('hidden');
+            this.errorEl.classList.add('hidden');
+        },
+
+        hide() {
+            this.modal.classList.add('hidden');
+        },
+
+        async submit() {
+            this.errorEl.classList.add('hidden');
+
+            // Check if signing in as existing user
+            if (this.existingSelect.value) {
+                const username = this.existingSelect.value;
+                const password = this.existingPasswordInput.value;
+
+                // For now, just accept any password (server will validate later)
+                if (!password) {
+                    this.showError('Please enter your password');
+                    return;
+                }
+
+                // Set as current user
+                currentUser = { username, password };
+                await dbHelpers.setIdentity(currentUser);
+                this.updateDisplay();
+                this.hide();
+                return;
+            }
+
+            // Creating new user
+            const username = this.usernameInput.value.trim();
+            const realName = this.realnameInput.value.trim();
+            const password = this.passwordInput.value;
+
+            if (!username) {
+                this.showError('Username is required');
+                return;
+            }
+
+            if (!password) {
+                this.showError('Please choose a password');
+                return;
+            }
+
+            // Set as current user
+            currentUser = { username, realName, password };
+            await dbHelpers.setIdentity(currentUser);
+            this.updateDisplay();
+            this.hide();
+        },
+
+        showError(msg) {
+            this.errorEl.textContent = msg;
+            this.errorEl.classList.remove('hidden');
+        },
+
+        updateDisplay() {
+            const display = document.getElementById('current-username');
+            display.textContent = currentUser?.username || '...';
+        },
+
+        async checkAndShow() {
+            // Check if user already has identity
+            const identity = await dbHelpers.getIdentity();
+            if (identity?.username) {
+                currentUser = identity;
+                this.updateDisplay();
+                // Don't show modal - user is already logged in
+            } else {
+                // First visit - show modal
+                this.show();
+            }
+        }
+    };
+
     // ============== SCENARIO GENERATOR ==============
     class ScenarioGenerator {
         constructor() {
@@ -957,6 +1288,45 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
     function saveStreaks() {
         localStorage.setItem('lsrlStreaks', JSON.stringify(streaks));
         localStorage.setItem('lsrlStarCounts', JSON.stringify(starCounts));
+
+        // Also save to IndexedDB for better persistence
+        db.meta.put({ key: 'streaks', value: streaks }).catch(e => console.warn('Dexie streaks save failed:', e));
+        db.meta.put({ key: 'stars', value: starCounts }).catch(e => console.warn('Dexie stars save failed:', e));
+    }
+
+    // Save progress record to IndexedDB (called after grading)
+    async function saveProgressRecord(scenario, results, allCorrect, hintsUsed, starType) {
+        try {
+            const identity = await dbHelpers.getIdentity();
+            const username = identity?.username || 'anonymous';
+
+            // Determine best scores
+            const scoreOrder = { 'E': 3, 'P': 2, 'I': 1 };
+            const getBestScore = (type) => {
+                const kw = results.keyword[type]?.score || 'I';
+                const ai = results.ai?.[type]?.score;
+                if (ai && scoreOrder[ai] > scoreOrder[kw]) return ai;
+                return kw;
+            };
+
+            const progressData = {
+                username,
+                scenario_topic: scenario.topic,
+                slope_score: getBestScore('slope'),
+                intercept_score: getBestScore('intercept'),
+                correlation_score: getBestScore('correlation'),
+                hints_used: hintsUsed,
+                star_type: starType,
+                all_correct: allCorrect,
+                grading_mode: results._hasAI ? 'both' : 'keywords',
+                ai_provider: results.ai?._aiProvider || null
+            };
+
+            await dbHelpers.saveProgress(progressData);
+            console.log('Progress saved to IndexedDB:', progressData);
+        } catch (err) {
+            console.error('Failed to save progress:', err);
+        }
     }
 
     function updateHintStatus() {
@@ -1299,10 +1669,13 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
             statusEl.className = 'text-xs text-gray-500 ml-2';
         }
 
+        // Track hints used and star type for progress saving
+        const hintsUsed = hintsOpenedThisScenario.size;
+        let starType = null;
+
         // Award star based on hints used (only for perfect score)
         if (allCorrect) {
-            const hintsUsed = hintsOpenedThisScenario.size;
-            let starType, starEl;
+            let starEl;
 
             if (hintsUsed === 0) {
                 starType = 'gold';
@@ -1335,8 +1708,8 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
                 bronze: { star: 'text-amber-600', label: 'text-amber-700' },
                 tin: { star: 'text-stone-400', label: 'text-stone-500' }
             };
-            const statusEl = document.getElementById('hint-status');
-            statusEl.innerHTML = `
+            const hintStatusEl = document.getElementById('hint-status');
+            hintStatusEl.innerHTML = `
                 <span class="${starColors[starType].star}">★</span>
                 <span class="${starColors[starType].label} font-medium">${starType.charAt(0).toUpperCase() + starType.slice(1)} earned!</span>
             `;
@@ -1346,6 +1719,9 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
 
         updateStreakDisplay();
         saveStreaks();
+
+        // Save progress record to IndexedDB (for cloud sync later)
+        saveProgressRecord(currentScenario, results, allCorrect, hintsUsed, starType);
 
         // Show appropriate buttons based on results
         showButton('grade-btn', false);
@@ -1373,10 +1749,44 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
         showButton('next-btn', false);
     }
 
+    // ============== INITIALIZATION ==============
+    async function initFromIndexedDB() {
+        try {
+            // Try to load streaks from IndexedDB first
+            const dbStreaks = await db.meta.get('streaks');
+            if (dbStreaks?.value) {
+                streaks = { ...streaks, ...dbStreaks.value };
+                localStorage.setItem('lsrlStreaks', JSON.stringify(streaks));
+                console.log('Loaded streaks from IndexedDB:', streaks);
+            }
+
+            // Try to load stars from IndexedDB
+            const dbStars = await db.meta.get('stars');
+            if (dbStars?.value) {
+                starCounts = { ...starCounts, ...dbStars.value };
+                localStorage.setItem('lsrlStarCounts', JSON.stringify(starCounts));
+                console.log('Loaded stars from IndexedDB:', starCounts);
+            }
+
+            // Update display with potentially restored data
+            updateStreakDisplay();
+        } catch (err) {
+            console.warn('Failed to init from IndexedDB, using localStorage:', err);
+        }
+    }
+
     // ============== EVENT LISTENERS ==============
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+        // First show what we have in localStorage
         updateStreakDisplay();
         loadScenario();
+
+        // Then try to restore from IndexedDB (may update display)
+        await initFromIndexedDB();
+
+        // Initialize username modal and check if we need to show it
+        usernameModal.init();
+        await usernameModal.checkAndShow();
 
         // AI toggle button
         document.getElementById('ai-toggle').addEventListener('click', () => {
