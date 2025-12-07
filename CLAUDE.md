@@ -4,63 +4,82 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a teaching materials repository for introductory statistics, focusing on linear regression and correlation concepts. It contains:
+Teaching materials repository for AP Statistics, focusing on linear regression and correlation concepts. Contains standalone HTML apps that run directly from file:// protocol with no build process.
 
-- `zscore_3d_explorer.html` - Interactive 3D visualization for exploring z-scores and correlation (r)
-- `lsrl_trainer.html` - SPA for training students to write 3-part LSRL conclusions
-- `lsrl_conclusion_practice.pdf` - Practice problems for least squares regression line conclusions
+## Files
 
-## Technical Stack
-
-The HTML visualization uses:
-- Three.js (r128) for 3D rendering
-- Tailwind CSS (CDN) for styling
-- Vanilla JavaScript (no build process)
+- `lsrl_trainer.html` - Practice app for writing 3-part LSRL conclusions (slope, intercept, correlation interpretations)
+- `zscore_3d_explorer.html` - Interactive 3D visualization for exploring z-scores and correlation
+- `lsrl_conclusion_practice.pdf` - Printable practice problems
 
 ## Development
 
-To work on the visualization, simply open `zscore_3d_explorer.html` in a browser. No build or install steps required.
-
-## Architecture: Z-Score Explorer
-
-The visualization demonstrates correlation as the average product of z-scores. Key components:
-
-**Data Processing** (`processData` function):
-- Computes means (x̄, ȳ), standard deviations (Sx, Sy)
-- Calculates z-scores: zx = (x - x̄)/Sx, zy = (y - ȳ)/Sy
-- Computes r = Σ(zx·zy)/(n-1) and LSRL coefficients (a, b)
-
-**Scene Management**:
-- `buildScene()` switches between raw data and z-score views
-- `buildRawView()` plots points in original units with mean lines
-- `buildZScoreView()` plots standardized coordinates centered at origin
-- Normal curves rendered as 3D surfaces along each axis
-
-**Selection System**:
-- Clicking a point shows product rectangle (green = positive, red = negative contribution to r)
-- In z-score view, shaded regions under normal curves visualize the z-values
-- Table and panel sync with 3D selection
-
-**Datasets**: Two class datasets comparing different bivariate relationships (Class E: breath/blink time, Class B: screen/music time)
+Open HTML files directly in a browser. No build, install, or server required.
 
 ## Architecture: LSRL Trainer
 
-Interactive practice app for writing AP Statistics LSRL conclusion statements.
+### ScenarioGenerator Class
+- 24 real-world contexts with x/y variables, units, and domain constraints
+- Generates random r (-0.95 to +0.95), calculates slope/intercept
+- `isInterceptMeaningful` flag determines if y-intercept interpretation makes sense
 
-**ScenarioGenerator Class**:
-- Library of 24 real-world contexts with x/y variables, units, and domain constraints
-- Generates random r (-0.95 to +0.95), calculates realistic slope/intercept
-- Tracks `isInterceptMeaningful` flag (e.g., x=0 impossible for "age of runner")
+### Grader Class (dual-mode, runs both simultaneously)
+- **Keywords**: Regex-based checking for required elements (prediction language, direction, values, variables)
+- **AI**: Direct API calls to Gemini (`gemini-2.0-flash`) or Groq (`llama-3.3-70b-versatile`)
+- Best score from either method counts for streaks/stars
+- `formatAIError()` provides user-friendly error messages for quota limits, invalid keys, etc.
 
-**Grader Class** (dual-mode):
-- **Regex Mode (fallback)**: Checks for required keywords ("predicted", "on average", direction words), variable names, correct direction/strength, forbidden causal language ("causes", "proves")
-- **AI Mode**: Sends structured prompt to Gemini or OpenAI API, returns E/P/I scores with feedback
+### Scoring (E/P/I system)
+- **Slope**: "predicted/on average", direction, slope value, both variables, "for every 1 unit"
+- **Intercept**: Reference x=0 with prediction language, OR identify when meaningless
+- **Correlation**: "linear", strength (weak/moderate/strong), direction, both variables
 
-**Scoring Rubric**:
-- Slope: Must include "predicted/on average", correct direction, slope value, both variables, "for every 1 unit"
-- Intercept: Must reference x=0, use prediction language, OR correctly identify when intercept is meaningless
-- Correlation: Must include "linear", correct strength (weak/moderate/strong based on |r|), correct direction
+### Gamification
+- Streak counters per interpretation type
+- Star rewards based on hints used: Gold (0 hints + confetti), Silver (1), Bronze (2), Tin (3)
+- `hintsOpenedThisScenario` Set tracks which hints were viewed
 
-**State Management**:
-- Streaks stored in localStorage (`lsrlStreaks`)
-- API keys stored in localStorage (never sent except to chosen AI provider)
+### State (localStorage)
+- `lsrlStreaks` - streak counts per type
+- `lsrlStarCounts` - stars by tier (gold/silver/bronze/tin)
+- `geminiApiKey`, `groqApiKey` - separate keys per provider
+- `apiProvider` - current selection (gemini/groq/none)
+
+## Architecture: Z-Score Explorer
+
+### Data Flow
+- `processData()` computes means, standard deviations, z-scores, r, and LSRL coefficients
+- `classData` object holds datasets (Class E, Class B, or synthetic from URL params)
+
+### URL Parameter Integration
+When opened with params from LSRL trainer (`?topic=...&slope=...&r=...`):
+- `generateSyntheticData()` creates 12 points approximating target regression
+- Class selector hidden, shows "From LSRL Trainer" with back link
+- Displays target vs actual r/slope/intercept comparison
+
+### Views
+- `buildRawView()` - original units with mean lines and normal curves at means
+- `buildZScoreView()` - standardized coordinates, origin-centered, ±3 grid
+
+### Selection System
+- Click point to show product rectangle (green = positive, red = negative contribution to r)
+- Z-score view shows shaded regions under normal curves
+- Panel displays z-score calculations and quadrant info
+
+### Question Generator
+- 10 question types: z-score calculation, product sign, quadrant, correlation direction/strength, LSRL prediction, residual, mean, standard deviation
+- Score tracking with immediate feedback and explanations
+
+## Integration Between Apps
+
+LSRL Trainer's "Explore in 3D" button opens Z-Score Explorer with URL params:
+```
+zscore_3d_explorer.html?topic=...&xVar=...&yVar=...&slope=...&intercept=...&r=...&xMin=...&xMax=...
+```
+
+## Technical Notes
+
+- Tailwind CSS via CDN (not for production, but acceptable for teaching tools)
+- Three.js r128 for 3D rendering
+- Direct API calls work from file:// because keys are passed as URL params (Gemini) or headers (Groq)
+- Button visibility uses `style.display` not Tailwind's `hidden` class for reliability
