@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Z-Score Correlation Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; }
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-width: 320px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        #class-selector {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+        .data-table { font-size: 11px; }
+        .data-table th, .data-table td { padding: 4px 6px; }
+        #question-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-width: 400px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        #question-panel.minimized {
+            max-height: 48px;
+            overflow: hidden;
+        }
+        .question-correct { background-color: #dcfce7 !important; border-color: #22c55e !important; }
+        .question-incorrect { background-color: #fee2e2 !important; border-color: #ef4444 !important; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="class-selector">
+        <div id="class-buttons-section">
+            <div class="text-sm font-medium text-gray-600 mb-2">Select Class:</div>
+            <div class="flex gap-2">
+                <button id="btn-class-e" class="px-4 py-2 rounded font-medium bg-blue-600 text-white">
+                    Class E (Breath/Blink)
+                </button>
+                <button id="btn-class-b" class="px-4 py-2 rounded font-medium bg-gray-200">
+                    Class B (Screen/Music)
+                </button>
+            </div>
+        </div>
+        <div id="synthetic-info" class="hidden">
+            <div class="text-sm font-medium text-purple-700 mb-1">From LSRL Trainer</div>
+            <div id="synthetic-topic" class="font-bold text-gray-800"></div>
+            <a href="lsrl_trainer.html" class="text-xs text-blue-600 hover:underline">← Back to Trainer</a>
+        </div>
+        <div id="class-info" class="mt-3 text-sm text-gray-600"></div>
+        <div class="border-t mt-3 pt-3">
+            <div class="text-sm font-medium text-gray-600 mb-2">View:</div>
+            <div class="flex gap-2">
+                <button id="btn-view-raw" class="px-3 py-1.5 rounded text-sm font-medium bg-purple-600 text-white">
+                    Raw Data
+                </button>
+                <button id="btn-view-zscore" class="px-3 py-1.5 rounded text-sm font-medium bg-gray-200">
+                    Z-Scores
+                </button>
+            </div>
+        </div>
+        <div class="border-t mt-3 pt-3">
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="chk-lsrl" class="w-4 h-4 accent-purple-600">
+                <span class="text-sm font-medium text-gray-700">Show LSRL</span>
+            </label>
+            <div id="lsrl-equation" class="mt-2 text-sm font-mono bg-gray-100 p-2 rounded hidden"></div>
+        </div>
+    </div>
+    
+    <div id="ui-panel">
+        <h2 class="text-lg font-bold mb-2">Z-Score Correlation</h2>
+        <div id="selected-info">
+            <p class="text-gray-500 text-sm">Click on a point to see details</p>
+        </div>
+        <div class="border-t mt-3 pt-3">
+            <div class="text-sm text-gray-500 mb-1">Correlation:</div>
+            <div id="correlation-display" class="text-2xl font-bold text-purple-700">r = 0.000</div>
+        </div>
+        <div class="border-t mt-3 pt-3">
+            <div class="text-sm font-medium mb-2">All Points:</div>
+            <div id="data-table-container" class="overflow-x-auto"></div>
+        </div>
+    </div>
+    
+    <div id="instructions">
+        <strong>Controls:</strong> Drag to rotate • Scroll to zoom • Click points to select
+    </div>
+
+    <!-- Question Panel -->
+    <div id="question-panel">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-purple-700">Practice Question</h3>
+            <div class="flex gap-2">
+                <span id="question-score" class="text-sm font-medium text-gray-500">0/0</span>
+                <button id="toggle-question-panel" class="text-gray-400 hover:text-gray-600 text-sm">−</button>
+            </div>
+        </div>
+        <div id="question-content">
+            <div id="question-text" class="text-sm mb-3 p-3 bg-gray-50 rounded-lg border-2 border-gray-200"></div>
+            <div id="question-options" class="space-y-2 mb-3"></div>
+            <div id="question-feedback" class="text-sm hidden p-2 rounded"></div>
+            <div class="flex gap-2 mt-3">
+                <button id="new-question-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium px-4 py-2 rounded-lg text-sm">
+                    New Question
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============== URL PARAMS CHECK ==============
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasUrlData = urlParams.has('r') && urlParams.has('slope');
+
+        // Generate synthetic data from regression parameters
+        function generateSyntheticData(slope, intercept, r, xMin, xMax, numPoints = 12) {
+            const points = [];
+            const xRange = xMax - xMin;
+
+            // Generate x values spread across the range
+            for (let i = 0; i < numPoints; i++) {
+                const x = xMin + (xRange * (i + 0.5 + (Math.random() - 0.5) * 0.8)) / numPoints;
+                points.push({ x: Math.round(x * 10) / 10 });
+            }
+
+            // Calculate what sy/sx ratio we need to achieve target r with given slope
+            // Since b = r * (sy/sx), we have sy/sx = b/r
+            const sySxRatio = Math.abs(slope / r);
+
+            // Calculate means and target standard deviations
+            const xBar = points.reduce((s, p) => s + p.x, 0) / numPoints;
+            const sx = Math.sqrt(points.reduce((s, p) => s + Math.pow(p.x - xBar, 2), 0) / (numPoints - 1));
+            const sy = sx * sySxRatio;
+
+            // Generate y values with appropriate correlation
+            // y = a + bx + error, where error has variance adjusted for r
+            const errorVariance = sy * sy * (1 - r * r);
+            const errorStd = Math.sqrt(errorVariance);
+
+            points.forEach(p => {
+                const predicted = intercept + slope * p.x;
+                const error = (Math.random() + Math.random() + Math.random() - 1.5) * errorStd * 1.5; // Approximate normal
+                p.y = Math.round((predicted + error) * 10) / 10;
+            });
+
+            return points;
+        }
+
+        // ============== DATA ==============
+        let classData = {
+            classE: {
+                name: "Class E: Breath Holding vs No-Blink Time",
+                xLabel: "Breath (sec)",
+                yLabel: "No-Blink (sec)",
+                xUnit: "sec",
+                yUnit: "sec",
+                raw: [
+                    { x: 42, y: 4 }, { x: 49, y: 52 }, { x: 54, y: 21 }, { x: 24, y: 11 },
+                    { x: 27, y: 76 }, { x: 21, y: 7 }, { x: 47, y: 13 }, { x: 30, y: 6 },
+                    { x: 83, y: 132 }, { x: 45, y: 21 }, { x: 68, y: 86 }, { x: 71, y: 244 }
+                ]
+            },
+            classB: {
+                name: "Class B: Screen Time vs Music Listening",
+                xLabel: "Screen (hrs)",
+                yLabel: "Music (hrs)",
+                xUnit: "hrs",
+                yUnit: "hrs",
+                raw: [
+                    { x: 76, y: 2 }, { x: 20, y: 5 }, { x: 20, y: 6 }, { x: 107, y: 8 },
+                    { x: 19, y: 6 }, { x: 36, y: 18 }, { x: 41, y: 10 }, { x: 50, y: 3 },
+                    { x: 34, y: 5 }, { x: 7, y: 3 }, { x: 7, y: 1 }
+                ]
+            }
+        };
+
+        // If URL params exist, create synthetic dataset
+        if (hasUrlData) {
+            const topic = urlParams.get('topic') || 'Custom Scenario';
+            const xVar = urlParams.get('xVar') || 'x';
+            const yVar = urlParams.get('yVar') || 'y';
+            const xUnits = urlParams.get('xUnits') || '';
+            const yUnits = urlParams.get('yUnits') || '';
+            const slope = parseFloat(urlParams.get('slope'));
+            const intercept = parseFloat(urlParams.get('intercept'));
+            const r = parseFloat(urlParams.get('r'));
+            const xMin = parseFloat(urlParams.get('xMin')) || 0;
+            const xMax = parseFloat(urlParams.get('xMax')) || 100;
+
+            const syntheticPoints = generateSyntheticData(slope, intercept, r, xMin, xMax, 12);
+
+            classData = {
+                synthetic: {
+                    name: topic,
+                    xLabel: `${xVar} (${xUnits})`,
+                    yLabel: `${yVar} (${yUnits})`,
+                    xUnit: xUnits,
+                    yUnit: yUnits,
+                    raw: syntheticPoints,
+                    targetR: r,
+                    targetSlope: slope,
+                    targetIntercept: intercept
+                }
+            };
+        }
+
+        function processData(rawData) {
+            const n = rawData.length;
+            const xBar = rawData.reduce((s, d) => s + d.x, 0) / n;
+            const yBar = rawData.reduce((s, d) => s + d.y, 0) / n;
+            const sx = Math.sqrt(rawData.reduce((s, d) => s + Math.pow(d.x - xBar, 2), 0) / (n - 1));
+            const sy = Math.sqrt(rawData.reduce((s, d) => s + Math.pow(d.y - yBar, 2), 0) / (n - 1));
+            
+            const data = rawData.map((d, i) => ({
+                ...d,
+                id: i + 1,
+                zx: (d.x - xBar) / sx,
+                zy: (d.y - yBar) / sy,
+                product: ((d.x - xBar) / sx) * ((d.y - yBar) / sy)
+            }));
+            
+            const sumProducts = data.reduce((s, d) => s + d.product, 0);
+            const r = sumProducts / (n - 1);
+            
+            // Calculate LSRL: ŷ = a + bx where b = r(Sy/Sx) and a = ȳ - b*x̄
+            const b = r * (sy / sx);
+            const a = yBar - b * xBar;
+            
+            return { data, xBar, yBar, sx, sy, n, r, sumProducts, a, b };
+        }
+
+        // ============== THREE.JS SETUP ==============
+        let scene, camera, renderer, controls;
+        let pointMeshes = [];
+        let selectedMesh = null;
+        let productRectangle = null;
+        let currentClass = hasUrlData ? 'synthetic' : 'classE';
+        let currentView = 'raw'; // 'raw' or 'zscore'
+        let showLSRL = false;
+        let processedData = null;
+        
+        // Dynamic scene elements (rebuilt on view change)
+        let gridElements = [];
+        let curveElements = [];
+        let axisElements = [];
+        let lsrlElements = [];
+        let selectionShadingElements = [];
+
+        const container = document.getElementById('canvas-container');
+        
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf5f5f5);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(6, 5, 6);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
+
+            // Load initial data - use synthetic if URL params present
+            if (hasUrlData) {
+                // Hide class buttons, show synthetic info
+                document.getElementById('class-buttons-section').classList.add('hidden');
+                document.getElementById('synthetic-info').classList.remove('hidden');
+                document.getElementById('synthetic-topic').textContent = classData.synthetic.name;
+                loadClass('synthetic');
+            } else {
+                loadClass('classE');
+            }
+
+            // Controls (simple orbit)
+            setupControls();
+
+            // Raycaster for clicking
+            setupRaycaster();
+
+            // Handle resize
+            window.addEventListener('resize', onWindowResize);
+
+            animate();
+        }
+
+        function clearDynamicElements() {
+            gridElements.forEach(el => scene.remove(el));
+            curveElements.forEach(el => scene.remove(el));
+            axisElements.forEach(el => scene.remove(el));
+            pointMeshes.forEach(el => scene.remove(el));
+            lsrlElements.forEach(el => scene.remove(el));
+            selectionShadingElements.forEach(el => scene.remove(el));
+            if (productRectangle) scene.remove(productRectangle);
+            
+            gridElements = [];
+            curveElements = [];
+            axisElements = [];
+            pointMeshes = [];
+            lsrlElements = [];
+            selectionShadingElements = [];
+            productRectangle = null;
+            selectedMesh = null;
+        }
+
+        function buildScene() {
+            clearDynamicElements();
+            
+            if (currentView === 'zscore') {
+                buildZScoreView();
+            } else {
+                buildRawView();
+            }
+            
+            // Draw LSRL if enabled
+            if (showLSRL) {
+                drawLSRL();
+            }
+            
+            // Update equation display
+            updateLSRLEquation();
+        }
+        
+        function drawLSRL() {
+            const { a, b, data } = processedData;
+            
+            if (currentView === 'zscore') {
+                // In z-score view, the LSRL passes through origin with slope = r
+                // ẑy = r * zx
+                const r = processedData.r;
+                const zxMin = -3;
+                const zxMax = 3;
+                
+                const lineGeo = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(zxMin, r * zxMin, 0.03),
+                    new THREE.Vector3(zxMax, r * zxMax, 0.03)
+                ]);
+                const lineMat = new THREE.LineBasicMaterial({ color: 0x9333ea, linewidth: 3 });
+                const line = new THREE.Line(lineGeo, lineMat);
+                scene.add(line);
+                lsrlElements.push(line);
+            } else {
+                // Raw view - use actual a and b
+                const { scale, xOffset, yOffset, xMin, xMax } = processedData.rawTransform;
+                
+                // Calculate y values at the x bounds
+                const yAtXMin = a + b * xMin;
+                const yAtXMax = a + b * xMax;
+                
+                // Convert to scene coordinates
+                const x1 = xMin * scale + xOffset;
+                const y1 = yAtXMin * scale + yOffset;
+                const x2 = xMax * scale + xOffset;
+                const y2 = yAtXMax * scale + yOffset;
+                
+                const lineGeo = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(x1, y1, 0.03),
+                    new THREE.Vector3(x2, y2, 0.03)
+                ]);
+                const lineMat = new THREE.LineBasicMaterial({ color: 0x9333ea, linewidth: 3 });
+                const line = new THREE.Line(lineGeo, lineMat);
+                scene.add(line);
+                lsrlElements.push(line);
+            }
+        }
+        
+        function updateLSRLEquation() {
+            const eqDiv = document.getElementById('lsrl-equation');
+            if (showLSRL) {
+                const { a, b, r } = processedData;
+                if (currentView === 'zscore') {
+                    eqDiv.innerHTML = `ŷ = ${r.toFixed(3)} · x`;
+                } else {
+                    const aSign = a >= 0 ? '' : '−';
+                    const aVal = Math.abs(a).toFixed(2);
+                    const bSign = b >= 0 ? '+' : '−';
+                    const bVal = Math.abs(b).toFixed(2);
+                    eqDiv.innerHTML = `ŷ = ${aSign}${aVal} ${bSign} ${bVal}x`;
+                }
+                eqDiv.classList.remove('hidden');
+            } else {
+                eqDiv.classList.add('hidden');
+            }
+        }
+
+        function buildZScoreView() {
+            // Grid on z=0 plane (-3 to +3)
+            const gridHelper = new THREE.GridHelper(6, 12, 0x888888, 0xcccccc);
+            gridHelper.rotation.x = Math.PI / 2;
+            scene.add(gridHelper);
+            gridElements.push(gridHelper);
+
+            // Axis labels - positioned clearly away from tick marks
+            axisElements.push(addTextLabel('x', 3.5, -0.5, 0, 0x3b82f6));
+            axisElements.push(addTextLabel('y', -0.5, 3.5, 0, 0xef4444));
+            
+            // Integer z-score tick marks on x-axis
+            for (let z = -3; z <= 3; z++) {
+                if (z !== 0) {
+                    axisElements.push(addTextLabel(z.toString(), z, -0.3, 0, 0x666666));
+                    // Tick mark
+                    const tickGeo = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(z, -0.1, 0),
+                        new THREE.Vector3(z, 0.1, 0)
+                    ]);
+                    const tick = new THREE.Line(tickGeo, new THREE.LineBasicMaterial({ color: 0x888888 }));
+                    scene.add(tick);
+                    axisElements.push(tick);
+                }
+            }
+            
+            // Integer z-score tick marks on y-axis
+            for (let z = -3; z <= 3; z++) {
+                if (z !== 0) {
+                    axisElements.push(addTextLabel(z.toString(), -0.3, z, 0, 0x666666));
+                    // Tick mark
+                    const tickGeo = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(-0.1, z, 0),
+                        new THREE.Vector3(0.1, z, 0)
+                    ]);
+                    const tick = new THREE.Line(tickGeo, new THREE.LineBasicMaterial({ color: 0x888888 }));
+                    scene.add(tick);
+                    axisElements.push(tick);
+                }
+            }
+            
+            // Origin label
+            axisElements.push(addTextLabel('0', -0.25, -0.25, 0, 0x666666));
+
+            // Normal curves at origin
+            createNormalCurves(0, 0, 1, 1);
+
+            // Axes at origin for z-score view
+            // X axis (zx)
+            const xAxisGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-3.2, 0, 0),
+                new THREE.Vector3(3.2, 0, 0)
+            ]);
+            const xAxis = new THREE.Line(xAxisGeo, new THREE.LineBasicMaterial({ color: 0x3b82f6, linewidth: 2 }));
+            scene.add(xAxis);
+            axisElements.push(xAxis);
+
+            // Y axis (zy)
+            const yAxisGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, -3.2, 0),
+                new THREE.Vector3(0, 3.2, 0)
+            ]);
+            const yAxis = new THREE.Line(yAxisGeo, new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2 }));
+            scene.add(yAxis);
+            axisElements.push(yAxis);
+
+            // Z axis (height) - subtle
+            const zAxisGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, 1.5)
+            ]);
+            const zAxis = new THREE.Line(zAxisGeo, new THREE.LineBasicMaterial({ color: 0x888888, linewidth: 1 }));
+            scene.add(zAxis);
+            axisElements.push(zAxis);
+
+            // Data points in z-score coordinates
+            const sphereGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            processedData.data.forEach((d, i) => {
+                const material = new THREE.MeshLambertMaterial({ color: 0x1f2937 });
+                const sphere = new THREE.Mesh(sphereGeo, material);
+                sphere.position.set(d.zx, d.zy, 0.06);
+                sphere.userData = { index: i, data: d };
+                scene.add(sphere);
+                pointMeshes.push(sphere);
+            });
+
+            // Centroid marker at origin
+            const centroidGeo = new THREE.SphereGeometry(0.1, 16, 16);
+            const centroidMat = new THREE.MeshLambertMaterial({ color: 0xa855f7 });
+            const centroid = new THREE.Mesh(centroidGeo, centroidMat);
+            centroid.position.set(0, 0, 0.05);
+            scene.add(centroid);
+            pointMeshes.push(centroid);
+        }
+
+        function buildRawView() {
+            const cls = classData[currentClass];
+            const { xBar, yBar, sx, sy, data } = processedData;
+            
+            // Calculate nice axis ranges
+            const xMin = 0;
+            const yMin = 0;
+            const xMax = Math.ceil(Math.max(...data.map(d => d.x)) * 1.1 / 10) * 10;
+            const yMax = Math.ceil(Math.max(...data.map(d => d.y)) * 1.1 / 10) * 10;
+            
+            // Scale factor to fit in roughly -3 to +3 space for consistency
+            const xScale = 6 / (xMax - xMin);
+            const yScale = 6 / (yMax - yMin);
+            const scale = Math.min(xScale, yScale);
+            
+            // Offset to center the data
+            const xOffset = -(xMin + xMax) / 2 * scale;
+            const yOffset = -(yMin + yMax) / 2 * scale;
+            
+            // Store transform for later use
+            processedData.rawTransform = { scale, xOffset, yOffset, xMin, xMax, yMin, yMax };
+
+            // Create grid
+            const gridSize = Math.max(xMax - xMin, yMax - yMin) * scale;
+            const gridHelper = new THREE.GridHelper(gridSize, 12, 0x888888, 0xcccccc);
+            gridHelper.rotation.x = Math.PI / 2;
+            scene.add(gridHelper);
+            gridElements.push(gridHelper);
+
+            // Axis labels with actual values - positioned clearly away from ticks
+            const xLabel = cls.xLabel.split(' ')[0]; // Just first word
+            const yLabel = cls.yLabel.split(' ')[0];
+            axisElements.push(addTextLabel(xLabel, (xMax * scale + xOffset) + 0.5, yMin * scale + yOffset - 0.5, 0, 0x3b82f6));
+            axisElements.push(addTextLabel(yLabel, xMin * scale + xOffset - 0.7, (yMax * scale + yOffset) + 0.5, 0, 0xef4444));
+            
+            // Tick labels - skip values too close to means
+            const xTicks = [0, Math.round(xMax/4), Math.round(xMax/2), Math.round(3*xMax/4), xMax];
+            const yTicks = [0, Math.round(yMax/4), Math.round(yMax/2), Math.round(3*yMax/4), yMax];
+            
+            xTicks.forEach(val => {
+                // Skip if too close to x̄
+                if (Math.abs(val - xBar) > xMax * 0.1) {
+                    axisElements.push(addTextLabel(val.toString(), val * scale + xOffset, yMin * scale + yOffset - 0.4, 0, 0x666666));
+                }
+            });
+            yTicks.forEach(val => {
+                // Skip if too close to ȳ
+                if (Math.abs(val - yBar) > yMax * 0.1) {
+                    axisElements.push(addTextLabel(val.toString(), xMin * scale + xOffset - 0.4, val * scale + yOffset, 0, 0x666666));
+                }
+            });
+
+            // Mean lines
+            const xBarPos = xBar * scale + xOffset;
+            const yBarPos = yBar * scale + yOffset;
+            
+            // x̄ line (vertical)
+            const xBarLineGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(xBarPos, yMin * scale + yOffset - 0.2, 0),
+                new THREE.Vector3(xBarPos, yMax * scale + yOffset + 0.2, 0)
+            ]);
+            const xBarLine = new THREE.Line(xBarLineGeo, new THREE.LineDashedMaterial({ 
+                color: 0x3b82f6, dashSize: 0.15, gapSize: 0.1 
+            }));
+            xBarLine.computeLineDistances();
+            scene.add(xBarLine);
+            gridElements.push(xBarLine);
+            axisElements.push(addTextLabel('x̄=' + xBar.toFixed(1), xBarPos, yMin * scale + yOffset - 0.6, 0, 0x3b82f6));
+
+            // ȳ line (horizontal)
+            const yBarLineGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(xMin * scale + xOffset - 0.2, yBarPos, 0),
+                new THREE.Vector3(xMax * scale + xOffset + 0.2, yBarPos, 0)
+            ]);
+            const yBarLine = new THREE.Line(yBarLineGeo, new THREE.LineDashedMaterial({ 
+                color: 0xef4444, dashSize: 0.15, gapSize: 0.1 
+            }));
+            yBarLine.computeLineDistances();
+            scene.add(yBarLine);
+            gridElements.push(yBarLine);
+            axisElements.push(addTextLabel('ȳ=' + yBar.toFixed(1), xMax * scale + xOffset + 0.6, yBarPos, 0, 0xef4444));
+
+            // Normal curves centered at means, scaled by standard deviations
+            createNormalCurves(xBarPos, yBarPos, sx * scale, sy * scale);
+
+            // Axes - position at edges for raw view
+            const xAxisY = yMin * scale + yOffset;
+            const yAxisX = xMin * scale + xOffset;
+            
+            // X axis
+            const xAxisGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(xMin * scale + xOffset - 0.3, xAxisY, 0),
+                new THREE.Vector3(xMax * scale + xOffset + 0.3, xAxisY, 0)
+            ]);
+            const xAxis = new THREE.Line(xAxisGeo, new THREE.LineBasicMaterial({ color: 0x3b82f6, linewidth: 2 }));
+            scene.add(xAxis);
+            axisElements.push(xAxis);
+
+            // Y axis
+            const yAxisGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(yAxisX, yMin * scale + yOffset - 0.3, 0),
+                new THREE.Vector3(yAxisX, yMax * scale + yOffset + 0.3, 0)
+            ]);
+            const yAxis = new THREE.Line(yAxisGeo, new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2 }));
+            scene.add(yAxis);
+            axisElements.push(yAxis);
+
+            // Z axis (height) at centroid
+            const zAxisGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(xBarPos, yBarPos, 0),
+                new THREE.Vector3(xBarPos, yBarPos, 1.5)
+            ]);
+            const zAxis = new THREE.Line(zAxisGeo, new THREE.LineBasicMaterial({ color: 0x888888, linewidth: 1 }));
+            scene.add(zAxis);
+            axisElements.push(zAxis);
+
+            // Data points at raw coordinates
+            const sphereGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            data.forEach((d, i) => {
+                const material = new THREE.MeshLambertMaterial({ color: 0x1f2937 });
+                const sphere = new THREE.Mesh(sphereGeo, material);
+                sphere.position.set(d.x * scale + xOffset, d.y * scale + yOffset, 0.06);
+                sphere.userData = { index: i, data: d };
+                scene.add(sphere);
+                pointMeshes.push(sphere);
+            });
+
+            // Centroid marker at (x̄, ȳ)
+            const centroidGeo = new THREE.SphereGeometry(0.1, 16, 16);
+            const centroidMat = new THREE.MeshLambertMaterial({ color: 0xa855f7 });
+            const centroid = new THREE.Mesh(centroidGeo, centroidMat);
+            centroid.position.set(xBarPos, yBarPos, 0.05);
+            scene.add(centroid);
+            pointMeshes.push(centroid);
+        }
+
+        function createGrid() {
+            // Now handled in buildZScoreView/buildRawView
+        }
+
+        function addTextLabel(text, x, y, z, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 128;
+            canvas.height = 64;
+            context.fillStyle = '#' + color.toString(16).padStart(6, '0');
+            context.font = 'bold 40px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, 64, 32);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.position.set(x, y, z);
+            sprite.scale.set(0.8, 0.4, 1);
+            scene.add(sprite);
+            return sprite;
+        }
+
+        function createNormalCurves(centerX, centerY, scaleX, scaleY) {
+            const normalPDF = (z) => Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI);
+            const heightScale = 3; // Scale height for visibility
+            const steps = 60;
+            const width = 0.05;
+
+            // Curve along x axis (at y = centerY)
+            const curveXGeometry = new THREE.BufferGeometry();
+            const curveXVertices = [];
+            const curveXIndices = [];
+
+            for (let i = 0; i <= steps; i++) {
+                const z = -3 + (6 * i / steps); // z-score from -3 to +3
+                const xPos = centerX + z * scaleX;
+                const height = normalPDF(z) * heightScale;
+                
+                curveXVertices.push(xPos, centerY - width, 0);
+                curveXVertices.push(xPos, centerY + width, 0);
+                curveXVertices.push(xPos, centerY - width, height);
+                curveXVertices.push(xPos, centerY + width, height);
+
+                if (i < steps) {
+                    const base = i * 4;
+                    curveXIndices.push(base, base + 1, base + 4);
+                    curveXIndices.push(base + 1, base + 5, base + 4);
+                    curveXIndices.push(base + 2, base + 6, base + 3);
+                    curveXIndices.push(base + 3, base + 6, base + 7);
+                    curveXIndices.push(base, base + 4, base + 2);
+                    curveXIndices.push(base + 2, base + 4, base + 6);
+                    curveXIndices.push(base + 1, base + 3, base + 5);
+                    curveXIndices.push(base + 3, base + 7, base + 5);
+                }
+            }
+
+            curveXGeometry.setAttribute('position', new THREE.Float32BufferAttribute(curveXVertices, 3));
+            curveXGeometry.setIndex(curveXIndices);
+            curveXGeometry.computeVertexNormals();
+
+            const curveXMaterial = new THREE.MeshBasicMaterial({
+                color: 0x3b82f6,
+                transparent: true,
+                opacity: 0.05,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const curveXMesh = new THREE.Mesh(curveXGeometry, curveXMaterial);
+            scene.add(curveXMesh);
+            curveElements.push(curveXMesh);
+
+            // Wireframe for curve X
+            const curveXWireGeometry = new THREE.BufferGeometry();
+            const wireXVertices = [];
+            for (let i = 0; i <= steps; i++) {
+                const z = -3 + (6 * i / steps);
+                const xPos = centerX + z * scaleX;
+                const height = normalPDF(z) * heightScale;
+                wireXVertices.push(xPos, centerY, height);
+            }
+            curveXWireGeometry.setAttribute('position', new THREE.Float32BufferAttribute(wireXVertices, 3));
+            const curveXWire = new THREE.Line(curveXWireGeometry, new THREE.LineBasicMaterial({ color: 0x3b82f6, linewidth: 2 }));
+            scene.add(curveXWire);
+            curveElements.push(curveXWire);
+
+            // Curve along y axis (at x = centerX)
+            const curveYGeometry = new THREE.BufferGeometry();
+            const curveYVertices = [];
+            const curveYIndices = [];
+
+            for (let i = 0; i <= steps; i++) {
+                const z = -3 + (6 * i / steps);
+                const yPos = centerY + z * scaleY;
+                const height = normalPDF(z) * heightScale;
+                
+                curveYVertices.push(centerX - width, yPos, 0);
+                curveYVertices.push(centerX + width, yPos, 0);
+                curveYVertices.push(centerX - width, yPos, height);
+                curveYVertices.push(centerX + width, yPos, height);
+
+                if (i < steps) {
+                    const base = i * 4;
+                    curveYIndices.push(base, base + 1, base + 4);
+                    curveYIndices.push(base + 1, base + 5, base + 4);
+                    curveYIndices.push(base + 2, base + 6, base + 3);
+                    curveYIndices.push(base + 3, base + 6, base + 7);
+                    curveYIndices.push(base, base + 4, base + 2);
+                    curveYIndices.push(base + 2, base + 4, base + 6);
+                    curveYIndices.push(base + 1, base + 3, base + 5);
+                    curveYIndices.push(base + 3, base + 7, base + 5);
+                }
+            }
+
+            curveYGeometry.setAttribute('position', new THREE.Float32BufferAttribute(curveYVertices, 3));
+            curveYGeometry.setIndex(curveYIndices);
+            curveYGeometry.computeVertexNormals();
+
+            const curveYMaterial = new THREE.MeshBasicMaterial({
+                color: 0xef4444,
+                transparent: true,
+                opacity: 0.05,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const curveYMesh = new THREE.Mesh(curveYGeometry, curveYMaterial);
+            scene.add(curveYMesh);
+            curveElements.push(curveYMesh);
+
+            // Wireframe for curve Y
+            const curveYWireGeometry = new THREE.BufferGeometry();
+            const wireYVertices = [];
+            for (let i = 0; i <= steps; i++) {
+                const z = -3 + (6 * i / steps);
+                const yPos = centerY + z * scaleY;
+                const height = normalPDF(z) * heightScale;
+                wireYVertices.push(centerX, yPos, height);
+            }
+            curveYWireGeometry.setAttribute('position', new THREE.Float32BufferAttribute(wireYVertices, 3));
+            const curveYWire = new THREE.Line(curveYWireGeometry, new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2 }));
+            scene.add(curveYWire);
+            curveElements.push(curveYWire);
+        }
+
+        // createAxes is now handled inline in buildZScoreView and buildRawView
+
+        function loadClass(classKey) {
+            currentClass = classKey;
+            const cls = classData[classKey];
+            processedData = processData(cls.raw);
+
+            // Update UI buttons (only if not synthetic)
+            if (!hasUrlData) {
+                document.getElementById('btn-class-e').className =
+                    `px-4 py-2 rounded font-medium ${classKey === 'classE' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`;
+                document.getElementById('btn-class-b').className =
+                    `px-4 py-2 rounded font-medium ${classKey === 'classB' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`;
+            }
+
+            // Update class info
+            let infoHTML = `
+                <div class="font-medium">${cls.name}</div>
+                <div class="text-xs mt-1">n=${processedData.n}, x̄=${processedData.xBar.toFixed(2)}, ȳ=${processedData.yBar.toFixed(2)}</div>
+                <div class="text-xs">Sₓ=${processedData.sx.toFixed(2)}, Sᵧ=${processedData.sy.toFixed(2)}</div>
+            `;
+
+            // Show target vs actual for synthetic data
+            if (cls.targetR !== undefined) {
+                infoHTML += `
+                    <div class="border-t mt-2 pt-2 text-xs">
+                        <div class="text-purple-600 font-medium">Target vs Actual:</div>
+                        <div>r: ${cls.targetR.toFixed(3)} → ${processedData.r.toFixed(3)}</div>
+                        <div>slope: ${cls.targetSlope.toFixed(2)} → ${processedData.b.toFixed(2)}</div>
+                        <div>intercept: ${cls.targetIntercept.toFixed(2)} → ${processedData.a.toFixed(2)}</div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('class-info').innerHTML = infoHTML;
+
+            // Update correlation display
+            document.getElementById('correlation-display').textContent = `r = ${processedData.r.toFixed(4)}`;
+
+            // Build scene with current view
+            buildScene();
+
+            // Update data table
+            updateDataTable();
+
+            // Clear selection info
+            document.getElementById('selected-info').innerHTML = '<p class="text-gray-500 text-sm">Click on a point to see details</p>';
+        }
+
+        function setView(view) {
+            currentView = view;
+            
+            // Update view buttons
+            document.getElementById('btn-view-raw').className = 
+                `px-3 py-1.5 rounded text-sm font-medium ${view === 'raw' ? 'bg-purple-600 text-white' : 'bg-gray-200'}`;
+            document.getElementById('btn-view-zscore').className = 
+                `px-3 py-1.5 rounded text-sm font-medium ${view === 'zscore' ? 'bg-purple-600 text-white' : 'bg-gray-200'}`;
+
+            // Rebuild scene
+            buildScene();
+            
+            // Clear selection
+            document.getElementById('selected-info').innerHTML = '<p class="text-gray-500 text-sm">Click on a point to see details</p>';
+        }
+
+        function updateDataTable() {
+            const cls = classData[currentClass];
+            let html = `<table class="data-table w-full">
+                <thead><tr class="bg-gray-100">
+                    <th>#</th><th>x</th><th>y</th><th>zx</th><th>zy</th><th>zx·zy</th>
+                </tr></thead><tbody>`;
+            
+            processedData.data.forEach(d => {
+                const productColor = d.product >= 0 ? 'text-green-600' : 'text-red-600';
+                html += `<tr class="border-t hover:bg-gray-50 cursor-pointer" data-index="${d.id - 1}">
+                    <td>${d.id}</td>
+                    <td class="text-right">${d.x}</td>
+                    <td class="text-right">${d.y}</td>
+                    <td class="text-right">${d.zx.toFixed(2)}</td>
+                    <td class="text-right">${d.zy.toFixed(2)}</td>
+                    <td class="text-right font-medium ${productColor}">${d.product.toFixed(3)}</td>
+                </tr>`;
+            });
+            
+            html += `<tr class="border-t-2 font-bold">
+                <td colspan="5" class="text-right">Sum:</td>
+                <td class="text-right">${processedData.sumProducts.toFixed(3)}</td>
+            </tr></tbody></table>`;
+            
+            document.getElementById('data-table-container').innerHTML = html;
+
+            // Add click handlers to table rows
+            document.querySelectorAll('#data-table-container tr[data-index]').forEach(row => {
+                row.addEventListener('click', () => {
+                    const index = parseInt(row.dataset.index);
+                    selectPoint(index);
+                });
+            });
+        }
+
+        function selectPoint(index) {
+            const d = processedData.data[index];
+            
+            // Reset previous selection
+            if (selectedMesh) {
+                selectedMesh.material.color.setHex(0x1f2937);
+                selectedMesh.scale.set(1, 1, 1);
+            }
+
+            // Highlight new selection
+            selectedMesh = pointMeshes[index];
+            selectedMesh.material.color.setHex(0x8b5cf6);
+            selectedMesh.scale.set(1.5, 1.5, 1.5);
+
+            // Draw product rectangle
+            if (productRectangle) {
+                scene.remove(productRectangle);
+            }
+            
+            // Clear previous selection shading
+            selectionShadingElements.forEach(el => scene.remove(el));
+            selectionShadingElements = [];
+
+            // Calculate rectangle position based on view
+            let rectCenterX, rectCenterY, rectWidth, rectHeight;
+            let originX, originY;
+            
+            if (currentView === 'zscore') {
+                originX = 0;
+                originY = 0;
+                rectWidth = Math.abs(d.zx);
+                rectHeight = Math.abs(d.zy);
+                rectCenterX = d.zx / 2;
+                rectCenterY = d.zy / 2;
+            } else {
+                const { scale, xOffset, yOffset } = processedData.rawTransform;
+                const { xBar, yBar } = processedData;
+                originX = xBar * scale + xOffset;
+                originY = yBar * scale + yOffset;
+                const pointX = d.x * scale + xOffset;
+                const pointY = d.y * scale + yOffset;
+                rectWidth = Math.abs(pointX - originX);
+                rectHeight = Math.abs(pointY - originY);
+                rectCenterX = (pointX + originX) / 2;
+                rectCenterY = (pointY + originY) / 2;
+            }
+
+            const rectGeo = new THREE.PlaneGeometry(rectWidth, rectHeight);
+            const rectMat = new THREE.MeshBasicMaterial({
+                color: d.product >= 0 ? 0x22c55e : 0xef4444,
+                transparent: true,
+                opacity: 0.4,
+                side: THREE.DoubleSide
+            });
+            productRectangle = new THREE.Mesh(rectGeo, rectMat);
+            productRectangle.position.set(rectCenterX, rectCenterY, 0.01);
+            scene.add(productRectangle);
+
+            // Add rectangle border
+            let cornerX, cornerY;
+            if (currentView === 'zscore') {
+                cornerX = d.zx;
+                cornerY = d.zy;
+            } else {
+                const { scale, xOffset, yOffset } = processedData.rawTransform;
+                cornerX = d.x * scale + xOffset - originX;
+                cornerY = d.y * scale + yOffset - originY;
+            }
+            
+            const borderGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0.02),
+                new THREE.Vector3(cornerX - rectCenterX + originX, 0, 0.02),
+                new THREE.Vector3(cornerX - rectCenterX + originX, cornerY - rectCenterY + originY, 0.02),
+                new THREE.Vector3(0, cornerY - rectCenterY + originY, 0.02),
+                new THREE.Vector3(0, 0, 0.02)
+            ]);
+            
+            // Simpler border approach
+            const border2Geo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-rectWidth/2, -rectHeight/2, 0.02),
+                new THREE.Vector3(rectWidth/2, -rectHeight/2, 0.02),
+                new THREE.Vector3(rectWidth/2, rectHeight/2, 0.02),
+                new THREE.Vector3(-rectWidth/2, rectHeight/2, 0.02),
+                new THREE.Vector3(-rectWidth/2, -rectHeight/2, 0.02)
+            ]);
+            const borderMat = new THREE.LineBasicMaterial({ 
+                color: d.product >= 0 ? 0x16a34a : 0xdc2626,
+                linewidth: 2 
+            });
+            const border = new THREE.Line(border2Geo, borderMat);
+            productRectangle.add(border);
+
+            // Add 3D shading for z-score view
+            if (currentView === 'zscore') {
+                const normalPDF = (z) => Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI);
+                const heightScale = 3;
+                const color = d.product >= 0 ? 0x22c55e : 0xef4444;
+                const numSteps = 30; // Smooth curves
+                
+                // Shaded region under x-curve from 0 to zx (blue fill)
+                const xShadingShape = new THREE.Shape();
+                xShadingShape.moveTo(0, 0);
+                for (let i = 0; i <= numSteps; i++) {
+                    const t = i / numSteps;
+                    const xPos = d.zx * t;
+                    const height = normalPDF(xPos) * heightScale;
+                    xShadingShape.lineTo(xPos, height);
+                }
+                xShadingShape.lineTo(d.zx, 0);
+                xShadingShape.lineTo(0, 0);
+                
+                const xShadingGeo = new THREE.ShapeGeometry(xShadingShape);
+                const xShadingMesh = new THREE.Mesh(xShadingGeo, new THREE.MeshBasicMaterial({
+                    color: 0x3b82f6,
+                    transparent: true,
+                    opacity: 0.35,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                }));
+                // Rotate to stand upright on x-axis
+                xShadingMesh.rotation.x = -Math.PI / 2;
+                xShadingMesh.position.set(0, 0, 0);
+                scene.add(xShadingMesh);
+                selectionShadingElements.push(xShadingMesh);
+                
+                // Outline for x shading
+                const xOutlinePoints = [new THREE.Vector3(0, 0, 0)];
+                for (let i = 0; i <= numSteps; i++) {
+                    const t = i / numSteps;
+                    const xPos = d.zx * t;
+                    const height = normalPDF(xPos) * heightScale;
+                    xOutlinePoints.push(new THREE.Vector3(xPos, 0, height));
+                }
+                xOutlinePoints.push(new THREE.Vector3(d.zx, 0, 0));
+                const xOutlineGeo = new THREE.BufferGeometry().setFromPoints(xOutlinePoints);
+                const xOutline = new THREE.Line(xOutlineGeo, new THREE.LineBasicMaterial({ color: 0x2563eb, linewidth: 2 }));
+                scene.add(xOutline);
+                selectionShadingElements.push(xOutline);
+                
+                // Shaded region under y-curve from 0 to zy (red fill)
+                const yShadingShape = new THREE.Shape();
+                yShadingShape.moveTo(0, 0);
+                for (let i = 0; i <= numSteps; i++) {
+                    const t = i / numSteps;
+                    const yPos = d.zy * t;
+                    const height = normalPDF(yPos) * heightScale;
+                    yShadingShape.lineTo(yPos, height);
+                }
+                yShadingShape.lineTo(d.zy, 0);
+                yShadingShape.lineTo(0, 0);
+                
+                const yShadingGeo = new THREE.ShapeGeometry(yShadingShape);
+                const yShadingMesh = new THREE.Mesh(yShadingGeo, new THREE.MeshBasicMaterial({
+                    color: 0xef4444,
+                    transparent: true,
+                    opacity: 0.35,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                }));
+                // Rotate to stand upright on y-axis
+                yShadingMesh.rotation.x = -Math.PI / 2;
+                yShadingMesh.rotation.z = Math.PI / 2;
+                yShadingMesh.position.set(0, 0, 0);
+                scene.add(yShadingMesh);
+                selectionShadingElements.push(yShadingMesh);
+                
+                // Outline for y shading
+                const yOutlinePoints = [new THREE.Vector3(0, 0, 0)];
+                for (let i = 0; i <= numSteps; i++) {
+                    const t = i / numSteps;
+                    const yPos = d.zy * t;
+                    const height = normalPDF(yPos) * heightScale;
+                    yOutlinePoints.push(new THREE.Vector3(0, yPos, height));
+                }
+                yOutlinePoints.push(new THREE.Vector3(0, d.zy, 0));
+                const yOutlineGeo = new THREE.BufferGeometry().setFromPoints(yOutlinePoints);
+                const yOutline = new THREE.Line(yOutlineGeo, new THREE.LineBasicMaterial({ color: 0xdc2626, linewidth: 2 }));
+                scene.add(yOutline);
+                selectionShadingElements.push(yOutline);
+                
+                // Vertical lines at zx and zy positions (drop lines from curve to floor)
+                const zxHeight = normalPDF(d.zx) * heightScale;
+                const zyHeight = normalPDF(d.zy) * heightScale;
+                
+                const zxDropLine = new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(d.zx, 0, 0),
+                        new THREE.Vector3(d.zx, 0, zxHeight)
+                    ]),
+                    new THREE.LineBasicMaterial({ color: 0x2563eb, linewidth: 2 })
+                );
+                scene.add(zxDropLine);
+                selectionShadingElements.push(zxDropLine);
+                
+                const zyDropLine = new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(0, d.zy, 0),
+                        new THREE.Vector3(0, d.zy, zyHeight)
+                    ]),
+                    new THREE.LineBasicMaterial({ color: 0xdc2626, linewidth: 2 })
+                );
+                scene.add(zyDropLine);
+                selectionShadingElements.push(zyDropLine);
+                
+                // Add z-value labels positioned better (on the floor, outside the graph area)
+                const zxLabelX = d.zx + (d.zx >= 0 ? 0.3 : -0.3);
+                const zyLabelY = d.zy + (d.zy >= 0 ? 0.3 : -0.3);
+                const zxLabel = addTextLabel(`zx = ${d.zx.toFixed(2)}`, zxLabelX, -0.6, 0.1, 0x2563eb);
+                const zyLabel = addTextLabel(`zy = ${d.zy.toFixed(2)}`, -0.9, zyLabelY, 0.1, 0xdc2626);
+                selectionShadingElements.push(zxLabel);
+                selectionShadingElements.push(zyLabel);
+            }
+
+            // Update info panel
+            const cls = classData[currentClass];
+            const quadrant = getQuadrant(d.zx, d.zy);
+            const devX = d.x - processedData.xBar;
+            const devY = d.y - processedData.yBar;
+            const rawArea = devX * devY;
+            document.getElementById('selected-info').innerHTML = `
+                <div class="font-bold text-lg mb-2">Point #${d.id}</div>
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div class="bg-gray-100 p-2 rounded">
+                        <div class="text-gray-500">${cls.xLabel}</div>
+                        <div class="font-bold">${d.x}</div>
+                    </div>
+                    <div class="bg-gray-100 p-2 rounded">
+                        <div class="text-gray-500">${cls.yLabel}</div>
+                        <div class="font-bold">${d.y}</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div class="bg-blue-50 p-2 rounded">
+                        <div class="text-blue-600 text-xs">zx = (${d.x} − ${processedData.xBar.toFixed(1)}) / ${processedData.sx.toFixed(2)}</div>
+                        <div class="font-bold">${d.zx.toFixed(3)}</div>
+                    </div>
+                    <div class="bg-red-50 p-2 rounded">
+                        <div class="text-red-600 text-xs">zy = (${d.y} − ${processedData.yBar.toFixed(1)}) / ${processedData.sy.toFixed(2)}</div>
+                        <div class="font-bold">${d.zy.toFixed(3)}</div>
+                    </div>
+                </div>
+                <div class="p-3 rounded mb-2 ${d.product >= 0 ? 'bg-green-50' : 'bg-red-50'}">
+                    <div class="text-xs text-gray-600">Z-Score Product:</div>
+                    <div class="font-bold text-xl ${d.product >= 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${d.zx.toFixed(3)} × ${d.zy.toFixed(3)} = ${d.product.toFixed(4)}
+                    </div>
+                    <div class="text-xs mt-1">Quadrant ${quadrant.num}: ${quadrant.desc}</div>
+                </div>
+                <div class="p-3 rounded ${rawArea >= 0 ? 'bg-green-50' : 'bg-red-50'}" style="border: 2px dashed ${rawArea >= 0 ? '#22c55e' : '#ef4444'}">
+                    <div class="text-xs text-gray-600">Raw Deviation Area:</div>
+                    <div class="font-bold text-lg ${rawArea >= 0 ? 'text-green-700' : 'text-red-700'}">
+                        (${devX.toFixed(2)}) × (${devY.toFixed(2)}) = ${rawArea.toFixed(2)}
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1">(x − x̄) × (y − ȳ) in ${cls.xUnit} × ${cls.yUnit}</div>
+                </div>
+            `;
+
+            // Highlight table row
+            document.querySelectorAll('#data-table-container tr').forEach(row => {
+                row.classList.remove('bg-purple-100');
+            });
+            document.querySelector(`#data-table-container tr[data-index="${index}"]`)?.classList.add('bg-purple-100');
+        }
+
+        function getQuadrant(zx, zy) {
+            if (zx >= 0 && zy >= 0) return { num: 'I', desc: 'Both above → +' };
+            if (zx < 0 && zy >= 0) return { num: 'II', desc: 'x below, y above → −' };
+            if (zx < 0 && zy < 0) return { num: 'III', desc: 'Both below → +' };
+            return { num: 'IV', desc: 'x above, y below → −' };
+        }
+
+        // ============== CONTROLS ==============
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let spherical = { radius: 10, theta: Math.PI / 4, phi: Math.PI / 3 };
+
+        function setupControls() {
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                if (e.button === 0) isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                spherical.theta -= deltaX * 0.01;
+                spherical.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, spherical.phi - deltaY * 0.01));
+
+                updateCameraPosition();
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('mouseup', () => isDragging = false);
+            renderer.domElement.addEventListener('mouseleave', () => isDragging = false);
+
+            renderer.domElement.addEventListener('wheel', (e) => {
+                spherical.radius = Math.max(5, Math.min(20, spherical.radius + e.deltaY * 0.01));
+                updateCameraPosition();
+            });
+
+            updateCameraPosition();
+        }
+
+        function updateCameraPosition() {
+            camera.position.x = spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+            camera.position.y = spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+            camera.position.z = spherical.radius * Math.cos(spherical.phi);
+            camera.lookAt(0, 0, 0.5);
+        }
+
+        // ============== RAYCASTER ==============
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function setupRaycaster() {
+            renderer.domElement.addEventListener('click', (e) => {
+                if (isDragging) return; // Don't select while dragging
+                
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(pointMeshes);
+
+                if (intersects.length > 0) {
+                    const mesh = intersects[0].object;
+                    if (mesh.userData.index !== undefined) {
+                        selectPoint(mesh.userData.index);
+                    }
+                }
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // ============== EVENT LISTENERS ==============
+        document.getElementById('btn-class-e').addEventListener('click', () => loadClass('classE'));
+        document.getElementById('btn-class-b').addEventListener('click', () => loadClass('classB'));
+        document.getElementById('btn-view-raw').addEventListener('click', () => setView('raw'));
+        document.getElementById('btn-view-zscore').addEventListener('click', () => setView('zscore'));
+        document.getElementById('chk-lsrl').addEventListener('change', (e) => {
+            showLSRL = e.target.checked;
+            buildScene();
+        });
+
+        // ============== QUESTION GENERATOR ==============
+        let questionStats = { correct: 0, total: 0 };
+        let currentQuestion = null;
+        let questionAnswered = false;
+
+        function generateQuestion() {
+            if (!processedData) return;
+
+            const { data, xBar, yBar, sx, sy, r, a, b, n } = processedData;
+            const cls = classData[currentClass];
+            const randomPoint = data[Math.floor(Math.random() * data.length)];
+
+            const questionTypes = [
+                // Z-score questions
+                () => ({
+                    text: `Point #${randomPoint.id} has ${cls.xLabel} = ${randomPoint.x}. What is its z-score (zx)?`,
+                    options: shuffleWithCorrect(
+                        randomPoint.zx.toFixed(2),
+                        [(-randomPoint.zx).toFixed(2), (randomPoint.zx + 0.5).toFixed(2), (randomPoint.zx - 0.5).toFixed(2)]
+                    ),
+                    correct: randomPoint.zx.toFixed(2),
+                    explanation: `zx = (${randomPoint.x} − ${xBar.toFixed(1)}) / ${sx.toFixed(2)} = ${randomPoint.zx.toFixed(2)}`
+                }),
+                () => ({
+                    text: `Point #${randomPoint.id} has ${cls.yLabel} = ${randomPoint.y}. What is its z-score (zy)?`,
+                    options: shuffleWithCorrect(
+                        randomPoint.zy.toFixed(2),
+                        [(-randomPoint.zy).toFixed(2), (randomPoint.zy + 0.5).toFixed(2), (randomPoint.zy - 0.5).toFixed(2)]
+                    ),
+                    correct: randomPoint.zy.toFixed(2),
+                    explanation: `zy = (${randomPoint.y} − ${yBar.toFixed(1)}) / ${sy.toFixed(2)} = ${randomPoint.zy.toFixed(2)}`
+                }),
+                // Product sign question
+                () => ({
+                    text: `Point #${randomPoint.id} has zx = ${randomPoint.zx.toFixed(2)} and zy = ${randomPoint.zy.toFixed(2)}. Is its z-score product positive or negative?`,
+                    options: ['Positive (+)', 'Negative (−)'],
+                    correct: randomPoint.product >= 0 ? 'Positive (+)' : 'Negative (−)',
+                    explanation: `${randomPoint.zx.toFixed(2)} × ${randomPoint.zy.toFixed(2)} = ${randomPoint.product.toFixed(3)} (${randomPoint.product >= 0 ? 'positive' : 'negative'})`
+                }),
+                // Quadrant question
+                () => {
+                    const quad = getQuadrant(randomPoint.zx, randomPoint.zy);
+                    return {
+                        text: `Point #${randomPoint.id} has zx = ${randomPoint.zx.toFixed(2)} and zy = ${randomPoint.zy.toFixed(2)}. Which quadrant is it in?`,
+                        options: ['Quadrant I (++)', 'Quadrant II (−+)', 'Quadrant III (−−)', 'Quadrant IV (+−)'],
+                        correct: `Quadrant ${quad.num} (${quad.num === 'I' ? '++' : quad.num === 'II' ? '−+' : quad.num === 'III' ? '−−' : '+−'})`,
+                        explanation: `zx ${randomPoint.zx >= 0 ? '≥' : '<'} 0 and zy ${randomPoint.zy >= 0 ? '≥' : '<'} 0 → Quadrant ${quad.num}`
+                    };
+                },
+                // Correlation direction
+                () => ({
+                    text: `The correlation r = ${r.toFixed(3)}. This indicates a _____ linear relationship.`,
+                    options: ['Positive', 'Negative', 'No relationship'],
+                    correct: r > 0 ? 'Positive' : r < 0 ? 'Negative' : 'No relationship',
+                    explanation: `r = ${r.toFixed(3)} is ${r > 0 ? 'positive' : r < 0 ? 'negative' : 'zero'}`
+                }),
+                // Correlation strength
+                () => {
+                    const absR = Math.abs(r);
+                    const strength = absR < 0.3 ? 'Weak' : absR < 0.7 ? 'Moderate' : 'Strong';
+                    return {
+                        text: `The correlation r = ${r.toFixed(3)}. What is the strength of this relationship?`,
+                        options: ['Weak', 'Moderate', 'Strong'],
+                        correct: strength,
+                        explanation: `|r| = ${absR.toFixed(3)} → ${strength} (Weak: <0.3, Moderate: 0.3-0.7, Strong: >0.7)`
+                    };
+                },
+                // LSRL prediction
+                () => {
+                    const testX = randomPoint.x;
+                    const predicted = a + b * testX;
+                    return {
+                        text: `Using ŷ = ${a.toFixed(2)} + ${b.toFixed(2)}x, what is the predicted ${cls.yLabel} when ${cls.xLabel} = ${testX}?`,
+                        options: shuffleWithCorrect(
+                            predicted.toFixed(1),
+                            [(predicted + 10).toFixed(1), (predicted - 10).toFixed(1), (predicted * 1.2).toFixed(1)]
+                        ),
+                        correct: predicted.toFixed(1),
+                        explanation: `ŷ = ${a.toFixed(2)} + ${b.toFixed(2)}(${testX}) = ${predicted.toFixed(1)}`
+                    };
+                },
+                // Residual question
+                () => {
+                    const predicted = a + b * randomPoint.x;
+                    const residual = randomPoint.y - predicted;
+                    return {
+                        text: `Point #${randomPoint.id} has actual ${cls.yLabel} = ${randomPoint.y}. The predicted value is ${predicted.toFixed(1)}. What is the residual?`,
+                        options: shuffleWithCorrect(
+                            residual.toFixed(1),
+                            [(-residual).toFixed(1), (residual + 5).toFixed(1), (residual - 5).toFixed(1)]
+                        ),
+                        correct: residual.toFixed(1),
+                        explanation: `Residual = actual − predicted = ${randomPoint.y} − ${predicted.toFixed(1)} = ${residual.toFixed(1)}`
+                    };
+                },
+                // Mean question
+                () => ({
+                    text: `What is the mean of ${cls.xLabel} (x̄)?`,
+                    options: shuffleWithCorrect(
+                        xBar.toFixed(1),
+                        [(xBar + 5).toFixed(1), (xBar - 5).toFixed(1), (xBar * 1.2).toFixed(1)]
+                    ),
+                    correct: xBar.toFixed(1),
+                    explanation: `x̄ = Σx / n = ${xBar.toFixed(1)}`
+                }),
+                // Standard deviation question
+                () => ({
+                    text: `What is the standard deviation of ${cls.xLabel} (sx)?`,
+                    options: shuffleWithCorrect(
+                        sx.toFixed(2),
+                        [(sx + 3).toFixed(2), (sx / 2).toFixed(2), (sx * 1.5).toFixed(2)]
+                    ),
+                    correct: sx.toFixed(2),
+                    explanation: `sx = ${sx.toFixed(2)}`
+                })
+            ];
+
+            const generator = questionTypes[Math.floor(Math.random() * questionTypes.length)];
+            currentQuestion = generator();
+            questionAnswered = false;
+            displayQuestion();
+        }
+
+        function shuffleWithCorrect(correct, distractors) {
+            const options = [correct, ...distractors.slice(0, 3)];
+            // Fisher-Yates shuffle
+            for (let i = options.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [options[i], options[j]] = [options[j], options[i]];
+            }
+            return options;
+        }
+
+        function displayQuestion() {
+            const textEl = document.getElementById('question-text');
+            const optionsEl = document.getElementById('question-options');
+            const feedbackEl = document.getElementById('question-feedback');
+
+            textEl.textContent = currentQuestion.text;
+            textEl.className = 'text-sm mb-3 p-3 bg-gray-50 rounded-lg border-2 border-gray-200';
+            feedbackEl.classList.add('hidden');
+
+            optionsEl.innerHTML = currentQuestion.options.map((opt, i) => `
+                <button class="question-option w-full text-left px-3 py-2 rounded border border-gray-300 hover:bg-purple-50 hover:border-purple-300 text-sm transition-colors" data-value="${opt}">
+                    ${String.fromCharCode(65 + i)}. ${opt}
+                </button>
+            `).join('');
+
+            optionsEl.querySelectorAll('.question-option').forEach(btn => {
+                btn.addEventListener('click', () => checkAnswer(btn.dataset.value));
+            });
+        }
+
+        function checkAnswer(selected) {
+            if (questionAnswered) return;
+            questionAnswered = true;
+            questionStats.total++;
+
+            const isCorrect = selected === currentQuestion.correct;
+            if (isCorrect) questionStats.correct++;
+
+            document.getElementById('question-score').textContent = `${questionStats.correct}/${questionStats.total}`;
+
+            const textEl = document.getElementById('question-text');
+            const feedbackEl = document.getElementById('question-feedback');
+            const optionsEl = document.getElementById('question-options');
+
+            textEl.className = `text-sm mb-3 p-3 rounded-lg border-2 ${isCorrect ? 'question-correct' : 'question-incorrect'}`;
+
+            optionsEl.querySelectorAll('.question-option').forEach(btn => {
+                const val = btn.dataset.value;
+                if (val === currentQuestion.correct) {
+                    btn.className = 'question-option w-full text-left px-3 py-2 rounded border-2 border-green-500 bg-green-50 text-sm font-medium';
+                } else if (val === selected && !isCorrect) {
+                    btn.className = 'question-option w-full text-left px-3 py-2 rounded border-2 border-red-500 bg-red-50 text-sm';
+                }
+                btn.disabled = true;
+            });
+
+            feedbackEl.innerHTML = `
+                <div class="${isCorrect ? 'text-green-700' : 'text-red-700'} font-medium mb-1">
+                    ${isCorrect ? '✓ Correct!' : '✗ Incorrect'}
+                </div>
+                <div class="text-gray-600">${currentQuestion.explanation}</div>
+            `;
+            feedbackEl.className = `text-sm p-2 rounded ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`;
+            feedbackEl.classList.remove('hidden');
+        }
+
+        // Question panel event listeners
+        document.getElementById('new-question-btn').addEventListener('click', generateQuestion);
+        document.getElementById('toggle-question-panel').addEventListener('click', () => {
+            const panel = document.getElementById('question-panel');
+            const btn = document.getElementById('toggle-question-panel');
+            panel.classList.toggle('minimized');
+            btn.textContent = panel.classList.contains('minimized') ? '+' : '−';
+        });
+
+        // Initialize
+        init();
+
+        // Generate first question after data loads
+        setTimeout(generateQuestion, 500);
+    </script>
+</body>
+</html>

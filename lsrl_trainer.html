@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSRL Conclusion Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        .card-flip { transition: transform 0.6s; transform-style: preserve-3d; }
+        .card-flip.flipped { transform: rotateX(180deg); }
+        textarea:focus { outline: none; }
+        .hint-text { display: none; }
+        .hint-text.show { display: block; }
+        .streak-pulse { animation: pulse 0.5s ease-in-out; }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        .feedback-card { transition: all 0.3s ease-out; }
+        .katex-like { font-family: "Times New Roman", serif; font-style: italic; }
+
+        /* Celebration effects */
+        .screen-flash {
+            animation: flash 0.5s ease-out;
+        }
+        @keyframes flash {
+            0% { background-color: rgba(34, 197, 94, 0.3); }
+            100% { background-color: transparent; }
+        }
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        @keyframes confetti-fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* Sticky scenario card */
+        .scenario-sticky {
+            position: sticky;
+            top: 60px;
+            z-index: 30;
+        }
+
+        /* Button visibility fix */
+        .btn-hidden { display: none !important; }
+        .btn-visible { display: inline-flex !important; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <h1 class="text-xl font-bold text-purple-700">LSRL Conclusion Trainer</h1>
+                <a href="zscore_3d_explorer.html" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                    ← Z-Score Explorer
+                </a>
+            </div>
+            <div class="flex items-center gap-6">
+                <!-- Streak Counters -->
+                <div class="flex gap-4 text-sm">
+                    <div class="flex items-center gap-2" title="Perfect scores by star type">
+                        <span class="flex items-center gap-0.5" title="Gold (no hints)">
+                            <span class="text-yellow-400">★</span>
+                            <span id="gold-count" class="font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded text-xs">0</span>
+                        </span>
+                        <span class="flex items-center gap-0.5" title="Silver (1 hint)">
+                            <span class="text-gray-400">★</span>
+                            <span id="silver-count" class="font-bold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded text-xs">0</span>
+                        </span>
+                        <span class="flex items-center gap-0.5" title="Bronze (2 hints)">
+                            <span class="text-amber-600">★</span>
+                            <span id="bronze-count" class="font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded text-xs">0</span>
+                        </span>
+                        <span class="flex items-center gap-0.5" title="Tin (3 hints)">
+                            <span class="text-stone-400">★</span>
+                            <span id="tin-count" class="font-bold text-stone-500 bg-stone-200 px-1.5 py-0.5 rounded text-xs">0</span>
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="text-gray-500">Slope:</span>
+                        <span id="slope-streak" class="font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded">0</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="text-gray-500">Intercept:</span>
+                        <span id="intercept-streak" class="font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">0</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="text-gray-500">Correlation:</span>
+                        <span id="correlation-streak" class="font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded">0</span>
+                    </div>
+                </div>
+                <!-- Settings Button -->
+                <button id="settings-btn" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Settings">
+                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 py-6">
+        <!-- Scenario Card (Sticky) -->
+        <div class="bg-white rounded-xl shadow-lg p-4 mb-6 scenario-sticky border-b-2 border-purple-200">
+            <div class="flex justify-between items-center gap-4">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="text-xs text-gray-500 uppercase tracking-wide">Scenario:</span>
+                        <h2 id="scenario-title" class="text-base font-semibold text-gray-800 truncate"></h2>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 text-sm">
+                        <div class="bg-purple-50 rounded px-2 py-1">
+                            <span class="text-purple-600 font-medium">ŷ = </span>
+                            <span id="equation-display" class="text-gray-800 katex-like"></span>
+                        </div>
+                        <div class="bg-blue-50 rounded px-2 py-1">
+                            <span class="text-blue-600 font-medium">r = </span>
+                            <span id="correlation-display" class="text-gray-800 katex-like"></span>
+                        </div>
+                        <div id="context-details" class="text-xs text-gray-600"></div>
+                    </div>
+                </div>
+                <div class="flex flex-col items-center gap-2">
+                    <div id="scatterplot-container" class="flex-shrink-0">
+                        <!-- SVG scatterplot will be inserted here -->
+                    </div>
+                    <button id="visualize-btn" class="text-xs text-purple-600 hover:text-purple-800 hover:underline flex items-center gap-1" title="Open 3D Z-Score Explorer">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                        Explore in 3D
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Input Section -->
+        <div class="space-y-4 mb-6">
+            <!-- Slope Interpretation -->
+            <div id="slope-card" class="bg-white rounded-xl shadow-lg p-5 feedback-card">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="font-semibold text-purple-700">1. Slope Interpretation</label>
+                    <button class="hint-toggle text-gray-400 hover:text-purple-600 transition-colors" data-target="slope-hint">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <textarea id="slope-input" class="w-full border border-gray-300 rounded-lg p-3 h-32 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all" placeholder="Write your slope interpretation here..."></textarea>
+                <div id="slope-hint" class="hint-text text-sm text-gray-500 bg-gray-50 rounded p-4 mt-3 leading-relaxed">
+                    <strong>Sentence Frame:</strong> "For every increase of 1 [x-unit], the predicted [y-variable] increases/decreases by [|b|] [y-units], on average."
+                </div>
+                <div id="slope-feedback" class="mt-3 hidden"></div>
+            </div>
+
+            <!-- Y-Intercept Interpretation -->
+            <div id="intercept-card" class="bg-white rounded-xl shadow-lg p-5 feedback-card">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="font-semibold text-blue-700">2. Y-Intercept Interpretation</label>
+                    <button class="hint-toggle text-gray-400 hover:text-blue-600 transition-colors" data-target="intercept-hint">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <textarea id="intercept-input" class="w-full border border-gray-300 rounded-lg p-3 h-32 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all" placeholder="Write your y-intercept interpretation here..."></textarea>
+                <div id="intercept-hint" class="hint-text text-sm text-gray-500 bg-gray-50 rounded p-4 mt-3 leading-relaxed">
+                    <strong>Sentence Frame:</strong> "When [x-variable] is 0 [x-units], the predicted [y-variable] is [a] [y-units]."
+                    <br><br>
+                    <em>OR</em> "The y-intercept has no meaningful interpretation because [x=0 is impossible/outside the domain]."
+                </div>
+                <div id="intercept-feedback" class="mt-3 hidden"></div>
+            </div>
+
+            <!-- Correlation Interpretation -->
+            <div id="correlation-card" class="bg-white rounded-xl shadow-lg p-5 feedback-card">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="font-semibold text-green-700">3. Correlation Interpretation</label>
+                    <button class="hint-toggle text-gray-400 hover:text-green-600 transition-colors" data-target="correlation-hint">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <textarea id="correlation-input" class="w-full border border-gray-300 rounded-lg p-3 h-32 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all" placeholder="Write your correlation interpretation here..."></textarea>
+                <div id="correlation-hint" class="hint-text text-sm text-gray-500 bg-gray-50 rounded p-4 mt-3 leading-relaxed">
+                    <strong>Sentence Frame:</strong> "There is a [weak/moderate/strong], [positive/negative], linear relationship between [x-variable] and [y-variable]."
+                </div>
+                <div id="correlation-feedback" class="mt-3 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-center gap-4">
+            <button id="grade-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-8 py-3 rounded-lg shadow-lg transition-all transform hover:scale-105">
+                Grade My Conclusion
+            </button>
+            <button id="try-again-btn" style="display:none" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3 rounded-lg shadow-lg transition-all transform hover:scale-105">
+                Try Again
+            </button>
+            <button id="next-btn" style="display:none" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-8 py-3 rounded-lg shadow-lg transition-all transform hover:scale-105">
+                Next Scenario →
+            </button>
+            <button id="skip-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold px-6 py-3 rounded-lg shadow transition-all">
+                Skip
+            </button>
+        </div>
+
+        <!-- AI Toggle & Hint Status -->
+        <div class="mt-4 flex justify-center items-center gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500">Keywords</span>
+                <button id="ai-toggle" class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors" title="Toggle AI grading">
+                    <span class="sr-only">Enable AI grading</span>
+                    <span id="ai-toggle-dot" class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform"></span>
+                </button>
+                <span class="text-xs text-gray-500">+ AI</span>
+                <span id="grading-status" class="text-xs text-gray-400 ml-1"></span>
+            </div>
+            <div id="hint-status" class="flex items-center gap-1 text-xs">
+                <span class="text-yellow-400">★</span>
+                <span id="potential-star" class="text-yellow-600 font-medium">Gold</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800">Settings</h3>
+                <button id="close-settings" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Default Grading Mode</label>
+                    <select id="ai-provider" class="w-full border border-gray-300 rounded-lg p-2">
+                        <option value="gemini">Google Gemini</option>
+                        <option value="groq">Groq (Llama 3.3)</option>
+                        <option value="none">Keyword Matching Only</option>
+                    </select>
+                </div>
+
+                <div class="border-t pt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">API Keys</label>
+
+                    <div class="mb-3">
+                        <label class="block text-xs text-gray-600 mb-1">
+                            Gemini Key
+                            <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-600 hover:underline ml-1">(get free key)</a>
+                        </label>
+                        <input type="password" id="gemini-key-input" class="w-full border border-gray-300 rounded-lg p-2 text-sm" placeholder="AIza...">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">
+                            Groq Key
+                            <a href="https://console.groq.com/keys" target="_blank" class="text-blue-600 hover:underline ml-1">(get free key)</a>
+                        </label>
+                        <input type="password" id="groq-key-input" class="w-full border border-gray-300 rounded-lg p-2 text-sm" placeholder="gsk_...">
+                    </div>
+
+                    <p class="text-xs text-gray-400 mt-2">Keys are stored locally in your browser only.</p>
+                </div>
+
+                <div class="border-t pt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Progress</label>
+                    <button id="reset-streaks" class="text-sm text-red-600 hover:text-red-800">Reset All Streaks & Stars</button>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button id="save-settings" class="bg-purple-600 hover:bg-purple-700 text-white font-medium px-4 py-2 rounded-lg">
+                    Save Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============== SCENARIO GENERATOR ==============
+    class ScenarioGenerator {
+        constructor() {
+            this.contexts = [
+                { topic: "Student Performance", xVar: "hours studied", xUnits: "hours", yVar: "exam score", yUnits: "points", xMin: 0, xMax: 12, yMin: 40, yMax: 100, interceptMeaningful: true, interceptReason: "0 hours of studying is possible" },
+                { topic: "Sleep & Grades", xVar: "hours of sleep", xUnits: "hours", yVar: "GPA", yUnits: "points", xMin: 4, xMax: 10, yMin: 1.5, yMax: 4.0, interceptMeaningful: false, interceptReason: "0 hours of sleep is not realistic for students" },
+                { topic: "Exercise & Health", xVar: "minutes of exercise per day", xUnits: "minutes", yVar: "resting heart rate", yUnits: "bpm", xMin: 0, xMax: 90, yMin: 50, yMax: 85, interceptMeaningful: true, interceptReason: "0 minutes of exercise is possible" },
+                { topic: "Car Value", xVar: "age of car", xUnits: "years", yVar: "resale value", yUnits: "dollars", xMin: 0, xMax: 15, yMin: 2000, yMax: 35000, interceptMeaningful: true, interceptReason: "a new car (0 years) has a value" },
+                { topic: "Plant Growth", xVar: "amount of fertilizer", xUnits: "grams", yVar: "plant height", yUnits: "cm", xMin: 0, xMax: 50, yMin: 5, yMax: 45, interceptMeaningful: true, interceptReason: "0 grams of fertilizer is possible" },
+                { topic: "Temperature & Sales", xVar: "temperature", xUnits: "°F", yVar: "ice cream sales", yUnits: "dollars", xMin: 50, xMax: 100, yMin: 100, yMax: 800, interceptMeaningful: false, interceptReason: "0°F is outside the realistic range of the data" },
+                { topic: "Commute Time", xVar: "distance from work", xUnits: "miles", yVar: "commute time", yUnits: "minutes", xMin: 1, xMax: 40, yMin: 5, yMax: 75, interceptMeaningful: false, interceptReason: "0 miles from work means no commute" },
+                { topic: "Social Media", xVar: "hours on social media", xUnits: "hours", yVar: "productivity score", yUnits: "points", xMin: 0, xMax: 8, yMin: 20, yMax: 100, interceptMeaningful: true, interceptReason: "0 hours on social media is possible" },
+                { topic: "Coffee & Alertness", xVar: "cups of coffee", xUnits: "cups", yVar: "alertness rating", yUnits: "points (1-10)", xMin: 0, xMax: 6, yMin: 2, yMax: 9, interceptMeaningful: true, interceptReason: "0 cups of coffee is possible" },
+                { topic: "Runner Performance", xVar: "age of runner", xUnits: "years", yVar: "marathon time", yUnits: "minutes", xMin: 20, xMax: 70, yMin: 180, yMax: 360, interceptMeaningful: false, interceptReason: "an age of 0 years is not possible for marathon runners" },
+                { topic: "Salary & Experience", xVar: "years of experience", xUnits: "years", yVar: "annual salary", yUnits: "thousands of dollars", xMin: 0, xMax: 30, yMin: 35, yMax: 150, interceptMeaningful: true, interceptReason: "0 years of experience (entry level) is possible" },
+                { topic: "Tree Growth", xVar: "tree age", xUnits: "years", yVar: "tree height", yUnits: "feet", xMin: 1, xMax: 50, yMin: 3, yMax: 80, interceptMeaningful: false, interceptReason: "a tree cannot be 0 years old" },
+                { topic: "Typing Speed", xVar: "months of practice", xUnits: "months", yVar: "typing speed", yUnits: "words per minute", xMin: 0, xMax: 24, yMin: 20, yMax: 90, interceptMeaningful: true, interceptReason: "0 months of practice is possible" },
+                { topic: "House Prices", xVar: "square footage", xUnits: "square feet", yVar: "sale price", yUnits: "thousands of dollars", xMin: 800, xMax: 4000, yMin: 100, yMax: 800, interceptMeaningful: false, interceptReason: "a house with 0 square feet doesn't exist" },
+                { topic: "Advertising", xVar: "advertising budget", xUnits: "thousands of dollars", yVar: "monthly sales", yUnits: "thousands of dollars", xMin: 0, xMax: 50, yMin: 10, yMax: 200, interceptMeaningful: true, interceptReason: "$0 advertising budget is possible" },
+                { topic: "Student Loans", xVar: "years since graduation", xUnits: "years", yVar: "remaining loan balance", yUnits: "thousands of dollars", xMin: 0, xMax: 20, yMin: 0, yMax: 50, interceptMeaningful: true, interceptReason: "0 years (at graduation) is possible" },
+                { topic: "Fuel Efficiency", xVar: "vehicle weight", xUnits: "hundreds of pounds", yVar: "fuel efficiency", yUnits: "mpg", xMin: 20, xMax: 60, yMin: 12, yMax: 45, interceptMeaningful: false, interceptReason: "a vehicle with 0 weight is impossible" },
+                { topic: "Test Anxiety", xVar: "anxiety level", xUnits: "points (1-10)", yVar: "test performance", yUnits: "percent", xMin: 1, xMax: 10, yMin: 40, yMax: 100, interceptMeaningful: false, interceptReason: "an anxiety level of 0 is outside the measurement scale" },
+                { topic: "Restaurant Tips", xVar: "bill amount", xUnits: "dollars", yVar: "tip amount", yUnits: "dollars", xMin: 10, xMax: 150, yMin: 2, yMax: 35, interceptMeaningful: false, interceptReason: "a $0 bill means no meal and no tip" },
+                { topic: "Gaming & Grades", xVar: "hours of video games per week", xUnits: "hours", yVar: "GPA", yUnits: "points", xMin: 0, xMax: 40, yMin: 1.5, yMax: 4.0, interceptMeaningful: true, interceptReason: "0 hours of gaming is possible" },
+                { topic: "Altitude & Temperature", xVar: "altitude", xUnits: "thousands of feet", yVar: "temperature", yUnits: "°F", xMin: 0, xMax: 15, yMin: 20, yMax: 75, interceptMeaningful: true, interceptReason: "sea level (0 feet) is possible" },
+                { topic: "Screen Time & Sleep", xVar: "screen time before bed", xUnits: "minutes", yVar: "sleep quality score", yUnits: "points", xMin: 0, xMax: 180, yMin: 2, yMax: 10, interceptMeaningful: true, interceptReason: "0 minutes of screen time is possible" },
+                { topic: "Reading & Vocabulary", xVar: "books read per year", xUnits: "books", yVar: "vocabulary score", yUnits: "points", xMin: 0, xMax: 50, yMin: 200, yMax: 800, interceptMeaningful: true, interceptReason: "reading 0 books is possible" },
+                { topic: "Shoe Size & Height", xVar: "shoe size", xUnits: "US size", yVar: "height", yUnits: "inches", xMin: 5, xMax: 14, yMin: 58, yMax: 78, interceptMeaningful: false, interceptReason: "a shoe size of 0 is not realistic" }
+            ];
+        }
+
+        generate() {
+            const context = this.contexts[Math.floor(Math.random() * this.contexts.length)];
+
+            // Generate correlation
+            const rSign = Math.random() > 0.5 ? 1 : -1;
+            const rMagnitude = 0.3 + Math.random() * 0.65; // 0.3 to 0.95
+            const r = Math.round(rSign * rMagnitude * 1000) / 1000;
+
+            // Generate realistic slope and intercept
+            const yRange = context.yMax - context.yMin;
+            const xRange = context.xMax - context.xMin;
+
+            // Slope magnitude based on ranges and correlation
+            const baseSlopeMagnitude = (yRange / xRange) * Math.abs(r);
+            const slopeVariation = 0.5 + Math.random(); // 0.5 to 1.5
+            const slope = Math.round(rSign * baseSlopeMagnitude * slopeVariation * 100) / 100;
+
+            // Calculate intercept to fit within realistic y range
+            const midX = (context.xMin + context.xMax) / 2;
+            const midY = (context.yMin + context.yMax) / 2;
+            const intercept = Math.round((midY - slope * midX) * 100) / 100;
+
+            return {
+                ...context,
+                r,
+                slope,
+                intercept,
+                isInterceptMeaningful: context.interceptMeaningful
+            };
+        }
+    }
+
+    // ============== GRADER CLASS ==============
+    class Grader {
+        constructor() {
+            this.apiProvider = localStorage.getItem('apiProvider') || 'gemini';
+            this.geminiKey = localStorage.getItem('geminiApiKey') || '';
+            this.groqKey = localStorage.getItem('groqApiKey') || '';
+        }
+
+        get apiKey() {
+            return this.apiProvider === 'gemini' ? this.geminiKey : this.groqKey;
+        }
+
+        updateSettings(provider, geminiKey, groqKey) {
+            this.apiProvider = provider;
+            this.geminiKey = geminiKey;
+            this.groqKey = groqKey;
+            localStorage.setItem('apiProvider', provider);
+            localStorage.setItem('geminiApiKey', geminiKey);
+            localStorage.setItem('groqApiKey', groqKey);
+        }
+
+        async grade(scenario, answers) {
+            // Always run keyword grading
+            const keywordResult = this.gradeWithRegex(scenario, answers);
+            keywordResult._gradingMode = 'regex';
+
+            // Also run AI grading if available
+            let aiResult = null;
+            if (this.apiProvider !== 'none' && this.apiKey) {
+                try {
+                    aiResult = await this.gradeWithAI(scenario, answers);
+                } catch (error) {
+                    console.error('AI grading failed:', error);
+                    aiResult = { _error: error.message };
+                }
+            }
+
+            return {
+                keyword: keywordResult,
+                ai: aiResult,
+                // Use AI score if available, otherwise keyword
+                slope: aiResult?.slope || keywordResult.slope,
+                intercept: aiResult?.intercept || keywordResult.intercept,
+                correlation: aiResult?.correlation || keywordResult.correlation,
+                _hasAI: !!aiResult && !aiResult._error
+            };
+        }
+
+        // ============== REGEX GRADING ==============
+        gradeWithRegex(scenario, answers) {
+            const results = {
+                slope: this.gradeSlopeRegex(scenario, answers.slope),
+                intercept: this.gradeInterceptRegex(scenario, answers.intercept),
+                correlation: this.gradeCorrelationRegex(scenario, answers.correlation)
+            };
+            return results;
+        }
+
+        checkForbiddenWords(text) {
+            const forbidden = ['causes', 'cause', 'caused', 'proves', 'prove', 'proven', 'will definitely', 'always will', 'must be'];
+            const lower = text.toLowerCase();
+            for (const word of forbidden) {
+                if (lower.includes(word)) {
+                    return { found: true, word };
+                }
+            }
+            return { found: false };
+        }
+
+        gradeSlopeRegex(scenario, answer) {
+            const lower = answer.toLowerCase();
+            const forbidden = this.checkForbiddenWords(answer);
+
+            if (forbidden.found) {
+                return {
+                    score: 'I',
+                    feedback: `Avoid causal language like "${forbidden.word}". Correlation does not imply causation.`
+                };
+            }
+
+            let points = 0;
+            let missing = [];
+            let correct = [];
+
+            // Check for prediction language
+            const hasPrediction = /predicted|on average|predicts|expect|expected|typically/.test(lower);
+            if (hasPrediction) {
+                points += 2;
+                correct.push('prediction language');
+            } else {
+                missing.push('Use "predicted" or "on average" to indicate this is an estimate.');
+            }
+
+            // Check for correct direction
+            const direction = scenario.slope > 0 ? 'positive' : 'negative';
+            const increaseWords = /increase|higher|more|greater|goes up|rise/.test(lower);
+            const decreaseWords = /decrease|lower|less|fewer|goes down|drop|decline/.test(lower);
+
+            if ((scenario.slope > 0 && increaseWords) || (scenario.slope < 0 && decreaseWords)) {
+                points += 2;
+                correct.push('correct direction');
+            } else if ((scenario.slope > 0 && decreaseWords) || (scenario.slope < 0 && increaseWords)) {
+                missing.push(`Direction is wrong. The slope is ${direction} (b = ${scenario.slope}).`);
+            } else {
+                missing.push('Mention the direction (increase or decrease).');
+            }
+
+            // Check for slope value
+            const slopeAbs = Math.abs(scenario.slope);
+            const hasValue = new RegExp(slopeAbs.toString().replace('.', '\\.?')).test(answer) ||
+                            answer.includes(scenario.slope.toString());
+            if (hasValue) {
+                points += 1;
+                correct.push('slope value');
+            } else {
+                missing.push(`Include the slope value (${Math.abs(scenario.slope)}).`);
+            }
+
+            // Check for variable mention
+            const hasXVar = lower.includes(scenario.xVar.toLowerCase()) ||
+                           lower.includes(scenario.xVar.split(' ')[0].toLowerCase());
+            const hasYVar = lower.includes(scenario.yVar.toLowerCase()) ||
+                           lower.includes(scenario.yVar.split(' ')[0].toLowerCase());
+            if (hasXVar && hasYVar) {
+                points += 1;
+                correct.push('both variables in context');
+            } else {
+                if (!hasXVar) missing.push(`Mention the x-variable (${scenario.xVar}).`);
+                if (!hasYVar) missing.push(`Mention the y-variable (${scenario.yVar}).`);
+            }
+
+            // Check for "1 unit" or similar
+            const hasUnit = /for every|for each|per|each additional|one more|1 /.test(lower);
+            if (hasUnit) {
+                points += 1;
+                correct.push('"for every 1 unit" phrasing');
+            }
+
+            // Determine score
+            let score;
+            if (points >= 6) score = 'E';
+            else if (points >= 3) score = 'P';
+            else score = 'I';
+
+            // Build feedback
+            let feedback;
+            if (score === 'E') {
+                feedback = `Excellent! You included: ${correct.join(', ')}.`;
+            } else if (missing.length > 0) {
+                feedback = missing.join(' ');
+                if (correct.length > 0) {
+                    feedback = `Good: ${correct.join(', ')}. Missing: ${missing.join(' ')}`;
+                }
+            } else {
+                feedback = 'Good interpretation!';
+            }
+
+            return { score, feedback };
+        }
+
+        gradeInterceptRegex(scenario, answer) {
+            const lower = answer.toLowerCase();
+            const forbidden = this.checkForbiddenWords(answer);
+
+            if (forbidden.found) {
+                return {
+                    score: 'I',
+                    feedback: `Avoid causal language like "${forbidden.word}".`
+                };
+            }
+
+            let points = 0;
+            let missing = [];
+            let correct = [];
+
+            // Check if student correctly identifies meaningfulness
+            const saysMeaningless = /no meaningful|not meaningful|doesn't make sense|does not make sense|impossible|unrealistic|cannot|can't|outside|no practical/.test(lower);
+
+            if (!scenario.isInterceptMeaningful) {
+                // Intercept IS meaningless - student should say so
+                if (saysMeaningless) {
+                    points += 4;
+                    correct.push('correctly identified intercept as meaningless');
+                } else {
+                    missing.push(`The y-intercept has no meaningful interpretation here because ${scenario.interceptReason}.`);
+                }
+            }
+
+            // Check for zero mention
+            const hasZero = /when.*(?:is |=|equals?).*0|(?:0|zero) (?:hours|minutes|years|cups|books|grams|dollars|feet|miles|points)/.test(lower) ||
+                           /x\s*=\s*0|at 0|at zero/.test(lower);
+            if (hasZero) {
+                points += 1;
+                correct.push('referenced x = 0');
+            } else if (scenario.isInterceptMeaningful) {
+                missing.push('Reference x = 0 in your interpretation.');
+            }
+
+            // Check for prediction language
+            const hasPrediction = /predicted|on average|predicts|expect|expected|would be/.test(lower);
+            if (hasPrediction) {
+                points += 1;
+                correct.push('prediction language');
+            } else if (scenario.isInterceptMeaningful && !saysMeaningless) {
+                missing.push('Use "predicted" or "expected" language.');
+            }
+
+            // Check for intercept value (if meaningful)
+            if (scenario.isInterceptMeaningful) {
+                const interceptStr = Math.abs(scenario.intercept).toString();
+                const hasValue = answer.includes(scenario.intercept.toString()) ||
+                                answer.includes(interceptStr);
+                if (hasValue) {
+                    points += 1;
+                    correct.push('intercept value');
+                } else {
+                    missing.push(`Include the y-intercept value (${scenario.intercept}).`);
+                }
+            }
+
+            // Check for variable mention
+            const hasYVar = lower.includes(scenario.yVar.toLowerCase()) ||
+                           lower.includes(scenario.yVar.split(' ')[0].toLowerCase());
+            if (hasYVar) {
+                points += 1;
+                correct.push('y-variable in context');
+            } else if (!saysMeaningless) {
+                missing.push(`Mention the y-variable (${scenario.yVar}).`);
+            }
+
+            let score;
+            if (points >= 5) score = 'E';
+            else if (points >= 2) score = 'P';
+            else score = 'I';
+
+            // Build feedback
+            let feedback;
+            if (score === 'E') {
+                feedback = `Excellent! You included: ${correct.join(', ')}.`;
+            } else if (missing.length > 0) {
+                feedback = missing.join(' ');
+                if (correct.length > 0) {
+                    feedback = `Good: ${correct.join(', ')}. Missing: ${missing.join(' ')}`;
+                }
+            } else {
+                feedback = 'Good interpretation!';
+            }
+
+            return { score, feedback };
+        }
+
+        gradeCorrelationRegex(scenario, answer) {
+            const lower = answer.toLowerCase();
+            const forbidden = this.checkForbiddenWords(answer);
+
+            if (forbidden.found) {
+                return {
+                    score: 'I',
+                    feedback: `Avoid causal language like "${forbidden.word}". Correlation does not imply causation.`
+                };
+            }
+
+            let points = 0;
+            let missing = [];
+            let correct = [];
+
+            // Check for "linear"
+            if (/linear/.test(lower)) {
+                points += 2;
+                correct.push('"linear"');
+            } else {
+                missing.push('Include the word "linear".');
+            }
+
+            // Check for correct direction
+            const isPositive = scenario.r > 0;
+            const saysPositive = /positive/.test(lower);
+            const saysNegative = /negative/.test(lower);
+
+            if ((isPositive && saysPositive) || (!isPositive && saysNegative)) {
+                points += 2;
+                correct.push('correct direction');
+            } else if ((isPositive && saysNegative) || (!isPositive && saysPositive)) {
+                missing.push(`Direction is wrong. r = ${scenario.r} is ${isPositive ? 'positive' : 'negative'}.`);
+            } else {
+                missing.push('State whether the relationship is positive or negative.');
+            }
+
+            // Check for strength
+            const absR = Math.abs(scenario.r);
+            let correctStrength;
+            if (absR < 0.4) correctStrength = 'weak';
+            else if (absR < 0.7) correctStrength = 'moderate';
+            else correctStrength = 'strong';
+
+            const saysWeak = /weak/.test(lower);
+            const saysModerate = /moderate|moderately/.test(lower);
+            const saysStrong = /strong/.test(lower);
+
+            if ((correctStrength === 'weak' && saysWeak) ||
+                (correctStrength === 'moderate' && saysModerate) ||
+                (correctStrength === 'strong' && saysStrong)) {
+                points += 2;
+                correct.push(`correct strength (${correctStrength})`);
+            } else if (saysWeak || saysModerate || saysStrong) {
+                missing.push(`Strength assessment: |r| = ${absR.toFixed(2)} suggests a ${correctStrength} relationship.`);
+                points += 1; // Partial credit for attempting
+            } else {
+                missing.push(`Describe the strength (weak, moderate, or strong). |r| = ${absR.toFixed(2)}.`);
+            }
+
+            // Check for variable mention
+            const hasVars = (lower.includes(scenario.xVar.toLowerCase()) || lower.includes(scenario.xVar.split(' ')[0].toLowerCase())) &&
+                           (lower.includes(scenario.yVar.toLowerCase()) || lower.includes(scenario.yVar.split(' ')[0].toLowerCase()));
+            if (hasVars) {
+                points += 1;
+                correct.push('both variables in context');
+            } else {
+                missing.push('Mention both variables in context.');
+            }
+
+            // Check for "relationship" or "association"
+            if (/relationship|association|correlation/.test(lower)) {
+                points += 1;
+                correct.push('"relationship/association"');
+            }
+
+            let score;
+            if (points >= 7) score = 'E';
+            else if (points >= 4) score = 'P';
+            else score = 'I';
+
+            // Build feedback
+            let feedback;
+            if (score === 'E') {
+                feedback = `Excellent! You included: ${correct.join(', ')}.`;
+            } else if (missing.length > 0) {
+                feedback = missing.join(' ');
+                if (correct.length > 0) {
+                    feedback = `Good: ${correct.join(', ')}. Missing: ${missing.join(' ')}`;
+                }
+            } else {
+                feedback = 'Good interpretation!';
+            }
+
+            return { score, feedback };
+        }
+
+        // ============== AI GRADING (Direct API Calls) ==============
+        async gradeWithAI(scenario, answers) {
+            const prompt = this.buildPrompt(scenario, answers);
+
+            try {
+                let result;
+                if (this.apiProvider === 'gemini') {
+                    result = await this.callGemini(prompt);
+                } else if (this.apiProvider === 'groq') {
+                    result = await this.callGroq(prompt);
+                }
+
+                if (result) {
+                    result._gradingMode = 'ai';
+                    result._aiProvider = this.apiProvider;
+                    return result;
+                }
+                // No result - throw to trigger error handling
+                throw new Error('Empty result from AI');
+            } catch (error) {
+                console.error('AI grading failed:', error);
+                // Return error object instead of regex fallback
+                // This way the caller knows AI failed and can show just keywords
+                return { _error: error.message || 'Unknown error' };
+            }
+        }
+
+        buildPrompt(scenario, answers) {
+            const direction = scenario.slope > 0 ? 'increases' : 'decreases';
+            const rDirection = scenario.r > 0 ? 'positive' : 'negative';
+            const absR = Math.abs(scenario.r);
+            const strength = absR < 0.4 ? 'weak' : absR < 0.7 ? 'moderate' : 'strong';
+
+            // Calculate equivalent values for unit conversion acceptance
+            const slopeAbs = Math.abs(scenario.slope);
+            const interceptAbs = Math.abs(scenario.intercept);
+
+            return `You are an AP Statistics grader. Grade these three LSRL interpretation responses using E/P/I scoring.
+BE LENIENT - focus on conceptual understanding, not exact wording.
+
+CONTEXT:
+- Topic: ${scenario.topic}
+- X variable: ${scenario.xVar} (${scenario.xUnits})
+- Y variable: ${scenario.yVar} (${scenario.yUnits})
+- Regression equation: ŷ = ${scenario.intercept} + ${scenario.slope}x
+- Correlation: r = ${scenario.r}
+- Y-intercept meaningful: ${scenario.isInterceptMeaningful ? 'Yes' : 'No - ' + scenario.interceptReason}
+
+STUDENT ANSWERS:
+1. Slope: "${answers.slope}"
+2. Y-intercept: "${answers.intercept}"
+3. Correlation: "${answers.correlation}"
+
+CRITICAL - UNIT CONVERSIONS ARE ACCEPTABLE:
+- If units are "thousands of dollars", accept BOTH "${slopeAbs} thousands of dollars" AND "${slopeAbs * 1000} dollars"
+- Example: "2.29 thousands of dollars" = "2290 dollars" = "$2,290" - ALL ARE CORRECT
+- Example: "47.75 thousands of dollars" = "47750 dollars" = "$47,750" - ALL ARE CORRECT
+- Similarly for other compound units (hundreds of pounds, etc.)
+- The student demonstrates understanding if the VALUE is mathematically equivalent
+
+GRADING RUBRIC:
+
+SLOPE must include:
+- "Predicted" or "on average" (MANDATORY)
+- Correct direction: "${direction}" (b=${scenario.slope})
+- Slope value: ${slopeAbs} (OR equivalent: ${slopeAbs * 1000} if converting from thousands, ${slopeAbs * 100} if converting from hundreds)
+- Both variables in context
+- "For every 1 [unit]" phrasing
+Model answer: "For every increase of 1 ${scenario.xUnits} in ${scenario.xVar}, the predicted ${scenario.yVar} ${direction} by ${slopeAbs} ${scenario.yUnits}, on average."
+
+Y-INTERCEPT:
+${scenario.isInterceptMeaningful
+    ? `- Reference x=0, use "predicted"/"predicts"/"model predicts", include value ${scenario.intercept} (OR equivalent conversion like ${scenario.intercept * 1000} dollars), name y-variable
+Model answer: "When ${scenario.xVar} is 0 ${scenario.xUnits}, the predicted ${scenario.yVar} is ${scenario.intercept} ${scenario.yUnits}."`
+    : `- Must state NO meaningful interpretation and explain why (${scenario.interceptReason})
+Model answer: "The y-intercept has no meaningful interpretation because ${scenario.interceptReason}."`}
+
+CORRELATION must include:
+- Word "linear" (MANDATORY)
+- Direction: "${rDirection}"
+- Strength: "${strength}" (|r|=${absR.toFixed(2)})
+- Both variables
+- "relationship" or "association"
+Model answer: "There is a ${strength}, ${rDirection}, linear relationship between ${scenario.xVar} and ${scenario.yVar}."
+
+AUTOMATIC FAILURES: "causes", "proves" = Incorrect
+
+Respond with ONLY this JSON (no other text):
+{
+  "slope": {"score": "E", "feedback": "Excellent! You included: [list correct elements]."},
+  "intercept": {"score": "P", "feedback": "Good: [correct]. Missing: [missing]."},
+  "correlation": {"score": "I", "feedback": "[What's wrong and how to fix]."}
+}
+
+Score meanings: E=Essentially Correct (all key elements), P=Partially Correct (some elements), I=Incorrect (major errors/missing mandatory elements)
+BE GENEROUS - if the student shows understanding with equivalent unit conversions, give credit!
+For E: list what they got right. For P: list good AND missing. For I: explain error and fix.`;
+        }
+
+        async callGemini(prompt) {
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            temperature: 0.1,
+                            maxOutputTokens: 1500
+                        }
+                    })
+                }
+            );
+
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(`Gemini: ${data.error.message}`);
+            }
+
+            if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                throw new Error('Gemini: Empty response');
+            }
+
+            const text = data.candidates[0].content.parts[0].text;
+            console.log('Gemini response:', text);
+
+            // Extract JSON from response
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (parsed.slope && parsed.intercept && parsed.correlation) {
+                    return parsed;
+                }
+                throw new Error('Gemini: Invalid response structure');
+            }
+            throw new Error('Gemini: No JSON in response');
+        }
+
+        async callGroq(prompt) {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        { role: 'system', content: 'You are an AP Statistics grader. Always respond with valid JSON only.' },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 1500
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(`Groq: ${data.error.message}`);
+            }
+
+            if (!data.choices?.[0]?.message?.content) {
+                throw new Error('Groq: Empty response');
+            }
+
+            const text = data.choices[0].message.content;
+            console.log('Groq response:', text);
+
+            // Extract JSON from response
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (parsed.slope && parsed.intercept && parsed.correlation) {
+                    return parsed;
+                }
+                throw new Error('Groq: Invalid response structure');
+            }
+            throw new Error('Groq: No JSON in response');
+        }
+    }
+
+    // ============== SVG SCATTERPLOT GENERATOR ==============
+    function generateScatterplotSVG(r, slope) {
+        const width = 120;
+        const height = 80;
+        const padding = 10;
+        const numPoints = 15;
+
+        // Generate points that roughly match the correlation
+        const points = [];
+        for (let i = 0; i < numPoints; i++) {
+            const x = padding + (Math.random() * (width - 2 * padding));
+            // Generate y based on linear relationship + noise
+            const baseY = height / 2 + (slope > 0 ? -1 : 1) * ((x - width/2) * Math.abs(r) * 0.5);
+            const noise = (1 - Math.abs(r)) * (Math.random() - 0.5) * 40;
+            const y = Math.max(padding, Math.min(height - padding, baseY + noise));
+            points.push({ x, y });
+        }
+
+        // Create SVG
+        let svg = `<svg width="${width}" height="${height}" class="bg-gray-50 rounded-lg">`;
+
+        // Draw points
+        points.forEach(p => {
+            svg += `<circle cx="${p.x}" cy="${p.y}" r="3" fill="#6366f1" opacity="0.7"/>`;
+        });
+
+        // Draw trend line
+        const lineY1 = height/2 + (slope > 0 ? 1 : -1) * Math.abs(r) * 25;
+        const lineY2 = height/2 - (slope > 0 ? 1 : -1) * Math.abs(r) * 25;
+        svg += `<line x1="${padding}" y1="${lineY1}" x2="${width-padding}" y2="${lineY2}" stroke="#a855f7" stroke-width="2" stroke-dasharray="4"/>`;
+
+        svg += '</svg>';
+        return svg;
+    }
+
+    // ============== APP STATE & INITIALIZATION ==============
+    let currentScenario = null;
+    const generator = new ScenarioGenerator();
+    const grader = new Grader();
+
+    // Track which hints have been opened for current scenario
+    let hintsOpenedThisScenario = new Set();
+
+    // Load streaks and stars from localStorage
+    let streaks = JSON.parse(localStorage.getItem('lsrlStreaks')) || {
+        slope: 0, intercept: 0, correlation: 0
+    };
+
+    // Stars by type: gold (0 hints), silver (1 hint), bronze (2 hints), tin (3 hints)
+    let starCounts = JSON.parse(localStorage.getItem('lsrlStarCounts')) || {
+        gold: 0, silver: 0, bronze: 0, tin: 0
+    };
+
+    function updateStreakDisplay() {
+        document.getElementById('slope-streak').textContent = streaks.slope;
+        document.getElementById('intercept-streak').textContent = streaks.intercept;
+        document.getElementById('correlation-streak').textContent = streaks.correlation;
+
+        // Update star counts
+        document.getElementById('gold-count').textContent = starCounts.gold;
+        document.getElementById('silver-count').textContent = starCounts.silver;
+        document.getElementById('bronze-count').textContent = starCounts.bronze;
+        document.getElementById('tin-count').textContent = starCounts.tin;
+    }
+
+    function saveStreaks() {
+        localStorage.setItem('lsrlStreaks', JSON.stringify(streaks));
+        localStorage.setItem('lsrlStarCounts', JSON.stringify(starCounts));
+    }
+
+    function updateHintStatus() {
+        const hintsUsed = hintsOpenedThisScenario.size;
+        const starEl = document.getElementById('hint-status').querySelector('span:first-child');
+        const labelEl = document.getElementById('potential-star');
+
+        if (hintsUsed === 0) {
+            starEl.className = 'text-yellow-400';
+            labelEl.textContent = 'Gold';
+            labelEl.className = 'text-yellow-600 font-medium';
+        } else if (hintsUsed === 1) {
+            starEl.className = 'text-gray-400';
+            labelEl.textContent = 'Silver';
+            labelEl.className = 'text-gray-500 font-medium';
+        } else if (hintsUsed === 2) {
+            starEl.className = 'text-amber-600';
+            labelEl.textContent = 'Bronze';
+            labelEl.className = 'text-amber-700 font-medium';
+        } else {
+            starEl.className = 'text-stone-400';
+            labelEl.textContent = 'Tin';
+            labelEl.className = 'text-stone-500 font-medium';
+        }
+    }
+
+    function celebrate() {
+        // Screen flash
+        document.body.classList.add('screen-flash');
+        setTimeout(() => document.body.classList.remove('screen-flash'), 500);
+
+        // Confetti
+        const colors = ['#a855f7', '#3b82f6', '#22c55e', '#eab308', '#ef4444', '#ec4899'];
+        const confettiCount = 50;
+
+        for (let i = 0; i < confettiCount; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+            confetti.style.width = (Math.random() * 10 + 5) + 'px';
+            confetti.style.height = (Math.random() * 10 + 5) + 'px';
+            confetti.style.animation = `confetti-fall ${Math.random() * 2 + 2}s linear forwards`;
+            confetti.style.animationDelay = Math.random() * 0.5 + 's';
+            document.body.appendChild(confetti);
+
+            // Remove confetti after animation
+            setTimeout(() => confetti.remove(), 4000);
+        }
+    }
+
+    function formatAIError(errorText) {
+        const lower = errorText.toLowerCase();
+
+        // Quota/rate limit errors
+        if (lower.includes('quota') || lower.includes('rate limit') || lower.includes('429')) {
+            return {
+                title: 'Rate Limit Reached',
+                message: 'You\'ve used up your free API quota. Try again later, switch to a different AI provider in Settings, or continue with Keywords-only grading.'
+            };
+        }
+
+        // Invalid API key
+        if (lower.includes('api key not valid') || lower.includes('invalid api key') || lower.includes('unauthorized') || lower.includes('401')) {
+            return {
+                title: 'Invalid API Key',
+                message: 'Your API key isn\'t working. Check Settings to make sure you\'ve entered the correct key for the selected provider.'
+            };
+        }
+
+        // Wrong key for provider (e.g., Groq key used with Gemini)
+        if (lower.includes('gsk_') && lower.includes('gemini')) {
+            return {
+                title: 'Wrong API Key Type',
+                message: 'You\'re using a Groq key with Gemini. Gemini keys start with "AIza..." - check your Settings.'
+            };
+        }
+
+        // Network errors
+        if (lower.includes('network') || lower.includes('fetch') || lower.includes('failed to fetch')) {
+            return {
+                title: 'Connection Error',
+                message: 'Couldn\'t reach the AI service. Check your internet connection and try again.'
+            };
+        }
+
+        // Empty/invalid response
+        if (lower.includes('empty') || lower.includes('no json') || lower.includes('invalid response')) {
+            return {
+                title: 'AI Response Error',
+                message: 'The AI returned an unexpected response. Try grading again.'
+            };
+        }
+
+        // Default fallback
+        return {
+            title: 'AI Grading Failed',
+            message: errorText.length > 100 ? errorText.substring(0, 100) + '...' : errorText
+        };
+    }
+
+    function updateModeToggleUI() {
+        const toggle = document.getElementById('ai-toggle');
+        const toggleDot = document.getElementById('ai-toggle-dot');
+        const useAI = grader.apiProvider !== 'none' && grader.apiKey;
+
+        if (useAI) {
+            toggle.className = 'relative inline-flex h-5 w-9 items-center rounded-full transition-colors bg-purple-600';
+            toggleDot.className = 'inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform translate-x-4';
+        } else {
+            toggle.className = 'relative inline-flex h-5 w-9 items-center rounded-full transition-colors bg-gray-300';
+            toggleDot.className = 'inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform translate-x-1';
+        }
+
+        // Update status text
+        const statusEl = document.getElementById('grading-status');
+        if (grader.apiProvider !== 'none' && !grader.apiKey) {
+            statusEl.textContent = '(no key)';
+            statusEl.className = 'text-xs text-orange-500 ml-1';
+        } else if (useAI) {
+            const provider = grader.apiProvider === 'gemini' ? 'Gemini' : 'Groq';
+            statusEl.textContent = `(${provider})`;
+            statusEl.className = 'text-xs text-purple-500 ml-1';
+        } else {
+            statusEl.textContent = '(off)';
+            statusEl.className = 'text-xs text-gray-400 ml-1';
+        }
+    }
+
+    function loadScenario() {
+        currentScenario = generator.generate();
+
+        // Reset hint tracking for new scenario
+        hintsOpenedThisScenario = new Set();
+
+        // Close any open hints
+        document.querySelectorAll('.hint-text').forEach(hint => {
+            hint.classList.remove('show');
+        });
+
+        // Reset hint status indicator
+        updateHintStatus();
+
+        // Update UI
+        document.getElementById('scenario-title').textContent = currentScenario.topic;
+        document.getElementById('equation-display').textContent =
+            `${currentScenario.intercept} + ${currentScenario.slope}x`;
+        document.getElementById('correlation-display').textContent =
+            currentScenario.r;
+        document.getElementById('context-details').innerHTML =
+            `<strong>x:</strong> ${currentScenario.xVar} (${currentScenario.xUnits}) | <strong>y:</strong> ${currentScenario.yVar} (${currentScenario.yUnits})`;
+
+        // Generate scatterplot
+        document.getElementById('scatterplot-container').innerHTML =
+            generateScatterplotSVG(currentScenario.r, currentScenario.slope);
+
+        // Clear inputs and feedback
+        document.getElementById('slope-input').value = '';
+        document.getElementById('intercept-input').value = '';
+        document.getElementById('correlation-input').value = '';
+
+        ['slope', 'intercept', 'correlation'].forEach(type => {
+            const feedbackEl = document.getElementById(`${type}-feedback`);
+            feedbackEl.classList.add('hidden');
+            feedbackEl.innerHTML = '';
+            document.getElementById(`${type}-card`).className = 'bg-white rounded-xl shadow-lg p-5 feedback-card';
+        });
+
+        // Show grade button, hide other buttons
+        showButton('grade-btn', true);
+        showButton('try-again-btn', false);
+        showButton('next-btn', false);
+
+        // Update grading mode toggle
+        updateModeToggleUI();
+    }
+
+    function showButton(id, visible) {
+        const btn = document.getElementById(id);
+        if (visible) {
+            btn.style.display = 'inline-flex';
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+
+    function openExplorer() {
+        if (!currentScenario) return;
+
+        const params = new URLSearchParams({
+            topic: currentScenario.topic,
+            xVar: currentScenario.xVar,
+            yVar: currentScenario.yVar,
+            xUnits: currentScenario.xUnits,
+            yUnits: currentScenario.yUnits,
+            slope: currentScenario.slope,
+            intercept: currentScenario.intercept,
+            r: currentScenario.r,
+            xMin: currentScenario.xMin,
+            xMax: currentScenario.xMax,
+            yMin: currentScenario.yMin,
+            yMax: currentScenario.yMax
+        });
+        window.open(`zscore_3d_explorer.html?${params}`, '_blank');
+    }
+
+    async function gradeAnswers() {
+        const answers = {
+            slope: document.getElementById('slope-input').value,
+            intercept: document.getElementById('intercept-input').value,
+            correlation: document.getElementById('correlation-input').value
+        };
+
+        // Validate inputs
+        if (!answers.slope.trim() || !answers.intercept.trim() || !answers.correlation.trim()) {
+            alert('Please fill in all three interpretations before grading.');
+            return;
+        }
+
+        // Disable grade button during grading
+        const gradeBtn = document.getElementById('grade-btn');
+        gradeBtn.disabled = true;
+        gradeBtn.textContent = 'Grading...';
+
+        try {
+            const results = await grader.grade(currentScenario, answers);
+            displayResults(results);
+        } catch (error) {
+            console.error('Grading error:', error);
+            alert('An error occurred while grading. Please try again.');
+        }
+
+        gradeBtn.disabled = false;
+        gradeBtn.textContent = 'Grade My Conclusion';
+    }
+
+    function displayResults(results) {
+        const scoreColors = {
+            'E': { bg: 'bg-green-50', border: 'border-green-500', text: 'text-green-700', label: 'Essentially Correct', icon: '✓' },
+            'P': { bg: 'bg-yellow-50', border: 'border-yellow-500', text: 'text-yellow-700', label: 'Partially Correct', icon: '△' },
+            'I': { bg: 'bg-red-50', border: 'border-red-500', text: 'text-red-700', label: 'Incorrect', icon: '✗' }
+        };
+
+        const scoreBadge = {
+            'E': 'bg-green-100 text-green-700',
+            'P': 'bg-yellow-100 text-yellow-700',
+            'I': 'bg-red-100 text-red-700'
+        };
+
+        let allCorrect = true;
+        const hasAI = results._hasAI;
+        const aiProviderRaw = results.ai?._aiProvider;
+        const aiProvider = aiProviderRaw === 'gemini' ? 'Gemini' : aiProviderRaw === 'groq' ? 'Groq' : 'AI';
+
+        ['slope', 'intercept', 'correlation'].forEach(type => {
+            const keywordResult = results.keyword[type];
+            const aiResult = results.ai?.[type];
+
+            // Use best score (E > P > I) for card styling and streak
+            const scoreOrder = { 'E': 3, 'P': 2, 'I': 1 };
+            let bestScore = keywordResult.score;
+            if (aiResult && scoreOrder[aiResult.score] > scoreOrder[keywordResult.score]) {
+                bestScore = aiResult.score;
+            }
+
+            const colors = scoreColors[bestScore];
+            const card = document.getElementById(`${type}-card`);
+            const feedbackEl = document.getElementById(`${type}-feedback`);
+
+            // Update card styling based on best score
+            card.className = `${colors.bg} rounded-xl shadow-lg p-5 feedback-card border-l-4 ${colors.border}`;
+
+            // Build feedback HTML with both graders
+            let feedbackHTML = '';
+
+            // Keyword feedback
+            const kwColors = scoreColors[keywordResult.score];
+            feedbackHTML += `
+                <div class="mb-3 pb-3 ${hasAI ? 'border-b border-gray-200' : ''}">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xs font-medium px-2 py-0.5 rounded ${scoreBadge[keywordResult.score]}">Keywords</span>
+                        <span class="font-semibold ${kwColors.text} text-sm">${kwColors.label}</span>
+                        <span>${kwColors.icon}</span>
+                    </div>
+                    <p class="text-sm text-gray-600">${keywordResult.feedback}</p>
+                </div>
+            `;
+
+            // AI feedback (if available)
+            if (hasAI && aiResult) {
+                const aiColors = scoreColors[aiResult.score];
+                feedbackHTML += `
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-medium px-2 py-0.5 rounded bg-purple-100 text-purple-700">${aiProvider}</span>
+                            <span class="font-semibold ${aiColors.text} text-sm">${aiColors.label}</span>
+                            <span>${aiColors.icon}</span>
+                        </div>
+                        <p class="text-sm text-gray-600">${aiResult.feedback}</p>
+                    </div>
+                `;
+            } else if (results.ai?._error) {
+                const errorMsg = formatAIError(results.ai._error);
+                feedbackHTML += `
+                    <div class="text-xs p-2 rounded bg-orange-50 border border-orange-200">
+                        <div class="flex items-center gap-1 text-orange-600 font-medium">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            ${errorMsg.title}
+                        </div>
+                        <p class="text-orange-700 mt-1">${errorMsg.message}</p>
+                    </div>
+                `;
+            }
+
+            feedbackEl.classList.remove('hidden');
+            feedbackEl.innerHTML = feedbackHTML;
+
+            // Update streaks based on BEST score
+            if (bestScore === 'E') {
+                streaks[type]++;
+                const streakEl = document.getElementById(`${type}-streak`);
+                streakEl.classList.add('streak-pulse');
+                setTimeout(() => streakEl.classList.remove('streak-pulse'), 500);
+            } else {
+                streaks[type] = 0;
+                allCorrect = false;
+            }
+        });
+
+        // Update grading status
+        const statusEl = document.getElementById('grading-status');
+        if (hasAI) {
+            statusEl.textContent = `✓ Keywords + ${aiProvider}`;
+            statusEl.className = 'text-xs text-green-600 font-medium ml-2';
+        } else {
+            statusEl.textContent = '✓ Keywords only';
+            statusEl.className = 'text-xs text-gray-500 ml-2';
+        }
+
+        // Award star based on hints used (only for perfect score)
+        if (allCorrect) {
+            const hintsUsed = hintsOpenedThisScenario.size;
+            let starType, starEl;
+
+            if (hintsUsed === 0) {
+                starType = 'gold';
+                starEl = document.getElementById('gold-count');
+            } else if (hintsUsed === 1) {
+                starType = 'silver';
+                starEl = document.getElementById('silver-count');
+            } else if (hintsUsed === 2) {
+                starType = 'bronze';
+                starEl = document.getElementById('bronze-count');
+            } else {
+                starType = 'tin';
+                starEl = document.getElementById('tin-count');
+            }
+
+            starCounts[starType]++;
+            starEl.textContent = starCounts[starType];
+            starEl.classList.add('streak-pulse');
+            setTimeout(() => starEl.classList.remove('streak-pulse'), 500);
+
+            // Only celebrate with confetti for gold stars (no hints used)
+            if (starType === 'gold') {
+                celebrate();
+            }
+
+            // Update the hint status to show what was earned
+            const starColors = {
+                gold: { star: 'text-yellow-400', label: 'text-yellow-600' },
+                silver: { star: 'text-gray-400', label: 'text-gray-500' },
+                bronze: { star: 'text-amber-600', label: 'text-amber-700' },
+                tin: { star: 'text-stone-400', label: 'text-stone-500' }
+            };
+            const statusEl = document.getElementById('hint-status');
+            statusEl.innerHTML = `
+                <span class="${starColors[starType].star}">★</span>
+                <span class="${starColors[starType].label} font-medium">${starType.charAt(0).toUpperCase() + starType.slice(1)} earned!</span>
+            `;
+
+            console.log(`Awarded ${starType} star! Hints used: ${hintsUsed}`);
+        }
+
+        updateStreakDisplay();
+        saveStreaks();
+
+        // Show appropriate buttons based on results
+        showButton('grade-btn', false);
+        if (allCorrect) {
+            showButton('try-again-btn', false);
+            showButton('next-btn', true);
+        } else {
+            showButton('try-again-btn', true);
+            showButton('next-btn', true);
+        }
+    }
+
+    function tryAgain() {
+        // Clear feedback but keep same scenario and current answers
+        ['slope', 'intercept', 'correlation'].forEach(type => {
+            const feedbackEl = document.getElementById(`${type}-feedback`);
+            feedbackEl.classList.add('hidden');
+            feedbackEl.innerHTML = '';
+            document.getElementById(`${type}-card`).className = 'bg-white rounded-xl shadow-lg p-5 feedback-card';
+        });
+
+        // Show grade button, hide try again and next
+        showButton('grade-btn', true);
+        showButton('try-again-btn', false);
+        showButton('next-btn', false);
+    }
+
+    // ============== EVENT LISTENERS ==============
+    document.addEventListener('DOMContentLoaded', () => {
+        updateStreakDisplay();
+        loadScenario();
+
+        // AI toggle button
+        document.getElementById('ai-toggle').addEventListener('click', () => {
+            const isCurrentlyOn = grader.apiProvider !== 'none' && grader.apiKey;
+
+            if (isCurrentlyOn) {
+                // Turn off AI
+                localStorage.setItem('lastAiProvider', grader.apiProvider);
+                grader.apiProvider = 'none';
+                localStorage.setItem('apiProvider', 'none');
+            } else {
+                // Turn on AI - check if we have keys
+                const hasGeminiKey = grader.geminiKey;
+                const hasGroqKey = grader.groqKey;
+
+                if (hasGeminiKey || hasGroqKey) {
+                    const lastProvider = localStorage.getItem('lastAiProvider') || 'gemini';
+                    if (lastProvider === 'gemini' && hasGeminiKey) {
+                        grader.apiProvider = 'gemini';
+                    } else if (lastProvider === 'groq' && hasGroqKey) {
+                        grader.apiProvider = 'groq';
+                    } else if (hasGeminiKey) {
+                        grader.apiProvider = 'gemini';
+                    } else {
+                        grader.apiProvider = 'groq';
+                    }
+                    localStorage.setItem('apiProvider', grader.apiProvider);
+                } else {
+                    // No keys, open settings
+                    document.getElementById('settings-modal').classList.remove('hidden');
+                    document.getElementById('ai-provider').value = 'gemini';
+                    document.getElementById('gemini-key-input').value = '';
+                    document.getElementById('groq-key-input').value = '';
+                }
+            }
+            updateModeToggleUI();
+        });
+
+        // Grade button
+        document.getElementById('grade-btn').addEventListener('click', gradeAnswers);
+
+        // Visualize in 3D button
+        document.getElementById('visualize-btn').addEventListener('click', openExplorer);
+
+        // Next button
+        document.getElementById('next-btn').addEventListener('click', loadScenario);
+
+        // Try Again button
+        document.getElementById('try-again-btn').addEventListener('click', tryAgain);
+
+        // Skip button
+        document.getElementById('skip-btn').addEventListener('click', loadScenario);
+
+        // Hint toggles - track which hints are opened
+        document.querySelectorAll('.hint-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = document.getElementById(btn.dataset.target);
+                const isOpening = !target.classList.contains('show');
+                target.classList.toggle('show');
+
+                // Track hint opening (only counts once per hint type per scenario)
+                if (isOpening) {
+                    const hintType = btn.dataset.target.replace('-hint', ''); // slope, intercept, or correlation
+                    hintsOpenedThisScenario.add(hintType);
+                    updateHintStatus();
+                    console.log(`Hint opened: ${hintType}. Total hints used: ${hintsOpenedThisScenario.size}`);
+                }
+            });
+        });
+
+        // Settings modal
+        document.getElementById('settings-btn').addEventListener('click', () => {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            // Load current settings
+            document.getElementById('ai-provider').value = grader.apiProvider;
+            document.getElementById('gemini-key-input').value = grader.geminiKey;
+            document.getElementById('groq-key-input').value = grader.groqKey;
+        });
+
+        document.getElementById('close-settings').addEventListener('click', () => {
+            document.getElementById('settings-modal').classList.add('hidden');
+        });
+
+        document.getElementById('save-settings').addEventListener('click', () => {
+            const provider = document.getElementById('ai-provider').value;
+            const geminiKey = document.getElementById('gemini-key-input').value;
+            const groqKey = document.getElementById('groq-key-input').value;
+            grader.updateSettings(provider, geminiKey, groqKey);
+            document.getElementById('settings-modal').classList.add('hidden');
+            updateModeToggleUI();
+        });
+
+        document.getElementById('reset-streaks').addEventListener('click', () => {
+            if (confirm('Reset all streaks and stars to 0?')) {
+                streaks = { slope: 0, intercept: 0, correlation: 0 };
+                starCounts = { gold: 0, silver: 0, bronze: 0, tin: 0 };
+                saveStreaks();
+                updateStreakDisplay();
+            }
+        });
+
+        // Close modal on outside click
+        document.getElementById('settings-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('settings-modal')) {
+                document.getElementById('settings-modal').classList.add('hidden');
+            }
+        });
+
+        // Keyboard shortcut: Enter to grade (when not in textarea)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                if (!document.getElementById('grade-btn').classList.contains('hidden')) {
+                    gradeAnswers();
+                } else {
+                    loadScenario();
+                }
+            }
+        });
+    });
+    </script>
+</body>
+</html>
