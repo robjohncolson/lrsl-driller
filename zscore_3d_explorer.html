@@ -148,36 +148,67 @@
         const urlParams = new URLSearchParams(window.location.search);
         const hasUrlData = urlParams.has('r') && urlParams.has('slope');
 
-        // Generate synthetic data from regression parameters
+        // Generate synthetic data with EXACT target statistics using orthogonal z-score construction
         function generateSyntheticData(slope, intercept, r, xMin, xMax, numPoints = 12) {
-            const points = [];
-            const xRange = xMax - xMin;
-
-            // Generate x values spread across the range
-            for (let i = 0; i < numPoints; i++) {
-                const x = xMin + (xRange * (i + 0.5 + (Math.random() - 0.5) * 0.8)) / numPoints;
-                points.push({ x: Math.round(x * 10) / 10 });
+            // Helper: Box-Muller transform for normally distributed random numbers
+            function randomNormal() {
+                const u1 = Math.random();
+                const u2 = Math.random();
+                return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
             }
 
-            // Calculate what sy/sx ratio we need to achieve target r with given slope
-            // Since b = r * (sy/sx), we have sy/sx = b/r
-            const sySxRatio = Math.abs(slope / r);
+            // Helper: Standardize array to exact mean=0, sample variance=1
+            function standardize(arr) {
+                const n = arr.length;
+                const mean = arr.reduce((a, b) => a + b, 0) / n;
+                let centered = arr.map(v => v - mean);
+                const variance = centered.reduce((a, b) => a + b * b, 0) / (n - 1);
+                const std = Math.sqrt(variance);
+                return centered.map(v => v / std);
+            }
 
-            // Calculate means and target standard deviations
-            const xBar = points.reduce((s, p) => s + p.x, 0) / numPoints;
-            const sx = Math.sqrt(points.reduce((s, p) => s + Math.pow(p.x - xBar, 2), 0) / (numPoints - 1));
-            const sy = sx * sySxRatio;
+            // Step 1: Generate and standardize z-scores for x
+            let zx = Array.from({ length: numPoints }, () => randomNormal());
+            zx = standardize(zx);
 
-            // Generate y values with appropriate correlation
-            // y = a + bx + error, where error has variance adjusted for r
-            const errorVariance = sy * sy * (1 - r * r);
-            const errorStd = Math.sqrt(errorVariance);
+            // Step 2: Generate and standardize independent errors
+            let e = Array.from({ length: numPoints }, () => randomNormal());
+            e = standardize(e);
 
-            points.forEach(p => {
-                const predicted = intercept + slope * p.x;
-                const error = (Math.random() + Math.random() + Math.random() - 1.5) * errorStd * 1.5; // Approximate normal
-                p.y = Math.round((predicted + error) * 10) / 10;
-            });
+            // Step 3: Make e orthogonal to zx using Gram-Schmidt
+            // e_orth = e - proj(e onto zx) = e - (e·zx / zx·zx) * zx
+            const dotEZx = e.reduce((sum, ei, i) => sum + ei * zx[i], 0);
+            const dotZxZx = zx.reduce((sum, zxi) => sum + zxi * zxi, 0);
+            e = e.map((ei, i) => ei - (dotEZx / dotZxZx) * zx[i]);
+
+            // Re-standardize e after orthogonalization (projection changes variance)
+            e = standardize(e);
+
+            // Step 4: Construct zy with EXACT correlation r
+            // zy = r * zx + sqrt(1 - r²) * e_orthogonal
+            // Since e is orthogonal to zx: Corr(zx, zy) = r (exactly!)
+            const sqrtOneMinusR2 = Math.sqrt(Math.max(0, 1 - r * r));
+            let zy = zx.map((zxi, i) => r * zxi + sqrtOneMinusR2 * e[i]);
+
+            // Step 5: Transform z-scores to raw scores
+            // Choose xBar and sx to spread data nicely across the range
+            const xBar = (xMin + xMax) / 2;
+            const sx = (xMax - xMin) / 5; // Data spans ~5 std devs
+
+            // From LSRL formula: slope = r * (sy/sx), so sy = slope * sx / r
+            const sy = r !== 0 ? Math.abs(slope * sx / r) : sx;
+
+            // From LSRL formula: intercept = yBar - slope * xBar, so yBar = intercept + slope * xBar
+            const yBar = intercept + slope * xBar;
+
+            // Transform to raw coordinates
+            const points = [];
+            for (let i = 0; i < numPoints; i++) {
+                points.push({
+                    x: Math.round((xBar + sx * zx[i]) * 10) / 10,
+                    y: Math.round((yBar + sy * zy[i]) * 10) / 10
+                });
+            }
 
             return points;
         }
@@ -835,6 +866,30 @@
                 <div class="text-xs">Sₓ=${processedData.sx.toFixed(2)}, Sᵧ=${processedData.sy.toFixed(2)}</div>
             `;
 
+            // Show target vs actual for synthetic data (should now match closely!)
+            if (cls.targetR !== undefined) {
+                const rDiff = Math.abs(cls.targetR - processedData.r);
+                const bDiff = Math.abs(cls.targetSlope - processedData.b);
+                const aDiff = Math.abs(cls.targetIntercept - processedData.a);
+                const rMatch = rDiff < 0.02 ? '✓' : '~';
+                const bMatch = bDiff < 0.1 ? '✓' : '~';
+                const aMatch = aDiff < 0.2 ? '✓' : '~';
+
+                infoHTML += `
+                    <div class="border-t mt-2 pt-2 text-xs">
+                        <div class="text-purple-600 font-medium mb-1">Generated Data Accuracy:</div>
+                        <div class="${rDiff < 0.02 ? 'text-green-600' : 'text-yellow-600'}">
+                            ${rMatch} r: ${processedData.r.toFixed(3)} (target: ${cls.targetR.toFixed(3)})
+                        </div>
+                        <div class="${bDiff < 0.1 ? 'text-green-600' : 'text-yellow-600'}">
+                            ${bMatch} slope: ${processedData.b.toFixed(2)} (target: ${cls.targetSlope.toFixed(2)})
+                        </div>
+                        <div class="${aDiff < 0.2 ? 'text-green-600' : 'text-yellow-600'}">
+                            ${aMatch} intercept: ${processedData.a.toFixed(2)} (target: ${cls.targetIntercept.toFixed(2)})
+                        </div>
+                    </div>
+                `;
+            }
 
             document.getElementById('class-info').innerHTML = infoHTML;
 
