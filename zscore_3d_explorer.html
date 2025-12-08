@@ -835,17 +835,6 @@
                 <div class="text-xs">Sₓ=${processedData.sx.toFixed(2)}, Sᵧ=${processedData.sy.toFixed(2)}</div>
             `;
 
-            // Show target vs actual for synthetic data
-            if (cls.targetR !== undefined) {
-                infoHTML += `
-                    <div class="border-t mt-2 pt-2 text-xs">
-                        <div class="text-purple-600 font-medium">Target vs Actual:</div>
-                        <div>r: ${cls.targetR.toFixed(3)} → ${processedData.r.toFixed(3)}</div>
-                        <div>slope: ${cls.targetSlope.toFixed(2)} → ${processedData.b.toFixed(2)}</div>
-                        <div>intercept: ${cls.targetIntercept.toFixed(2)} → ${processedData.a.toFixed(2)}</div>
-                    </div>
-                `;
-            }
 
             document.getElementById('class-info').innerHTML = infoHTML;
 
@@ -1278,8 +1267,12 @@
         function generateQuestion() {
             if (!processedData) return;
 
-            const { data, xBar, yBar, sx, sy, r, a, b, n } = processedData;
+            const { data, xBar, yBar, sx, sy, n } = processedData;
             const cls = classData[currentClass];
+            // Use target values if available (from LSRL trainer), otherwise use calculated
+            const r = cls.targetR !== undefined ? cls.targetR : processedData.r;
+            const a = cls.targetIntercept !== undefined ? cls.targetIntercept : processedData.a;
+            const b = cls.targetSlope !== undefined ? cls.targetSlope : processedData.b;
             const randomPoint = data[Math.floor(Math.random() * data.length)];
 
             const questionTypes = [
