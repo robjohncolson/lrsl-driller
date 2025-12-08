@@ -1262,15 +1262,19 @@
                     break;
 
                 case 'class_time_start':
-                    // Another user (teacher) started class time
+                    // Teacher started class time - sync to all students
                     if (!classTime.active) {
+                        if (message.goal) {
+                            classTime.setGoal(message.goal);
+                        }
                         classTime.start();
                     }
                     break;
 
                 case 'class_time_end':
                     // Teacher ended class time
-                    if (classTime.active) {
+                    if (classTime.active && !isTeacherMode) {
+                        // Only auto-end for students, teacher controls their own
                         classTime.end();
                     }
                     break;

@@ -418,6 +418,25 @@ wss.on('connection', (ws) => {
             scenario_topic: message.scenario_topic
           });
           break;
+
+        case 'class_time_start':
+          // Teacher started class time - broadcast to all
+          console.log('Class time started by:', clients.get(ws)?.username);
+          broadcast({
+            type: 'class_time_start',
+            goal: message.goal || 20
+          });
+          break;
+
+        case 'class_time_end':
+          // Teacher ended class time - broadcast to all
+          console.log('Class time ended. Stars earned:', message.stars);
+          broadcast({
+            type: 'class_time_end',
+            stars: message.stars,
+            goalReached: message.goalReached
+          });
+          break;
       }
     } catch (err) {
       console.error('WebSocket message error:', err);
