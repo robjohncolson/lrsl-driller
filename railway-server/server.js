@@ -424,7 +424,7 @@ wss.on('connection', (ws) => {
           console.log('Class time started by:', clients.get(ws)?.username);
           broadcast({
             type: 'class_time_start',
-            goal: message.goal || 20
+            goal: message.goal || 3
           });
           break;
 
