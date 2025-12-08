@@ -76,23 +76,41 @@
             <div class="flex items-center gap-6">
                 <!-- Streak Counters -->
                 <div class="flex gap-4 text-sm">
-                    <div class="flex items-center gap-2" title="Perfect scores by star type">
-                        <span class="flex items-center gap-0.5" title="Gold (no hints)">
+                    <div class="flex items-center gap-2 relative group cursor-help">
+                        <!-- Info icon -->
+                        <span class="text-gray-400 text-xs">ⓘ</span>
+                        <!-- Star counts -->
+                        <span class="flex items-center gap-0.5" title="Gold: All correct, no hints">
                             <span class="text-yellow-400">★</span>
                             <span id="gold-count" class="font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded text-xs">0</span>
                         </span>
-                        <span class="flex items-center gap-0.5" title="Silver (1 hint)">
+                        <span class="flex items-center gap-0.5" title="Silver: All correct, 1 hint">
                             <span class="text-gray-400">★</span>
                             <span id="silver-count" class="font-bold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded text-xs">0</span>
                         </span>
-                        <span class="flex items-center gap-0.5" title="Bronze (2 hints)">
+                        <span class="flex items-center gap-0.5" title="Bronze: All correct, 2 hints">
                             <span class="text-amber-600">★</span>
                             <span id="bronze-count" class="font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded text-xs">0</span>
                         </span>
-                        <span class="flex items-center gap-0.5" title="Tin (3 hints)">
+                        <span class="flex items-center gap-0.5" title="Tin: All correct, 3 hints">
                             <span class="text-stone-400">★</span>
                             <span id="tin-count" class="font-bold text-stone-500 bg-stone-200 px-1.5 py-0.5 rounded text-xs">0</span>
                         </span>
+                        <!-- Tooltip popup -->
+                        <div class="absolute left-0 top-full mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                            <div class="font-bold mb-2">How to Earn Stars</div>
+                            <div class="space-y-1">
+                                <div><span class="text-yellow-400">★ Gold:</span> All 3 correct, <span class="font-bold">no hints</span></div>
+                                <div><span class="text-gray-300">★ Silver:</span> All 3 correct, 1 hint used</div>
+                                <div><span class="text-amber-400">★ Bronze:</span> All 3 correct, 2 hints used</div>
+                                <div><span class="text-stone-400">★ Tin:</span> All 3 correct, 3 hints used</div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-700 text-gray-400">
+                                Stars require all slope, intercept, and correlation answers to be Essentially Correct (E).
+                            </div>
+                            <!-- Arrow -->
+                            <div class="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                        </div>
                     </div>
                     <div class="flex items-center gap-1">
                         <span class="text-gray-500">Slope:</span>
@@ -2224,7 +2242,7 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
         startTime: null,
         timerInterval: null,
         starsEarned: 0,
-        goalTarget: 20, // Default goal
+        goalTarget: 3, // Default goal (gold stars = all correct, no hints)
 
         start() {
             this.active = true;
@@ -3087,6 +3105,20 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
                 } else {
                     loadScenario();
                 }
+            }
+
+            // Escape key closes all modals
+            if (e.key === 'Escape') {
+                // Close settings modal
+                document.getElementById('settings-modal').classList.add('hidden');
+                // Close username modal (only if user is already logged in)
+                if (currentUser) {
+                    document.getElementById('username-modal').classList.add('hidden');
+                }
+                // Close leaderboard
+                leaderboard.close();
+                // Close online dropdown
+                document.getElementById('online-dropdown').classList.add('hidden');
             }
         });
     });
