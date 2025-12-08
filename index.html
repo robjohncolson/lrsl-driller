@@ -123,10 +123,29 @@
                     </div>
                 </div>
 
+                <!-- Rank & Progress Display -->
+                <div id="rank-display" class="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg px-3 py-1.5">
+                    <span id="rank-icon" class="text-lg">📊</span>
+                    <div class="flex flex-col">
+                        <span id="rank-name" class="text-xs font-semibold text-gray-700">Novice</span>
+                        <div class="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div id="rank-progress-bar" class="h-full bg-purple-500 transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <span id="rank-points" class="text-xs text-gray-500">0 pts</span>
+                </div>
+
+                <!-- Class Time Button (Teacher Only) -->
+                <button id="class-time-btn" class="hidden flex items-center gap-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-1.5 rounded-lg transition-all shadow-md" title="Start Class Time">
+                    <span class="text-lg">🔔</span>
+                    <span class="text-sm font-medium">Class Time</span>
+                </button>
+
                 <!-- User Display -->
                 <div id="user-display" class="flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1 cursor-pointer hover:bg-gray-100 transition-colors" title="Click to change username">
                     <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                     <span id="current-username" class="text-sm font-medium text-gray-700">...</span>
+                    <span id="teacher-badge" class="hidden text-xs bg-purple-600 text-white px-1.5 py-0.5 rounded">TEACHER</span>
                 </div>
 
                 <!-- Leaderboard Button -->
@@ -147,6 +166,34 @@
             </div>
         </div>
     </header>
+
+    <!-- Class Time Banner (hidden by default) -->
+    <div id="class-time-banner" class="hidden bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white py-2 px-4 shadow-lg">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl animate-pulse">🔔</span>
+                <div>
+                    <span class="font-bold">CLASS TIME ACTIVE</span>
+                    <span id="class-time-timer" class="ml-2 font-mono bg-white/20 px-2 py-0.5 rounded">00:00</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <!-- Class Goal Progress -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm">Goal:</span>
+                    <div class="w-32 h-4 bg-white/30 rounded-full overflow-hidden">
+                        <div id="class-goal-bar" class="h-full bg-yellow-400 transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <span class="text-sm font-bold">
+                        <span id="class-stars-earned">0</span>/<span id="class-goal-target">20</span> ⭐
+                    </span>
+                </div>
+                <button id="end-class-time-btn" class="hidden bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors">
+                    End Class
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <main class="max-w-4xl mx-auto px-4 py-6">
@@ -320,6 +367,16 @@
                 </div>
 
                 <div class="border-t pt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Sound Effects</label>
+                    <div class="flex items-center gap-3">
+                        <button id="sound-toggle" class="relative inline-flex h-6 w-11 items-center rounded-full bg-purple-600 transition-colors">
+                            <span id="sound-toggle-dot" class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform translate-x-6"></span>
+                        </button>
+                        <span class="text-sm text-gray-600">Sound effects enabled</span>
+                    </div>
+                </div>
+
+                <div class="border-t pt-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Progress</label>
                     <button id="reset-streaks" class="text-sm text-red-600 hover:text-red-800">Reset All Streaks & Stars</button>
                 </div>
@@ -397,6 +454,22 @@
                 <button id="username-submit" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 rounded-lg transition-all">
                     Let's Go!
                 </button>
+
+                <!-- Teacher Login -->
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <button id="teacher-login-btn" class="w-full text-sm text-gray-500 hover:text-purple-600 transition-colors">
+                        I'm a Teacher →
+                    </button>
+                </div>
+
+                <!-- Teacher Password Section (hidden by default) -->
+                <div id="teacher-password-section" class="hidden mt-4 p-4 bg-purple-50 rounded-lg">
+                    <label class="block text-sm font-medium text-purple-700 mb-2">Teacher Password</label>
+                    <input type="password" id="teacher-password-input" class="w-full border border-purple-300 rounded-lg p-2 mb-3" placeholder="Enter teacher password">
+                    <button id="teacher-submit-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 rounded-lg transition-colors">
+                        Enter as Teacher
+                    </button>
+                </div>
 
                 <p id="username-error" class="text-red-500 text-sm mt-2 hidden"></p>
             </div>
@@ -593,8 +666,189 @@
         return `${fruit}_${animal}`;
     }
 
+    // Generate avatar emoji from username
+    function getAvatarForUsername(username) {
+        const fruitEmojis = {
+            'Apple': '🍎', 'Mango': '🥭', 'Kiwi': '🥝', 'Strawberry': '🍓', 'Banana': '🍌',
+            'Orange': '🍊', 'Grape': '🍇', 'Peach': '🍑', 'Cherry': '🍒', 'Lemon': '🍋',
+            'Lime': '🍋', 'Melon': '🍈', 'Papaya': '🥭', 'Coconut': '🥥', 'Pineapple': '🍍'
+        };
+        const animalEmojis = {
+            'Tiger': '🐯', 'Bear': '🐻', 'Wolf': '🐺', 'Dolphin': '🐬', 'Eagle': '🦅',
+            'Panda': '🐼', 'Koala': '🐨', 'Fox': '🦊', 'Owl': '🦉', 'Hawk': '🦅',
+            'Lion': '🦁', 'Shark': '🦈', 'Whale': '🐋', 'Otter': '🦦', 'Falcon': '🦅'
+        };
+
+        // Try to parse Fruit_Animal pattern
+        const parts = username.split('_');
+        if (parts.length >= 2) {
+            const fruit = fruitEmojis[parts[0]] || '';
+            const animal = animalEmojis[parts[1]] || '';
+            if (fruit && animal) return fruit + animal;
+            if (fruit) return fruit;
+            if (animal) return animal;
+        }
+
+        // Fallback: generate from hash of username
+        const emojis = ['🎓', '📚', '✏️', '📊', '🎯', '⭐', '🌟', '💫', '🔥', '💪'];
+        let hash = 0;
+        for (let i = 0; i < username.length; i++) {
+            hash = ((hash << 5) - hash) + username.charCodeAt(i);
+            hash = hash & hash;
+        }
+        return emojis[Math.abs(hash) % emojis.length];
+    }
+
     // Current user state
     let currentUser = null;
+    let isTeacherMode = false;
+    const TEACHER_PASSWORD = 'stats123'; // Change this!
+
+    // ============== RANK SYSTEM ==============
+    const RANKS = [
+        { name: 'Novice', minPoints: 0, color: 'gray', icon: '📊' },
+        { name: 'Apprentice', minPoints: 10, color: 'green', icon: '📈' },
+        { name: 'Analyst', minPoints: 30, color: 'blue', icon: '🔍' },
+        { name: 'Statistician', minPoints: 60, color: 'purple', icon: '🎯' },
+        { name: 'Expert', minPoints: 100, color: 'orange', icon: '⭐' },
+        { name: 'Master', minPoints: 150, color: 'yellow', icon: '👑' },
+        { name: 'Legend', minPoints: 250, color: 'red', icon: '🏆' }
+    ];
+
+    function getWeightedScore(stars) {
+        return (stars.gold * 4) + (stars.silver * 3) + (stars.bronze * 2) + (stars.tin * 1);
+    }
+
+    function getCurrentRank(stars) {
+        const score = getWeightedScore(stars);
+        let currentRank = RANKS[0];
+        for (const rank of RANKS) {
+            if (score >= rank.minPoints) {
+                currentRank = rank;
+            }
+        }
+        return currentRank;
+    }
+
+    function getNextRank(stars) {
+        const score = getWeightedScore(stars);
+        for (const rank of RANKS) {
+            if (score < rank.minPoints) {
+                return rank;
+            }
+        }
+        return null; // Already at max rank
+    }
+
+    function getRankProgress(stars) {
+        const score = getWeightedScore(stars);
+        const current = getCurrentRank(stars);
+        const next = getNextRank(stars);
+        if (!next) return 100; // Max rank
+        const progressInRank = score - current.minPoints;
+        const rankSpan = next.minPoints - current.minPoints;
+        return Math.floor((progressInRank / rankSpan) * 100);
+    }
+
+    // ============== SOUND ENGINE (Web Audio API Synth) ==============
+    const soundEngine = {
+        ctx: null,
+        enabled: localStorage.getItem('soundEnabled') !== 'false', // Default to true
+
+        init() {
+            // Create audio context on first user interaction
+            if (!this.ctx) {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        },
+
+        // Play a note with envelope
+        playNote(freq, duration = 0.2, type = 'sine', volume = 0.3) {
+            if (!this.enabled || !this.ctx) return;
+
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = type;
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            const now = this.ctx.currentTime;
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(volume, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+            osc.start(now);
+            osc.stop(now + duration);
+        },
+
+        // Play a chord
+        playChord(freqs, duration = 0.3, type = 'sine') {
+            freqs.forEach(f => this.playNote(f, duration, type, 0.15));
+        },
+
+        // Sound effects
+        correct() {
+            // Happy ascending arpeggio
+            this.playNote(523, 0.15); // C5
+            setTimeout(() => this.playNote(659, 0.15), 100); // E5
+            setTimeout(() => this.playNote(784, 0.2), 200); // G5
+        },
+
+        incorrect() {
+            // Descending minor
+            this.playNote(400, 0.15, 'triangle');
+            setTimeout(() => this.playNote(350, 0.2, 'triangle'), 100);
+        },
+
+        goldStar() {
+            // Triumphant fanfare
+            this.playChord([523, 659, 784], 0.2); // C major
+            setTimeout(() => this.playChord([587, 740, 880], 0.2), 200); // D major
+            setTimeout(() => this.playChord([659, 830, 988], 0.4), 400); // E major
+        },
+
+        silverStar() {
+            this.playChord([440, 554, 659], 0.3); // A major
+        },
+
+        bronzeStar() {
+            this.playNote(523, 0.2);
+            setTimeout(() => this.playNote(659, 0.2), 150);
+        },
+
+        tinStar() {
+            this.playNote(440, 0.2, 'triangle');
+        },
+
+        notification() {
+            // Soft chime for others' achievements
+            this.playNote(880, 0.1, 'sine', 0.1);
+            setTimeout(() => this.playNote(1100, 0.15, 'sine', 0.1), 80);
+        },
+
+        rankUp() {
+            // Epic rank up sound
+            this.playChord([262, 330, 392], 0.15);
+            setTimeout(() => this.playChord([294, 370, 440], 0.15), 150);
+            setTimeout(() => this.playChord([330, 415, 494], 0.15), 300);
+            setTimeout(() => this.playChord([392, 494, 587], 0.4), 450);
+        },
+
+        streak(count) {
+            // Higher pitch for higher streaks
+            const baseFreq = 400 + (count * 50);
+            this.playNote(Math.min(baseFreq, 1200), 0.15, 'square', 0.1);
+        },
+
+        classTimeStart() {
+            // School bell sound
+            this.playNote(659, 0.3);
+            setTimeout(() => this.playNote(659, 0.3), 400);
+            setTimeout(() => this.playNote(659, 0.5), 800);
+        }
+    };
 
     // Username modal controller
     const usernameModal = {
@@ -647,6 +901,28 @@
             // User display click (re-open modal)
             document.getElementById('user-display').addEventListener('click', () => {
                 this.show(true); // true = reopening (show close button)
+            });
+
+            // Teacher login button
+            document.getElementById('teacher-login-btn').addEventListener('click', () => {
+                document.getElementById('teacher-password-section').classList.toggle('hidden');
+            });
+
+            // Teacher submit button
+            document.getElementById('teacher-submit-btn').addEventListener('click', () => {
+                const password = document.getElementById('teacher-password-input').value;
+                if (password === TEACHER_PASSWORD) {
+                    isTeacherMode = true;
+                    document.getElementById('teacher-badge').classList.remove('hidden');
+                    document.getElementById('teacher-password-section').classList.add('hidden');
+                    document.getElementById('teacher-password-input').value = '';
+                    this.hide();
+                    soundEngine.init();
+                    soundEngine.classTimeStart();
+                    showTeacherControls();
+                } else {
+                    this.showError('Incorrect teacher password');
+                }
             });
         },
 
@@ -973,6 +1249,8 @@
                     // Don't show notification for own stars
                     if (message.username !== currentUser?.username) {
                         this.showStarNotification(message.username, message.star_type, message.scenario_topic);
+                        soundEngine.init();
+                        soundEngine.notification();
                     }
                     break;
 
@@ -980,6 +1258,20 @@
                     // Refresh leaderboard if it's open
                     if (typeof refreshLeaderboard === 'function') {
                         refreshLeaderboard();
+                    }
+                    break;
+
+                case 'class_time_start':
+                    // Another user (teacher) started class time
+                    if (!classTime.active) {
+                        classTime.start();
+                    }
+                    break;
+
+                case 'class_time_end':
+                    // Teacher ended class time
+                    if (classTime.active) {
+                        classTime.end();
                     }
                     break;
             }
@@ -1013,8 +1305,10 @@
                 } else {
                     listEl.innerHTML = this.onlineUsers.map(username => {
                         const isYou = username === currentUser?.username;
+                        const avatar = getAvatarForUsername(username);
                         return `
                             <div class="px-3 py-1.5 flex items-center gap-2 ${isYou ? 'bg-purple-50' : 'hover:bg-gray-50'}">
+                                <span class="text-lg" title="${username}">${avatar}</span>
                                 <span class="w-2 h-2 bg-green-500 rounded-full"></span>
                                 <span class="text-sm text-gray-700">${username}</span>
                                 ${isYou ? '<span class="text-xs text-purple-600 ml-auto">(you)</span>' : ''}
@@ -1032,15 +1326,19 @@
                 bronze: '🥉',
                 tin: '○'
             };
+            const avatar = getAvatarForUsername(username);
 
             const toast = document.createElement('div');
             toast.className = 'fixed top-20 right-4 bg-white rounded-lg shadow-xl p-4 z-50 animate-slide-in border-l-4 border-yellow-400';
             toast.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl">${starEmoji[starType] || '⭐'}</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">${avatar}</span>
                     <div>
-                        <div class="font-medium text-gray-800">${username} earned a ${starType} star!</div>
-                        <div class="text-sm text-gray-500">on "${scenarioTopic}"</div>
+                        <div class="flex items-center gap-1">
+                            <span class="font-medium text-gray-800">${username}</span>
+                            <span class="text-xl">${starEmoji[starType] || '⭐'}</span>
+                        </div>
+                        <div class="text-sm text-gray-500">earned a ${starType} star on "${scenarioTopic}"</div>
                     </div>
                 </div>
             `;
@@ -1165,16 +1463,18 @@
             data.forEach((entry, index) => {
                 const rank = index + 1;
                 const isCurrentUser = entry.username === currentUser?.username;
+                const avatar = getAvatarForUsername(entry.username);
 
                 const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
                 const rankClass = rank <= 3 ? 'text-2xl' : 'text-lg font-bold text-gray-400';
 
                 const el = document.createElement('div');
-                el.className = `p-4 rounded-xl ${isCurrentUser ? 'bg-purple-50 border-2 border-purple-300' : 'bg-gray-50'} ${rank <= 3 ? 'shadow-md' : ''}`;
+                el.className = `p-4 rounded-xl ${isCurrentUser ? 'bg-purple-50 border-2 border-purple-300' : 'bg-gray-50'} ${rank <= 3 ? 'shadow-md' : ''} opacity-0 transform translate-y-4 transition-all duration-300`;
 
                 el.innerHTML = `
                     <div class="flex items-center gap-3">
                         <div class="${rankClass} w-10 text-center">${rankIcon}</div>
+                        <div class="text-2xl">${avatar}</div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="font-semibold text-gray-800 truncate">${entry.username}</span>
@@ -1195,6 +1495,12 @@
                 `;
 
                 this.list.appendChild(el);
+
+                // Staggered animation: each entry fades in with a slight delay
+                setTimeout(() => {
+                    el.classList.remove('opacity-0', 'translate-y-4');
+                    el.classList.add('opacity-100', 'translate-y-0');
+                }, index * 50);
             });
         }
     };
@@ -1864,6 +2170,210 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
         document.getElementById('silver-count').textContent = starCounts.silver;
         document.getElementById('bronze-count').textContent = starCounts.bronze;
         document.getElementById('tin-count').textContent = starCounts.tin;
+
+        // Update rank display
+        updateRankDisplay();
+    }
+
+    function updateRankDisplay() {
+        const rank = getCurrentRank(starCounts);
+        const nextRank = getNextRank(starCounts);
+        const progress = getRankProgress(starCounts);
+        const score = getWeightedScore(starCounts);
+
+        document.getElementById('rank-icon').textContent = rank.icon;
+        document.getElementById('rank-name').textContent = rank.name;
+        document.getElementById('rank-points').textContent = `${score} pts`;
+        document.getElementById('rank-progress-bar').style.width = `${progress}%`;
+
+        // Color the progress bar based on rank
+        const colorMap = {
+            gray: 'bg-gray-400',
+            green: 'bg-green-500',
+            blue: 'bg-blue-500',
+            purple: 'bg-purple-500',
+            orange: 'bg-orange-500',
+            yellow: 'bg-yellow-500',
+            red: 'bg-red-500'
+        };
+        const progressBar = document.getElementById('rank-progress-bar');
+        progressBar.className = `h-full ${colorMap[rank.color] || 'bg-purple-500'} transition-all duration-500`;
+
+        // Update rank display tooltip
+        const rankDisplay = document.getElementById('rank-display');
+        if (nextRank) {
+            rankDisplay.title = `${score}/${nextRank.minPoints} points to ${nextRank.name}`;
+        } else {
+            rankDisplay.title = 'Maximum rank achieved!';
+        }
+    }
+
+    // Show teacher-specific controls
+    function showTeacherControls() {
+        document.getElementById('class-time-btn').classList.remove('hidden');
+        console.log('Teacher mode activated');
+    }
+
+    // ============== CLASS TIME CONTROLLER ==============
+    const classTime = {
+        active: false,
+        startTime: null,
+        timerInterval: null,
+        starsEarned: 0,
+        goalTarget: 20, // Default goal
+
+        start() {
+            this.active = true;
+            this.startTime = Date.now();
+            this.starsEarned = 0;
+
+            // Show banner
+            document.getElementById('class-time-banner').classList.remove('hidden');
+            document.getElementById('end-class-time-btn').classList.toggle('hidden', !isTeacherMode);
+            document.getElementById('class-time-btn').innerHTML = '<span class="text-lg">⏸️</span><span class="text-sm font-medium">Active</span>';
+            document.getElementById('class-time-btn').classList.remove('from-green-500', 'to-emerald-500');
+            document.getElementById('class-time-btn').classList.add('from-yellow-500', 'to-orange-500');
+
+            // Reset goal display
+            document.getElementById('class-stars-earned').textContent = '0';
+            document.getElementById('class-goal-target').textContent = this.goalTarget;
+            document.getElementById('class-goal-bar').style.width = '0%';
+
+            // Update sticky position
+            document.querySelector('.scenario-sticky').style.top = '108px';
+
+            // Start timer
+            this.updateTimer();
+            this.timerInterval = setInterval(() => this.updateTimer(), 1000);
+
+            // Play sound
+            soundEngine.init();
+            soundEngine.classTimeStart();
+
+            // Broadcast to others via WebSocket
+            if (railwayClient.connected) {
+                railwayClient.send({ type: 'class_time_start', goal: this.goalTarget });
+            }
+        },
+
+        end() {
+            this.active = false;
+            clearInterval(this.timerInterval);
+
+            const goalReached = this.starsEarned >= this.goalTarget;
+
+            // Hide banner
+            document.getElementById('class-time-banner').classList.add('hidden');
+            document.getElementById('class-time-btn').innerHTML = '<span class="text-lg">🔔</span><span class="text-sm font-medium">Class Time</span>';
+            document.getElementById('class-time-btn').classList.add('from-green-500', 'to-emerald-500');
+            document.getElementById('class-time-btn').classList.remove('from-yellow-500', 'to-orange-500');
+
+            // Reset sticky position
+            document.querySelector('.scenario-sticky').style.top = '60px';
+
+            // Show summary notification
+            if (goalReached) {
+                showClassGoalReached();
+            }
+
+            // Broadcast end
+            if (railwayClient.connected) {
+                railwayClient.send({ type: 'class_time_end', stars: this.starsEarned, goalReached });
+            }
+        },
+
+        updateTimer() {
+            const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+            const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const secs = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('class-time-timer').textContent = `${mins}:${secs}`;
+        },
+
+        addStar() {
+            if (this.active) {
+                this.starsEarned++;
+                document.getElementById('class-stars-earned').textContent = this.starsEarned;
+
+                // Update progress bar
+                const progress = Math.min(100, (this.starsEarned / this.goalTarget) * 100);
+                document.getElementById('class-goal-bar').style.width = `${progress}%`;
+
+                // Check if goal reached
+                if (this.starsEarned === this.goalTarget) {
+                    // Goal reached! Celebrate!
+                    document.getElementById('class-goal-bar').classList.add('animate-pulse');
+                    soundEngine.init();
+                    soundEngine.rankUp();
+                }
+            }
+        },
+
+        setGoal(target) {
+            this.goalTarget = target;
+            document.getElementById('class-goal-target').textContent = target;
+        }
+    };
+
+    // Class goal reached celebration
+    function showClassGoalReached() {
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-1/3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-2xl shadow-2xl p-8 z-50 text-center';
+        toast.innerHTML = `
+            <div class="text-6xl mb-4">🎉</div>
+            <div class="text-2xl font-bold mb-2">CLASS GOAL REACHED!</div>
+            <div class="text-lg opacity-90">${classTime.starsEarned} stars earned together!</div>
+        `;
+
+        document.body.appendChild(toast);
+        celebrate(); // Confetti!
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, -20px)';
+            toast.style.transition = 'all 0.5s ease-out';
+            setTimeout(() => toast.remove(), 500);
+        }, 5000);
+    }
+
+    // Update sound toggle UI
+    function updateSoundToggleUI() {
+        const toggle = document.getElementById('sound-toggle');
+        const dot = document.getElementById('sound-toggle-dot');
+        const label = toggle.nextElementSibling;
+
+        if (soundEngine.enabled) {
+            toggle.className = 'relative inline-flex h-6 w-11 items-center rounded-full bg-purple-600 transition-colors';
+            dot.className = 'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform translate-x-6';
+            if (label) label.textContent = 'Sound effects enabled';
+        } else {
+            toggle.className = 'relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 transition-colors';
+            dot.className = 'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform translate-x-1';
+            if (label) label.textContent = 'Sound effects disabled';
+        }
+    }
+
+    // Show rank up notification
+    function showRankUpNotification(oldRank, newRank) {
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-1/3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-2xl shadow-2xl p-6 z-50 animate-slide-in text-center';
+        toast.innerHTML = `
+            <div class="text-5xl mb-3">${newRank.icon}</div>
+            <div class="text-xl font-bold mb-1">Rank Up!</div>
+            <div class="text-purple-100">${oldRank.name} → ${newRank.name}</div>
+        `;
+
+        document.body.appendChild(toast);
+
+        // Add celebration effect
+        toast.style.animation = 'pulse 0.5s ease-in-out 3';
+
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, -20px)';
+            toast.style.transition = 'all 0.5s ease-out';
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
     }
 
     function saveStreaks() {
@@ -2245,6 +2755,11 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
                 const streakEl = document.getElementById(`${type}-streak`);
                 streakEl.classList.add('streak-pulse');
                 setTimeout(() => streakEl.classList.remove('streak-pulse'), 500);
+                // Play streak sound for high streaks
+                if (streaks[type] >= 3) {
+                    soundEngine.init();
+                    soundEngine.streak(streaks[type]);
+                }
             } else {
                 streaks[type] = 0;
                 allCorrect = false;
@@ -2264,6 +2779,9 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
         // Track hints used and star type for progress saving
         const hintsUsed = hintsOpenedThisScenario.size;
         let starType = null;
+
+        // Check current rank before awarding star (for rank-up detection)
+        const oldRank = getCurrentRank(starCounts);
 
         // Award star based on hints used (only for perfect score)
         if (allCorrect) {
@@ -2288,9 +2806,26 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
             starEl.classList.add('streak-pulse');
             setTimeout(() => starEl.classList.remove('streak-pulse'), 500);
 
-            // Only celebrate with confetti for gold stars (no hints used)
+            // Play sound effect based on star type
+            soundEngine.init();
             if (starType === 'gold') {
+                soundEngine.goldStar();
                 celebrate();
+            } else if (starType === 'silver') {
+                soundEngine.silverStar();
+            } else if (starType === 'bronze') {
+                soundEngine.bronzeStar();
+            } else {
+                soundEngine.tinStar();
+            }
+
+            // Check for rank up
+            const newRank = getCurrentRank(starCounts);
+            if (newRank.name !== oldRank.name) {
+                setTimeout(() => {
+                    soundEngine.rankUp();
+                    showRankUpNotification(oldRank, newRank);
+                }, 800);
             }
 
             // Update the hint status to show what was earned
@@ -2307,6 +2842,13 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
             `;
 
             console.log(`Awarded ${starType} star! Hints used: ${hintsUsed}`);
+
+            // Track for class time
+            classTime.addStar();
+        } else {
+            // Incorrect - play incorrect sound
+            soundEngine.init();
+            soundEngine.incorrect();
         }
 
         updateStreakDisplay();
@@ -2466,6 +3008,23 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
             });
         });
 
+        // Class Time button (teacher only)
+        document.getElementById('class-time-btn').addEventListener('click', () => {
+            if (!isTeacherMode) return;
+            if (classTime.active) {
+                classTime.end();
+            } else {
+                classTime.start();
+            }
+        });
+
+        // End Class Time button
+        document.getElementById('end-class-time-btn').addEventListener('click', () => {
+            if (isTeacherMode) {
+                classTime.end();
+            }
+        });
+
         // Settings modal
         document.getElementById('settings-btn').addEventListener('click', () => {
             document.getElementById('settings-modal').classList.remove('hidden');
@@ -2473,6 +3032,18 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
             document.getElementById('ai-provider').value = grader.apiProvider;
             document.getElementById('gemini-key-input').value = grader.geminiKey;
             document.getElementById('groq-key-input').value = grader.groqKey;
+            updateSoundToggleUI();
+        });
+
+        // Sound toggle
+        document.getElementById('sound-toggle').addEventListener('click', () => {
+            soundEngine.enabled = !soundEngine.enabled;
+            localStorage.setItem('soundEnabled', soundEngine.enabled);
+            updateSoundToggleUI();
+            if (soundEngine.enabled) {
+                soundEngine.init();
+                soundEngine.correct(); // Play a sound to confirm
+            }
         });
 
         document.getElementById('close-settings').addEventListener('click', () => {
