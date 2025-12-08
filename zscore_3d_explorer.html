@@ -368,15 +368,18 @@
         }
         
         function drawLSRL() {
-            const { a, b, data } = processedData;
-            
+            const cls = classData[currentClass];
+            // Use target values if available (from LSRL trainer), otherwise use calculated
+            const a = cls.targetIntercept !== undefined ? cls.targetIntercept : processedData.a;
+            const b = cls.targetSlope !== undefined ? cls.targetSlope : processedData.b;
+            const r = cls.targetR !== undefined ? cls.targetR : processedData.r;
+
             if (currentView === 'zscore') {
                 // In z-score view, the LSRL passes through origin with slope = r
                 // ẑy = r * zx
-                const r = processedData.r;
                 const zxMin = -3;
                 const zxMax = 3;
-                
+
                 const lineGeo = new THREE.BufferGeometry().setFromPoints([
                     new THREE.Vector3(zxMin, r * zxMin, 0.03),
                     new THREE.Vector3(zxMax, r * zxMax, 0.03)
@@ -388,17 +391,17 @@
             } else {
                 // Raw view - use actual a and b
                 const { scale, xOffset, yOffset, xMin, xMax } = processedData.rawTransform;
-                
+
                 // Calculate y values at the x bounds
                 const yAtXMin = a + b * xMin;
                 const yAtXMax = a + b * xMax;
-                
+
                 // Convert to scene coordinates
                 const x1 = xMin * scale + xOffset;
                 const y1 = yAtXMin * scale + yOffset;
                 const x2 = xMax * scale + xOffset;
                 const y2 = yAtXMax * scale + yOffset;
-                
+
                 const lineGeo = new THREE.BufferGeometry().setFromPoints([
                     new THREE.Vector3(x1, y1, 0.03),
                     new THREE.Vector3(x2, y2, 0.03)
@@ -413,7 +416,12 @@
         function updateLSRLEquation() {
             const eqDiv = document.getElementById('lsrl-equation');
             if (showLSRL) {
-                const { a, b, r } = processedData;
+                const cls = classData[currentClass];
+                // Use target values if available (from LSRL trainer), otherwise use calculated
+                const a = cls.targetIntercept !== undefined ? cls.targetIntercept : processedData.a;
+                const b = cls.targetSlope !== undefined ? cls.targetSlope : processedData.b;
+                const r = cls.targetR !== undefined ? cls.targetR : processedData.r;
+
                 if (currentView === 'zscore') {
                     eqDiv.innerHTML = `ŷ = ${r.toFixed(3)} · x`;
                 } else {
@@ -841,8 +849,9 @@
 
             document.getElementById('class-info').innerHTML = infoHTML;
 
-            // Update correlation display
-            document.getElementById('correlation-display').textContent = `r = ${processedData.r.toFixed(4)}`;
+            // Update correlation display - use target r if available
+            const displayR = cls.targetR !== undefined ? cls.targetR : processedData.r;
+            document.getElementById('correlation-display').textContent = `r = ${displayR.toFixed(4)}`;
 
             // Build scene with current view
             buildScene();
