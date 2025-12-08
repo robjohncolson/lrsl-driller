@@ -52,6 +52,15 @@
         /* Button visibility fix */
         .btn-hidden { display: none !important; }
         .btn-visible { display: inline-flex !important; }
+
+        /* Toast notification animation */
+        @keyframes slide-in {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in {
+            animation: slide-in 0.3s ease-out;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -103,6 +112,14 @@
                     <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                     <span id="current-username" class="text-sm font-medium text-gray-700">...</span>
                 </div>
+
+                <!-- Leaderboard Button -->
+                <button id="leaderboard-btn" class="flex items-center gap-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-lg transition-colors" title="View Class Leaderboard">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z"/>
+                    </svg>
+                    <span class="text-sm font-medium">Leaderboard</span>
+                </button>
 
                 <!-- Settings Button -->
                 <button id="settings-btn" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Settings">
@@ -363,6 +380,63 @@
         </div>
     </div>
 
+    <!-- Leaderboard Slide-out Panel -->
+    <div id="leaderboard-panel" class="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="h-full flex flex-col">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-yellow-400 to-orange-400 px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🏆</span>
+                    <h2 class="text-xl font-bold text-white">Class Leaderboard</h2>
+                </div>
+                <button id="close-leaderboard" class="p-2 hover:bg-white/20 rounded-full transition-colors">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Period Filter -->
+            <div class="px-6 py-3 bg-gray-50 border-b flex gap-2">
+                <button data-period="today" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400">Today</button>
+                <button data-period="week" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400">This Week</button>
+                <button data-period="all" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-yellow-400 text-white border border-yellow-400">All Time</button>
+            </div>
+
+            <!-- Leaderboard Content -->
+            <div id="leaderboard-content" class="flex-1 overflow-y-auto p-4">
+                <div id="leaderboard-loading" class="flex items-center justify-center h-32">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+                </div>
+                <div id="leaderboard-list" class="space-y-3 hidden">
+                    <!-- Entries will be populated here -->
+                </div>
+                <div id="leaderboard-empty" class="text-center text-gray-500 py-8 hidden">
+                    <span class="text-4xl block mb-2">📊</span>
+                    <p>No data yet. Be the first to earn a star!</p>
+                </div>
+                <div id="leaderboard-offline" class="text-center text-gray-500 py-8 hidden">
+                    <span class="text-4xl block mb-2">📡</span>
+                    <p>Connect to the server to see the leaderboard.</p>
+                    <p class="text-sm mt-2">Set RAILWAY_URL in the code to enable multiplayer.</p>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="px-6 py-3 bg-gray-50 border-t text-xs text-gray-500">
+                <div class="flex items-center gap-4 justify-center">
+                    <span title="Gold (4 pts)">⭐ = 4pts</span>
+                    <span title="Silver (3 pts)">🥈 = 3pts</span>
+                    <span title="Bronze (2 pts)">🥉 = 2pts</span>
+                    <span title="Tin (1 pt)">○ = 1pt</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Backdrop -->
+    <div id="leaderboard-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
     <script>
     // ============== DEXIE DATABASE (IndexedDB) ==============
     const db = new Dexie('LSRLTrainer');
@@ -565,10 +639,18 @@
                 const username = this.existingSelect.value;
                 const password = this.existingPasswordInput.value;
 
-                // For now, just accept any password (server will validate later)
                 if (!password) {
                     this.showError('Please enter your password');
                     return;
+                }
+
+                // Verify with server if connected
+                if (RAILWAY_URL) {
+                    const result = await railwayClient.verifyUser(username, password);
+                    if (!result?.valid) {
+                        this.showError(result?.error || 'Invalid credentials');
+                        return;
+                    }
                 }
 
                 // Set as current user
@@ -576,6 +658,9 @@
                 await dbHelpers.setIdentity(currentUser);
                 this.updateDisplay();
                 this.hide();
+
+                // Connect WebSocket after login
+                railwayClient.connect();
                 return;
             }
 
@@ -594,11 +679,23 @@
                 return;
             }
 
+            // Try to create user on server (if connected)
+            if (RAILWAY_URL) {
+                const result = await railwayClient.createUser(username, realName, password);
+                if (result?.error) {
+                    this.showError(result.error);
+                    return;
+                }
+            }
+
             // Set as current user
             currentUser = { username, realName, password };
             await dbHelpers.setIdentity(currentUser);
             this.updateDisplay();
             this.hide();
+
+            // Connect WebSocket after login
+            railwayClient.connect();
         },
 
         showError(msg) {
@@ -612,18 +709,430 @@
         },
 
         async checkAndShow() {
+            // Load existing users from server for dropdown
+            if (RAILWAY_URL) {
+                const users = await railwayClient.getUsers();
+                if (users && Array.isArray(users)) {
+                    this.existingSelect.innerHTML = '<option value="">Select your username...</option>';
+                    for (const user of users) {
+                        const option = document.createElement('option');
+                        option.value = user.username;
+                        option.textContent = user.real_name ? `${user.username} (${user.real_name})` : user.username;
+                        this.existingSelect.appendChild(option);
+                    }
+                }
+            }
+
             // Check if user already has identity
             const identity = await dbHelpers.getIdentity();
             if (identity?.username) {
                 currentUser = identity;
                 this.updateDisplay();
                 // Don't show modal - user is already logged in
+                // Connect WebSocket
+                railwayClient.connect();
             } else {
                 // First visit - show modal
                 this.show();
             }
         }
     };
+
+    // ============== RAILWAY SERVER CLIENT ==============
+    // Configure your Railway server URL here (or leave null for local-only mode)
+    const RAILWAY_URL = null; // e.g., 'https://your-app.railway.app'
+
+    const railwayClient = {
+        ws: null,
+        connected: false,
+        reconnectAttempts: 0,
+        maxReconnectAttempts: 5,
+        heartbeatInterval: null,
+        onlineUsers: [],
+
+        get baseUrl() {
+            return RAILWAY_URL;
+        },
+
+        get wsUrl() {
+            if (!RAILWAY_URL) return null;
+            return RAILWAY_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+        },
+
+        // REST API helpers
+        async fetch(endpoint, options = {}) {
+            if (!this.baseUrl) return null;
+
+            try {
+                const response = await fetch(`${this.baseUrl}${endpoint}`, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+                return await response.json();
+            } catch (err) {
+                console.warn('Railway API error:', err);
+                return null;
+            }
+        },
+
+        // User API
+        async getUsers() {
+            return await this.fetch('/api/users');
+        },
+
+        async createUser(username, realName, password) {
+            return await this.fetch('/api/users', {
+                method: 'POST',
+                body: JSON.stringify({ username, real_name: realName, password })
+            });
+        },
+
+        async verifyUser(username, password) {
+            return await this.fetch('/api/users/verify', {
+                method: 'POST',
+                body: JSON.stringify({ username, password })
+            });
+        },
+
+        // Progress API
+        async saveProgress(progressData) {
+            return await this.fetch('/api/progress', {
+                method: 'POST',
+                body: JSON.stringify(progressData)
+            });
+        },
+
+        async getLeaderboard(period = 'all', limit = 20) {
+            return await this.fetch(`/api/leaderboard?period=${period}&limit=${limit}`);
+        },
+
+        // Settings API
+        async getSettings(username, password) {
+            return await this.fetch(`/api/settings/${username}`, {
+                headers: { 'x-password': password }
+            });
+        },
+
+        async saveSettings(username, password, settings) {
+            return await this.fetch(`/api/settings/${username}`, {
+                method: 'POST',
+                headers: { 'x-password': password },
+                body: JSON.stringify(settings)
+            });
+        },
+
+        // WebSocket connection
+        connect() {
+            if (!this.wsUrl || this.ws) return;
+
+            try {
+                this.ws = new WebSocket(this.wsUrl);
+
+                this.ws.onopen = () => {
+                    console.log('WebSocket connected');
+                    this.connected = true;
+                    this.reconnectAttempts = 0;
+
+                    // Identify ourselves
+                    if (currentUser?.username) {
+                        this.identify(currentUser.username);
+                    }
+
+                    // Start heartbeat
+                    this.heartbeatInterval = setInterval(() => {
+                        if (this.ws?.readyState === WebSocket.OPEN) {
+                            this.send({ type: 'heartbeat', username: currentUser?.username });
+                        }
+                    }, 30000);
+
+                    // Update UI
+                    this.updateOnlineIndicator(true);
+                };
+
+                this.ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        this.handleMessage(message);
+                    } catch (err) {
+                        console.warn('WebSocket message parse error:', err);
+                    }
+                };
+
+                this.ws.onclose = () => {
+                    console.log('WebSocket disconnected');
+                    this.connected = false;
+                    this.ws = null;
+                    clearInterval(this.heartbeatInterval);
+                    this.updateOnlineIndicator(false);
+
+                    // Attempt reconnect
+                    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                        this.reconnectAttempts++;
+                        setTimeout(() => this.connect(), 5000 * this.reconnectAttempts);
+                    }
+                };
+
+                this.ws.onerror = (err) => {
+                    console.warn('WebSocket error:', err);
+                };
+            } catch (err) {
+                console.warn('WebSocket connection failed:', err);
+            }
+        },
+
+        send(message) {
+            if (this.ws?.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify(message));
+            }
+        },
+
+        identify(username) {
+            this.send({ type: 'identify', username });
+        },
+
+        notifyStarEarned(username, starType, scenarioTopic) {
+            this.send({
+                type: 'star_earned',
+                username,
+                star_type: starType,
+                scenario_topic: scenarioTopic
+            });
+        },
+
+        handleMessage(message) {
+            switch (message.type) {
+                case 'presence_snapshot':
+                    this.onlineUsers = message.users || [];
+                    this.updatePresenceDisplay();
+                    break;
+
+                case 'user_online':
+                    if (!this.onlineUsers.includes(message.username)) {
+                        this.onlineUsers.push(message.username);
+                    }
+                    this.updatePresenceDisplay();
+                    break;
+
+                case 'user_offline':
+                    this.onlineUsers = this.onlineUsers.filter(u => u !== message.username);
+                    this.updatePresenceDisplay();
+                    break;
+
+                case 'star_earned':
+                    // Don't show notification for own stars
+                    if (message.username !== currentUser?.username) {
+                        this.showStarNotification(message.username, message.star_type, message.scenario_topic);
+                    }
+                    break;
+
+                case 'leaderboard_update':
+                    // Refresh leaderboard if it's open
+                    if (typeof refreshLeaderboard === 'function') {
+                        refreshLeaderboard();
+                    }
+                    break;
+            }
+        },
+
+        updateOnlineIndicator(connected) {
+            const indicator = document.querySelector('#user-display .bg-green-400, #user-display .bg-gray-400');
+            if (indicator) {
+                if (connected) {
+                    indicator.className = 'w-2 h-2 bg-green-400 rounded-full animate-pulse';
+                } else {
+                    indicator.className = 'w-2 h-2 bg-gray-400 rounded-full';
+                }
+            }
+        },
+
+        updatePresenceDisplay() {
+            // Could add a presence counter to header later
+            console.log('Online users:', this.onlineUsers);
+        },
+
+        showStarNotification(username, starType, scenarioTopic) {
+            const starEmoji = {
+                gold: '⭐',
+                silver: '🥈',
+                bronze: '🥉',
+                tin: '○'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-20 right-4 bg-white rounded-lg shadow-xl p-4 z-50 animate-slide-in border-l-4 border-yellow-400';
+            toast.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">${starEmoji[starType] || '⭐'}</span>
+                    <div>
+                        <div class="font-medium text-gray-800">${username} earned a ${starType} star!</div>
+                        <div class="text-sm text-gray-500">on "${scenarioTopic}"</div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(toast);
+
+            // Auto-dismiss after 4 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                toast.style.transition = 'all 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        },
+
+        disconnect() {
+            if (this.ws) {
+                this.ws.close();
+                this.ws = null;
+            }
+            clearInterval(this.heartbeatInterval);
+        }
+    };
+
+    // ============== LEADERBOARD CONTROLLER ==============
+    const leaderboard = {
+        panel: null,
+        backdrop: null,
+        list: null,
+        loading: null,
+        empty: null,
+        offline: null,
+        currentPeriod: 'all',
+        isOpen: false,
+
+        init() {
+            this.panel = document.getElementById('leaderboard-panel');
+            this.backdrop = document.getElementById('leaderboard-backdrop');
+            this.list = document.getElementById('leaderboard-list');
+            this.loading = document.getElementById('leaderboard-loading');
+            this.empty = document.getElementById('leaderboard-empty');
+            this.offline = document.getElementById('leaderboard-offline');
+
+            // Open button
+            document.getElementById('leaderboard-btn').addEventListener('click', () => this.open());
+
+            // Close button
+            document.getElementById('close-leaderboard').addEventListener('click', () => this.close());
+
+            // Backdrop click
+            this.backdrop.addEventListener('click', () => this.close());
+
+            // Period buttons
+            document.querySelectorAll('.leaderboard-period-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    this.currentPeriod = btn.dataset.period;
+                    this.updatePeriodButtons();
+                    this.refresh();
+                });
+            });
+        },
+
+        open() {
+            this.isOpen = true;
+            this.panel.classList.remove('translate-x-full');
+            this.backdrop.classList.remove('hidden');
+            this.refresh();
+        },
+
+        close() {
+            this.isOpen = false;
+            this.panel.classList.add('translate-x-full');
+            this.backdrop.classList.add('hidden');
+        },
+
+        updatePeriodButtons() {
+            document.querySelectorAll('.leaderboard-period-btn').forEach(btn => {
+                if (btn.dataset.period === this.currentPeriod) {
+                    btn.className = 'leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-yellow-400 text-white border border-yellow-400';
+                } else {
+                    btn.className = 'leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400';
+                }
+            });
+        },
+
+        async refresh() {
+            // Show loading
+            this.loading.classList.remove('hidden');
+            this.list.classList.add('hidden');
+            this.empty.classList.add('hidden');
+            this.offline.classList.add('hidden');
+
+            // Check if server is configured
+            if (!RAILWAY_URL) {
+                this.loading.classList.add('hidden');
+                this.offline.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const data = await railwayClient.getLeaderboard(this.currentPeriod, 20);
+
+                this.loading.classList.add('hidden');
+
+                if (!data || data.length === 0) {
+                    this.empty.classList.remove('hidden');
+                    return;
+                }
+
+                this.renderList(data);
+                this.list.classList.remove('hidden');
+            } catch (err) {
+                console.error('Failed to load leaderboard:', err);
+                this.loading.classList.add('hidden');
+                this.offline.classList.remove('hidden');
+            }
+        },
+
+        renderList(data) {
+            this.list.innerHTML = '';
+
+            data.forEach((entry, index) => {
+                const rank = index + 1;
+                const isCurrentUser = entry.username === currentUser?.username;
+
+                const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                const rankClass = rank <= 3 ? 'text-2xl' : 'text-lg font-bold text-gray-400';
+
+                const el = document.createElement('div');
+                el.className = `p-4 rounded-xl ${isCurrentUser ? 'bg-purple-50 border-2 border-purple-300' : 'bg-gray-50'} ${rank <= 3 ? 'shadow-md' : ''}`;
+
+                el.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="${rankClass} w-10 text-center">${rankIcon}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold text-gray-800 truncate">${entry.username}</span>
+                                ${isCurrentUser ? '<span class="text-xs bg-purple-200 text-purple-700 px-2 py-0.5 rounded-full">YOU</span>' : ''}
+                            </div>
+                            ${entry.real_name ? `<div class="text-xs text-gray-500">${entry.real_name}</div>` : ''}
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg font-bold text-yellow-600">${entry.weighted_score} pts</div>
+                            <div class="text-xs text-gray-500 flex gap-1 justify-end">
+                                ${entry.gold > 0 ? `<span>⭐${entry.gold}</span>` : ''}
+                                ${entry.silver > 0 ? `<span>🥈${entry.silver}</span>` : ''}
+                                ${entry.bronze > 0 ? `<span>🥉${entry.bronze}</span>` : ''}
+                                ${entry.tin > 0 ? `<span>○${entry.tin}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                this.list.appendChild(el);
+            });
+        }
+    };
+
+    // Global function for WebSocket callback
+    function refreshLeaderboard() {
+        if (leaderboard.isOpen) {
+            leaderboard.refresh();
+        }
+    }
 
     // ============== SCENARIO GENERATOR ==============
     class ScenarioGenerator {
@@ -1294,7 +1803,7 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
         db.meta.put({ key: 'stars', value: starCounts }).catch(e => console.warn('Dexie stars save failed:', e));
     }
 
-    // Save progress record to IndexedDB (called after grading)
+    // Save progress record to IndexedDB and cloud (called after grading)
     async function saveProgressRecord(scenario, results, allCorrect, hintsUsed, starType) {
         try {
             const identity = await dbHelpers.getIdentity();
@@ -1322,8 +1831,19 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
                 ai_provider: results.ai?._aiProvider || null
             };
 
+            // Save locally
             await dbHelpers.saveProgress(progressData);
             console.log('Progress saved to IndexedDB:', progressData);
+
+            // Sync to cloud if connected
+            if (RAILWAY_URL) {
+                railwayClient.saveProgress(progressData);
+
+                // Notify others of star earned via WebSocket
+                if (starType) {
+                    railwayClient.notifyStarEarned(username, starType, scenario.topic);
+                }
+            }
         } catch (err) {
             console.error('Failed to save progress:', err);
         }
@@ -1787,6 +2307,9 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
         // Initialize username modal and check if we need to show it
         usernameModal.init();
         await usernameModal.checkAndShow();
+
+        // Initialize leaderboard
+        leaderboard.init();
 
         // AI toggle button
         document.getElementById('ai-toggle').addEventListener('click', () => {
