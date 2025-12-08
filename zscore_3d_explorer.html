@@ -241,7 +241,7 @@
             }
         };
 
-        // If URL params exist, create synthetic dataset
+        // If URL params exist, use passed data or create synthetic dataset
         if (hasUrlData) {
             const topic = urlParams.get('topic') || 'Custom Scenario';
             const xVar = urlParams.get('xVar') || 'x';
@@ -254,7 +254,20 @@
             const xMin = parseFloat(urlParams.get('xMin')) || 0;
             const xMax = parseFloat(urlParams.get('xMax')) || 100;
 
-            const syntheticPoints = generateSyntheticData(slope, intercept, r, xMin, xMax, 12);
+            // Use passed data points if available, otherwise generate new ones
+            let dataPoints;
+            const passedData = urlParams.get('data');
+            if (passedData) {
+                try {
+                    dataPoints = JSON.parse(passedData);
+                    console.log('Using data points from LSRL Trainer:', dataPoints);
+                } catch (e) {
+                    console.warn('Failed to parse passed data, generating new:', e);
+                    dataPoints = generateSyntheticData(slope, intercept, r, xMin, xMax, 12);
+                }
+            } else {
+                dataPoints = generateSyntheticData(slope, intercept, r, xMin, xMax, 12);
+            }
 
             classData = {
                 synthetic: {
@@ -263,7 +276,7 @@
                     yLabel: `${yVar} (${yUnits})`,
                     xUnit: xUnits,
                     yUnit: yUnits,
-                    raw: syntheticPoints,
+                    raw: dataPoints,
                     targetR: r,
                     targetSlope: slope,
                     targetIntercept: intercept
