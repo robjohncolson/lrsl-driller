@@ -320,9 +320,16 @@
     <!-- Username Modal (shown on first visit) -->
     <div id="username-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-            <div class="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-4">
-                <h2 class="text-xl font-bold text-white">Welcome to LSRL Trainer!</h2>
-                <p class="text-purple-100 text-sm mt-1">Choose a username to track your progress</p>
+            <div class="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-4 flex items-center justify-between">
+                <div>
+                    <h2 id="username-modal-title" class="text-xl font-bold text-white">Welcome to LSRL Trainer!</h2>
+                    <p id="username-modal-subtitle" class="text-purple-100 text-sm mt-1">Choose a username to track your progress</p>
+                </div>
+                <button id="close-username-modal" class="p-2 hover:bg-white/20 rounded-full transition-colors hidden" title="Close">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
             </div>
 
             <div class="p-6">
@@ -616,15 +623,54 @@
             // Submit button
             this.submitBtn.addEventListener('click', () => this.submit());
 
+            // Close button (only visible when reopening, not on first visit)
+            document.getElementById('close-username-modal').addEventListener('click', () => {
+                this.hide();
+            });
+
             // User display click (re-open modal)
             document.getElementById('user-display').addEventListener('click', () => {
-                this.show();
+                this.show(true); // true = reopening (show close button)
             });
         },
 
-        show() {
+        async show(isReopen = false) {
             this.modal.classList.remove('hidden');
             this.errorEl.classList.add('hidden');
+
+            const closeBtn = document.getElementById('close-username-modal');
+            const title = document.getElementById('username-modal-title');
+            const subtitle = document.getElementById('username-modal-subtitle');
+
+            if (isReopen && currentUser) {
+                // Show close button and change title when reopening
+                closeBtn.classList.remove('hidden');
+                title.textContent = 'Switch Account';
+                subtitle.textContent = `Currently: ${currentUser.username}`;
+            } else {
+                // First visit - hide close button
+                closeBtn.classList.add('hidden');
+                title.textContent = 'Welcome to LSRL Trainer!';
+                subtitle.textContent = 'Choose a username to track your progress';
+            }
+
+            // Refresh user list from server
+            await this.loadUserList();
+        },
+
+        async loadUserList() {
+            if (!RAILWAY_URL) return;
+
+            const users = await railwayClient.getUsers();
+            if (users && Array.isArray(users)) {
+                this.existingSelect.innerHTML = '<option value="">Select your username...</option>';
+                for (const user of users) {
+                    const option = document.createElement('option');
+                    option.value = user.username;
+                    option.textContent = user.real_name ? `${user.username} (${user.real_name})` : user.username;
+                    this.existingSelect.appendChild(option);
+                }
+            }
         },
 
         hide() {
@@ -709,20 +755,6 @@
         },
 
         async checkAndShow() {
-            // Load existing users from server for dropdown
-            if (RAILWAY_URL) {
-                const users = await railwayClient.getUsers();
-                if (users && Array.isArray(users)) {
-                    this.existingSelect.innerHTML = '<option value="">Select your username...</option>';
-                    for (const user of users) {
-                        const option = document.createElement('option');
-                        option.value = user.username;
-                        option.textContent = user.real_name ? `${user.username} (${user.real_name})` : user.username;
-                        this.existingSelect.appendChild(option);
-                    }
-                }
-            }
-
             // Check if user already has identity
             const identity = await dbHelpers.getIdentity();
             if (identity?.username) {
@@ -732,8 +764,8 @@
                 // Connect WebSocket
                 railwayClient.connect();
             } else {
-                // First visit - show modal
-                this.show();
+                // First visit - show modal (will also load user list)
+                await this.show(false);
             }
         }
     };
