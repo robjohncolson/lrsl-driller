@@ -1680,6 +1680,66 @@
             localStorage.setItem('groqApiKey', groqKey);
         }
 
+        // Robust JSON extraction that handles malformed AI responses
+        extractAndParseJSON(text) {
+            // First try direct parsing
+            try {
+                const jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    return JSON.parse(jsonMatch[0]);
+                }
+            } catch (e) {
+                console.log('Direct JSON parse failed, attempting repair...');
+            }
+
+            // Try to extract and repair JSON
+            try {
+                const jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) return null;
+
+                let jsonStr = jsonMatch[0];
+
+                // Common fixes for LLM JSON issues:
+                // 1. Replace smart quotes with regular quotes
+                jsonStr = jsonStr.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
+
+                // 2. Fix unescaped quotes in string values by finding patterns like "feedback": "...unescaped"quote..."
+                // This is a simplified fix - escape quotes that appear mid-string
+                jsonStr = jsonStr.replace(/"feedback":\s*"([^}]+?)"/g, (match, content) => {
+                    // Escape any unescaped quotes within the feedback content
+                    const escaped = content.replace(/(?<!\\)"/g, '\\"');
+                    return `"feedback": "${escaped}"`;
+                });
+
+                // 3. Remove trailing commas before closing braces
+                jsonStr = jsonStr.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+
+                // 4. Try parsing again
+                return JSON.parse(jsonStr);
+            } catch (e) {
+                console.error('JSON repair failed:', e);
+
+                // Last resort: try to build a valid structure from regex extraction
+                try {
+                    const slopeMatch = text.match(/"slope":\s*\{\s*"score":\s*"([EPI])"/);
+                    const interceptMatch = text.match(/"intercept":\s*\{\s*"score":\s*"([EPI])"/);
+                    const correlationMatch = text.match(/"correlation":\s*\{\s*"score":\s*"([EPI])"/);
+
+                    if (slopeMatch && interceptMatch && correlationMatch) {
+                        return {
+                            slope: { score: slopeMatch[1], feedback: 'AI feedback parsing error - score extracted.' },
+                            intercept: { score: interceptMatch[1], feedback: 'AI feedback parsing error - score extracted.' },
+                            correlation: { score: correlationMatch[1], feedback: 'AI feedback parsing error - score extracted.' }
+                        };
+                    }
+                } catch (e2) {
+                    console.error('Fallback extraction failed:', e2);
+                }
+
+                return null;
+            }
+        }
+
         async grade(scenario, answers) {
             // Always run keyword grading
             const keywordResult = this.gradeWithRegex(scenario, answers);
@@ -2135,16 +2195,12 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
             const text = data.candidates[0].content.parts[0].text;
             console.log('Gemini response:', text);
 
-            // Extract JSON from response
-            const jsonMatch = text.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]);
-                if (parsed.slope && parsed.intercept && parsed.correlation) {
-                    return parsed;
-                }
-                throw new Error('Gemini: Invalid response structure');
+            // Extract JSON from response using robust parser
+            const parsed = this.extractAndParseJSON(text);
+            if (parsed && parsed.slope && parsed.intercept && parsed.correlation) {
+                return parsed;
             }
-            throw new Error('Gemini: No JSON in response');
+            throw new Error('Gemini: Invalid response structure');
         }
 
         async callGroq(prompt) {
@@ -2178,16 +2234,12 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
             const text = data.choices[0].message.content;
             console.log('Groq response:', text);
 
-            // Extract JSON from response
-            const jsonMatch = text.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]);
-                if (parsed.slope && parsed.intercept && parsed.correlation) {
-                    return parsed;
-                }
-                throw new Error('Groq: Invalid response structure');
+            // Extract JSON from response using robust parser
+            const parsed = this.extractAndParseJSON(text);
+            if (parsed && parsed.slope && parsed.intercept && parsed.correlation) {
+                return parsed;
             }
-            throw new Error('Groq: No JSON in response');
+            throw new Error('Groq: Invalid response structure');
         }
 
         // ============== PARAGRAPH MODE GRADING ==============
