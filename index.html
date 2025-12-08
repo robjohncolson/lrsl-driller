@@ -93,6 +93,26 @@
                             <span class="text-stone-400">★</span>
                             <span id="tin-count" class="font-bold text-stone-500 bg-stone-200 px-1.5 py-0.5 rounded text-xs">0</span>
                         </span>
+                        <!-- Tier 2 Stars (hidden until unlocked) -->
+                        <div id="tier2-stars" class="hidden flex items-center gap-1 ml-2 pl-2 border-l border-gray-300">
+                            <span class="text-xs text-purple-600 font-medium">T2:</span>
+                            <span class="flex items-center gap-0.5" title="Paragraph Gold">
+                                <span class="text-yellow-400">★</span>
+                                <span id="gold-count-t2" class="font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded text-xs">0</span>
+                            </span>
+                            <span class="flex items-center gap-0.5" title="Paragraph Silver">
+                                <span class="text-gray-400">★</span>
+                                <span id="silver-count-t2" class="font-bold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded text-xs">0</span>
+                            </span>
+                            <span class="flex items-center gap-0.5" title="Paragraph Bronze">
+                                <span class="text-amber-600">★</span>
+                                <span id="bronze-count-t2" class="font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded text-xs">0</span>
+                            </span>
+                            <span class="flex items-center gap-0.5" title="Paragraph Tin">
+                                <span class="text-stone-400">★</span>
+                                <span id="tin-count-t2" class="font-bold text-stone-500 bg-stone-200 px-1.5 py-0.5 rounded text-xs">0</span>
+                            </span>
+                        </div>
                         <!-- Tooltip popup -->
                         <div class="absolute left-0 top-full mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                             <div class="font-bold mb-2">How to Earn Stars</div>
@@ -109,17 +129,22 @@
                             <div class="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-1">
+                    <div class="streak-3part flex items-center gap-1">
                         <span class="text-gray-500">Slope:</span>
                         <span id="slope-streak" class="font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded">0</span>
                     </div>
-                    <div class="flex items-center gap-1">
+                    <div class="streak-3part flex items-center gap-1">
                         <span class="text-gray-500">Intercept:</span>
                         <span id="intercept-streak" class="font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">0</span>
                     </div>
-                    <div class="flex items-center gap-1">
+                    <div class="streak-3part flex items-center gap-1">
                         <span class="text-gray-500">Correlation:</span>
                         <span id="correlation-streak" class="font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded">0</span>
+                    </div>
+                    <!-- Paragraph Streak (hidden until paragraph mode active) -->
+                    <div id="paragraph-streak-display" class="hidden flex items-center gap-1">
+                        <span class="text-gray-500">Paragraph:</span>
+                        <span id="paragraph-streak" class="font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded">0</span>
                     </div>
                 </div>
                 <!-- Online Users Indicator -->
@@ -247,8 +272,20 @@
 
         </div>
 
-        <!-- Input Section -->
-        <div class="space-y-4 mb-6">
+        <!-- Mode Tabs (hidden until unlocked) -->
+        <div id="mode-tabs" class="hidden flex justify-center mb-4">
+            <div class="bg-gray-100 rounded-lg p-1 flex gap-1">
+                <button id="mode-3part" class="px-4 py-2 rounded-md text-sm font-medium bg-white shadow text-purple-700 transition-all">
+                    3-Part
+                </button>
+                <button id="mode-paragraph" class="px-4 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-800 transition-all">
+                    Full Paragraph
+                </button>
+            </div>
+        </div>
+
+        <!-- 3-Part Input Section -->
+        <div id="three-part-section" class="space-y-4 mb-6">
             <!-- Slope Interpretation -->
             <div id="slope-card" class="bg-white rounded-xl shadow-lg p-5 feedback-card">
                 <div class="flex items-center justify-between mb-2">
@@ -300,6 +337,26 @@
                     <strong>Sentence Frame:</strong> "There is a [weak/moderate/strong], [positive/negative], linear relationship between [x-variable] and [y-variable]."
                 </div>
                 <div id="correlation-feedback" class="mt-3 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Paragraph Input Section (hidden by default) -->
+        <div id="paragraph-section" class="hidden mb-6">
+            <div id="paragraph-card" class="bg-white rounded-xl shadow-lg p-5 feedback-card">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="font-semibold text-purple-700">Full LSRL Conclusion</label>
+                    <button class="hint-toggle text-gray-400 hover:text-purple-600 transition-colors" data-target="paragraph-hint">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <textarea id="paragraph-input" class="w-full border border-gray-300 rounded-lg p-3 h-48 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all" placeholder="Write your complete LSRL conclusion paragraph here. Include interpretations of the slope, y-intercept, and correlation coefficient."></textarea>
+                <div id="paragraph-hint" class="hint-text text-sm text-gray-500 bg-gray-50 rounded p-4 mt-3 leading-relaxed">
+                    <strong>Paragraph Frame:</strong><br><br>
+                    "For every increase of 1 [x-unit], the predicted [y-variable] increases/decreases by [|b|] [y-units], on average. When [x-variable] is 0 [x-units], the predicted [y-variable] is [a] [y-units]. <em>(Or: The y-intercept has no meaningful interpretation because [x=0 is impossible/outside the domain].)</em> There is a [weak/moderate/strong], [positive/negative], linear relationship between [x-variable] and [y-variable]."
+                </div>
+                <div id="paragraph-feedback" class="mt-3 hidden"></div>
             </div>
         </div>
 
@@ -2132,6 +2189,113 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
             }
             throw new Error('Groq: No JSON in response');
         }
+
+        // ============== PARAGRAPH MODE GRADING ==============
+        async gradeParagraph(scenario, paragraph) {
+            // Run keyword grading on the full paragraph for each component
+            const keywordResult = {
+                slope: this.gradeSlopeRegex(scenario, paragraph),
+                intercept: this.gradeInterceptRegex(scenario, paragraph),
+                correlation: this.gradeCorrelationRegex(scenario, paragraph),
+                _gradingMode: 'regex'
+            };
+
+            // Also run AI grading if available
+            let aiResult = null;
+            if (this.apiProvider !== 'none' && this.apiKey) {
+                try {
+                    aiResult = await this.gradeParagraphWithAI(scenario, paragraph);
+                } catch (error) {
+                    console.error('AI paragraph grading failed:', error);
+                    aiResult = { _error: error.message };
+                }
+            }
+
+            return {
+                keyword: keywordResult,
+                ai: aiResult,
+                _hasAI: !!aiResult && !aiResult._error
+            };
+        }
+
+        async gradeParagraphWithAI(scenario, paragraph) {
+            const prompt = this.buildParagraphPrompt(scenario, paragraph);
+
+            try {
+                let result;
+                if (this.apiProvider === 'gemini') {
+                    result = await this.callGemini(prompt);
+                } else if (this.apiProvider === 'groq') {
+                    result = await this.callGroq(prompt);
+                }
+
+                if (result) {
+                    result._gradingMode = 'ai';
+                    result._aiProvider = this.apiProvider;
+                    return result;
+                }
+                throw new Error('Empty result from AI');
+            } catch (error) {
+                console.error('AI grading failed:', error);
+                return { _error: error.message || 'Unknown error' };
+            }
+        }
+
+        buildParagraphPrompt(scenario, paragraph) {
+            const direction = scenario.slope > 0 ? 'increases' : 'decreases';
+            const rDirection = scenario.r > 0 ? 'positive' : 'negative';
+            const absR = Math.abs(scenario.r);
+            const strength = absR < 0.4 ? 'weak' : absR < 0.7 ? 'moderate' : 'strong';
+            const slopeAbs = Math.abs(scenario.slope);
+
+            return `You are an AP Statistics grader. Grade this SINGLE PARAGRAPH that should contain interpretations for slope, y-intercept, and correlation.
+BE LENIENT - focus on conceptual understanding, not exact wording.
+
+CONTEXT:
+- Topic: ${scenario.topic}
+- X variable: ${scenario.xVar} (${scenario.xUnits})
+- Y variable: ${scenario.yVar} (${scenario.yUnits})
+- Regression equation: ŷ = ${scenario.intercept} + ${scenario.slope}x
+- Correlation: r = ${scenario.r}
+- Y-intercept meaningful: ${scenario.isInterceptMeaningful ? 'Yes' : 'No - ' + scenario.interceptReason}
+
+STUDENT'S PARAGRAPH:
+"${paragraph}"
+
+YOUR TASK:
+1. Identify the three components in the paragraph: slope interpretation, y-intercept interpretation, and correlation interpretation
+2. Grade each component using E/P/I scoring based on these rubrics:
+
+SLOPE must include:
+- "Predicted" or "on average" (MANDATORY)
+- Correct direction: "${direction}"
+- Slope value: ${slopeAbs}
+- Both variables in context
+- "For every 1 [unit]" phrasing
+
+Y-INTERCEPT:
+${scenario.isInterceptMeaningful
+    ? `- Reference x=0, use "predicted"/"predicts", include value ${scenario.intercept}, name y-variable`
+    : `- Must state NO meaningful interpretation and explain why (${scenario.interceptReason})`}
+
+CORRELATION must include:
+- Word "linear" (MANDATORY)
+- Direction: "${rDirection}"
+- Strength: "${strength}" (|r|=${absR.toFixed(2)})
+- Both variables
+- "relationship" or "association"
+
+AUTOMATIC FAILURES: "causes", "proves" = Incorrect
+
+Respond with ONLY this JSON (no other text):
+{
+  "slope": {"score": "E", "feedback": "..."},
+  "intercept": {"score": "P", "feedback": "..."},
+  "correlation": {"score": "I", "feedback": "..."}
+}
+
+Score meanings: E=Essentially Correct (all key elements), P=Partially Correct (some elements), I=Incorrect (major errors/missing)`;
+        }
     }
 
     // ============== EXACT SYNTHETIC DATA GENERATOR ==============
@@ -2253,16 +2417,31 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
         gold: 0, silver: 0, bronze: 0, tin: 0
     };
 
+    // Tier 2 (Paragraph Mode) state
+    let starCountsTier2 = JSON.parse(localStorage.getItem('lsrlStarCountsTier2')) || {
+        gold: 0, silver: 0, bronze: 0, tin: 0
+    };
+    let paragraphStreak = parseInt(localStorage.getItem('lsrlParagraphStreak')) || 0;
+    let currentMode = '3-part'; // '3-part' or 'paragraph'
+    let paragraphModeUnlocked = false; // derived from starCounts.gold >= 7
+
     function updateStreakDisplay() {
         document.getElementById('slope-streak').textContent = streaks.slope;
         document.getElementById('intercept-streak').textContent = streaks.intercept;
         document.getElementById('correlation-streak').textContent = streaks.correlation;
+        document.getElementById('paragraph-streak').textContent = paragraphStreak;
 
-        // Update star counts
+        // Update star counts (Tier 1)
         document.getElementById('gold-count').textContent = starCounts.gold;
         document.getElementById('silver-count').textContent = starCounts.silver;
         document.getElementById('bronze-count').textContent = starCounts.bronze;
         document.getElementById('tin-count').textContent = starCounts.tin;
+
+        // Update star counts (Tier 2)
+        document.getElementById('gold-count-t2').textContent = starCountsTier2.gold;
+        document.getElementById('silver-count-t2').textContent = starCountsTier2.silver;
+        document.getElementById('bronze-count-t2').textContent = starCountsTier2.bronze;
+        document.getElementById('tin-count-t2').textContent = starCountsTier2.tin;
 
         // Update rank display
         updateRankDisplay();
@@ -2472,10 +2651,14 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
     function saveStreaks() {
         localStorage.setItem('lsrlStreaks', JSON.stringify(streaks));
         localStorage.setItem('lsrlStarCounts', JSON.stringify(starCounts));
+        localStorage.setItem('lsrlStarCountsTier2', JSON.stringify(starCountsTier2));
+        localStorage.setItem('lsrlParagraphStreak', paragraphStreak);
 
         // Also save to IndexedDB for better persistence
         db.meta.put({ key: 'streaks', value: streaks }).catch(e => console.warn('Dexie streaks save failed:', e));
         db.meta.put({ key: 'stars', value: starCounts }).catch(e => console.warn('Dexie stars save failed:', e));
+        db.meta.put({ key: 'starsTier2', value: starCountsTier2 }).catch(e => console.warn('Dexie tier2 stars save failed:', e));
+        db.meta.put({ key: 'paragraphStreak', value: paragraphStreak }).catch(e => console.warn('Dexie paragraph streak save failed:', e));
     }
 
     // Save progress record to IndexedDB and cloud (called after grading)
@@ -2571,6 +2754,85 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
 
             // Remove confetti after animation
             setTimeout(() => confetti.remove(), 4000);
+        }
+    }
+
+    // ============== PARAGRAPH MODE FUNCTIONS ==============
+    function checkParagraphModeUnlock() {
+        const wasUnlocked = paragraphModeUnlocked;
+        paragraphModeUnlocked = starCounts.gold >= 7;
+
+        if (paragraphModeUnlocked) {
+            document.getElementById('mode-tabs').classList.remove('hidden');
+            document.getElementById('tier2-stars').classList.remove('hidden');
+
+            // First-time unlock celebration
+            if (!wasUnlocked && !localStorage.getItem('paragraphModeUnlockShown')) {
+                showParagraphUnlockCelebration();
+                localStorage.setItem('paragraphModeUnlockShown', 'true');
+            }
+        }
+    }
+
+    function showParagraphUnlockCelebration() {
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-1/3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl shadow-2xl p-6 z-50 text-center pointer-events-none';
+        toast.innerHTML = `
+            <div class="text-5xl mb-3">🎓</div>
+            <div class="text-xl font-bold mb-1">Paragraph Mode Unlocked!</div>
+            <div class="text-purple-100">You've earned 7 gold stars. Try writing full conclusions!</div>
+        `;
+        document.body.appendChild(toast);
+        celebrate();
+        soundEngine.init();
+        soundEngine.rankUp();
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'all 0.5s ease-out';
+            setTimeout(() => toast.remove(), 500);
+        }, 4000);
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        const is3Part = mode === '3-part';
+
+        // Toggle input sections
+        document.getElementById('three-part-section').classList.toggle('hidden', !is3Part);
+        document.getElementById('paragraph-section').classList.toggle('hidden', is3Part);
+
+        // Toggle streak displays (show 3-part streaks or paragraph streak)
+        document.querySelectorAll('.streak-3part').forEach(el => el.classList.toggle('hidden', !is3Part));
+        document.getElementById('paragraph-streak-display').classList.toggle('hidden', is3Part);
+
+        // Update tab styling
+        const tab3Part = document.getElementById('mode-3part');
+        const tabParagraph = document.getElementById('mode-paragraph');
+
+        if (is3Part) {
+            tab3Part.classList.add('bg-white', 'shadow', 'text-purple-700');
+            tab3Part.classList.remove('text-gray-600');
+            tabParagraph.classList.remove('bg-white', 'shadow', 'text-purple-700');
+            tabParagraph.classList.add('text-gray-600');
+        } else {
+            tabParagraph.classList.add('bg-white', 'shadow', 'text-purple-700');
+            tabParagraph.classList.remove('text-gray-600');
+            tab3Part.classList.remove('bg-white', 'shadow', 'text-purple-700');
+            tab3Part.classList.add('text-gray-600');
+        }
+
+        // Reset hint tracking for mode switch
+        hintsOpenedThisScenario = new Set();
+        updateHintStatus();
+
+        // Clear paragraph input when switching modes
+        if (!is3Part) {
+            document.getElementById('paragraph-input').value = '';
+            const feedbackEl = document.getElementById('paragraph-feedback');
+            feedbackEl.classList.add('hidden');
+            feedbackEl.innerHTML = '';
+            document.getElementById('paragraph-card').className = 'bg-white rounded-xl shadow-lg p-5 feedback-card';
         }
     }
 
@@ -2684,6 +2946,7 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
         document.getElementById('slope-input').value = '';
         document.getElementById('intercept-input').value = '';
         document.getElementById('correlation-input').value = '';
+        document.getElementById('paragraph-input').value = '';
 
         ['slope', 'intercept', 'correlation'].forEach(type => {
             const feedbackEl = document.getElementById(`${type}-feedback`);
@@ -2691,6 +2954,12 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
             feedbackEl.innerHTML = '';
             document.getElementById(`${type}-card`).className = 'bg-white rounded-xl shadow-lg p-5 feedback-card';
         });
+
+        // Also clear paragraph feedback
+        const paragraphFeedback = document.getElementById('paragraph-feedback');
+        paragraphFeedback.classList.add('hidden');
+        paragraphFeedback.innerHTML = '';
+        document.getElementById('paragraph-card').className = 'bg-white rounded-xl shadow-lg p-5 feedback-card';
 
         // Show grade button, hide other buttons
         showButton('grade-btn', true);
@@ -2760,6 +3029,201 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
 
         gradeBtn.disabled = false;
         gradeBtn.textContent = 'Grade My Conclusion';
+    }
+
+    async function gradeAnswersParagraph() {
+        const paragraph = document.getElementById('paragraph-input').value;
+
+        // Validate input
+        if (!paragraph.trim()) {
+            alert('Please write your conclusion paragraph before grading.');
+            return;
+        }
+
+        // Disable grade button during grading
+        const gradeBtn = document.getElementById('grade-btn');
+        gradeBtn.disabled = true;
+        gradeBtn.textContent = 'Grading...';
+
+        try {
+            const results = await grader.gradeParagraph(currentScenario, paragraph);
+            displayResultsParagraph(results);
+        } catch (error) {
+            console.error('Paragraph grading error:', error);
+            alert('An error occurred while grading. Please try again.');
+        }
+
+        gradeBtn.disabled = false;
+        gradeBtn.textContent = 'Grade My Conclusion';
+    }
+
+    function displayResultsParagraph(results) {
+        const scoreColors = {
+            'E': { bg: 'bg-green-50', border: 'border-green-500', text: 'text-green-700', label: 'Essentially Correct', icon: '✓' },
+            'P': { bg: 'bg-yellow-50', border: 'border-yellow-500', text: 'text-yellow-700', label: 'Partially Correct', icon: '△' },
+            'I': { bg: 'bg-red-50', border: 'border-red-500', text: 'text-red-700', label: 'Incorrect', icon: '✗' }
+        };
+
+        const scoreBadge = {
+            'E': 'bg-green-100 text-green-700',
+            'P': 'bg-yellow-100 text-yellow-700',
+            'I': 'bg-red-100 text-red-700'
+        };
+
+        const hasAI = results._hasAI;
+        const aiProviderRaw = results.ai?._aiProvider;
+        const aiProvider = aiProviderRaw === 'gemini' ? 'Gemini' : aiProviderRaw === 'groq' ? 'Groq' : 'AI';
+
+        // Get best scores for each component
+        const scoreOrder = { 'E': 3, 'P': 2, 'I': 1 };
+        const getBestScore = (type) => {
+            const kw = results.keyword[type]?.score || 'I';
+            const ai = results.ai?.[type]?.score;
+            if (ai && scoreOrder[ai] > scoreOrder[kw]) return ai;
+            return kw;
+        };
+
+        const slopeScore = getBestScore('slope');
+        const interceptScore = getBestScore('intercept');
+        const correlationScore = getBestScore('correlation');
+
+        // Calculate composite score
+        const scores = [slopeScore, interceptScore, correlationScore];
+        const eCount = scores.filter(s => s === 'E').length;
+
+        let compositeScore;
+        if (eCount === 3) compositeScore = 'E';
+        else if (eCount >= 1) compositeScore = 'P';
+        else compositeScore = 'I';
+
+        const compositeColors = scoreColors[compositeScore];
+
+        // Build feedback HTML
+        let feedbackHTML = `
+            <div class="mb-4 p-3 rounded-lg ${compositeColors.bg} border-l-4 ${compositeColors.border}">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-lg font-bold ${compositeColors.text}">${compositeColors.icon}</span>
+                    <span class="font-semibold ${compositeColors.text}">Composite: ${compositeColors.label}</span>
+                </div>
+                <div class="flex gap-2 text-sm">
+                    <span class="px-2 py-0.5 rounded ${scoreBadge[slopeScore]}">Slope: ${slopeScore}</span>
+                    <span class="px-2 py-0.5 rounded ${scoreBadge[interceptScore]}">Intercept: ${interceptScore}</span>
+                    <span class="px-2 py-0.5 rounded ${scoreBadge[correlationScore]}">Correlation: ${correlationScore}</span>
+                </div>
+            </div>
+        `;
+
+        // Add detailed feedback for each component
+        ['slope', 'intercept', 'correlation'].forEach(type => {
+            const keywordResult = results.keyword[type];
+            const aiResult = results.ai?.[type];
+            const bestScore = getBestScore(type);
+            const colors = scoreColors[bestScore];
+
+            feedbackHTML += `<div class="mb-3 p-3 bg-gray-50 rounded-lg">
+                <div class="font-medium text-gray-700 mb-1">${type.charAt(0).toUpperCase() + type.slice(1)}:</div>`;
+
+            // Keyword feedback
+            const kwColors = scoreColors[keywordResult.score];
+            feedbackHTML += `
+                <div class="mb-2">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xs font-medium px-2 py-0.5 rounded ${scoreBadge[keywordResult.score]}">Keywords</span>
+                        <span class="text-sm ${kwColors.text}">${kwColors.label}</span>
+                    </div>
+                    <p class="text-xs text-gray-600">${keywordResult.feedback}</p>
+                </div>
+            `;
+
+            // AI feedback (if available)
+            if (hasAI && aiResult) {
+                const aiColors = scoreColors[aiResult.score];
+                feedbackHTML += `
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-medium px-2 py-0.5 rounded bg-purple-100 text-purple-700">${aiProvider}</span>
+                            <span class="text-sm ${aiColors.text}">${aiColors.label}</span>
+                        </div>
+                        <p class="text-xs text-gray-600">${aiResult.feedback}</p>
+                    </div>
+                `;
+            }
+
+            feedbackHTML += `</div>`;
+        });
+
+        // Show feedback
+        const feedbackEl = document.getElementById('paragraph-feedback');
+        feedbackEl.classList.remove('hidden');
+        feedbackEl.innerHTML = feedbackHTML;
+
+        // Update card styling
+        document.getElementById('paragraph-card').className = `${compositeColors.bg} rounded-xl shadow-lg p-5 feedback-card border-l-4 ${compositeColors.border}`;
+
+        // Track hints used and star type
+        const hintsUsed = hintsOpenedThisScenario.size;
+        let starType = null;
+
+        // Check current rank before awarding star
+        const oldRank = getCurrentRank(starCountsTier2);
+
+        // Award tier 2 star if composite is E
+        if (compositeScore === 'E') {
+            if (hintsUsed === 0) {
+                starType = 'gold';
+            } else if (hintsUsed === 1) {
+                starType = 'silver';
+            } else if (hintsUsed === 2) {
+                starType = 'bronze';
+            } else {
+                starType = 'tin';
+            }
+
+            const starEl = document.getElementById(`${starType}-count-t2`);
+            starCountsTier2[starType]++;
+            starEl.textContent = starCountsTier2[starType];
+            starEl.classList.add('streak-pulse');
+            setTimeout(() => starEl.classList.remove('streak-pulse'), 500);
+
+            // Update paragraph streak
+            paragraphStreak++;
+            document.getElementById('paragraph-streak').textContent = paragraphStreak;
+
+            // Play sound effect
+            soundEngine.init();
+            if (starType === 'gold') {
+                soundEngine.goldStar();
+                celebrate();
+            } else if (starType === 'silver') {
+                soundEngine.silverStar();
+            } else if (starType === 'bronze') {
+                soundEngine.bronzeStar();
+            } else {
+                soundEngine.tinStar();
+            }
+
+            console.log(`Awarded Tier 2 ${starType} star! Hints used: ${hintsUsed}`);
+        } else {
+            // Reset paragraph streak on failure
+            paragraphStreak = 0;
+            document.getElementById('paragraph-streak').textContent = paragraphStreak;
+
+            soundEngine.init();
+            soundEngine.incorrect();
+        }
+
+        // Save progress
+        saveStreaks();
+
+        // Show appropriate buttons
+        showButton('grade-btn', false);
+        if (compositeScore === 'E') {
+            showButton('try-again-btn', false);
+            showButton('next-btn', true);
+        } else {
+            showButton('try-again-btn', true);
+            showButton('next-btn', true);
+        }
     }
 
     function displayResults(results) {
@@ -2950,6 +3414,11 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
         updateStreakDisplay();
         saveStreaks();
 
+        // Check if paragraph mode should be unlocked (after gold star)
+        if (starType === 'gold') {
+            checkParagraphModeUnlock();
+        }
+
         // Save progress record to IndexedDB (for cloud sync later)
         saveProgressRecord(currentScenario, results, allCorrect, hintsUsed, starType);
 
@@ -2965,13 +3434,21 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
     }
 
     function tryAgain() {
-        // Clear feedback but keep same scenario and current answers
-        ['slope', 'intercept', 'correlation'].forEach(type => {
-            const feedbackEl = document.getElementById(`${type}-feedback`);
+        if (currentMode === '3-part') {
+            // Clear feedback but keep same scenario and current answers
+            ['slope', 'intercept', 'correlation'].forEach(type => {
+                const feedbackEl = document.getElementById(`${type}-feedback`);
+                feedbackEl.classList.add('hidden');
+                feedbackEl.innerHTML = '';
+                document.getElementById(`${type}-card`).className = 'bg-white rounded-xl shadow-lg p-5 feedback-card';
+            });
+        } else {
+            // Clear paragraph feedback
+            const feedbackEl = document.getElementById('paragraph-feedback');
             feedbackEl.classList.add('hidden');
             feedbackEl.innerHTML = '';
-            document.getElementById(`${type}-card`).className = 'bg-white rounded-xl shadow-lg p-5 feedback-card';
-        });
+            document.getElementById('paragraph-card').className = 'bg-white rounded-xl shadow-lg p-5 feedback-card';
+        }
 
         // Show grade button, hide try again and next
         showButton('grade-btn', true);
@@ -2998,6 +3475,22 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
                 console.log('Loaded stars from IndexedDB:', starCounts);
             }
 
+            // Try to load tier 2 stars from IndexedDB
+            const dbStarsTier2 = await db.meta.get('starsTier2');
+            if (dbStarsTier2?.value) {
+                starCountsTier2 = { ...starCountsTier2, ...dbStarsTier2.value };
+                localStorage.setItem('lsrlStarCountsTier2', JSON.stringify(starCountsTier2));
+                console.log('Loaded tier 2 stars from IndexedDB:', starCountsTier2);
+            }
+
+            // Try to load paragraph streak from IndexedDB
+            const dbParagraphStreak = await db.meta.get('paragraphStreak');
+            if (dbParagraphStreak?.value !== undefined) {
+                paragraphStreak = dbParagraphStreak.value;
+                localStorage.setItem('lsrlParagraphStreak', paragraphStreak);
+                console.log('Loaded paragraph streak from IndexedDB:', paragraphStreak);
+            }
+
             // Update display with potentially restored data
             updateStreakDisplay();
         } catch (err) {
@@ -3014,12 +3507,19 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
         // Then try to restore from IndexedDB (may update display)
         await initFromIndexedDB();
 
+        // Check if paragraph mode should be unlocked
+        checkParagraphModeUnlock();
+
         // Initialize username modal and check if we need to show it
         usernameModal.init();
         await usernameModal.checkAndShow();
 
         // Initialize leaderboard
         leaderboard.init();
+
+        // Mode tab event listeners
+        document.getElementById('mode-3part').addEventListener('click', () => setMode('3-part'));
+        document.getElementById('mode-paragraph').addEventListener('click', () => setMode('paragraph'));
 
         // Online users dropdown toggle
         const onlineBtn = document.getElementById('online-btn');
@@ -3072,8 +3572,14 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
             updateModeToggleUI();
         });
 
-        // Grade button
-        document.getElementById('grade-btn').addEventListener('click', gradeAnswers);
+        // Grade button - checks mode and calls appropriate grading function
+        document.getElementById('grade-btn').addEventListener('click', () => {
+            if (currentMode === '3-part') {
+                gradeAnswers();
+            } else {
+                gradeAnswersParagraph();
+            }
+        });
 
         // Visualize in 3D button
         document.getElementById('visualize-btn').addEventListener('click', openExplorer);
