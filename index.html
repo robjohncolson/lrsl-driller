@@ -107,6 +107,22 @@
                         <span id="correlation-streak" class="font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded">0</span>
                     </div>
                 </div>
+                <!-- Online Users Indicator -->
+                <div id="online-indicator" class="relative">
+                    <button id="online-btn" class="flex items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg transition-colors" title="Online users">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        <span id="online-count" class="text-sm font-medium">0</span>
+                        <span class="text-sm">online</span>
+                    </button>
+                    <!-- Dropdown for online users -->
+                    <div id="online-dropdown" class="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 hidden">
+                        <div class="px-3 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide border-b border-gray-100 mb-1">Online Now</div>
+                        <div id="online-list" class="max-h-48 overflow-y-auto">
+                            <!-- Users will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
                 <!-- User Display -->
                 <div id="user-display" class="flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1 cursor-pointer hover:bg-gray-100 transition-colors" title="Click to change username">
                     <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
@@ -981,8 +997,32 @@
         },
 
         updatePresenceDisplay() {
-            // Could add a presence counter to header later
             console.log('Online users:', this.onlineUsers);
+
+            // Update online count
+            const countEl = document.getElementById('online-count');
+            if (countEl) {
+                countEl.textContent = this.onlineUsers.length;
+            }
+
+            // Update online list dropdown
+            const listEl = document.getElementById('online-list');
+            if (listEl) {
+                if (this.onlineUsers.length === 0) {
+                    listEl.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400 italic">No one else online</div>';
+                } else {
+                    listEl.innerHTML = this.onlineUsers.map(username => {
+                        const isYou = username === currentUser?.username;
+                        return `
+                            <div class="px-3 py-1.5 flex items-center gap-2 ${isYou ? 'bg-purple-50' : 'hover:bg-gray-50'}">
+                                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                <span class="text-sm text-gray-700">${username}</span>
+                                ${isYou ? '<span class="text-xs text-purple-600 ml-auto">(you)</span>' : ''}
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
         },
 
         showStarNotification(username, starType, scenarioTopic) {
@@ -2342,6 +2382,20 @@ For E: list what they got right. For P: list good AND missing. For I: explain er
 
         // Initialize leaderboard
         leaderboard.init();
+
+        // Online users dropdown toggle
+        const onlineBtn = document.getElementById('online-btn');
+        const onlineDropdown = document.getElementById('online-dropdown');
+
+        onlineBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            onlineDropdown.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking elsewhere
+        document.addEventListener('click', () => {
+            onlineDropdown.classList.add('hidden');
+        });
 
         // AI toggle button
         document.getElementById('ai-toggle').addEventListener('click', () => {
