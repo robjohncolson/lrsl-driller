@@ -54,6 +54,49 @@ CREATE TABLE IF NOT EXISTS user_settings (
 );
 
 -- ============================================
+-- API KEYS POOL TABLE (for server-side rotation)
+-- ============================================
+CREATE TABLE IF NOT EXISTS api_keys_pool (
+  id SERIAL PRIMARY KEY,
+  provider TEXT NOT NULL CHECK (provider IN ('gemini', 'groq')),
+  api_key TEXT NOT NULL,
+  contributed_by TEXT REFERENCES users(username) ON DELETE SET NULL,
+  is_active BOOLEAN DEFAULT true,
+  last_used_at TIMESTAMPTZ,
+  rate_limited_until TIMESTAMPTZ,  -- null = not rate limited
+  total_uses INTEGER DEFAULT 0,
+  total_failures INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(provider, api_key)
+);
+
+-- Index for quick lookup of available keys
+CREATE INDEX IF NOT EXISTS idx_api_keys_available ON api_keys_pool(provider, is_active)
+  WHERE is_active = true AND (rate_limited_until IS NULL OR rate_limited_until < NOW());
+
+-- Function to atomically increment key usage
+CREATE OR REPLACE FUNCTION increment_key_uses(key_id INTEGER)
+RETURNS void AS $$
+BEGIN
+  UPDATE api_keys_pool
+  SET total_uses = total_uses + 1,
+      last_used_at = NOW()
+  WHERE id = key_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to atomically increment failures and set rate limit
+CREATE OR REPLACE FUNCTION increment_key_failures(key_id INTEGER, limit_until TIMESTAMPTZ)
+RETURNS void AS $$
+BEGIN
+  UPDATE api_keys_pool
+  SET total_failures = total_failures + 1,
+      rate_limited_until = limit_until
+  WHERE id = key_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================
 -- LEADERBOARD VIEW
 -- ============================================
 CREATE OR REPLACE VIEW leaderboard AS
@@ -138,6 +181,7 @@ $$ LANGUAGE plpgsql;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lsrl_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_keys_pool ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to users (for dropdown list)
 CREATE POLICY "Users are viewable by everyone" ON users
@@ -164,6 +208,16 @@ CREATE POLICY "Anyone can insert settings" ON user_settings
   FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Anyone can update settings" ON user_settings
+  FOR UPDATE USING (true);
+
+-- API keys pool - server needs full access for rotation
+CREATE POLICY "API keys viewable by server" ON api_keys_pool
+  FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can contribute API keys" ON api_keys_pool
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Server can update API keys" ON api_keys_pool
   FOR UPDATE USING (true);
 
 -- ============================================
