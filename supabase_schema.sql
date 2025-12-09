@@ -71,8 +71,8 @@ CREATE TABLE IF NOT EXISTS api_keys_pool (
 );
 
 -- Index for quick lookup of available keys
-CREATE INDEX IF NOT EXISTS idx_api_keys_available ON api_keys_pool(provider, is_active)
-  WHERE is_active = true AND (rate_limited_until IS NULL OR rate_limited_until < NOW());
+CREATE INDEX IF NOT EXISTS idx_api_keys_available ON api_keys_pool(provider, is_active, rate_limited_until)
+  WHERE is_active = true;
 
 -- Function to atomically increment key usage
 CREATE OR REPLACE FUNCTION increment_key_uses(key_id INTEGER)
