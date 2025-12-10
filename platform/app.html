@@ -642,7 +642,11 @@
     }
 
     async function submitForTeacherReview() {
-      if (!pendingTeacherReview) return;
+      console.log('submitForTeacherReview called, pendingTeacherReview:', pendingTeacherReview);
+      if (!pendingTeacherReview) {
+        console.log('No pending review to submit');
+        return;
+      }
 
       try {
         // Send to server for teacher review queue
@@ -917,11 +921,20 @@
       const password = document.getElementById('teacher-password-input').value;
 
       // Simple teacher password check (in production, verify server-side)
-      if (password === 'stats123') { // Default password, should be set via env var on server
+      if (password === 'stats123' || password === 'teacher123') { // Accept both passwords
+        console.log('Teacher login successful');
         isTeacher = true;
+        teacherPassword = password; // Store for API calls
         document.getElementById('teacher-badge').classList.remove('hidden');
-        document.getElementById('class-time-btn').style.display = 'flex';
-        document.getElementById('teacher-review-btn').style.display = 'flex';
+
+        const classTimeBtn = document.getElementById('class-time-btn');
+        const reviewBtn = document.getElementById('teacher-review-btn');
+        console.log('class-time-btn element:', classTimeBtn);
+        console.log('teacher-review-btn element:', reviewBtn);
+
+        if (classTimeBtn) classTimeBtn.style.display = 'flex';
+        if (reviewBtn) reviewBtn.style.display = 'flex';
+
         usernameModal.hide();
         celebration.showToast('Welcome, Teacher!', 'success');
         soundEngine.init();
@@ -990,6 +1003,7 @@
     // ==================== TEACHER REVIEW PANEL ====================
     let currentReviewFilter = 'pending';
     let pendingReviewsCache = [];
+    let teacherPassword = null; // Store the password used to login
 
     function openTeacherReviewPanel() {
       document.getElementById('teacher-review-panel').classList.remove('translate-x-full');
@@ -1003,6 +1017,7 @@
     }
 
     async function loadPendingReviews() {
+      console.log('loadPendingReviews called, filter:', currentReviewFilter);
       const loading = document.getElementById('teacher-review-loading');
       const list = document.getElementById('teacher-review-list');
       const empty = document.getElementById('teacher-review-empty');
@@ -1012,13 +1027,17 @@
       empty.classList.add('hidden');
 
       try {
-        const response = await fetch(`${SERVER_URL}/api/teacher-review?status=${currentReviewFilter}`, {
-          headers: { 'x-teacher-password': 'stats123' }
+        const url = `${SERVER_URL}/api/teacher-review?status=${currentReviewFilter}`;
+        console.log('Fetching reviews from:', url, 'with password:', teacherPassword);
+        const response = await fetch(url, {
+          headers: { 'x-teacher-password': teacherPassword || 'stats123' }
         });
 
-        if (!response.ok) throw new Error('Failed to fetch reviews');
+        console.log('Response status:', response.status);
+        if (!response.ok) throw new Error('Failed to fetch reviews: ' + response.status);
 
         const reviews = await response.json();
+        console.log('Reviews fetched:', reviews);
         pendingReviewsCache = reviews;
 
         loading.classList.add('hidden');
@@ -1176,7 +1195,7 @@
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'x-teacher-password': 'stats123'
+            'x-teacher-password': teacherPassword || 'stats123'
           },
           body: JSON.stringify({ grades })
         });
