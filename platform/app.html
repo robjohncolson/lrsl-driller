@@ -98,6 +98,13 @@
           <span id="rank-points" class="text-xs text-gray-500">0 pts</span>
         </div>
 
+        <!-- Teacher Review Button (Teacher Only) -->
+        <button id="teacher-review-btn" class="hidden flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white px-3 py-1.5 rounded-lg transition-all shadow-md" title="View Student Reviews">
+          <span class="text-lg">📝</span>
+          <span class="text-sm font-medium">Reviews</span>
+          <span id="header-review-count" class="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
+        </button>
+
         <!-- Class Time Button (Teacher Only) -->
         <button id="class-time-btn" class="hidden flex items-center gap-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-1.5 rounded-lg transition-all shadow-md" title="Start Class Time">
           <span class="text-lg">🔔</span>
@@ -434,6 +441,47 @@
     </div>
   </div>
   <div id="leaderboard-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
+  <!-- Teacher Review Panel (Teacher Only) -->
+  <div id="teacher-review-panel" class="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="h-full flex flex-col">
+      <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">📝</span>
+          <h2 class="text-xl font-bold text-white">Student Reviews</h2>
+          <span id="review-count-badge" class="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+        </div>
+        <button id="close-teacher-review-panel" class="p-2 hover:bg-white/20 rounded-full transition-colors">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="px-6 py-3 bg-gray-50 border-b flex justify-between items-center">
+        <div class="flex gap-2">
+          <button id="review-filter-pending" class="review-filter-btn px-3 py-1 text-sm rounded-full bg-purple-600 text-white">Pending</button>
+          <button id="review-filter-reviewed" class="review-filter-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600">Reviewed</button>
+        </div>
+        <button id="refresh-reviews-btn" class="text-purple-600 hover:text-purple-800 text-sm flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Refresh
+        </button>
+      </div>
+      <div id="teacher-review-content" class="flex-1 overflow-y-auto p-4">
+        <div id="teacher-review-loading" class="flex items-center justify-center h-32">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+        </div>
+        <div id="teacher-review-list" class="space-y-4 hidden"></div>
+        <div id="teacher-review-empty" class="text-center text-gray-500 py-8 hidden">
+          <span class="text-4xl block mb-2">✅</span>
+          <p>No pending reviews!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="teacher-review-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
 
   <script type="module">
     import { Platform } from './platform.js';
@@ -873,10 +921,13 @@
         isTeacher = true;
         document.getElementById('teacher-badge').classList.remove('hidden');
         document.getElementById('class-time-btn').classList.remove('hidden');
+        document.getElementById('teacher-review-btn').classList.remove('hidden');
         usernameModal.hide();
         celebration.showToast('Welcome, Teacher!', 'success');
         soundEngine.init();
         loadCartridge(currentCartridgeId);
+        // Load pending reviews
+        loadPendingReviews();
       } else {
         document.getElementById('username-error').textContent = 'Invalid teacher password';
         document.getElementById('username-error').classList.remove('hidden');
@@ -934,6 +985,231 @@
       if (!e.target.closest('#online-indicator')) {
         document.getElementById('online-dropdown').classList.add('hidden');
       }
+    });
+
+    // ==================== TEACHER REVIEW PANEL ====================
+    let currentReviewFilter = 'pending';
+    let pendingReviewsCache = [];
+
+    function openTeacherReviewPanel() {
+      document.getElementById('teacher-review-panel').classList.remove('translate-x-full');
+      document.getElementById('teacher-review-backdrop').classList.remove('hidden');
+      loadPendingReviews();
+    }
+
+    function closeTeacherReviewPanel() {
+      document.getElementById('teacher-review-panel').classList.add('translate-x-full');
+      document.getElementById('teacher-review-backdrop').classList.add('hidden');
+    }
+
+    async function loadPendingReviews() {
+      const loading = document.getElementById('teacher-review-loading');
+      const list = document.getElementById('teacher-review-list');
+      const empty = document.getElementById('teacher-review-empty');
+
+      loading.classList.remove('hidden');
+      list.classList.add('hidden');
+      empty.classList.add('hidden');
+
+      try {
+        const response = await fetch(`${SERVER_URL}/api/teacher-review?status=${currentReviewFilter}`, {
+          headers: { 'x-teacher-password': 'stats123' }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch reviews');
+
+        const reviews = await response.json();
+        pendingReviewsCache = reviews;
+
+        loading.classList.add('hidden');
+
+        if (reviews.length === 0) {
+          empty.classList.remove('hidden');
+          empty.querySelector('p').textContent = currentReviewFilter === 'pending'
+            ? 'No pending reviews!'
+            : 'No reviewed items yet.';
+        } else {
+          list.classList.remove('hidden');
+          renderReviewList(reviews);
+        }
+
+        // Update badge counts
+        if (currentReviewFilter === 'pending') {
+          updateReviewBadge(reviews.length);
+        }
+      } catch (err) {
+        console.error('Failed to load reviews:', err);
+        loading.classList.add('hidden');
+        empty.classList.remove('hidden');
+        empty.querySelector('p').textContent = 'Failed to load reviews.';
+      }
+    }
+
+    function updateReviewBadge(count) {
+      const headerBadge = document.getElementById('header-review-count');
+      const panelBadge = document.getElementById('review-count-badge');
+
+      if (count > 0) {
+        headerBadge.textContent = count;
+        headerBadge.classList.remove('hidden');
+        panelBadge.textContent = count;
+        panelBadge.classList.remove('hidden');
+      } else {
+        headerBadge.classList.add('hidden');
+        panelBadge.classList.add('hidden');
+      }
+    }
+
+    function renderReviewList(reviews) {
+      const list = document.getElementById('teacher-review-list');
+      list.innerHTML = reviews.map(review => {
+        const answers = review.student_answers || {};
+        const context = review.scenario_context || {};
+        const keywordResults = review.keyword_results || {};
+        const teacherGrades = review.teacher_grades || {};
+        const isReviewed = review.status === 'reviewed';
+
+        return `
+          <div class="bg-white border rounded-lg shadow-sm p-4" data-review-id="${review.id}">
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <span class="font-semibold text-gray-800">${review.username}</span>
+                <span class="text-gray-500 text-sm ml-2">${review.scenario_topic}</span>
+              </div>
+              <span class="text-xs text-gray-400">${new Date(review.submitted_at).toLocaleString()}</span>
+            </div>
+
+            <div class="text-sm text-gray-600 mb-3">
+              <div><strong>x:</strong> ${context.xVar || '?'} (${context.xUnits || '?'})</div>
+              <div><strong>y:</strong> ${context.yVar || '?'} (${context.yUnits || '?'})</div>
+              <div><strong>Equation:</strong> ŷ = ${context.intercept || '?'} + ${context.slope || '?'}x</div>
+              <div><strong>r:</strong> ${context.r || '?'}</div>
+            </div>
+
+            <div class="space-y-3">
+              ${['slope', 'intercept', 'correlation'].map(field => `
+                <div class="border-l-4 ${getGradeBorderColor(isReviewed ? teacherGrades[field] : keywordResults[field]?.score)} pl-3">
+                  <div class="flex justify-between items-center">
+                    <span class="font-medium text-gray-700 capitalize">${field}</span>
+                    ${isReviewed
+                      ? `<span class="font-bold ${getGradeTextColor(teacherGrades[field])}">${teacherGrades[field] || '?'}</span>`
+                      : `<div class="flex gap-1">
+                          <button onclick="setReviewGrade('${review.id}', '${field}', 'E')" class="grade-btn px-2 py-0.5 text-xs rounded ${teacherGrades[field] === 'E' ? 'bg-green-500 text-white' : 'bg-gray-100 hover:bg-green-100'}">E</button>
+                          <button onclick="setReviewGrade('${review.id}', '${field}', 'P')" class="grade-btn px-2 py-0.5 text-xs rounded ${teacherGrades[field] === 'P' ? 'bg-yellow-500 text-white' : 'bg-gray-100 hover:bg-yellow-100'}">P</button>
+                          <button onclick="setReviewGrade('${review.id}', '${field}', 'I')" class="grade-btn px-2 py-0.5 text-xs rounded ${teacherGrades[field] === 'I' ? 'bg-red-500 text-white' : 'bg-gray-100 hover:bg-red-100'}">I</button>
+                        </div>`
+                    }
+                  </div>
+                  <p class="text-sm text-gray-600 mt-1 italic">"${answers[field] || '(empty)'}"</p>
+                  ${keywordResults[field]?.feedback ? `<p class="text-xs text-gray-400 mt-1">Keywords: ${keywordResults[field].score} - ${keywordResults[field].feedback}</p>` : ''}
+                </div>
+              `).join('')}
+            </div>
+
+            ${!isReviewed ? `
+              <div class="mt-4 flex justify-end">
+                <button onclick="submitTeacherGrades('${review.id}')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                  Submit Grades
+                </button>
+              </div>
+            ` : `
+              <div class="mt-3 text-xs text-green-600 text-right">
+                ✓ Reviewed ${review.reviewed_at ? new Date(review.reviewed_at).toLocaleString() : ''}
+              </div>
+            `}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getGradeBorderColor(grade) {
+      switch(grade) {
+        case 'E': return 'border-green-500';
+        case 'P': return 'border-yellow-500';
+        case 'I': return 'border-red-500';
+        default: return 'border-gray-300';
+      }
+    }
+
+    function getGradeTextColor(grade) {
+      switch(grade) {
+        case 'E': return 'text-green-600';
+        case 'P': return 'text-yellow-600';
+        case 'I': return 'text-red-600';
+        default: return 'text-gray-400';
+      }
+    }
+
+    // Store pending grades for each review
+    const pendingGrades = {};
+
+    window.setReviewGrade = function(reviewId, field, grade) {
+      if (!pendingGrades[reviewId]) {
+        pendingGrades[reviewId] = {};
+      }
+      pendingGrades[reviewId][field] = grade;
+
+      // Update button styling
+      const reviewEl = document.querySelector(`[data-review-id="${reviewId}"]`);
+      if (reviewEl) {
+        const fieldEl = reviewEl.querySelectorAll('.border-l-4')[['slope', 'intercept', 'correlation'].indexOf(field)];
+        if (fieldEl) {
+          fieldEl.querySelectorAll('.grade-btn').forEach(btn => {
+            const btnGrade = btn.textContent;
+            btn.className = `grade-btn px-2 py-0.5 text-xs rounded ${btnGrade === grade
+              ? (grade === 'E' ? 'bg-green-500 text-white' : grade === 'P' ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white')
+              : 'bg-gray-100 hover:bg-gray-200'}`;
+          });
+        }
+      }
+    };
+
+    window.submitTeacherGrades = async function(reviewId) {
+      const grades = pendingGrades[reviewId];
+      if (!grades || !grades.slope || !grades.intercept || !grades.correlation) {
+        celebration.showToast('Please grade all three fields', 'warning');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${SERVER_URL}/api/teacher-review/${reviewId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-teacher-password': 'stats123'
+          },
+          body: JSON.stringify({ grades })
+        });
+
+        if (!response.ok) throw new Error('Failed to submit grades');
+
+        celebration.showToast('Grades submitted!', 'success');
+        delete pendingGrades[reviewId];
+        loadPendingReviews();
+      } catch (err) {
+        console.error('Failed to submit grades:', err);
+        celebration.showToast('Failed to submit grades', 'error');
+      }
+    };
+
+    // Teacher review panel event listeners
+    document.getElementById('teacher-review-btn')?.addEventListener('click', openTeacherReviewPanel);
+    document.getElementById('close-teacher-review-panel')?.addEventListener('click', closeTeacherReviewPanel);
+    document.getElementById('teacher-review-backdrop')?.addEventListener('click', closeTeacherReviewPanel);
+    document.getElementById('refresh-reviews-btn')?.addEventListener('click', loadPendingReviews);
+
+    document.getElementById('review-filter-pending')?.addEventListener('click', () => {
+      currentReviewFilter = 'pending';
+      document.getElementById('review-filter-pending').className = 'review-filter-btn px-3 py-1 text-sm rounded-full bg-purple-600 text-white';
+      document.getElementById('review-filter-reviewed').className = 'review-filter-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600';
+      loadPendingReviews();
+    });
+
+    document.getElementById('review-filter-reviewed')?.addEventListener('click', () => {
+      currentReviewFilter = 'reviewed';
+      document.getElementById('review-filter-reviewed').className = 'review-filter-btn px-3 py-1 text-sm rounded-full bg-purple-600 text-white';
+      document.getElementById('review-filter-pending').className = 'review-filter-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600';
+      loadPendingReviews();
     });
 
     // ==================== CLASS TIME ====================
