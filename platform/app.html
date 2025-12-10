@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driller - AP Statistics Practice</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .streak-pulse { animation: pulse 0.5s ease-in-out; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+    .feedback-card { transition: all 0.3s ease-out; }
+    .katex-like { font-family: "Times New Roman", serif; font-style: italic; }
+    @keyframes flash {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    @keyframes confetti-fall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+    @keyframes slide-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .animate-slide-in { animation: slide-in 0.3s ease-out; }
+    .star-gold { color: #fbbf24; }
+    .star-silver { color: #9ca3af; }
+    .star-bronze { color: #d97706; }
+    .star-tin { color: #6b7280; }
+    .feedback-E { background-color: #dcfce7; border-color: #22c55e; }
+    .feedback-P { background-color: #fef9c3; border-color: #eab308; }
+    .feedback-I { background-color: #fee2e2; border-color: #ef4444; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <!-- Header -->
+  <header class="bg-white shadow-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <h1 id="app-title" class="text-xl font-bold text-purple-700">Driller</h1>
+        <select id="cartridge-select" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:border-purple-500">
+          <option value="lsrl-interpretation">LSRL Interpretation</option>
+          <option value="residuals">Residuals</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <!-- Star Counts -->
+        <div class="flex items-center gap-2 text-sm">
+          <span class="flex items-center gap-0.5" title="Gold Stars">
+            <span class="star-gold">★</span>
+            <span id="gold-count" class="font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded text-xs">0</span>
+          </span>
+          <span class="flex items-center gap-0.5" title="Silver Stars">
+            <span class="star-silver">★</span>
+            <span id="silver-count" class="font-bold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded text-xs">0</span>
+          </span>
+          <span class="flex items-center gap-0.5" title="Bronze Stars">
+            <span class="star-bronze">★</span>
+            <span id="bronze-count" class="font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded text-xs">0</span>
+          </span>
+          <span class="flex items-center gap-0.5" title="Tin Stars">
+            <span class="star-tin">★</span>
+            <span id="tin-count" class="font-bold text-stone-500 bg-stone-200 px-1.5 py-0.5 rounded text-xs">0</span>
+          </span>
+        </div>
+
+        <!-- Streaks -->
+        <div id="streaks-display" class="flex gap-3 text-sm"></div>
+
+        <!-- Online Indicator -->
+        <div id="online-indicator" class="relative">
+          <button id="online-btn" class="flex items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg transition-colors" title="Online users">
+            <span id="connection-dot" class="w-2 h-2 bg-gray-400 rounded-full"></span>
+            <span id="online-count" class="text-sm font-medium">0</span>
+            <span class="text-sm">online</span>
+          </button>
+          <div id="online-dropdown" class="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 hidden">
+            <div class="px-3 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide border-b border-gray-100 mb-1">Online Now</div>
+            <div id="online-list" class="max-h-48 overflow-y-auto"></div>
+          </div>
+        </div>
+
+        <!-- Rank Display -->
+        <div id="rank-display" class="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg px-3 py-1.5">
+          <span id="rank-icon" class="text-lg">📊</span>
+          <div class="flex flex-col">
+            <span id="rank-name" class="text-xs font-semibold text-gray-700">Novice</span>
+            <div class="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div id="rank-progress-bar" class="h-full bg-purple-500 transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+          <span id="rank-points" class="text-xs text-gray-500">0 pts</span>
+        </div>
+
+        <!-- User Display -->
+        <div id="user-display" class="flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1 cursor-pointer hover:bg-gray-100 transition-colors" title="Click to change username">
+          <span id="user-status-dot" class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+          <span id="current-username" class="text-sm font-medium text-gray-700">...</span>
+          <span id="teacher-badge" class="hidden text-xs bg-purple-600 text-white px-1.5 py-0.5 rounded">TEACHER</span>
+        </div>
+
+        <!-- Leaderboard Button -->
+        <button id="leaderboard-btn" class="flex items-center gap-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-lg transition-colors" title="View Class Leaderboard">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5z"/>
+          </svg>
+          <span class="text-sm font-medium">Leaderboard</span>
+        </button>
+
+        <!-- Settings Button -->
+        <button id="settings-btn" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Settings">
+          <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Class Time Banner (hidden by default) -->
+  <div id="class-time-banner" class="hidden bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white py-2 px-4 shadow-lg">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl animate-pulse">🔔</span>
+        <div>
+          <span class="font-bold">CLASS TIME ACTIVE</span>
+          <span id="class-time-timer" class="ml-2 font-mono bg-white/20 px-2 py-0.5 rounded">00:00</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <span class="text-sm">Goal:</span>
+          <div class="w-32 h-4 bg-white/30 rounded-full overflow-hidden">
+            <div id="class-goal-bar" class="h-full bg-yellow-400 transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <span class="text-sm font-bold">
+            <span id="class-stars-earned">0</span>/<span id="class-goal-target">3</span> ⭐
+          </span>
+        </div>
+        <button id="end-class-time-btn" class="hidden bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors">
+          End Class
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Left Column: Scenario + Graph -->
+      <div class="space-y-4">
+        <!-- Scenario Card -->
+        <div class="bg-white rounded-xl shadow-lg p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs text-gray-500 uppercase tracking-wide">Scenario:</span>
+            <h2 id="scenario-title" class="text-base font-semibold text-gray-800"></h2>
+          </div>
+          <p id="scenario-text" class="text-sm text-gray-600 mb-3"></p>
+
+          <!-- Info Panel -->
+          <div id="info-panel" class="flex flex-wrap gap-2 text-sm"></div>
+        </div>
+
+        <!-- Graph Container -->
+        <div class="bg-white rounded-xl shadow-lg p-4">
+          <div id="graph-container" class="w-full h-72 bg-gray-50 rounded-lg"></div>
+        </div>
+      </div>
+
+      <!-- Right Column: Inputs -->
+      <div class="space-y-4">
+        <!-- Mode Tabs -->
+        <div id="mode-tabs" class="flex gap-2 flex-wrap"></div>
+
+        <!-- Input Cards -->
+        <div id="input-container" class="space-y-4"></div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+          <button id="btn-grade" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg shadow-lg transition-all transform hover:scale-[1.02]">
+            Grade My Answer
+          </button>
+          <button id="btn-try-again" class="hidden flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg shadow-lg transition-all">
+            Try Again
+          </button>
+          <button id="btn-next" class="hidden flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg shadow-lg transition-all transform hover:scale-[1.02]">
+            Next →
+          </button>
+          <button id="btn-skip" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold px-6 py-3 rounded-lg shadow transition-all">
+            Skip
+          </button>
+        </div>
+
+        <!-- Hint Status -->
+        <div class="flex justify-center items-center gap-4 text-sm">
+          <div id="hint-status" class="flex items-center gap-1">
+            <span class="text-yellow-400">★</span>
+            <span id="potential-star" class="text-yellow-600 font-medium">Gold</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Username Modal -->
+  <div id="username-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+      <div class="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-4">
+        <h2 id="username-modal-title" class="text-xl font-bold text-white">Welcome!</h2>
+        <p id="username-modal-subtitle" class="text-purple-100 text-sm mt-1">Choose a username to track your progress</p>
+      </div>
+      <div class="p-6">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Your Username</label>
+          <div class="flex gap-2">
+            <input type="text" id="username-input" class="flex-1 border border-gray-300 rounded-lg p-2.5 text-lg font-medium" readonly>
+            <button id="regenerate-username" class="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" title="Generate new username">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Your Name <span class="text-gray-400 font-normal">(optional)</span></label>
+          <input type="text" id="realname-input" class="w-full border border-gray-300 rounded-lg p-2" placeholder="First name or nickname">
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <input type="password" id="password-input" class="w-full border border-gray-300 rounded-lg p-2" placeholder="Choose a password">
+        </div>
+        <button id="username-submit" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 rounded-lg transition-all">
+          Let's Go!
+        </button>
+        <p id="username-error" class="text-red-500 text-sm mt-2 hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-gray-800">Settings</h3>
+        <button id="close-settings" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Sound Effects</label>
+          <div class="flex items-center gap-3">
+            <button id="sound-toggle" class="relative inline-flex h-6 w-11 items-center rounded-full bg-purple-600 transition-colors">
+              <span id="sound-toggle-dot" class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform translate-x-6"></span>
+            </button>
+            <span class="text-sm text-gray-600">Sound effects enabled</span>
+          </div>
+        </div>
+        <div class="border-t pt-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Progress</label>
+          <button id="reset-progress" class="text-sm text-red-600 hover:text-red-800">Reset All Progress</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaderboard Panel -->
+  <div id="leaderboard-panel" class="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="h-full flex flex-col">
+      <div class="bg-gradient-to-r from-yellow-400 to-orange-400 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🏆</span>
+          <h2 class="text-xl font-bold text-white">Class Leaderboard</h2>
+        </div>
+        <button id="close-leaderboard" class="p-2 hover:bg-white/20 rounded-full transition-colors">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="px-6 py-3 bg-gray-50 border-b flex gap-2">
+        <button data-period="today" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400">Today</button>
+        <button data-period="week" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400">This Week</button>
+        <button data-period="all" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-yellow-400 text-white border border-yellow-400">All Time</button>
+      </div>
+      <div id="leaderboard-content" class="flex-1 overflow-y-auto p-4">
+        <div id="leaderboard-loading" class="flex items-center justify-center h-32">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+        </div>
+        <div id="leaderboard-list" class="space-y-3 hidden"></div>
+        <div id="leaderboard-empty" class="text-center text-gray-500 py-8 hidden">
+          <span class="text-4xl block mb-2">📊</span>
+          <p>No data yet. Be the first to earn a star!</p>
+        </div>
+        <div id="leaderboard-offline" class="text-center text-gray-500 py-8 hidden">
+          <span class="text-4xl block mb-2">📡</span>
+          <p>Connect to the server to see the leaderboard.</p>
+        </div>
+      </div>
+      <div class="px-6 py-3 bg-gray-50 border-t text-xs text-gray-500">
+        <div class="flex items-center gap-4 justify-center">
+          <span title="Gold (4 pts)">⭐ = 4pts</span>
+          <span title="Silver (3 pts)">🥈 = 3pts</span>
+          <span title="Bronze (2 pts)">🥉 = 2pts</span>
+          <span title="Tin (1 pt)">○ = 1pt</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="leaderboard-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
+  <script type="module">
+    import { Platform } from './platform.js';
+    import { SoundEngine } from './core/sound-engine.js';
+    import { Celebration } from './core/celebration.js';
+    import { UserSystem, generateUsername, getAvatarForUsername, getCurrentRank, getRankProgress, getWeightedScore } from './core/user-system.js';
+    import { WebSocketClient } from './core/websocket-client.js';
+    import { Leaderboard } from './core/leaderboard.js';
+    import { ClassTime } from './core/class-time.js';
+
+    // ==================== CONFIGURATION ====================
+    const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
+
+    // ==================== INITIALIZE MODULES ====================
+    const soundEngine = new SoundEngine();
+    const celebration = new Celebration();
+    const userSystem = new UserSystem({ serverUrl: SERVER_URL });
+    const leaderboard = new Leaderboard({ serverUrl: SERVER_URL });
+    const classTime = new ClassTime();
+
+    const wsClient = new WebSocketClient({
+      serverUrl: SERVER_URL,
+      onPresenceChange: updateOnlineDisplay,
+      onConnectionChange: updateConnectionStatus,
+      onClassTimeStart: (goal) => {
+        classTime.setGoal(goal);
+        classTime.start(false);
+        showClassTimeBanner();
+      },
+      onClassTimeEnd: () => {
+        classTime.end(false);
+        hideClassTimeBanner();
+      }
+    });
+
+    let platform = null;
+    let currentCartridgeId = 'lsrl-interpretation';
+
+    // ==================== UI UPDATES ====================
+    function updateStarsDisplay(stars) {
+      document.getElementById('gold-count').textContent = stars.gold || 0;
+      document.getElementById('silver-count').textContent = stars.silver || 0;
+      document.getElementById('bronze-count').textContent = stars.bronze || 0;
+      document.getElementById('tin-count').textContent = stars.tin || 0;
+    }
+
+    function updateStreaksDisplay(streaks) {
+      const container = document.getElementById('streaks-display');
+      container.innerHTML = '';
+      for (const [field, count] of Object.entries(streaks)) {
+        const el = document.createElement('div');
+        el.className = 'flex items-center gap-1';
+        el.innerHTML = `<span class="text-gray-500">${capitalize(field)}:</span><span class="font-bold text-purple-600">${count}</span>`;
+        container.appendChild(el);
+      }
+    }
+
+    function updateRankDisplay(stars) {
+      const rank = getCurrentRank(stars);
+      const progress = getRankProgress(stars);
+      const points = getWeightedScore(stars);
+
+      document.getElementById('rank-icon').textContent = rank.icon;
+      document.getElementById('rank-name').textContent = rank.name;
+      document.getElementById('rank-progress-bar').style.width = `${progress}%`;
+      document.getElementById('rank-points').textContent = `${points} pts`;
+    }
+
+    function updateOnlineDisplay(users) {
+      document.getElementById('online-count').textContent = users.length;
+      const list = document.getElementById('online-list');
+      if (users.length === 0) {
+        list.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400 italic">No one else online</div>';
+      } else {
+        list.innerHTML = users.map(username => {
+          const isYou = username === userSystem.currentUser?.username;
+          const avatar = getAvatarForUsername(username);
+          return `
+            <div class="px-3 py-1.5 flex items-center gap-2 ${isYou ? 'bg-purple-50' : 'hover:bg-gray-50'}">
+              <span class="text-lg">${avatar}</span>
+              <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+              <span class="text-sm text-gray-700">${username}</span>
+              ${isYou ? '<span class="text-xs text-purple-600 ml-auto">(you)</span>' : ''}
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function updateConnectionStatus(connected) {
+      const dot = document.getElementById('connection-dot');
+      if (connected) {
+        dot.className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
+      } else {
+        dot.className = 'w-2 h-2 bg-gray-400 rounded-full';
+      }
+    }
+
+    function updatePotentialStar(hintsUsed) {
+      const tiers = ['Gold', 'Silver', 'Bronze', 'Tin', 'Tin'];
+      document.getElementById('potential-star').textContent = tiers[Math.min(hintsUsed, 4)];
+    }
+
+    function showClassTimeBanner() {
+      document.getElementById('class-time-banner').classList.remove('hidden');
+    }
+
+    function hideClassTimeBanner() {
+      document.getElementById('class-time-banner').classList.add('hidden');
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    // ==================== USERNAME MODAL ====================
+    const usernameModal = {
+      show() {
+        document.getElementById('username-modal').classList.remove('hidden');
+        document.getElementById('username-input').value = generateUsername();
+      },
+      hide() {
+        document.getElementById('username-modal').classList.add('hidden');
+      },
+      async submit() {
+        const username = document.getElementById('username-input').value.trim();
+        const realName = document.getElementById('realname-input').value.trim();
+        const password = document.getElementById('password-input').value;
+
+        if (!username || !password) {
+          document.getElementById('username-error').textContent = 'Username and password required';
+          document.getElementById('username-error').classList.remove('hidden');
+          return;
+        }
+
+        const result = await userSystem.createUser(username, realName, password);
+        if (result.error) {
+          document.getElementById('username-error').textContent = result.error;
+          document.getElementById('username-error').classList.remove('hidden');
+          return;
+        }
+
+        document.getElementById('current-username').textContent = username;
+        wsClient.connect(username);
+        leaderboard.setCurrentUser(username);
+        this.hide();
+        soundEngine.init();
+
+        // Load first problem
+        loadCartridge(currentCartridgeId);
+      }
+    };
+
+    document.getElementById('regenerate-username').addEventListener('click', () => {
+      document.getElementById('username-input').value = generateUsername();
+    });
+
+    document.getElementById('username-submit').addEventListener('click', () => usernameModal.submit());
+
+    document.getElementById('user-display').addEventListener('click', () => usernameModal.show());
+
+    // ==================== SETTINGS MODAL ====================
+    document.getElementById('settings-btn').addEventListener('click', () => {
+      document.getElementById('settings-modal').classList.remove('hidden');
+    });
+
+    document.getElementById('close-settings').addEventListener('click', () => {
+      document.getElementById('settings-modal').classList.add('hidden');
+    });
+
+    document.getElementById('sound-toggle').addEventListener('click', () => {
+      soundEngine.setEnabled(!soundEngine.enabled);
+      const dot = document.getElementById('sound-toggle-dot');
+      dot.classList.toggle('translate-x-6', soundEngine.enabled);
+      dot.classList.toggle('translate-x-1', !soundEngine.enabled);
+    });
+
+    // ==================== LEADERBOARD ====================
+    leaderboard.setElements({
+      panel: document.getElementById('leaderboard-panel'),
+      backdrop: document.getElementById('leaderboard-backdrop'),
+      list: document.getElementById('leaderboard-list'),
+      loading: document.getElementById('leaderboard-loading'),
+      empty: document.getElementById('leaderboard-empty'),
+      offline: document.getElementById('leaderboard-offline')
+    });
+
+    document.getElementById('leaderboard-btn').addEventListener('click', () => leaderboard.open());
+    document.getElementById('close-leaderboard').addEventListener('click', () => leaderboard.close());
+    document.getElementById('leaderboard-backdrop').addEventListener('click', () => leaderboard.close());
+
+    document.querySelectorAll('.leaderboard-period-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.leaderboard-period-btn').forEach(b => {
+          b.className = 'leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400';
+        });
+        btn.className = 'leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-yellow-400 text-white border border-yellow-400';
+        leaderboard.setPeriod(btn.dataset.period);
+      });
+    });
+
+    // ==================== ONLINE DROPDOWN ====================
+    document.getElementById('online-btn').addEventListener('click', () => {
+      document.getElementById('online-dropdown').classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#online-indicator')) {
+        document.getElementById('online-dropdown').classList.add('hidden');
+      }
+    });
+
+    // ==================== CLASS TIME ====================
+    classTime.onTimerUpdate = (time) => {
+      document.getElementById('class-time-timer').textContent = time;
+    };
+
+    classTime.onStarEarned = ({ total, goal, progress }) => {
+      document.getElementById('class-stars-earned').textContent = total;
+      document.getElementById('class-goal-bar').style.width = `${progress}%`;
+    };
+
+    // ==================== LOAD CARTRIDGE ====================
+    async function loadCartridge(cartridgeId) {
+      try {
+        platform = new Platform({
+          graphContainer: '#graph-container',
+          inputsContainer: '#input-container',
+          infoContainer: '#info-panel',
+          cartridgesPath: '/cartridges',
+          sharedPath: '/shared',
+          onStateChange: (state) => {
+            if (state.game) {
+              updateStarsDisplay(state.game.starCounts);
+              updateStreaksDisplay(state.game.streaks);
+              updateRankDisplay(state.game.starCounts);
+              updatePotentialStar(state.game.hintsUsed || 0);
+            }
+          },
+          onGradingComplete: (results) => {
+            if (results.allCorrect) {
+              const state = platform.getState();
+              const starType = ['gold', 'silver', 'bronze', 'tin'][Math.min(state.game.hintsUsed || 0, 3)];
+
+              soundEngine.init();
+              soundEngine.starSound(starType);
+              celebration.celebrate(starType);
+
+              // Notify server
+              if (wsClient.isConnected() && userSystem.currentUser) {
+                wsClient.notifyStarEarned(
+                  userSystem.currentUser.username,
+                  starType,
+                  state.currentProblem?.context?.topic || 'Practice'
+                );
+              }
+
+              // Record for class time
+              if (classTime.isActive()) {
+                classTime.recordStar(starType);
+              }
+
+              document.getElementById('btn-grade').classList.add('hidden');
+              document.getElementById('btn-next').classList.remove('hidden');
+            } else {
+              document.getElementById('btn-grade').classList.add('hidden');
+              document.getElementById('btn-try-again').classList.remove('hidden');
+            }
+          }
+        });
+
+        platform.init();
+        await platform.loadCartridge(cartridgeId);
+
+        document.getElementById('app-title').textContent = platform.currentCartridge?.manifest?.meta?.name || 'Driller';
+
+        // Update mode tabs
+        const modes = platform.currentCartridge?.manifest?.modes || [];
+        const tabsContainer = document.getElementById('mode-tabs');
+        tabsContainer.innerHTML = '';
+        modes.forEach((mode, i) => {
+          const btn = document.createElement('button');
+          btn.textContent = mode.name;
+          btn.className = i === 0
+            ? 'px-4 py-2 rounded-lg bg-purple-600 text-white font-medium'
+            : 'px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200';
+          btn.addEventListener('click', () => {
+            tabsContainer.querySelectorAll('button').forEach(b => {
+              b.className = 'px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200';
+            });
+            btn.className = 'px-4 py-2 rounded-lg bg-purple-600 text-white font-medium';
+            platform.setMode(mode.id);
+            platform.loadProblem();
+          });
+          tabsContainer.appendChild(btn);
+        });
+
+        await platform.loadProblem();
+        updateScenarioDisplay();
+
+        currentCartridgeId = cartridgeId;
+
+      } catch (err) {
+        console.error('Failed to load cartridge:', err);
+      }
+    }
+
+    function updateScenarioDisplay() {
+      const problem = platform.currentProblem;
+      if (!problem) return;
+
+      document.getElementById('scenario-title').textContent = problem.context?.topic || 'Practice Problem';
+      document.getElementById('scenario-text').textContent = problem.scenario || '';
+    }
+
+    // ==================== ACTION BUTTONS ====================
+    document.getElementById('btn-grade').addEventListener('click', async () => {
+      soundEngine.init();
+      await platform.grade();
+    });
+
+    document.getElementById('btn-try-again').addEventListener('click', () => {
+      document.getElementById('btn-try-again').classList.add('hidden');
+      document.getElementById('btn-grade').classList.remove('hidden');
+      // Clear feedback and re-enable inputs
+      platform.inputRenderer?.enable();
+    });
+
+    document.getElementById('btn-next').addEventListener('click', async () => {
+      document.getElementById('btn-next').classList.add('hidden');
+      document.getElementById('btn-grade').classList.remove('hidden');
+      await platform.loadProblem();
+      updateScenarioDisplay();
+    });
+
+    document.getElementById('btn-skip').addEventListener('click', async () => {
+      await platform.loadProblem();
+      updateScenarioDisplay();
+    });
+
+    document.getElementById('cartridge-select').addEventListener('change', (e) => {
+      loadCartridge(e.target.value);
+    });
+
+    // ==================== INIT ====================
+    async function init() {
+      await userSystem.init();
+
+      if (userSystem.currentUser) {
+        document.getElementById('current-username').textContent = userSystem.currentUser.username;
+        wsClient.connect(userSystem.currentUser.username);
+        leaderboard.setCurrentUser(userSystem.currentUser.username);
+        loadCartridge(currentCartridgeId);
+      } else {
+        usernameModal.show();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

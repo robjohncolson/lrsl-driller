@@ -7,12 +7,13 @@ export default defineConfig({
       input: {
         main: 'index.html',
         zscore: 'zscore_3d_explorer.html',
+        app: 'platform/app.html',
         demo: 'platform/demo.html'
       }
     }
   },
   // Dev server config
   server: {
-    open: true
+    open: '/platform/app.html'
   }
 })
