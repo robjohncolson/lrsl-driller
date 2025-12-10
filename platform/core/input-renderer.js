@@ -364,6 +364,15 @@ export class InputRenderer {
     }
   }
 
+  /**
+   * Hide all feedback
+   */
+  clearAllFeedback() {
+    for (const [fieldId] of this.fields) {
+      this.hideFeedback(fieldId);
+    }
+  }
+
   // ============== HELPERS ==============
 
   interpolate(template, context) {

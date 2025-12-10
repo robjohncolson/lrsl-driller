@@ -1483,6 +1483,7 @@
       document.getElementById('btn-try-again').classList.add('hidden');
       document.getElementById('btn-grade').classList.remove('hidden');
       // Clear feedback and re-enable inputs
+      platform.inputRenderer?.clearAllFeedback();
       platform.inputRenderer?.enable();
       clearTeacherReview();
     });
@@ -1490,12 +1491,15 @@
     document.getElementById('btn-next').addEventListener('click', async () => {
       document.getElementById('btn-next').classList.add('hidden');
       document.getElementById('btn-grade').classList.remove('hidden');
+      // Clear any leftover feedback before loading new problem
+      platform.inputRenderer?.clearAllFeedback();
       await platform.loadProblem();
       updateScenarioDisplay();
       clearTeacherReview();
     });
 
     document.getElementById('btn-skip').addEventListener('click', async () => {
+      platform.inputRenderer?.clearAllFeedback();
       await platform.loadProblem();
       updateScenarioDisplay();
       clearTeacherReview();
