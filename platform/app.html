@@ -99,14 +99,14 @@
         </div>
 
         <!-- Teacher Review Button (Teacher Only) -->
-        <button id="teacher-review-btn" class="hidden flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white px-3 py-1.5 rounded-lg transition-all shadow-md" title="View Student Reviews">
+        <button id="teacher-review-btn" style="display: none;" class="flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white px-3 py-1.5 rounded-lg transition-all shadow-md" title="View Student Reviews">
           <span class="text-lg">📝</span>
           <span class="text-sm font-medium">Reviews</span>
-          <span id="header-review-count" class="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
+          <span id="header-review-count" class="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full" style="display: none;">0</span>
         </button>
 
         <!-- Class Time Button (Teacher Only) -->
-        <button id="class-time-btn" class="hidden flex items-center gap-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-1.5 rounded-lg transition-all shadow-md" title="Start Class Time">
+        <button id="class-time-btn" style="display: none;" class="flex items-center gap-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-1.5 rounded-lg transition-all shadow-md" title="Start Class Time">
           <span class="text-lg">🔔</span>
           <span class="text-sm font-medium">Class Time</span>
         </button>
@@ -920,8 +920,8 @@
       if (password === 'stats123') { // Default password, should be set via env var on server
         isTeacher = true;
         document.getElementById('teacher-badge').classList.remove('hidden');
-        document.getElementById('class-time-btn').classList.remove('hidden');
-        document.getElementById('teacher-review-btn').classList.remove('hidden');
+        document.getElementById('class-time-btn').style.display = 'flex';
+        document.getElementById('teacher-review-btn').style.display = 'flex';
         usernameModal.hide();
         celebration.showToast('Welcome, Teacher!', 'success');
         soundEngine.init();
@@ -1051,11 +1051,11 @@
 
       if (count > 0) {
         headerBadge.textContent = count;
-        headerBadge.classList.remove('hidden');
+        headerBadge.style.display = 'inline';
         panelBadge.textContent = count;
         panelBadge.classList.remove('hidden');
       } else {
-        headerBadge.classList.add('hidden');
+        headerBadge.style.display = 'none';
         panelBadge.classList.add('hidden');
       }
     }
