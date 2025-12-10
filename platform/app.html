@@ -514,6 +514,10 @@
       onClassTimeEnd: () => {
         classTime.end(false);
         hideClassTimeBanner();
+      },
+      onTeacherReviewCompleted: (message) => {
+        // Apply teacher's grades when review is completed for this student
+        applyTeacherGrades(message);
       }
     });
 
@@ -618,6 +622,91 @@
           break;
         default:
           statusEl.textContent = '';
+      }
+    }
+
+    /**
+     * Apply teacher's grades when WebSocket notification received
+     */
+    async function applyTeacherGrades(message) {
+      console.log('Applying teacher grades:', message);
+
+      // Only apply if this is for the current user
+      if (message.username !== userSystem.currentUser?.username) {
+        return;
+      }
+
+      const grades = message.grades;
+      if (!grades) {
+        console.warn('No grades in teacher review message');
+        return;
+      }
+
+      // Build results object similar to what grading produces
+      const results = {
+        fields: {},
+        allCorrect: true,
+        _gradingMethod: 'teacher-review'
+      };
+
+      for (const [fieldId, score] of Object.entries(grades)) {
+        results.fields[fieldId] = {
+          score: score,
+          feedback: `Teacher grade: ${score}`,
+          _method: 'teacher'
+        };
+        if (score !== 'E') {
+          results.allCorrect = false;
+        }
+      }
+
+      // Update the UI with teacher's grades
+      platform.inputRenderer?.showAllFeedback(results);
+
+      // Record results in game engine
+      for (const [fieldId, result] of Object.entries(results.fields)) {
+        platform.gameEngine.recordResult(fieldId, result.score, results.allCorrect);
+      }
+
+      // Clear teacher review button and pending data
+      clearTeacherReview();
+
+      // Handle star earning if all correct
+      if (results.allCorrect) {
+        const state = platform.getState();
+        const hintsUsed = state.game.hintsUsed || 0;
+        const starType = ['gold', 'silver', 'bronze', 'tin'][Math.min(hintsUsed, 3)];
+
+        // Play sounds and show celebration
+        soundEngine.init();
+        soundEngine.correct();
+        soundEngine.starSound(starType);
+
+        if (starType === 'gold') {
+          celebration.triggerConfetti();
+        }
+        celebration.showStarEarned(starType);
+
+        // Update displays
+        const newState = platform.getState();
+        updateStarsDisplay(newState.game.starCounts);
+        updateStreaksDisplay(newState.game.streaks);
+        updateRankDisplay(newState.game.starCounts);
+        updatePotentialStar(0);
+
+        // Show Next button
+        document.getElementById('btn-grade').classList.add('hidden');
+        document.getElementById('btn-try-again').classList.add('hidden');
+        document.getElementById('btn-next').classList.remove('hidden');
+
+        celebration.showToast('Your teacher gave you all E\'s! ⭐', 'success', 5000);
+      } else {
+        // Not all correct - show try again
+        document.getElementById('btn-grade').classList.add('hidden');
+        document.getElementById('btn-next').classList.add('hidden');
+        document.getElementById('btn-try-again').classList.remove('hidden');
+
+        celebration.showToast('Teacher reviewed your work. Check the feedback!', 'info', 5000);
       }
     }
 
