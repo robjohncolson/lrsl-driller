@@ -633,10 +633,12 @@
 
       // Only apply if this is for the current user
       if (message.username !== userSystem.currentUser?.username) {
+        console.log('Not for current user, skipping');
         return;
       }
 
       const grades = message.grades;
+      console.log('Grades received:', grades);
       if (!grades) {
         console.warn('No grades in teacher review message');
         return;
@@ -659,6 +661,9 @@
           results.allCorrect = false;
         }
       }
+
+      console.log('Results built:', results);
+      console.log('allCorrect:', results.allCorrect);
 
       // Update the UI with teacher's grades
       platform.inputRenderer?.showAllFeedback(results);
@@ -694,17 +699,30 @@
         updateRankDisplay(newState.game.starCounts);
         updatePotentialStar(0);
 
-        // Show Next button
-        document.getElementById('btn-grade').classList.add('hidden');
-        document.getElementById('btn-try-again').classList.add('hidden');
-        document.getElementById('btn-next').classList.remove('hidden');
+        // Show Next button - MUST remove hidden class first (Tailwind uses !important)
+        const btnGrade = document.getElementById('btn-grade');
+        const btnTryAgain = document.getElementById('btn-try-again');
+        const btnNext = document.getElementById('btn-next');
+
+        btnGrade.classList.add('hidden');
+        btnTryAgain.classList.add('hidden');
+        btnNext.classList.remove('hidden');
+
+        console.log('Teacher grades applied - showing Next button');
+        console.log('btn-next classList:', btnNext.classList.toString());
 
         celebration.showToast('Your teacher gave you all E\'s! ⭐', 'success', 5000);
       } else {
         // Not all correct - show try again
-        document.getElementById('btn-grade').classList.add('hidden');
-        document.getElementById('btn-next').classList.add('hidden');
-        document.getElementById('btn-try-again').classList.remove('hidden');
+        const btnGrade = document.getElementById('btn-grade');
+        const btnTryAgain = document.getElementById('btn-try-again');
+        const btnNext = document.getElementById('btn-next');
+
+        btnGrade.classList.add('hidden');
+        btnNext.classList.add('hidden');
+        btnTryAgain.classList.remove('hidden');
+
+        console.log('Teacher grades applied - showing Try Again button');
 
         celebration.showToast('Teacher reviewed your work. Check the feedback!', 'info', 5000);
       }
@@ -1489,7 +1507,9 @@
     });
 
     document.getElementById('btn-next').addEventListener('click', async () => {
+      // Reset button visibility - show Grade, hide others (use classList for Tailwind)
       document.getElementById('btn-next').classList.add('hidden');
+      document.getElementById('btn-try-again').classList.add('hidden');
       document.getElementById('btn-grade').classList.remove('hidden');
       // Clear any leftover feedback before loading new problem
       platform.inputRenderer?.clearAllFeedback();
