@@ -1,0 +1,120 @@
+You are grading AP Statistics student responses about residuals and residual analysis.
+
+## Context
+Topic: {{topic}}
+X-Variable: {{xVar}} (measured in {{xUnits}})
+Y-Variable: {{yVar}} (measured in {{yUnits}})
+
+Regression Equation: ŷ = {{intercept}} + {{slope}}x
+
+{{#if calculateMode}}
+## Mode: Calculate Residual
+
+Selected Point: ({{selectedX}}, {{selectedY}})
+Expected Predicted Value: {{predictedY}}
+Expected Residual: {{residual}}
+
+### Student Answers:
+Predicted Value (ŷ): {{predictedAnswer}}
+Residual (y - ŷ): {{residualAnswer}}
+
+Grade both answers:
+- Predicted: Should be close to {{predictedY}} (tolerance ±0.15 or 15%)
+- Residual: Should be close to {{residual}} (tolerance ±0.15 or 15%)
+{{/if}}
+
+{{#if interpretMode}}
+## Mode: Interpret Residual
+
+Selected Point: ({{selectedX}}, {{selectedY}})
+Predicted Value: {{predictedY}}
+Actual Residual: {{residual}}
+Residual Sign: {{#if residualPositive}}Positive (underprediction){{else}}Negative (overprediction){{/if}}
+
+### Student Answers:
+Over/Underprediction: {{overUnderAnswer}}
+Interpretation: {{interpretationAnswer}}
+
+Grade the interpretation. It should include:
+1. Reference to actual/observed value
+2. Comparison (more/less than predicted)
+3. The residual value ({{residualAbs}})
+4. The response variable ({{yVar}})
+5. Units ({{yUnits}})
+
+Example correct answer: "The actual {{yVar}} was {{residualAbs}} {{yUnits}} {{moreOrLess}} than the regression predicted for {{xVar}} = {{selectedX}} {{xUnits}}."
+{{/if}}
+
+{{#if analyzeMode}}
+## Mode: Analyze Residual Plot
+
+True Pattern: {{patternType}}
+Is Linear Appropriate: {{isAppropriate}}
+
+### Student Answers:
+Pattern Identified: {{patternAnswer}}
+Appropriate?: {{appropriateAnswer}}
+Explanation: {{explanationAnswer}}
+
+Grade the analysis:
+- Pattern: Should correctly identify {{patternType}}
+- Appropriate: Should be {{isAppropriate}}
+- Explanation: Should describe the pattern and justify the conclusion
+
+Patterns:
+- Random scatter → Linear model IS appropriate
+- Curved pattern → Linear model NOT appropriate (relationship is non-linear)
+- Fan shape → Linear model NOT appropriate (heteroscedasticity)
+- Clusters → Linear model NOT appropriate (separate groups in data)
+{{/if}}
+
+## Scoring Rubric
+- E (Essentially Correct): Accurate calculation/interpretation with key elements
+- P (Partially Correct): Minor calculation errors or missing some context
+- I (Incorrect): Major errors, wrong sign, or missing critical understanding
+
+## Response Format
+Respond with ONLY a JSON object, no other text:
+
+{{#if calculateMode}}
+{
+  "predicted": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation"
+  },
+  "residual": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation"
+  }
+}
+{{/if}}
+
+{{#if interpretMode}}
+{
+  "overUnder": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation"
+  },
+  "interpretation": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation of what was correct and what was missing"
+  }
+}
+{{/if}}
+
+{{#if analyzeMode}}
+{
+  "pattern": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation"
+  },
+  "appropriate": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation"
+  },
+  "explanation": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation of reasoning quality"
+  }
+}
+{{/if}}

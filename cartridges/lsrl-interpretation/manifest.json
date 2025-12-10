@@ -1,0 +1,133 @@
+{
+  "meta": {
+    "id": "lsrl-interpretation",
+    "name": "LSRL Interpretation",
+    "subject": "AP Statistics",
+    "unit": "2",
+    "lesson": "6",
+    "skill": "Interpret slope, y-intercept, and correlation coefficient in context",
+    "description": "Students write contextual interpretations of regression output"
+  },
+
+  "config": {
+    "sharedContexts": "ap-stats-bivariate",
+    "skills": ["slope", "intercept", "correlation"]
+  },
+
+  "display": {
+    "showGraph": true,
+    "graphType": "scatterplot",
+    "graphConfig": {
+      "showRegression": true,
+      "showEquation": true,
+      "showR": true
+    },
+    "infoPanel": [
+      { "label": "Topic", "value": "{{topic}}" },
+      { "label": "Equation", "value": "ŷ = {{intercept}} + {{slope}}x" },
+      { "label": "Correlation", "value": "r = {{r}}" }
+    ]
+  },
+
+  "modes": [
+    {
+      "id": "three-part",
+      "name": "3-Part Mode",
+      "unlockedBy": "default",
+      "layout": {
+        "graph": "scatterplot-with-line",
+        "inputs": [
+          {
+            "id": "slope",
+            "label": "Slope Interpretation",
+            "type": "textarea",
+            "rows": 3,
+            "placeholder": "For every increase of 1 {{xUnits}}..."
+          },
+          {
+            "id": "intercept",
+            "label": "Y-Intercept Interpretation",
+            "type": "textarea",
+            "rows": 3,
+            "placeholder": "When {{xVar}} is 0..."
+          },
+          {
+            "id": "correlation",
+            "label": "Correlation Interpretation",
+            "type": "textarea",
+            "rows": 3,
+            "placeholder": "There is a..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "paragraph",
+      "name": "Full Paragraph",
+      "unlockedBy": { "gold": 7 },
+      "layout": {
+        "graph": "scatterplot-with-line",
+        "inputs": [
+          {
+            "id": "paragraph",
+            "label": "Full LSRL Conclusion",
+            "type": "textarea",
+            "rows": 6,
+            "placeholder": "Write your complete LSRL interpretation paragraph..."
+          }
+        ]
+      }
+    }
+  ],
+
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct - all key elements present",
+        "P": "Partially Correct - some key elements missing",
+        "I": "Incorrect - major errors or missing mandatory elements"
+      }
+    },
+    "composite": {
+      "rule": "all-E-for-star",
+      "starTiers": ["gold", "silver", "bronze", "tin"]
+    }
+  },
+
+  "hints": {
+    "perField": {
+      "slope": "For every increase of 1 {{xUnits}} in {{xVar}}, the predicted {{yVar}} {{direction}} by {{slopeAbs}} {{yUnits}}, on average.",
+      "intercept": "When {{xVar}} is 0 {{xUnits}}, the predicted {{yVar}} is {{intercept}} {{yUnits}}.",
+      "interceptMeaningless": "The y-intercept has no meaningful interpretation because {{interceptReason}}.",
+      "correlation": "There is a {{strength}}, {{rDirection}}, linear relationship between {{xVar}} and {{yVar}}."
+    },
+    "paragraphFrame": "{{slopeHint}} {{interceptHint}} {{correlationHint}}",
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+
+  "progression": {
+    "streaksPerField": true,
+    "streakFields": ["slope", "intercept", "correlation"],
+    "tiers": [
+      {
+        "id": "three-part",
+        "name": "3-Part Mode",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "paragraph",
+        "name": "Paragraph Mode",
+        "unlockedBy": { "gold": 7 },
+        "celebrationMessage": "Paragraph Mode Unlocked! You've earned 7 gold stars."
+      }
+    ]
+  }
+}

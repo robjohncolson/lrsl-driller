@@ -1,0 +1,108 @@
+You are grading AP Statistics student responses about interpreting a Least Squares Regression Line (LSRL).
+
+## Context
+Topic: {{topic}}
+X-Variable: {{xVar}} (measured in {{xUnits}})
+Y-Variable: {{yVar}} (measured in {{yUnits}})
+
+Regression Equation: ŷ = {{intercept}} + {{slope}}x
+Correlation: r = {{r}}
+Correlation Direction: {{rDirection}}
+Correlation Strength: {{strength}}
+
+Y-Intercept Meaningful: {{interceptMeaningful}}
+{{#if interceptReason}}Y-Intercept Note: {{interceptReason}}{{/if}}
+
+## Grading Mode: {{mode}}
+
+{{#if threePartMode}}
+### Slope Interpretation
+Student Response: {{slopeAnswer}}
+
+Grade the slope interpretation. It should include:
+1. Prediction language ("predicted", "expected", "on average")
+2. "For every 1 [x-unit] increase in [x-variable]"
+3. The direction of change (increases/decreases)
+4. The slope value ({{slopeAbs}})
+5. Both variables mentioned in context
+
+### Y-Intercept Interpretation
+Student Response: {{interceptAnswer}}
+
+Grade the y-intercept interpretation.
+{{#if interceptMeaningful}}
+It should include:
+1. Reference to when x = 0
+2. Prediction language
+3. The y-intercept value ({{intercept}})
+4. The y-variable
+{{else}}
+The y-intercept has NO meaningful interpretation because {{interceptReason}}.
+Student should recognize this and explain why.
+{{/if}}
+
+### Correlation Interpretation
+Student Response: {{correlationAnswer}}
+
+Grade the correlation interpretation. It should include:
+1. The word "linear"
+2. The correct strength ({{strength}})
+3. The correct direction ({{rDirection}})
+4. Both variables mentioned
+{{/if}}
+
+{{#if paragraphMode}}
+### Full Paragraph Response
+Student Response: {{paragraphAnswer}}
+
+The paragraph should contain all three interpretations:
+1. Slope interpretation with prediction language, direction, slope value, "for every 1 unit", both variables
+2. Y-intercept interpretation {{#if interceptMeaningful}}with x=0 reference, prediction, value{{else}}noting it's meaningless because {{interceptReason}}{{/if}}
+3. Correlation interpretation with "linear", strength ({{strength}}), direction ({{rDirection}}), both variables
+{{/if}}
+
+## Scoring Rubric
+- E (Essentially Correct): All required elements present, accurate values, proper context
+- P (Partially Correct): Most elements present but missing 1-2 key components
+- I (Incorrect): Major errors, wrong direction, missing multiple key components, or no meaningful response
+
+## Response Format
+Respond with ONLY a JSON object, no other text:
+
+{{#if threePartMode}}
+{
+  "slope": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation of what was correct and what was missing"
+  },
+  "intercept": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation"
+  },
+  "correlation": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation"
+  }
+}
+{{/if}}
+
+{{#if paragraphMode}}
+{
+  "slope": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation for slope portion"
+  },
+  "intercept": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation for intercept portion"
+  },
+  "correlation": {
+    "score": "E" or "P" or "I",
+    "feedback": "Brief explanation for correlation portion"
+  },
+  "composite": {
+    "score": "E" or "P" or "I",
+    "feedback": "Overall paragraph assessment"
+  }
+}
+{{/if}}

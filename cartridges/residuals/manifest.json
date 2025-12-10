@@ -1,0 +1,173 @@
+{
+  "meta": {
+    "id": "residuals",
+    "name": "Residuals Analysis",
+    "subject": "AP Statistics",
+    "unit": "2",
+    "lesson": "7",
+    "skill": "Calculate, interpret, and analyze residuals",
+    "description": "Students work with residuals: calculation, interpretation, and pattern analysis"
+  },
+
+  "config": {
+    "sharedContexts": "ap-stats-bivariate",
+    "skills": ["calculate", "interpret", "analyze"]
+  },
+
+  "display": {
+    "showGraph": true,
+    "graphType": "dual",
+    "graphConfig": {
+      "primary": "scatterplot",
+      "secondary": "residual-plot",
+      "showRegression": true,
+      "highlightPoint": true
+    },
+    "infoPanel": [
+      { "label": "Topic", "value": "{{topic}}" },
+      { "label": "Equation", "value": "ŷ = {{intercept}} + {{slope}}x" },
+      { "label": "Selected Point", "value": "({{selectedX}}, {{selectedY}})" },
+      { "label": "Predicted", "value": "ŷ = {{predictedY}}" }
+    ]
+  },
+
+  "modes": [
+    {
+      "id": "calculate",
+      "name": "Calculate Residual",
+      "unlockedBy": "default",
+      "layout": {
+        "graph": "scatterplot-with-highlight",
+        "inputs": [
+          {
+            "id": "predicted",
+            "label": "Predicted Value (ŷ)",
+            "type": "number",
+            "step": 0.01,
+            "placeholder": "Calculate using the equation",
+            "units": "{{yUnits}}"
+          },
+          {
+            "id": "residual",
+            "label": "Residual (y - ŷ)",
+            "type": "number",
+            "step": 0.01,
+            "placeholder": "actual - predicted",
+            "units": "{{yUnits}}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "interpret",
+      "name": "Interpret Residual",
+      "unlockedBy": { "gold": 5 },
+      "layout": {
+        "graph": "scatterplot-with-highlight",
+        "inputs": [
+          {
+            "id": "overUnder",
+            "label": "Overprediction or Underprediction?",
+            "type": "choice",
+            "options": ["Overprediction", "Underprediction"]
+          },
+          {
+            "id": "interpretation",
+            "label": "Interpretation in Context",
+            "type": "textarea",
+            "rows": 3,
+            "placeholder": "The actual {{yVar}} was ___ {{yUnits}} [more/less] than predicted..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "analyze",
+      "name": "Analyze Pattern",
+      "unlockedBy": { "gold": 10 },
+      "layout": {
+        "graph": "residual-plot",
+        "inputs": [
+          {
+            "id": "pattern",
+            "label": "Pattern in Residual Plot",
+            "type": "choice",
+            "options": ["Random scatter", "Curved pattern", "Fan shape", "Clusters"]
+          },
+          {
+            "id": "appropriate",
+            "label": "Is the linear model appropriate?",
+            "type": "choice",
+            "options": ["Yes", "No"]
+          },
+          {
+            "id": "explanation",
+            "label": "Explain your reasoning",
+            "type": "textarea",
+            "rows": 3,
+            "placeholder": "The residual plot shows..."
+          }
+        ]
+      }
+    }
+  ],
+
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct - accurate calculation/interpretation",
+        "P": "Partially Correct - minor errors or incomplete explanation",
+        "I": "Incorrect - major errors or missing key elements"
+      }
+    },
+    "composite": {
+      "rule": "all-E-for-star",
+      "starTiers": ["gold", "silver", "bronze", "tin"]
+    }
+  },
+
+  "hints": {
+    "perField": {
+      "predicted": "Substitute x = {{selectedX}} into the equation: ŷ = {{intercept}} + {{slope}}({{selectedX}})",
+      "residual": "Residual = actual - predicted = {{selectedY}} - ŷ",
+      "overUnder": "If residual is positive, the model underpredicted. If negative, the model overpredicted.",
+      "interpretation": "The actual {{yVar}} was |residual| {{yUnits}} [more/less] than what the regression line predicted for {{xVar}} = {{selectedX}} {{xUnits}}.",
+      "pattern": "Look at whether the points form any systematic shape or appear randomly scattered around y = 0.",
+      "appropriate": "A linear model is appropriate when residuals show random scatter with no clear pattern.",
+      "explanation": "Describe what you see in the residual plot and what it tells you about the linear model."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "calculate",
+        "name": "Calculate Mode",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "interpret",
+        "name": "Interpret Mode",
+        "unlockedBy": { "gold": 5 },
+        "celebrationMessage": "Interpret Mode Unlocked! You can now practice interpreting residuals."
+      },
+      {
+        "id": "analyze",
+        "name": "Analyze Mode",
+        "unlockedBy": { "gold": 10 },
+        "celebrationMessage": "Analyze Mode Unlocked! Now master residual plot analysis."
+      }
+    ]
+  }
+}
