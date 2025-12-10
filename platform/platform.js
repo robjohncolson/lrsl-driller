@@ -274,22 +274,36 @@ export class Platform {
               currentResult._aiFeedback = aiResult.feedback;
               currentResult._provider = aiResults._provider;
 
-              // AVERAGE the scores (round down to be conservative)
-              const avgScoreVal = Math.floor((keywordScoreVal + aiScoreVal) / 2);
+              // Check if AI feedback is actually useful
+              const aiFb = aiResult.feedback || '';
+              const keywordFb = currentResult._keywordFeedback || '';
+              const aiHasRealFeedback = aiFb &&
+                !aiFb.includes('Score extracted from response') &&
+                !aiFb.includes('extracted') &&
+                aiFb.length > 20;
+
+              // AVERAGE the scores (round to nearest, tie goes up)
+              const avgScoreVal = Math.round((keywordScoreVal + aiScoreVal) / 2);
               currentResult.score = scoreFromValue[avgScoreVal] || 'I';
               currentResult._method = 'keywords+ai';
 
-              // Build combined feedback showing BOTH
-              const keywordFb = currentResult._keywordFeedback || '';
-              const aiFb = aiResult.feedback || '';
-
-              if (keywordFb && aiFb && keywordFb !== aiFb) {
+              // Build combined feedback showing BOTH (only if AI has real feedback)
+              if (aiHasRealFeedback && keywordFb && aiFb !== keywordFb) {
                 currentResult.feedback = `<div class="space-y-2">
                   <div><span class="font-semibold text-gray-600">Keywords:</span> ${keywordFb}</div>
                   <div><span class="font-semibold text-blue-600">AI:</span> ${aiFb}</div>
                 </div>`;
+              } else if (aiHasRealFeedback) {
+                currentResult.feedback = aiFb;
               } else {
-                currentResult.feedback = aiFb || keywordFb || 'No feedback available';
+                // AI didn't provide useful feedback - use keywords and note the AI score
+                currentResult.feedback = keywordFb || 'No detailed feedback available';
+                if (aiScoreVal !== keywordScoreVal) {
+                  currentResult.feedback += ` <span class="text-blue-600 text-sm">(AI scored: ${aiResult.score})</span>`;
+                }
+                // Mark that AI feedback was incomplete
+                currentResult._aiIncomplete = true;
+                anyAILower = true; // Allow teacher review when AI feedback is incomplete
               }
 
               // Track if AI graded lower than keywords (student may want to appeal)
@@ -299,7 +313,7 @@ export class Platform {
               }
             }
 
-            // If AI graded any field lower, allow teacher review appeal
+            // If AI graded any field lower OR AI feedback was incomplete, allow teacher review
             if (anyAILower) {
               results._aiGradedLower = true;
             }

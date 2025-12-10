@@ -976,11 +976,17 @@
             // Update grading status display
             updateGradingStatus(results);
 
-            // Handle teacher review fallback - when AI fails OR when AI graded lower
+            // Handle teacher review fallback - when AI fails, grades lower, or has incomplete feedback
             if (results._aiFailed && results._gradingMethod === 'keywords+teacher-review') {
               showTeacherReviewOption(results, 'AI grading unavailable. Your work can be submitted for teacher review.');
             } else if (results._aiGradedLower) {
-              showTeacherReviewOption(results, 'AI graded some answers lower than keywords. Request teacher review if you disagree.');
+              // Check if it's because of incomplete AI feedback
+              const hasIncomplete = Object.values(results.fields || {}).some(f => f._aiIncomplete);
+              if (hasIncomplete) {
+                showTeacherReviewOption(results, 'AI feedback was limited. Request teacher review for detailed feedback.');
+              } else {
+                showTeacherReviewOption(results, 'AI and keywords disagree on some answers. Request teacher review if needed.');
+              }
             }
 
             if (results.allCorrect) {
