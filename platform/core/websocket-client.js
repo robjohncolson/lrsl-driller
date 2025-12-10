@@ -23,6 +23,8 @@ export class WebSocketClient {
     this.onClassTimeEnd = config.onClassTimeEnd || (() => {});
     this.onLeaderboardUpdate = config.onLeaderboardUpdate || (() => {});
     this.onConnectionChange = config.onConnectionChange || (() => {});
+    this.onTeacherReviewSubmitted = config.onTeacherReviewSubmitted || (() => {});
+    this.onTeacherReviewCompleted = config.onTeacherReviewCompleted || (() => {});
 
     this.currentUsername = null;
   }
@@ -184,7 +186,37 @@ export class WebSocketClient {
       case 'class_time_end':
         this.onClassTimeEnd();
         break;
+
+      case 'teacher_review_submitted':
+        // A student submitted work for teacher review
+        this.showTeacherReviewNotification(message.username, message.topic);
+        this.onTeacherReviewSubmitted(message);
+        break;
+
+      case 'teacher_review_completed':
+        // Teacher completed review of student's work
+        if (message.username === this.currentUsername) {
+          celebration.showToast('Your teacher has reviewed your work!', 'success', 5000);
+          soundEngine.init();
+          soundEngine.notification();
+        }
+        this.onTeacherReviewCompleted(message);
+        break;
     }
+  }
+
+  /**
+   * Show notification when a student submits work for review (for teachers)
+   */
+  showTeacherReviewNotification(username, topic) {
+    const avatar = getAvatarForUsername(username);
+    celebration.showNotification(
+      username,
+      `requested teacher review for "${topic || 'LSRL'}"`,
+      '📝'
+    );
+    soundEngine.init();
+    soundEngine.notification();
   }
 
   /**
