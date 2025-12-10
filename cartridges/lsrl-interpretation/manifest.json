@@ -23,7 +23,8 @@
       "showR": true
     },
     "infoPanel": [
-      { "label": "Topic", "value": "{{topic}}" },
+      { "label": "x-variable", "value": "{{xVar}} ({{xUnits}})" },
+      { "label": "y-variable", "value": "{{yVar}} ({{yUnits}})" },
       { "label": "Equation", "value": "ŷ = {{intercept}} + {{slope}}x" },
       { "label": "Correlation", "value": "r = {{r}}" }
     ]
@@ -42,21 +43,21 @@
             "label": "Slope Interpretation",
             "type": "textarea",
             "rows": 3,
-            "placeholder": "For every increase of 1 {{xUnits}}..."
+            "placeholder": ""
           },
           {
             "id": "intercept",
             "label": "Y-Intercept Interpretation",
             "type": "textarea",
             "rows": 3,
-            "placeholder": "When {{xVar}} is 0..."
+            "placeholder": ""
           },
           {
             "id": "correlation",
             "label": "Correlation Interpretation",
             "type": "textarea",
             "rows": 3,
-            "placeholder": "There is a..."
+            "placeholder": ""
           }
         ]
       }
@@ -73,7 +74,7 @@
             "label": "Full LSRL Conclusion",
             "type": "textarea",
             "rows": 6,
-            "placeholder": "Write your complete LSRL interpretation paragraph..."
+            "placeholder": ""
           }
         ]
       }
@@ -99,12 +100,11 @@
 
   "hints": {
     "perField": {
-      "slope": "For every increase of 1 {{xUnits}} in {{xVar}}, the predicted {{yVar}} {{direction}} by {{slopeAbs}} {{yUnits}}, on average.",
-      "intercept": "When {{xVar}} is 0 {{xUnits}}, the predicted {{yVar}} is {{intercept}} {{yUnits}}.",
-      "interceptMeaningless": "The y-intercept has no meaningful interpretation because {{interceptReason}}.",
-      "correlation": "There is a {{strength}}, {{rDirection}}, linear relationship between {{xVar}} and {{yVar}}."
+      "slope": "<strong>Sentence Frame:</strong><br>\"For every increase of 1 <em>[x-unit]</em>, the <strong>predicted</strong> <em>[y-variable]</em> increases/decreases by <em>[slope]</em> <em>[y-units]</em>, <strong>on average</strong>.\"<br><br><strong>Key elements:</strong> prediction language, direction, slope value, both variables, units, \"on average\"",
+      "intercept": "<strong>Sentence Frame:</strong><br>\"When <em>[x-variable]</em> is 0 <em>[x-units]</em>, the <strong>predicted</strong> <em>[y-variable]</em> is <em>[intercept]</em> <em>[y-units]</em>.\"<br><br><strong>OR if x=0 is not meaningful:</strong><br>\"The y-intercept has no meaningful interpretation because <em>[reason: x=0 is impossible or outside the data range]</em>.\"",
+      "correlation": "<strong>Sentence Frame:</strong><br>\"There is a <em>[weak/moderate/strong]</em>, <em>[positive/negative]</em>, <strong>linear</strong> relationship between <em>[x-variable]</em> and <em>[y-variable]</em>.\"<br><br><strong>Strength guide:</strong> |r| < 0.5 = weak, 0.5-0.8 = moderate, > 0.8 = strong"
     },
-    "paragraphFrame": "{{slopeHint}} {{interceptHint}} {{correlationHint}}",
+    "paragraphFrame": "<strong>Paragraph Frame:</strong><br><br>\"For every increase of 1 [x-unit], the predicted [y-variable] increases/decreases by [slope] [y-units], on average. When [x-variable] is 0 [x-units], the predicted [y-variable] is [intercept] [y-units]. <em>(Or: The y-intercept has no meaningful interpretation because...)</em> There is a [weak/moderate/strong], [positive/negative], linear relationship between [x-variable] and [y-variable].\"",
     "penalty": {
       "0": "gold",
       "1": "silver",

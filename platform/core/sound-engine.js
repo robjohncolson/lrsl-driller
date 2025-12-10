@@ -6,7 +6,8 @@
 export class SoundEngine {
   constructor() {
     this.ctx = null;
-    this.enabled = true;
+    // Load enabled state from localStorage (default to true)
+    this.enabled = localStorage.getItem('soundEnabled') !== 'false';
   }
 
   /**
@@ -14,7 +15,16 @@ export class SoundEngine {
    */
   init() {
     if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      try {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('SoundEngine: AudioContext initialized, enabled:', this.enabled);
+      } catch (err) {
+        console.error('SoundEngine: Failed to create AudioContext', err);
+      }
+    }
+    // Resume if suspended (needed for some browsers)
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
     }
     return this;
   }
@@ -24,13 +34,23 @@ export class SoundEngine {
    */
   setEnabled(enabled) {
     this.enabled = enabled;
+    localStorage.setItem('soundEnabled', enabled ? 'true' : 'false');
+    console.log('SoundEngine: enabled set to', enabled);
   }
 
   /**
    * Play a single note with envelope
    */
   playNote(freq, duration = 0.2, type = 'sine', volume = 0.3) {
-    if (!this.enabled || !this.ctx) return;
+    if (!this.enabled) {
+      console.log('SoundEngine: playNote skipped - disabled');
+      return;
+    }
+    if (!this.ctx) {
+      console.log('SoundEngine: playNote skipped - no context, calling init()');
+      this.init();
+      if (!this.ctx) return;
+    }
 
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();

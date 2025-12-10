@@ -119,15 +119,25 @@ export class UserSystem {
   async init() {
     // Dynamic import Dexie if available, otherwise use localStorage fallback
     if (typeof Dexie !== 'undefined') {
-      this.db = new Dexie('DrillerPlatform');
-      this.db.version(1).stores({
-        meta: 'key',
-        progress: '++id, username, completed_at',
-        settings: 'username',
-        sync: 'key'
-      });
+      try {
+        this.db = new Dexie('DrillerPlatform');
+        this.db.version(1).stores({
+          meta: 'key',
+          progress: '++id, username, completed_at',
+          settings: 'username',
+          sync: 'key'
+        });
 
-      await this.migrateFromLocalStorage();
+        // Test that Dexie actually works (can fail if blocked by tracking prevention)
+        await this.db.meta.count();
+
+        await this.migrateFromLocalStorage();
+      } catch (err) {
+        console.warn('IndexedDB not available (may be blocked by tracking prevention), using localStorage fallback:', err.message);
+        this.db = null;
+      }
+    } else {
+      console.info('Dexie not loaded, using localStorage fallback');
     }
 
     // Check for existing identity

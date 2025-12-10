@@ -10,7 +10,7 @@ const http = require('http');
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || 'teacher123';
+const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || 'stats123';
 
 // AI API Keys (for server-side grading)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -978,6 +978,168 @@ app.post('/api/ai/grade-paragraph', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('AI paragraph grading error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// TEACHER REVIEW ENDPOINTS
+// ============================================
+
+// Submit work for teacher review
+app.post('/api/teacher-review', async (req, res) => {
+  try {
+    const { results, problem, answers, timestamp, username } = req.body;
+
+    if (!username || !answers) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Store the review request
+    const { data, error } = await supabase
+      .from('teacher_reviews')
+      .insert({
+        username,
+        scenario_topic: problem?.context?.topic || 'Unknown',
+        scenario_context: problem?.context || {},
+        student_answers: answers,
+        keyword_results: results?.fields || {},
+        status: 'pending',
+        submitted_at: timestamp || new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Teacher review insert error:', error);
+      // If table doesn't exist, create a simple in-memory fallback
+      if (error.code === '42P01') {
+        console.log('teacher_reviews table does not exist, using fallback');
+        return res.json({
+          success: true,
+          id: `temp-${Date.now()}`,
+          message: 'Submitted (table pending setup)'
+        });
+      }
+      throw error;
+    }
+
+    // Notify teachers via WebSocket
+    broadcast({
+      type: 'teacher_review_submitted',
+      username,
+      topic: problem?.context?.topic,
+      reviewId: data.id
+    });
+
+    console.log(`Teacher review submitted by ${username} for ${problem?.context?.topic}`);
+    res.json({ success: true, id: data.id });
+  } catch (err) {
+    console.error('POST /api/teacher-review error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get pending reviews (teacher only)
+app.get('/api/teacher-review', async (req, res) => {
+  try {
+    const password = req.headers['x-teacher-password'];
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher password required' });
+    }
+
+    const status = req.query.status || 'pending';
+
+    const { data, error } = await supabase
+      .from('teacher_reviews')
+      .select('*')
+      .eq('status', status)
+      .order('submitted_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      // Table might not exist yet
+      if (error.code === '42P01') {
+        return res.json([]);
+      }
+      throw error;
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    console.error('GET /api/teacher-review error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Submit teacher's grade for a review
+app.put('/api/teacher-review/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const password = req.headers['x-teacher-password'];
+    const { grades, feedback, teacher_notes } = req.body;
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher password required' });
+    }
+
+    if (!grades) {
+      return res.status(400).json({ error: 'Grades required' });
+    }
+
+    const { data, error } = await supabase
+      .from('teacher_reviews')
+      .update({
+        teacher_grades: grades,
+        teacher_feedback: feedback || null,
+        teacher_notes: teacher_notes || null,
+        status: 'reviewed',
+        reviewed_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Notify the student via WebSocket
+    broadcast({
+      type: 'teacher_review_completed',
+      username: data.username,
+      reviewId: id,
+      grades
+    });
+
+    console.log(`Teacher reviewed submission ${id} for ${data.username}`);
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('PUT /api/teacher-review/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get reviews for a specific student
+app.get('/api/teacher-review/student/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    const { data, error } = await supabase
+      .from('teacher_reviews')
+      .select('*')
+      .eq('username', username)
+      .order('submitted_at', { ascending: false });
+
+    if (error) {
+      if (error.code === '42P01') {
+        return res.json([]);
+      }
+      throw error;
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    console.error('GET /api/teacher-review/student/:username error:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -91,10 +91,17 @@ export class CartridgeLoader {
    */
   async loadModule(path) {
     try {
-      const module = await import(path);
+      // Dynamic imports need proper path handling
+      // Convert relative paths for the browser
+      const importPath = path.startsWith('/') || path.startsWith('http')
+        ? path
+        : new URL(path, window.location.href).href;
+
+      console.log('Loading module:', importPath);
+      const module = await import(/* @vite-ignore */ importPath);
       return module;
     } catch (err) {
-      console.warn(`Failed to load module ${path}:`, err);
+      console.error(`Failed to load module ${path}:`, err);
       return null;
     }
   }

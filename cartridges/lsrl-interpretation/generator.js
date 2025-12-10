@@ -165,8 +165,7 @@ function formatNumber(num, decimals) {
  */
 function buildScenarioText(context) {
   return `A study examined the relationship between ${context.xVar} and ${context.yVar}. ` +
-    `Data was collected with ${context.xVar} measured in ${context.xUnits} ` +
-    `and ${context.yVar} measured in ${context.yUnits}.`;
+    `The least-squares regression line and correlation coefficient are shown below.`;
 }
 
 export default { generateProblem };

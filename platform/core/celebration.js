@@ -211,6 +211,45 @@ export class Celebration {
   }
 
   /**
+   * Show generic toast notification
+   * @param {string} message - The message to display
+   * @param {string} type - 'success', 'error', 'info', 'warning'
+   * @param {number} duration - How long to show (ms)
+   */
+  showToast(message, type = 'info', duration = 3000) {
+    const colors = {
+      success: 'bg-green-500 border-green-600',
+      error: 'bg-red-500 border-red-600',
+      info: 'bg-blue-500 border-blue-600',
+      warning: 'bg-orange-500 border-orange-600'
+    };
+
+    const icons = {
+      success: '✓',
+      error: '✕',
+      info: 'ℹ',
+      warning: '⚠'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-4 right-4 ${colors[type] || colors.info} text-white rounded-lg shadow-xl px-4 py-3 z-50 flex items-center gap-3 border-l-4`;
+    toast.style.cssText = 'animation: slide-in 0.3s ease-out;';
+    toast.innerHTML = `
+      <span class="text-xl">${icons[type] || icons.info}</span>
+      <span>${message}</span>
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      toast.style.transition = 'all 0.3s ease-out';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  /**
    * Add required CSS to document
    */
   static injectStyles() {

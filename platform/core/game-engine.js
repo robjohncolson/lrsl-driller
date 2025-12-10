@@ -12,8 +12,8 @@ export class GameEngine {
     // Gamification state
     this.streaks = {};
     this.starCounts = { gold: 0, silver: 0, bronze: 0, tin: 0 };
-    this.currentTier = 'basic';
-    this.unlockedTiers = ['basic'];
+    this.currentTier = null;
+    this.unlockedTiers = [];
 
     // Hint tracking for current problem
     this.hintsUsedThisProblem = new Set();
@@ -52,8 +52,9 @@ export class GameEngine {
     // Load saved state
     this.loadState();
 
-    // Check initial unlocks
-    this.checkUnlocks(manifest.progression?.tiers || []);
+    // Check initial unlocks - use modes array since that's where unlockedBy is defined
+    const unlockRules = manifest.modes || manifest.progression?.tiers || [];
+    this.checkUnlocks(unlockRules);
 
     return this;
   }
@@ -130,7 +131,8 @@ export class GameEngine {
   }
 
   /**
-   * Check and unlock tiers based on progression rules
+   * Check and unlock tiers/modes based on progression rules
+   * Works with both manifest.modes and manifest.progression.tiers
    */
   checkUnlocks(tierRules) {
     for (const tier of tierRules) {
@@ -138,11 +140,17 @@ export class GameEngine {
 
       if (tier.unlockedBy === 'default') {
         this.unlockedTiers.push(tier.id);
+        // Set first default tier as current if none set
+        if (!this.currentTier) {
+          this.currentTier = tier.id;
+        }
         continue;
       }
 
       // Check unlock conditions
       const condition = tier.unlockedBy;
+      if (!condition) continue;
+
       let unlocked = false;
 
       if (condition.gold && this.starCounts.gold >= condition.gold) {

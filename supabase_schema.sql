@@ -97,6 +97,45 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================
+-- TEACHER REVIEWS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS teacher_reviews (
+  id SERIAL PRIMARY KEY,
+  username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+  scenario_topic TEXT NOT NULL,
+  scenario_context JSONB,  -- Full context for reference
+  student_answers JSONB NOT NULL,  -- { slope: "...", intercept: "...", correlation: "..." }
+  keyword_results JSONB,  -- Results from keyword grading
+
+  -- Teacher's review
+  teacher_grades JSONB,  -- { slope: "E", intercept: "P", correlation: "E" }
+  teacher_feedback TEXT,  -- Overall feedback
+  teacher_notes TEXT,  -- Private teacher notes
+
+  -- Status tracking
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'dismissed')),
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ
+);
+
+-- Indexes for common queries
+CREATE INDEX IF NOT EXISTS idx_teacher_reviews_status ON teacher_reviews(status);
+CREATE INDEX IF NOT EXISTS idx_teacher_reviews_username ON teacher_reviews(username);
+CREATE INDEX IF NOT EXISTS idx_teacher_reviews_submitted ON teacher_reviews(submitted_at DESC);
+
+-- RLS policies for teacher reviews
+ALTER TABLE teacher_reviews ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can submit for review" ON teacher_reviews
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Reviews viewable by everyone" ON teacher_reviews
+  FOR SELECT USING (true);
+
+CREATE POLICY "Server can update reviews" ON teacher_reviews
+  FOR UPDATE USING (true);
+
+-- ============================================
 -- LEADERBOARD VIEW
 -- ============================================
 CREATE OR REPLACE VIEW leaderboard AS

@@ -108,7 +108,11 @@ export class Platform {
 
     // Check if mode is unlocked
     const state = this.gameEngine.getState();
-    if (!state.unlockedTiers.includes(modeId) && mode.unlockedBy !== 'default') {
+    const isUnlocked = mode.unlockedBy === 'default' ||
+      state.unlockedTiers.includes(modeId) ||
+      (mode.unlockedBy?.gold && state.starCounts.gold >= mode.unlockedBy.gold);
+
+    if (!isUnlocked) {
       console.warn(`Mode "${modeId}" is locked`);
       return false;
     }
@@ -184,8 +188,16 @@ export class Platform {
 
   /**
    * Grade current answers
+   * @param {Object} options - { useAI: boolean }
+   *
+   * Grading modes:
+   * - useAI=false: Keywords only (fast, regex-based)
+   * - useAI=true: Keywords + AI (both run, best score wins)
+   * - If AI fails when useAI=true: Falls back to keywords + offers teacher review
    */
-  async grade() {
+  async grade(options = {}) {
+    const { useAI = true } = options;
+
     if (this.isGrading) return;
     if (!this.currentProblem) {
       throw new Error('No problem loaded');
@@ -202,31 +214,114 @@ export class Platform {
       const context = {
         ...this.currentProblem.context,
         ...this.currentProblem.answers,
-        scenario: this.currentProblem.scenario
+        scenario: this.currentProblem.scenario,
+        mode: this.currentMode
       };
 
-      // Try to use cartridge's gradeField function if available
       const cartridgeGrader = this.currentCartridge?.gradingRules?.gradeField;
-      const results = { fields: {} };
-      let allCorrect = true;
+      const results = {
+        fields: {},
+        _gradingMethod: 'keywords', // 'keywords', 'keywords+ai', 'keywords+teacher-review'
+        _aiAvailable: false,
+        _aiFailed: false,
+        _aiError: null
+      };
 
+      // ALWAYS run keyword/regex grading first (fast, synchronous)
       for (const [fieldId, answer] of Object.entries(answers)) {
-        let result;
+        let regexResult = { score: 'I', feedback: 'No grading available' };
 
         if (cartridgeGrader) {
-          // Use cartridge's native grading function
-          result = cartridgeGrader(fieldId, answer, context);
-        } else {
-          // Fallback to generic grading engine
-          const rule = this.cartridgeLoader.getGradingRule(fieldId);
-          if (rule) {
-            result = await this.gradingEngine.gradeAnswer(answer, rule, context);
-          } else {
-            result = { score: 'I', feedback: 'No grading rule found' };
-          }
+          regexResult = cartridgeGrader(fieldId, answer, context);
         }
 
-        results.fields[fieldId] = result;
+        results.fields[fieldId] = {
+          ...regexResult,
+          _method: 'keywords',
+          _keywordScore: regexResult.score,
+          _keywordFeedback: regexResult.feedback
+        };
+      }
+
+      // If AI toggle is ON, also try AI grading
+      const aiPromptFile = this.currentCartridge?.manifest?.grading?.aiPromptFile;
+      if (useAI && aiPromptFile) {
+        results._aiAvailable = true;
+
+        try {
+          const aiResults = await this.gradeWithAI(answers, context);
+
+          // Check if AI actually returned valid results
+          if (aiResults && !aiResults.error && !aiResults._error) {
+            results._gradingMethod = 'keywords+ai';
+            const scoreValues = { 'E': 3, 'P': 2, 'I': 1 };
+            const scoreFromValue = { 3: 'E', 2: 'P', 1: 'I' };
+
+            let anyAILower = false;
+
+            for (const [fieldId, aiResult] of Object.entries(aiResults)) {
+              if (fieldId.startsWith('_') || fieldId === 'composite') continue;
+              if (!aiResult || typeof aiResult !== 'object') continue;
+
+              const currentResult = results.fields[fieldId];
+              if (!currentResult) continue;
+
+              const keywordScoreVal = scoreValues[currentResult._keywordScore] || 1;
+              const aiScoreVal = scoreValues[aiResult?.score] || 1;
+
+              // Store AI results
+              currentResult._aiScore = aiResult.score;
+              currentResult._aiFeedback = aiResult.feedback;
+              currentResult._provider = aiResults._provider;
+
+              // AVERAGE the scores (round down to be conservative)
+              const avgScoreVal = Math.floor((keywordScoreVal + aiScoreVal) / 2);
+              currentResult.score = scoreFromValue[avgScoreVal] || 'I';
+              currentResult._method = 'keywords+ai';
+
+              // Build combined feedback showing BOTH
+              const keywordFb = currentResult._keywordFeedback || '';
+              const aiFb = aiResult.feedback || '';
+
+              if (keywordFb && aiFb && keywordFb !== aiFb) {
+                currentResult.feedback = `<div class="space-y-2">
+                  <div><span class="font-semibold text-gray-600">Keywords:</span> ${keywordFb}</div>
+                  <div><span class="font-semibold text-blue-600">AI:</span> ${aiFb}</div>
+                </div>`;
+              } else {
+                currentResult.feedback = aiFb || keywordFb || 'No feedback available';
+              }
+
+              // Track if AI graded lower than keywords (student may want to appeal)
+              if (aiScoreVal < keywordScoreVal) {
+                anyAILower = true;
+                currentResult._aiGradedLower = true;
+              }
+            }
+
+            // If AI graded any field lower, allow teacher review appeal
+            if (anyAILower) {
+              results._aiGradedLower = true;
+            }
+          } else {
+            // AI returned an error
+            results._aiFailed = true;
+            results._aiError = aiResults?._error || aiResults?.error || 'Unknown AI error';
+            results._gradingMethod = 'keywords+teacher-review';
+            console.warn('AI grading returned error:', results._aiError);
+          }
+        } catch (err) {
+          // AI call failed completely
+          results._aiFailed = true;
+          results._aiError = err.message;
+          results._gradingMethod = 'keywords+teacher-review';
+          console.warn('AI grading failed:', err.message);
+        }
+      }
+
+      // Calculate allCorrect based on final scores
+      let allCorrect = true;
+      for (const [fieldId, result] of Object.entries(results.fields)) {
         if (result.score !== 'E') {
           allCorrect = false;
         }
@@ -251,6 +346,49 @@ export class Platform {
     } finally {
       this.isGrading = false;
     }
+  }
+
+  /**
+   * Grade with AI via server
+   */
+  async gradeWithAI(answers, context) {
+    const serverUrl = this.gradingEngine.serverUrl;
+
+    // Build the scenario object matching server's expected format
+    // Server uses isInterceptMeaningful, context uses interceptMeaningful
+    const scenario = {
+      topic: context.topic,
+      xVar: context.xVar,
+      yVar: context.yVar,
+      xUnits: context.xUnits,
+      yUnits: context.yUnits,
+      slope: parseFloat(context.slope),
+      intercept: parseFloat(context.intercept),
+      r: parseFloat(context.r),
+      isInterceptMeaningful: context.interceptMeaningful !== false,
+      interceptReason: context.interceptReason || null
+    };
+
+    console.log('Sending AI grading request:', { scenario, answers });
+
+    const response = await fetch(`${serverUrl}/api/ai/grade`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scenario,
+        answers
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('AI grading error:', result);
+      throw new Error(result.error || 'AI grading failed');
+    }
+
+    console.log('AI grading result:', result);
+    return result;
   }
 
   /**

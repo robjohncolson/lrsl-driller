@@ -333,20 +333,24 @@ export class InputRenderer {
     const feedbackEl = this.container.querySelector(`[data-feedback="${fieldId}"]`);
     if (!feedbackEl) return;
 
-    // Remove old score classes
-    feedbackEl.classList.remove('hidden', this.styles.feedbackE, this.styles.feedbackP, this.styles.feedbackI);
-
-    // Add appropriate class
+    // Build class list based on score
     const score = result.score;
+    let scoreClass;
     if (score === 'E' || score === true) {
-      feedbackEl.className = `${this.styles.feedback} ${this.styles.feedbackE}`;
+      scoreClass = this.styles.feedbackE;
     } else if (score === 'P') {
-      feedbackEl.className = `${this.styles.feedback} ${this.styles.feedbackP}`;
+      scoreClass = this.styles.feedbackP;
     } else {
-      feedbackEl.className = `${this.styles.feedback} ${this.styles.feedbackI}`;
+      scoreClass = this.styles.feedbackI;
     }
 
-    feedbackEl.innerHTML = result.feedback || '';
+    // Set className directly (handles space-separated classes properly)
+    // Note: no 'hidden' class - feedback should be visible
+    feedbackEl.className = `${this.styles.feedback} ${scoreClass}`;
+    feedbackEl.innerHTML = result.feedback || (score === 'E' ? 'Correct!' : 'Review your answer.');
+
+    // Ensure it's visible (remove hidden if it was there)
+    feedbackEl.style.display = '';
   }
 
   hideFeedback(fieldId) {
