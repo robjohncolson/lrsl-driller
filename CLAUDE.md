@@ -4,19 +4,105 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Teaching materials repository for AP Statistics, focusing on linear regression and correlation concepts. Contains standalone HTML apps that run directly from file:// protocol with no build process.
-
-## Files
-
-- `lsrl_trainer.html` - Practice app for writing 3-part LSRL conclusions (slope, intercept, correlation interpretations)
-- `zscore_3d_explorer.html` - Interactive 3D visualization for exploring z-scores and correlation
-- `lsrl_conclusion_practice.pdf` - Printable practice problems
+Teaching materials repository for AP Statistics, focusing on linear regression and correlation concepts. The project has two architectures:
+1. **Legacy**: Standalone HTML apps (file:// protocol, no build)
+2. **Modular Platform**: Cartridge-based system with Vite build (requires `npm run dev`)
 
 ## Development
 
-Open HTML files directly in a browser. No build, install, or server required.
+### Modular Platform (New)
+```bash
+npm install
+npm run dev      # Start Vite dev server
+npm run build    # Build for production
+```
+Access at: http://localhost:5173/platform/demo.html
 
-## Architecture: LSRL Trainer
+### Legacy Apps
+Open HTML files directly in browser (file:// protocol works).
+
+## File Structure
+
+### Entry Points
+- `index.html` - Legacy LSRL trainer (monolithic)
+- `platform/demo.html` - Modular platform demo (uses ES modules)
+- `zscore_3d_explorer.html` - 3D visualization
+
+### Platform (Console) - Topic-Agnostic
+```
+platform/
+  platform.js           # Main orchestrator
+  core/
+    game-engine.js      # Streaks, stars, progression
+    grading-engine.js   # Numeric, regex, AI grading
+    graph-engine.js     # Canvas-based charts
+    input-renderer.js   # Dynamic form fields
+    cartridge-loader.js # Loads manifests and modules
+```
+
+### Cartridges (Topics) - Content-Specific
+```
+cartridges/
+  lsrl-interpretation/
+    manifest.json       # Config: modes, inputs, hints, progression
+    generator.js        # Problem generation
+    grading-rules.js    # E/P/I rubrics
+    ai-grader-prompt.txt
+  residuals/
+    manifest.json
+    generator.js
+    grading-rules.js
+    ai-grader-prompt.txt
+```
+
+### Shared Resources
+```
+shared/
+  contexts/
+    ap-stats-bivariate.json  # Real-world scenarios for regression topics
+```
+
+## Creating New Cartridges
+
+A cartridge requires 4 files:
+
+### manifest.json
+```json
+{
+  "meta": { "id": "topic-id", "name": "Topic Name", "subject": "AP Statistics" },
+  "config": { "sharedContexts": "ap-stats-bivariate", "skills": ["skill1", "skill2"] },
+  "display": { "showGraph": true, "graphType": "scatterplot", "infoPanel": [...] },
+  "modes": [{ "id": "mode-id", "name": "Mode Name", "unlockedBy": "default", "layout": { "inputs": [...] } }],
+  "grading": { "rubricFile": "grading-rules.js", "aiPromptFile": "ai-grader-prompt.txt" },
+  "hints": { "perField": { "fieldId": "Hint text with {{variables}}" } },
+  "progression": { "streakFields": ["field1"], "tiers": [...] }
+}
+```
+
+### generator.js
+```javascript
+export function generateProblem(modeId, context, mode) {
+  return {
+    context: { ...context, /* computed values */ },
+    graphConfig: { type: 'scatterplot', points: [...], xLabel, yLabel },
+    answers: { fieldId: { value, ... } },
+    scenario: "Problem description text"
+  };
+}
+```
+
+### grading-rules.js
+```javascript
+export function getRule(fieldId) { return rules[fieldId]; }
+export function gradeField(fieldId, answer, context) {
+  return { score: 'E'|'P'|'I', feedback: "...", matched: [], missing: [] };
+}
+```
+
+### ai-grader-prompt.txt
+System prompt template with {{placeholders}} for AI grading.
+
+## Architecture: Legacy LSRL Trainer
 
 ### ScenarioGenerator Class
 - 24 real-world contexts with x/y variables, units, and domain constraints

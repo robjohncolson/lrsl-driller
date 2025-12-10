@@ -134,7 +134,27 @@ export class Platform {
 
     // Render graph
     if (this.graphEngine && this.currentProblem.graphConfig) {
-      this.graphEngine.render(this.currentProblem.graphConfig);
+      // Transform generator's config to GraphEngine's expected format
+      const gc = this.currentProblem.graphConfig;
+      const graphConfig = {
+        type: gc.type,
+        data: gc.points || gc.data,
+        labels: { x: gc.xLabel, y: gc.yLabel },
+        xMin: gc.xDomain?.[0],
+        xMax: gc.xDomain?.[1],
+        yMin: gc.yDomain?.[0],
+        yMax: gc.yDomain?.[1],
+        regression: gc.regression,
+        features: {
+          regressionLine: gc.regression?.show,
+          showEquation: gc.showEquation,
+          showR: gc.showR,
+          highlightId: gc.highlight?.index,
+          showResidualLine: gc.showResidualLine,
+          zeroLine: gc.showZeroLine
+        }
+      };
+      this.graphEngine.render(graphConfig);
     }
 
     // Render inputs
@@ -178,17 +198,6 @@ export class Platform {
       // Collect answers
       const answers = this.inputRenderer.getAllValues();
 
-      // Get grading rules
-      const mode = this.cartridgeLoader.getMode(this.currentMode);
-      const rules = {};
-
-      for (const field of mode.layout.inputs) {
-        const rule = this.cartridgeLoader.getGradingRule(field.id);
-        if (rule) {
-          rules[field.id] = rule;
-        }
-      }
-
       // Build context for grading
       const context = {
         ...this.currentProblem.context,
@@ -196,8 +205,35 @@ export class Platform {
         scenario: this.currentProblem.scenario
       };
 
-      // Grade all answers
-      const results = await this.gradingEngine.gradeAll(answers, rules, context);
+      // Try to use cartridge's gradeField function if available
+      const cartridgeGrader = this.currentCartridge?.gradingRules?.gradeField;
+      const results = { fields: {} };
+      let allCorrect = true;
+
+      for (const [fieldId, answer] of Object.entries(answers)) {
+        let result;
+
+        if (cartridgeGrader) {
+          // Use cartridge's native grading function
+          result = cartridgeGrader(fieldId, answer, context);
+        } else {
+          // Fallback to generic grading engine
+          const rule = this.cartridgeLoader.getGradingRule(fieldId);
+          if (rule) {
+            result = await this.gradingEngine.gradeAnswer(answer, rule, context);
+          } else {
+            result = { score: 'I', feedback: 'No grading rule found' };
+          }
+        }
+
+        results.fields[fieldId] = result;
+        if (result.score !== 'E') {
+          allCorrect = false;
+        }
+      }
+
+      results.allCorrect = allCorrect;
+      results.scores = Object.values(results.fields).map(r => r.score);
 
       // Update game engine
       for (const [fieldId, result] of Object.entries(results.fields)) {

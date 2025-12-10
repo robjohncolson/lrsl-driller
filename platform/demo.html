@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Platform Demo - LSRL Interpretation</title>
+  <title>Platform Demo - Driller</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .star-gold { color: #fbbf24; }
@@ -17,30 +17,44 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
   <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <!-- Cartridge Selector -->
+    <div class="bg-white rounded-xl shadow-lg p-4 mb-6">
+      <div class="flex items-center gap-4 flex-wrap">
+        <label class="font-medium text-gray-700">Select Topic:</label>
+        <select id="cartridge-select" class="border border-gray-300 rounded-lg px-4 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+          <option value="lsrl-interpretation">LSRL Interpretation</option>
+          <option value="residuals">Residuals</option>
+        </select>
+        <button id="btn-load-cartridge" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+          Load
+        </button>
+      </div>
+    </div>
+
     <!-- Header -->
     <header class="bg-white rounded-xl shadow-lg p-4 mb-6">
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-purple-700" id="cartridge-name">LSRL Interpretation</h1>
-          <p class="text-gray-500 text-sm" id="cartridge-desc">Students write contextual interpretations of regression output</p>
+          <h1 class="text-2xl font-bold text-purple-700" id="cartridge-name">Loading...</h1>
+          <p class="text-gray-500 text-sm" id="cartridge-desc"></p>
         </div>
 
         <!-- Stars Display -->
         <div id="stars-container" class="flex items-center gap-4">
           <span class="flex items-center gap-1" title="Gold Stars">
-            <span class="star-gold text-xl">★</span>
+            <span class="star-gold text-xl">&#9733;</span>
             <span data-star-count="gold" class="font-bold">0</span>
           </span>
           <span class="flex items-center gap-1" title="Silver Stars">
-            <span class="star-silver text-xl">★</span>
+            <span class="star-silver text-xl">&#9733;</span>
             <span data-star-count="silver" class="font-bold">0</span>
           </span>
           <span class="flex items-center gap-1" title="Bronze Stars">
-            <span class="star-bronze text-xl">★</span>
+            <span class="star-bronze text-xl">&#9733;</span>
             <span data-star-count="bronze" class="font-bold">0</span>
           </span>
           <span class="flex items-center gap-1" title="Tin Stars">
-            <span class="star-tin text-xl">★</span>
+            <span class="star-tin text-xl">&#9733;</span>
             <span data-star-count="tin" class="font-bold">0</span>
           </span>
         </div>
@@ -49,9 +63,6 @@
       <!-- Streaks -->
       <div id="streaks-container" class="flex gap-4 mt-3 text-sm flex-wrap">
         <span class="text-gray-500">Streaks:</span>
-        <span>Slope: <span data-streak="slope" class="font-bold text-purple-600">0</span></span>
-        <span>Intercept: <span data-streak="intercept" class="font-bold text-purple-600">0</span></span>
-        <span>Correlation: <span data-streak="correlation" class="font-bold text-purple-600">0</span></span>
       </div>
     </header>
 
@@ -59,7 +70,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Left: Graph -->
       <div class="bg-white rounded-xl shadow-lg p-4">
-        <canvas id="graph-canvas" class="w-full h-80 bg-gray-50 rounded-lg"></canvas>
+        <div id="graph-container" class="w-full h-80 bg-gray-50 rounded-lg"></div>
 
         <!-- Info Panel -->
         <div id="info-container" class="mt-4 p-3 bg-gray-50 rounded-lg text-sm">
@@ -69,57 +80,11 @@
       <!-- Right: Inputs -->
       <div class="bg-white rounded-xl shadow-lg p-4">
         <!-- Mode Tabs -->
-        <div id="mode-tabs" class="flex gap-2 mb-4">
-          <button data-mode="three-part" class="px-4 py-2 rounded-lg bg-purple-600 text-white font-medium">3-Part</button>
-          <button data-mode="paragraph" class="px-4 py-2 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed" disabled title="Unlock with 7 gold stars">Full Paragraph 🔒</button>
+        <div id="mode-tabs" class="flex gap-2 mb-4 flex-wrap">
         </div>
 
-        <!-- Input Fields -->
+        <!-- Input Fields (dynamically rendered) -->
         <div id="input-container" class="space-y-4">
-          <!-- Slope -->
-          <div class="input-field" data-field="slope">
-            <div class="flex items-center justify-between mb-1">
-              <label class="font-semibold text-purple-700">Slope Interpretation</label>
-              <button class="hint-btn text-gray-400 hover:text-purple-600" data-hint="slope" title="Show hint">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-              </button>
-            </div>
-            <textarea id="slope-input" class="w-full border border-gray-300 rounded-lg p-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 resize-none" rows="3" placeholder="For every increase of 1 unit in x..."></textarea>
-            <div id="slope-hint" class="hidden text-sm text-gray-500 bg-gray-50 rounded p-3 mt-2"></div>
-            <div id="slope-feedback" class="hidden mt-2 p-3 rounded-lg"></div>
-          </div>
-
-          <!-- Intercept -->
-          <div class="input-field" data-field="intercept">
-            <div class="flex items-center justify-between mb-1">
-              <label class="font-semibold text-purple-700">Y-Intercept Interpretation</label>
-              <button class="hint-btn text-gray-400 hover:text-purple-600" data-hint="intercept" title="Show hint">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-              </button>
-            </div>
-            <textarea id="intercept-input" class="w-full border border-gray-300 rounded-lg p-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 resize-none" rows="3" placeholder="When x is 0..."></textarea>
-            <div id="intercept-hint" class="hidden text-sm text-gray-500 bg-gray-50 rounded p-3 mt-2"></div>
-            <div id="intercept-feedback" class="hidden mt-2 p-3 rounded-lg"></div>
-          </div>
-
-          <!-- Correlation -->
-          <div class="input-field" data-field="correlation">
-            <div class="flex items-center justify-between mb-1">
-              <label class="font-semibold text-purple-700">Correlation Interpretation</label>
-              <button class="hint-btn text-gray-400 hover:text-purple-600" data-hint="correlation" title="Show hint">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-              </button>
-            </div>
-            <textarea id="correlation-input" class="w-full border border-gray-300 rounded-lg p-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 resize-none" rows="3" placeholder="There is a..."></textarea>
-            <div id="correlation-hint" class="hidden text-sm text-gray-500 bg-gray-50 rounded p-3 mt-2"></div>
-            <div id="correlation-feedback" class="hidden mt-2 p-3 rounded-lg"></div>
-          </div>
         </div>
 
         <!-- Action Buttons -->
@@ -136,563 +101,166 @@
 
     <!-- Celebration Toast -->
     <div id="celebration-toast" class="hidden fixed top-1/3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-2xl shadow-2xl p-6 z-50 text-center pointer-events-none">
-      <div class="text-5xl mb-3">⭐</div>
+      <div class="text-5xl mb-3">&#11088;</div>
       <div class="text-xl font-bold mb-1">Gold Star!</div>
       <div class="text-yellow-100">Perfect score with no hints!</div>
     </div>
   </div>
 
-  <script>
-    // ============================================================
-    // EMBEDDED PLATFORM - All-in-one for file:// compatibility
-    // ============================================================
+  <script type="module">
+    import { Platform } from './platform.js';
 
-    // ==================== CONTEXTS ====================
-    const CONTEXTS = [
-      {
-        id: "study-hours",
-        topic: "Student Performance",
-        xVar: "hours studied",
-        yVar: "test score",
-        xUnits: "hours",
-        yUnits: "points",
-        xDomain: [0, 12],
-        yDomain: [40, 100],
-        interceptMeaningful: true,
-        expectedDirection: "positive"
-      },
-      {
-        id: "car-age",
-        topic: "Used Car Value",
-        xVar: "age of car",
-        yVar: "price",
-        xUnits: "years",
-        yUnits: "thousands of dollars",
-        xDomain: [0, 15],
-        yDomain: [0, 45],
-        interceptMeaningful: true,
-        expectedDirection: "negative"
-      },
-      {
-        id: "temperature-sales",
-        topic: "Ice Cream Sales",
-        xVar: "temperature",
-        yVar: "daily sales",
-        xUnits: "degrees Fahrenheit",
-        yUnits: "dollars",
-        xDomain: [50, 100],
-        yDomain: [100, 800],
-        interceptMeaningful: false,
-        interceptReason: "temperatures below 50°F are outside the data range",
-        expectedDirection: "positive"
-      },
-      {
-        id: "commute",
-        topic: "Commute Distance",
-        xVar: "distance from work",
-        yVar: "commute time",
-        xUnits: "miles",
-        yUnits: "minutes",
-        xDomain: [1, 50],
-        yDomain: [5, 90],
-        interceptMeaningful: false,
-        interceptReason: "living 0 miles from work is not realistic",
-        expectedDirection: "positive"
-      },
-      {
-        id: "exercise-weight",
-        topic: "Fitness Study",
-        xVar: "hours of exercise per week",
-        yVar: "body weight",
-        xUnits: "hours",
-        yUnits: "pounds",
-        xDomain: [0, 15],
-        yDomain: [120, 220],
-        interceptMeaningful: true,
-        expectedDirection: "negative"
-      },
-      {
-        id: "coffee-productivity",
-        topic: "Workplace Study",
-        xVar: "cups of coffee",
-        yVar: "tasks completed",
-        xUnits: "cups",
-        yUnits: "tasks",
-        xDomain: [0, 6],
-        yDomain: [8, 25],
-        interceptMeaningful: true,
-        expectedDirection: "positive"
-      },
-      {
-        id: "fertilizer-yield",
-        topic: "Agricultural Study",
-        xVar: "fertilizer applied",
-        yVar: "crop yield",
-        xUnits: "pounds per acre",
-        yUnits: "bushels per acre",
-        xDomain: [0, 200],
-        yDomain: [80, 180],
-        interceptMeaningful: true,
-        expectedDirection: "positive"
-      },
-      {
-        id: "altitude-boiling",
-        topic: "Physics of Water",
-        xVar: "altitude",
-        yVar: "boiling point of water",
-        xUnits: "feet above sea level",
-        yUnits: "degrees Fahrenheit",
-        xDomain: [0, 15000],
-        yDomain: [185, 212],
-        interceptMeaningful: true,
-        expectedDirection: "negative"
-      }
-    ];
+    // ==================== APP STATE ====================
+    let platform = null;
+    let currentCartridgeId = 'lsrl-interpretation';
 
-    // ==================== GAME STATE ====================
-    const state = {
-      streaks: JSON.parse(localStorage.getItem('platformStreaks')) || { slope: 0, intercept: 0, correlation: 0 },
-      starCounts: JSON.parse(localStorage.getItem('platformStars')) || { gold: 0, silver: 0, bronze: 0, tin: 0 },
-      hintsUsed: new Set(),
-      currentProblem: null,
-      isGrading: false
-    };
-
-    function saveState() {
-      localStorage.setItem('platformStreaks', JSON.stringify(state.streaks));
-      localStorage.setItem('platformStars', JSON.stringify(state.starCounts));
+    // ==================== UI HELPERS ====================
+    function updateHeader(manifest) {
+      document.getElementById('cartridge-name').textContent = manifest.meta.name;
+      document.getElementById('cartridge-desc').textContent = manifest.meta.description;
     }
 
-    // ==================== PROBLEM GENERATOR ====================
-    function generateProblem() {
-      // Pick random context
-      const context = CONTEXTS[Math.floor(Math.random() * CONTEXTS.length)];
+    function updateModeTabs(modes, currentMode, unlockedTiers) {
+      const container = document.getElementById('mode-tabs');
+      container.innerHTML = '';
 
-      // Generate r
-      const rSign = context.expectedDirection === 'positive' ? 1 : -1;
-      const r = rSign * (0.4 + Math.random() * 0.5);
+      for (const mode of modes) {
+        const btn = document.createElement('button');
+        btn.dataset.mode = mode.id;
+        btn.textContent = mode.name;
 
-      // Generate points
-      const points = generatePoints(context, r);
+        const isUnlocked = mode.unlockedBy === 'default' || unlockedTiers.includes(mode.id);
+        const isActive = mode.id === currentMode;
 
-      // Calculate regression
-      const reg = calculateRegression(points);
+        if (isActive) {
+          btn.className = 'px-4 py-2 rounded-lg bg-purple-600 text-white font-medium';
+        } else if (isUnlocked) {
+          btn.className = 'px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer';
+          btn.addEventListener('click', () => switchMode(mode.id));
+        } else {
+          btn.className = 'px-4 py-2 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed';
+          btn.disabled = true;
+          const requirement = mode.unlockedBy?.gold ? `${mode.unlockedBy.gold} gold stars` : 'locked';
+          btn.title = `Unlock with ${requirement}`;
+          btn.innerHTML = `${mode.name} &#128274;`;
+        }
 
-      // Build problem context
-      const problem = {
-        ...context,
-        points,
-        r: Number(r.toFixed(3)),
-        slope: Number(reg.slope.toFixed(3)),
-        slopeAbs: Number(Math.abs(reg.slope).toFixed(3)),
-        intercept: Number(reg.intercept.toFixed(2)),
-        direction: reg.slope >= 0 ? 'increases' : 'decreases',
-        rDirection: r >= 0 ? 'positive' : 'negative',
-        strength: getStrength(r)
-      };
-
-      state.currentProblem = problem;
-      state.hintsUsed = new Set();
-
-      return problem;
-    }
-
-    function generatePoints(context, targetR, numPoints = 12) {
-      const [xMin, xMax] = context.xDomain;
-      const [yMin, yMax] = context.yDomain;
-      const xMean = (xMin + xMax) / 2;
-      const yMean = (yMin + yMax) / 2;
-      const xSpread = (xMax - xMin) / 3;
-      const ySpread = (yMax - yMin) / 3;
-
-      const points = [];
-      for (let i = 0; i < numPoints; i++) {
-        const xZ = (Math.random() - 0.5) * 2.5;
-        const x = xMean + xZ * xSpread;
-        const noise = Math.sqrt(1 - targetR * targetR) * (Math.random() - 0.5) * 2;
-        const yZ = targetR * xZ + noise;
-        const y = yMean + yZ * ySpread;
-        points.push({
-          x: Math.max(xMin, Math.min(xMax, x)),
-          y: Math.max(yMin, Math.min(yMax, y))
-        });
-      }
-      return points;
-    }
-
-    function calculateRegression(points) {
-      const n = points.length;
-      let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-      for (const p of points) {
-        sumX += p.x;
-        sumY += p.y;
-        sumXY += p.x * p.y;
-        sumX2 += p.x * p.x;
-      }
-      const xMean = sumX / n;
-      const yMean = sumY / n;
-      const slope = (sumXY - n * xMean * yMean) / (sumX2 - n * xMean * xMean);
-      const intercept = yMean - slope * xMean;
-      return { slope, intercept };
-    }
-
-    function getStrength(r) {
-      const absR = Math.abs(r);
-      if (absR >= 0.8) return 'strong';
-      if (absR >= 0.5) return 'moderate';
-      return 'weak';
-    }
-
-    // ==================== GRAPH RENDERER ====================
-    function renderGraph(problem) {
-      const canvas = document.getElementById('graph-canvas');
-      const ctx = canvas.getContext('2d');
-
-      // Set actual size
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * window.devicePixelRatio;
-      canvas.height = rect.height * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-
-      const width = rect.width;
-      const height = rect.height;
-      const padding = 50;
-
-      // Clear
-      ctx.fillStyle = '#f9fafb';
-      ctx.fillRect(0, 0, width, height);
-
-      const [xMin, xMax] = problem.xDomain;
-      const [yMin, yMax] = problem.yDomain;
-
-      // Scale functions
-      const scaleX = (x) => padding + ((x - xMin) / (xMax - xMin)) * (width - 2 * padding);
-      const scaleY = (y) => height - padding - ((y - yMin) / (yMax - yMin)) * (height - 2 * padding);
-
-      // Draw axes
-      ctx.strokeStyle = '#9ca3af';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(padding, padding);
-      ctx.lineTo(padding, height - padding);
-      ctx.lineTo(width - padding, height - padding);
-      ctx.stroke();
-
-      // Axis labels
-      ctx.fillStyle = '#374151';
-      ctx.font = '12px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(problem.xVar, width / 2, height - 10);
-
-      ctx.save();
-      ctx.translate(15, height / 2);
-      ctx.rotate(-Math.PI / 2);
-      ctx.fillText(problem.yVar, 0, 0);
-      ctx.restore();
-
-      // Tick marks
-      ctx.fillStyle = '#6b7280';
-      ctx.font = '10px sans-serif';
-      for (let i = 0; i <= 4; i++) {
-        const x = xMin + (xMax - xMin) * i / 4;
-        const px = scaleX(x);
-        ctx.fillText(x.toFixed(0), px, height - padding + 15);
-
-        const y = yMin + (yMax - yMin) * i / 4;
-        const py = scaleY(y);
-        ctx.textAlign = 'right';
-        ctx.fillText(y.toFixed(0), padding - 5, py + 4);
-      }
-
-      // Draw regression line
-      ctx.strokeStyle = '#8b5cf6';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      const lineY1 = problem.intercept + problem.slope * xMin;
-      const lineY2 = problem.intercept + problem.slope * xMax;
-      ctx.moveTo(scaleX(xMin), scaleY(lineY1));
-      ctx.lineTo(scaleX(xMax), scaleY(lineY2));
-      ctx.stroke();
-
-      // Draw points
-      ctx.fillStyle = '#6366f1';
-      for (const p of problem.points) {
-        ctx.beginPath();
-        ctx.arc(scaleX(p.x), scaleY(p.y), 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Draw equation and r
-      ctx.fillStyle = '#374151';
-      ctx.font = '14px monospace';
-      ctx.textAlign = 'left';
-      const eq = `ŷ = ${problem.intercept.toFixed(2)} + ${problem.slope.toFixed(3)}x`;
-      ctx.fillText(eq, padding + 10, padding + 20);
-      ctx.fillText(`r = ${problem.r.toFixed(3)}`, padding + 10, padding + 40);
-    }
-
-    // ==================== UI UPDATES ====================
-    function updateInfoPanel(problem) {
-      const container = document.getElementById('info-container');
-      container.innerHTML = `
-        <div class="mb-2">
-          <span class="text-gray-600 text-sm">Topic:</span>
-          <span class="font-medium ml-2">${problem.topic}</span>
-        </div>
-        <div class="mb-2">
-          <span class="text-gray-600 text-sm">Equation:</span>
-          <span class="font-mono font-medium ml-2">ŷ = ${problem.intercept.toFixed(2)} + ${problem.slope.toFixed(3)}x</span>
-        </div>
-        <div>
-          <span class="text-gray-600 text-sm">Correlation:</span>
-          <span class="font-mono font-medium ml-2">r = ${problem.r.toFixed(3)}</span>
-        </div>
-      `;
-    }
-
-    function updateHints(problem) {
-      // Slope hint
-      document.getElementById('slope-hint').innerHTML =
-        `For every increase of 1 ${problem.xUnits} in ${problem.xVar}, the predicted ${problem.yVar} ${problem.direction} by ${problem.slopeAbs} ${problem.yUnits}, on average.`;
-
-      // Intercept hint
-      if (problem.interceptMeaningful) {
-        document.getElementById('intercept-hint').innerHTML =
-          `When ${problem.xVar} is 0 ${problem.xUnits}, the predicted ${problem.yVar} is ${problem.intercept.toFixed(2)} ${problem.yUnits}.`;
-      } else {
-        document.getElementById('intercept-hint').innerHTML =
-          `The y-intercept has no meaningful interpretation because ${problem.interceptReason}.`;
-      }
-
-      // Correlation hint
-      document.getElementById('correlation-hint').innerHTML =
-        `There is a ${problem.strength}, ${problem.rDirection}, linear relationship between ${problem.xVar} and ${problem.yVar}.`;
-    }
-
-    function updateStreaksDisplay() {
-      for (const [field, count] of Object.entries(state.streaks)) {
-        const el = document.querySelector(`[data-streak="${field}"]`);
-        if (el) el.textContent = count;
+        container.appendChild(btn);
       }
     }
 
-    function updateStarsDisplay() {
-      for (const [tier, count] of Object.entries(state.starCounts)) {
+    function updateStreaksDisplay(streaks) {
+      const container = document.getElementById('streaks-container');
+      container.innerHTML = '<span class="text-gray-500">Streaks:</span>';
+
+      for (const [field, count] of Object.entries(streaks)) {
+        const span = document.createElement('span');
+        span.innerHTML = `${capitalize(field)}: <span data-streak="${field}" class="font-bold text-purple-600">${count}</span>`;
+        container.appendChild(span);
+      }
+    }
+
+    function updateStarsDisplay(starCounts) {
+      for (const [tier, count] of Object.entries(starCounts)) {
         const el = document.querySelector(`[data-star-count="${tier}"]`);
         if (el) el.textContent = count;
       }
     }
 
-    function clearInputs() {
-      document.getElementById('slope-input').value = '';
-      document.getElementById('intercept-input').value = '';
-      document.getElementById('correlation-input').value = '';
-
-      // Hide hints and feedback
-      document.querySelectorAll('[id$="-hint"]').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('[id$="-feedback"]').forEach(el => el.classList.add('hidden'));
-
-      // Enable inputs
-      document.querySelectorAll('textarea').forEach(el => el.disabled = false);
-    }
-
-    // ==================== GRADING ====================
-    function escapeRegex(str) {
-      return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-
-    function gradeField(fieldId, answer, problem) {
-      const rules = {
-        slope: [
-          { id: 'prediction', pattern: /\b(predict|predicted|expect|expected|on average|average)\b/i, required: true, feedback: 'Use prediction language' },
-          { id: 'direction', pattern: /\b(increase|decrease)\b/i, required: true, feedback: 'State direction' },
-          { id: 'xVar', pattern: new RegExp(escapeRegex(problem.xVar), 'i'), required: true, feedback: 'Mention x-variable' },
-          { id: 'yVar', pattern: new RegExp(escapeRegex(problem.yVar), 'i'), required: true, feedback: 'Mention y-variable' },
-          { id: 'forEvery', pattern: /\b(for every|for each|per)\b/i, required: true, feedback: 'Include "for every" language' },
-          { id: 'value', pattern: new RegExp(`\\b${escapeRegex(problem.slopeAbs)}|${problem.slopeAbs.toFixed(2)}\\b`), required: false, feedback: 'Include slope value' }
-        ],
-        intercept: problem.interceptMeaningful ? [
-          { id: 'xZero', pattern: /\b(when|if|at)\b.*\b(0|zero)\b/i, required: true, feedback: 'Reference x = 0' },
-          { id: 'prediction', pattern: /\b(predict|predicted|expect|expected)\b/i, required: true, feedback: 'Use prediction language' },
-          { id: 'yVar', pattern: new RegExp(escapeRegex(problem.yVar), 'i'), required: true, feedback: 'Mention y-variable' }
-        ] : [
-          { id: 'meaningless', pattern: /\b(no meaning|not meaningful|meaningless|doesn't make sense|no practical|not realistic)\b/i, required: true, feedback: 'Identify that intercept is meaningless' }
-        ],
-        correlation: [
-          { id: 'linear', pattern: /\b(linear)\b/i, required: true, feedback: 'Describe as "linear"' },
-          { id: 'strength', pattern: new RegExp(`\\b${problem.strength}\\b`, 'i'), required: true, feedback: `State strength (${problem.strength})` },
-          { id: 'direction', pattern: new RegExp(`\\b${problem.rDirection}\\b`, 'i'), required: true, feedback: `State direction (${problem.rDirection})` },
-          { id: 'xVar', pattern: new RegExp(escapeRegex(problem.xVar), 'i'), required: true, feedback: 'Mention x-variable' },
-          { id: 'yVar', pattern: new RegExp(escapeRegex(problem.yVar), 'i'), required: true, feedback: 'Mention y-variable' }
-        ]
-      };
-
-      const fieldRules = rules[fieldId] || [];
-      const matched = [];
-      const missing = [];
-
-      for (const rule of fieldRules) {
-        if (rule.pattern.test(answer)) {
-          matched.push(rule.id);
-        } else if (rule.required) {
-          missing.push(rule.feedback);
-        }
-      }
-
-      let score;
-      if (missing.length === 0) {
-        score = 'E';
-      } else if (missing.length <= 1) {
-        score = 'P';
-      } else {
-        score = 'I';
-      }
-
-      return {
-        score,
-        feedback: missing.length > 0 ? missing.join('. ') : 'Great job!',
-        matched,
-        missing
-      };
-    }
-
-    function gradeAll() {
-      const problem = state.currentProblem;
-      if (!problem) return;
-
-      const answers = {
-        slope: document.getElementById('slope-input').value,
-        intercept: document.getElementById('intercept-input').value,
-        correlation: document.getElementById('correlation-input').value
-      };
-
-      const results = {};
-      let allCorrect = true;
-
-      for (const [fieldId, answer] of Object.entries(answers)) {
-        if (!answer.trim()) {
-          results[fieldId] = { score: 'I', feedback: 'Please enter a response' };
-          allCorrect = false;
-          continue;
-        }
-
-        const result = gradeField(fieldId, answer, problem);
-        results[fieldId] = result;
-
-        if (result.score !== 'E') {
-          allCorrect = false;
-        }
-      }
-
-      // Show feedback
-      for (const [fieldId, result] of Object.entries(results)) {
-        const feedbackEl = document.getElementById(`${fieldId}-feedback`);
-        feedbackEl.className = `mt-2 p-3 rounded-lg feedback-${result.score}`;
-        feedbackEl.innerHTML = `<strong>${result.score === 'E' ? '✓ Correct!' : result.score === 'P' ? '~ Partial' : '✗ Needs work'}</strong> ${result.feedback}`;
-        feedbackEl.classList.remove('hidden');
-      }
-
-      // Update streaks
-      for (const [fieldId, result] of Object.entries(results)) {
-        if (result.score === 'E') {
-          state.streaks[fieldId]++;
-        } else {
-          state.streaks[fieldId] = 0;
-        }
-      }
-
-      // Award star if all correct
-      if (allCorrect) {
-        const hintsUsed = state.hintsUsed.size;
-        let starType;
-        if (hintsUsed === 0) starType = 'gold';
-        else if (hintsUsed === 1) starType = 'silver';
-        else if (hintsUsed === 2) starType = 'bronze';
-        else starType = 'tin';
-
-        state.starCounts[starType]++;
-
-        if (starType === 'gold') {
-          showCelebration();
-        }
-      }
-
-      saveState();
-      updateStreaksDisplay();
-      updateStarsDisplay();
-
-      // Disable inputs
-      document.querySelectorAll('textarea').forEach(el => el.disabled = true);
-
-      // Check paragraph mode unlock
-      checkParagraphUnlock();
-    }
-
-    function checkParagraphUnlock() {
-      const paragraphBtn = document.querySelector('[data-mode="paragraph"]');
-      if (state.starCounts.gold >= 7) {
-        paragraphBtn.disabled = false;
-        paragraphBtn.classList.remove('bg-gray-100', 'text-gray-400', 'cursor-not-allowed');
-        paragraphBtn.classList.add('bg-gray-100', 'text-gray-600', 'hover:bg-gray-200');
-        paragraphBtn.textContent = 'Full Paragraph';
-        paragraphBtn.title = '';
-      }
-    }
-
-    function showCelebration() {
+    function showCelebration(starType) {
+      if (starType !== 'gold') return;
       const toast = document.getElementById('celebration-toast');
       toast.classList.remove('hidden');
-      setTimeout(() => {
-        toast.classList.add('hidden');
-      }, 3000);
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    // ==================== PLATFORM CALLBACKS ====================
+    function onStateChange(state) {
+      if (state.modes) {
+        updateModeTabs(state.modes, state.currentMode, state.game.unlockedTiers);
+      }
+      if (state.game) {
+        updateStreaksDisplay(state.game.streaks);
+        updateStarsDisplay(state.game.starCounts);
+      }
+    }
+
+    function onGradingComplete(results) {
+      // Check if star was earned
+      if (results.allCorrect) {
+        const state = platform.getState();
+        showCelebration(state.game.potentialStar);
+      }
+    }
+
+    // ==================== MODE SWITCHING ====================
+    async function switchMode(modeId) {
+      if (platform.setMode(modeId)) {
+        await platform.loadProblem();
+      }
+    }
+
+    // ==================== LOAD CARTRIDGE ====================
+    async function loadCartridge(cartridgeId) {
+      try {
+        // Create new platform instance
+        platform = new Platform({
+          graphContainer: '#graph-container',
+          inputsContainer: '#input-container',
+          infoContainer: '#info-container',
+          streaksContainer: '#streaks-container',
+          starsContainer: '#stars-container',
+          cartridgesPath: '/cartridges',
+          sharedPath: '/shared',
+          onStateChange,
+          onGradingComplete
+        });
+
+        platform.init();
+
+        // Load the cartridge
+        const cartridge = await platform.loadCartridge(cartridgeId);
+        updateHeader(cartridge.manifest);
+
+        // Listen for star events
+        platform.on('starEarned', ({ starType }) => showCelebration(starType));
+
+        // Load first problem
+        await platform.loadProblem();
+
+        currentCartridgeId = cartridgeId;
+
+      } catch (err) {
+        console.error('Failed to load cartridge:', err);
+        document.getElementById('cartridge-name').textContent = 'Error loading cartridge';
+        document.getElementById('cartridge-desc').textContent = err.message;
+      }
     }
 
     // ==================== EVENT HANDLERS ====================
-    function loadNewProblem() {
-      const problem = generateProblem();
-      renderGraph(problem);
-      updateInfoPanel(problem);
-      updateHints(problem);
-      clearInputs();
-    }
-
-    // Hint toggles
-    document.querySelectorAll('.hint-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const field = btn.dataset.hint;
-        const hintEl = document.getElementById(`${field}-hint`);
-        const isHidden = hintEl.classList.contains('hidden');
-
-        if (isHidden) {
-          hintEl.classList.remove('hidden');
-          state.hintsUsed.add(field);
-        } else {
-          hintEl.classList.add('hidden');
-        }
-      });
-    });
-
-    // Grade button
-    document.getElementById('btn-grade').addEventListener('click', () => {
-      if (!state.isGrading) {
-        state.isGrading = true;
-        gradeAll();
-        state.isGrading = false;
+    document.getElementById('btn-grade').addEventListener('click', async () => {
+      if (platform) {
+        await platform.grade();
       }
     });
 
-    // Next button
-    document.getElementById('btn-next').addEventListener('click', loadNewProblem);
+    document.getElementById('btn-next').addEventListener('click', async () => {
+      if (platform) {
+        await platform.loadProblem();
+      }
+    });
+
+    document.getElementById('btn-load-cartridge').addEventListener('click', () => {
+      const select = document.getElementById('cartridge-select');
+      loadCartridge(select.value);
+    });
 
     // ==================== INIT ====================
-    function init() {
-      updateStreaksDisplay();
-      updateStarsDisplay();
-      checkParagraphUnlock();
-      loadNewProblem();
-    }
-
-    init();
+    loadCartridge('lsrl-interpretation');
   </script>
 </body>
 </html>
