@@ -39,6 +39,9 @@ export class GameEngine {
     this.cartridgeId = manifest.meta.id;
     this.storagePrefix = `driller_${this.cartridgeId}_`;
 
+    // Store unlock rules for re-checking after stars are earned
+    this.unlockRules = manifest.modes || manifest.progression?.tiers || [];
+
     // Initialize streaks for each trackable field
     const streakFields = manifest.progression?.streakFields ||
                          manifest.modes?.map(m => m.id) ||
@@ -53,8 +56,7 @@ export class GameEngine {
     this.loadState();
 
     // Check initial unlocks - use modes array since that's where unlockedBy is defined
-    const unlockRules = manifest.modes || manifest.progression?.tiers || [];
-    this.checkUnlocks(unlockRules);
+    this.checkUnlocks(this.unlockRules);
 
     return this;
   }
@@ -105,6 +107,12 @@ export class GameEngine {
   awardStar(starType) {
     this.starCounts[starType]++;
     this.onStarEarned(starType, this.starCounts);
+
+    // Re-check unlocks in case star earned unlocks new tier
+    if (this.unlockRules) {
+      this.checkUnlocks(this.unlockRules);
+    }
+
     this.saveState();
   }
 
