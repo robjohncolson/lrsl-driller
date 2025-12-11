@@ -36,15 +36,14 @@ export class GraphEngine {
   init() {
     // Create canvas
     this.canvas = document.createElement('canvas');
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.canvas.style.width = '100%';
-    this.canvas.style.maxWidth = this.width + 'px';
     this.ctx = this.canvas.getContext('2d');
 
     // Clear container and append
     this.container.innerHTML = '';
     this.container.appendChild(this.canvas);
+
+    // Size canvas to container
+    this.sizeToContainer();
 
     // Store for interactivity
     this.currentData = null;
@@ -53,6 +52,25 @@ export class GraphEngine {
     // Hover handling
     this.canvas.addEventListener('mousemove', (e) => this.handleHover(e));
     this.canvas.addEventListener('click', (e) => this.handleClick(e));
+
+    // Watch for container resize
+    this.resizeObserver = new ResizeObserver(() => {
+      this.sizeToContainer();
+      if (this.currentConfig) {
+        this.render(this.currentConfig);
+      }
+    });
+    this.resizeObserver.observe(this.container);
+  }
+
+  sizeToContainer() {
+    const rect = this.container.getBoundingClientRect();
+    this.width = rect.width || 400;
+    this.height = rect.height || 300;
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
   }
 
   /**
@@ -410,16 +428,30 @@ export class GraphEngine {
   }
 
   /**
-   * Resize the graph
+   * Resize the graph (manual resize, or use container dimensions if no args)
    */
   resize(width, height) {
-    this.width = width;
-    this.height = height;
-    this.canvas.width = width;
-    this.canvas.height = height;
+    if (width && height) {
+      this.width = width;
+      this.height = height;
+      this.canvas.width = width;
+      this.canvas.height = height;
+    } else {
+      this.sizeToContainer();
+    }
 
     if (this.currentConfig) {
       this.render(this.currentConfig);
+    }
+  }
+
+  /**
+   * Clean up resources
+   */
+  destroy() {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
     }
   }
 }
