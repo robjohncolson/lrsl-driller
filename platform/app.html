@@ -148,10 +148,10 @@
   </div>
 
   <!-- Main Content -->
-  <main class="max-w-6xl mx-auto px-4 py-4 h-[calc(100vh-48px)] overflow-hidden">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-      <!-- Left Column: Scenario + Graph (sticky) -->
-      <div class="space-y-4 lg:sticky lg:top-0 lg:self-start">
+  <main class="max-w-6xl mx-auto px-4 py-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Left Column: Scenario + Graph (sticky on scroll) -->
+      <div class="space-y-4 lg:sticky lg:top-[56px] lg:self-start lg:max-h-[calc(100vh-72px)]">
         <!-- Scenario Card -->
         <div class="bg-white rounded-xl shadow-lg p-4">
           <div class="flex items-center gap-2 mb-2">
@@ -170,8 +170,8 @@
         </div>
       </div>
 
-      <!-- Right Column: Inputs (scrollable) -->
-      <div class="space-y-4 lg:overflow-y-auto lg:max-h-full lg:pr-2">
+      <!-- Right Column: Inputs (scrolls with page) -->
+      <div class="space-y-4">
         <!-- Mode Tabs -->
         <div id="mode-tabs" class="flex gap-2 flex-wrap"></div>
 
