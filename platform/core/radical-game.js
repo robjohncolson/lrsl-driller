@@ -1,6 +1,7 @@
 /**
- * Radical Simplifier - Click-to-group interface
- * Shows a pile of squares, click buttons to form 2×2, 3×3, etc. groups
+ * Radical Simplifier - Factor-based grouping
+ * Extract perfect square FACTORS (not partitions) from the radicand
+ * √48 = √(16×3) = 4√3, not √48 = √(16+16+16)
  */
 
 export class RadicalGame {
@@ -14,8 +15,10 @@ export class RadicalGame {
       ...config
     };
 
-    this.totalSquares = 12;
-    this.groups = []; // Array of { side: 2|3|4, color: string }
+    this.originalRadicand = 12;
+    this.currentRadicand = 12;
+    this.coefficient = 1;
+    this.extractedFactors = []; // Track what was extracted
     this.onAnswerChange = config.onAnswerChange || (() => {});
 
     this.init();
@@ -28,276 +31,204 @@ export class RadicalGame {
     this.wrapper.className = 'radical-simplifier';
     this.wrapper.innerHTML = `
       <div class="flex flex-col gap-4">
-        <!-- Main area: squares + groups -->
+        <!-- Main area -->
         <div class="flex gap-6 items-start">
 
-          <!-- Remaining squares pile -->
+          <!-- Current radicand visualization -->
           <div class="flex-1">
-            <div class="text-xs font-semibold text-gray-500 mb-2">SQUARES REMAINING</div>
-            <div class="remaining-display bg-gray-100 rounded-lg p-4 min-h-[140px] flex items-center justify-center">
+            <div class="text-xs font-semibold text-gray-500 mb-2">UNDER THE RADICAL</div>
+            <div class="radicand-display bg-indigo-50 rounded-lg p-4 min-h-[160px] flex flex-col items-center justify-center border-2 border-indigo-200">
+              <div class="text-4xl font-bold text-indigo-600 mb-2">√<span class="radicand-value"></span></div>
               <div class="squares-grid"></div>
             </div>
           </div>
 
-          <!-- Formed groups -->
+          <!-- Extracted coefficient -->
           <div class="flex-1">
-            <div class="text-xs font-semibold text-gray-500 mb-2">YOUR GROUPS</div>
-            <div class="groups-display bg-green-50 rounded-lg p-4 min-h-[140px]">
-              <div class="groups-container flex flex-wrap gap-3 justify-center"></div>
-              <div class="no-groups-msg text-gray-400 text-center py-8">Click buttons below to form groups</div>
+            <div class="text-xs font-semibold text-gray-500 mb-2">COEFFICIENT (outside √)</div>
+            <div class="coefficient-display bg-green-50 rounded-lg p-4 min-h-[160px] flex flex-col items-center justify-center border-2 border-green-200">
+              <div class="text-4xl font-bold text-green-600 coefficient-value">1</div>
+              <div class="extracted-list text-sm text-green-600 mt-2"></div>
             </div>
           </div>
 
         </div>
 
         <!-- Action buttons -->
-        <div class="flex items-center justify-center gap-3 flex-wrap">
-          <span class="text-sm text-gray-600 mr-2">Form group:</span>
-          <button class="group-btn bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-size="2">
-            2×2 <span class="text-green-200 text-sm">(4)</span>
-          </button>
-          <button class="group-btn bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-size="3">
-            3×3 <span class="text-orange-200 text-sm">(9)</span>
-          </button>
-          <button class="group-btn bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-size="4">
-            4×4 <span class="text-pink-200 text-sm">(16)</span>
-          </button>
-          <button class="group-btn bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-size="5">
-            5×5 <span class="text-cyan-200 text-sm">(25)</span>
-          </button>
-          <div class="flex-1"></div>
-          <button class="undo-btn bg-gray-400 hover:bg-gray-500 disabled:bg-gray-200 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm transition-colors">
-            ↩ Undo
-          </button>
-          <button class="reset-btn bg-red-400 hover:bg-red-500 text-white px-3 py-2 rounded-lg text-sm transition-colors">
-            Reset
-          </button>
+        <div class="flex flex-col gap-2">
+          <div class="text-sm text-gray-600 text-center">Extract a perfect square factor:</div>
+          <div class="flex items-center justify-center gap-2 flex-wrap">
+            <button class="extract-btn bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="4">
+              ÷4 <span class="text-green-200 text-sm">(×2)</span>
+            </button>
+            <button class="extract-btn bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="9">
+              ÷9 <span class="text-orange-200 text-sm">(×3)</span>
+            </button>
+            <button class="extract-btn bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="16">
+              ÷16 <span class="text-pink-200 text-sm">(×4)</span>
+            </button>
+            <button class="extract-btn bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="25">
+              ÷25 <span class="text-cyan-200 text-sm">(×5)</span>
+            </button>
+          </div>
+          <div class="flex justify-center gap-2 mt-1">
+            <button class="undo-btn bg-gray-400 hover:bg-gray-500 disabled:bg-gray-200 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm transition-colors">
+              ↩ Undo
+            </button>
+            <button class="reset-btn bg-red-400 hover:bg-red-500 text-white px-3 py-2 rounded-lg text-sm transition-colors">
+              Reset
+            </button>
+          </div>
         </div>
 
         <!-- Answer display -->
         <div class="answer-display bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border border-purple-200">
           <div class="text-sm text-gray-600 mb-2">Your simplified form:</div>
-          <div class="flex items-center gap-4">
-            <div class="answer-visual flex items-center gap-2"></div>
-            <div class="text-3xl font-bold text-purple-700">=</div>
+          <div class="flex items-center justify-center gap-3">
             <div class="answer-formula text-3xl font-bold text-purple-700"></div>
           </div>
-          <div class="answer-breakdown text-sm text-gray-500 mt-2"></div>
+          <div class="answer-breakdown text-sm text-gray-500 mt-2 text-center"></div>
         </div>
       </div>
     `;
     this.container.appendChild(this.wrapper);
 
     // Get elements
+    this.radicandValue = this.wrapper.querySelector('.radicand-value');
     this.squaresGrid = this.wrapper.querySelector('.squares-grid');
-    this.groupsContainer = this.wrapper.querySelector('.groups-container');
-    this.noGroupsMsg = this.wrapper.querySelector('.no-groups-msg');
-    this.answerVisual = this.wrapper.querySelector('.answer-visual');
+    this.coefficientValue = this.wrapper.querySelector('.coefficient-value');
+    this.extractedList = this.wrapper.querySelector('.extracted-list');
     this.answerFormula = this.wrapper.querySelector('.answer-formula');
     this.answerBreakdown = this.wrapper.querySelector('.answer-breakdown');
 
     // Button events
-    this.wrapper.querySelectorAll('.group-btn').forEach(btn => {
-      btn.addEventListener('click', () => this.formGroup(parseInt(btn.dataset.size)));
+    this.wrapper.querySelectorAll('.extract-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.extractFactor(parseInt(btn.dataset.factor)));
     });
-    this.wrapper.querySelector('.undo-btn').addEventListener('click', () => this.undoGroup());
+    this.wrapper.querySelector('.undo-btn').addEventListener('click', () => this.undo());
     this.wrapper.querySelector('.reset-btn').addEventListener('click', () => this.reset());
   }
 
   loadProblem(totalSquares, config = {}) {
-    this.totalSquares = totalSquares;
+    this.originalRadicand = totalSquares;
     this.problemConfig = config;
     this.reset();
   }
 
   reset() {
-    this.groups = [];
+    this.currentRadicand = this.originalRadicand;
+    this.coefficient = 1;
+    this.extractedFactors = [];
     this.render();
     this.updateAnswer();
   }
 
-  formGroup(side) {
-    const needed = side * side;
-    const remaining = this.getRemainingCount();
+  extractFactor(perfectSquare) {
+    const root = Math.sqrt(perfectSquare);
 
-    if (remaining < needed) {
-      this.showMessage(`Need ${needed} squares for ${side}×${side}, only ${remaining} left!`, 'error');
+    if (this.currentRadicand % perfectSquare !== 0) {
+      this.showMessage(`${this.currentRadicand} is not divisible by ${perfectSquare}`, 'error');
       return;
     }
 
-    const colors = {
-      2: '#22c55e',
-      3: '#f59e0b',
-      4: '#ec4899',
-      5: '#06b6d4'
-    };
-
-    this.groups.push({
-      side,
-      count: needed,
-      color: colors[side] || '#8b5cf6'
-    });
+    // Extract the factor
+    this.extractedFactors.push({ square: perfectSquare, root: root });
+    this.currentRadicand = this.currentRadicand / perfectSquare;
+    this.coefficient = this.coefficient * root;
 
     this.render();
     this.updateAnswer();
+
+    if (this.currentRadicand === 1) {
+      this.showMessage('Perfect square! Fully simplified.', 'success');
+    }
   }
 
-  undoGroup() {
-    if (this.groups.length > 0) {
-      this.groups.pop();
+  undo() {
+    if (this.extractedFactors.length > 0) {
+      const last = this.extractedFactors.pop();
+      this.currentRadicand = this.currentRadicand * last.square;
+      this.coefficient = this.coefficient / last.root;
       this.render();
       this.updateAnswer();
     }
   }
 
-  getRemainingCount() {
-    const grouped = this.groups.reduce((sum, g) => sum + g.count, 0);
-    return this.totalSquares - grouped;
-  }
-
   // ==================== RENDERING ====================
 
   render() {
-    const remaining = this.getRemainingCount();
     const size = this.config.squareSize;
 
-    // Render remaining squares
-    const cols = Math.min(remaining, 6);
-    let squaresHtml = '';
-    for (let i = 0; i < remaining; i++) {
-      squaresHtml += `
-        <div class="bg-indigo-500 rounded shadow-sm border border-indigo-600"
-             style="width: ${size}px; height: ${size}px;"></div>
-      `;
-    }
+    // Render radicand
+    this.radicandValue.textContent = this.currentRadicand;
 
-    if (remaining === 0) {
-      this.squaresGrid.innerHTML = `<div class="text-gray-400 text-sm">All grouped!</div>`;
+    // Render squares grid (show up to 25 squares visually)
+    const displayCount = Math.min(this.currentRadicand, 25);
+    const cols = Math.min(displayCount, 5);
+
+    if (this.currentRadicand === 1) {
+      this.squaresGrid.innerHTML = `<div class="text-green-600 text-sm font-semibold mt-2">= 1 (nothing left!)</div>`;
     } else {
+      let squaresHtml = '';
+      for (let i = 0; i < displayCount; i++) {
+        squaresHtml += `<div class="bg-indigo-500 rounded shadow-sm" style="width: ${size}px; height: ${size}px;"></div>`;
+      }
+      if (this.currentRadicand > 25) {
+        squaresHtml += `<div class="text-indigo-600 text-sm font-bold col-span-full mt-1">+${this.currentRadicand - 25} more</div>`;
+      }
       this.squaresGrid.innerHTML = `
-        <div class="grid gap-1" style="grid-template-columns: repeat(${cols}, ${size}px);">
+        <div class="grid gap-1 mt-2" style="grid-template-columns: repeat(${cols}, ${size}px);">
           ${squaresHtml}
         </div>
-        <div class="text-center mt-2 text-indigo-600 font-bold">${remaining}</div>
       `;
     }
 
-    // Render groups
-    if (this.groups.length === 0) {
-      this.groupsContainer.innerHTML = '';
-      this.noGroupsMsg.style.display = '';
+    // Render coefficient
+    this.coefficientValue.textContent = this.coefficient;
+
+    // Render extracted factors list
+    if (this.extractedFactors.length === 0) {
+      this.extractedList.innerHTML = `<span class="text-gray-400">Nothing extracted yet</span>`;
     } else {
-      this.noGroupsMsg.style.display = 'none';
-      let groupsHtml = '';
-
-      for (const group of this.groups) {
-        const gSize = Math.min(size - 4, 28);
-        let groupSquares = '';
-        for (let i = 0; i < group.count; i++) {
-          groupSquares += `<div style="width: ${gSize}px; height: ${gSize}px; background: ${group.color}; border-radius: 2px;"></div>`;
-        }
-
-        groupsHtml += `
-          <div class="group-item flex flex-col items-center p-2 bg-white rounded-lg shadow-sm border-2" style="border-color: ${group.color}">
-            <div class="grid gap-0.5" style="grid-template-columns: repeat(${group.side}, ${gSize}px);">
-              ${groupSquares}
-            </div>
-            <div class="mt-1 text-xs font-bold" style="color: ${group.color}">${group.side}×${group.side}</div>
-          </div>
-        `;
-      }
-
-      this.groupsContainer.innerHTML = groupsHtml;
+      const factors = this.extractedFactors.map(f => `√${f.square}=${f.root}`).join(', ');
+      this.extractedList.innerHTML = `Extracted: ${factors}`;
     }
 
     // Update button states
-    this.wrapper.querySelectorAll('.group-btn').forEach(btn => {
-      const needed = Math.pow(parseInt(btn.dataset.size), 2);
-      btn.disabled = remaining < needed;
+    this.wrapper.querySelectorAll('.extract-btn').forEach(btn => {
+      const factor = parseInt(btn.dataset.factor);
+      btn.disabled = this.currentRadicand % factor !== 0 || this.currentRadicand < factor;
     });
 
-    this.wrapper.querySelector('.undo-btn').disabled = this.groups.length === 0;
+    this.wrapper.querySelector('.undo-btn').disabled = this.extractedFactors.length === 0;
   }
 
   // ==================== ANSWER ====================
 
   updateAnswer() {
-    const remaining = this.getRemainingCount();
-
-    // Coefficient is product of all group sides
-    let coefficient = 1;
-    for (const group of this.groups) {
-      coefficient *= group.side;
-    }
-
-    const sqSize = 18;
-    let visualHtml = '';
     let formulaHtml = '';
     let breakdownHtml = '';
 
-    if (this.groups.length === 0) {
-      visualHtml = this.renderRadicalVisual(this.totalSquares, sqSize);
-      formulaHtml = `√${this.totalSquares}`;
-      breakdownHtml = 'Click a button above to form a group (2×2 needs 4 squares, 3×3 needs 9, etc.)';
-    } else if (remaining === 0) {
-      visualHtml = this.renderCoefficientVisual(coefficient, sqSize);
-      formulaHtml = `${coefficient}`;
-      breakdownHtml = `Perfect square! ${this.groups.map(g => `${g.side}×${g.side}`).join(' × ')} = ${coefficient}`;
+    if (this.coefficient === 1 && this.currentRadicand === this.originalRadicand) {
+      formulaHtml = `√${this.originalRadicand}`;
+      breakdownHtml = `Click a button to extract a perfect square factor (e.g., if divisible by 4, extract √4=2)`;
+    } else if (this.currentRadicand === 1) {
+      formulaHtml = `${this.coefficient}`;
+      breakdownHtml = `√${this.originalRadicand} = ${this.coefficient} (perfect square!)`;
     } else {
-      visualHtml = this.renderCoefficientVisual(coefficient, sqSize) +
-                   `<span class="text-2xl mx-2">×</span>` +
-                   this.renderRadicalVisual(remaining, sqSize);
-      formulaHtml = `${coefficient}√${remaining}`;
-      breakdownHtml = `${this.groups.map(g => `${g.side}`).join(' × ')} = ${coefficient} outside, ${remaining} under √`;
+      formulaHtml = `${this.coefficient}√${this.currentRadicand}`;
+      breakdownHtml = `√${this.originalRadicand} = √(${this.extractedFactors.map(f => f.square).join('×')}×${this.currentRadicand}) = ${this.coefficient}√${this.currentRadicand}`;
     }
 
-    this.answerVisual.innerHTML = visualHtml;
     this.answerFormula.innerHTML = formulaHtml;
     this.answerBreakdown.innerHTML = breakdownHtml;
 
     this.onAnswerChange({
-      coefficient,
-      radicand: remaining,
-      groups: this.groups.map(g => ({ side: g.side, count: g.count })),
-      simplified: remaining === 0 || coefficient > 1
+      coefficient: this.coefficient,
+      radicand: this.currentRadicand,
+      groups: this.extractedFactors.map(f => ({ side: f.root, count: f.square })),
+      simplified: this.coefficient > 1 || this.currentRadicand === 1
     });
-  }
-
-  renderCoefficientVisual(coefficient, sqSize) {
-    return `
-      <div class="flex flex-col items-center">
-        <div class="text-lg font-bold text-green-600">${coefficient}</div>
-        <div class="border-2 border-green-500 rounded bg-green-100"
-             style="width: ${sqSize * 2}px; height: ${sqSize * 2}px;"></div>
-        <div class="text-xs text-green-600 mt-1">coefficient</div>
-      </div>
-    `;
-  }
-
-  renderRadicalVisual(count, sqSize) {
-    const cols = Math.min(count, 5);
-    let squaresHtml = '';
-    const displayCount = Math.min(count, 10);
-    for (let i = 0; i < displayCount; i++) {
-      squaresHtml += `<div class="bg-indigo-500 rounded-sm" style="width: ${sqSize - 2}px; height: ${sqSize - 2}px;"></div>`;
-    }
-    if (count > 10) {
-      squaresHtml += `<div class="text-indigo-600 text-xs font-bold">+${count - 10}</div>`;
-    }
-
-    return `
-      <div class="flex flex-col items-center">
-        <div class="text-lg font-bold text-indigo-600">√${count}</div>
-        <div class="relative">
-          <div class="absolute -left-3 top-0 text-indigo-400 text-xl">√</div>
-          <div class="grid gap-0.5 p-1 border-t-2 border-indigo-400 ml-1"
-               style="grid-template-columns: repeat(${cols}, ${sqSize - 2}px);">
-            ${squaresHtml}
-          </div>
-        </div>
-        <div class="text-xs text-indigo-600 mt-1">radicand</div>
-      </div>
-    `;
   }
 
   showMessage(text, type = 'info') {
@@ -313,12 +244,10 @@ export class RadicalGame {
   // ==================== PUBLIC API ====================
 
   getAnswer() {
-    const remaining = this.getRemainingCount();
-    let coefficient = 1;
-    for (const group of this.groups) {
-      coefficient *= group.side;
-    }
-    return { coefficient, radicand: remaining };
+    return {
+      coefficient: this.coefficient,
+      radicand: this.currentRadicand
+    };
   }
 
   destroy() {
