@@ -45,6 +45,7 @@ export class Platform {
     this.currentMode = null;
     this.currentProblem = null;
     this.isGrading = false;
+    this.preferProvider = config.preferProvider || null; // 'gemini', 'groq', or null (auto)
 
     // Callbacks
     this.onProblemLoaded = config.onProblemLoaded || (() => {});
@@ -397,7 +398,8 @@ export class Platform {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         scenario,
-        answers
+        answers,
+        preferProvider: this.preferProvider
       })
     });
 
@@ -417,6 +419,14 @@ export class Platform {
    */
   skip() {
     return this.loadProblem();
+  }
+
+  /**
+   * Set preferred AI provider for server grading
+   * @param {string|null} provider - 'gemini', 'groq', or null (auto)
+   */
+  setPreferProvider(provider) {
+    this.preferProvider = provider;
   }
 
   /**

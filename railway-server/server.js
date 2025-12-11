@@ -624,7 +624,7 @@ async function callGemini(prompt, apiKey) {
   if (!apiKey) throw new Error('Gemini API key not provided');
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -695,9 +695,15 @@ async function callGroq(prompt, apiKey) {
   throw new Error('Groq: Invalid response structure');
 }
 
-async function gradeWithAI(prompt) {
+async function gradeWithAI(prompt, preferredProvider = null) {
   // Try providers with key rotation from pool
-  const providers = ['groq', 'gemini']; // Prefer Groq for speed
+  // If a preferred provider is specified, try it first
+  let providers = ['groq', 'gemini']; // Default: prefer Groq for speed
+  if (preferredProvider === 'gemini') {
+    providers = ['gemini', 'groq'];
+  } else if (preferredProvider === 'groq') {
+    providers = ['groq', 'gemini'];
+  }
   let lastError = null;
 
   for (const provider of providers) {
@@ -913,7 +919,7 @@ app.post('/api/ai/contribute-key', async (req, res) => {
 // Grade 3-part answers
 app.post('/api/ai/grade', async (req, res) => {
   try {
-    const { scenario, answers } = req.body;
+    const { scenario, answers, preferProvider } = req.body;
 
     if (!scenario || !answers) {
       return res.status(400).json({ error: 'Missing scenario or answers' });
@@ -932,9 +938,9 @@ app.post('/api/ai/grade', async (req, res) => {
     const prompt = buildGradingPrompt(scenario, answers);
     const queuePos = gradingQueue.getQueueLength();
 
-    console.log(`Grading request queued (position ${queuePos}): ${scenario.topic}`);
+    console.log(`Grading request queued (position ${queuePos}): ${scenario.topic}, prefer: ${preferProvider || 'auto'}`);
 
-    const result = await gradingQueue.add(() => gradeWithAI(prompt));
+    const result = await gradingQueue.add(() => gradeWithAI(prompt, preferProvider));
 
     result._gradingMode = 'ai';
     result._serverGraded = true;
@@ -949,7 +955,7 @@ app.post('/api/ai/grade', async (req, res) => {
 // Grade paragraph
 app.post('/api/ai/grade-paragraph', async (req, res) => {
   try {
-    const { scenario, paragraph } = req.body;
+    const { scenario, paragraph, preferProvider } = req.body;
 
     if (!scenario || !paragraph) {
       return res.status(400).json({ error: 'Missing scenario or paragraph' });
@@ -968,9 +974,9 @@ app.post('/api/ai/grade-paragraph', async (req, res) => {
     const prompt = buildParagraphPrompt(scenario, paragraph);
     const queuePos = gradingQueue.getQueueLength();
 
-    console.log(`Paragraph grading request queued (position ${queuePos}): ${scenario.topic}`);
+    console.log(`Paragraph grading request queued (position ${queuePos}): ${scenario.topic}, prefer: ${preferProvider || 'auto'}`);
 
-    const result = await gradingQueue.add(() => gradeWithAI(prompt));
+    const result = await gradingQueue.add(() => gradeWithAI(prompt, preferProvider));
 
     result._gradingMode = 'ai';
     result._serverGraded = true;

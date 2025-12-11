@@ -380,9 +380,15 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Default Grading Mode</label>
           <select id="ai-provider" class="w-full border border-gray-300 rounded-lg p-2">
-            <option value="server">Server AI (Recommended)</option>
-            <option value="gemini">Google Gemini (Own Key)</option>
-            <option value="groq">Groq (Own Key)</option>
+            <optgroup label="Server AI (No Key Needed)">
+              <option value="server">Server AI (Auto)</option>
+              <option value="server-gemini">Server AI (Gemini 2.5 Pro)</option>
+              <option value="server-groq">Server AI (Groq/Llama)</option>
+            </optgroup>
+            <optgroup label="Own API Key">
+              <option value="gemini">Google Gemini (Own Key)</option>
+              <option value="groq">Groq (Own Key)</option>
+            </optgroup>
             <option value="none">Keyword Matching Only</option>
           </select>
           <p id="server-mode-note" class="text-xs text-green-600 mt-1">No API key needed - grading handled by server.</p>
@@ -1114,13 +1120,24 @@
     document.getElementById('ai-provider').addEventListener('change', (e) => {
       const keysSection = document.getElementById('api-keys-section');
       const serverNote = document.getElementById('server-mode-note');
+      const isOwnKey = e.target.value === 'gemini' || e.target.value === 'groq';
+      const isServer = e.target.value.startsWith('server');
 
-      if (e.target.value === 'gemini' || e.target.value === 'groq') {
+      if (isOwnKey) {
         keysSection.classList.remove('hidden');
         serverNote.classList.add('hidden');
       } else {
         keysSection.classList.add('hidden');
-        serverNote.classList.remove('hidden');
+        if (isServer) {
+          serverNote.classList.remove('hidden');
+          serverNote.textContent = e.target.value === 'server-gemini'
+            ? 'Using Gemini 2.5 Pro on server - no API key needed.'
+            : e.target.value === 'server-groq'
+            ? 'Using Groq/Llama on server - no API key needed.'
+            : 'No API key needed - grading handled by server.';
+        } else {
+          serverNote.classList.add('hidden');
+        }
       }
     });
 
@@ -1138,6 +1155,14 @@
       // Update AI toggle state based on provider
       updateAIToggleState(provider !== 'none');
 
+      // Update platform's provider preference if loaded
+      if (platform) {
+        let preferProvider = null;
+        if (provider === 'server-gemini') preferProvider = 'gemini';
+        else if (provider === 'server-groq') preferProvider = 'groq';
+        platform.setPreferProvider(preferProvider);
+      }
+
       document.getElementById('settings-modal').classList.add('hidden');
       celebration.showToast('Settings saved!', 'success');
     });
@@ -1152,10 +1177,20 @@
       document.getElementById('gemini-key-input').value = geminiKey;
       document.getElementById('groq-key-input').value = groqKey;
 
+      const serverNote = document.getElementById('server-mode-note');
+      const isServer = provider.startsWith('server');
+
       // Show API keys section if using own key
       if (provider === 'gemini' || provider === 'groq') {
         document.getElementById('api-keys-section').classList.remove('hidden');
-        document.getElementById('server-mode-note').classList.add('hidden');
+        serverNote.classList.add('hidden');
+      } else if (isServer) {
+        serverNote.classList.remove('hidden');
+        serverNote.textContent = provider === 'server-gemini'
+          ? 'Using Gemini 2.5 Pro on server - no API key needed.'
+          : provider === 'server-groq'
+          ? 'Using Groq/Llama on server - no API key needed.'
+          : 'No API key needed - grading handled by server.';
       }
 
       // Set initial AI toggle state
@@ -1718,6 +1753,14 @@
     };
 
     // ==================== LOAD CARTRIDGE ====================
+    // Helper to get server provider preference from localStorage
+    function getServerProviderPreference() {
+      const provider = localStorage.getItem('aiProvider') || 'server';
+      if (provider === 'server-gemini') return 'gemini';
+      if (provider === 'server-groq') return 'groq';
+      return null; // 'server' or 'none' = auto or no preference
+    }
+
     async function loadCartridge(cartridgeId) {
       try {
         platform = new Platform({
@@ -1726,6 +1769,7 @@
           infoContainer: '#info-panel',
           cartridgesPath: '../cartridges',
           sharedPath: '../shared',
+          preferProvider: getServerProviderPreference(),
           onStateChange: (state) => {
             if (state.game) {
               updateStarsDisplay(state.game.starCounts);
