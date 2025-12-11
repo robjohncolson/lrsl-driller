@@ -70,11 +70,17 @@ export class RadicalVisualizer {
           <div class="selection-info text-sm text-gray-600"></div>
         </div>
 
-        <!-- Answer display -->
+        <!-- Answer display - GRAPHICAL -->
         <div class="answer-display bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border border-purple-200">
-          <div class="text-sm text-gray-600 mb-2">Your simplified form:</div>
-          <div class="answer-text text-2xl font-bold text-purple-700">√<span class="radicand">?</span></div>
-          <div class="answer-breakdown text-sm text-gray-500 mt-2"></div>
+          <div class="text-sm text-gray-600 mb-3">Your simplified form:</div>
+          <div class="flex items-center gap-4">
+            <!-- Visual representation -->
+            <div class="answer-visual flex items-center gap-2"></div>
+            <!-- Text answer -->
+            <div class="answer-text text-3xl font-bold text-purple-700">=</div>
+            <div class="answer-formula text-3xl font-bold text-purple-700"></div>
+          </div>
+          <div class="answer-breakdown text-sm text-gray-500 mt-3"></div>
         </div>
       </div>
     `;
@@ -88,7 +94,8 @@ export class RadicalVisualizer {
     this.ungroupBtn = this.wrapper.querySelector('.ungroup-btn');
     this.resetBtn = this.wrapper.querySelector('.reset-btn');
     this.selectionInfo = this.wrapper.querySelector('.selection-info');
-    this.answerText = this.wrapper.querySelector('.answer-text');
+    this.answerVisual = this.wrapper.querySelector('.answer-visual');
+    this.answerFormula = this.wrapper.querySelector('.answer-formula');
     this.answerBreakdown = this.wrapper.querySelector('.answer-breakdown');
 
     // Size canvas
@@ -474,29 +481,38 @@ export class RadicalVisualizer {
       coefficient *= group.side;
     }
 
-    // Build answer display
-    let answerHtml = '';
+    // Build VISUAL answer display
+    const sqSize = 20; // Small squares for answer display
+    let visualHtml = '';
+    let formulaHtml = '';
     let breakdownHtml = '';
 
     if (this.groups.length === 0) {
-      answerHtml = `√${this.totalSquares}`;
-      breakdownHtml = `No groups yet. Select squares and click "Group" to form perfect squares.`;
-    } else if (ungrouped === 0 && coefficient > 1) {
-      // Perfect simplification with no remainder
-      answerHtml = `${coefficient}`;
-      breakdownHtml = `${this.groups.map(g => `${g.side}×${g.side}`).join(' + ')} = ${coefficient}² = ${coefficient * coefficient} ✓`;
+      // No groups yet - show original radical with all squares
+      visualHtml = this.renderRadicalVisual(this.totalSquares, sqSize);
+      formulaHtml = `√${this.totalSquares}`;
+      breakdownHtml = `Click squares to select, then click "Group" to form perfect squares.`;
     } else if (ungrouped === 0) {
-      answerHtml = `${coefficient}`;
+      // Perfect square - just the coefficient
+      visualHtml = this.renderCoefficientVisual(coefficient, sqSize);
+      formulaHtml = `${coefficient}`;
       breakdownHtml = `Perfect square! √${this.totalSquares} = ${coefficient}`;
     } else if (coefficient === 1) {
-      answerHtml = `√${ungrouped}`;
-      breakdownHtml = `${ungrouped} squares remaining under radical`;
+      // No coefficient yet
+      visualHtml = this.renderRadicalVisual(ungrouped, sqSize);
+      formulaHtml = `√${ungrouped}`;
+      breakdownHtml = `${ungrouped} squares remaining. Look for more perfect square groups!`;
     } else {
-      answerHtml = `${coefficient}√${ungrouped}`;
-      breakdownHtml = `Groups: ${this.groups.map(g => g.side).join(' × ')} = ${coefficient} outside | ${ungrouped} under radical`;
+      // Coefficient × √remainder
+      visualHtml = this.renderCoefficientVisual(coefficient, sqSize) +
+                   `<span class="text-2xl mx-1">×</span>` +
+                   this.renderRadicalVisual(ungrouped, sqSize);
+      formulaHtml = `${coefficient}√${ungrouped}`;
+      breakdownHtml = `${coefficient} comes out (from ${this.groups.map(g => g.side + '×' + g.side).join(' and ')}) | ${ungrouped} stays under √`;
     }
 
-    this.answerText.innerHTML = answerHtml;
+    this.answerVisual.innerHTML = visualHtml;
+    this.answerFormula.innerHTML = formulaHtml;
     this.answerBreakdown.innerHTML = breakdownHtml;
 
     // Notify parent
@@ -506,6 +522,51 @@ export class RadicalVisualizer {
       groups: this.groups.map(g => ({ side: g.side, count: g.squareIds.length })),
       simplified: ungrouped === 0 || (coefficient > 1 && ungrouped < this.totalSquares)
     });
+  }
+
+  /**
+   * Render a visual showing the coefficient as a side length
+   */
+  renderCoefficientVisual(coefficient, sqSize) {
+    // Show the coefficient as labeled side of grouped squares
+    return `
+      <div class="flex flex-col items-center">
+        <div class="text-xs text-green-600 font-bold mb-1">side = ${coefficient}</div>
+        <div class="relative border-2 border-green-500 rounded"
+             style="width: ${sqSize * 2}px; height: ${sqSize * 2}px; background: repeating-linear-gradient(45deg, #22c55e22, #22c55e22 4px, #22c55e44 4px, #22c55e44 8px);">
+          <div class="absolute -left-6 top-1/2 -translate-y-1/2 text-green-600 font-bold text-sm">${coefficient}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render a visual showing squares under radical
+   */
+  renderRadicalVisual(count, sqSize) {
+    // Arrange squares in a nice grid under a radical symbol
+    const cols = Math.min(count, 5);
+    const rows = Math.ceil(count / cols);
+
+    let squaresHtml = '';
+    for (let i = 0; i < count; i++) {
+      squaresHtml += `<div class="bg-indigo-500 border border-indigo-700" style="width: ${sqSize - 2}px; height: ${sqSize - 2}px;"></div>`;
+    }
+
+    return `
+      <div class="flex flex-col items-center">
+        <div class="text-xs text-indigo-600 font-bold mb-1">√${count}</div>
+        <div class="relative">
+          <!-- Radical symbol -->
+          <div class="absolute -left-4 top-0 text-indigo-600 text-2xl font-light" style="line-height: 1;">√</div>
+          <!-- Squares grid -->
+          <div class="grid gap-0.5 p-1 border-t-2 border-indigo-400"
+               style="grid-template-columns: repeat(${cols}, ${sqSize - 2}px);">
+            ${squaresHtml}
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   updateButtons() {
