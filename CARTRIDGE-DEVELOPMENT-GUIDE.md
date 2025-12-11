@@ -59,7 +59,7 @@ This declares everything about your lesson:
   },
 
   "config": {
-    "sharedContexts": null,
+    "contextsFile": null,
     "skills": ["skill1", "skill2"]
   },
 
@@ -411,9 +411,9 @@ For free-response text with required elements:
 
 ---
 
-## Shared Contexts
+## Contexts File (Optional)
 
-For real-world problem contexts, create a JSON file in `shared/contexts/`:
+If your cartridge needs real-world scenarios (like different topics for regression problems), create a `contexts.json` file inside your cartridge folder:
 
 ```json
 {
@@ -439,11 +439,11 @@ For real-world problem contexts, create a JSON file in `shared/contexts/`:
 Reference in manifest:
 ```json
 "config": {
-  "sharedContexts": "my-contexts"
+  "contextsFile": "contexts.json"
 }
 ```
 
-The platform will randomly select a context and pass it to your generator.
+The platform will randomly select a context and pass it to your generator. This keeps your cartridge **fully self-contained and portable**.
 
 ---
 

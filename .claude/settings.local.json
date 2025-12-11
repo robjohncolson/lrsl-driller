@@ -14,7 +14,9 @@
       "Bash(git rm:*)",
       "Bash(git -C /mnt/c/Users/rober/OneDrive/Desktop/Teaching/lrsl-driller status --porcelain)",
       "Bash(git -C /mnt/c/Users/rober/OneDrive/Desktop/Teaching/lrsl-driller diff --cached --stat)",
-      "Bash(git -C /mnt/c/Users/rober/OneDrive/Desktop/Teaching/lrsl-driller show HEAD:SETUP-GUIDE.html)"
+      "Bash(git -C /mnt/c/Users/rober/OneDrive/Desktop/Teaching/lrsl-driller show HEAD:SETUP-GUIDE.html)",
+      "Bash(cat:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

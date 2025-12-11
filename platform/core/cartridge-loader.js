@@ -30,8 +30,15 @@ export class CartridgeLoader {
       const manifest = await this.loadJSON(`${cartridgePath}/manifest.json`);
       progress('manifest', 'manifest.json', 'done');
 
-      // Load shared contexts if specified
-      if (manifest.config?.sharedContexts) {
+      // Load contexts - prefer local contextsFile, fall back to shared (deprecated)
+      if (manifest.config?.contextsFile) {
+        // New way: contexts inside cartridge folder (portable)
+        const contextFile = manifest.config.contextsFile;
+        progress('contexts', contextFile, 'loading');
+        this.contexts = await this.loadJSON(`${cartridgePath}/${contextFile}`);
+        progress('contexts', contextFile, 'done');
+      } else if (manifest.config?.sharedContexts) {
+        // Legacy: shared contexts folder (deprecated, kept for backwards compatibility)
         const contextFile = `${manifest.config.sharedContexts}.json`;
         progress('contexts', contextFile, 'loading');
         this.contexts = await this.loadJSON(

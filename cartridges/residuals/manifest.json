@@ -10,7 +10,7 @@
   },
 
   "config": {
-    "sharedContexts": "ap-stats-bivariate",
+    "contextsFile": "contexts.json",
     "skills": ["calculate", "interpret", "analyze"]
   },
 

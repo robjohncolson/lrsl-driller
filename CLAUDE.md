@@ -55,12 +55,8 @@ cartridges/
     ai-grader-prompt.txt
 ```
 
-### Shared Resources
-```
-shared/
-  contexts/
-    ap-stats-bivariate.json  # Real-world scenarios for regression topics
-```
+### Cartridge Structure
+Each cartridge is fully self-contained with optional `contexts.json` for real-world scenarios.
 
 ## Creating New Cartridges
 
@@ -70,7 +66,7 @@ A cartridge requires 4 files:
 ```json
 {
   "meta": { "id": "topic-id", "name": "Topic Name", "subject": "AP Statistics" },
-  "config": { "sharedContexts": "ap-stats-bivariate", "skills": ["skill1", "skill2"] },
+  "config": { "contextsFile": "contexts.json", "skills": ["skill1", "skill2"] },
   "display": { "showGraph": true, "graphType": "scatterplot", "infoPanel": [...] },
   "modes": [{ "id": "mode-id", "name": "Mode Name", "unlockedBy": "default", "layout": { "inputs": [...] } }],
   "grading": { "rubricFile": "grading-rules.js", "aiPromptFile": "ai-grader-prompt.txt" },
