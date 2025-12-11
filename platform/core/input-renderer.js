@@ -5,6 +5,7 @@
  */
 
 import { RadicalGame } from './radical-game.js';
+import { RadicalPrimeGame } from './radical-prime-game.js';
 
 export class InputRenderer {
   constructor(container, config = {}) {
@@ -116,6 +117,9 @@ export class InputRenderer {
         break;
       case 'visual-radical':
         inputEl = this.renderVisualRadical(field, context);
+        break;
+      case 'visual-radical-prime':
+        inputEl = this.renderVisualRadicalPrime(field, context);
         break;
       default:
         inputEl = this.renderTextarea(field, context);
@@ -293,6 +297,37 @@ export class InputRenderer {
     return wrapper;
   }
 
+  renderVisualRadicalPrime(field, context) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'visual-radical-prime-container';
+    wrapper._isInputWrapper = true;
+
+    // Get the radicand from context
+    const radicand = context.radicand || 72;
+
+    // Create the prime factorization game after a brief delay
+    setTimeout(() => {
+      const game = new RadicalPrimeGame(wrapper, {
+        onAnswerChange: (answer) => {
+          // Store the answer for grading
+          wrapper._visualAnswer = answer;
+        }
+      });
+
+      // Load the problem
+      game.loadProblem(radicand);
+
+      // Store reference for getValue and cleanup
+      this.visualizers.set(field.id, game);
+      wrapper._visualizer = game;
+    }, 0);
+
+    // Mark for data-field-id handling
+    wrapper.dataset.fieldId = field.id;
+
+    return wrapper;
+  }
+
   // ============== VALUE ACCESS ==============
 
   /**
@@ -303,13 +338,13 @@ export class InputRenderer {
     if (!field) return null;
 
     // Handle visual-radical type
-    if (field.config.type === 'visual-radical') {
+    if (field.config.type === 'visual-radical' || field.config.type === 'visual-radical-prime') {
       const visualizer = this.visualizers.get(fieldId);
       if (visualizer) {
         return visualizer.getAnswer();
       }
       // Fallback to stored answer
-      const wrapper = field.element.querySelector('.visual-radical-container');
+      const wrapper = field.element.querySelector('.visual-radical-container, .visual-radical-prime-container');
       return wrapper?._visualAnswer || { coefficient: 1, radicand: 0 };
     }
 
@@ -363,7 +398,7 @@ export class InputRenderer {
       if (field.config.type === 'choice') {
         const radios = this.container.querySelectorAll(`input[name="field-${id}"]`);
         radios.forEach(r => r.checked = false);
-      } else if (field.config.type === 'visual-radical') {
+      } else if (field.config.type === 'visual-radical' || field.config.type === 'visual-radical-prime') {
         // Reset the visualizer
         const visualizer = this.visualizers.get(id);
         if (visualizer) {
@@ -465,7 +500,7 @@ export class InputRenderer {
    */
   disable() {
     for (const [id, field] of this.fields) {
-      if (field.config.type === 'visual-radical') {
+      if (field.config.type === 'visual-radical' || field.config.type === 'visual-radical-prime') {
         // Visual components handle their own disabling
         const wrapper = this.container.querySelector(`[data-field-id="${id}"]`);
         if (wrapper) wrapper.style.pointerEvents = 'none';
@@ -480,7 +515,7 @@ export class InputRenderer {
    */
   enable() {
     for (const [id, field] of this.fields) {
-      if (field.config.type === 'visual-radical') {
+      if (field.config.type === 'visual-radical' || field.config.type === 'visual-radical-prime') {
         const wrapper = this.container.querySelector(`[data-field-id="${id}"]`);
         if (wrapper) wrapper.style.pointerEvents = '';
       } else if (field.inputEl) {
@@ -495,7 +530,7 @@ export class InputRenderer {
   focusFirst() {
     const first = this.fields.values().next().value;
     // Skip visual types for focus
-    if (first?.config?.type === 'visual-radical') return;
+    if (first?.config?.type === 'visual-radical' || first?.config?.type === 'visual-radical-prime') return;
     if (first?.inputEl) first.inputEl.focus();
   }
 }

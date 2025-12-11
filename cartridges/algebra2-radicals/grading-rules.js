@@ -21,6 +21,14 @@ const rules = {
       P: 'Good progress! But there are still perfect square groups you can make.',
       I: 'Keep trying! Look for 2×2, 3×3, or larger square groups.'
     }
+  },
+  'visual-radical-prime': {
+    type: 'visual-radical-prime',
+    feedback: {
+      E: 'Excellent! You correctly factored and extracted all pairs.',
+      P: 'Good progress! Make sure you\'ve extracted all matching pairs.',
+      I: 'Keep trying! Build the complete prime factorization first, then drag matching pairs outside.'
+    }
   }
 };
 
@@ -83,6 +91,50 @@ function hasPerfectSquareFactor(n) {
 }
 
 /**
+ * Grade visual-radical-prime answer
+ * Answer comes as { coefficient: number, radicand: number, isComplete, isFullySimplified } from RadicalPrimeGame
+ */
+function gradeVisualRadicalPrime(answer, rule, context) {
+  if (!answer || typeof answer !== 'object') {
+    return { score: 'I', feedback: 'Please build the prime factorization first' };
+  }
+
+  const userCoeff = answer.coefficient || 1;
+  const userRadicand = answer.radicand || 0;
+
+  // Expected values from context
+  const expected = context['visual-radical-prime'] || {};
+  const expectedCoeff = expected.coefficient || context.coefficient;
+  const expectedRadicand = expected.radicand || context.remainingRadicand;
+  const totalSquares = expected.totalSquares || context.radicand;
+
+  console.log('[Grading Prime] User answer:', { userCoeff, userRadicand });
+  console.log('[Grading Prime] Expected:', { expectedCoeff, expectedRadicand, totalSquares });
+
+  // Check if factorization is complete and fully simplified
+  const isComplete = answer.isComplete === true;
+  const isFullySimplified = answer.isFullySimplified === true;
+
+  // Perfect answer
+  if (userCoeff === expectedCoeff && userRadicand === expectedRadicand && isFullySimplified) {
+    return { score: 'E', feedback: rule.feedback.E };
+  }
+
+  // Check if mathematically correct
+  const userTotal = userCoeff * userCoeff * userRadicand;
+  if (userTotal !== totalSquares) {
+    return { score: 'I', feedback: `Factorization incomplete. You have ${userCoeff}√${userRadicand}, but √${totalSquares} is not fully factored yet.` };
+  }
+
+  // Correct total but not fully simplified (pairs still inside)
+  if (!isFullySimplified) {
+    return { score: 'P', feedback: rule.feedback.P };
+  }
+
+  return { score: 'E', feedback: rule.feedback.E };
+}
+
+/**
  * Grade a field using appropriate method
  */
 export function gradeField(fieldId, answer, context) {
@@ -93,6 +145,10 @@ export function gradeField(fieldId, answer, context) {
 
   if (rule.type === 'visual-radical') {
     return gradeVisualRadical(answer, rule, context);
+  }
+
+  if (rule.type === 'visual-radical-prime') {
+    return gradeVisualRadicalPrime(answer, rule, context);
   }
 
   return { score: 'I', feedback: 'Unknown rule type' };

@@ -3,14 +3,31 @@
  * Generates visual radical simplification problems
  */
 
+// Track last problem to avoid immediate repeats
+let lastRadicand = null;
+
 /**
  * Generate a problem for the given mode
  */
 export function generateProblem(modeId, context, mode) {
   if (modeId === 'simplify-radicals-hard') {
-    return generateHardRadical();
+    return generatePrimeRadical();
   }
   return generateVisualRadical();
+}
+
+/**
+ * Pick a random problem from array, avoiding immediate repeats
+ */
+function pickProblem(problems) {
+  // Filter out last problem if we have more than 1 option
+  const available = problems.length > 1
+    ? problems.filter(p => p[0] !== lastRadicand)
+    : problems;
+
+  const selected = available[Math.floor(Math.random() * available.length)];
+  lastRadicand = selected[0];
+  return selected;
 }
 
 /**
@@ -44,7 +61,7 @@ function generateVisualRadical() {
     [48, 4, 3],   // √48 = 4√3
   ];
 
-  const [radicand, coefficient, remainder] = problems[Math.floor(Math.random() * problems.length)];
+  const [radicand, coefficient, remainder] = pickProblem(problems);
 
   const expression = `√${radicand}`;
   const simplified = remainder === 1 ? `${coefficient}` : `${coefficient}√${remainder}`;
@@ -71,44 +88,40 @@ function generateVisualRadical() {
 }
 
 /**
- * Generate harder radical problems (Level 2)
- * Larger numbers requiring multiple extractions
+ * Generate prime factorization radical problems (Level 2)
+ * Students build the factorization and drag pairs outside
  */
-function generateHardRadical() {
-  // Harder problems with larger radicands
-  // May require multiple factor extractions
+function generatePrimeRadical() {
+  // Problems good for prime factorization approach
+  // Curated so prime factorization isn't too long
   const problems = [
-    // Medium-hard: requires 2 extractions or large single extraction
-    [72, 6, 2],    // √72 = √(36×2) = 6√2
-    [75, 5, 3],    // √75 = √(25×3) = 5√3
-    [80, 4, 5],    // √80 = √(16×5) = 4√5
-    [98, 7, 2],    // √98 = √(49×2) = 7√2
-    [50, 5, 2],    // √50 = √(25×2) = 5√2
-    [63, 3, 7],    // √63 = √(9×7) = 3√7
+    // Easy prime factorizations
+    [12, 2, 3],   // √12 = √(2×2×3) = 2√3
+    [18, 3, 2],   // √18 = √(2×3×3) = 3√2
+    [20, 2, 5],   // √20 = √(2×2×5) = 2√5
+    [28, 2, 7],   // √28 = √(2×2×7) = 2√7
+    [45, 3, 5],   // √45 = √(3×3×5) = 3√5
+    [50, 5, 2],   // √50 = √(2×5×5) = 5√2
+    [63, 3, 7],   // √63 = √(3×3×7) = 3√7
 
-    // Hard: larger numbers
-    [128, 8, 2],   // √128 = √(64×2) = 8√2
-    [147, 7, 3],   // √147 = √(49×3) = 7√3
-    [200, 10, 2],  // √200 = √(100×2) = 10√2
-    [162, 9, 2],   // √162 = √(81×2) = 9√2
-    [175, 5, 7],   // √175 = √(25×7) = 5√7
-    [180, 6, 5],   // √180 = √(36×5) = 6√5
+    // Medium: more factors
+    [72, 6, 2],   // √72 = √(2×2×2×3×3) = 6√2
+    [75, 5, 3],   // √75 = √(3×5×5) = 5√3
+    [98, 7, 2],   // √98 = √(2×7×7) = 7√2
+    [80, 4, 5],   // √80 = √(2×2×2×2×5) = 4√5
+    [108, 6, 3], // √108 = √(2×2×3×3×3) = 6√3
+    [125, 5, 5], // √125 = √(5×5×5) = 5√5
 
-    // Multi-step: requires sequential extractions
-    [288, 12, 2],  // √288 = √(144×2) = 12√2, or √(4×72) then √(4×18) then √(9×2)
-    [242, 11, 2],  // √242 = √(121×2) = 11√2
-    [245, 7, 5],   // √245 = √(49×5) = 7√5
-    [252, 6, 7],   // √252 = √(36×7) = 6√7
-
-    // Perfect squares (larger)
-    [64, 8, 1],    // √64 = 8
-    [81, 9, 1],    // √81 = 9
-    [100, 10, 1],  // √100 = 10
-    [121, 11, 1],  // √121 = 11
-    [144, 12, 1],  // √144 = 12
+    // Perfect squares
+    [36, 6, 1],   // √36 = √(2×2×3×3) = 6
+    [49, 7, 1],   // √49 = √(7×7) = 7
+    [64, 8, 1],   // √64 = √(2×2×2×2×2×2) = 8
+    [81, 9, 1],   // √81 = √(3×3×3×3) = 9
+    [100, 10, 1], // √100 = √(2×2×5×5) = 10
+    [121, 11, 1], // √121 = √(11×11) = 11
   ];
 
-  const [radicand, coefficient, remainder] = problems[Math.floor(Math.random() * problems.length)];
+  const [radicand, coefficient, remainder] = pickProblem(problems);
 
   const expression = `√${radicand}`;
   const simplified = remainder === 1 ? `${coefficient}` : `${coefficient}√${remainder}`;
@@ -118,19 +131,19 @@ function generateHardRadical() {
       radicand,
       coefficient,
       remainingRadicand: remainder,
-      problemType: 'Simplify Radical (Hard)',
+      problemType: 'Prime Factorization',
       expression
     },
     graphConfig: null,
     answers: {
-      'visual-radical': {
+      'visual-radical-prime': {
         value: simplified,
         coefficient: coefficient,
         radicand: remainder,
         totalSquares: radicand
       }
     },
-    scenario: `Simplify √${radicand} by extracting perfect square factors`
+    scenario: `Build the prime factorization of √${radicand}, then drag matching pairs outside the radical`
   };
 }
 
