@@ -147,31 +147,30 @@
     </div>
   </div>
 
-  <!-- Main Content -->
-  <main class="max-w-6xl mx-auto px-4 py-4">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Left Column: Scenario + Graph (sticky on scroll) -->
-      <div class="space-y-4 lg:sticky lg:top-[56px] lg:self-start lg:max-h-[calc(100vh-72px)]">
-        <!-- Scenario Card -->
-        <div class="bg-white rounded-xl shadow-lg p-4">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="text-xs text-gray-500 uppercase tracking-wide">Scenario:</span>
-            <h2 id="scenario-title" class="text-base font-semibold text-gray-800"></h2>
-          </div>
-          <p id="scenario-text" class="text-sm text-gray-600 mb-3"></p>
-
-          <!-- Info Panel -->
-          <div id="info-panel" class="flex flex-wrap gap-2 text-sm"></div>
+  <!-- Main Content - Split Pane Layout -->
+  <main class="max-w-6xl mx-auto px-4 h-[calc(100vh-48px)] flex flex-col lg:flex-row gap-4 py-4 overflow-hidden">
+    <!-- Left Pane: Question (fixed, never scrolls) -->
+    <div class="lg:w-1/2 flex-shrink-0 space-y-3 max-h-[40vh] lg:max-h-full overflow-hidden">
+      <!-- Scenario Card -->
+      <div class="bg-white rounded-xl shadow-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs text-gray-500 uppercase tracking-wide">Scenario:</span>
+          <h2 id="scenario-title" class="text-base font-semibold text-gray-800"></h2>
         </div>
+        <p id="scenario-text" class="text-sm text-gray-600 mb-3"></p>
 
-        <!-- Graph Container -->
-        <div class="bg-white rounded-xl shadow-lg p-4">
-          <div id="graph-container" class="w-full h-64 bg-gray-50 rounded-lg"></div>
-        </div>
+        <!-- Info Panel -->
+        <div id="info-panel" class="flex flex-wrap gap-2 text-sm"></div>
       </div>
 
-      <!-- Right Column: Inputs (scrolls with page) -->
-      <div class="space-y-4">
+      <!-- Graph Container -->
+      <div class="bg-white rounded-xl shadow-lg p-4">
+        <div id="graph-container" class="w-full h-56 bg-gray-50 rounded-lg"></div>
+      </div>
+    </div>
+
+    <!-- Right Pane: Answers (scrollable) -->
+    <div class="lg:w-1/2 flex-1 overflow-y-auto space-y-4 pr-1">
         <!-- Mode Tabs -->
         <div id="mode-tabs" class="flex gap-2 flex-wrap"></div>
 
