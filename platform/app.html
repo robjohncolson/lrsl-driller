@@ -1477,6 +1477,8 @@
     });
 
     async function loadCartridgeWithAnimation(cartridgeId) {
+      console.log(`[App] loadCartridgeWithAnimation called with: "${cartridgeId}"`);
+
       // Get cartridge display name
       const option = document.querySelector(`.cartridge-option[data-cartridge="${cartridgeId}"]`);
       const displayName = option?.querySelector('.font-semibold')?.textContent || cartridgeId;
@@ -1488,6 +1490,7 @@
       await new Promise(r => setTimeout(r, 200));
 
       // Load with progress
+      console.log(`[App] Calling loadCartridge("${cartridgeId}")...`);
       await loadCartridge(cartridgeId);
 
       // Update the header button
@@ -1738,13 +1741,18 @@
         });
 
         platform.init();
+        console.log(`[App] loadCartridge("${cartridgeId}") - calling platform.loadCartridge...`);
         await platform.loadCartridge(cartridgeId, updateCartridgeLoadingProgress);
+
+        console.log('[App] Cartridge loaded. Manifest:', platform.currentCartridge?.manifest?.meta);
+        console.log('[App] Current mode:', platform.currentMode);
 
         document.getElementById('app-title').textContent = platform.currentCartridge?.manifest?.meta?.name || 'Driller';
         document.getElementById('current-cartridge-name').textContent = platform.currentCartridge?.manifest?.meta?.name || cartridgeId;
 
         // Update mode tabs
         const modes = platform.currentCartridge?.manifest?.modes || [];
+        console.log('[App] Available modes:', modes.map(m => m.id));
         const tabsContainer = document.getElementById('mode-tabs');
         tabsContainer.innerHTML = '';
         const gameState = platform.gameEngine.getState();
@@ -1785,7 +1793,13 @@
           tabsContainer.appendChild(btn);
         });
 
+        console.log('[App] Calling platform.loadProblem()...');
         await platform.loadProblem();
+        console.log('[App] Problem loaded:', {
+          scenario: platform.currentProblem?.scenario?.substring(0, 100),
+          mode: platform.currentMode,
+          fields: Object.keys(platform.currentProblem?.answers || {})
+        });
         updateScenarioDisplay();
 
         currentCartridgeId = cartridgeId;

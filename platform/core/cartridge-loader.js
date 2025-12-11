@@ -44,7 +44,10 @@ export class CartridgeLoader {
 
       // Load generator module
       progress('generator', 'generator.js', 'loading');
-      const generator = await this.loadModule(`${cartridgePath}/generator.js`);
+      const generatorPath = `${cartridgePath}/generator.js`;
+      console.log(`[CartridgeLoader] Loading generator from: ${generatorPath}`);
+      const generator = await this.loadModule(generatorPath);
+      console.log(`[CartridgeLoader] Generator loaded:`, generator ? 'success' : 'null', 'Has generateProblem:', !!generator?.generateProblem);
       progress('generator', 'generator.js', 'done');
 
       // Load grading rules
@@ -172,6 +175,10 @@ export class CartridgeLoader {
    * Generate a problem using cartridge's generator
    */
   async generateProblem(modeId, context = null) {
+    console.log(`[CartridgeLoader] generateProblem called with mode: "${modeId}"`);
+    console.log(`[CartridgeLoader] Current cartridge ID: "${this.loadedCartridge?.id}"`);
+    console.log(`[CartridgeLoader] Generator available:`, !!this.loadedCartridge?.generator?.generateProblem);
+
     const generator = this.loadedCartridge?.generator;
     if (!generator?.generateProblem) {
       throw new Error('Cartridge has no generator');
@@ -179,8 +186,11 @@ export class CartridgeLoader {
 
     context = context || this.getRandomContext();
     const mode = this.getMode(modeId);
+    console.log(`[CartridgeLoader] Using mode:`, mode?.id, mode?.name);
 
-    return generator.generateProblem(modeId, context, mode);
+    const problem = generator.generateProblem(modeId, context, mode);
+    console.log(`[CartridgeLoader] Generated problem scenario:`, problem?.scenario?.substring(0, 100));
+    return problem;
   }
 
   /**

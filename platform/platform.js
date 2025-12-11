@@ -80,13 +80,18 @@ export class Platform {
    */
   async loadCartridge(cartridgeId, onProgress = null) {
     try {
+      console.log(`[Platform] Loading cartridge: ${cartridgeId}`);
       this.currentCartridge = await this.cartridgeLoader.load(cartridgeId, onProgress);
+      console.log(`[Platform] Cartridge loaded:`, this.currentCartridge.manifest?.meta?.name);
+      console.log(`[Platform] Available modes:`, this.currentCartridge.manifest?.modes?.map(m => m.id));
+
       this.gameEngine.loadCartridge(this.currentCartridge.manifest);
 
       // Set initial mode
       const modes = this.cartridgeLoader.getModes();
       if (modes.length > 0) {
         this.currentMode = modes[0].id;
+        console.log(`[Platform] Set initial mode: ${this.currentMode}`);
       }
 
       this.onStateChange(this.getState());
