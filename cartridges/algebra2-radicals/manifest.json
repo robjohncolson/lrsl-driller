@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "id": "algebra2-radicals",
+    "name": "Simplify Radicals",
+    "subject": "Algebra 2",
+    "unit": "1",
+    "skill": "Simplify radical expressions",
+    "description": "Learn to simplify radicals by visualizing perfect square factors"
+  },
+
+  "config": {
+    "sharedContexts": null,
+    "skills": ["simplify-radicals"]
+  },
+
+  "display": {
+    "showGraph": false,
+    "infoPanel": [
+      { "label": "Problem Type", "value": "{{problemType}}" },
+      { "label": "Expression", "value": "{{expression}}" }
+    ]
+  },
+
+  "modes": [
+    {
+      "id": "simplify-radicals",
+      "name": "Simplify Radicals",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "visual-radical",
+            "type": "visual-radical",
+            "label": "Simplify √{{radicand}} by grouping unit squares"
+          }
+        ]
+      }
+    }
+  ],
+
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct - fully simplified",
+        "P": "Partially Correct - could simplify further",
+        "I": "Incorrect - not simplified or wrong grouping"
+      }
+    },
+    "composite": {
+      "rule": "all-E-for-star",
+      "starTiers": ["gold", "silver", "bronze", "tin"]
+    }
+  },
+
+  "hints": {
+    "perField": {
+      "visual-radical": "Group unit squares into 2×2, 3×3, or larger perfect squares. Each side length comes out of the radical!"
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "simplify-radicals",
+        "name": "Simplify Radicals",
+        "unlockedBy": "default"
+      }
+    ]
+  }
+}
