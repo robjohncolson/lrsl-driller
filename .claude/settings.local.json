@@ -8,7 +8,9 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nadd Vite build setup for Vercel deployment\n\n- add package.json with Vite dev dependency\n- add vite.config.js for multi-page app (index, zscore, demo)\n- add vercel.json for deployment config\n- add .gitignore for node_modules/dist\n- include modular platform architecture (cartridges, platform, shared)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit:*)",
       "Bash(node -e:*)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(npm run build:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []

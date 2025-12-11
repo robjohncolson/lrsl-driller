@@ -1771,7 +1771,7 @@
             btn.className = i === 0
               ? 'px-4 py-2 rounded-lg bg-purple-600 text-white font-medium'
               : 'px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200';
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
               tabsContainer.querySelectorAll('button').forEach(b => {
                 if (!b.disabled) {
                   b.className = 'px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200';
@@ -1779,7 +1779,8 @@
               });
               btn.className = 'px-4 py-2 rounded-lg bg-purple-600 text-white font-medium';
               platform.setMode(mode.id);
-              platform.loadProblem();
+              await platform.loadProblem();
+              updateScenarioDisplay();
             });
           } else {
             // Locked mode

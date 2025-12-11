@@ -40,7 +40,28 @@ export class GraphEngine {
 
     // Clear container and append
     this.container.innerHTML = '';
+    this.container.style.position = 'relative';
     this.container.appendChild(this.canvas);
+
+    // Create tooltip element
+    this.tooltip = document.createElement('div');
+    this.tooltip.className = 'graph-tooltip';
+    this.tooltip.style.cssText = `
+      position: absolute;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: ui-monospace, monospace;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 10;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    `;
+    this.container.appendChild(this.tooltip);
 
     // Size canvas to container
     this.sizeToContainer();
@@ -48,10 +69,12 @@ export class GraphEngine {
     // Store for interactivity
     this.currentData = null;
     this.currentConfig = null;
+    this.selectedPoint = null;
 
     // Hover handling
     this.canvas.addEventListener('mousemove', (e) => this.handleHover(e));
     this.canvas.addEventListener('click', (e) => this.handleClick(e));
+    this.canvas.addEventListener('mouseleave', () => this.hideTooltip());
 
     // Watch for container resize
     this.resizeObserver = new ResizeObserver(() => {
@@ -407,11 +430,16 @@ export class GraphEngine {
 
     this.canvas.style.cursor = closest ? 'pointer' : 'default';
 
-    // TODO: Show tooltip
+    // Show tooltip on hover
+    if (closest) {
+      this.showTooltip(closest, e.clientX - rect.left, e.clientY - rect.top);
+    } else {
+      this.hideTooltip();
+    }
   }
 
   handleClick(e) {
-    if (!this.currentData || !this.currentConfig?.onPointClick) return;
+    if (!this.currentData) return;
 
     const rect = this.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
@@ -421,9 +449,62 @@ export class GraphEngine {
       if (point._px === undefined) continue;
       const dist = Math.sqrt((x - point._px) ** 2 + (y - point._py) ** 2);
       if (dist < point._radius + 5) {
-        this.currentConfig.onPointClick(point);
-        break;
+        // Toggle selection
+        if (this.selectedPoint === point) {
+          this.selectedPoint = null;
+          this.hideTooltip();
+        } else {
+          this.selectedPoint = point;
+          this.showTooltip(point, e.clientX - rect.left, e.clientY - rect.top, true);
+        }
+
+        // Call external handler if provided
+        if (this.currentConfig?.onPointClick) {
+          this.currentConfig.onPointClick(point);
+        }
+        return;
       }
+    }
+
+    // Clicked empty space - deselect
+    this.selectedPoint = null;
+    this.hideTooltip();
+  }
+
+  showTooltip(point, mouseX, mouseY, pinned = false) {
+    const xVal = typeof point.x === 'number' ? point.x.toFixed(2) : point.x;
+    const yVal = typeof point.y === 'number' ? point.y.toFixed(2) : point.y;
+
+    // For residual plots, show residual value
+    const residualInfo = point.residual !== undefined
+      ? `<br>Residual: ${point.residual.toFixed(2)}`
+      : '';
+
+    this.tooltip.innerHTML = `(${xVal}, ${yVal})${residualInfo}`;
+
+    // Position tooltip above the point
+    const tooltipRect = this.tooltip.getBoundingClientRect();
+    let left = mouseX - tooltipRect.width / 2;
+    let top = mouseY - tooltipRect.height - 10;
+
+    // Keep within bounds
+    left = Math.max(5, Math.min(left, this.width - tooltipRect.width - 5));
+    top = Math.max(5, top);
+
+    this.tooltip.style.left = `${left}px`;
+    this.tooltip.style.top = `${top}px`;
+    this.tooltip.style.opacity = '1';
+
+    if (pinned) {
+      this.tooltip.style.background = 'rgba(99, 102, 241, 0.95)'; // Indigo when pinned
+    } else {
+      this.tooltip.style.background = 'rgba(0, 0, 0, 0.85)';
+    }
+  }
+
+  hideTooltip() {
+    if (!this.selectedPoint) {
+      this.tooltip.style.opacity = '0';
     }
   }
 
