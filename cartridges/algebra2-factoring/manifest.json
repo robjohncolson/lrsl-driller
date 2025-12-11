@@ -1,0 +1,161 @@
+{
+  "meta": {
+    "id": "algebra2-factoring",
+    "name": "Factoring & Radicals",
+    "subject": "Algebra 2",
+    "unit": "1",
+    "skill": "Factor expressions and simplify radicals",
+    "description": "Practice factoring numbers, polynomials, and simplifying radical expressions"
+  },
+
+  "config": {
+    "sharedContexts": null,
+    "skills": ["factor-numbers", "factor-polynomials", "simplify-radicals"]
+  },
+
+  "display": {
+    "showGraph": false,
+    "infoPanel": [
+      { "label": "Problem Type", "value": "{{problemType}}" },
+      { "label": "Expression", "value": "{{expression}}" }
+    ]
+  },
+
+  "modes": [
+    {
+      "id": "factor-numbers",
+      "name": "Factor Numbers",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "primeFactors",
+            "label": "Prime Factorization",
+            "type": "text",
+            "placeholder": "e.g., 2 × 3² × 5 or 2 * 3^2 * 5"
+          },
+          {
+            "id": "gcf",
+            "label": "GCF of the two numbers",
+            "type": "number",
+            "placeholder": "Greatest Common Factor"
+          },
+          {
+            "id": "lcm",
+            "label": "LCM of the two numbers",
+            "type": "number",
+            "placeholder": "Least Common Multiple"
+          }
+        ]
+      }
+    },
+    {
+      "id": "factor-polynomials",
+      "name": "Factor Polynomials",
+      "unlockedBy": { "gold": 5 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "factored",
+            "label": "Factored Form",
+            "type": "text",
+            "placeholder": "e.g., (x + 2)(x + 3) or (x-2)(x+2)"
+          },
+          {
+            "id": "method",
+            "label": "Factoring Method Used",
+            "type": "choice",
+            "options": ["GCF", "Trinomial (a=1)", "Trinomial (a≠1)", "Difference of Squares", "Sum/Difference of Cubes", "Grouping"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "simplify-radicals",
+      "name": "Simplify Radicals",
+      "unlockedBy": { "gold": 10 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "simplified",
+            "label": "Simplified Form",
+            "type": "text",
+            "placeholder": "e.g., 5√2 or 2x√3"
+          },
+          {
+            "id": "coefficient",
+            "label": "Coefficient outside radical",
+            "type": "text",
+            "placeholder": "e.g., 5 or 2x"
+          },
+          {
+            "id": "radicand",
+            "label": "Number/expression under radical",
+            "type": "text",
+            "placeholder": "e.g., 2 or 3y"
+          }
+        ]
+      }
+    }
+  ],
+
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct - accurate factorization/simplification",
+        "P": "Partially Correct - minor errors or incomplete",
+        "I": "Incorrect - major errors or wrong approach"
+      }
+    },
+    "composite": {
+      "rule": "all-E-for-star",
+      "starTiers": ["gold", "silver", "bronze", "tin"]
+    }
+  },
+
+  "hints": {
+    "perField": {
+      "primeFactors": "Break down {{num1}} into prime factors. Start by dividing by the smallest prime (2, 3, 5, 7...)",
+      "gcf": "The GCF is the product of all common prime factors with the lowest powers",
+      "lcm": "The LCM is the product of all prime factors with the highest powers",
+      "factored": "Look for patterns: Is there a GCF? Is it a trinomial? Difference of squares?",
+      "method": "GCF: common factor in all terms. Trinomial: ax² + bx + c. Difference of squares: a² - b²",
+      "simplified": "Find the largest perfect square factor of the radicand",
+      "coefficient": "This is what comes out of the radical (the square root of perfect square factors)",
+      "radicand": "This is what remains under the radical after simplifying"
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "factor-numbers",
+        "name": "Factor Numbers",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "factor-polynomials",
+        "name": "Factor Polynomials",
+        "unlockedBy": { "gold": 5 },
+        "celebrationMessage": "Polynomial Mode Unlocked! Now practice factoring expressions."
+      },
+      {
+        "id": "simplify-radicals",
+        "name": "Simplify Radicals",
+        "unlockedBy": { "gold": 10 },
+        "celebrationMessage": "Radicals Mode Unlocked! Master simplifying radical expressions."
+      }
+    ]
+  }
+}

@@ -60,6 +60,7 @@
         <select id="cartridge-select" class="hidden">
           <option value="lsrl-interpretation">LSRL Interpretation</option>
           <option value="residuals">Residuals</option>
+          <option value="algebra2-factoring">Factoring & Radicals</option>
         </select>
       </div>
 
@@ -140,8 +141,9 @@
         <div class="text-xs text-gray-400">SELECT CARTRIDGE</div>
         <div class="text-sm font-bold">Available Topics</div>
       </div>
-      <div id="cartridge-list" class="p-2 space-y-2 max-h-64 overflow-y-auto">
-        <!-- Cartridge options will be populated here -->
+      <div id="cartridge-list" class="p-2 space-y-2 max-h-80 overflow-y-auto">
+        <!-- AP Statistics -->
+        <div class="text-xs font-bold text-purple-600 uppercase tracking-wide px-2 pt-1">AP Statistics</div>
         <button class="cartridge-option w-full flex items-center gap-3 p-2 rounded-lg hover:bg-purple-50 transition-colors border-2 border-transparent hover:border-purple-300" data-cartridge="lsrl-interpretation">
           <div class="w-10 h-14 bg-gradient-to-b from-purple-500 to-purple-700 rounded flex items-center justify-center text-white text-xs font-bold shadow">
             LSRL
@@ -158,6 +160,18 @@
           <div class="text-left flex-1">
             <div class="font-semibold text-gray-800 text-sm">Residuals</div>
             <div class="text-xs text-gray-500">Residual analysis & plots</div>
+          </div>
+        </button>
+
+        <!-- Algebra 2 -->
+        <div class="text-xs font-bold text-green-600 uppercase tracking-wide px-2 pt-3">Algebra 2</div>
+        <button class="cartridge-option w-full flex items-center gap-3 p-2 rounded-lg hover:bg-green-50 transition-colors border-2 border-transparent hover:border-green-300" data-cartridge="algebra2-factoring">
+          <div class="w-10 h-14 bg-gradient-to-b from-green-500 to-green-700 rounded flex items-center justify-center text-white text-xs font-bold shadow">
+            FACT
+          </div>
+          <div class="text-left flex-1">
+            <div class="font-semibold text-gray-800 text-sm">Factoring & Radicals</div>
+            <div class="text-xs text-gray-500">Numbers, polynomials, radicals</div>
           </div>
         </button>
       </div>
