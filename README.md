@@ -220,7 +220,7 @@ See [CARTRIDGE-DEVELOPMENT-GUIDE.md](./CARTRIDGE-DEVELOPMENT-GUIDE.md) for detai
 
 ## Getting Help
 
-- **Setup Issues**: Follow the [Setup Guide](https://robjohncolson.github.io/lrsl-driller/SETUP-GUIDE.html)
+- **Setup Issues**: Follow the [Setup Guide](https://robjohncolson.github.io/lrsl-driller/)
 - **Cartridge Development**: Read [CARTRIDGE-DEVELOPMENT-GUIDE.md](./CARTRIDGE-DEVELOPMENT-GUIDE.md)
 - **Bug Reports**: [Open an issue](https://github.com/robjohncolson/lrsl-driller/issues)
 
