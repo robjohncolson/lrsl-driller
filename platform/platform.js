@@ -392,9 +392,9 @@ export class Platform {
   async gradeWithAI(answers, context) {
     const serverUrl = this.gradingEngine.serverUrl;
 
-    // Build the scenario object matching server's expected format
-    // Server uses isInterceptMeaningful, context uses interceptMeaningful
+    // Build the scenario object - include ALL context for cartridge-specific grading
     const scenario = {
+      // Common fields
       topic: context.topic,
       xVar: context.xVar,
       yVar: context.yVar,
@@ -404,10 +404,31 @@ export class Platform {
       intercept: parseFloat(context.intercept),
       r: parseFloat(context.r),
       isInterceptMeaningful: context.interceptMeaningful !== false,
-      interceptReason: context.interceptReason || null
+      interceptReason: context.interceptReason || null,
+
+      // Residuals-specific fields
+      selectedX: context.selectedX,
+      selectedY: context.selectedY,
+      predictedY: context.predictedY,
+      residual: context.residual,
+      residualAbs: context.residualAbs,
+      overUnder: context.overUnder,
+      pattern: context.pattern,
+      appropriate: context.appropriate,
+
+      // Mode info for conditional prompts
+      mode: context.mode,
+      cartridgeId: this.currentCartridge?.id
     };
 
-    console.log('Sending AI grading request:', { scenario, answers });
+    // Load cartridge-specific AI prompt if available
+    let aiPromptTemplate = null;
+    const aiPromptFile = this.currentCartridge?.manifest?.grading?.aiPromptFile;
+    if (aiPromptFile && this.currentCartridge?.aiPrompt) {
+      aiPromptTemplate = this.currentCartridge.aiPrompt;
+    }
+
+    console.log('Sending AI grading request:', { scenario, answers, cartridgeId: scenario.cartridgeId });
 
     const response = await fetch(`${serverUrl}/api/ai/grade`, {
       method: 'POST',
@@ -415,7 +436,9 @@ export class Platform {
       body: JSON.stringify({
         scenario,
         answers,
-        preferProvider: this.preferProvider
+        preferProvider: this.preferProvider,
+        aiPromptTemplate,
+        cartridgeId: this.currentCartridge?.id
       })
     });
 

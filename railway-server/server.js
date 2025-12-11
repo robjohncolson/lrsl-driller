@@ -809,6 +809,63 @@ Respond with ONLY this JSON (no other text):
 Score meanings: E=Essentially Correct, P=Partially Correct, I=Incorrect`;
 }
 
+/**
+ * Build a prompt from a cartridge-specific template
+ * Replaces {{variables}} with values from scenario and answers
+ */
+function buildCartridgePrompt(template, scenario, answers) {
+  let prompt = template;
+
+  // Replace scenario variables
+  for (const [key, value] of Object.entries(scenario)) {
+    if (value !== undefined && value !== null) {
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+      prompt = prompt.replace(regex, String(value));
+    }
+  }
+
+  // Replace answer variables (e.g., {{predictedAnswer}}, {{residualAnswer}})
+  for (const [key, value] of Object.entries(answers)) {
+    const answerKey = `${key}Answer`;
+    const regex = new RegExp(`\\{\\{${answerKey}\\}\\}`, 'g');
+    prompt = prompt.replace(regex, String(value || ''));
+  }
+
+  // Handle conditional sections {{#if mode}}...{{/if}}
+  // For residuals: calculateMode, interpretMode, analyzeMode
+  const mode = scenario.mode || '';
+  const modeFlags = {
+    calculateMode: mode === 'calculate',
+    interpretMode: mode === 'interpret',
+    analyzeMode: mode === 'analyze'
+  };
+
+  for (const [flag, isActive] of Object.entries(modeFlags)) {
+    const ifRegex = new RegExp(`\\{\\{#if ${flag}\\}\\}([\\s\\S]*?)\\{\\{/if\\}\\}`, 'g');
+    if (isActive) {
+      // Keep the content, remove the markers
+      prompt = prompt.replace(ifRegex, '$1');
+    } else {
+      // Remove the entire block
+      prompt = prompt.replace(ifRegex, '');
+    }
+  }
+
+  // Handle other conditional variables like {{#if residualPositive}}
+  const residualPositive = parseFloat(scenario.residual) > 0;
+  prompt = prompt.replace(/\{\{#if residualPositive\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g,
+    residualPositive ? '$1' : '$2');
+
+  // Compute derived values
+  const moreOrLess = residualPositive ? 'more' : 'less';
+  prompt = prompt.replace(/\{\{moreOrLess\}\}/g, moreOrLess);
+
+  // Clean up any remaining unmatched {{...}} that weren't replaced
+  prompt = prompt.replace(/\{\{[^}]+\}\}/g, '');
+
+  return prompt.trim();
+}
+
 function buildParagraphPrompt(scenario, paragraph) {
   const direction = scenario.slope > 0 ? 'increases' : 'decreases';
   const rDirection = scenario.r > 0 ? 'positive' : 'negative';
@@ -919,7 +976,7 @@ app.post('/api/ai/contribute-key', async (req, res) => {
 // Grade 3-part answers
 app.post('/api/ai/grade', async (req, res) => {
   try {
-    const { scenario, answers, preferProvider } = req.body;
+    const { scenario, answers, preferProvider, aiPromptTemplate, cartridgeId } = req.body;
 
     if (!scenario || !answers) {
       return res.status(400).json({ error: 'Missing scenario or answers' });
@@ -935,10 +992,17 @@ app.post('/api/ai/grade', async (req, res) => {
       return res.status(503).json({ error: 'No AI providers configured' });
     }
 
-    const prompt = buildGradingPrompt(scenario, answers);
-    const queuePos = gradingQueue.getQueueLength();
+    // Use cartridge-specific prompt template if provided, otherwise use default LSRL prompt
+    let prompt;
+    if (aiPromptTemplate && cartridgeId && cartridgeId !== 'lsrl-interpretation') {
+      prompt = buildCartridgePrompt(aiPromptTemplate, scenario, answers);
+      console.log(`Using cartridge-specific prompt for ${cartridgeId}`);
+    } else {
+      prompt = buildGradingPrompt(scenario, answers);
+    }
 
-    console.log(`Grading request queued (position ${queuePos}): ${scenario.topic}, prefer: ${preferProvider || 'auto'}`);
+    const queuePos = gradingQueue.getQueueLength();
+    console.log(`Grading request queued (position ${queuePos}): ${scenario.topic}, cartridge: ${cartridgeId || 'lsrl'}, prefer: ${preferProvider || 'auto'}`);
 
     const result = await gradingQueue.add(() => gradeWithAI(prompt, preferProvider));
 
