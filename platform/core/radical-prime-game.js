@@ -161,9 +161,14 @@ export class RadicalPrimeGame {
   }
 
   generatePrimeButtons() {
-    const primes = [2, 3, 5, 7, 11, 13];
+    // Get all prime factors of the radicand to ensure we have buttons for them
+    const neededPrimes = this.getPrimeFactors(this.originalRadicand);
 
-    this.primeButtonsContainer.innerHTML = primes.map(p => `
+    // Base primes plus any extras needed for this specific problem
+    const basePrimes = [2, 3, 5, 7, 11, 13];
+    const allPrimes = [...new Set([...basePrimes, ...neededPrimes])].sort((a, b) => a - b);
+
+    this.primeButtonsContainer.innerHTML = allPrimes.map(p => `
       <button class="prime-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold transition-colors" data-prime="${p}">
         ×${p}
       </button>
@@ -172,6 +177,26 @@ export class RadicalPrimeGame {
     this.primeButtonsContainer.querySelectorAll('.prime-btn').forEach(btn => {
       btn.addEventListener('click', () => this.addPrimeFactor(parseInt(btn.dataset.prime)));
     });
+  }
+
+  // Get all prime factors of a number
+  getPrimeFactors(n) {
+    const factors = [];
+    let num = Math.abs(n);
+    let divisor = 2;
+
+    while (num > 1) {
+      if (num % divisor === 0) {
+        if (!factors.includes(divisor)) {
+          factors.push(divisor);
+        }
+        num /= divisor;
+      } else {
+        divisor++;
+      }
+    }
+
+    return factors;
   }
 
   loadProblem(radicand, config = {}) {
