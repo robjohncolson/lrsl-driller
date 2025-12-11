@@ -26,32 +26,36 @@ const rules = {
 
 /**
  * Grade visual radical answer
- * Answer comes as { coefficient: number, radicand: number } from RadicalVisualizer
+ * Answer comes as { coefficient: number, radicand: number } from RadicalGame
  */
 function gradeVisualRadical(answer, rule, context) {
-  // Answer is an object from RadicalVisualizer.getAnswer()
+  // Answer is an object from RadicalGame.getAnswer()
   if (!answer || typeof answer !== 'object') {
-    return { score: 'I', feedback: 'Please group some squares first' };
+    return { score: 'I', feedback: 'Please simplify the radical first' };
   }
 
   const userCoeff = answer.coefficient || 1;
   const userRadicand = answer.radicand || 0;
 
-  // Expected values
-  const expected = context.answers?.['visual-radical'] || context;
-  const expectedCoeff = expected.coefficient;
-  const expectedRadicand = expected.radicand;
+  // Expected values - platform spreads answers into context, so access via 'visual-radical' key
+  // context['visual-radical'] = { coefficient, radicand, totalSquares, value }
+  const expected = context['visual-radical'] || {};
+  const expectedCoeff = expected.coefficient || context.coefficient;
+  const expectedRadicand = expected.radicand || context.remainingRadicand;
+  const totalSquares = expected.totalSquares || context.radicand;
+
+  console.log('[Grading] User answer:', { userCoeff, userRadicand });
+  console.log('[Grading] Expected:', { expectedCoeff, expectedRadicand, totalSquares });
 
   // Check if fully simplified (no remaining perfect square factors)
   const isFullySimplified = !hasPerfectSquareFactor(userRadicand);
 
-  // Perfect answer: correct coefficient AND fully simplified
+  // Perfect answer: correct coefficient AND correct remaining radicand
   if (userCoeff === expectedCoeff && userRadicand === expectedRadicand) {
     return { score: 'E', feedback: rule.feedback.E };
   }
 
   // Check if answer is mathematically correct (coefficient² × radicand = original)
-  const totalSquares = expected.totalSquares;
   const userTotal = userCoeff * userCoeff * userRadicand;
 
   if (userTotal !== totalSquares) {
