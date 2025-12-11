@@ -644,7 +644,7 @@
     });
 
     let platform = null;
-    let currentCartridgeId = 'lsrl-interpretation';
+    let currentCartridgeId = localStorage.getItem('lastCartridgeId') || 'lsrl-interpretation';
     let pendingTeacherReview = null; // Store results for teacher review
 
     // ==================== RESPONSIVE LAYOUT ====================
@@ -880,11 +880,20 @@
     }
 
     function showTeacherReviewOption(results, message) {
-      // Store for later submission
+      // Store for later submission - include cartridge info and expected answers
+      const problem = platform.currentProblem;
+      const mode = platform.cartridgeLoader?.getMode(platform.currentMode);
+      const fieldIds = mode?.layout?.inputs?.map(i => i.id) || Object.keys(results.fields || {});
+
       pendingTeacherReview = {
         results,
-        problem: platform.currentProblem,
+        problem,
         answers: platform.inputRenderer?.getAllValues(),
+        expectedAnswers: problem?.answers || {},
+        cartridgeId: currentCartridgeId,
+        cartridgeName: platform.currentCartridge?.manifest?.meta?.name || currentCartridgeId,
+        modeId: platform.currentMode,
+        fieldIds, // Store which fields to grade
         timestamp: new Date().toISOString(),
         username: userSystem.currentUser?.username
       };
@@ -1468,6 +1477,7 @@
         if (cartridgeId && cartridgeId !== currentCartridgeId) {
           hideCartridgeDropdown();
           currentCartridgeId = cartridgeId;
+          localStorage.setItem('lastCartridgeId', cartridgeId);
           document.getElementById('cartridge-select').value = cartridgeId;
           loadCartridgeWithAnimation(cartridgeId);
         } else {
@@ -1508,30 +1518,50 @@
         const context = review.scenario_context || {};
         const keywordResults = review.keyword_results || {};
         const teacherGrades = review.teacher_grades || {};
+        const expectedAnswers = review.expected_answers || {};
         const isReviewed = review.status === 'reviewed';
 
+        // Get fields dynamically from the review, fall back to LSRL fields for old reviews
+        const fields = review.field_ids || Object.keys(answers) || ['slope', 'intercept', 'correlation'];
+        const cartridgeName = review.cartridge_name || 'LSRL Interpretation';
+
+        // Format expected answer for display
+        const formatExpected = (fieldId) => {
+          const exp = expectedAnswers[fieldId];
+          if (!exp) return null;
+          if (typeof exp === 'object' && exp.value !== undefined) {
+            return typeof exp.value === 'number' ? exp.value.toFixed(2) : exp.value;
+          }
+          return typeof exp === 'number' ? exp.toFixed(2) : exp;
+        };
+
         return `
-          <div class="bg-white border rounded-lg shadow-sm p-4" data-review-id="${review.id}">
+          <div class="bg-white border rounded-lg shadow-sm p-4" data-review-id="${review.id}" data-fields="${fields.join(',')}">
             <div class="flex justify-between items-start mb-3">
               <div>
                 <span class="font-semibold text-gray-800">${review.username}</span>
-                <span class="text-gray-500 text-sm ml-2">${review.scenario_topic}</span>
+                <span class="text-purple-600 text-xs ml-2 px-2 py-0.5 bg-purple-50 rounded">${cartridgeName}</span>
               </div>
               <span class="text-xs text-gray-400">${new Date(review.submitted_at).toLocaleString()}</span>
             </div>
 
-            <div class="text-sm text-gray-600 mb-3">
-              <div><strong>x:</strong> ${context.xVar || '?'} (${context.xUnits || '?'})</div>
-              <div><strong>y:</strong> ${context.yVar || '?'} (${context.yUnits || '?'})</div>
-              <div><strong>Equation:</strong> ŷ = ${context.intercept || '?'} + ${context.slope || '?'}x</div>
-              <div><strong>r:</strong> ${context.r || '?'}</div>
+            <div class="text-sm text-gray-600 mb-3 bg-gray-50 rounded p-2">
+              <div class="font-medium text-gray-700 mb-1">${review.scenario_topic || 'Practice Problem'}</div>
+              <div class="grid grid-cols-2 gap-1 text-xs">
+                <div><strong>x:</strong> ${context.xVar || '?'} (${context.xUnits || '?'})</div>
+                <div><strong>y:</strong> ${context.yVar || '?'} (${context.yUnits || '?'})</div>
+                <div><strong>Equation:</strong> ŷ = ${context.intercept || '?'} + ${context.slope || '?'}x</div>
+                <div><strong>r:</strong> ${context.r || '?'}</div>
+              </div>
             </div>
 
             <div class="space-y-3">
-              ${['slope', 'intercept', 'correlation'].map(field => `
+              ${fields.map(field => {
+                const expected = formatExpected(field);
+                return `
                 <div class="border-l-4 ${getGradeBorderColor(isReviewed ? teacherGrades[field] : keywordResults[field]?.score)} pl-3">
                   <div class="flex justify-between items-center">
-                    <span class="font-medium text-gray-700 capitalize">${field}</span>
+                    <span class="font-medium text-gray-700 capitalize">${field.replace(/([A-Z])/g, ' $1').trim()}</span>
                     ${isReviewed
                       ? `<span class="font-bold ${getGradeTextColor(teacherGrades[field])}">${teacherGrades[field] || '?'}</span>`
                       : `<div class="flex gap-1">
@@ -1542,9 +1572,10 @@
                     }
                   </div>
                   <p class="text-sm text-gray-600 mt-1 italic">"${answers[field] || '(empty)'}"</p>
-                  ${keywordResults[field]?.feedback ? `<p class="text-xs text-gray-400 mt-1">Keywords: ${keywordResults[field].score} - ${keywordResults[field].feedback}</p>` : ''}
+                  ${expected ? `<p class="text-xs text-green-600 mt-1">Expected: ${expected}</p>` : ''}
+                  ${keywordResults[field]?.feedback ? `<p class="text-xs text-gray-400 mt-1">Auto: ${keywordResults[field].score} - ${keywordResults[field].feedback}</p>` : ''}
                 </div>
-              `).join('')}
+              `}).join('')}
             </div>
 
             ${!isReviewed ? `
@@ -1593,22 +1624,31 @@
       // Update button styling
       const reviewEl = document.querySelector(`[data-review-id="${reviewId}"]`);
       if (reviewEl) {
-        const fieldEl = reviewEl.querySelectorAll('.border-l-4')[['slope', 'intercept', 'correlation'].indexOf(field)];
-        if (fieldEl) {
-          fieldEl.querySelectorAll('.grade-btn').forEach(btn => {
-            const btnGrade = btn.textContent;
-            btn.className = `grade-btn px-2 py-0.5 text-xs rounded ${btnGrade === grade
-              ? (grade === 'E' ? 'bg-green-500 text-white' : grade === 'P' ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white')
-              : 'bg-gray-100 hover:bg-gray-200'}`;
-          });
-        }
+        // Find the field element dynamically using the field name in the button onclick
+        const fieldEls = reviewEl.querySelectorAll('.border-l-4');
+        fieldEls.forEach(fieldEl => {
+          const gradeBtn = fieldEl.querySelector(`button[onclick*="'${field}'"]`);
+          if (gradeBtn) {
+            fieldEl.querySelectorAll('.grade-btn').forEach(btn => {
+              const btnGrade = btn.textContent;
+              btn.className = `grade-btn px-2 py-0.5 text-xs rounded ${btnGrade === grade
+                ? (grade === 'E' ? 'bg-green-500 text-white' : grade === 'P' ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white')
+                : 'bg-gray-100 hover:bg-gray-200'}`;
+            });
+          }
+        });
       }
     };
 
     window.submitTeacherGrades = async function(reviewId) {
       const grades = pendingGrades[reviewId];
-      if (!grades || !grades.slope || !grades.intercept || !grades.correlation) {
-        celebration.showToast('Please grade all three fields', 'warning');
+      const reviewEl = document.querySelector(`[data-review-id="${reviewId}"]`);
+      const fields = reviewEl?.dataset.fields?.split(',') || ['slope', 'intercept', 'correlation'];
+
+      // Check that all fields are graded
+      const missingFields = fields.filter(f => !grades || !grades[f]);
+      if (missingFields.length > 0) {
+        celebration.showToast(`Please grade all fields: ${missingFields.join(', ')}`, 'warning');
         return;
       }
 
@@ -1869,6 +1909,17 @@
     async function init() {
       // Load settings first
       loadSettings();
+
+      // Update initial cartridge display from saved preference
+      const savedCartridge = localStorage.getItem('lastCartridgeId');
+      if (savedCartridge) {
+        const option = document.querySelector(`.cartridge-option[data-cartridge="${savedCartridge}"]`);
+        if (option) {
+          const displayName = option.querySelector('.font-semibold')?.textContent || savedCartridge;
+          document.getElementById('current-cartridge-name').textContent = displayName;
+          document.getElementById('cartridge-select').value = savedCartridge;
+        }
+      }
 
       await userSystem.init();
 
