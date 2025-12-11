@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driller Platform - Complete Setup Guide for Teachers</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    h1 {
+      color: #7c3aed;
+      border-bottom: 3px solid #7c3aed;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #5b21b6;
+      margin-top: 40px;
+      padding: 10px 15px;
+      background: #ede9fe;
+      border-radius: 8px;
+    }
+    h3 {
+      color: #6d28d9;
+      margin-top: 25px;
+    }
+    .step-number {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      background: #7c3aed;
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 32px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 15px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .resource-link {
+      display: inline-block;
+      background: #7c3aed;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      margin: 5px 5px 5px 0;
+      transition: background 0.2s;
+    }
+    .resource-link:hover {
+      background: #5b21b6;
+    }
+    .resource-link.secondary {
+      background: #6b7280;
+    }
+    .resource-link.secondary:hover {
+      background: #4b5563;
+    }
+    code {
+      background: #1f2937;
+      color: #10b981;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'Consolas', 'Monaco', monospace;
+    }
+    pre {
+      background: #1f2937;
+      color: #e5e7eb;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      color: #10b981;
+    }
+    .warning {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .success {
+      background: #d1fae5;
+      border-left: 4px solid #10b981;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .info {
+      background: #dbeafe;
+      border-left: 4px solid #3b82f6;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+    .checklist li {
+      padding: 8px 0;
+      padding-left: 30px;
+      position: relative;
+    }
+    .checklist li::before {
+      content: "☐";
+      position: absolute;
+      left: 0;
+      font-size: 1.2em;
+    }
+    .time-estimate {
+      display: inline-block;
+      background: #e0e7ff;
+      color: #4338ca;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      margin-left: 10px;
+    }
+    .toc {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+    .toc ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    .toc li {
+      padding: 5px 0;
+    }
+    .toc a {
+      color: #7c3aed;
+      text-decoration: none;
+    }
+    .toc a:hover {
+      text-decoration: underline;
+    }
+    .video-placeholder {
+      background: #1f2937;
+      color: white;
+      padding: 40px;
+      text-align: center;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .video-placeholder a {
+      color: #60a5fa;
+    }
+    img.screenshot {
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      margin: 15px 0;
+    }
+    .copy-btn {
+      background: #4b5563;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8em;
+      float: right;
+    }
+    .copy-btn:hover {
+      background: #374151;
+    }
+    footer {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid #d1d5db;
+      text-align: center;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Driller Platform - Complete Setup Guide</h1>
+
+<p>Welcome! This guide will walk you through setting up your own instance of the Driller platform from scratch. By the end, you'll have a fully functional drill/quiz system that you can customize with your own lessons (cartridges).</p>
+
+<div class="info">
+  <strong>Total Time:</strong> Approximately 45-60 minutes for first-time setup<br>
+  <strong>Difficulty:</strong> Beginner-friendly (no coding experience required for setup)<br>
+  <strong>Cost:</strong> Free (all services have free tiers)
+</div>
+
+<div class="toc">
+  <h3>Table of Contents</h3>
+  <ul>
+    <li><a href="#prerequisites">Prerequisites & Accounts to Create</a></li>
+    <li><a href="#part1">Part 1: Set Up Your Development Environment</a></li>
+    <li><a href="#part2">Part 2: Get the Code (Clone the Repository)</a></li>
+    <li><a href="#part3">Part 3: Set Up Supabase (Database)</a></li>
+    <li><a href="#part4">Part 4: Set Up Railway (Backend Server)</a></li>
+    <li><a href="#part5">Part 5: Set Up Vercel (Frontend Hosting)</a></li>
+    <li><a href="#part6">Part 6: Connect Everything & Test</a></li>
+    <li><a href="#part7">Part 7: Get AI Grading Keys (Optional)</a></li>
+    <li><a href="#part8">Part 8: Create Your First Cartridge</a></li>
+    <li><a href="#troubleshooting">Troubleshooting Common Issues</a></li>
+  </ul>
+</div>
+
+<!-- ==================== PREREQUISITES ==================== -->
+<h2 id="prerequisites"><span class="step-number">0</span> Prerequisites & Accounts to Create</h2>
+
+<div class="card">
+  <p>Before we begin, you'll need to create accounts on these free services:</p>
+
+  <ul class="checklist">
+    <li><strong>GitHub</strong> - Stores your code and enables deployment</li>
+    <li><strong>Supabase</strong> - Free PostgreSQL database</li>
+    <li><strong>Railway</strong> - Hosts your backend server</li>
+    <li><strong>Vercel</strong> - Hosts your frontend website</li>
+    <li><strong>Google AI Studio</strong> (optional) - For AI-powered grading</li>
+  </ul>
+
+  <h3>Create Your Accounts Now</h3>
+  <p>Click each link and sign up (use "Sign up with GitHub" when available for easier setup):</p>
+
+  <a href="https://github.com/signup" target="_blank" class="resource-link">1. Create GitHub Account</a>
+  <a href="https://supabase.com/dashboard" target="_blank" class="resource-link">2. Create Supabase Account</a>
+  <a href="https://railway.app/" target="_blank" class="resource-link">3. Create Railway Account</a>
+  <a href="https://vercel.com/signup" target="_blank" class="resource-link">4. Create Vercel Account</a>
+
+  <div class="info" style="margin-top: 20px;">
+    <strong>Tip:</strong> Use "Continue with GitHub" on Supabase, Railway, and Vercel. This links everything to one login and makes deployment easier.
+  </div>
+</div>
+
+<!-- ==================== PART 1 ==================== -->
+<h2 id="part1"><span class="step-number">1</span> Set Up Your Development Environment <span class="time-estimate">15 min</span></h2>
+
+<div class="card">
+  <h3>Install an IDE (Code Editor)</h3>
+  <p>An IDE (Integrated Development Environment) is where you'll edit code and create cartridges. We recommend <strong>Project IDX</strong> (Google's free cloud IDE) - no installation needed!</p>
+
+  <a href="https://idx.google.com/" target="_blank" class="resource-link">Open Project IDX (Recommended)</a>
+  <a href="https://code.visualstudio.com/download" target="_blank" class="resource-link secondary">Or Download VS Code (Desktop)</a>
+
+  <div class="info">
+    <strong>Why Project IDX?</strong>
+    <ul>
+      <li>Runs in your browser - nothing to install</li>
+      <li>Includes Node.js, Git, and terminal pre-configured</li>
+      <li>Free with your Google account</li>
+      <li>Works on Chromebooks and school computers</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card">
+  <h3>If Using Desktop (VS Code), Also Install:</h3>
+
+  <p><strong>Node.js</strong> - JavaScript runtime needed to run the project</p>
+  <a href="https://nodejs.org/" target="_blank" class="resource-link">Download Node.js (LTS version)</a>
+
+  <p style="margin-top: 20px;"><strong>Git</strong> - Version control to clone and manage code</p>
+  <a href="https://git-scm.com/downloads" target="_blank" class="resource-link">Download Git</a>
+
+  <div class="warning">
+    <strong>Windows Users:</strong> During Git installation, select "Git Bash" as the default terminal. Keep all other defaults.
+  </div>
+</div>
+
+<!-- ==================== PART 2 ==================== -->
+<h2 id="part2"><span class="step-number">2</span> Get the Code (Clone the Repository) <span class="time-estimate">5 min</span></h2>
+
+<div class="card">
+  <h3>Option A: Using Project IDX (Recommended)</h3>
+
+  <ol>
+    <li>Go to <a href="https://idx.google.com/" target="_blank">idx.google.com</a></li>
+    <li>Click <strong>"Import a repo"</strong></li>
+    <li>Paste this URL:
+      <pre><code>https://github.com/robjohncolson/lrsl-driller</code></pre>
+    </li>
+    <li>Click <strong>"Import"</strong></li>
+    <li>Wait for the environment to build (2-3 minutes)</li>
+  </ol>
+
+  <div class="success">
+    <strong>Done!</strong> IDX will open with all the code ready to edit.
+  </div>
+</div>
+
+<div class="card">
+  <h3>Option B: Using Desktop (VS Code + Terminal)</h3>
+
+  <ol>
+    <li>Open VS Code</li>
+    <li>Open the terminal: <code>View → Terminal</code> (or press <code>Ctrl+`</code>)</li>
+    <li>Navigate to where you want the project:
+      <pre><code>cd Desktop</code></pre>
+    </li>
+    <li>Clone the repository:
+      <pre><code>git clone https://github.com/robjohncolson/lrsl-driller.git</code></pre>
+    </li>
+    <li>Open the folder:
+      <pre><code>cd lrsl-driller</code></pre>
+    </li>
+    <li>Open in VS Code:
+      <pre><code>code .</code></pre>
+    </li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>Fork the Repository (To Make Your Own Copy)</h3>
+
+  <p>To deploy your own version, you'll need your own copy (fork) of the code:</p>
+
+  <ol>
+    <li>Go to: <a href="https://github.com/robjohncolson/lrsl-driller" target="_blank">github.com/robjohncolson/lrsl-driller</a></li>
+    <li>Click the <strong>"Fork"</strong> button (top right)</li>
+    <li>Keep the default settings, click <strong>"Create fork"</strong></li>
+    <li>You now have your own copy at: <code>github.com/YOUR-USERNAME/lrsl-driller</code></li>
+  </ol>
+
+  <div class="info">
+    <strong>Important:</strong> Use YOUR forked repository URL for the remaining steps!
+  </div>
+</div>
+
+<!-- ==================== PART 3 ==================== -->
+<h2 id="part3"><span class="step-number">3</span> Set Up Supabase (Database) <span class="time-estimate">10 min</span></h2>
+
+<div class="card">
+  <h3>Create a New Supabase Project</h3>
+
+  <ol>
+    <li>Go to <a href="https://supabase.com/dashboard" target="_blank">supabase.com/dashboard</a></li>
+    <li>Click <strong>"New Project"</strong></li>
+    <li>Fill in:
+      <ul>
+        <li><strong>Name:</strong> <code>driller</code> (or any name)</li>
+        <li><strong>Database Password:</strong> Generate a strong password and <strong>SAVE IT</strong></li>
+        <li><strong>Region:</strong> Choose closest to you</li>
+      </ul>
+    </li>
+    <li>Click <strong>"Create new project"</strong></li>
+    <li>Wait 2-3 minutes for setup</li>
+  </ol>
+
+  <div class="warning">
+    <strong>Save your database password!</strong> You'll need it later. Store it somewhere safe.
+  </div>
+</div>
+
+<div class="card">
+  <h3>Create the Database Tables</h3>
+
+  <ol>
+    <li>In your Supabase project, click <strong>"SQL Editor"</strong> in the left sidebar</li>
+    <li>Click <strong>"New query"</strong></li>
+    <li>Copy and paste this entire SQL script:</li>
+  </ol>
+
+  <pre><code>-- Users table
+CREATE TABLE IF NOT EXISTS users (
+  id BIGSERIAL PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  real_name TEXT,
+  role TEXT DEFAULT 'student',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Progress table
+CREATE TABLE IF NOT EXISTS progress (
+  id BIGSERIAL PRIMARY KEY,
+  username TEXT NOT NULL,
+  cartridge_id TEXT NOT NULL,
+  mode_id TEXT NOT NULL,
+  streaks JSONB DEFAULT '{}',
+  star_counts JSONB DEFAULT '{"gold":0,"silver":0,"bronze":0,"tin":0}',
+  unlocked_tiers JSONB DEFAULT '[]',
+  total_problems INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(username, cartridge_id)
+);
+
+-- Leaderboard table
+CREATE TABLE IF NOT EXISTS leaderboard (
+  id BIGSERIAL PRIMARY KEY,
+  username TEXT NOT NULL,
+  cartridge_id TEXT NOT NULL,
+  gold INTEGER DEFAULT 0,
+  silver INTEGER DEFAULT 0,
+  bronze INTEGER DEFAULT 0,
+  tin INTEGER DEFAULT 0,
+  total_problems INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(username, cartridge_id)
+);
+
+-- Teacher review queue
+CREATE TABLE IF NOT EXISTS review_queue (
+  id BIGSERIAL PRIMARY KEY,
+  username TEXT NOT NULL,
+  cartridge_id TEXT NOT NULL,
+  mode_id TEXT NOT NULL,
+  problem_context JSONB,
+  answers JSONB,
+  requested_at TIMESTAMPTZ DEFAULT NOW(),
+  status TEXT DEFAULT 'pending',
+  teacher_grades JSONB,
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by TEXT
+);
+
+-- Time tracking: sessions
+CREATE TABLE IF NOT EXISTS time_sessions (
+  id BIGSERIAL PRIMARY KEY,
+  session_id TEXT UNIQUE NOT NULL,
+  username TEXT NOT NULL,
+  session_start TIMESTAMPTZ NOT NULL,
+  active_time_ms BIGINT DEFAULT 0,
+  total_time_ms BIGINT DEFAULT 0,
+  last_sync TIMESTAMPTZ DEFAULT NOW(),
+  is_complete BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Time tracking: problems
+CREATE TABLE IF NOT EXISTS time_problems (
+  id BIGSERIAL PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  username TEXT NOT NULL,
+  problem_id TEXT,
+  cartridge_id TEXT,
+  mode_id TEXT,
+  active_time_ms BIGINT DEFAULT 0,
+  total_time_ms BIGINT DEFAULT 0,
+  completed BOOLEAN DEFAULT FALSE,
+  result JSONB,
+  completed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_progress_username ON progress(username);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_cartridge ON leaderboard(cartridge_id);
+CREATE INDEX IF NOT EXISTS idx_review_queue_status ON review_queue(status);
+CREATE INDEX IF NOT EXISTS idx_time_sessions_username ON time_sessions(username);
+CREATE INDEX IF NOT EXISTS idx_time_problems_username ON time_problems(username);
+
+-- Enable Row Level Security
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
+ALTER TABLE review_queue ENABLE ROW LEVEL SECURITY;
+ALTER TABLE time_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE time_problems ENABLE ROW LEVEL SECURITY;
+
+-- Allow all operations (adjust for production)
+CREATE POLICY "Allow all on users" ON users FOR ALL USING (true);
+CREATE POLICY "Allow all on progress" ON progress FOR ALL USING (true);
+CREATE POLICY "Allow all on leaderboard" ON leaderboard FOR ALL USING (true);
+CREATE POLICY "Allow all on review_queue" ON review_queue FOR ALL USING (true);
+CREATE POLICY "Allow all on time_sessions" ON time_sessions FOR ALL USING (true);
+CREATE POLICY "Allow all on time_problems" ON time_problems FOR ALL USING (true);</code></pre>
+
+  <ol start="4">
+    <li>Click <strong>"Run"</strong> (or press Ctrl+Enter)</li>
+    <li>You should see "Success. No rows returned" - this is correct!</li>
+  </ol>
+
+  <div class="success">
+    <strong>Database ready!</strong> Your tables are now created.
+  </div>
+</div>
+
+<div class="card">
+  <h3>Get Your Supabase Connection URL</h3>
+
+  <ol>
+    <li>In Supabase, go to <strong>"Project Settings"</strong> (gear icon, bottom left)</li>
+    <li>Click <strong>"Database"</strong></li>
+    <li>Scroll down to <strong>"Connection string"</strong></li>
+    <li>Select <strong>"URI"</strong> tab</li>
+    <li>Copy the connection string (it looks like: <code>postgresql://postgres:[PASSWORD]@db.xxxx.supabase.co:5432/postgres</code>)</li>
+    <li><strong>Replace [YOUR-PASSWORD]</strong> with the database password you saved earlier</li>
+  </ol>
+
+  <div class="warning">
+    <strong>Save this URL!</strong> You'll need it in the next step for Railway.
+  </div>
+</div>
+
+<!-- ==================== PART 4 ==================== -->
+<h2 id="part4"><span class="step-number">4</span> Set Up Railway (Backend Server) <span class="time-estimate">10 min</span></h2>
+
+<div class="card">
+  <h3>Create a Railway Project</h3>
+
+  <ol>
+    <li>Go to <a href="https://railway.app/dashboard" target="_blank">railway.app/dashboard</a></li>
+    <li>Click <strong>"New Project"</strong></li>
+    <li>Select <strong>"Deploy from GitHub repo"</strong></li>
+    <li>Connect your GitHub account if prompted</li>
+    <li>Select your forked repository: <code>lrsl-driller</code></li>
+    <li>Railway will detect the project - click <strong>"Deploy Now"</strong></li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>Configure the Server</h3>
+
+  <p>Railway needs to know which folder contains the server:</p>
+
+  <ol>
+    <li>Click on your deployed service</li>
+    <li>Go to <strong>"Settings"</strong> tab</li>
+    <li>Under <strong>"Build"</strong>, find <strong>"Root Directory"</strong></li>
+    <li>Set it to: <code>railway-server</code></li>
+    <li>Under <strong>"Deploy"</strong>, set <strong>"Start Command"</strong> to: <code>node server.js</code></li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>Add Environment Variables</h3>
+
+  <ol>
+    <li>Go to the <strong>"Variables"</strong> tab</li>
+    <li>Click <strong>"+ New Variable"</strong> for each:</li>
+  </ol>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+    <tr style="background: #f3f4f6;">
+      <th style="padding: 10px; text-align: left; border: 1px solid #d1d5db;">Variable Name</th>
+      <th style="padding: 10px; text-align: left; border: 1px solid #d1d5db;">Value</th>
+    </tr>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #d1d5db;"><code>DATABASE_URL</code></td>
+      <td style="padding: 10px; border: 1px solid #d1d5db;">Your Supabase connection URL from Part 3</td>
+    </tr>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #d1d5db;"><code>PORT</code></td>
+      <td style="padding: 10px; border: 1px solid #d1d5db;"><code>3000</code></td>
+    </tr>
+  </table>
+
+  <ol start="3">
+    <li>Railway will automatically redeploy</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>Get Your Railway URL</h3>
+
+  <ol>
+    <li>Go to the <strong>"Settings"</strong> tab</li>
+    <li>Under <strong>"Networking"</strong>, click <strong>"Generate Domain"</strong></li>
+    <li>Copy your URL (e.g., <code>https://lrsl-driller-production.up.railway.app</code>)</li>
+  </ol>
+
+  <div class="success">
+    <strong>Save this URL!</strong> This is your API server address.
+  </div>
+</div>
+
+<!-- ==================== PART 5 ==================== -->
+<h2 id="part5"><span class="step-number">5</span> Set Up Vercel (Frontend Hosting) <span class="time-estimate">10 min</span></h2>
+
+<div class="card">
+  <h3>Deploy to Vercel</h3>
+
+  <ol>
+    <li>Go to <a href="https://vercel.com/new" target="_blank">vercel.com/new</a></li>
+    <li>Click <strong>"Import"</strong> next to your forked <code>lrsl-driller</code> repository</li>
+    <li>Keep the default settings</li>
+    <li>Click <strong>"Deploy"</strong></li>
+    <li>Wait 1-2 minutes for the build</li>
+  </ol>
+
+  <div class="success">
+    <strong>Frontend deployed!</strong> Vercel will give you a URL like <code>https://lrsl-driller.vercel.app</code>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Add Environment Variable for API</h3>
+
+  <ol>
+    <li>In Vercel, go to your project's <strong>"Settings"</strong></li>
+    <li>Click <strong>"Environment Variables"</strong></li>
+    <li>Add a new variable:</li>
+  </ol>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+    <tr style="background: #f3f4f6;">
+      <th style="padding: 10px; text-align: left; border: 1px solid #d1d5db;">Name</th>
+      <th style="padding: 10px; text-align: left; border: 1px solid #d1d5db;">Value</th>
+    </tr>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #d1d5db;"><code>VITE_API_URL</code></td>
+      <td style="padding: 10px; border: 1px solid #d1d5db;">Your Railway URL (e.g., <code>https://lrsl-driller-production.up.railway.app</code>)</td>
+    </tr>
+  </table>
+
+  <ol start="4">
+    <li>Click <strong>"Save"</strong></li>
+    <li>Go to <strong>"Deployments"</strong> tab</li>
+    <li>Click the <strong>"..."</strong> menu on the latest deployment</li>
+    <li>Select <strong>"Redeploy"</strong></li>
+  </ol>
+</div>
+
+<!-- ==================== PART 6 ==================== -->
+<h2 id="part6"><span class="step-number">6</span> Connect Everything & Test <span class="time-estimate">5 min</span></h2>
+
+<div class="card">
+  <h3>Update Your Code with the API URL</h3>
+
+  <p>Open <code>platform/app.html</code> in your IDE and find the line:</p>
+
+  <pre><code>const API_BASE = 'https://lrsl-driller-production.up.railway.app';</code></pre>
+
+  <p>Replace it with YOUR Railway URL.</p>
+
+  <p>Then commit and push:</p>
+  <pre><code>git add .
+git commit -m "Update API URL"
+git push</code></pre>
+
+  <p>Vercel will automatically redeploy with your changes.</p>
+</div>
+
+<div class="card">
+  <h3>Test Your Deployment</h3>
+
+  <ol>
+    <li>Open your Vercel URL (e.g., <code>https://your-project.vercel.app</code>)</li>
+    <li>Click on a cartridge to load it</li>
+    <li>Enter a username and try a problem</li>
+    <li>Check that grading works</li>
+    <li>Verify progress saves (refresh the page, your stars should persist)</li>
+  </ol>
+
+  <div class="success">
+    <strong>Congratulations!</strong> Your Driller platform is now live!
+  </div>
+</div>
+
+<!-- ==================== PART 7 ==================== -->
+<h2 id="part7"><span class="step-number">7</span> Get AI Grading Keys (Optional) <span class="time-estimate">10 min</span></h2>
+
+<div class="card">
+  <h3>Google Gemini API Key</h3>
+
+  <p>For AI-powered grading of free-response answers:</p>
+
+  <ol>
+    <li>Go to <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+    <li>Sign in with Google</li>
+    <li>Click <strong>"Create API Key"</strong></li>
+    <li>Copy the key</li>
+  </ol>
+
+  <a href="https://aistudio.google.com/app/apikey" target="_blank" class="resource-link">Get Gemini API Key</a>
+
+  <div class="info">
+    <strong>Free tier:</strong> 60 requests per minute, plenty for classroom use.
+  </div>
+</div>
+
+<div class="card">
+  <h3>Groq API Key (Backup)</h3>
+
+  <p>Groq provides fast, free AI inference as a backup:</p>
+
+  <ol>
+    <li>Go to <a href="https://console.groq.com/" target="_blank">Groq Console</a></li>
+    <li>Create an account</li>
+    <li>Go to <strong>"API Keys"</strong></li>
+    <li>Create a new key</li>
+  </ol>
+
+  <a href="https://console.groq.com/" target="_blank" class="resource-link">Get Groq API Key</a>
+</div>
+
+<div class="card">
+  <h3>Add AI Keys to Railway</h3>
+
+  <p>In your Railway project, add these environment variables:</p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+    <tr style="background: #f3f4f6;">
+      <th style="padding: 10px; text-align: left; border: 1px solid #d1d5db;">Variable Name</th>
+      <th style="padding: 10px; text-align: left; border: 1px solid #d1d5db;">Value</th>
+    </tr>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #d1d5db;"><code>GEMINI_API_KEYS</code></td>
+      <td style="padding: 10px; border: 1px solid #d1d5db;">Your Gemini key(s), comma-separated for rotation</td>
+    </tr>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #d1d5db;"><code>GROQ_API_KEYS</code></td>
+      <td style="padding: 10px; border: 1px solid #d1d5db;">Your Groq key(s), comma-separated</td>
+    </tr>
+  </table>
+
+  <div class="info">
+    <strong>Multiple keys:</strong> Add multiple keys separated by commas for automatic rotation when rate limits are hit.
+  </div>
+</div>
+
+<!-- ==================== PART 8 ==================== -->
+<h2 id="part8"><span class="step-number">8</span> Create Your First Cartridge <span class="time-estimate">30+ min</span></h2>
+
+<div class="card">
+  <h3>Read the Cartridge Development Guide</h3>
+
+  <p>Open <code>CARTRIDGE-DEVELOPMENT-GUIDE.md</code> in your IDE for detailed instructions on creating lessons.</p>
+
+  <h3>Quick Overview</h3>
+
+  <p>Create a new folder in <code>cartridges/</code> with 4 files:</p>
+
+  <ol>
+    <li><code>manifest.json</code> - Defines inputs, modes, hints, progression</li>
+    <li><code>generator.js</code> - Generates random problems</li>
+    <li><code>grading-rules.js</code> - Scores student answers (E/P/I)</li>
+    <li><code>ai-grader-prompt.txt</code> - (Optional) AI grading instructions</li>
+  </ol>
+
+  <h3>Study Existing Cartridges</h3>
+
+  <p>Look at these working examples:</p>
+  <ul>
+    <li><code>cartridges/lsrl-interpretation/</code> - Text-based, AI grading, graphs</li>
+    <li><code>cartridges/residuals/</code> - Mix of numeric and text inputs</li>
+    <li><code>cartridges/algebra2-radicals/</code> - Visual interactive components</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>Add Your Cartridge to the App</h3>
+
+  <p>After creating your cartridge folder, edit <code>platform/app.html</code>:</p>
+
+  <pre><code>&lt;select id="cartridge-select" class="hidden"&gt;
+  &lt;option value="lsrl-interpretation"&gt;LSRL Interpretation&lt;/option&gt;
+  &lt;option value="residuals"&gt;Residuals&lt;/option&gt;
+  &lt;option value="algebra2-radicals"&gt;Simplify Radicals&lt;/option&gt;
+  &lt;option value="your-new-cartridge"&gt;Your New Topic&lt;/option&gt;  &lt;!-- ADD THIS --&gt;
+&lt;/select&gt;</code></pre>
+
+  <p>Commit and push to deploy:</p>
+  <pre><code>git add .
+git commit -m "Add new cartridge: Your Topic Name"
+git push</code></pre>
+</div>
+
+<!-- ==================== TROUBLESHOOTING ==================== -->
+<h2 id="troubleshooting">Troubleshooting Common Issues</h2>
+
+<div class="card">
+  <h3>"Failed to fetch" or "Network Error"</h3>
+  <ul>
+    <li>Check that your Railway server is running (green status in dashboard)</li>
+    <li>Verify the API URL in <code>platform/app.html</code> matches your Railway URL</li>
+    <li>Make sure the URL includes <code>https://</code></li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>"Database connection failed"</h3>
+  <ul>
+    <li>Double-check your <code>DATABASE_URL</code> in Railway variables</li>
+    <li>Ensure [YOUR-PASSWORD] is replaced with your actual password</li>
+    <li>Check Supabase dashboard - project should be "Active"</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>"AI grading not working"</h3>
+  <ul>
+    <li>Verify API keys are set in Railway environment variables</li>
+    <li>Check Railway logs for error messages</li>
+    <li>Gemini may hit rate limits - add multiple keys for rotation</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>"Cartridge not loading"</h3>
+  <ul>
+    <li>Check browser console (F12) for JavaScript errors</li>
+    <li>Verify all 4 cartridge files exist and have valid JSON/JavaScript</li>
+    <li>Make sure the cartridge ID in the dropdown matches the folder name</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>Need More Help?</h3>
+
+  <a href="https://github.com/robjohncolson/lrsl-driller/issues" target="_blank" class="resource-link">Report an Issue on GitHub</a>
+
+  <p style="margin-top: 15px;">Include:</p>
+  <ul>
+    <li>What step you're on</li>
+    <li>The exact error message</li>
+    <li>Screenshots if possible</li>
+  </ul>
+</div>
+
+<!-- ==================== RESOURCES ==================== -->
+<h2>Additional Resources</h2>
+
+<div class="card">
+  <h3>Documentation</h3>
+  <a href="https://docs.github.com/en/get-started" target="_blank" class="resource-link secondary">GitHub Docs</a>
+  <a href="https://supabase.com/docs" target="_blank" class="resource-link secondary">Supabase Docs</a>
+  <a href="https://docs.railway.app/" target="_blank" class="resource-link secondary">Railway Docs</a>
+  <a href="https://vercel.com/docs" target="_blank" class="resource-link secondary">Vercel Docs</a>
+
+  <h3 style="margin-top: 20px;">Video Tutorials (Coming Soon)</h3>
+  <div class="video-placeholder">
+    Video tutorials will be linked here once available.
+  </div>
+</div>
+
+<footer>
+  <p>Driller Platform Setup Guide</p>
+  <p>Created for teachers by teachers</p>
+  <p><a href="https://github.com/robjohncolson/lrsl-driller" target="_blank">GitHub Repository</a></p>
+</footer>
+
+<script>
+  // Add copy buttons to code blocks
+  document.querySelectorAll('pre').forEach(pre => {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.onclick = () => {
+      const code = pre.querySelector('code').textContent;
+      navigator.clipboard.writeText(code);
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    };
+    pre.style.position = 'relative';
+    pre.insertBefore(btn, pre.firstChild);
+  });
+</script>
+
+</body>
+</html>
