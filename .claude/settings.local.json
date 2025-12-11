@@ -11,7 +11,10 @@
       "Bash(git push)",
       "Bash(npm run build:*)",
       "Bash(git restore:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git -C /mnt/c/Users/rober/OneDrive/Desktop/Teaching/lrsl-driller status --porcelain)",
+      "Bash(git -C /mnt/c/Users/rober/OneDrive/Desktop/Teaching/lrsl-driller diff --cached --stat)",
+      "Bash(git -C /mnt/c/Users/rober/OneDrive/Desktop/Teaching/lrsl-driller show HEAD:SETUP-GUIDE.html)"
     ],
     "deny": [],
     "ask": []

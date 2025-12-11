@@ -6,7 +6,7 @@
 
 ## Quick Links
 
-- **[Setup Guide](https://robjohncolson.github.io/lrsl-driller/SETUP-GUIDE.html)** - Get your own instance running in 30-45 minutes
+- **[Setup Guide](https://robjohncolson.github.io/lrsl-driller/)** - Get your own instance running in 30-45 minutes
 - **[Live Demo](https://lrsl-driller.vercel.app)** - Try the existing cartridges
 - **[Cartridge Development Guide](./CARTRIDGE-DEVELOPMENT-GUIDE.md)** - Technical reference for cartridge structure
 
