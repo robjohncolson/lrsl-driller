@@ -58,17 +58,17 @@ export class RadicalGame {
         <div class="flex flex-col gap-2">
           <div class="text-sm text-gray-600 text-center">Extract a perfect square factor:</div>
           <div class="flex items-center justify-center gap-2 flex-wrap">
-            <button class="extract-btn bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="4">
-              ÷4 <span class="text-green-200 text-sm">(×2)</span>
+            <button class="extract-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="4">
+              ÷4 <span class="text-indigo-200 text-sm">(×2)</span>
             </button>
-            <button class="extract-btn bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="9">
-              ÷9 <span class="text-orange-200 text-sm">(×3)</span>
+            <button class="extract-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="9">
+              ÷9 <span class="text-indigo-200 text-sm">(×3)</span>
             </button>
-            <button class="extract-btn bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="16">
-              ÷16 <span class="text-pink-200 text-sm">(×4)</span>
+            <button class="extract-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="16">
+              ÷16 <span class="text-indigo-200 text-sm">(×4)</span>
             </button>
-            <button class="extract-btn bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="25">
-              ÷25 <span class="text-cyan-200 text-sm">(×5)</span>
+            <button class="extract-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="25">
+              ÷25 <span class="text-indigo-200 text-sm">(×5)</span>
             </button>
           </div>
           <div class="flex justify-center gap-2 mt-1">
@@ -194,11 +194,8 @@ export class RadicalGame {
       this.extractedList.innerHTML = `Extracted: ${factors}`;
     }
 
-    // Update button states
-    this.wrapper.querySelectorAll('.extract-btn').forEach(btn => {
-      const factor = parseInt(btn.dataset.factor);
-      btn.disabled = this.currentRadicand % factor !== 0 || this.currentRadicand < factor;
-    });
+    // Keep all factor buttons enabled - student must figure out which works
+    // (clicking invalid one shows error message)
 
     this.wrapper.querySelector('.undo-btn').disabled = this.extractedFactors.length === 0;
   }
