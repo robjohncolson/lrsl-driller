@@ -2065,6 +2065,20 @@
 
               document.getElementById('btn-grade').classList.add('hidden');
               document.getElementById('btn-next').classList.remove('hidden');
+
+              // Auto-advance to next problem after 2 seconds
+              setTimeout(async () => {
+                // Only advance if the Next button is still visible (user hasn't clicked it)
+                const nextBtn = document.getElementById('btn-next');
+                if (nextBtn && !nextBtn.classList.contains('hidden')) {
+                  nextBtn.classList.add('hidden');
+                  document.getElementById('btn-grade').classList.remove('hidden');
+                  platform.inputRenderer?.clearAllFeedback();
+                  await platform.loadProblem();
+                  updateScenarioDisplay();
+                  clearTeacherReview();
+                }
+              }, 2000);
             } else {
               // Record problem attempt (not completed)
               timeTracker.endProblem(false, { allCorrect: false });
