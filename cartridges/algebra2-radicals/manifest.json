@@ -40,7 +40,7 @@
 
   "grading": {
     "rubricFile": "grading-rules.js",
-    "aiPromptFile": "ai-grader-prompt.txt",
+    "aiPromptFile": null,
     "scoring": {
       "scale": ["E", "P", "I"],
       "meanings": {
