@@ -126,8 +126,8 @@ export class RadicalGame {
   extractFactor(perfectSquare) {
     const root = Math.sqrt(perfectSquare);
 
+    // If factor doesn't divide evenly, do nothing (no hint!)
     if (this.currentRadicand % perfectSquare !== 0) {
-      this.showMessage(`${this.currentRadicand} is not divisible by ${perfectSquare}`, 'error');
       return;
     }
 
@@ -138,10 +138,6 @@ export class RadicalGame {
 
     this.render();
     this.updateAnswer();
-
-    if (this.currentRadicand === 1) {
-      this.showMessage('Perfect square! Fully simplified.', 'success');
-    }
   }
 
   undo() {
