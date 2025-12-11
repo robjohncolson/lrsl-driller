@@ -174,6 +174,47 @@ export class SoundEngine {
   }
 
   /**
+   * Cartridge boot chime - warm startup chord
+   * An original resonant chord that feels like "system ready"
+   */
+  bootChime() {
+    if (!this.enabled) return;
+    if (!this.ctx) {
+      this.init();
+      if (!this.ctx) return;
+    }
+
+    // Create a warm, resonant major chord with harmonics
+    // F# major with added 9th for warmth: F#3, A#3, C#4, G#4
+    const frequencies = [185, 233, 277, 415];
+    const duration = 1.2;
+
+    frequencies.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      // Mix of sine and triangle for warmth
+      osc.type = i === 0 ? 'triangle' : 'sine';
+      osc.frequency.value = freq;
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      const now = this.ctx.currentTime;
+      const volume = 0.15 - (i * 0.02); // Lower notes slightly louder
+
+      // Quick attack, long sustain, gentle fade
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(volume, now + 0.05);
+      gain.gain.setValueAtTime(volume, now + 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      osc.start(now);
+      osc.stop(now + duration);
+    });
+  }
+
+  /**
    * Teacher alert bell - urgent, attention-grabbing
    * Plays a loud bell pattern that repeats
    */

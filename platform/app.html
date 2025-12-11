@@ -1413,6 +1413,10 @@
       document.getElementById('cartridge-progress-bar').style.width = '0%';
 
       overlay.classList.remove('hidden');
+
+      // Play boot chime
+      soundEngine.init();
+      soundEngine.bootChime();
     }
 
     function hideCartridgeLoading() {
