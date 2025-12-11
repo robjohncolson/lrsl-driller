@@ -624,7 +624,7 @@ async function callGemini(prompt, apiKey) {
   if (!apiKey) throw new Error('Gemini API key not provided');
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -646,10 +646,10 @@ async function callGemini(prompt, apiKey) {
   }
 
   const text = data.candidates[0].content.parts[0].text;
-  console.log('Gemini response received');
+  console.log('Gemini raw response:', text.substring(0, 200));
 
   const parsed = extractAndParseJSON(text);
-  if (parsed && parsed.slope && parsed.intercept && parsed.correlation) {
+  if (parsed && isValidGradingResponse(parsed)) {
     return parsed;
   }
   throw new Error('Gemini: Invalid response structure');
@@ -686,13 +686,38 @@ async function callGroq(prompt, apiKey) {
   }
 
   const text = data.choices[0].message.content;
-  console.log('Groq response received');
+  console.log('Groq raw response:', text.substring(0, 200));
 
   const parsed = extractAndParseJSON(text);
-  if (parsed && parsed.slope && parsed.intercept && parsed.correlation) {
+  if (parsed && isValidGradingResponse(parsed)) {
     return parsed;
   }
   throw new Error('Groq: Invalid response structure');
+}
+
+/**
+ * Check if a parsed response is a valid grading response
+ * Accepts responses for any cartridge (LSRL, residuals, etc.)
+ */
+function isValidGradingResponse(parsed) {
+  if (!parsed || typeof parsed !== 'object') return false;
+
+  // Check if it has at least one field with a score
+  const validScores = ['E', 'P', 'I', 'e', 'p', 'i'];
+
+  for (const [key, value] of Object.entries(parsed)) {
+    // Skip metadata fields
+    if (key.startsWith('_')) continue;
+
+    // Check if this field has a valid score
+    if (value && typeof value === 'object' && 'score' in value) {
+      if (validScores.includes(value.score)) {
+        return true; // Found at least one valid graded field
+      }
+    }
+  }
+
+  return false;
 }
 
 async function gradeWithAI(prompt, preferredProvider = null) {
@@ -729,11 +754,22 @@ async function gradeWithAI(prompt, preferredProvider = null) {
         lastError = err;
         console.warn(`${provider} failed (key ${keyObj.id || 'env'}):`, err.message);
 
+        // Determine if we should try the next key or move to next provider
+        const shouldRetryKey = isRateLimitError(err.message) ||
+                               isInvalidResponseError(err.message) ||
+                               isTemporaryError(err.message);
+
         if (isRateLimitError(err.message)) {
           await keyPool.markRateLimited(keyObj.id);
+        }
+
+        if (shouldRetryKey) {
           // Continue to try next key
+          console.log(`Will retry with next key for ${provider}`);
+          continue;
         } else {
-          // Non-rate-limit error - don't retry same provider
+          // Permanent error for this provider - move to next provider
+          console.log(`Moving to next provider after error: ${err.message}`);
           break;
         }
       }
@@ -742,6 +778,37 @@ async function gradeWithAI(prompt, preferredProvider = null) {
 
   // All attempts failed
   throw lastError || new Error('No AI providers available');
+}
+
+/**
+ * Check if error indicates invalid/malformed response (should retry with different key)
+ */
+function isInvalidResponseError(message) {
+  const invalidPatterns = [
+    'Invalid response structure',
+    'Empty response',
+    'Failed to parse',
+    'JSON',
+    'unexpected token'
+  ];
+  return invalidPatterns.some(p => message.toLowerCase().includes(p.toLowerCase()));
+}
+
+/**
+ * Check if error is temporary (network issues, etc.)
+ */
+function isTemporaryError(message) {
+  const tempPatterns = [
+    'timeout',
+    'ECONNRESET',
+    'ETIMEDOUT',
+    'network',
+    'fetch failed',
+    '503',
+    '502',
+    '500'
+  ];
+  return tempPatterns.some(p => message.toLowerCase().includes(p.toLowerCase()));
 }
 
 
