@@ -163,7 +163,17 @@ function escapeRegex(str) {
  * Grade a numeric answer
  */
 export function gradeNumeric(answer, rule, context) {
-  const userValue = parseFloat(answer);
+  // Handle various answer formats
+  let userValue;
+  if (typeof answer === 'string') {
+    // Remove any whitespace and handle negative signs
+    userValue = parseFloat(answer.trim().replace(/\s/g, ''));
+  } else if (typeof answer === 'number') {
+    userValue = answer;
+  } else {
+    userValue = NaN;
+  }
+
   if (isNaN(userValue)) {
     return {
       score: 'I',
@@ -174,18 +184,31 @@ export function gradeNumeric(answer, rule, context) {
   // Get expected value from context
   let expected = rule.expected;
   if (typeof expected === 'string') {
-    expected = parseFloat(context[expected]);
+    const contextValue = context[expected];
+    // Handle both direct numbers and object values like { value: 67.89 }
+    if (typeof contextValue === 'object' && contextValue !== null && 'value' in contextValue) {
+      expected = parseFloat(contextValue.value);
+    } else {
+      expected = parseFloat(contextValue);
+    }
   }
+
+  // Round both to 2 decimal places to avoid floating point issues
+  userValue = Math.round(userValue * 100) / 100;
+  expected = Math.round(expected * 100) / 100;
 
   const diff = Math.abs(userValue - expected);
-  let tolerance = rule.tolerance;
+  let tolerance = rule.tolerance || 0.15;
 
   if (rule.relativeTolerance) {
-    tolerance = Math.abs(expected) * rule.tolerance;
+    // Use relative tolerance but with minimum absolute tolerance
+    tolerance = Math.max(Math.abs(expected) * tolerance, 0.1);
   }
 
-  // Allow some slack for very small values
-  tolerance = Math.max(tolerance, 0.05);
+  // Minimum tolerance of 0.1 for small numbers
+  tolerance = Math.max(tolerance, 0.1);
+
+  console.log(`[Residuals Grading] User: ${userValue}, Expected: ${expected}, Diff: ${diff.toFixed(4)}, Tolerance: ${tolerance.toFixed(4)}`);
 
   if (diff <= tolerance) {
     return {
@@ -194,7 +217,7 @@ export function gradeNumeric(answer, rule, context) {
       expected,
       userValue
     };
-  } else if (diff <= tolerance * 2) {
+  } else if (diff <= tolerance * 2.5) {
     return {
       score: 'P',
       feedback: rule.feedback.P,
@@ -205,7 +228,7 @@ export function gradeNumeric(answer, rule, context) {
 
   return {
     score: 'I',
-    feedback: rule.feedback.I,
+    feedback: `${rule.feedback.I} (Expected: ${expected.toFixed(2)}, Got: ${userValue.toFixed(2)})`,
     expected,
     userValue
   };
