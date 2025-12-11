@@ -989,13 +989,13 @@ app.post('/api/ai/grade-paragraph', async (req, res) => {
 // Submit work for teacher review
 app.post('/api/teacher-review', async (req, res) => {
   try {
-    const { results, problem, answers, timestamp, username } = req.body;
+    const { results, problem, answers, expectedAnswers, cartridgeId, cartridgeName, modeId, fieldIds, timestamp, username } = req.body;
 
     if (!username || !answers) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Store the review request
+    // Store the review request with new fields for answer key
     const { data, error } = await supabase
       .from('teacher_reviews')
       .insert({
@@ -1003,7 +1003,12 @@ app.post('/api/teacher-review', async (req, res) => {
         scenario_topic: problem?.context?.topic || 'Unknown',
         scenario_context: problem?.context || {},
         student_answers: answers,
+        expected_answers: expectedAnswers || problem?.answers || {},
         keyword_results: results?.fields || {},
+        cartridge_id: cartridgeId || 'lsrl-interpretation',
+        cartridge_name: cartridgeName || 'LSRL Interpretation',
+        mode_id: modeId || 'interpret',
+        field_ids: fieldIds || Object.keys(answers),
         status: 'pending',
         submitted_at: timestamp || new Date().toISOString()
       })
