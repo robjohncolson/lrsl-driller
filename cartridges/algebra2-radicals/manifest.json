@@ -24,14 +24,28 @@
   "modes": [
     {
       "id": "simplify-radicals",
-      "name": "Simplify Radicals",
+      "name": "Level 1: Basics",
       "unlockedBy": "default",
       "layout": {
         "inputs": [
           {
             "id": "visual-radical",
             "type": "visual-radical",
-            "label": "Simplify √{{radicand}} by grouping unit squares"
+            "label": "Simplify √{{radicand}} by extracting perfect square factors"
+          }
+        ]
+      }
+    },
+    {
+      "id": "simplify-radicals-hard",
+      "name": "Level 2: Challenge",
+      "unlockedBy": { "gold": 25 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "visual-radical",
+            "type": "visual-radical",
+            "label": "Simplify √{{radicand}} by extracting perfect square factors"
           }
         ]
       }
@@ -73,8 +87,14 @@
     "tiers": [
       {
         "id": "simplify-radicals",
-        "name": "Simplify Radicals",
+        "name": "Level 1: Basics",
         "unlockedBy": "default"
+      },
+      {
+        "id": "simplify-radicals-hard",
+        "name": "Level 2: Challenge",
+        "unlockedBy": { "gold": 25 },
+        "celebrationMessage": "Level 2 Unlocked! You've earned 25 gold stars. Try harder radicals!"
       }
     ]
   }

@@ -57,19 +57,8 @@ export class RadicalGame {
         <!-- Action buttons -->
         <div class="flex flex-col gap-2">
           <div class="text-sm text-gray-600 text-center">Extract a perfect square factor:</div>
-          <div class="flex items-center justify-center gap-2 flex-wrap">
-            <button class="extract-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="4">
-              ÷4 <span class="text-indigo-200 text-sm">(×2)</span>
-            </button>
-            <button class="extract-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="9">
-              ÷9 <span class="text-indigo-200 text-sm">(×3)</span>
-            </button>
-            <button class="extract-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="16">
-              ÷16 <span class="text-indigo-200 text-sm">(×4)</span>
-            </button>
-            <button class="extract-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold transition-colors" data-factor="25">
-              ÷25 <span class="text-indigo-200 text-sm">(×5)</span>
-            </button>
+          <div class="factor-buttons flex items-center justify-center gap-2 flex-wrap">
+            <!-- Buttons generated dynamically based on problem -->
           </div>
           <div class="flex justify-center gap-2 mt-1">
             <button class="undo-btn bg-gray-400 hover:bg-gray-500 disabled:bg-gray-200 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm transition-colors">
@@ -100,13 +89,54 @@ export class RadicalGame {
     this.extractedList = this.wrapper.querySelector('.extracted-list');
     this.answerFormula = this.wrapper.querySelector('.answer-formula');
     this.answerBreakdown = this.wrapper.querySelector('.answer-breakdown');
+    this.factorButtonsContainer = this.wrapper.querySelector('.factor-buttons');
 
-    // Button events
-    this.wrapper.querySelectorAll('.extract-btn').forEach(btn => {
-      btn.addEventListener('click', () => this.extractFactor(parseInt(btn.dataset.factor)));
-    });
+    // Undo/Reset button events
     this.wrapper.querySelector('.undo-btn').addEventListener('click', () => this.undo());
     this.wrapper.querySelector('.reset-btn').addEventListener('click', () => this.reset());
+  }
+
+  /**
+   * Generate factor buttons based on the radicand size
+   * For small numbers (≤50): show 4, 9, 16, 25
+   * For larger numbers: add 36, 49, 64, 81, 100, 121, 144
+   */
+  generateFactorButtons() {
+    // All perfect squares we might use
+    const allFactors = [
+      { square: 4, root: 2 },
+      { square: 9, root: 3 },
+      { square: 16, root: 4 },
+      { square: 25, root: 5 },
+      { square: 36, root: 6 },
+      { square: 49, root: 7 },
+      { square: 64, root: 8 },
+      { square: 81, root: 9 },
+      { square: 100, root: 10 },
+      { square: 121, root: 11 },
+      { square: 144, root: 12 }
+    ];
+
+    // Determine which factors to show based on original radicand
+    // Show factors up to the largest that could possibly apply
+    const maxUsefulFactor = this.originalRadicand;
+    const factorsToShow = allFactors.filter(f => f.square <= maxUsefulFactor);
+
+    // Always show at least 4, 9, 16, 25 for consistency
+    const minFactors = allFactors.slice(0, 4);
+    const uniqueFactors = [...new Map([...minFactors, ...factorsToShow].map(f => [f.square, f])).values()];
+
+    // Generate button HTML
+    this.factorButtonsContainer.innerHTML = uniqueFactors.map(f => `
+      <button class="extract-btn bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded-lg font-bold transition-colors text-sm" data-factor="${f.square}">
+        ÷${f.square} <span class="text-indigo-200 text-xs">(×${f.root})</span>
+      </button>
+    `).join('');
+
+    // Attach event listeners
+    this.factorButtonsContainer.querySelectorAll('.extract-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.extractFactor(parseInt(btn.dataset.factor)));
+    });
   }
 
   loadProblem(totalSquares, config = {}) {
@@ -119,6 +149,7 @@ export class RadicalGame {
     this.currentRadicand = this.originalRadicand;
     this.coefficient = 1;
     this.extractedFactors = [];
+    this.generateFactorButtons();
     this.render();
     this.updateAnswer();
   }
