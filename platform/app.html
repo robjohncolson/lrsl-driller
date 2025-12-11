@@ -40,45 +40,56 @@
 <body class="bg-gray-100 min-h-screen">
   <!-- Header -->
   <header class="bg-white shadow-md sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-4">
-        <h1 id="app-title" class="text-xl font-bold text-purple-700">Driller</h1>
-        <select id="cartridge-select" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:border-purple-500">
+    <div class="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+      <!-- Left: Title + Topic Select -->
+      <div class="flex items-center gap-3">
+        <h1 id="app-title" class="text-lg font-bold text-purple-700">Driller</h1>
+        <select id="cartridge-select" class="text-sm border border-gray-300 rounded px-2 py-1 focus:border-purple-500 bg-white">
           <option value="lsrl-interpretation">LSRL Interpretation</option>
           <option value="residuals">Residuals</option>
         </select>
       </div>
 
-      <div class="flex items-center gap-4">
-        <!-- Star Counts -->
-        <div class="flex items-center gap-2 text-sm">
-          <span class="flex items-center gap-0.5" title="Gold Stars">
-            <span class="star-gold">★</span>
-            <span id="gold-count" class="font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded text-xs">0</span>
-          </span>
-          <span class="flex items-center gap-0.5" title="Silver Stars">
-            <span class="star-silver">★</span>
-            <span id="silver-count" class="font-bold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded text-xs">0</span>
-          </span>
-          <span class="flex items-center gap-0.5" title="Bronze Stars">
-            <span class="star-bronze">★</span>
-            <span id="bronze-count" class="font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded text-xs">0</span>
-          </span>
-          <span class="flex items-center gap-0.5" title="Tin Stars">
-            <span class="star-tin">★</span>
-            <span id="tin-count" class="font-bold text-stone-500 bg-stone-200 px-1.5 py-0.5 rounded text-xs">0</span>
-          </span>
+      <!-- Center: Stars + Rank (main progress indicators) -->
+      <div class="flex items-center gap-3">
+        <!-- Compact Star Counts -->
+        <div class="flex items-center gap-1 text-xs bg-gray-50 rounded-lg px-2 py-1">
+          <span class="star-gold" title="Gold">★</span><span id="gold-count" class="font-bold text-yellow-600 mr-1">0</span>
+          <span class="star-silver" title="Silver">★</span><span id="silver-count" class="font-bold text-gray-500 mr-1">0</span>
+          <span class="star-bronze" title="Bronze">★</span><span id="bronze-count" class="font-bold text-amber-700 mr-1">0</span>
+          <span class="star-tin" title="Tin">★</span><span id="tin-count" class="font-bold text-stone-500">0</span>
         </div>
 
-        <!-- Streaks -->
-        <div id="streaks-display" class="flex gap-3 text-sm"></div>
+        <!-- Compact Rank -->
+        <div id="rank-display" class="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2 py-1" title="Your rank">
+          <span id="rank-icon" class="text-base">📊</span>
+          <span id="rank-name" class="text-xs font-semibold text-gray-700">Novice</span>
+          <div class="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+            <div id="rank-progress-bar" class="h-full bg-purple-500 transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <span id="rank-points" class="text-xs text-gray-400">0</span>
+        </div>
 
-        <!-- Online Indicator -->
+        <!-- Hidden streaks container (still updated by JS) -->
+        <div id="streaks-display" class="hidden"></div>
+      </div>
+
+      <!-- Right: User + Actions -->
+      <div class="flex items-center gap-2">
+        <!-- Teacher Controls (hidden by default) -->
+        <button id="teacher-review-btn" style="display: none;" class="relative p-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors" title="Student Reviews">
+          <span class="text-base">📝</span>
+          <span id="header-review-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center" style="display: none;">0</span>
+        </button>
+        <button id="class-time-btn" style="display: none;" class="p-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors" title="Class Time">
+          <span class="text-base">🔔</span>
+        </button>
+
+        <!-- Online Indicator (compact) -->
         <div id="online-indicator" class="relative">
-          <button id="online-btn" class="flex items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg transition-colors" title="Online users">
+          <button id="online-btn" class="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 rounded-lg transition-colors" title="Online users">
             <span id="connection-dot" class="w-2 h-2 bg-gray-400 rounded-full"></span>
-            <span id="online-count" class="text-sm font-medium">0</span>
-            <span class="text-sm">online</span>
+            <span id="online-count" class="text-xs font-medium text-gray-600">0</span>
           </button>
           <div id="online-dropdown" class="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 hidden">
             <div class="px-3 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide border-b border-gray-100 mb-1">Online Now</div>
@@ -86,49 +97,21 @@
           </div>
         </div>
 
-        <!-- Rank Display -->
-        <div id="rank-display" class="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg px-3 py-1.5">
-          <span id="rank-icon" class="text-lg">📊</span>
-          <div class="flex flex-col">
-            <span id="rank-name" class="text-xs font-semibold text-gray-700">Novice</span>
-            <div class="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div id="rank-progress-bar" class="h-full bg-purple-500 transition-all duration-500" style="width: 0%"></div>
-            </div>
-          </div>
-          <span id="rank-points" class="text-xs text-gray-500">0 pts</span>
-        </div>
-
-        <!-- Teacher Review Button (Teacher Only) -->
-        <button id="teacher-review-btn" style="display: none;" class="flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white px-3 py-1.5 rounded-lg transition-all shadow-md" title="View Student Reviews">
-          <span class="text-lg">📝</span>
-          <span class="text-sm font-medium">Reviews</span>
-          <span id="header-review-count" class="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full" style="display: none;">0</span>
-        </button>
-
-        <!-- Class Time Button (Teacher Only) -->
-        <button id="class-time-btn" style="display: none;" class="flex items-center gap-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-1.5 rounded-lg transition-all shadow-md" title="Start Class Time">
-          <span class="text-lg">🔔</span>
-          <span class="text-sm font-medium">Class Time</span>
+        <!-- Leaderboard (icon only) -->
+        <button id="leaderboard-btn" class="p-1.5 hover:bg-yellow-100 text-yellow-600 rounded-lg transition-colors" title="Leaderboard">
+          <span class="text-base">🏆</span>
         </button>
 
         <!-- User Display -->
-        <div id="user-display" class="flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1 cursor-pointer hover:bg-gray-100 transition-colors" title="Click to change username">
-          <span id="user-status-dot" class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-          <span id="current-username" class="text-sm font-medium text-gray-700">...</span>
-          <span id="teacher-badge" class="hidden text-xs bg-purple-600 text-white px-1.5 py-0.5 rounded">TEACHER</span>
+        <div id="user-display" class="flex items-center gap-1.5 bg-gray-50 rounded-full px-2 py-1 cursor-pointer hover:bg-gray-100 transition-colors" title="Click to change username">
+          <span id="user-status-dot" class="w-2 h-2 bg-green-400 rounded-full"></span>
+          <span id="current-username" class="text-xs font-medium text-gray-700 max-w-[80px] truncate">...</span>
+          <span id="teacher-badge" class="hidden text-xs bg-purple-600 text-white px-1 py-0.5 rounded text-[10px]">T</span>
         </div>
 
-        <!-- Leaderboard Button -->
-        <button id="leaderboard-btn" class="flex items-center gap-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-lg transition-colors" title="View Class Leaderboard">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5z"/>
-          </svg>
-          <span class="text-sm font-medium">Leaderboard</span>
-        </button>
-
-        <!-- Settings Button -->
-        <button id="settings-btn" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Settings">
-          <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <!-- Settings -->
+        <button id="settings-btn" class="p-1.5 hover:bg-gray-100 rounded-lg transition-colors" title="Settings">
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
           </svg>
@@ -165,10 +148,10 @@
   </div>
 
   <!-- Main Content -->
-  <main class="max-w-6xl mx-auto px-4 py-6">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Left Column: Scenario + Graph -->
-      <div class="space-y-4">
+  <main class="max-w-6xl mx-auto px-4 py-4 h-[calc(100vh-48px)] overflow-hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+      <!-- Left Column: Scenario + Graph (sticky) -->
+      <div class="space-y-4 lg:sticky lg:top-0 lg:self-start">
         <!-- Scenario Card -->
         <div class="bg-white rounded-xl shadow-lg p-4">
           <div class="flex items-center gap-2 mb-2">
@@ -183,12 +166,12 @@
 
         <!-- Graph Container -->
         <div class="bg-white rounded-xl shadow-lg p-4">
-          <div id="graph-container" class="w-full h-72 bg-gray-50 rounded-lg"></div>
+          <div id="graph-container" class="w-full h-64 bg-gray-50 rounded-lg"></div>
         </div>
       </div>
 
-      <!-- Right Column: Inputs -->
-      <div class="space-y-4">
+      <!-- Right Column: Inputs (scrollable) -->
+      <div class="space-y-4 lg:overflow-y-auto lg:max-h-full lg:pr-2">
         <!-- Mode Tabs -->
         <div id="mode-tabs" class="flex gap-2 flex-wrap"></div>
 
