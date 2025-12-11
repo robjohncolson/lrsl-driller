@@ -148,11 +148,11 @@
   </div>
 
   <!-- Main Content - Split Pane Layout -->
-  <main class="max-w-6xl mx-auto px-4 h-[calc(100vh-48px)] flex flex-col lg:flex-row gap-4 py-4 overflow-hidden">
+  <main id="main-content" class="max-w-6xl mx-auto px-4 h-[calc(100vh-48px)] flex flex-col lg:flex-row gap-4 py-4 overflow-hidden">
     <!-- Left Pane: Question (fixed, never scrolls) -->
-    <div class="lg:w-1/2 flex-shrink-0 space-y-3 max-h-[40vh] lg:max-h-full overflow-hidden">
+    <div id="left-pane" class="lg:w-1/2 flex-shrink-0 flex flex-col gap-3 max-h-[45vh] lg:max-h-full overflow-hidden">
       <!-- Scenario Card -->
-      <div class="bg-white rounded-xl shadow-lg p-4">
+      <div id="scenario-card" class="bg-white rounded-xl shadow-lg p-4 flex-shrink-0">
         <div class="flex items-center gap-2 mb-2">
           <span class="text-xs text-gray-500 uppercase tracking-wide">Scenario:</span>
           <h2 id="scenario-title" class="text-base font-semibold text-gray-800"></h2>
@@ -163,14 +163,14 @@
         <div id="info-panel" class="flex flex-wrap gap-2 text-sm"></div>
       </div>
 
-      <!-- Graph Container -->
-      <div class="bg-white rounded-xl shadow-lg p-4">
-        <div id="graph-container" class="w-full h-72 bg-gray-50 rounded-lg"></div>
+      <!-- Graph Container - flex-1 to fill remaining space -->
+      <div id="graph-card" class="bg-white rounded-xl shadow-lg p-4 flex-1 min-h-0 flex flex-col">
+        <div id="graph-container" class="w-full flex-1 min-h-[150px] bg-gray-50 rounded-lg"></div>
       </div>
     </div>
 
     <!-- Right Pane: Answers (scrollable) -->
-    <div class="lg:w-1/2 flex-1 overflow-y-auto space-y-4 pr-1">
+    <div id="right-pane" class="lg:w-1/2 flex-1 overflow-y-auto space-y-4 pr-1">
         <!-- Mode Tabs -->
         <div id="mode-tabs" class="flex gap-2 flex-wrap"></div>
 
@@ -506,6 +506,35 @@
     let platform = null;
     let currentCartridgeId = 'lsrl-interpretation';
     let pendingTeacherReview = null; // Store results for teacher review
+
+    // ==================== RESPONSIVE LAYOUT ====================
+    function updateMobileLayout() {
+      const isMobile = window.innerWidth < 1024; // lg breakpoint
+      if (!isMobile) return;
+
+      const header = document.querySelector('header');
+      const banner = document.getElementById('class-time-banner');
+      const leftPane = document.getElementById('left-pane');
+
+      if (!header || !leftPane) return;
+
+      // Calculate available height
+      const headerHeight = header.offsetHeight;
+      const bannerHeight = banner && !banner.classList.contains('hidden') ? banner.offsetHeight : 0;
+      const availableHeight = window.innerHeight - headerHeight - bannerHeight - 32; // 32px for padding
+
+      // Reserve minimum space for answers (at least 55% of available)
+      const maxLeftHeight = Math.min(availableHeight * 0.45, 400);
+      leftPane.style.maxHeight = `${maxLeftHeight}px`;
+    }
+
+    // Run on load and resize
+    window.addEventListener('resize', updateMobileLayout);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(updateMobileLayout, 100);
+    });
+    // Initial call after DOM ready
+    setTimeout(updateMobileLayout, 0);
 
     // ==================== UI UPDATES ====================
     function updateStarsDisplay(stars) {
