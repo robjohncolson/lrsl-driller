@@ -971,13 +971,15 @@
         updateRankDisplay(newState.game.starCounts);
         updatePotentialStar(0);
 
-        // Show Next button - MUST remove hidden class first (Tailwind uses !important)
+        // Show Next button - hide all other action buttons
         const btnGrade = document.getElementById('btn-grade');
         const btnTryAgain = document.getElementById('btn-try-again');
+        const btnSkip = document.getElementById('btn-skip');
         const btnNext = document.getElementById('btn-next');
 
         btnGrade.classList.add('hidden');
         btnTryAgain.classList.add('hidden');
+        btnSkip.classList.add('hidden');
         btnNext.classList.remove('hidden');
 
         console.log('Teacher grades applied - showing Next button');
@@ -998,14 +1000,16 @@
           }
         }, 2000);
       } else {
-        // Not all correct - show try again
+        // Not all correct - show try again and skip
         const btnGrade = document.getElementById('btn-grade');
         const btnTryAgain = document.getElementById('btn-try-again');
+        const btnSkip = document.getElementById('btn-skip');
         const btnNext = document.getElementById('btn-next');
 
         btnGrade.classList.add('hidden');
         btnNext.classList.add('hidden');
         btnTryAgain.classList.remove('hidden');
+        btnSkip.classList.remove('hidden');
 
         console.log('Teacher grades applied - showing Try Again button');
 
