@@ -13,53 +13,38 @@ export function generateProblem(modeId, context, mode) {
 /**
  * Generate a number for visual radical simplification
  * Students will arrange unit squares into perfect square groups
+ * Keeps numbers small and manageable (under 50 squares)
  */
 function generateVisualRadical() {
-  // Perfect squares and their square roots
-  const perfectSquares = [
-    { square: 4, root: 2 },
-    { square: 9, root: 3 },
-    { square: 16, root: 4 },
-    { square: 25, root: 5 }
+  // Curated list of good radicands for visual learning
+  // Format: [radicand, coefficient, remainder]
+  // e.g., √12 = 2√3, so [12, 2, 3]
+  const problems = [
+    // Easy: single 2×2 group
+    [8, 2, 2],    // √8 = 2√2
+    [12, 2, 3],   // √12 = 2√3
+    [20, 2, 5],   // √20 = 2√5
+
+    // Medium: single 3×3 group
+    [18, 3, 2],   // √18 = 3√2
+    [27, 3, 3],   // √27 = 3√3
+    [45, 3, 5],   // √45 = 3√5
+
+    // Perfect squares (no remainder)
+    [4, 2, 1],    // √4 = 2
+    [9, 3, 1],    // √9 = 3
+    [16, 4, 1],   // √16 = 4
+    [25, 5, 1],   // √25 = 5
+
+    // Slightly harder: 4×4 group
+    [32, 4, 2],   // √32 = 4√2
+    [48, 4, 3],   // √48 = 4√3
   ];
 
-  // Non-square remainders (square-free numbers)
-  const remainders = [2, 3, 5, 6, 7, 10, 11, 13, 14, 15];
-
-  // Build a radicand as (perfect square) × (remainder)
-  // Can also have multiple perfect square factors
-  const useMultiple = Math.random() > 0.6;
-
-  let coefficient = 1;
-  let radicand;
-
-  if (useMultiple) {
-    // Use 2 perfect square factors: e.g., √(4 × 9 × 2) = 6√2
-    const ps1 = perfectSquares[Math.floor(Math.random() * 2)]; // 4 or 9
-    const ps2 = perfectSquares[Math.floor(Math.random() * 2)]; // 4 or 9
-    const rem = remainders[Math.floor(Math.random() * remainders.length)];
-
-    radicand = ps1.square * ps2.square * rem;
-    coefficient = ps1.root * ps2.root;
-
-    // Keep radicand manageable (under 200 squares)
-    if (radicand > 200) {
-      return generateVisualRadical(); // Regenerate
-    }
-  } else {
-    // Single perfect square factor: e.g., √12 = 2√3
-    const ps = perfectSquares[Math.floor(Math.random() * perfectSquares.length)];
-    const rem = remainders[Math.floor(Math.random() * remainders.length)];
-
-    radicand = ps.square * rem;
-    coefficient = ps.root;
-  }
-
-  // Calculate what's left after full simplification
-  const remainder = radicand / (coefficient * coefficient);
+  const [radicand, coefficient, remainder] = problems[Math.floor(Math.random() * problems.length)];
 
   const expression = `√${radicand}`;
-  const simplified = coefficient === 1 ? `√${remainder}` : `${coefficient}√${remainder}`;
+  const simplified = remainder === 1 ? `${coefficient}` : `${coefficient}√${remainder}`;
 
   return {
     context: {
