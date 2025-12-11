@@ -88,9 +88,23 @@ export class Platform {
 
       this.gameEngine.loadCartridge(this.currentCartridge.manifest);
 
-      // Set initial mode
+      // Set initial mode - restore saved mode if available and unlocked
       const modes = this.cartridgeLoader.getModes();
-      if (modes.length > 0) {
+      const savedTier = this.gameEngine.currentTier;
+      const state = this.gameEngine.getState();
+
+      // Check if saved tier exists and is unlocked
+      const savedMode = modes.find(m => m.id === savedTier);
+      const isSavedModeUnlocked = savedMode && (
+        savedMode.unlockedBy === 'default' ||
+        state.unlockedTiers.includes(savedTier) ||
+        (savedMode.unlockedBy?.gold && state.starCounts.gold >= savedMode.unlockedBy.gold)
+      );
+
+      if (isSavedModeUnlocked) {
+        this.currentMode = savedTier;
+        console.log(`[Platform] Restored saved mode: ${this.currentMode}`);
+      } else if (modes.length > 0) {
         this.currentMode = modes[0].id;
         console.log(`[Platform] Set initial mode: ${this.currentMode}`);
       }
@@ -126,6 +140,8 @@ export class Platform {
     }
 
     this.currentMode = modeId;
+    // Save to game engine so it persists across refreshes
+    this.gameEngine.setTier(modeId);
     this.onStateChange(this.getState());
     return true;
   }
