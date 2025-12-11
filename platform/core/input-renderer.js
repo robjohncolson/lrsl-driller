@@ -4,7 +4,7 @@
  * Topic-agnostic: cartridge provides the schema
  */
 
-import { RadicalVisualizer } from './radical-visualizer.js';
+import { RadicalGame } from './radical-game.js';
 
 export class InputRenderer {
   constructor(container, config = {}) {
@@ -269,10 +269,10 @@ export class InputRenderer {
     // Get the total squares from context (radicand)
     const totalSquares = context.radicand || 12;
 
-    // Create the visualizer after a brief delay to ensure DOM is ready
+    // Create the game after a brief delay to ensure DOM is ready
     setTimeout(() => {
-      const visualizer = new RadicalVisualizer(wrapper, {
-        squareSize: 36,
+      const game = new RadicalGame(wrapper, {
+        squareSize: 28,
         onAnswerChange: (answer) => {
           // Store the answer for grading
           wrapper._visualAnswer = answer;
@@ -280,11 +280,11 @@ export class InputRenderer {
       });
 
       // Load the problem
-      visualizer.loadProblem(totalSquares);
+      game.loadProblem(totalSquares);
 
       // Store reference for getValue and cleanup
-      this.visualizers.set(field.id, visualizer);
-      wrapper._visualizer = visualizer;
+      this.visualizers.set(field.id, game);
+      wrapper._visualizer = game;
     }, 0);
 
     // Mark for data-field-id handling
