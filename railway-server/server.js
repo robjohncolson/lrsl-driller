@@ -818,62 +818,63 @@ function isTemporaryError(message) {
 
 function buildGradingPrompt(scenario, answers) {
   const direction = scenario.slope > 0 ? 'increases' : 'decreases';
+  const oppositeDirection = scenario.slope > 0 ? 'decreases' : 'increases';
   const rDirection = scenario.r > 0 ? 'positive' : 'negative';
   const absR = Math.abs(scenario.r);
   const strength = absR < 0.4 ? 'weak' : absR < 0.7 ? 'moderate' : 'strong';
   const slopeAbs = Math.abs(scenario.slope);
 
-  return `You are an AP Statistics grader. Grade these three LSRL interpretation responses using E/P/I scoring.
-BE LENIENT - focus on conceptual understanding, not exact wording.
+  return `You are an AP Statistics teacher grading LSRL interpretations. BE LENIENT - reward understanding over exact wording.
 
-CONTEXT:
-- Topic: ${scenario.topic}
-- X variable: ${scenario.xVar} (${scenario.xUnits})
-- Y variable: ${scenario.yVar} (${scenario.yUnits})
-- Regression equation: ŷ = ${scenario.intercept} + ${scenario.slope}x
-- Correlation: r = ${scenario.r}
-- Y-intercept meaningful: ${scenario.isInterceptMeaningful ? 'Yes' : 'No - ' + scenario.interceptReason}
+## Context
+Topic: ${scenario.topic}
+X: ${scenario.xVar} (${scenario.xUnits})
+Y: ${scenario.yVar} (${scenario.yUnits})
+Equation: ŷ = ${scenario.intercept} + ${scenario.slope}x
+r = ${scenario.r}
 
-STUDENT ANSWERS:
-1. Slope: "${answers.slope}"
-2. Y-intercept: "${answers.intercept}"
-3. Correlation: "${answers.correlation}"
+## CORRECT ANSWERS (use these to grade)
 
-CRITICAL - UNIT CONVERSIONS ARE ACCEPTABLE:
-- If units are "thousands of dollars", accept BOTH "${slopeAbs} thousands of dollars" AND "${slopeAbs * 1000} dollars"
-- The student demonstrates understanding if the VALUE is mathematically equivalent
+### SLOPE - Correct Thinking Process:
+The slope b = ${scenario.slope} means:
+"For every 1 ${scenario.xUnits} increase in ${scenario.xVar}, the PREDICTED ${scenario.yVar} ${direction} by ${slopeAbs} ${scenario.yUnits}, on average."
 
-GRADING RUBRIC:
+Key elements: (1) "predicted" or "on average", (2) direction "${direction}", (3) value ${slopeAbs}, (4) both variables, (5) "for every 1"
 
-SLOPE must include:
-- "Predicted" or "on average" (MANDATORY)
-- Correct direction: "${direction}" (b=${scenario.slope})
-- Slope value: ${slopeAbs} (OR equivalent conversions)
-- Both variables in context
-- "For every 1 [unit]" phrasing
+Student wrote: "${answers.slope}"
 
-Y-INTERCEPT:
+### Y-INTERCEPT - Correct Thinking Process:
 ${scenario.isInterceptMeaningful
-    ? `- Reference x=0, use "predicted"/"predicts", include value ${scenario.intercept}, name y-variable`
-    : `- Must state NO meaningful interpretation and explain why (${scenario.interceptReason})`}
+    ? `The intercept ${scenario.intercept} IS meaningful:
+"When ${scenario.xVar} is 0 ${scenario.xUnits}, the predicted ${scenario.yVar} is ${scenario.intercept} ${scenario.yUnits}."
 
-CORRELATION must include:
-- Word "linear" (MANDATORY)
-- Direction: "${rDirection}"
-- Strength: "${strength}" (|r|=${absR.toFixed(2)})
-- Both variables
-- "relationship" or "association"
+Key elements: (1) reference x=0, (2) "predicted", (3) value ${scenario.intercept}, (4) y-variable name`
+    : `The intercept ${scenario.intercept} is NOT meaningful because ${scenario.interceptReason}.
+Correct answer: "There is no meaningful interpretation because ${scenario.interceptReason}."
 
-AUTOMATIC FAILURES: "causes", "proves" = Incorrect
+Key elements: (1) state no meaningful interpretation, (2) explain WHY (x=0 is outside data range or impossible)`}
 
-Respond with ONLY this JSON (no other text):
-{
-  "slope": {"score": "E", "feedback": "..."},
-  "intercept": {"score": "P", "feedback": "..."},
-  "correlation": {"score": "I", "feedback": "..."}
-}
+Student wrote: "${answers.intercept}"
 
-Score meanings: E=Essentially Correct, P=Partially Correct, I=Incorrect`;
+### CORRELATION - Correct Thinking Process:
+r = ${scenario.r} means:
+"There is a ${strength}, ${rDirection}, LINEAR relationship between ${scenario.xVar} and ${scenario.yVar}."
+
+Key elements: (1) "linear" (MANDATORY), (2) strength "${strength}", (3) direction "${rDirection}", (4) both variables, (5) "relationship" or "association"
+
+NEVER accept: "causes", "proves", "determines" (these imply causation!)
+
+Student wrote: "${answers.correlation}"
+
+## Grading Rules
+- E: Has most key elements, shows understanding
+- P: Missing 1-2 elements, or minor errors
+- I: Missing critical elements, wrong direction, or implies causation
+
+BE GENEROUS: Accept synonyms, rounding differences, unit conversions (e.g., "1000 dollars" = "1 thousand dollars")
+
+## Response (ONLY JSON, no other text):
+{"slope":{"score":"E","feedback":"Good interpretation!"},"intercept":{"score":"E","feedback":"Correct!"},"correlation":{"score":"E","feedback":"Well done!"}}`;
 }
 
 /**
