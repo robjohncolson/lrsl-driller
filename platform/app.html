@@ -98,6 +98,9 @@
         <button id="class-time-btn" style="display: none;" class="p-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors" title="Class Time">
           <span class="text-base">🔔</span>
         </button>
+        <button id="time-analytics-btn" style="display: none;" class="p-1.5 bg-teal-100 hover:bg-teal-200 text-teal-700 rounded-lg transition-colors" title="Time Analytics">
+          <span class="text-base">⏱️</span>
+        </button>
 
         <!-- Online Indicator (compact) -->
         <div id="online-indicator" class="relative">
@@ -533,6 +536,68 @@
   </div>
   <div id="teacher-review-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
 
+  <!-- Time Analytics Panel (Teacher Only) -->
+  <div id="time-analytics-panel" class="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="h-full flex flex-col">
+      <div class="bg-gradient-to-r from-green-600 to-teal-600 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">⏱️</span>
+          <h2 class="text-xl font-bold text-white">Time Analytics</h2>
+        </div>
+        <button id="close-time-analytics" class="p-2 hover:bg-white/20 rounded-full transition-colors">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="px-6 py-3 bg-gray-50 border-b flex justify-between items-center">
+        <div class="flex gap-2">
+          <button data-period="today" class="time-period-btn px-3 py-1 text-sm rounded-full bg-green-600 text-white">Today</button>
+          <button data-period="week" class="time-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-green-400">This Week</button>
+          <button data-period="all" class="time-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-green-400">All Time</button>
+        </div>
+        <button id="refresh-time-analytics" class="text-green-600 hover:text-green-800 text-sm flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Refresh
+        </button>
+      </div>
+      <!-- Summary Stats -->
+      <div id="time-summary" class="px-6 py-4 bg-gradient-to-r from-green-50 to-teal-50 border-b">
+        <div class="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <div id="total-class-time" class="text-2xl font-bold text-green-700">0m</div>
+            <div class="text-xs text-gray-500">Total Class Time</div>
+          </div>
+          <div>
+            <div id="total-students-active" class="text-2xl font-bold text-teal-700">0</div>
+            <div class="text-xs text-gray-500">Students Active</div>
+          </div>
+          <div>
+            <div id="avg-time-per-student" class="text-2xl font-bold text-emerald-700">0m</div>
+            <div class="text-xs text-gray-500">Avg Per Student</div>
+          </div>
+        </div>
+      </div>
+      <!-- Student List -->
+      <div id="time-analytics-content" class="flex-1 overflow-y-auto p-4">
+        <div id="time-analytics-loading" class="flex items-center justify-center h-32">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+        </div>
+        <div id="time-analytics-list" class="space-y-3 hidden"></div>
+        <div id="time-analytics-empty" class="text-center text-gray-500 py-8 hidden">
+          <span class="text-4xl block mb-2">📊</span>
+          <p>No time data yet.</p>
+        </div>
+      </div>
+      <div class="px-6 py-3 bg-gray-50 border-t text-xs text-gray-500 text-center">
+        Time is tracked while students are actively using the app
+      </div>
+    </div>
+  </div>
+  <div id="time-analytics-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
   <!-- Cartridge Loading Overlay -->
   <div id="cartridge-loading-overlay" class="fixed inset-0 z-[70] bg-gray-900 bg-opacity-95 flex items-center justify-center hidden">
     <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 text-center">
@@ -627,6 +692,7 @@
     import { WebSocketClient } from './core/websocket-client.js';
     import { Leaderboard } from './core/leaderboard.js';
     import { ClassTime } from './core/class-time.js';
+    import { TimeTracker } from './core/time-tracker.js';
 
     // ==================== CONFIGURATION ====================
     const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
@@ -637,6 +703,7 @@
     const userSystem = new UserSystem({ serverUrl: SERVER_URL });
     const leaderboard = new Leaderboard({ serverUrl: SERVER_URL });
     const classTime = new ClassTime();
+    const timeTracker = new TimeTracker({ serverUrl: SERVER_URL });
 
     const wsClient = new WebSocketClient({
       serverUrl: SERVER_URL,
@@ -1017,6 +1084,7 @@
           document.getElementById('current-username').textContent = existingSelect.value;
           wsClient.connect(existingSelect.value);
           leaderboard.setCurrentUser(existingSelect.value);
+          timeTracker.start(existingSelect.value);
           this.hide();
           soundEngine.init();
           loadCartridge(currentCartridgeId);
@@ -1044,6 +1112,7 @@
         document.getElementById('current-username').textContent = username;
         wsClient.connect(username);
         leaderboard.setCurrentUser(username);
+        timeTracker.start(username);
         this.hide();
         soundEngine.init();
 
@@ -1245,11 +1314,13 @@
 
         const classTimeBtn = document.getElementById('class-time-btn');
         const reviewBtn = document.getElementById('teacher-review-btn');
+        const timeAnalyticsBtn = document.getElementById('time-analytics-btn');
         console.log('class-time-btn element:', classTimeBtn);
         console.log('teacher-review-btn element:', reviewBtn);
 
         if (classTimeBtn) classTimeBtn.style.display = 'flex';
         if (reviewBtn) reviewBtn.style.display = 'flex';
+        if (timeAnalyticsBtn) timeAnalyticsBtn.style.display = 'flex';
 
         usernameModal.hide();
         celebration.showToast('Welcome, Teacher!', 'success');
@@ -1448,6 +1519,126 @@
       openTeacherReviewPanel();
     });
 
+    // ==================== TIME ANALYTICS PANEL ====================
+    let currentTimePeriod = 'today';
+
+    function openTimeAnalyticsPanel() {
+      document.getElementById('time-analytics-panel').classList.remove('translate-x-full');
+      document.getElementById('time-analytics-backdrop').classList.remove('hidden');
+      loadTimeAnalytics();
+    }
+
+    function closeTimeAnalyticsPanel() {
+      document.getElementById('time-analytics-panel').classList.add('translate-x-full');
+      document.getElementById('time-analytics-backdrop').classList.add('hidden');
+    }
+
+    async function loadTimeAnalytics() {
+      const loading = document.getElementById('time-analytics-loading');
+      const list = document.getElementById('time-analytics-list');
+      const empty = document.getElementById('time-analytics-empty');
+
+      loading.classList.remove('hidden');
+      list.classList.add('hidden');
+      empty.classList.add('hidden');
+
+      try {
+        const response = await fetch(`${SERVER_URL}/api/time-tracking/class-summary?period=${currentTimePeriod}`, {
+          headers: { 'x-teacher-password': teacherPassword || 'stats123' }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch time data');
+
+        const data = await response.json();
+        loading.classList.add('hidden');
+
+        // Update summary stats
+        document.getElementById('total-class-time').textContent = formatTimeDisplay(data.totalClassTime);
+        document.getElementById('total-students-active').textContent = data.students?.length || 0;
+        const avgTime = data.students?.length > 0 ? data.totalClassTime / data.students.length : 0;
+        document.getElementById('avg-time-per-student').textContent = formatTimeDisplay(avgTime);
+
+        if (!data.students || data.students.length === 0) {
+          empty.classList.remove('hidden');
+        } else {
+          list.classList.remove('hidden');
+          renderTimeAnalyticsList(data.students);
+        }
+      } catch (err) {
+        console.error('Failed to load time analytics:', err);
+        loading.classList.add('hidden');
+        empty.classList.remove('hidden');
+        empty.querySelector('p').textContent = 'Failed to load time data.';
+      }
+    }
+
+    function renderTimeAnalyticsList(students) {
+      const list = document.getElementById('time-analytics-list');
+      const maxTime = Math.max(...students.map(s => s.totalActiveMs), 1);
+
+      list.innerHTML = students.map((student, index) => {
+        const timePercent = (student.totalActiveMs / maxTime) * 100;
+        const avatar = getAvatarForUsername(student.username);
+        const lastActive = student.lastActive ? new Date(student.lastActive).toLocaleString() : 'N/A';
+
+        return `
+          <div class="bg-white border rounded-lg p-3 hover:shadow-md transition-shadow">
+            <div class="flex items-center gap-3">
+              <div class="flex items-center justify-center w-8 h-8 rounded-full ${index < 3 ? 'bg-green-100' : 'bg-gray-100'} text-lg">
+                ${index < 3 ? ['🥇', '🥈', '🥉'][index] : avatar}
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-gray-800 truncate">${student.username}</span>
+                  <span class="font-bold text-green-700">${formatTimeDisplay(student.totalActiveMs)}</span>
+                </div>
+                <div class="mt-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-green-400 to-teal-500 rounded-full transition-all duration-500" style="width: ${timePercent}%"></div>
+                </div>
+                <div class="flex justify-between mt-1 text-xs text-gray-500">
+                  <span>${student.sessionCount || 0} sessions</span>
+                  <span>${student.problemsCompleted || 0}/${student.problemsAttempted || 0} problems</span>
+                  <span>Last: ${lastActive}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatTimeDisplay(ms) {
+      if (!ms || ms < 1000) return '0m';
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+
+      if (hours > 0) {
+        return `${hours}h ${minutes % 60}m`;
+      } else if (minutes > 0) {
+        return `${minutes}m`;
+      } else {
+        return `${seconds}s`;
+      }
+    }
+
+    // Time analytics panel event listeners
+    document.getElementById('time-analytics-btn')?.addEventListener('click', openTimeAnalyticsPanel);
+    document.getElementById('close-time-analytics')?.addEventListener('click', closeTimeAnalyticsPanel);
+    document.getElementById('time-analytics-backdrop')?.addEventListener('click', closeTimeAnalyticsPanel);
+    document.getElementById('refresh-time-analytics')?.addEventListener('click', loadTimeAnalytics);
+
+    document.querySelectorAll('.time-period-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.time-period-btn').forEach(b => {
+          b.className = 'time-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-green-400';
+        });
+        btn.className = 'time-period-btn px-3 py-1 text-sm rounded-full bg-green-600 text-white';
+        currentTimePeriod = btn.dataset.period;
+        loadTimeAnalytics();
+      });
+    });
+
     // ==================== CARTRIDGE LOADING UI ====================
     function showCartridgeDropdown() {
       document.getElementById('cartridge-dropdown').classList.remove('hidden');
@@ -1569,10 +1760,32 @@
         const teacherGrades = review.teacher_grades || {};
         const expectedAnswers = review.expected_answers || {};
         const isReviewed = review.status === 'reviewed';
+        const realName = review.real_name || null;
 
         // Get fields dynamically from the review, fall back to LSRL fields for old reviews
         const fields = review.field_ids || Object.keys(answers) || ['slope', 'intercept', 'correlation'];
         const cartridgeName = review.cartridge_name || 'LSRL Interpretation';
+
+        // Format student answer for display (handles objects like radical answers)
+        const formatAnswer = (fieldId) => {
+          const ans = answers[fieldId];
+          if (ans === null || ans === undefined) return '(empty)';
+          if (typeof ans === 'object') {
+            // Handle radical-type answers: { coefficient, radicand, hasI }
+            if ('coefficient' in ans && 'radicand' in ans) {
+              const coef = ans.coefficient || 1;
+              const rad = ans.radicand || 1;
+              const hasI = ans.hasI || false;
+              if (rad === 1) {
+                return hasI ? `${coef}i` : `${coef}`;
+              }
+              return hasI ? `${coef}i√${rad}` : `${coef}√${rad}`;
+            }
+            // Fallback for other objects
+            return JSON.stringify(ans);
+          }
+          return ans;
+        };
 
         // Format expected answer for display
         const formatExpected = (fieldId) => {
@@ -1588,7 +1801,8 @@
           <div class="bg-white border rounded-lg shadow-sm p-4" data-review-id="${review.id}" data-fields="${fields.join(',')}">
             <div class="flex justify-between items-start mb-3">
               <div>
-                <span class="font-semibold text-gray-800">${review.username}</span>
+                <span class="font-semibold text-gray-800">${realName || review.username}</span>
+                ${realName ? `<span class="text-gray-500 text-xs ml-1">(${review.username})</span>` : ''}
                 <span class="text-purple-600 text-xs ml-2 px-2 py-0.5 bg-purple-50 rounded">${cartridgeName}</span>
               </div>
               <span class="text-xs text-gray-400">${new Date(review.submitted_at).toLocaleString()}</span>
@@ -1620,7 +1834,7 @@
                         </div>`
                     }
                   </div>
-                  <p class="text-sm text-gray-600 mt-1 italic">"${answers[field] || '(empty)'}"</p>
+                  <p class="text-sm text-gray-600 mt-1 italic">"${formatAnswer(field)}"</p>
                   ${expected ? `<p class="text-xs text-green-600 mt-1">Expected: ${expected}</p>` : ''}
                   ${keywordResults[field]?.feedback ? `<p class="text-xs text-gray-400 mt-1">Auto: ${keywordResults[field].score} - ${keywordResults[field].feedback}</p>` : ''}
                 </div>
@@ -1815,6 +2029,9 @@
               soundEngine.starSound(starType);
               celebration.celebrate(starType);
 
+              // Record problem completion with time tracking
+              timeTracker.endProblem(true, { starType, allCorrect: true });
+
               // Notify server
               if (wsClient.isConnected() && userSystem.currentUser) {
                 wsClient.notifyStarEarned(
@@ -1849,6 +2066,9 @@
               document.getElementById('btn-grade').classList.add('hidden');
               document.getElementById('btn-next').classList.remove('hidden');
             } else {
+              // Record problem attempt (not completed)
+              timeTracker.endProblem(false, { allCorrect: false });
+
               document.getElementById('btn-grade').classList.add('hidden');
               document.getElementById('btn-try-again').classList.remove('hidden');
             }
@@ -1864,6 +2084,27 @@
 
         document.getElementById('app-title').textContent = platform.currentCartridge?.manifest?.meta?.name || 'Driller';
         document.getElementById('current-cartridge-name').textContent = platform.currentCartridge?.manifest?.meta?.name || cartridgeId;
+
+        // Adjust layout based on whether this cartridge shows a graph
+        const showGraph = platform.currentCartridge?.manifest?.display?.showGraph !== false;
+        const leftPane = document.getElementById('left-pane');
+        const rightPane = document.getElementById('right-pane');
+        const graphCard = document.getElementById('graph-card');
+
+        if (showGraph) {
+          // Standard split layout with graph
+          leftPane.classList.remove('hidden');
+          leftPane.classList.add('lg:w-1/2');
+          rightPane.classList.remove('lg:w-full');
+          rightPane.classList.add('lg:w-1/2');
+          graphCard.classList.remove('hidden');
+        } else {
+          // Full-width layout without graph
+          leftPane.classList.add('hidden');
+          rightPane.classList.remove('lg:w-1/2');
+          rightPane.classList.add('lg:w-full');
+          graphCard.classList.add('hidden');
+        }
 
         // Update mode tabs
         const modes = platform.currentCartridge?.manifest?.modes || [];
@@ -1931,6 +2172,10 @@
 
       document.getElementById('scenario-title').textContent = problem.context?.topic || 'Practice Problem';
       document.getElementById('scenario-text').textContent = problem.scenario || '';
+
+      // Start tracking this problem
+      const problemId = `${currentCartridgeId}-${platform.currentMode}-${Date.now()}`;
+      timeTracker.startProblem(problemId, currentCartridgeId, platform.currentMode);
     }
 
     // ==================== ACTION BUTTONS ====================
@@ -2002,6 +2247,7 @@
         document.getElementById('current-username').textContent = userSystem.currentUser.username;
         wsClient.connect(userSystem.currentUser.username);
         leaderboard.setCurrentUser(userSystem.currentUser.username);
+        timeTracker.start(userSystem.currentUser.username);
         loadCartridge(currentCartridgeId);
       } else {
         usernameModal.show(true); // First visit - cannot close modal

@@ -120,7 +120,7 @@
       document.getElementById('cartridge-desc').textContent = manifest.meta.description;
     }
 
-    function updateModeTabs(modes, currentMode, unlockedTiers) {
+    function updateModeTabs(modes, currentMode, unlockedTiers, starCounts = {}) {
       const container = document.getElementById('mode-tabs');
       container.innerHTML = '';
 
@@ -129,7 +129,10 @@
         btn.dataset.mode = mode.id;
         btn.textContent = mode.name;
 
-        const isUnlocked = mode.unlockedBy === 'default' || unlockedTiers.includes(mode.id);
+        // Check unlock: default, already unlocked, or meets gold star requirement
+        const isUnlocked = mode.unlockedBy === 'default' ||
+          unlockedTiers.includes(mode.id) ||
+          (mode.unlockedBy?.gold && (starCounts.gold || 0) >= mode.unlockedBy.gold);
         const isActive = mode.id === currentMode;
 
         if (isActive) {

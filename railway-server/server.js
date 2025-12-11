@@ -1062,7 +1062,8 @@ app.get('/api/teacher-review', async (req, res) => {
 
     const status = req.query.status || 'pending';
 
-    const { data, error } = await supabase
+    // First get the reviews
+    const { data: reviews, error } = await supabase
       .from('teacher_reviews')
       .select('*')
       .eq('status', status)
@@ -1077,7 +1078,26 @@ app.get('/api/teacher-review', async (req, res) => {
       throw error;
     }
 
-    res.json(data || []);
+    // Then get the real names for the usernames
+    if (reviews && reviews.length > 0) {
+      const usernames = [...new Set(reviews.map(r => r.username))];
+      const { data: users } = await supabase
+        .from('users')
+        .select('username, real_name')
+        .in('username', usernames);
+
+      const userMap = {};
+      (users || []).forEach(u => {
+        userMap[u.username] = u.real_name;
+      });
+
+      // Attach real_name to each review
+      reviews.forEach(r => {
+        r.real_name = userMap[r.username] || null;
+      });
+    }
+
+    res.json(reviews || []);
   } catch (err) {
     console.error('GET /api/teacher-review error:', err);
     res.status(500).json({ error: err.message });
@@ -1151,6 +1171,255 @@ app.get('/api/teacher-review/student/:username', async (req, res) => {
     res.json(data || []);
   } catch (err) {
     console.error('GET /api/teacher-review/student/:username error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// TIME TRACKING ENDPOINTS
+// ============================================
+
+// Store/update session time
+app.post('/api/time-tracking/session', async (req, res) => {
+  try {
+    const { username, sessionId, sessionStartTime, activeTimeMs, totalTimeMs, isFinal } = req.body;
+
+    if (!username || !sessionId) {
+      return res.status(400).json({ error: 'Username and sessionId required' });
+    }
+
+    // Upsert session data
+    const { data, error } = await supabase
+      .from('time_sessions')
+      .upsert({
+        session_id: sessionId,
+        username,
+        session_start: sessionStartTime,
+        active_time_ms: activeTimeMs,
+        total_time_ms: totalTimeMs,
+        last_sync: new Date().toISOString(),
+        is_complete: isFinal || false
+      }, {
+        onConflict: 'session_id'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      // Table might not exist - create fallback response
+      if (error.code === '42P01') {
+        console.log('time_sessions table does not exist');
+        return res.json({ success: true, message: 'Table pending setup' });
+      }
+      throw error;
+    }
+
+    res.json({ success: true, id: data.id });
+  } catch (err) {
+    console.error('POST /api/time-tracking/session error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Store problem time
+app.post('/api/time-tracking/problem', async (req, res) => {
+  try {
+    const { username, sessionId, problemId, cartridgeId, modeId, activeTimeMs, totalTimeMs, completed, result } = req.body;
+
+    if (!username || !sessionId) {
+      return res.status(400).json({ error: 'Username and sessionId required' });
+    }
+
+    const { data, error } = await supabase
+      .from('time_problems')
+      .insert({
+        session_id: sessionId,
+        username,
+        problem_id: problemId,
+        cartridge_id: cartridgeId,
+        mode_id: modeId,
+        active_time_ms: activeTimeMs,
+        total_time_ms: totalTimeMs,
+        completed,
+        result: result ? JSON.stringify(result) : null,
+        completed_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '42P01') {
+        return res.json({ success: true, message: 'Table pending setup' });
+      }
+      throw error;
+    }
+
+    res.json({ success: true, id: data.id });
+  } catch (err) {
+    console.error('POST /api/time-tracking/problem error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get time stats for a user (teacher or self)
+app.get('/api/time-tracking/user/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const period = req.query.period || 'all'; // today, week, all
+
+    let dateFilter = null;
+    if (period === 'today') {
+      dateFilter = new Date();
+      dateFilter.setHours(0, 0, 0, 0);
+    } else if (period === 'week') {
+      dateFilter = new Date();
+      dateFilter.setDate(dateFilter.getDate() - 7);
+    }
+
+    // Get sessions
+    let sessionsQuery = supabase
+      .from('time_sessions')
+      .select('*')
+      .eq('username', username)
+      .order('session_start', { ascending: false });
+
+    if (dateFilter) {
+      sessionsQuery = sessionsQuery.gte('session_start', dateFilter.toISOString());
+    }
+
+    const { data: sessions, error: sessionsError } = await sessionsQuery.limit(100);
+
+    if (sessionsError) {
+      if (sessionsError.code === '42P01') {
+        return res.json({ sessions: [], problems: [], summary: { totalActiveMs: 0, sessionCount: 0 } });
+      }
+      throw sessionsError;
+    }
+
+    // Get problems
+    let problemsQuery = supabase
+      .from('time_problems')
+      .select('*')
+      .eq('username', username)
+      .order('completed_at', { ascending: false });
+
+    if (dateFilter) {
+      problemsQuery = problemsQuery.gte('completed_at', dateFilter.toISOString());
+    }
+
+    const { data: problems, error: problemsError } = await problemsQuery.limit(500);
+
+    if (problemsError && problemsError.code !== '42P01') {
+      throw problemsError;
+    }
+
+    // Calculate summary
+    const totalActiveMs = (sessions || []).reduce((sum, s) => sum + (s.active_time_ms || 0), 0);
+    const totalProblems = (problems || []).length;
+    const completedProblems = (problems || []).filter(p => p.completed).length;
+    const avgProblemTimeMs = completedProblems > 0
+      ? (problems || []).filter(p => p.completed).reduce((sum, p) => sum + (p.active_time_ms || 0), 0) / completedProblems
+      : 0;
+
+    res.json({
+      sessions: sessions || [],
+      problems: problems || [],
+      summary: {
+        totalActiveMs,
+        sessionCount: (sessions || []).length,
+        totalProblems,
+        completedProblems,
+        avgProblemTimeMs
+      }
+    });
+  } catch (err) {
+    console.error('GET /api/time-tracking/user/:username error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get class time summary (teacher only)
+app.get('/api/time-tracking/class-summary', async (req, res) => {
+  try {
+    const password = req.headers['x-teacher-password'];
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher password required' });
+    }
+
+    const period = req.query.period || 'today';
+    let dateFilter = new Date();
+
+    if (period === 'today') {
+      dateFilter.setHours(0, 0, 0, 0);
+    } else if (period === 'week') {
+      dateFilter.setDate(dateFilter.getDate() - 7);
+    } else {
+      dateFilter = new Date(0); // All time
+    }
+
+    // Get all sessions grouped by user
+    const { data: sessions, error } = await supabase
+      .from('time_sessions')
+      .select('username, active_time_ms, session_start')
+      .gte('session_start', dateFilter.toISOString())
+      .order('session_start', { ascending: false });
+
+    if (error) {
+      if (error.code === '42P01') {
+        return res.json({ students: [], totalClassTime: 0 });
+      }
+      throw error;
+    }
+
+    // Aggregate by username
+    const userTimes = {};
+    for (const session of (sessions || [])) {
+      if (!userTimes[session.username]) {
+        userTimes[session.username] = {
+          username: session.username,
+          totalActiveMs: 0,
+          sessionCount: 0,
+          lastActive: session.session_start
+        };
+      }
+      userTimes[session.username].totalActiveMs += session.active_time_ms || 0;
+      userTimes[session.username].sessionCount++;
+      if (session.session_start > userTimes[session.username].lastActive) {
+        userTimes[session.username].lastActive = session.session_start;
+      }
+    }
+
+    // Get problem counts per user
+    const { data: problems } = await supabase
+      .from('time_problems')
+      .select('username, completed')
+      .gte('completed_at', dateFilter.toISOString());
+
+    for (const problem of (problems || [])) {
+      if (userTimes[problem.username]) {
+        if (!userTimes[problem.username].problemsAttempted) {
+          userTimes[problem.username].problemsAttempted = 0;
+          userTimes[problem.username].problemsCompleted = 0;
+        }
+        userTimes[problem.username].problemsAttempted++;
+        if (problem.completed) {
+          userTimes[problem.username].problemsCompleted++;
+        }
+      }
+    }
+
+    // Convert to array and sort by time
+    const students = Object.values(userTimes).sort((a, b) => b.totalActiveMs - a.totalActiveMs);
+    const totalClassTime = students.reduce((sum, s) => sum + s.totalActiveMs, 0);
+
+    res.json({
+      students,
+      totalClassTime,
+      period
+    });
+  } catch (err) {
+    console.error('GET /api/time-tracking/class-summary error:', err);
     res.status(500).json({ error: err.message });
   }
 });
