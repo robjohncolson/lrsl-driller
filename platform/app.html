@@ -930,6 +930,40 @@
         }
         celebration.showStarEarned(starType);
 
+        // Record problem completion with time tracking
+        timeTracker.endProblem(true, { starType, allCorrect: true, gradedBy: 'teacher' });
+
+        // Notify server of star earned
+        if (wsClient.isConnected() && userSystem.currentUser) {
+          wsClient.notifyStarEarned(
+            userSystem.currentUser.username,
+            starType,
+            platform.currentProblem?.context?.topic || 'Practice'
+          );
+        }
+
+        // Record for class time
+        if (classTime.isActive()) {
+          classTime.recordStar(starType);
+        }
+
+        // Persist to database for leaderboard
+        if (userSystem.currentUser) {
+          const problem = platform.currentProblem;
+          fetch(`${SERVER_URL}/api/progress`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: userSystem.currentUser.username,
+              scenario_topic: problem?.context?.topic || currentCartridgeId || 'Practice',
+              star_type: starType,
+              all_correct: true,
+              hints_used: hintsUsed,
+              grading_mode: 'teacher'
+            })
+          }).catch(err => console.warn('Failed to save progress:', err));
+        }
+
         // Update displays
         const newState = platform.getState();
         updateStarsDisplay(newState.game.starCounts);
@@ -950,6 +984,19 @@
         console.log('btn-next classList:', btnNext.classList.toString());
 
         celebration.showToast('Your teacher gave you all E\'s! ⭐', 'success', 5000);
+
+        // Auto-advance to next problem after 2 seconds
+        setTimeout(async () => {
+          const nextBtn = document.getElementById('btn-next');
+          if (nextBtn && !nextBtn.classList.contains('hidden')) {
+            nextBtn.classList.add('hidden');
+            document.getElementById('btn-grade').classList.remove('hidden');
+            platform.inputRenderer?.clearAllFeedback();
+            await platform.loadProblem();
+            updateScenarioDisplay();
+            clearTeacherReview();
+          }
+        }, 2000);
       } else {
         // Not all correct - show try again
         const btnGrade = document.getElementById('btn-grade');
