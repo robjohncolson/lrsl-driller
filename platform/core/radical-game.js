@@ -1,7 +1,6 @@
 /**
- * Radical Game - Physics-based Square Root Learning
- * Control a unit square with WASD, press DOWN to enter doors
- * Doors collect squares - fill with 4 for 2×2, 9 for 3×3, etc.
+ * Radical Simplifier - Click-to-group interface
+ * Shows a pile of squares, click buttons to form 2×2, 3×3, etc. groups
  */
 
 export class RadicalGame {
@@ -11,19 +10,12 @@ export class RadicalGame {
       : container;
 
     this.config = {
-      squareSize: 28,
-      gravity: 0.6,
-      jumpForce: -11,
-      moveSpeed: 5,
+      squareSize: 32,
       ...config
     };
 
-    this.squares = [];
-    this.activeSquare = null;
-    this.doors = [];
-    this.keys = {};
-    this.gameLoop = null;
-
+    this.totalSquares = 12;
+    this.groups = []; // Array of { side: 2|3|4, color: string }
     this.onAnswerChange = config.onAnswerChange || (() => {});
 
     this.init();
@@ -31,24 +23,55 @@ export class RadicalGame {
 
   init() {
     this.container.innerHTML = '';
-    this.container.style.position = 'relative';
 
     this.wrapper = document.createElement('div');
-    this.wrapper.className = 'radical-game';
+    this.wrapper.className = 'radical-simplifier';
     this.wrapper.innerHTML = `
-      <div class="flex flex-col gap-3">
-        <!-- Instructions -->
-        <div class="text-sm text-gray-600 bg-blue-50 p-2 rounded-lg flex items-center gap-3 flex-wrap">
-          <span class="font-mono bg-white px-2 py-1 rounded">A/D</span> Move
-          <span class="font-mono bg-white px-2 py-1 rounded">SPACE</span> Jump
-          <span class="font-mono bg-white px-2 py-1 rounded text-orange-600">↓ S</span> Enter door
-          <span class="text-purple-600 font-semibold ml-auto">Put 4 in a door for 2×2, 9 for 3×3!</span>
+      <div class="flex flex-col gap-4">
+        <!-- Main area: squares + groups -->
+        <div class="flex gap-6 items-start">
+
+          <!-- Remaining squares pile -->
+          <div class="flex-1">
+            <div class="text-xs font-semibold text-gray-500 mb-2">SQUARES REMAINING</div>
+            <div class="remaining-display bg-gray-100 rounded-lg p-4 min-h-[140px] flex items-center justify-center">
+              <div class="squares-grid"></div>
+            </div>
+          </div>
+
+          <!-- Formed groups -->
+          <div class="flex-1">
+            <div class="text-xs font-semibold text-gray-500 mb-2">YOUR GROUPS</div>
+            <div class="groups-display bg-green-50 rounded-lg p-4 min-h-[140px]">
+              <div class="groups-container flex flex-wrap gap-3 justify-center"></div>
+              <div class="no-groups-msg text-gray-400 text-center py-8">Click buttons below to form groups</div>
+            </div>
+          </div>
+
         </div>
 
-        <!-- Game canvas -->
-        <div class="game-container relative bg-gradient-to-b from-sky-100 to-sky-200 rounded-lg border-2 border-sky-300 overflow-hidden"
-             style="height: 320px;" tabindex="0">
-          <canvas class="game-canvas"></canvas>
+        <!-- Action buttons -->
+        <div class="flex items-center justify-center gap-3 flex-wrap">
+          <span class="text-sm text-gray-600 mr-2">Form group:</span>
+          <button class="group-btn bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-size="2">
+            2×2 <span class="text-green-200 text-sm">(4)</span>
+          </button>
+          <button class="group-btn bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-size="3">
+            3×3 <span class="text-orange-200 text-sm">(9)</span>
+          </button>
+          <button class="group-btn bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-size="4">
+            4×4 <span class="text-pink-200 text-sm">(16)</span>
+          </button>
+          <button class="group-btn bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition-colors" data-size="5">
+            5×5 <span class="text-cyan-200 text-sm">(25)</span>
+          </button>
+          <div class="flex-1"></div>
+          <button class="undo-btn bg-gray-400 hover:bg-gray-500 disabled:bg-gray-200 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm transition-colors">
+            ↩ Undo
+          </button>
+          <button class="reset-btn bg-red-400 hover:bg-red-500 text-white px-3 py-2 rounded-lg text-sm transition-colors">
+            Reset
+          </button>
         </div>
 
         <!-- Answer display -->
@@ -56,7 +79,7 @@ export class RadicalGame {
           <div class="text-sm text-gray-600 mb-2">Your simplified form:</div>
           <div class="flex items-center gap-4">
             <div class="answer-visual flex items-center gap-2"></div>
-            <div class="answer-text text-3xl font-bold text-purple-700">=</div>
+            <div class="text-3xl font-bold text-purple-700">=</div>
             <div class="answer-formula text-3xl font-bold text-purple-700"></div>
           </div>
           <div class="answer-breakdown text-sm text-gray-500 mt-2"></div>
@@ -65,411 +88,167 @@ export class RadicalGame {
     `;
     this.container.appendChild(this.wrapper);
 
-    this.canvas = this.wrapper.querySelector('.game-canvas');
-    this.ctx = this.canvas.getContext('2d');
-    this.gameContainer = this.wrapper.querySelector('.game-container');
+    // Get elements
+    this.squaresGrid = this.wrapper.querySelector('.squares-grid');
+    this.groupsContainer = this.wrapper.querySelector('.groups-container');
+    this.noGroupsMsg = this.wrapper.querySelector('.no-groups-msg');
     this.answerVisual = this.wrapper.querySelector('.answer-visual');
     this.answerFormula = this.wrapper.querySelector('.answer-formula');
     this.answerBreakdown = this.wrapper.querySelector('.answer-breakdown');
 
-    this.resizeCanvas();
-
-    this.gameContainer.addEventListener('keydown', (e) => this.onKeyDown(e));
-    this.gameContainer.addEventListener('keyup', (e) => this.onKeyUp(e));
-    this.gameContainer.addEventListener('click', () => this.gameContainer.focus());
-
-    this.gameContainer.focus();
-  }
-
-  resizeCanvas() {
-    const rect = this.gameContainer.getBoundingClientRect();
-    this.canvas.width = rect.width || 600;
-    this.canvas.height = 320;
-    this.canvas.style.width = '100%';
-    this.canvas.style.height = '320px';
-    this.groundY = this.canvas.height - 30;
+    // Button events
+    this.wrapper.querySelectorAll('.group-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.formGroup(parseInt(btn.dataset.size)));
+    });
+    this.wrapper.querySelector('.undo-btn').addEventListener('click', () => this.undoGroup());
+    this.wrapper.querySelector('.reset-btn').addEventListener('click', () => this.reset());
   }
 
   loadProblem(totalSquares, config = {}) {
     this.totalSquares = totalSquares;
     this.problemConfig = config;
     this.reset();
-    this.startGameLoop();
-    this.gameContainer.focus();
   }
 
   reset() {
-    if (this.gameLoop) {
-      cancelAnimationFrame(this.gameLoop);
-      this.gameLoop = null;
-    }
-
-    this.squares = [];
-    this.doors = [];
-    this.keys = {};
-
-    const size = this.config.squareSize;
-
-    // Create 3 doors spread across the canvas
-    const doorWidth = 60;
-    const doorHeight = 80;
-    const doorColors = ['#22c55e', '#f59e0b', '#ec4899'];
-    const numDoors = 3;
-    const spacing = (this.canvas.width - 100) / (numDoors + 1);
-
-    for (let i = 0; i < numDoors; i++) {
-      this.doors.push({
-        id: i,
-        x: 80 + spacing * (i + 1) - doorWidth / 2,
-        y: this.groundY - doorHeight,
-        width: doorWidth,
-        height: doorHeight,
-        squares: [],
-        color: doorColors[i],
-        label: String.fromCharCode(65 + i) // A, B, C
-      });
-    }
-
-    // Create squares in a pile on the left
-    const pileX = 30;
-    for (let i = 0; i < this.totalSquares; i++) {
-      const row = Math.floor(i / 2);
-      const col = i % 2;
-      this.squares.push({
-        id: i,
-        x: pileX + col * (size + 2),
-        y: this.groundY - size - row * (size + 2),
-        vx: 0,
-        vy: 0,
-        size: size,
-        grounded: true,
-        inDoor: null,
-        color: '#6366f1'
-      });
-    }
-
-    this.selectNextSquare();
+    this.groups = [];
     this.render();
     this.updateAnswer();
   }
 
-  selectNextSquare() {
-    this.activeSquare = this.squares.find(sq => sq.inDoor === null) || null;
-    if (this.activeSquare) {
-      this.activeSquare.color = '#818cf8';
+  formGroup(side) {
+    const needed = side * side;
+    const remaining = this.getRemainingCount();
+
+    if (remaining < needed) {
+      this.showMessage(`Need ${needed} squares for ${side}×${side}, only ${remaining} left!`, 'error');
+      return;
     }
-  }
 
-  // ==================== GAME LOOP ====================
-
-  startGameLoop() {
-    const loop = () => {
-      this.update();
-      this.render();
-      this.gameLoop = requestAnimationFrame(loop);
+    const colors = {
+      2: '#22c55e',
+      3: '#f59e0b',
+      4: '#ec4899',
+      5: '#06b6d4'
     };
-    this.gameLoop = requestAnimationFrame(loop);
-  }
 
-  update() {
-    if (!this.activeSquare) return;
+    this.groups.push({
+      side,
+      count: needed,
+      color: colors[side] || '#8b5cf6'
+    });
 
-    const sq = this.activeSquare;
-    const { gravity, moveSpeed, jumpForce } = this.config;
-
-    // Horizontal movement
-    if (this.keys['KeyA'] || this.keys['ArrowLeft']) {
-      sq.vx = -moveSpeed;
-    } else if (this.keys['KeyD'] || this.keys['ArrowRight']) {
-      sq.vx = moveSpeed;
-    } else {
-      sq.vx *= 0.85;
-    }
-
-    // Jumping
-    if ((this.keys['Space'] || this.keys['KeyW'] || this.keys['ArrowUp']) && sq.grounded) {
-      sq.vy = jumpForce;
-      sq.grounded = false;
-    }
-
-    // Enter door with DOWN
-    if ((this.keys['KeyS'] || this.keys['ArrowDown']) && sq.grounded) {
-      const door = this.getDoorAt(sq);
-      if (door) {
-        this.enterDoor(sq, door);
-        this.keys['KeyS'] = false;
-        this.keys['ArrowDown'] = false;
-        return;
-      }
-    }
-
-    // Apply gravity
-    sq.vy += gravity;
-
-    // Update position
-    sq.x += sq.vx;
-    sq.y += sq.vy;
-
-    // Ground collision
-    if (sq.y + sq.size >= this.groundY) {
-      sq.y = this.groundY - sq.size;
-      sq.vy = 0;
-      sq.grounded = true;
-    }
-
-    // Wall collision
-    if (sq.x < 0) sq.x = 0;
-    if (sq.x + sq.size > this.canvas.width) sq.x = this.canvas.width - sq.size;
-  }
-
-  getDoorAt(sq) {
-    const sqCenterX = sq.x + sq.size / 2;
-    for (const door of this.doors) {
-      if (sqCenterX > door.x && sqCenterX < door.x + door.width) {
-        return door;
-      }
-    }
-    return null;
-  }
-
-  enterDoor(sq, door) {
-    sq.inDoor = door;
-    sq.color = door.color;
-    door.squares.push(sq);
-
-    // Stack square above the door
-    const idx = door.squares.length - 1;
-    const stackX = door.x + (door.width - sq.size) / 2;
-    const stackY = door.y - sq.size - (idx * (sq.size + 2));
-
-    sq.x = stackX;
-    sq.y = stackY;
-    sq.vx = 0;
-    sq.vy = 0;
-    sq.grounded = true;
-
-    this.selectNextSquare();
+    this.render();
     this.updateAnswer();
+  }
 
-    if (!this.activeSquare) {
-      this.showMessage('All squares placed!', 'success');
+  undoGroup() {
+    if (this.groups.length > 0) {
+      this.groups.pop();
+      this.render();
+      this.updateAnswer();
     }
+  }
+
+  getRemainingCount() {
+    const grouped = this.groups.reduce((sum, g) => sum + g.count, 0);
+    return this.totalSquares - grouped;
   }
 
   // ==================== RENDERING ====================
 
   render() {
-    const ctx = this.ctx;
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    const remaining = this.getRemainingCount();
+    const size = this.config.squareSize;
 
-    // Sky gradient already in CSS
+    // Render remaining squares
+    const cols = Math.min(remaining, 6);
+    let squaresHtml = '';
+    for (let i = 0; i < remaining; i++) {
+      squaresHtml += `
+        <div class="bg-indigo-500 rounded shadow-sm border border-indigo-600"
+             style="width: ${size}px; height: ${size}px;"></div>
+      `;
+    }
 
-    // Draw ground
-    ctx.fillStyle = '#92400e';
-    ctx.fillRect(0, this.groundY, this.canvas.width, 30);
-    ctx.fillStyle = '#a3e635';
-    ctx.fillRect(0, this.groundY, this.canvas.width, 6);
+    if (remaining === 0) {
+      this.squaresGrid.innerHTML = `<div class="text-gray-400 text-sm">All grouped!</div>`;
+    } else {
+      this.squaresGrid.innerHTML = `
+        <div class="grid gap-1" style="grid-template-columns: repeat(${cols}, ${size}px);">
+          ${squaresHtml}
+        </div>
+        <div class="text-center mt-2 text-indigo-600 font-bold">${remaining}</div>
+      `;
+    }
 
-    // Draw doors
-    for (const door of this.doors) {
-      const count = door.squares.length;
-      const side = this.getSideFromCount(count);
-      const isPerfectSquare = side > 0;
+    // Render groups
+    if (this.groups.length === 0) {
+      this.groupsContainer.innerHTML = '';
+      this.noGroupsMsg.style.display = '';
+    } else {
+      this.noGroupsMsg.style.display = 'none';
+      let groupsHtml = '';
 
-      // Door frame
-      ctx.fillStyle = isPerfectSquare ? door.color + '33' : '#1f2937';
-      ctx.fillRect(door.x, door.y, door.width, door.height);
+      for (const group of this.groups) {
+        const gSize = Math.min(size - 4, 28);
+        let groupSquares = '';
+        for (let i = 0; i < group.count; i++) {
+          groupSquares += `<div style="width: ${gSize}px; height: ${gSize}px; background: ${group.color}; border-radius: 2px;"></div>`;
+        }
 
-      // Door opening
-      ctx.fillStyle = '#000';
-      ctx.fillRect(door.x + 5, door.y + 5, door.width - 10, door.height - 5);
-
-      // Door frame border
-      ctx.strokeStyle = isPerfectSquare ? door.color : '#4b5563';
-      ctx.lineWidth = isPerfectSquare ? 4 : 2;
-      ctx.strokeRect(door.x, door.y, door.width, door.height);
-
-      // Count display above door
-      ctx.fillStyle = isPerfectSquare ? door.color : '#9ca3af';
-      ctx.font = 'bold 16px system-ui';
-      ctx.textAlign = 'center';
-
-      // Show count and what it equals
-      if (count === 0) {
-        ctx.fillText('0', door.x + door.width / 2, door.y - 8);
-      } else if (isPerfectSquare) {
-        ctx.fillStyle = door.color;
-        ctx.fillText(`${count} = ${side}×${side} ✓`, door.x + door.width / 2, door.y - 8);
-      } else {
-        ctx.fillText(`${count}`, door.x + door.width / 2, door.y - 8);
+        groupsHtml += `
+          <div class="group-item flex flex-col items-center p-2 bg-white rounded-lg shadow-sm border-2" style="border-color: ${group.color}">
+            <div class="grid gap-0.5" style="grid-template-columns: repeat(${group.side}, ${gSize}px);">
+              ${groupSquares}
+            </div>
+            <div class="mt-1 text-xs font-bold" style="color: ${group.color}">${group.side}×${group.side}</div>
+          </div>
+        `;
       }
 
-      // Door label
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 20px system-ui';
-      ctx.fillText(door.label, door.x + door.width / 2, door.y + door.height - 15);
+      this.groupsContainer.innerHTML = groupsHtml;
     }
 
-    // Draw stacked squares on doors
-    for (const door of this.doors) {
-      for (const sq of door.squares) {
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.fillRect(sq.x + 2, sq.y + 2, sq.size, sq.size);
+    // Update button states
+    this.wrapper.querySelectorAll('.group-btn').forEach(btn => {
+      const needed = Math.pow(parseInt(btn.dataset.size), 2);
+      btn.disabled = remaining < needed;
+    });
 
-        ctx.fillStyle = sq.color;
-        ctx.fillRect(sq.x, sq.y, sq.size, sq.size);
-
-        ctx.strokeStyle = '#374151';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(sq.x, sq.y, sq.size, sq.size);
-      }
-    }
-
-    // Draw active square
-    if (this.activeSquare) {
-      const sq = this.activeSquare;
-
-      // Shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(sq.x + 3, sq.y + 3, sq.size, sq.size);
-
-      // Square body
-      ctx.fillStyle = sq.color;
-      ctx.fillRect(sq.x, sq.y, sq.size, sq.size);
-
-      // Border
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(sq.x, sq.y, sq.size, sq.size);
-
-      // Cute eyes
-      const eyeY = sq.y + sq.size * 0.35;
-      const eyeSize = 5;
-      const lookDir = this.keys['KeyD'] || this.keys['ArrowRight'] ? 2 :
-                      this.keys['KeyA'] || this.keys['ArrowLeft'] ? -2 : 0;
-
-      ctx.fillStyle = 'white';
-      ctx.beginPath();
-      ctx.arc(sq.x + sq.size * 0.33, eyeY, eyeSize, 0, Math.PI * 2);
-      ctx.arc(sq.x + sq.size * 0.67, eyeY, eyeSize, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#1f2937';
-      ctx.beginPath();
-      ctx.arc(sq.x + sq.size * 0.33 + lookDir, eyeY, 2.5, 0, Math.PI * 2);
-      ctx.arc(sq.x + sq.size * 0.67 + lookDir, eyeY, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Show hint when over a door
-      const doorBelow = this.getDoorAt(sq);
-      if (doorBelow && sq.grounded) {
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.font = 'bold 12px system-ui';
-        ctx.textAlign = 'center';
-        ctx.fillText('↓ S to enter', sq.x + sq.size / 2, sq.y - 8);
-      }
-    }
-
-    // Remaining squares in pile
-    for (const sq of this.squares) {
-      if (sq.inDoor === null && sq !== this.activeSquare) {
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.fillRect(sq.x + 2, sq.y + 2, sq.size, sq.size);
-
-        ctx.fillStyle = '#a5b4fc';
-        ctx.fillRect(sq.x, sq.y, sq.size, sq.size);
-
-        ctx.strokeStyle = '#6366f1';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(sq.x, sq.y, sq.size, sq.size);
-      }
-    }
-
-    // Instructions
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.font = '11px system-ui';
-    ctx.textAlign = 'left';
-    ctx.fillText('A/D move | SPACE jump | S enter door', 8, 16);
-
-    // Remaining count
-    const remaining = this.squares.filter(s => s.inDoor === null).length;
-    ctx.textAlign = 'right';
-    ctx.fillText(`${remaining} remaining`, this.canvas.width - 8, 16);
-
-    ctx.textAlign = 'left';
-  }
-
-  getSideFromCount(count) {
-    if (count === 0) return 0;
-    const sqrt = Math.sqrt(count);
-    return Number.isInteger(sqrt) ? sqrt : 0;
-  }
-
-  // ==================== INPUT ====================
-
-  onKeyDown(e) {
-    this.keys[e.code] = true;
-    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
-      e.preventDefault();
-    }
-  }
-
-  onKeyUp(e) {
-    this.keys[e.code] = false;
+    this.wrapper.querySelector('.undo-btn').disabled = this.groups.length === 0;
   }
 
   // ==================== ANSWER ====================
 
   updateAnswer() {
+    const remaining = this.getRemainingCount();
+
+    // Coefficient is product of all group sides
     let coefficient = 1;
-    let grouped = 0;
-    const completedDoors = [];
-
-    for (const door of this.doors) {
-      const count = door.squares.length;
-      const side = this.getSideFromCount(count);
-      if (side > 1) {
-        coefficient *= side;
-        grouped += count;
-        completedDoors.push({ label: door.label, side, count });
-      }
+    for (const group of this.groups) {
+      coefficient *= group.side;
     }
 
-    // Ungrouped = not in a complete perfect square door
-    let ungrouped = 0;
-    for (const door of this.doors) {
-      const count = door.squares.length;
-      const side = this.getSideFromCount(count);
-      if (side <= 1 && count > 0) {
-        ungrouped += count;
-      }
-    }
-    // Plus remaining not in any door
-    ungrouped += this.squares.filter(s => s.inDoor === null).length;
-
-    const sqSize = 16;
+    const sqSize = 18;
     let visualHtml = '';
     let formulaHtml = '';
     let breakdownHtml = '';
 
-    if (coefficient === 1 && ungrouped === this.totalSquares) {
+    if (this.groups.length === 0) {
       visualHtml = this.renderRadicalVisual(this.totalSquares, sqSize);
       formulaHtml = `√${this.totalSquares}`;
-      breakdownHtml = 'Move squares into doors. Fill a door with 4 for 2×2, 9 for 3×3, etc.';
-    } else if (ungrouped === 0 && coefficient > 1) {
+      breakdownHtml = 'Click a button above to form a group (2×2 needs 4 squares, 3×3 needs 9, etc.)';
+    } else if (remaining === 0) {
       visualHtml = this.renderCoefficientVisual(coefficient, sqSize);
       formulaHtml = `${coefficient}`;
-      breakdownHtml = `Perfect! ${completedDoors.map(d => `Door ${d.label}: ${d.side}×${d.side}`).join(', ')}`;
-    } else if (coefficient === 1) {
-      visualHtml = this.renderRadicalVisual(ungrouped, sqSize);
-      formulaHtml = `√${ungrouped}`;
-      breakdownHtml = `${ungrouped} squares not in complete groups yet.`;
+      breakdownHtml = `Perfect square! ${this.groups.map(g => `${g.side}×${g.side}`).join(' × ')} = ${coefficient}`;
     } else {
       visualHtml = this.renderCoefficientVisual(coefficient, sqSize) +
-                   `<span class="text-xl mx-1">×</span>` +
-                   this.renderRadicalVisual(ungrouped, sqSize);
-      formulaHtml = `${coefficient}√${ungrouped}`;
-      breakdownHtml = `${completedDoors.map(d => `${d.side}×${d.side}`).join(' × ')} = ${coefficient} | ${ungrouped} under √`;
+                   `<span class="text-2xl mx-2">×</span>` +
+                   this.renderRadicalVisual(remaining, sqSize);
+      formulaHtml = `${coefficient}√${remaining}`;
+      breakdownHtml = `${this.groups.map(g => `${g.side}`).join(' × ')} = ${coefficient} outside, ${remaining} under √`;
     }
 
     this.answerVisual.innerHTML = visualHtml;
@@ -478,18 +257,19 @@ export class RadicalGame {
 
     this.onAnswerChange({
       coefficient,
-      radicand: ungrouped,
-      groups: completedDoors.map(d => ({ side: d.side, count: d.count })),
-      simplified: ungrouped === 0 || coefficient > 1
+      radicand: remaining,
+      groups: this.groups.map(g => ({ side: g.side, count: g.count })),
+      simplified: remaining === 0 || coefficient > 1
     });
   }
 
   renderCoefficientVisual(coefficient, sqSize) {
     return `
       <div class="flex flex-col items-center">
-        <div class="text-xs text-green-600 font-bold">${coefficient}</div>
+        <div class="text-lg font-bold text-green-600">${coefficient}</div>
         <div class="border-2 border-green-500 rounded bg-green-100"
-             style="width: ${sqSize * 1.5}px; height: ${sqSize * 1.5}px;"></div>
+             style="width: ${sqSize * 2}px; height: ${sqSize * 2}px;"></div>
+        <div class="text-xs text-green-600 mt-1">coefficient</div>
       </div>
     `;
   }
@@ -497,19 +277,25 @@ export class RadicalGame {
   renderRadicalVisual(count, sqSize) {
     const cols = Math.min(count, 5);
     let squaresHtml = '';
-    for (let i = 0; i < Math.min(count, 15); i++) {
-      squaresHtml += `<div class="bg-indigo-500" style="width: ${sqSize - 2}px; height: ${sqSize - 2}px;"></div>`;
+    const displayCount = Math.min(count, 10);
+    for (let i = 0; i < displayCount; i++) {
+      squaresHtml += `<div class="bg-indigo-500 rounded-sm" style="width: ${sqSize - 2}px; height: ${sqSize - 2}px;"></div>`;
     }
-    if (count > 15) {
-      squaresHtml += `<div class="text-xs text-indigo-600">+${count - 15}</div>`;
+    if (count > 10) {
+      squaresHtml += `<div class="text-indigo-600 text-xs font-bold">+${count - 10}</div>`;
     }
+
     return `
       <div class="flex flex-col items-center">
-        <div class="text-xs text-indigo-600 font-bold">√${count}</div>
-        <div class="grid gap-0.5 p-1 border-t-2 border-indigo-400"
-             style="grid-template-columns: repeat(${cols}, ${sqSize - 2}px);">
-          ${squaresHtml}
+        <div class="text-lg font-bold text-indigo-600">√${count}</div>
+        <div class="relative">
+          <div class="absolute -left-3 top-0 text-indigo-400 text-xl">√</div>
+          <div class="grid gap-0.5 p-1 border-t-2 border-indigo-400 ml-1"
+               style="grid-template-columns: repeat(${cols}, ${sqSize - 2}px);">
+            ${squaresHtml}
+          </div>
         </div>
+        <div class="text-xs text-indigo-600 mt-1">radicand</div>
       </div>
     `;
   }
@@ -527,34 +313,15 @@ export class RadicalGame {
   // ==================== PUBLIC API ====================
 
   getAnswer() {
+    const remaining = this.getRemainingCount();
     let coefficient = 1;
-    let grouped = 0;
-    for (const door of this.doors) {
-      const count = door.squares.length;
-      const side = this.getSideFromCount(count);
-      if (side > 1) {
-        coefficient *= side;
-        grouped += count;
-      }
+    for (const group of this.groups) {
+      coefficient *= group.side;
     }
-
-    let ungrouped = 0;
-    for (const door of this.doors) {
-      const count = door.squares.length;
-      const side = this.getSideFromCount(count);
-      if (side <= 1 && count > 0) {
-        ungrouped += count;
-      }
-    }
-    ungrouped += this.squares.filter(s => s.inDoor === null).length;
-
-    return { coefficient, radicand: ungrouped };
+    return { coefficient, radicand: remaining };
   }
 
   destroy() {
-    if (this.gameLoop) {
-      cancelAnimationFrame(this.gameLoop);
-    }
     this.container.innerHTML = '';
   }
 }
