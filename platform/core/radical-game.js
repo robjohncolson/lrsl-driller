@@ -1,6 +1,7 @@
 /**
  * Radical Game - Physics-based Square Root Learning
- * Control a unit square with WASD + Space, jump into bins to form perfect squares
+ * Control a unit square with WASD, press DOWN to enter doors
+ * Doors collect squares - fill with 4 for 2×2, 9 for 3×3, etc.
  */
 
 export class RadicalGame {
@@ -10,16 +11,16 @@ export class RadicalGame {
       : container;
 
     this.config = {
-      squareSize: 30,
-      gravity: 0.5,
-      jumpForce: -12,
+      squareSize: 28,
+      gravity: 0.6,
+      jumpForce: -11,
       moveSpeed: 5,
       ...config
     };
 
     this.squares = [];
     this.activeSquare = null;
-    this.bins = [];
+    this.doors = [];
     this.keys = {};
     this.gameLoop = null;
 
@@ -37,16 +38,16 @@ export class RadicalGame {
     this.wrapper.innerHTML = `
       <div class="flex flex-col gap-3">
         <!-- Instructions -->
-        <div class="text-sm text-gray-600 bg-blue-50 p-2 rounded-lg flex items-center gap-4">
-          <span><strong>Controls:</strong></span>
+        <div class="text-sm text-gray-600 bg-blue-50 p-2 rounded-lg flex items-center gap-3 flex-wrap">
           <span class="font-mono bg-white px-2 py-1 rounded">A/D</span> Move
           <span class="font-mono bg-white px-2 py-1 rounded">SPACE</span> Jump
-          <span class="text-purple-600 font-semibold ml-auto">Jump into bins to group squares!</span>
+          <span class="font-mono bg-white px-2 py-1 rounded text-orange-600">↓ S</span> Enter door
+          <span class="text-purple-600 font-semibold ml-auto">Put 4 in a door for 2×2, 9 for 3×3!</span>
         </div>
 
         <!-- Game canvas -->
         <div class="game-container relative bg-gradient-to-b from-sky-100 to-sky-200 rounded-lg border-2 border-sky-300 overflow-hidden"
-             style="height: 300px;" tabindex="0">
+             style="height: 320px;" tabindex="0">
           <canvas class="game-canvas"></canvas>
         </div>
 
@@ -64,7 +65,6 @@ export class RadicalGame {
     `;
     this.container.appendChild(this.wrapper);
 
-    // Get elements
     this.canvas = this.wrapper.querySelector('.game-canvas');
     this.ctx = this.canvas.getContext('2d');
     this.gameContainer = this.wrapper.querySelector('.game-container');
@@ -72,25 +72,22 @@ export class RadicalGame {
     this.answerFormula = this.wrapper.querySelector('.answer-formula');
     this.answerBreakdown = this.wrapper.querySelector('.answer-breakdown');
 
-    // Size canvas
     this.resizeCanvas();
 
-    // Keyboard events
     this.gameContainer.addEventListener('keydown', (e) => this.onKeyDown(e));
     this.gameContainer.addEventListener('keyup', (e) => this.onKeyUp(e));
     this.gameContainer.addEventListener('click', () => this.gameContainer.focus());
 
-    // Focus for keyboard
     this.gameContainer.focus();
   }
 
   resizeCanvas() {
     const rect = this.gameContainer.getBoundingClientRect();
     this.canvas.width = rect.width || 600;
-    this.canvas.height = 300;
+    this.canvas.height = 320;
     this.canvas.style.width = '100%';
-    this.canvas.style.height = '300px';
-    this.groundY = this.canvas.height - 20;
+    this.canvas.style.height = '320px';
+    this.groundY = this.canvas.height - 30;
   }
 
   loadProblem(totalSquares, config = {}) {
@@ -102,56 +99,42 @@ export class RadicalGame {
   }
 
   reset() {
-    // Stop existing game loop
     if (this.gameLoop) {
       cancelAnimationFrame(this.gameLoop);
       this.gameLoop = null;
     }
 
     this.squares = [];
-    this.bins = [];
+    this.doors = [];
     this.keys = {};
 
     const size = this.config.squareSize;
 
-    // Create bins on the right side
-    const binWidth = 80;
-    const binHeight = 100;
-    const binX = this.canvas.width - binWidth - 20;
+    // Create 3 doors spread across the canvas
+    const doorWidth = 60;
+    const doorHeight = 80;
+    const doorColors = ['#22c55e', '#f59e0b', '#ec4899'];
+    const numDoors = 3;
+    const spacing = (this.canvas.width - 100) / (numDoors + 1);
 
-    // 2×2 bin (needs 4 squares)
-    this.bins.push({
-      x: binX,
-      y: this.groundY - binHeight,
-      width: binWidth,
-      height: binHeight,
-      targetCount: 4,
-      side: 2,
-      squares: [],
-      color: '#22c55e',
-      label: '2×2'
-    });
-
-    // 3×3 bin (needs 9 squares) - only if we have enough squares
-    if (this.totalSquares >= 9) {
-      this.bins.push({
-        x: binX - binWidth - 20,
-        y: this.groundY - binHeight,
-        width: binWidth,
-        height: binHeight,
-        targetCount: 9,
-        side: 3,
+    for (let i = 0; i < numDoors; i++) {
+      this.doors.push({
+        id: i,
+        x: 80 + spacing * (i + 1) - doorWidth / 2,
+        y: this.groundY - doorHeight,
+        width: doorWidth,
+        height: doorHeight,
         squares: [],
-        color: '#f59e0b',
-        label: '3×3'
+        color: doorColors[i],
+        label: String.fromCharCode(65 + i) // A, B, C
       });
     }
 
     // Create squares in a pile on the left
-    const pileX = 60;
+    const pileX = 30;
     for (let i = 0; i < this.totalSquares; i++) {
-      const row = Math.floor(i / 3);
-      const col = i % 3;
+      const row = Math.floor(i / 2);
+      const col = i % 2;
       this.squares.push({
         id: i,
         x: pileX + col * (size + 2),
@@ -160,22 +143,20 @@ export class RadicalGame {
         vy: 0,
         size: size,
         grounded: true,
-        inBin: null,
+        inDoor: null,
         color: '#6366f1'
       });
     }
 
-    // Select first square
     this.selectNextSquare();
     this.render();
     this.updateAnswer();
   }
 
   selectNextSquare() {
-    // Find first square not in a bin
-    this.activeSquare = this.squares.find(sq => sq.inBin === null) || null;
+    this.activeSquare = this.squares.find(sq => sq.inDoor === null) || null;
     if (this.activeSquare) {
-      this.activeSquare.color = '#ec4899'; // Pink for active
+      this.activeSquare.color = '#818cf8';
     }
   }
 
@@ -202,13 +183,24 @@ export class RadicalGame {
     } else if (this.keys['KeyD'] || this.keys['ArrowRight']) {
       sq.vx = moveSpeed;
     } else {
-      sq.vx *= 0.8; // Friction
+      sq.vx *= 0.85;
     }
 
     // Jumping
     if ((this.keys['Space'] || this.keys['KeyW'] || this.keys['ArrowUp']) && sq.grounded) {
       sq.vy = jumpForce;
       sq.grounded = false;
+    }
+
+    // Enter door with DOWN
+    if ((this.keys['KeyS'] || this.keys['ArrowDown']) && sq.grounded) {
+      const door = this.getDoorAt(sq);
+      if (door) {
+        this.enterDoor(sq, door);
+        this.keys['KeyS'] = false;
+        this.keys['ArrowDown'] = false;
+        return;
+      }
     }
 
     // Apply gravity
@@ -228,51 +220,37 @@ export class RadicalGame {
     // Wall collision
     if (sq.x < 0) sq.x = 0;
     if (sq.x + sq.size > this.canvas.width) sq.x = this.canvas.width - sq.size;
+  }
 
-    // Check bin collision
-    for (const bin of this.bins) {
-      if (this.isInBin(sq, bin) && sq.inBin === null) {
-        this.addToBin(sq, bin);
-        break;
+  getDoorAt(sq) {
+    const sqCenterX = sq.x + sq.size / 2;
+    for (const door of this.doors) {
+      if (sqCenterX > door.x && sqCenterX < door.x + door.width) {
+        return door;
       }
     }
+    return null;
   }
 
-  isInBin(sq, bin) {
-    const sqCenterX = sq.x + sq.size / 2;
-    const sqBottom = sq.y + sq.size;
-    return sqCenterX > bin.x && sqCenterX < bin.x + bin.width &&
-           sqBottom > bin.y && sq.y < bin.y + bin.height;
-  }
+  enterDoor(sq, door) {
+    sq.inDoor = door;
+    sq.color = door.color;
+    door.squares.push(sq);
 
-  addToBin(sq, bin) {
-    sq.inBin = bin;
-    sq.color = bin.color;
-    bin.squares.push(sq);
+    // Stack square above the door
+    const idx = door.squares.length - 1;
+    const stackX = door.x + (door.width - sq.size) / 2;
+    const stackY = door.y - sq.size - (idx * (sq.size + 2));
 
-    // Position square inside bin
-    const idx = bin.squares.length - 1;
-    const cols = bin.side;
-    const row = Math.floor(idx / cols);
-    const col = idx % cols;
-    const padding = (bin.width - cols * sq.size) / 2;
-
-    sq.x = bin.x + padding + col * sq.size;
-    sq.y = bin.y + bin.height - sq.size - row * sq.size - 5;
+    sq.x = stackX;
+    sq.y = stackY;
     sq.vx = 0;
     sq.vy = 0;
     sq.grounded = true;
 
-    // Check if bin is complete
-    if (bin.squares.length === bin.targetCount) {
-      bin.complete = true;
-    }
-
-    // Select next square
     this.selectNextSquare();
     this.updateAnswer();
 
-    // Check if all squares placed
     if (!this.activeSquare) {
       this.showMessage('All squares placed!', 'success');
     }
@@ -284,83 +262,154 @@ export class RadicalGame {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    // Sky gradient already in CSS
+
     // Draw ground
     ctx.fillStyle = '#92400e';
-    ctx.fillRect(0, this.groundY, this.canvas.width, 20);
+    ctx.fillRect(0, this.groundY, this.canvas.width, 30);
     ctx.fillStyle = '#a3e635';
-    ctx.fillRect(0, this.groundY, this.canvas.width, 5);
+    ctx.fillRect(0, this.groundY, this.canvas.width, 6);
 
-    // Draw bins
-    for (const bin of this.bins) {
-      // Bin back
-      ctx.fillStyle = bin.complete ? bin.color + '44' : '#f3f4f6';
-      ctx.fillRect(bin.x, bin.y, bin.width, bin.height);
+    // Draw doors
+    for (const door of this.doors) {
+      const count = door.squares.length;
+      const side = this.getSideFromCount(count);
+      const isPerfectSquare = side > 0;
 
-      // Bin border
-      ctx.strokeStyle = bin.complete ? bin.color : '#9ca3af';
-      ctx.lineWidth = bin.complete ? 4 : 2;
-      ctx.strokeRect(bin.x, bin.y, bin.width, bin.height);
+      // Door frame
+      ctx.fillStyle = isPerfectSquare ? door.color + '33' : '#1f2937';
+      ctx.fillRect(door.x, door.y, door.width, door.height);
 
-      // Bin label
-      ctx.fillStyle = bin.complete ? bin.color : '#6b7280';
-      ctx.font = 'bold 14px system-ui';
+      // Door opening
+      ctx.fillStyle = '#000';
+      ctx.fillRect(door.x + 5, door.y + 5, door.width - 10, door.height - 5);
+
+      // Door frame border
+      ctx.strokeStyle = isPerfectSquare ? door.color : '#4b5563';
+      ctx.lineWidth = isPerfectSquare ? 4 : 2;
+      ctx.strokeRect(door.x, door.y, door.width, door.height);
+
+      // Count display above door
+      ctx.fillStyle = isPerfectSquare ? door.color : '#9ca3af';
+      ctx.font = 'bold 16px system-ui';
       ctx.textAlign = 'center';
-      ctx.fillText(bin.label, bin.x + bin.width / 2, bin.y - 8);
 
-      // Progress
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = '12px system-ui';
-      ctx.fillText(`${bin.squares.length}/${bin.targetCount}`, bin.x + bin.width / 2, bin.y + bin.height + 15);
+      // Show count and what it equals
+      if (count === 0) {
+        ctx.fillText('0', door.x + door.width / 2, door.y - 8);
+      } else if (isPerfectSquare) {
+        ctx.fillStyle = door.color;
+        ctx.fillText(`${count} = ${side}×${side} ✓`, door.x + door.width / 2, door.y - 8);
+      } else {
+        ctx.fillText(`${count}`, door.x + door.width / 2, door.y - 8);
+      }
+
+      // Door label
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 20px system-ui';
+      ctx.fillText(door.label, door.x + door.width / 2, door.y + door.height - 15);
     }
 
-    // Draw squares
-    for (const sq of this.squares) {
+    // Draw stacked squares on doors
+    for (const door of this.doors) {
+      for (const sq of door.squares) {
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fillRect(sq.x + 2, sq.y + 2, sq.size, sq.size);
+
+        ctx.fillStyle = sq.color;
+        ctx.fillRect(sq.x, sq.y, sq.size, sq.size);
+
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sq.x, sq.y, sq.size, sq.size);
+      }
+    }
+
+    // Draw active square
+    if (this.activeSquare) {
+      const sq = this.activeSquare;
+
       // Shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.fillRect(sq.x + 3, sq.y + 3, sq.size, sq.size);
 
-      // Square
+      // Square body
       ctx.fillStyle = sq.color;
       ctx.fillRect(sq.x, sq.y, sq.size, sq.size);
 
       // Border
-      ctx.strokeStyle = sq === this.activeSquare ? '#fbbf24' : '#374151';
-      ctx.lineWidth = sq === this.activeSquare ? 3 : 1;
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 3;
       ctx.strokeRect(sq.x, sq.y, sq.size, sq.size);
 
-      // Eyes for active square (fun!)
-      if (sq === this.activeSquare) {
-        const eyeY = sq.y + sq.size * 0.35;
-        const eyeSize = 4;
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(sq.x + sq.size * 0.35, eyeY, eyeSize, 0, Math.PI * 2);
-        ctx.arc(sq.x + sq.size * 0.65, eyeY, eyeSize, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'black';
-        ctx.beginPath();
-        ctx.arc(sq.x + sq.size * 0.35 + (this.keys['KeyD'] ? 1 : this.keys['KeyA'] ? -1 : 0), eyeY, 2, 0, Math.PI * 2);
-        ctx.arc(sq.x + sq.size * 0.65 + (this.keys['KeyD'] ? 1 : this.keys['KeyA'] ? -1 : 0), eyeY, 2, 0, Math.PI * 2);
-        ctx.fill();
+      // Cute eyes
+      const eyeY = sq.y + sq.size * 0.35;
+      const eyeSize = 5;
+      const lookDir = this.keys['KeyD'] || this.keys['ArrowRight'] ? 2 :
+                      this.keys['KeyA'] || this.keys['ArrowLeft'] ? -2 : 0;
+
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      ctx.arc(sq.x + sq.size * 0.33, eyeY, eyeSize, 0, Math.PI * 2);
+      ctx.arc(sq.x + sq.size * 0.67, eyeY, eyeSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1f2937';
+      ctx.beginPath();
+      ctx.arc(sq.x + sq.size * 0.33 + lookDir, eyeY, 2.5, 0, Math.PI * 2);
+      ctx.arc(sq.x + sq.size * 0.67 + lookDir, eyeY, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Show hint when over a door
+      const doorBelow = this.getDoorAt(sq);
+      if (doorBelow && sq.grounded) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.font = 'bold 12px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('↓ S to enter', sq.x + sq.size / 2, sq.y - 8);
       }
     }
 
-    // Instructions if active
-    if (this.activeSquare) {
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.font = '12px system-ui';
-      ctx.textAlign = 'left';
-      ctx.fillText('← A | D → | SPACE jump', 10, 20);
+    // Remaining squares in pile
+    for (const sq of this.squares) {
+      if (sq.inDoor === null && sq !== this.activeSquare) {
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.fillRect(sq.x + 2, sq.y + 2, sq.size, sq.size);
+
+        ctx.fillStyle = '#a5b4fc';
+        ctx.fillRect(sq.x, sq.y, sq.size, sq.size);
+
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sq.x, sq.y, sq.size, sq.size);
+      }
     }
 
+    // Instructions
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.font = '11px system-ui';
     ctx.textAlign = 'left';
+    ctx.fillText('A/D move | SPACE jump | S enter door', 8, 16);
+
+    // Remaining count
+    const remaining = this.squares.filter(s => s.inDoor === null).length;
+    ctx.textAlign = 'right';
+    ctx.fillText(`${remaining} remaining`, this.canvas.width - 8, 16);
+
+    ctx.textAlign = 'left';
+  }
+
+  getSideFromCount(count) {
+    if (count === 0) return 0;
+    const sqrt = Math.sqrt(count);
+    return Number.isInteger(sqrt) ? sqrt : 0;
   }
 
   // ==================== INPUT ====================
 
   onKeyDown(e) {
     this.keys[e.code] = true;
-    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
       e.preventDefault();
     }
   }
@@ -374,17 +423,31 @@ export class RadicalGame {
   updateAnswer() {
     let coefficient = 1;
     let grouped = 0;
+    const completedDoors = [];
 
-    for (const bin of this.bins) {
-      if (bin.complete) {
-        coefficient *= bin.side;
-        grouped += bin.targetCount;
+    for (const door of this.doors) {
+      const count = door.squares.length;
+      const side = this.getSideFromCount(count);
+      if (side > 1) {
+        coefficient *= side;
+        grouped += count;
+        completedDoors.push({ label: door.label, side, count });
       }
     }
 
-    const ungrouped = this.totalSquares - grouped;
-    const sqSize = 18;
+    // Ungrouped = not in a complete perfect square door
+    let ungrouped = 0;
+    for (const door of this.doors) {
+      const count = door.squares.length;
+      const side = this.getSideFromCount(count);
+      if (side <= 1 && count > 0) {
+        ungrouped += count;
+      }
+    }
+    // Plus remaining not in any door
+    ungrouped += this.squares.filter(s => s.inDoor === null).length;
 
+    const sqSize = 16;
     let visualHtml = '';
     let formulaHtml = '';
     let breakdownHtml = '';
@@ -392,22 +455,21 @@ export class RadicalGame {
     if (coefficient === 1 && ungrouped === this.totalSquares) {
       visualHtml = this.renderRadicalVisual(this.totalSquares, sqSize);
       formulaHtml = `√${this.totalSquares}`;
-      breakdownHtml = 'Jump squares into bins to form perfect square groups!';
-    } else if (ungrouped === 0) {
+      breakdownHtml = 'Move squares into doors. Fill a door with 4 for 2×2, 9 for 3×3, etc.';
+    } else if (ungrouped === 0 && coefficient > 1) {
       visualHtml = this.renderCoefficientVisual(coefficient, sqSize);
       formulaHtml = `${coefficient}`;
-      breakdownHtml = `Perfect! All squares grouped.`;
+      breakdownHtml = `Perfect! ${completedDoors.map(d => `Door ${d.label}: ${d.side}×${d.side}`).join(', ')}`;
     } else if (coefficient === 1) {
       visualHtml = this.renderRadicalVisual(ungrouped, sqSize);
       formulaHtml = `√${ungrouped}`;
-      breakdownHtml = `${ungrouped} squares remaining.`;
+      breakdownHtml = `${ungrouped} squares not in complete groups yet.`;
     } else {
       visualHtml = this.renderCoefficientVisual(coefficient, sqSize) +
                    `<span class="text-xl mx-1">×</span>` +
                    this.renderRadicalVisual(ungrouped, sqSize);
       formulaHtml = `${coefficient}√${ungrouped}`;
-      const completeBins = this.bins.filter(b => b.complete).map(b => b.label).join(' + ');
-      breakdownHtml = `${completeBins} complete → ${coefficient} outside | ${ungrouped} under √`;
+      breakdownHtml = `${completedDoors.map(d => `${d.side}×${d.side}`).join(' × ')} = ${coefficient} | ${ungrouped} under √`;
     }
 
     this.answerVisual.innerHTML = visualHtml;
@@ -417,7 +479,7 @@ export class RadicalGame {
     this.onAnswerChange({
       coefficient,
       radicand: ungrouped,
-      groups: this.bins.filter(b => b.complete).map(b => ({ side: b.side, count: b.targetCount })),
+      groups: completedDoors.map(d => ({ side: d.side, count: d.count })),
       simplified: ungrouped === 0 || coefficient > 1
     });
   }
@@ -433,10 +495,13 @@ export class RadicalGame {
   }
 
   renderRadicalVisual(count, sqSize) {
-    const cols = Math.min(count, 4);
+    const cols = Math.min(count, 5);
     let squaresHtml = '';
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < Math.min(count, 15); i++) {
       squaresHtml += `<div class="bg-indigo-500" style="width: ${sqSize - 2}px; height: ${sqSize - 2}px;"></div>`;
+    }
+    if (count > 15) {
+      squaresHtml += `<div class="text-xs text-indigo-600">+${count - 15}</div>`;
     }
     return `
       <div class="flex flex-col items-center">
@@ -464,13 +529,26 @@ export class RadicalGame {
   getAnswer() {
     let coefficient = 1;
     let grouped = 0;
-    for (const bin of this.bins) {
-      if (bin.complete) {
-        coefficient *= bin.side;
-        grouped += bin.targetCount;
+    for (const door of this.doors) {
+      const count = door.squares.length;
+      const side = this.getSideFromCount(count);
+      if (side > 1) {
+        coefficient *= side;
+        grouped += count;
       }
     }
-    return { coefficient, radicand: this.totalSquares - grouped };
+
+    let ungrouped = 0;
+    for (const door of this.doors) {
+      const count = door.squares.length;
+      const side = this.getSideFromCount(count);
+      if (side <= 1 && count > 0) {
+        ungrouped += count;
+      }
+    }
+    ungrouped += this.squares.filter(s => s.inDoor === null).length;
+
+    return { coefficient, radicand: ungrouped };
   }
 
   destroy() {
