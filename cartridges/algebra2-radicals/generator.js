@@ -13,6 +13,9 @@ export function generateProblem(modeId, context, mode) {
   if (modeId === 'simplify-radicals-hard') {
     return generatePrimeRadical();
   }
+  if (modeId === 'simplify-radicals-typed') {
+    return generateTypedRadical();
+  }
   return generateVisualRadical();
 }
 
@@ -144,6 +147,73 @@ function generatePrimeRadical() {
       }
     },
     scenario: `Build the prime factorization of √${radicand}, then drag matching pairs outside the radical`
+  };
+}
+
+/**
+ * Generate typed radical problems (Level 3)
+ * No visual scaffolding - student types coefficient and radicand
+ */
+function generateTypedRadical() {
+  // Mix of problems from easy to hard
+  const problems = [
+    // Easy
+    [8, 2, 2],    // √8 = 2√2
+    [12, 2, 3],   // √12 = 2√3
+    [18, 3, 2],   // √18 = 3√2
+    [20, 2, 5],   // √20 = 2√5
+    [27, 3, 3],   // √27 = 3√3
+    [32, 4, 2],   // √32 = 4√2
+    [45, 3, 5],   // √45 = 3√5
+    [48, 4, 3],   // √48 = 4√3
+    [50, 5, 2],   // √50 = 5√2
+
+    // Medium
+    [72, 6, 2],   // √72 = 6√2
+    [75, 5, 3],   // √75 = 5√3
+    [80, 4, 5],   // √80 = 4√5
+    [98, 7, 2],   // √98 = 7√2
+    [108, 6, 3],  // √108 = 6√3
+    [125, 5, 5],  // √125 = 5√5
+    [128, 8, 2],  // √128 = 8√2
+    [147, 7, 3],  // √147 = 7√3
+
+    // Perfect squares
+    [4, 2, 1],    // √4 = 2
+    [9, 3, 1],    // √9 = 3
+    [16, 4, 1],   // √16 = 4
+    [25, 5, 1],   // √25 = 5
+    [36, 6, 1],   // √36 = 6
+    [49, 7, 1],   // √49 = 7
+    [64, 8, 1],   // √64 = 8
+    [81, 9, 1],   // √81 = 9
+    [100, 10, 1], // √100 = 10
+    [121, 11, 1], // √121 = 11
+    [144, 12, 1], // √144 = 12
+  ];
+
+  const [radicand, coefficient, remainder] = pickProblem(problems);
+
+  const expression = `√${radicand}`;
+  const simplified = remainder === 1 ? `${coefficient}` : `${coefficient}√${remainder}`;
+
+  return {
+    context: {
+      radicand,
+      coefficient,
+      remainingRadicand: remainder,
+      problemType: 'No Scaffolding',
+      expression,
+      // These are for grading the typed fields
+      'typed-coefficient': coefficient,
+      'typed-radicand': remainder
+    },
+    graphConfig: null,
+    answers: {
+      'typed-coefficient': coefficient.toString(),
+      'typed-radicand': remainder.toString()
+    },
+    scenario: `Simplify √${radicand}. Enter the coefficient and remaining radicand.`
   };
 }
 

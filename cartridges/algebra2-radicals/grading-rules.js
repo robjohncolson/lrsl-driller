@@ -29,6 +29,20 @@ const rules = {
       P: 'Good progress! Make sure you\'ve extracted all matching pairs.',
       I: 'Keep trying! Build the complete prime factorization first, then drag matching pairs outside.'
     }
+  },
+  'typed-coefficient': {
+    type: 'numeric-exact',
+    feedback: {
+      E: 'Correct coefficient!',
+      I: 'Check your coefficient. What number comes outside the radical?'
+    }
+  },
+  'typed-radicand': {
+    type: 'numeric-exact',
+    feedback: {
+      E: 'Correct radicand!',
+      I: 'Check your radicand. What number stays inside the radical?'
+    }
   }
 };
 
@@ -135,6 +149,35 @@ function gradeVisualRadicalPrime(answer, rule, context) {
 }
 
 /**
+ * Grade numeric exact match
+ * For typed coefficient and radicand fields
+ */
+function gradeNumericExact(fieldId, answer, rule, context) {
+  // Get expected value from context
+  const expected = context[fieldId];
+  if (expected === undefined) {
+    console.warn(`[Grading] No expected value for ${fieldId} in context`);
+    return { score: 'I', feedback: 'Unable to grade - missing expected value' };
+  }
+
+  // Parse answer
+  const userValue = parseInt(answer, 10);
+  const expectedValue = parseInt(expected, 10);
+
+  console.log(`[Grading ${fieldId}] User: ${userValue}, Expected: ${expectedValue}`);
+
+  if (isNaN(userValue)) {
+    return { score: 'I', feedback: 'Please enter a number' };
+  }
+
+  if (userValue === expectedValue) {
+    return { score: 'E', feedback: rule.feedback.E };
+  }
+
+  return { score: 'I', feedback: rule.feedback.I };
+}
+
+/**
  * Grade a field using appropriate method
  */
 export function gradeField(fieldId, answer, context) {
@@ -149,6 +192,10 @@ export function gradeField(fieldId, answer, context) {
 
   if (rule.type === 'visual-radical-prime') {
     return gradeVisualRadicalPrime(answer, rule, context);
+  }
+
+  if (rule.type === 'numeric-exact') {
+    return gradeNumericExact(fieldId, answer, rule, context);
   }
 
   return { score: 'I', feedback: 'Unknown rule type' };

@@ -49,6 +49,28 @@
           }
         ]
       }
+    },
+    {
+      "id": "simplify-radicals-typed",
+      "name": "Level 3: No Scaffolding",
+      "unlockedBy": { "gold": 40 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "typed-coefficient",
+            "type": "dropdown",
+            "label": "Simplify √{{radicand}} — Coefficient (number outside √):",
+            "placeholder": "Select coefficient...",
+            "options": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+          },
+          {
+            "id": "typed-radicand",
+            "type": "number",
+            "label": "Remaining radicand (number inside √, or 1 if perfect square):",
+            "placeholder": "Enter radicand..."
+          }
+        ]
+      }
     }
   ],
 
@@ -95,6 +117,12 @@
         "name": "Level 2: Prime Factorization",
         "unlockedBy": { "gold": 25 },
         "celebrationMessage": "Level 2 Unlocked! Now build prime factorizations and drag pairs outside the radical!"
+      },
+      {
+        "id": "simplify-radicals-typed",
+        "name": "Level 3: No Scaffolding",
+        "unlockedBy": { "gold": 40 },
+        "celebrationMessage": "Level 3 Unlocked! Now simplify radicals without any visual help!"
       }
     ]
   }
