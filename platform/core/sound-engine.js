@@ -174,6 +174,27 @@ export class SoundEngine {
   }
 
   /**
+   * Teacher alert bell - urgent, attention-grabbing
+   * Plays a loud bell pattern that repeats
+   */
+  teacherAlert() {
+    // High-pitched urgent bell pattern
+    const bellFreq = 1200;
+    const bellFreq2 = 1400;
+
+    // First ding-dong
+    this.playNote(bellFreq, 0.15, 'sine', 0.5);
+    setTimeout(() => this.playNote(bellFreq2, 0.2, 'sine', 0.5), 150);
+
+    // Second ding-dong (slightly louder/higher)
+    setTimeout(() => this.playNote(bellFreq, 0.15, 'sine', 0.6), 400);
+    setTimeout(() => this.playNote(bellFreq2, 0.2, 'sine', 0.6), 550);
+
+    // Third sustained bell
+    setTimeout(() => this.playNote(bellFreq2, 0.4, 'sine', 0.7), 800);
+  }
+
+  /**
    * Button click
    */
   click() {

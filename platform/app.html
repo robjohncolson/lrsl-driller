@@ -465,6 +465,39 @@
   </div>
   <div id="teacher-review-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
 
+  <!-- Teacher Alert Overlay - Persistent until reviews are cleared -->
+  <div id="teacher-alert-overlay" class="fixed inset-0 z-[60] pointer-events-none hidden">
+    <!-- Pulsing border effect -->
+    <div class="absolute inset-0 border-8 border-red-500 animate-pulse"></div>
+    <!-- Alert banner at top -->
+    <div class="absolute top-0 left-0 right-0 bg-red-600 text-white py-3 px-4 pointer-events-auto shadow-lg">
+      <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl animate-bounce">🔔</span>
+          <div>
+            <span class="font-bold text-lg">STUDENT NEEDS REVIEW</span>
+            <span id="alert-review-count" class="ml-2 bg-white text-red-600 px-2 py-0.5 rounded-full text-sm font-bold">1</span>
+          </div>
+        </div>
+        <button id="alert-open-reviews" class="bg-white text-red-600 hover:bg-red-100 font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+          <span>Open Reviews</span>
+          <span class="text-xl">→</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* Keyframes for alert effects */
+    @keyframes alert-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    #teacher-alert-overlay .border-red-500 {
+      animation: alert-pulse 1s ease-in-out infinite;
+    }
+  </style>
+
   <script type="module">
     import { Platform } from './platform.js';
     import { SoundEngine } from './core/sound-engine.js';
@@ -496,6 +529,12 @@
       onClassTimeEnd: () => {
         classTime.end(false);
         hideClassTimeBanner();
+      },
+      onTeacherReviewSubmitted: (message) => {
+        // A student submitted work for review - alert the teacher!
+        if (isTeacher) {
+          showTeacherAlert(message);
+        }
       },
       onTeacherReviewCompleted: (message) => {
         // Apply teacher's grades when review is completed for this student
@@ -1122,6 +1161,7 @@
     let currentReviewFilter = 'pending';
     let pendingReviewsCache = [];
     let teacherPassword = null; // Store the password used to login
+    let teacherAlertActive = false; // Track if alert overlay is showing
 
     function openTeacherReviewPanel() {
       document.getElementById('teacher-review-panel').classList.remove('translate-x-full');
@@ -1170,9 +1210,18 @@
           renderReviewList(reviews);
         }
 
-        // Update badge counts
+        // Update badge counts and alert
         if (currentReviewFilter === 'pending') {
           updateReviewBadge(reviews.length);
+          // Show alert overlay if there are pending reviews
+          if (reviews.length > 0 && isTeacher) {
+            const overlay = document.getElementById('teacher-alert-overlay');
+            if (overlay && overlay.classList.contains('hidden')) {
+              overlay.classList.remove('hidden');
+              teacherAlertActive = true;
+              document.getElementById('alert-review-count').textContent = reviews.length;
+            }
+          }
         }
       } catch (err) {
         console.error('Failed to load reviews:', err);
@@ -1185,17 +1234,60 @@
     function updateReviewBadge(count) {
       const headerBadge = document.getElementById('header-review-count');
       const panelBadge = document.getElementById('review-count-badge');
+      const alertCount = document.getElementById('alert-review-count');
 
       if (count > 0) {
         headerBadge.textContent = count;
         headerBadge.style.display = 'inline';
         panelBadge.textContent = count;
         panelBadge.classList.remove('hidden');
+        if (alertCount) alertCount.textContent = count;
       } else {
         headerBadge.style.display = 'none';
         panelBadge.classList.add('hidden');
+        // Hide alert overlay when no pending reviews
+        hideTeacherAlert();
       }
     }
+
+    // ==================== TEACHER ALERT SYSTEM ====================
+    function showTeacherAlert(message) {
+      const overlay = document.getElementById('teacher-alert-overlay');
+      if (!overlay) return;
+
+      // Show the overlay
+      overlay.classList.remove('hidden');
+      teacherAlertActive = true;
+
+      // Update count
+      const alertCount = document.getElementById('alert-review-count');
+      if (alertCount) {
+        const currentCount = parseInt(alertCount.textContent) || 0;
+        alertCount.textContent = currentCount + 1;
+      }
+
+      // Play urgent bell sound
+      soundEngine.init();
+      soundEngine.teacherAlert();
+
+      // Refresh the reviews list to get the new one
+      loadPendingReviews();
+
+      console.log('Teacher alert shown for:', message?.username, message?.topic);
+    }
+
+    function hideTeacherAlert() {
+      const overlay = document.getElementById('teacher-alert-overlay');
+      if (overlay) {
+        overlay.classList.add('hidden');
+      }
+      teacherAlertActive = false;
+    }
+
+    // Alert overlay button - opens the review panel
+    document.getElementById('alert-open-reviews')?.addEventListener('click', () => {
+      openTeacherReviewPanel();
+    });
 
     function renderReviewList(reviews) {
       const list = document.getElementById('teacher-review-list');
