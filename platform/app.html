@@ -867,20 +867,24 @@
      * Apply teacher's grades when WebSocket notification received
      */
     async function applyTeacherGrades(message) {
-      console.log('Applying teacher grades:', message);
+      console.log('=== APPLYING TEACHER GRADES ===');
+      console.log('Message received:', JSON.stringify(message));
+      console.log('Current user:', userSystem.currentUser?.username);
 
       // Only apply if this is for the current user
       if (message.username !== userSystem.currentUser?.username) {
-        console.log('Not for current user, skipping');
+        console.log('Not for current user, skipping. Message for:', message.username);
         return;
       }
 
       const grades = message.grades;
-      console.log('Grades received:', grades);
+      console.log('Grades received:', JSON.stringify(grades));
       if (!grades) {
         console.warn('No grades in teacher review message');
         return;
       }
+
+      console.log('Number of fields to grade:', Object.keys(grades).length);
 
       // Build results object similar to what grading produces
       const results = {
@@ -890,15 +894,20 @@
       };
 
       for (const [fieldId, score] of Object.entries(grades)) {
+        // Normalize score to uppercase and trim whitespace
+        const normalizedScore = String(score).trim().toUpperCase();
         results.fields[fieldId] = {
-          score: score,
-          feedback: `Teacher grade: ${score}`,
+          score: normalizedScore,
+          feedback: `Teacher grade: ${normalizedScore}`,
           _method: 'teacher'
         };
-        if (score !== 'E') {
+        if (normalizedScore !== 'E') {
           results.allCorrect = false;
         }
       }
+
+      console.log('All field scores:', Object.values(results.fields).map(f => f.score));
+      console.log('allCorrect after checking all fields:', results.allCorrect);
 
       console.log('Results built:', results);
       console.log('allCorrect:', results.allCorrect);
@@ -972,18 +981,26 @@
         updatePotentialStar(0);
 
         // Show Next button - hide all other action buttons
+        console.log('=== ALL CORRECT - SHOWING NEXT BUTTON ===');
         const btnGrade = document.getElementById('btn-grade');
         const btnTryAgain = document.getElementById('btn-try-again');
         const btnSkip = document.getElementById('btn-skip');
         const btnNext = document.getElementById('btn-next');
+
+        console.log('Buttons found:', { btnGrade: !!btnGrade, btnTryAgain: !!btnTryAgain, btnSkip: !!btnSkip, btnNext: !!btnNext });
+        console.log('Before - btnNext hidden:', btnNext?.classList.contains('hidden'));
+        console.log('Before - btnTryAgain hidden:', btnTryAgain?.classList.contains('hidden'));
+        console.log('Before - btnSkip hidden:', btnSkip?.classList.contains('hidden'));
 
         btnGrade.classList.add('hidden');
         btnTryAgain.classList.add('hidden');
         btnSkip.classList.add('hidden');
         btnNext.classList.remove('hidden');
 
-        console.log('Teacher grades applied - showing Next button');
-        console.log('btn-next classList:', btnNext.classList.toString());
+        console.log('After - btnNext hidden:', btnNext?.classList.contains('hidden'));
+        console.log('After - btnTryAgain hidden:', btnTryAgain?.classList.contains('hidden'));
+        console.log('After - btnSkip hidden:', btnSkip?.classList.contains('hidden'));
+        console.log('btn-next full classList:', btnNext.classList.toString());
 
         celebration.showToast('Your teacher gave you all E\'s! ⭐', 'success', 5000);
 
