@@ -1,8 +1,10 @@
 /**
  * Input Renderer - Dynamic input field generation
- * Supports textarea, number, choice (radio/dropdown), equation
+ * Supports textarea, number, choice (radio/dropdown), equation, visual-radical
  * Topic-agnostic: cartridge provides the schema
  */
+
+import { RadicalVisualizer } from './radical-visualizer.js';
 
 export class InputRenderer {
   constructor(container, config = {}) {
@@ -11,6 +13,7 @@ export class InputRenderer {
       : container;
 
     this.fields = new Map();
+    this.visualizers = new Map(); // For visual components like RadicalVisualizer
     this.onHintRequested = config.onHintRequested || (() => {});
 
     this.styles = {
@@ -33,6 +36,14 @@ export class InputRenderer {
   render(schema, context = {}) {
     this.container.innerHTML = '';
     this.fields.clear();
+    // Destroy any existing visualizers
+    for (const [id, viz] of this.visualizers) {
+      if (viz.destroy) viz.destroy();
+    }
+    this.visualizers.clear();
+
+    // Store context for visual components
+    this.currentContext = context;
 
     const fields = schema.fields || schema;
 
@@ -99,6 +110,12 @@ export class InputRenderer {
         break;
       case 'dropdown':
         inputEl = this.renderDropdown(field, context);
+        break;
+      case 'text':
+        inputEl = this.renderText(field, context);
+        break;
+      case 'visual-radical':
+        inputEl = this.renderVisualRadical(field, context);
         break;
       default:
         inputEl = this.renderTextarea(field, context);
@@ -233,6 +250,49 @@ export class InputRenderer {
     return select;
   }
 
+  renderText(field, context) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `field-${field.id}`;
+    input.className = this.styles.input;
+    input.placeholder = this.interpolate(field.placeholder || '', context);
+    if (field.minLength) input.minLength = field.minLength;
+    if (field.maxLength) input.maxLength = field.maxLength;
+    return input;
+  }
+
+  renderVisualRadical(field, context) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'visual-radical-container';
+    wrapper._isInputWrapper = true;
+
+    // Get the total squares from context (radicand)
+    const totalSquares = context.radicand || 12;
+
+    // Create the visualizer after a brief delay to ensure DOM is ready
+    setTimeout(() => {
+      const visualizer = new RadicalVisualizer(wrapper, {
+        squareSize: 36,
+        onAnswerChange: (answer) => {
+          // Store the answer for grading
+          wrapper._visualAnswer = answer;
+        }
+      });
+
+      // Load the problem
+      visualizer.loadProblem(totalSquares);
+
+      // Store reference for getValue and cleanup
+      this.visualizers.set(field.id, visualizer);
+      wrapper._visualizer = visualizer;
+    }, 0);
+
+    // Mark for data-field-id handling
+    wrapper.dataset.fieldId = field.id;
+
+    return wrapper;
+  }
+
   // ============== VALUE ACCESS ==============
 
   /**
@@ -241,6 +301,17 @@ export class InputRenderer {
   getValue(fieldId) {
     const field = this.fields.get(fieldId);
     if (!field) return null;
+
+    // Handle visual-radical type
+    if (field.config.type === 'visual-radical') {
+      const visualizer = this.visualizers.get(fieldId);
+      if (visualizer) {
+        return visualizer.getAnswer();
+      }
+      // Fallback to stored answer
+      const wrapper = field.element.querySelector('.visual-radical-container');
+      return wrapper?._visualAnswer || { coefficient: 1, radicand: 0 };
+    }
 
     const input = field.inputEl;
     if (!input) return null;
@@ -292,7 +363,13 @@ export class InputRenderer {
       if (field.config.type === 'choice') {
         const radios = this.container.querySelectorAll(`input[name="field-${id}"]`);
         radios.forEach(r => r.checked = false);
-      } else {
+      } else if (field.config.type === 'visual-radical') {
+        // Reset the visualizer
+        const visualizer = this.visualizers.get(id);
+        if (visualizer) {
+          visualizer.reset();
+        }
+      } else if (field.inputEl) {
         field.inputEl.value = '';
       }
       this.hideFeedback(id);
@@ -388,7 +465,13 @@ export class InputRenderer {
    */
   disable() {
     for (const [id, field] of this.fields) {
-      if (field.inputEl) field.inputEl.disabled = true;
+      if (field.config.type === 'visual-radical') {
+        // Visual components handle their own disabling
+        const wrapper = this.container.querySelector(`[data-field-id="${id}"]`);
+        if (wrapper) wrapper.style.pointerEvents = 'none';
+      } else if (field.inputEl) {
+        field.inputEl.disabled = true;
+      }
     }
   }
 
@@ -397,7 +480,12 @@ export class InputRenderer {
    */
   enable() {
     for (const [id, field] of this.fields) {
-      if (field.inputEl) field.inputEl.disabled = false;
+      if (field.config.type === 'visual-radical') {
+        const wrapper = this.container.querySelector(`[data-field-id="${id}"]`);
+        if (wrapper) wrapper.style.pointerEvents = '';
+      } else if (field.inputEl) {
+        field.inputEl.disabled = false;
+      }
     }
   }
 
@@ -406,6 +494,8 @@ export class InputRenderer {
    */
   focusFirst() {
     const first = this.fields.values().next().value;
+    // Skip visual types for focus
+    if (first?.config?.type === 'visual-radical') return;
     if (first?.inputEl) first.inputEl.focus();
   }
 }

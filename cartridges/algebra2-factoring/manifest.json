@@ -77,22 +77,9 @@
       "layout": {
         "inputs": [
           {
-            "id": "simplified",
-            "label": "Simplified Form",
-            "type": "text",
-            "placeholder": "e.g., 5√2 or 2x√3"
-          },
-          {
-            "id": "coefficient",
-            "label": "Coefficient outside radical",
-            "type": "text",
-            "placeholder": "e.g., 5 or 2x"
-          },
-          {
-            "id": "radicand",
-            "label": "Number/expression under radical",
-            "type": "text",
-            "placeholder": "e.g., 2 or 3y"
+            "id": "visual-radical",
+            "type": "visual-radical",
+            "label": "Simplify √{{radicand}} by grouping unit squares"
           }
         ]
       }
@@ -123,9 +110,7 @@
       "lcm": "The LCM is the product of all prime factors with the highest powers",
       "factored": "Look for patterns: Is there a GCF? Is it a trinomial? Difference of squares?",
       "method": "GCF: common factor in all terms. Trinomial: ax² + bx + c. Difference of squares: a² - b²",
-      "simplified": "Find the largest perfect square factor of the radicand",
-      "coefficient": "This is what comes out of the radical (the square root of perfect square factors)",
-      "radicand": "This is what remains under the radical after simplifying"
+      "visual-radical": "Group unit squares into 2×2, 3×3, or larger perfect squares. Each side length comes out of the radical!"
     },
     "penalty": {
       "0": "gold",
