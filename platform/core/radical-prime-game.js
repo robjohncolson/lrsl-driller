@@ -492,9 +492,19 @@ export class RadicalPrimeGame {
   getAnswer() {
     const coefficient = this.outsidePairs.reduce((a, b) => a * b, 1) || 1;
     const radicand = this.insideFactors.reduce((a, b) => a * b, 1) || 1;
+    const currentTotal = coefficient * coefficient * radicand;
+    const isComplete = currentTotal === this.originalRadicand;
+
+    // Check if any pairs remain inside
+    const counts = {};
+    this.insideFactors.forEach(f => counts[f] = (counts[f] || 0) + 1);
+    const hasUnextractedPairs = Object.values(counts).some(c => c >= 2);
+
     return {
       coefficient,
-      radicand
+      radicand,
+      isComplete,
+      isFullySimplified: isComplete && !hasUnextractedPairs
     };
   }
 
