@@ -39,29 +39,49 @@ function pickProblem(problems) {
  * Keeps numbers small and manageable (under 50 squares)
  */
 function generateVisualRadical() {
-  // Curated list of good radicands for visual learning
+  // Curated list of good radicands for visual learning (25+ problems)
   // Format: [radicand, coefficient, remainder]
   // e.g., √12 = 2√3, so [12, 2, 3]
   const problems = [
-    // Easy: single 2×2 group
+    // Easy: coefficient = 2 (extracting 4)
     [8, 2, 2],    // √8 = 2√2
     [12, 2, 3],   // √12 = 2√3
     [20, 2, 5],   // √20 = 2√5
+    [28, 2, 7],   // √28 = 2√7
+    [44, 2, 11],  // √44 = 2√11
+    [52, 2, 13],  // √52 = 2√13
 
-    // Medium: single 3×3 group
+    // Medium: coefficient = 3 (extracting 9)
     [18, 3, 2],   // √18 = 3√2
     [27, 3, 3],   // √27 = 3√3
     [45, 3, 5],   // √45 = 3√5
+    [63, 3, 7],   // √63 = 3√7
+    [99, 3, 11],  // √99 = 3√11
+
+    // Coefficient = 4 (extracting 16)
+    [32, 4, 2],   // √32 = 4√2
+    [48, 4, 3],   // √48 = 4√3
+    [80, 4, 5],   // √80 = 4√5
+    [112, 4, 7],  // √112 = 4√7
+
+    // Coefficient = 5 (extracting 25)
+    [50, 5, 2],   // √50 = 5√2
+    [75, 5, 3],   // √75 = 5√3
+    [125, 5, 5],  // √125 = 5√5
+    [175, 5, 7],  // √175 = 5√7
+
+    // Coefficient = 6 (extracting 36)
+    [72, 6, 2],   // √72 = 6√2
+    [108, 6, 3],  // √108 = 6√3
+    [180, 6, 5],  // √180 = 6√5
 
     // Perfect squares (no remainder)
     [4, 2, 1],    // √4 = 2
     [9, 3, 1],    // √9 = 3
     [16, 4, 1],   // √16 = 4
     [25, 5, 1],   // √25 = 5
-
-    // Slightly harder: 4×4 group
-    [32, 4, 2],   // √32 = 4√2
-    [48, 4, 3],   // √48 = 4√3
+    [36, 6, 1],   // √36 = 6
+    [49, 7, 1],   // √49 = 7
   ];
 
   const [radicand, coefficient, remainder] = pickProblem(problems);
@@ -95,25 +115,33 @@ function generateVisualRadical() {
  * Students build the factorization and drag pairs outside
  */
 function generatePrimeRadical() {
-  // Problems good for prime factorization approach
+  // Problems good for prime factorization approach (25+ problems)
   // Curated so prime factorization isn't too long
   const problems = [
-    // Easy prime factorizations
+    // Easy: short factorizations
     [12, 2, 3],   // √12 = √(2×2×3) = 2√3
     [18, 3, 2],   // √18 = √(2×3×3) = 3√2
     [20, 2, 5],   // √20 = √(2×2×5) = 2√5
     [28, 2, 7],   // √28 = √(2×2×7) = 2√7
+    [44, 2, 11],  // √44 = √(2×2×11) = 2√11
     [45, 3, 5],   // √45 = √(3×3×5) = 3√5
     [50, 5, 2],   // √50 = √(2×5×5) = 5√2
+    [52, 2, 13],  // √52 = √(2×2×13) = 2√13
     [63, 3, 7],   // √63 = √(3×3×7) = 3√7
+    [68, 2, 17],  // √68 = √(2×2×17) = 2√17
 
     // Medium: more factors
     [72, 6, 2],   // √72 = √(2×2×2×3×3) = 6√2
     [75, 5, 3],   // √75 = √(3×5×5) = 5√3
-    [98, 7, 2],   // √98 = √(2×7×7) = 7√2
     [80, 4, 5],   // √80 = √(2×2×2×2×5) = 4√5
-    [108, 6, 3], // √108 = √(2×2×3×3×3) = 6√3
-    [125, 5, 5], // √125 = √(5×5×5) = 5√5
+    [98, 7, 2],   // √98 = √(2×7×7) = 7√2
+    [99, 3, 11],  // √99 = √(3×3×11) = 3√11
+    [108, 6, 3],  // √108 = √(2×2×3×3×3) = 6√3
+    [112, 4, 7],  // √112 = √(2×2×2×2×7) = 4√7
+    [125, 5, 5],  // √125 = √(5×5×5) = 5√5
+    [147, 7, 3],  // √147 = √(3×7×7) = 7√3
+    [175, 5, 7],  // √175 = √(5×5×7) = 5√7
+    [180, 6, 5],  // √180 = √(2×2×3×3×5) = 6√5
 
     // Perfect squares
     [36, 6, 1],   // √36 = √(2×2×3×3) = 6
@@ -122,6 +150,8 @@ function generatePrimeRadical() {
     [81, 9, 1],   // √81 = √(3×3×3×3) = 9
     [100, 10, 1], // √100 = √(2×2×5×5) = 10
     [121, 11, 1], // √121 = √(11×11) = 11
+    [169, 13, 1], // √169 = √(13×13) = 13
+    [196, 14, 1], // √196 = √(2×2×7×7) = 14
   ];
 
   const [radicand, coefficient, remainder] = pickProblem(problems);
@@ -155,28 +185,55 @@ function generatePrimeRadical() {
  * No visual scaffolding - student types coefficient and radicand
  */
 function generateTypedRadical() {
-  // Mix of problems from easy to hard
+  // Mix of problems from easy to hard (40+ problems)
   const problems = [
-    // Easy
+    // Easy: coefficient = 2
     [8, 2, 2],    // √8 = 2√2
     [12, 2, 3],   // √12 = 2√3
-    [18, 3, 2],   // √18 = 3√2
     [20, 2, 5],   // √20 = 2√5
-    [27, 3, 3],   // √27 = 3√3
-    [32, 4, 2],   // √32 = 4√2
-    [45, 3, 5],   // √45 = 3√5
-    [48, 4, 3],   // √48 = 4√3
-    [50, 5, 2],   // √50 = 5√2
+    [28, 2, 7],   // √28 = 2√7
+    [44, 2, 11],  // √44 = 2√11
+    [52, 2, 13],  // √52 = 2√13
 
-    // Medium
-    [72, 6, 2],   // √72 = 6√2
-    [75, 5, 3],   // √75 = 5√3
+    // Coefficient = 3
+    [18, 3, 2],   // √18 = 3√2
+    [27, 3, 3],   // √27 = 3√3
+    [45, 3, 5],   // √45 = 3√5
+    [63, 3, 7],   // √63 = 3√7
+    [99, 3, 11],  // √99 = 3√11
+    [117, 3, 13], // √117 = 3√13
+
+    // Coefficient = 4
+    [32, 4, 2],   // √32 = 4√2
+    [48, 4, 3],   // √48 = 4√3
     [80, 4, 5],   // √80 = 4√5
-    [98, 7, 2],   // √98 = 7√2
-    [108, 6, 3],  // √108 = 6√3
+    [112, 4, 7],  // √112 = 4√7
+    [176, 4, 11], // √176 = 4√11
+
+    // Coefficient = 5
+    [50, 5, 2],   // √50 = 5√2
+    [75, 5, 3],   // √75 = 5√3
     [125, 5, 5],  // √125 = 5√5
-    [128, 8, 2],  // √128 = 8√2
+    [175, 5, 7],  // √175 = 5√7
+
+    // Coefficient = 6
+    [72, 6, 2],   // √72 = 6√2
+    [108, 6, 3],  // √108 = 6√3
+    [180, 6, 5],  // √180 = 6√5
+
+    // Coefficient = 7
+    [98, 7, 2],   // √98 = 7√2
     [147, 7, 3],  // √147 = 7√3
+
+    // Coefficient = 8
+    [128, 8, 2],  // √128 = 8√2
+    [192, 8, 3],  // √192 = 8√3
+
+    // Coefficient = 9
+    [162, 9, 2],  // √162 = 9√2
+
+    // Coefficient = 10
+    [200, 10, 2], // √200 = 10√2
 
     // Perfect squares
     [4, 2, 1],    // √4 = 2
@@ -190,6 +247,8 @@ function generateTypedRadical() {
     [100, 10, 1], // √100 = 10
     [121, 11, 1], // √121 = 11
     [144, 12, 1], // √144 = 12
+    [169, 13, 1], // √169 = 13 (prime squared)
+    [196, 14, 1], // √196 = 14
   ];
 
   const [radicand, coefficient, remainder] = pickProblem(problems);
