@@ -10,7 +10,8 @@
       "Bash(node -e:*)",
       "Bash(git push)",
       "Bash(npm run build:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

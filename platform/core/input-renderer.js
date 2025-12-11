@@ -104,7 +104,10 @@ export class InputRenderer {
         inputEl = this.renderTextarea(field, context);
     }
 
-    inputEl.dataset.fieldId = field.id;
+    // Only set data-field-id on element if not already set on inner input
+    if (!inputEl._isInputWrapper) {
+      inputEl.dataset.fieldId = field.id;
+    }
     wrapper.appendChild(inputEl);
 
     // Hint container (hidden by default)
@@ -148,6 +151,7 @@ export class InputRenderer {
     input.className = this.styles.input;
     input.step = field.step || 'any';
     input.placeholder = this.interpolate(field.placeholder || '', context);
+    input.dataset.fieldId = field.id; // Set data-field-id on actual input!
     if (field.min !== undefined) input.min = field.min;
     if (field.max !== undefined) input.max = field.max;
 
@@ -161,11 +165,8 @@ export class InputRenderer {
       wrapper.appendChild(units);
     }
 
-    // Make wrapper act as the input for data attribute purposes
-    wrapper.querySelector = (sel) => {
-      if (sel.includes('data-field-id')) return input;
-      return wrapper.querySelector(sel);
-    };
+    // Mark wrapper so it doesn't get data-field-id set on it
+    wrapper._isInputWrapper = true;
 
     return wrapper;
   }
