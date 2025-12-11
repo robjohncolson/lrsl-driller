@@ -75,10 +75,12 @@ export class Platform {
 
   /**
    * Load a cartridge
+   * @param {string} cartridgeId - The cartridge to load
+   * @param {function} onProgress - Optional progress callback: (step, filename, status) => void
    */
-  async loadCartridge(cartridgeId) {
+  async loadCartridge(cartridgeId, onProgress = null) {
     try {
-      this.currentCartridge = await this.cartridgeLoader.load(cartridgeId);
+      this.currentCartridge = await this.cartridgeLoader.load(cartridgeId, onProgress);
       this.gameEngine.loadCartridge(this.currentCartridge.manifest);
 
       // Set initial mode

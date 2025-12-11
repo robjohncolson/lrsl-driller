@@ -13,38 +13,62 @@ export class CartridgeLoader {
 
   /**
    * Load a cartridge by ID
+   * @param {string} cartridgeId - The cartridge to load
+   * @param {function} onProgress - Optional callback: (step, filename, status) => void
+   *   step: 'manifest' | 'contexts' | 'generator' | 'grading' | 'ai'
+   *   status: 'loading' | 'done' | 'skipped' | 'error'
    */
-  async load(cartridgeId) {
+  async load(cartridgeId, onProgress = null) {
     const cartridgePath = `${this.basePath}/${cartridgeId}`;
+    const progress = (step, filename, status) => {
+      if (onProgress) onProgress(step, filename, status);
+    };
 
     try {
       // Load manifest
+      progress('manifest', 'manifest.json', 'loading');
       const manifest = await this.loadJSON(`${cartridgePath}/manifest.json`);
+      progress('manifest', 'manifest.json', 'done');
 
       // Load shared contexts if specified
       if (manifest.config?.sharedContexts) {
+        const contextFile = `${manifest.config.sharedContexts}.json`;
+        progress('contexts', contextFile, 'loading');
         this.contexts = await this.loadJSON(
-          `${this.sharedPath}/contexts/${manifest.config.sharedContexts}.json`
+          `${this.sharedPath}/contexts/${contextFile}`
         );
+        progress('contexts', contextFile, 'done');
+      } else {
+        progress('contexts', 'none', 'skipped');
       }
 
       // Load generator module
+      progress('generator', 'generator.js', 'loading');
       const generator = await this.loadModule(`${cartridgePath}/generator.js`);
+      progress('generator', 'generator.js', 'done');
 
       // Load grading rules
       let gradingRules = null;
       if (manifest.grading?.rubricFile) {
+        progress('grading', manifest.grading.rubricFile, 'loading');
         if (manifest.grading.rubricFile.endsWith('.js')) {
           gradingRules = await this.loadModule(`${cartridgePath}/${manifest.grading.rubricFile}`);
         } else {
           gradingRules = await this.loadJSON(`${cartridgePath}/${manifest.grading.rubricFile}`);
         }
+        progress('grading', manifest.grading.rubricFile, 'done');
+      } else {
+        progress('grading', 'none', 'skipped');
       }
 
       // Load AI prompt template
       let aiPrompt = null;
       if (manifest.grading?.aiPromptFile) {
+        progress('ai', manifest.grading.aiPromptFile, 'loading');
         aiPrompt = await this.loadText(`${cartridgePath}/${manifest.grading.aiPromptFile}`);
+        progress('ai', manifest.grading.aiPromptFile, 'done');
+      } else {
+        progress('ai', 'none', 'skipped');
       }
 
       this.loadedCartridge = {

@@ -41,10 +41,23 @@
   <!-- Header -->
   <header class="bg-white shadow-md sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-      <!-- Left: Title + Topic Select -->
+      <!-- Left: Title + Cartridge Selector -->
       <div class="flex items-center gap-3">
         <h1 id="app-title" class="text-lg font-bold text-purple-700">Driller</h1>
-        <select id="cartridge-select" class="text-sm border border-gray-300 rounded px-2 py-1 focus:border-purple-500 bg-white">
+        <!-- Cartridge Slot Button -->
+        <button id="cartridge-slot-btn" class="flex items-center gap-2 bg-gradient-to-b from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800 text-white pl-1 pr-3 py-1 rounded-lg border-2 border-gray-600 transition-all shadow-md" title="Change Cartridge">
+          <!-- Mini cartridge icon -->
+          <div class="w-6 h-8 bg-purple-500 rounded flex items-center justify-center border border-purple-400">
+            <span class="text-[8px] font-bold">📦</span>
+          </div>
+          <div class="text-left">
+            <div class="text-[10px] text-gray-400 leading-none">CARTRIDGE</div>
+            <div id="current-cartridge-name" class="text-xs font-bold leading-tight">LSRL Interpretation</div>
+          </div>
+          <span class="text-gray-400 text-xs">▼</span>
+        </button>
+        <!-- Hidden select for data (still used for cartridge list) -->
+        <select id="cartridge-select" class="hidden">
           <option value="lsrl-interpretation">LSRL Interpretation</option>
           <option value="residuals">Residuals</option>
         </select>
@@ -119,6 +132,41 @@
       </div>
     </div>
   </header>
+
+  <!-- Cartridge Selection Dropdown -->
+  <div id="cartridge-dropdown" class="fixed top-14 left-4 z-50 hidden">
+    <div class="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden w-72">
+      <div class="bg-gradient-to-r from-gray-800 to-gray-900 text-white px-4 py-2">
+        <div class="text-xs text-gray-400">SELECT CARTRIDGE</div>
+        <div class="text-sm font-bold">Available Topics</div>
+      </div>
+      <div id="cartridge-list" class="p-2 space-y-2 max-h-64 overflow-y-auto">
+        <!-- Cartridge options will be populated here -->
+        <button class="cartridge-option w-full flex items-center gap-3 p-2 rounded-lg hover:bg-purple-50 transition-colors border-2 border-transparent hover:border-purple-300" data-cartridge="lsrl-interpretation">
+          <div class="w-10 h-14 bg-gradient-to-b from-purple-500 to-purple-700 rounded flex items-center justify-center text-white text-xs font-bold shadow">
+            LSRL
+          </div>
+          <div class="text-left flex-1">
+            <div class="font-semibold text-gray-800 text-sm">LSRL Interpretation</div>
+            <div class="text-xs text-gray-500">Slope, intercept, correlation</div>
+          </div>
+        </button>
+        <button class="cartridge-option w-full flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 transition-colors border-2 border-transparent hover:border-blue-300" data-cartridge="residuals">
+          <div class="w-10 h-14 bg-gradient-to-b from-blue-500 to-blue-700 rounded flex items-center justify-center text-white text-xs font-bold shadow">
+            RES
+          </div>
+          <div class="text-left flex-1">
+            <div class="font-semibold text-gray-800 text-sm">Residuals</div>
+            <div class="text-xs text-gray-500">Residual analysis & plots</div>
+          </div>
+        </button>
+      </div>
+      <div class="bg-gray-50 px-4 py-2 text-xs text-gray-500 border-t">
+        Click to load a different topic
+      </div>
+    </div>
+  </div>
+  <div id="cartridge-dropdown-backdrop" class="fixed inset-0 z-40 hidden"></div>
 
   <!-- Class Time Banner (hidden by default) -->
   <div id="class-time-banner" class="hidden bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white py-2 px-4 shadow-lg">
@@ -464,6 +512,59 @@
     </div>
   </div>
   <div id="teacher-review-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
+  <!-- Cartridge Loading Overlay -->
+  <div id="cartridge-loading-overlay" class="fixed inset-0 z-[70] bg-gray-900 bg-opacity-95 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 text-center">
+      <!-- Cartridge Icon -->
+      <div class="mb-6">
+        <div class="w-24 h-32 mx-auto bg-gradient-to-b from-gray-700 to-gray-900 rounded-lg relative overflow-hidden border-4 border-gray-600">
+          <!-- Cartridge label area -->
+          <div id="cartridge-label" class="absolute top-2 left-2 right-2 h-16 bg-purple-500 rounded flex items-center justify-center">
+            <span class="text-white font-bold text-xs px-1 text-center leading-tight" id="cartridge-loading-name">LSRL</span>
+          </div>
+          <!-- Cartridge pins -->
+          <div class="absolute bottom-0 left-0 right-0 h-6 bg-gray-800 flex justify-center gap-1 pt-1">
+            <div class="w-1 h-4 bg-yellow-500 rounded-sm"></div>
+            <div class="w-1 h-4 bg-yellow-500 rounded-sm"></div>
+            <div class="w-1 h-4 bg-yellow-500 rounded-sm"></div>
+            <div class="w-1 h-4 bg-yellow-500 rounded-sm"></div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Loading Cartridge...</h3>
+
+      <!-- File loading progress -->
+      <div id="cartridge-loading-files" class="text-left space-y-2 mb-6 font-mono text-sm">
+        <div class="flex items-center gap-2" data-file="manifest">
+          <span class="w-5 h-5 flex items-center justify-center text-gray-400" id="status-manifest">○</span>
+          <span class="text-gray-600">manifest.json</span>
+        </div>
+        <div class="flex items-center gap-2" data-file="contexts">
+          <span class="w-5 h-5 flex items-center justify-center text-gray-400" id="status-contexts">○</span>
+          <span class="text-gray-600">shared/contexts/*.json</span>
+        </div>
+        <div class="flex items-center gap-2" data-file="generator">
+          <span class="w-5 h-5 flex items-center justify-center text-gray-400" id="status-generator">○</span>
+          <span class="text-gray-600">generator.js</span>
+        </div>
+        <div class="flex items-center gap-2" data-file="grading">
+          <span class="w-5 h-5 flex items-center justify-center text-gray-400" id="status-grading">○</span>
+          <span class="text-gray-600">grading-rules.js</span>
+        </div>
+        <div class="flex items-center gap-2" data-file="ai">
+          <span class="w-5 h-5 flex items-center justify-center text-gray-400" id="status-ai">○</span>
+          <span class="text-gray-600">ai-grader-prompt.txt</span>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div id="cartridge-progress-bar" class="h-full bg-purple-500 transition-all duration-300" style="width: 0%"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Teacher Alert Overlay - Persistent until reviews are cleared -->
   <div id="teacher-alert-overlay" class="fixed inset-0 z-[60] pointer-events-none hidden">
@@ -1289,6 +1390,110 @@
       openTeacherReviewPanel();
     });
 
+    // ==================== CARTRIDGE LOADING UI ====================
+    function showCartridgeDropdown() {
+      document.getElementById('cartridge-dropdown').classList.remove('hidden');
+      document.getElementById('cartridge-dropdown-backdrop').classList.remove('hidden');
+    }
+
+    function hideCartridgeDropdown() {
+      document.getElementById('cartridge-dropdown').classList.add('hidden');
+      document.getElementById('cartridge-dropdown-backdrop').classList.add('hidden');
+    }
+
+    function showCartridgeLoading(cartridgeName) {
+      const overlay = document.getElementById('cartridge-loading-overlay');
+      document.getElementById('cartridge-loading-name').textContent = cartridgeName;
+
+      // Reset all status indicators
+      ['manifest', 'contexts', 'generator', 'grading', 'ai'].forEach(id => {
+        document.getElementById(`status-${id}`).textContent = '○';
+        document.getElementById(`status-${id}`).className = 'w-5 h-5 flex items-center justify-center text-gray-400';
+      });
+      document.getElementById('cartridge-progress-bar').style.width = '0%';
+
+      overlay.classList.remove('hidden');
+    }
+
+    function hideCartridgeLoading() {
+      document.getElementById('cartridge-loading-overlay').classList.add('hidden');
+    }
+
+    function updateCartridgeLoadingProgress(step, filename, status) {
+      const statusEl = document.getElementById(`status-${step}`);
+      if (!statusEl) return;
+
+      const progressBar = document.getElementById('cartridge-progress-bar');
+      const steps = ['manifest', 'contexts', 'generator', 'grading', 'ai'];
+      const stepIndex = steps.indexOf(step);
+
+      if (status === 'loading') {
+        statusEl.textContent = '⟳';
+        statusEl.className = 'w-5 h-5 flex items-center justify-center text-purple-500 animate-spin';
+      } else if (status === 'done') {
+        statusEl.textContent = '✓';
+        statusEl.className = 'w-5 h-5 flex items-center justify-center text-green-500 font-bold';
+        progressBar.style.width = `${((stepIndex + 1) / steps.length) * 100}%`;
+      } else if (status === 'skipped') {
+        statusEl.textContent = '–';
+        statusEl.className = 'w-5 h-5 flex items-center justify-center text-gray-400';
+        progressBar.style.width = `${((stepIndex + 1) / steps.length) * 100}%`;
+      } else if (status === 'error') {
+        statusEl.textContent = '✗';
+        statusEl.className = 'w-5 h-5 flex items-center justify-center text-red-500 font-bold';
+      }
+    }
+
+    // Cartridge slot button - toggle dropdown
+    document.getElementById('cartridge-slot-btn')?.addEventListener('click', () => {
+      const dropdown = document.getElementById('cartridge-dropdown');
+      if (dropdown.classList.contains('hidden')) {
+        showCartridgeDropdown();
+      } else {
+        hideCartridgeDropdown();
+      }
+    });
+
+    // Backdrop click closes dropdown
+    document.getElementById('cartridge-dropdown-backdrop')?.addEventListener('click', hideCartridgeDropdown);
+
+    // Cartridge option clicks
+    document.querySelectorAll('.cartridge-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cartridgeId = btn.dataset.cartridge;
+        if (cartridgeId && cartridgeId !== currentCartridgeId) {
+          hideCartridgeDropdown();
+          currentCartridgeId = cartridgeId;
+          document.getElementById('cartridge-select').value = cartridgeId;
+          loadCartridgeWithAnimation(cartridgeId);
+        } else {
+          hideCartridgeDropdown();
+        }
+      });
+    });
+
+    async function loadCartridgeWithAnimation(cartridgeId) {
+      // Get cartridge display name
+      const option = document.querySelector(`.cartridge-option[data-cartridge="${cartridgeId}"]`);
+      const displayName = option?.querySelector('.font-semibold')?.textContent || cartridgeId;
+
+      // Show loading overlay
+      showCartridgeLoading(displayName.substring(0, 8));
+
+      // Small delay for visual effect
+      await new Promise(r => setTimeout(r, 200));
+
+      // Load with progress
+      await loadCartridge(cartridgeId);
+
+      // Update the header button
+      document.getElementById('current-cartridge-name').textContent = displayName;
+
+      // Hide loading after a brief moment
+      await new Promise(r => setTimeout(r, 300));
+      hideCartridgeLoading();
+    }
+
     function renderReviewList(reviews) {
       const list = document.getElementById('teacher-review-list');
       list.innerHTML = reviews.map(review => {
@@ -1529,9 +1734,10 @@
         });
 
         platform.init();
-        await platform.loadCartridge(cartridgeId);
+        await platform.loadCartridge(cartridgeId, updateCartridgeLoadingProgress);
 
         document.getElementById('app-title').textContent = platform.currentCartridge?.manifest?.meta?.name || 'Driller';
+        document.getElementById('current-cartridge-name').textContent = platform.currentCartridge?.manifest?.meta?.name || cartridgeId;
 
         // Update mode tabs
         const modes = platform.currentCartridge?.manifest?.modes || [];
