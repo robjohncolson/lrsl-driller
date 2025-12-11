@@ -71,6 +71,49 @@
           }
         ]
       }
+    },
+    {
+      "id": "simplify-radicals-complex",
+      "name": "Level 4: Complex Numbers",
+      "unlockedBy": { "gold": 55 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "visual-radical-complex",
+            "type": "visual-radical-complex",
+            "label": "Simplify √{{radicand}} — Extract pairs and i from negative radicands"
+          }
+        ]
+      }
+    },
+    {
+      "id": "simplify-radicals-complex-typed",
+      "name": "Level 5: Complex No Scaffolding",
+      "unlockedBy": { "gold": 70 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "typed-has-i",
+            "type": "dropdown",
+            "label": "Simplify √{{radicand}} — Does the answer have i?",
+            "placeholder": "Select...",
+            "options": ["No (positive radicand)", "Yes (negative radicand)"]
+          },
+          {
+            "id": "typed-complex-coefficient",
+            "type": "dropdown",
+            "label": "Coefficient (number outside √):",
+            "placeholder": "Select coefficient...",
+            "options": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+          },
+          {
+            "id": "typed-complex-radicand",
+            "type": "number",
+            "label": "Remaining radicand (number inside √, or 1 if perfect square):",
+            "placeholder": "Enter radicand..."
+          }
+        ]
+      }
     }
   ],
 
@@ -123,6 +166,18 @@
         "name": "Level 3: No Scaffolding",
         "unlockedBy": { "gold": 40 },
         "celebrationMessage": "Level 3 Unlocked! Now simplify radicals without any visual help!"
+      },
+      {
+        "id": "simplify-radicals-complex",
+        "name": "Level 4: Complex Numbers",
+        "unlockedBy": { "gold": 55 },
+        "celebrationMessage": "Level 4 Unlocked! Now simplify radicals with negative radicands using i!"
+      },
+      {
+        "id": "simplify-radicals-complex-typed",
+        "name": "Level 5: Complex No Scaffolding",
+        "unlockedBy": { "gold": 70 },
+        "celebrationMessage": "Level 5 Unlocked! Simplify complex radicals without any visual help!"
       }
     ]
   }

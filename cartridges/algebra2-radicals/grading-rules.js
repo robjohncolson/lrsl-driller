@@ -30,6 +30,14 @@ const rules = {
       I: 'Keep trying! Build the complete prime factorization first, then drag matching pairs outside.'
     }
   },
+  'visual-radical-complex': {
+    type: 'visual-radical-complex',
+    feedback: {
+      E: 'Excellent! You correctly handled the complex number and extracted all pairs.',
+      P: 'Good progress! Make sure you\'ve extracted all pairs and i (if negative).',
+      I: 'Keep trying! For negative radicands, extract −1 as i first, then factor the rest.'
+    }
+  },
   'typed-coefficient': {
     type: 'numeric-exact',
     feedback: {
@@ -38,6 +46,27 @@ const rules = {
     }
   },
   'typed-radicand': {
+    type: 'numeric-exact',
+    feedback: {
+      E: 'Correct radicand!',
+      I: 'Check your radicand. What number stays inside the radical?'
+    }
+  },
+  'typed-has-i': {
+    type: 'exact-match',
+    feedback: {
+      E: 'Correct!',
+      I: 'Check the sign of the radicand. Negative radicands produce i.'
+    }
+  },
+  'typed-complex-coefficient': {
+    type: 'numeric-exact',
+    feedback: {
+      E: 'Correct coefficient!',
+      I: 'Check your coefficient. What number comes outside the radical?'
+    }
+  },
+  'typed-complex-radicand': {
     type: 'numeric-exact',
     feedback: {
       E: 'Correct radicand!',
@@ -149,6 +178,61 @@ function gradeVisualRadicalPrime(answer, rule, context) {
 }
 
 /**
+ * Grade visual-radical-complex answer
+ * Answer comes as { coefficient, radicand, hasI, isComplete, isFullySimplified } from RadicalComplexGame
+ */
+function gradeVisualRadicalComplex(answer, rule, context) {
+  if (!answer || typeof answer !== 'object') {
+    return { score: 'I', feedback: 'Please build the factorization first' };
+  }
+
+  const userCoeff = answer.coefficient || 1;
+  const userRadicand = answer.radicand || 0;
+  const userHasI = answer.hasI === true;
+
+  // Expected values from context
+  const expected = context['visual-radical-complex'] || {};
+  const expectedCoeff = expected.coefficient || context.coefficient;
+  const expectedRadicand = expected.radicand || context.remainingRadicand;
+  const expectedHasI = expected.hasI === true || context.hasI === true;
+  const totalSquares = expected.totalSquares || Math.abs(context.radicand);
+
+  console.log('[Grading Complex] User answer:', { userCoeff, userRadicand, userHasI });
+  console.log('[Grading Complex] Expected:', { expectedCoeff, expectedRadicand, expectedHasI, totalSquares });
+
+  // Check completion flags
+  const isComplete = answer.isComplete === true;
+  const isFullySimplified = answer.isFullySimplified === true;
+
+  // Perfect answer: correct coefficient, radicand, hasI, and fully simplified
+  if (userCoeff === expectedCoeff && userRadicand === expectedRadicand && userHasI === expectedHasI && isFullySimplified) {
+    return { score: 'E', feedback: rule.feedback.E };
+  }
+
+  // Check if mathematically correct
+  // For positive: coeff² × radicand = total
+  // For negative with i: coeff² × radicand = |total| (and hasI must be true)
+  const userTotal = userCoeff * userCoeff * userRadicand;
+  const isNegativeRadicand = context.radicand < 0;
+
+  if (userTotal !== totalSquares) {
+    return { score: 'I', feedback: `Factorization incomplete. Keep adding factors.` };
+  }
+
+  // Check if hasI is correct for negative radicands
+  if (isNegativeRadicand && !userHasI) {
+    return { score: 'P', feedback: rule.feedback.P + ' (Don\'t forget to extract −1 as i!)' };
+  }
+
+  // Correct total but not fully simplified
+  if (!isFullySimplified) {
+    return { score: 'P', feedback: rule.feedback.P };
+  }
+
+  return { score: 'E', feedback: rule.feedback.E };
+}
+
+/**
  * Grade numeric exact match
  * For typed coefficient and radicand fields
  */
@@ -178,6 +262,26 @@ function gradeNumericExact(fieldId, answer, rule, context) {
 }
 
 /**
+ * Grade exact string match
+ * For dropdown selections like "Yes (negative radicand)" / "No (positive radicand)"
+ */
+function gradeExactMatch(fieldId, answer, rule, context) {
+  const expected = context[fieldId];
+  if (expected === undefined) {
+    console.warn(`[Grading] No expected value for ${fieldId} in context`);
+    return { score: 'I', feedback: 'Unable to grade - missing expected value' };
+  }
+
+  console.log(`[Grading ${fieldId}] User: "${answer}", Expected: "${expected}"`);
+
+  if (answer === expected) {
+    return { score: 'E', feedback: rule.feedback.E };
+  }
+
+  return { score: 'I', feedback: rule.feedback.I };
+}
+
+/**
  * Grade a field using appropriate method
  */
 export function gradeField(fieldId, answer, context) {
@@ -194,8 +298,16 @@ export function gradeField(fieldId, answer, context) {
     return gradeVisualRadicalPrime(answer, rule, context);
   }
 
+  if (rule.type === 'visual-radical-complex') {
+    return gradeVisualRadicalComplex(answer, rule, context);
+  }
+
   if (rule.type === 'numeric-exact') {
     return gradeNumericExact(fieldId, answer, rule, context);
+  }
+
+  if (rule.type === 'exact-match') {
+    return gradeExactMatch(fieldId, answer, rule, context);
   }
 
   return { score: 'I', feedback: 'Unknown rule type' };

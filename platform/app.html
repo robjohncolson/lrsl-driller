@@ -1829,6 +1829,23 @@
                 classTime.recordStar(starType);
               }
 
+              // Persist to database for leaderboard
+              if (userSystem.currentUser) {
+                const problem = platform.currentProblem;
+                fetch(`${SERVER_URL}/api/progress`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    username: userSystem.currentUser.username,
+                    scenario_topic: problem?.context?.topic || currentCartridgeId || 'Practice',
+                    star_type: starType,
+                    all_correct: true,
+                    hints_used: state.game.hintsUsed || 0,
+                    grading_mode: aiEnabled ? 'ai' : 'keywords'
+                  })
+                }).catch(err => console.warn('Failed to save progress:', err));
+              }
+
               document.getElementById('btn-grade').classList.add('hidden');
               document.getElementById('btn-next').classList.remove('hidden');
             } else {

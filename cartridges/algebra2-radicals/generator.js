@@ -16,6 +16,12 @@ export function generateProblem(modeId, context, mode) {
   if (modeId === 'simplify-radicals-typed') {
     return generateTypedRadical();
   }
+  if (modeId === 'simplify-radicals-complex') {
+    return generateComplexRadical();
+  }
+  if (modeId === 'simplify-radicals-complex-typed') {
+    return generateComplexTypedRadical();
+  }
   return generateVisualRadical();
 }
 
@@ -273,6 +279,233 @@ function generateTypedRadical() {
       'typed-radicand': remainder.toString()
     },
     scenario: `Simplify √${radicand}. Enter the coefficient and remaining radicand.`
+  };
+}
+
+/**
+ * Generate complex radical problems (Level 4)
+ * Mixed positive and negative radicands
+ * Negative radicands need -1 extracted as i
+ */
+function generateComplexRadical() {
+  // Mix of positive and negative problems (40+ problems)
+  // Format: [radicand, coefficient, remainder, hasI]
+  // hasI = true means original was negative, extracts as coefficient * i * √remainder
+  const problems = [
+    // NEGATIVE radicands (hasI = true)
+    // √(-8) = 2i√2
+    [-8, 2, 2, true],
+    [-12, 2, 3, true],
+    [-18, 3, 2, true],
+    [-20, 2, 5, true],
+    [-27, 3, 3, true],
+    [-28, 2, 7, true],
+    [-32, 4, 2, true],
+    [-44, 2, 11, true],
+    [-45, 3, 5, true],
+    [-48, 4, 3, true],
+    [-50, 5, 2, true],
+    [-52, 2, 13, true],
+    [-63, 3, 7, true],
+    [-72, 6, 2, true],
+    [-75, 5, 3, true],
+    [-80, 4, 5, true],
+    [-98, 7, 2, true],
+    [-99, 3, 11, true],
+    [-108, 6, 3, true],
+    [-112, 4, 7, true],
+    [-125, 5, 5, true],
+    [-147, 7, 3, true],
+    [-162, 9, 2, true],
+    [-175, 5, 7, true],
+    [-180, 6, 5, true],
+    [-200, 10, 2, true],
+    // Perfect negative squares
+    [-4, 2, 1, true],     // √(-4) = 2i
+    [-9, 3, 1, true],     // √(-9) = 3i
+    [-16, 4, 1, true],    // √(-16) = 4i
+    [-25, 5, 1, true],    // √(-25) = 5i
+    [-36, 6, 1, true],    // √(-36) = 6i
+    [-49, 7, 1, true],    // √(-49) = 7i
+    [-64, 8, 1, true],    // √(-64) = 8i
+    [-81, 9, 1, true],    // √(-81) = 9i
+    [-100, 10, 1, true],  // √(-100) = 10i
+    [-121, 11, 1, true],  // √(-121) = 11i
+    [-144, 12, 1, true],  // √(-144) = 12i
+
+    // POSITIVE radicands (hasI = false) - for mixing
+    [12, 2, 3, false],
+    [18, 3, 2, false],
+    [20, 2, 5, false],
+    [27, 3, 3, false],
+    [32, 4, 2, false],
+    [45, 3, 5, false],
+    [48, 4, 3, false],
+    [50, 5, 2, false],
+    [63, 3, 7, false],
+    [72, 6, 2, false],
+    [75, 5, 3, false],
+    [80, 4, 5, false],
+    [98, 7, 2, false],
+    [108, 6, 3, false],
+    [125, 5, 5, false],
+    [147, 7, 3, false],
+    [180, 6, 5, false],
+    // Perfect positive squares
+    [36, 6, 1, false],
+    [49, 7, 1, false],
+    [64, 8, 1, false],
+    [81, 9, 1, false],
+    [100, 10, 1, false],
+  ];
+
+  const [radicand, coefficient, remainder, hasI] = pickProblem(problems);
+
+  const expression = `√${radicand}`;
+  let simplified;
+  if (hasI) {
+    if (remainder === 1) {
+      simplified = `${coefficient}i`;
+    } else {
+      simplified = `${coefficient}i√${remainder}`;
+    }
+  } else {
+    simplified = remainder === 1 ? `${coefficient}` : `${coefficient}√${remainder}`;
+  }
+
+  return {
+    context: {
+      radicand,
+      coefficient,
+      remainingRadicand: remainder,
+      hasI,
+      problemType: 'Complex Radical',
+      expression
+    },
+    graphConfig: null,
+    answers: {
+      'visual-radical-complex': {
+        value: simplified,
+        coefficient: coefficient,
+        radicand: remainder,
+        hasI: hasI,
+        totalSquares: Math.abs(radicand)
+      }
+    },
+    scenario: `Simplify √${radicand}. ${hasI ? 'Extract −1 as i, then simplify the remaining factors.' : 'Factor and extract pairs.'}`
+  };
+}
+
+/**
+ * Generate complex typed radical problems (Level 5)
+ * No scaffolding - student selects if answer has i, coefficient, and radicand
+ */
+function generateComplexTypedRadical() {
+  // Same problem set as Level 4 but for typed input (60+ problems)
+  // Format: [radicand, coefficient, remainder, hasI]
+  const problems = [
+    // NEGATIVE radicands (hasI = true)
+    [-8, 2, 2, true],
+    [-12, 2, 3, true],
+    [-18, 3, 2, true],
+    [-20, 2, 5, true],
+    [-27, 3, 3, true],
+    [-28, 2, 7, true],
+    [-32, 4, 2, true],
+    [-44, 2, 11, true],
+    [-45, 3, 5, true],
+    [-48, 4, 3, true],
+    [-50, 5, 2, true],
+    [-52, 2, 13, true],
+    [-63, 3, 7, true],
+    [-72, 6, 2, true],
+    [-75, 5, 3, true],
+    [-80, 4, 5, true],
+    [-98, 7, 2, true],
+    [-99, 3, 11, true],
+    [-108, 6, 3, true],
+    [-112, 4, 7, true],
+    [-125, 5, 5, true],
+    [-147, 7, 3, true],
+    [-162, 9, 2, true],
+    [-175, 5, 7, true],
+    [-180, 6, 5, true],
+    [-200, 10, 2, true],
+    // Perfect negative squares
+    [-4, 2, 1, true],
+    [-9, 3, 1, true],
+    [-16, 4, 1, true],
+    [-25, 5, 1, true],
+    [-36, 6, 1, true],
+    [-49, 7, 1, true],
+    [-64, 8, 1, true],
+    [-81, 9, 1, true],
+    [-100, 10, 1, true],
+    [-121, 11, 1, true],
+    [-144, 12, 1, true],
+
+    // POSITIVE radicands (hasI = false)
+    [8, 2, 2, false],
+    [12, 2, 3, false],
+    [18, 3, 2, false],
+    [20, 2, 5, false],
+    [27, 3, 3, false],
+    [28, 2, 7, false],
+    [32, 4, 2, false],
+    [45, 3, 5, false],
+    [48, 4, 3, false],
+    [50, 5, 2, false],
+    [63, 3, 7, false],
+    [72, 6, 2, false],
+    [75, 5, 3, false],
+    [80, 4, 5, false],
+    [98, 7, 2, false],
+    [108, 6, 3, false],
+    [125, 5, 5, false],
+    [147, 7, 3, false],
+    [162, 9, 2, false],
+    [180, 6, 5, false],
+    [200, 10, 2, false],
+    // Perfect positive squares
+    [36, 6, 1, false],
+    [49, 7, 1, false],
+    [64, 8, 1, false],
+    [81, 9, 1, false],
+    [100, 10, 1, false],
+    [121, 11, 1, false],
+    [144, 12, 1, false],
+  ];
+
+  const [radicand, coefficient, remainder, hasI] = pickProblem(problems);
+
+  const expression = `√${radicand}`;
+  let simplified;
+  if (hasI) {
+    simplified = remainder === 1 ? `${coefficient}i` : `${coefficient}i√${remainder}`;
+  } else {
+    simplified = remainder === 1 ? `${coefficient}` : `${coefficient}√${remainder}`;
+  }
+
+  return {
+    context: {
+      radicand,
+      coefficient,
+      remainingRadicand: remainder,
+      hasI,
+      problemType: 'Complex (No Scaffolding)',
+      expression,
+      // These are for grading the typed fields
+      'typed-has-i': hasI ? 'Yes (negative radicand)' : 'No (positive radicand)',
+      'typed-complex-coefficient': coefficient,
+      'typed-complex-radicand': remainder
+    },
+    graphConfig: null,
+    answers: {
+      'typed-has-i': hasI ? 'Yes (negative radicand)' : 'No (positive radicand)',
+      'typed-complex-coefficient': coefficient.toString(),
+      'typed-complex-radicand': remainder.toString()
+    },
+    scenario: `Simplify √${radicand}. ${hasI ? 'This is a negative radicand - don\'t forget i!' : 'This is a positive radicand.'}`
   };
 }
 
