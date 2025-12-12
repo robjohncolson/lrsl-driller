@@ -545,6 +545,14 @@ CREATE POLICY "Allow all on time_problems" ON time_problems FOR ALL USING (true)
 <!-- ==================== PART 4 ==================== -->
 <h2 id="part4"><span class="step-number">4</span> Deploy Backend on Railway <span class="time-estimate">8 min</span></h2>
 
+<div class="info">
+  <strong>Video walkthrough:</strong> <a href="https://youtu.be/K_DQSPn9rMc" target="_blank">Watch Video 3</a> - covers Part 4
+</div>
+
+<div class="warning">
+  <strong>Note on Railway pricing:</strong> Railway offers a free trial ($5 credit / 30 days). After the trial, the backend server costs approximately $5/month. This is currently the only paid component of the setup.
+</div>
+
 <div class="card">
   <h3>Step 1: Create Railway Project from GitHub</h3>
   <ol class="steps">
@@ -574,7 +582,7 @@ CREATE POLICY "Allow all on time_problems" ON time_problems FOR ALL USING (true)
   <ol class="steps">
     <li>Go to the <strong>"Variables"</strong> tab</li>
     <li>Click <strong>"+ New Variable"</strong></li>
-    <li>Add these three variables:</li>
+    <li>Add these two variables:</li>
   </ol>
 
   <table>
@@ -589,10 +597,6 @@ CREATE POLICY "Allow all on time_problems" ON time_problems FOR ALL USING (true)
     <tr>
       <td><code>SUPABASE_ANON_KEY</code></td>
       <td>Your anon public key from Part 3 (starts with <code>eyJ...</code>)</td>
-    </tr>
-    <tr>
-      <td><code>PORT</code></td>
-      <td><code>3000</code></td>
     </tr>
   </table>
 
@@ -615,6 +619,10 @@ CREATE POLICY "Allow all on time_problems" ON time_problems FOR ALL USING (true)
 
 <!-- ==================== PART 5 ==================== -->
 <h2 id="part5"><span class="step-number">5</span> Deploy Frontend on Vercel <span class="time-estimate">5 min</span></h2>
+
+<div class="info">
+  <strong>Video walkthrough:</strong> <a href="https://youtu.be/Xt8FyHxEA00" target="_blank">Watch Video 4</a> - covers Parts 5-6
+</div>
 
 <div class="card">
   <h3>Step 1: Import Project</h3>
@@ -681,6 +689,10 @@ CREATE POLICY "Allow all on time_problems" ON time_problems FOR ALL USING (true)
 <!-- ==================== PART 7 ==================== -->
 <h2 id="part7"><span class="step-number">7</span> Set Up AI Grading Keys (Optional) <span class="time-estimate">5 min</span></h2>
 
+<div class="info">
+  <strong>Video walkthrough:</strong> <a href="https://youtu.be/m9lBJNKxZnc" target="_blank">Watch Video 5</a> - covers Part 7
+</div>
+
 <div class="card">
   <p>AI grading provides intelligent feedback on free-response answers. Without it, the app uses keyword matching (still works, just less sophisticated).</p>
 
@@ -737,6 +749,10 @@ CREATE POLICY "Allow all on time_problems" ON time_problems FOR ALL USING (true)
 
 <!-- ==================== PART 8 ==================== -->
 <h2 id="part8"><span class="step-number">8</span> Edit Code with Project IDX <span class="time-estimate">Setup: 5 min</span></h2>
+
+<div class="info">
+  <strong>Video walkthrough:</strong> <a href="https://youtu.be/fH-5rgCg2Zg" target="_blank">Watch Video 6</a> - covers Part 8
+</div>
 
 <div class="card">
   <p>When you're ready to create your own cartridges or customize the app, use <strong>Project IDX</strong> - Google's free cloud IDE.</p>
@@ -902,6 +918,10 @@ git push</code></pre>
   <ul>
     <li><strong><a href="https://youtu.be/fwL0h1vU8ws" target="_blank">Video 1: Account Setup & GitHub Fork</a></strong> - Covers Parts 1-2</li>
     <li><strong><a href="https://youtu.be/zg3pIdLs4us" target="_blank">Video 2: Supabase Database Setup</a></strong> - Covers Part 3</li>
+    <li><strong><a href="https://youtu.be/K_DQSPn9rMc" target="_blank">Video 3: Railway Backend Deployment</a></strong> - Covers Part 4</li>
+    <li><strong><a href="https://youtu.be/Xt8FyHxEA00" target="_blank">Video 4: Vercel Frontend & Testing</a></strong> - Covers Parts 5-6</li>
+    <li><strong><a href="https://youtu.be/m9lBJNKxZnc" target="_blank">Video 5: AI Grading Setup</a></strong> - Covers Part 7</li>
+    <li><strong><a href="https://youtu.be/fH-5rgCg2Zg" target="_blank">Video 6: Project IDX & Code Editing</a></strong> - Covers Part 8</li>
   </ul>
 </div>
 
