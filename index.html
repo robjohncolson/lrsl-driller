@@ -313,6 +313,10 @@
 <!-- ==================== PART 1 ==================== -->
 <h2 id="part1"><span class="step-number">1</span> Create Your Accounts <span class="time-estimate">5 min</span></h2>
 
+<div class="info">
+  <strong>Video walkthrough:</strong> <a href="https://youtu.be/fwL0h1vU8ws" target="_blank">Watch Video 1</a> - covers Parts 1-2
+</div>
+
 <div class="card">
   <p>Create accounts on these 4 free services. <strong>Start with GitHub</strong>, then use "Sign in with GitHub" for the others (easier!).</p>
 
@@ -368,6 +372,10 @@
 <!-- ==================== PART 3 ==================== -->
 <h2 id="part3"><span class="step-number">3</span> Set Up Supabase Database <span class="time-estimate">10 min</span></h2>
 
+<div class="info">
+  <strong>Video walkthrough:</strong> <a href="https://youtu.be/zg3pIdLs4us" target="_blank">Watch Video 2</a> - covers Part 3
+</div>
+
 <div class="card">
   <h3>Step 1: Create a New Project</h3>
   <ol class="steps">
@@ -385,8 +393,8 @@
     <li>Wait 2-3 minutes for setup to complete</li>
   </ol>
 
-  <div class="warning">
-    <strong>IMPORTANT:</strong> Copy and save your database password somewhere safe! You'll need it soon.
+  <div class="info">
+    <strong>Note:</strong> You don't need to save the database password - we'll use the API key method instead (easier!).
   </div>
 </div>
 
@@ -517,20 +525,20 @@ CREATE POLICY "Allow all on time_problems" ON time_problems FOR ALL USING (true)
 </div>
 
 <div class="card">
-  <h3>Step 3: Get Your Database Connection URL</h3>
+  <h3>Step 3: Get Your Project URL and API Key</h3>
   <ol class="steps">
     <li>Click <strong>"Project Settings"</strong> (gear icon in bottom-left)</li>
-    <li>Click <strong>"Database"</strong> in the settings menu</li>
-    <li>Scroll to <strong>"Connection string"</strong> section</li>
-    <li>Click the <strong>"URI"</strong> tab</li>
-    <li>Copy the connection string - it looks like:<br>
-      <code>postgresql://postgres.[project-id]:[YOUR-PASSWORD]@aws-0-us-west-1.pooler.supabase.com:6543/postgres</code>
+    <li>Click <strong>"API"</strong> in the settings menu (under Configuration)</li>
+    <li>Find and copy these two values:
+      <ul>
+        <li><strong>Project URL</strong> - looks like: <code>https://abcdefghijk.supabase.co</code></li>
+        <li><strong>anon public</strong> key (under "Project API keys") - a long string starting with <code>eyJ...</code></li>
+      </ul>
     </li>
-    <li><strong>Replace <code>[YOUR-PASSWORD]</code></strong> with the password you saved earlier</li>
   </ol>
 
   <div class="warning">
-    <strong>Save this complete URL!</strong> You'll paste it into Railway in the next step.
+    <strong>Save both values!</strong> You'll need them for Railway configuration in the next step.
   </div>
 </div>
 
@@ -566,7 +574,7 @@ CREATE POLICY "Allow all on time_problems" ON time_problems FOR ALL USING (true)
   <ol class="steps">
     <li>Go to the <strong>"Variables"</strong> tab</li>
     <li>Click <strong>"+ New Variable"</strong></li>
-    <li>Add these two variables:</li>
+    <li>Add these three variables:</li>
   </ol>
 
   <table>
@@ -575,8 +583,12 @@ CREATE POLICY "Allow all on time_problems" ON time_problems FOR ALL USING (true)
       <th>Value</th>
     </tr>
     <tr>
-      <td><code>DATABASE_URL</code></td>
-      <td>Your Supabase connection URL (from Part 3, Step 3)</td>
+      <td><code>SUPABASE_URL</code></td>
+      <td>Your Project URL from Part 3 (e.g., <code>https://abcdefghijk.supabase.co</code>)</td>
+    </tr>
+    <tr>
+      <td><code>SUPABASE_ANON_KEY</code></td>
+      <td>Your anon public key from Part 3 (starts with <code>eyJ...</code>)</td>
     </tr>
     <tr>
       <td><code>PORT</code></td>
@@ -804,10 +816,10 @@ git push</code></pre>
 <div class="card">
   <h3>"Database connection failed" in Railway Logs</h3>
   <ul>
-    <li>Double-check <code>DATABASE_URL</code> in Railway variables</li>
-    <li>Ensure <code>[YOUR-PASSWORD]</code> is replaced with your actual Supabase password</li>
+    <li>Double-check <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> in Railway variables</li>
+    <li>Ensure <code>SUPABASE_URL</code> is the Project URL (e.g., <code>https://abcdefghijk.supabase.co</code>)</li>
+    <li>Ensure <code>SUPABASE_ANON_KEY</code> is the anon public key (starts with <code>eyJ...</code>)</li>
     <li>Check Supabase dashboard - project should show "Active" status</li>
-    <li>Make sure you copied the full URL including the password</li>
   </ul>
 </div>
 
@@ -886,9 +898,11 @@ git push</code></pre>
 
 <div class="card">
   <h3>Video Tutorials</h3>
-  <div class="video-placeholder">
-    Video tutorials coming soon! Check back for step-by-step walkthrough videos.
-  </div>
+  <p>Watch these step-by-step walkthrough videos:</p>
+  <ul>
+    <li><strong><a href="https://youtu.be/fwL0h1vU8ws" target="_blank">Video 1: Account Setup & GitHub Fork</a></strong> - Covers Parts 1-2</li>
+    <li><strong><a href="https://youtu.be/zg3pIdLs4us" target="_blank">Video 2: Supabase Database Setup</a></strong> - Covers Part 3</li>
+  </ul>
 </div>
 
 <footer>
