@@ -9,6 +9,48 @@ export class CartridgeLoader {
     this.sharedPath = config.sharedPath || '/shared';
     this.loadedCartridge = null;
     this.contexts = null;
+    this.registry = null;
+  }
+
+  /**
+   * Load the cartridge registry (list of all available cartridges)
+   * @returns {Promise<Array>} Array of cartridge metadata objects
+   */
+  async loadRegistry() {
+    if (this.registry) return this.registry;
+
+    try {
+      const response = await fetch(`${this.basePath}/registry.json`);
+      if (!response.ok) {
+        console.warn('No registry.json found, returning empty list');
+        return [];
+      }
+      const data = await response.json();
+      this.registry = data.cartridges || [];
+      return this.registry;
+    } catch (err) {
+      console.error('Failed to load cartridge registry:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Get available cartridges grouped by subject
+   * @returns {Promise<Object>} Object with subjects as keys, cartridge arrays as values
+   */
+  async getCartridgesBySubject() {
+    const cartridges = await this.loadRegistry();
+    const grouped = {};
+
+    for (const cartridge of cartridges) {
+      const subject = cartridge.subject || 'Other';
+      if (!grouped[subject]) {
+        grouped[subject] = [];
+      }
+      grouped[subject].push(cartridge);
+    }
+
+    return grouped;
   }
 
   /**

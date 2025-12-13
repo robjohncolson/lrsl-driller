@@ -1,0 +1,32 @@
+{
+  "cartridges": [
+    {
+      "id": "lsrl-interpretation",
+      "name": "LSRL Interpretation",
+      "subject": "AP Statistics",
+      "description": "Slope, intercept, correlation",
+      "shortCode": "LSRL"
+    },
+    {
+      "id": "lsrl-calculations",
+      "name": "LSRL Calculations",
+      "subject": "AP Statistics",
+      "description": "Calculate b, a, and standard deviation",
+      "shortCode": "CALC"
+    },
+    {
+      "id": "residuals",
+      "name": "Residuals Analysis",
+      "subject": "AP Statistics",
+      "description": "Residual analysis & plots",
+      "shortCode": "RES"
+    },
+    {
+      "id": "algebra2-radicals",
+      "name": "Simplify Radicals",
+      "subject": "Algebra 2",
+      "description": "Numbers, polynomials, radicals",
+      "shortCode": "RAD"
+    }
+  ]
+}

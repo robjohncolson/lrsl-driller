@@ -1,0 +1,238 @@
+{
+  "meta": {
+    "id": "lsrl-calculations-contexts",
+    "description": "Parameter ranges and difficulty settings for LSRL calculation problems",
+    "compatibleWith": ["lsrl-calculations"]
+  },
+  "difficulty": {
+    "easy": {
+      "description": "Nice numbers, positive correlations",
+      "parameters": {
+        "r": { "min": 0.5, "max": 0.9, "sign": "positive", "decimals": 1 },
+        "sx": { "min": 2, "max": 10, "step": 1 },
+        "sy": { "min": 4, "max": 20, "step": 2 },
+        "xBar": { "min": 10, "max": 50, "step": 5 },
+        "yBar": { "min": 20, "max": 100, "step": 10 },
+        "datasetSize": { "min": 5, "max": 5 }
+      },
+      "tags": ["intro", "warm-up"]
+    },
+    "medium": {
+      "description": "Mixed signs, some decimals",
+      "parameters": {
+        "r": { "min": 0.4, "max": 0.95, "sign": "mixed", "decimals": 2 },
+        "sx": { "min": 2, "max": 15, "step": 0.5 },
+        "sy": { "min": 3, "max": 30, "step": 1 },
+        "xBar": { "min": 5, "max": 60, "step": 2.5 },
+        "yBar": { "min": 15, "max": 120, "step": 5 },
+        "datasetSize": { "min": 5, "max": 6 }
+      },
+      "tags": ["practice", "homework"]
+    },
+    "hard": {
+      "description": "Challenging numbers, negative correlations common",
+      "parameters": {
+        "r": { "min": 0.3, "max": 0.98, "sign": "mixed-negative-bias", "decimals": 3 },
+        "sx": { "min": 1.5, "max": 20, "step": 0.25 },
+        "sy": { "min": 2, "max": 40, "step": 0.5 },
+        "xBar": { "min": 3, "max": 75, "step": 1 },
+        "yBar": { "min": 10, "max": 150, "step": 2.5 },
+        "datasetSize": { "min": 6, "max": 7 }
+      },
+      "tags": ["challenge", "test-prep"]
+    }
+  },
+  "specialProblems": {
+    "equal-std-devs": {
+      "description": "When sₓ = sᵧ, so b = r",
+      "parameters": {
+        "r": { "min": 0.4, "max": 0.95 },
+        "sx": { "value": "same-as-sy" },
+        "sy": { "min": 5, "max": 20 }
+      },
+      "insight": "When sₓ = sᵧ, the slope equals the correlation coefficient exactly.",
+      "tags": ["conceptual", "ratio-check"]
+    },
+    "negative-slope": {
+      "description": "Practice with negative correlations",
+      "parameters": {
+        "r": { "min": -0.95, "max": -0.4, "sign": "negative" }
+      },
+      "insight": "Negative r always means negative slope. Watch those signs!",
+      "tags": ["sign-practice"]
+    },
+    "large-ratio": {
+      "description": "When sᵧ >> sₓ, slope is much larger than r",
+      "parameters": {
+        "sx": { "min": 2, "max": 4 },
+        "sy": { "min": 15, "max": 30 }
+      },
+      "insight": "When sᵧ is much larger than sₓ, the slope magnifies r.",
+      "tags": ["conceptual"]
+    },
+    "small-ratio": {
+      "description": "When sᵧ << sₓ, slope is smaller than r",
+      "parameters": {
+        "sx": { "min": 15, "max": 30 },
+        "sy": { "min": 2, "max": 5 }
+      },
+      "insight": "When sᵧ is smaller than sₓ, the slope is 'compressed' compared to r.",
+      "tags": ["conceptual"]
+    },
+    "negative-intercept": {
+      "description": "Cases where a ends up negative",
+      "parameters": {
+        "b": { "min": 3, "max": 6 },
+        "xBar": { "min": 30, "max": 50 },
+        "yBar": { "min": 50, "max": 80 }
+      },
+      "insight": "The y-intercept can be negative even with positive values.",
+      "tags": ["practice"]
+    }
+  },
+  "standardDeviationSets": {
+    "nice-mean": {
+      "description": "Dataset with a whole number mean",
+      "examples": [
+        { "data": [4, 6, 8, 10, 12], "mean": 8 },
+        { "data": [10, 15, 20, 25, 30], "mean": 20 },
+        { "data": [3, 5, 7, 9, 11], "mean": 7 },
+        { "data": [12, 14, 16, 18, 20], "mean": 16 }
+      ],
+      "tags": ["intro", "easy"]
+    },
+    "decimal-mean": {
+      "description": "Dataset with a decimal mean",
+      "examples": [
+        { "data": [4, 7, 8, 10, 11], "mean": 8 },
+        { "data": [15, 18, 20, 22, 25], "mean": 20 },
+        { "data": [3, 4, 8, 9, 11], "mean": 7 }
+      ],
+      "tags": ["medium"]
+    },
+    "larger-spread": {
+      "description": "Dataset with more variability",
+      "examples": [
+        { "data": [2, 8, 12, 18, 25], "mean": 13 },
+        { "data": [5, 12, 20, 28, 35], "mean": 20 }
+      ],
+      "tags": ["hard"]
+    },
+    "six-values": {
+      "description": "Slightly larger dataset",
+      "examples": [
+        { "data": [4, 6, 8, 10, 12, 14], "mean": 9 },
+        { "data": [10, 12, 14, 16, 18, 20], "mean": 15 }
+      ],
+      "tags": ["medium", "extended"]
+    }
+  },
+  "progressionSuggestions": {
+    "lesson-intro": [
+      { "mode": "sign-check", "count": 3, "difficulty": "easy" },
+      { "mode": "find-b", "count": 5, "difficulty": "easy" },
+      { "mode": "find-a", "count": 5, "difficulty": "easy" }
+    ],
+    "skill-building": [
+      { "mode": "find-b", "count": 5, "difficulty": "medium" },
+      { "mode": "find-a", "count": 5, "difficulty": "medium" },
+      { "mode": "ratio-check", "count": 2, "difficulty": "medium" }
+    ],
+    "full-practice": [
+      { "mode": "find-b", "count": 3, "difficulty": "medium" },
+      { "mode": "find-a", "count": 3, "difficulty": "medium" },
+      { "mode": "full-lsrl", "count": 5, "difficulty": "medium" }
+    ],
+    "std-dev-focus": [
+      { "mode": "std-dev", "count": 5, "difficulty": "easy" },
+      { "mode": "std-dev", "count": 5, "difficulty": "medium" }
+    ],
+    "test-prep": [
+      { "mode": "full-lsrl", "count": 5, "difficulty": "hard" },
+      { "mode": "std-dev", "count": 3, "difficulty": "hard" },
+      { "mode": "sign-check", "count": 2, "difficulty": "hard" }
+    ]
+  },
+  "formulaReference": {
+    "slope": {
+      "formula": "b = r × (sᵧ / sₓ)",
+      "latex": "b = r \\cdot \\frac{s_y}{s_x}",
+      "words": "Slope equals correlation times the ratio of standard deviations",
+      "memoryTip": "r tells you direction, the ratio scales it"
+    },
+    "intercept": {
+      "formula": "a = ȳ − b × x̄",
+      "latex": "a = \\bar{y} - b \\cdot \\bar{x}",
+      "words": "Y-intercept equals y-bar minus b times x-bar",
+      "memoryTip": "The line passes through (x̄, ȳ), so we can solve for a"
+    },
+    "stdDev": {
+      "formula": "s = √[Σ(xᵢ − x̄)² / (n − 1)]",
+      "latex": "s = \\sqrt{\\frac{\\sum(x_i - \\bar{x})^2}{n-1}}",
+      "words": "Standard deviation is the square root of the average squared deviation",
+      "memoryTip": "Divide by (n-1) for sample std dev, not n!"
+    },
+    "lsrl": {
+      "formula": "ŷ = a + bx",
+      "latex": "\\hat{y} = a + bx",
+      "words": "Predicted y equals intercept plus slope times x",
+      "memoryTip": "ŷ (y-hat) means PREDICTED y"
+    }
+  },
+  "errorPatterns": {
+    "slope": [
+      {
+        "id": "sign-error",
+        "description": "Got magnitude right but wrong sign",
+        "cause": "Forgot that sign of b matches sign of r",
+        "remediation": "Always check: is r positive or negative? Your slope should match."
+      },
+      {
+        "id": "inverted-ratio",
+        "description": "Used sₓ/sᵧ instead of sᵧ/sₓ",
+        "cause": "Confused which std dev goes on top",
+        "remediation": "Remember: sᵧ (response) on top, sₓ (explanatory) on bottom. Y over X."
+      },
+      {
+        "id": "forgot-r",
+        "description": "Just calculated the ratio, didn't multiply by r",
+        "cause": "Incomplete formula application",
+        "remediation": "The full formula is b = r × (sᵧ/sₓ). Don't forget to multiply by r!"
+      }
+    ],
+    "intercept": [
+      {
+        "id": "double-negative",
+        "description": "Error when b is negative",
+        "cause": "Didn't handle subtraction of negative correctly",
+        "remediation": "When b is negative: a = ȳ − (negative) = ȳ + |b×x̄|"
+      },
+      {
+        "id": "wrong-order",
+        "description": "Did operations in wrong order",
+        "cause": "Subtracted before multiplying",
+        "remediation": "First multiply b × x̄, THEN subtract from ȳ"
+      }
+    ],
+    "stdDev": [
+      {
+        "id": "divide-by-n",
+        "description": "Divided by n instead of (n-1)",
+        "cause": "Used population formula instead of sample",
+        "remediation": "For SAMPLE std dev, always divide by (n-1). This is called Bessel's correction."
+      },
+      {
+        "id": "forgot-sqrt",
+        "description": "Calculated variance but forgot square root",
+        "cause": "Stopped one step too early",
+        "remediation": "Variance is Σ(x-x̄)²/(n-1). Std dev is the SQUARE ROOT of variance."
+      },
+      {
+        "id": "forgot-square",
+        "description": "Didn't square the deviations",
+        "cause": "Used |x-x̄| instead of (x-x̄)²",
+        "remediation": "You must SQUARE each deviation before summing. This is what gives us variance."
+      }
+    ]
+  }
+}

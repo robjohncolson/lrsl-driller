@@ -145,38 +145,8 @@
         <div class="text-sm font-bold">Available Topics</div>
       </div>
       <div id="cartridge-list" class="p-2 space-y-2 max-h-80 overflow-y-auto">
-        <!-- AP Statistics -->
-        <div class="text-xs font-bold text-purple-600 uppercase tracking-wide px-2 pt-1">AP Statistics</div>
-        <button class="cartridge-option w-full flex items-center gap-3 p-2 rounded-lg hover:bg-purple-50 transition-colors border-2 border-transparent hover:border-purple-300" data-cartridge="lsrl-interpretation">
-          <div class="w-10 h-14 bg-gradient-to-b from-purple-500 to-purple-700 rounded flex items-center justify-center text-white text-xs font-bold shadow">
-            LSRL
-          </div>
-          <div class="text-left flex-1">
-            <div class="font-semibold text-gray-800 text-sm">LSRL Interpretation</div>
-            <div class="text-xs text-gray-500">Slope, intercept, correlation</div>
-          </div>
-        </button>
-        <button class="cartridge-option w-full flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 transition-colors border-2 border-transparent hover:border-blue-300" data-cartridge="residuals">
-          <div class="w-10 h-14 bg-gradient-to-b from-blue-500 to-blue-700 rounded flex items-center justify-center text-white text-xs font-bold shadow">
-            RES
-          </div>
-          <div class="text-left flex-1">
-            <div class="font-semibold text-gray-800 text-sm">Residuals</div>
-            <div class="text-xs text-gray-500">Residual analysis & plots</div>
-          </div>
-        </button>
-
-        <!-- Algebra 2 -->
-        <div class="text-xs font-bold text-green-600 uppercase tracking-wide px-2 pt-3">Algebra 2</div>
-        <button class="cartridge-option w-full flex items-center gap-3 p-2 rounded-lg hover:bg-green-50 transition-colors border-2 border-transparent hover:border-green-300" data-cartridge="algebra2-radicals">
-          <div class="w-10 h-14 bg-gradient-to-b from-green-500 to-green-700 rounded flex items-center justify-center text-white text-xs font-bold shadow">
-            FACT
-          </div>
-          <div class="text-left flex-1">
-            <div class="font-semibold text-gray-800 text-sm">Simplify Radicals</div>
-            <div class="text-xs text-gray-500">Numbers, polynomials, radicals</div>
-          </div>
-        </button>
+        <!-- Populated dynamically from registry.json -->
+        <div class="text-center py-4 text-gray-400 text-sm">Loading cartridges...</div>
       </div>
       <div class="bg-gray-50 px-4 py-2 text-xs text-gray-500 border-t">
         Click to load a different topic
@@ -693,6 +663,7 @@
     import { Leaderboard } from './core/leaderboard.js';
     import { ClassTime } from './core/class-time.js';
     import { TimeTracker } from './core/time-tracker.js';
+    import { CartridgeLoader } from './core/cartridge-loader.js';
 
     // ==================== CONFIGURATION ====================
     const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
@@ -1778,21 +1749,91 @@
     // Backdrop click closes dropdown
     document.getElementById('cartridge-dropdown-backdrop')?.addEventListener('click', hideCartridgeDropdown);
 
-    // Cartridge option clicks
-    document.querySelectorAll('.cartridge-option').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const cartridgeId = btn.dataset.cartridge;
-        if (cartridgeId && cartridgeId !== currentCartridgeId) {
-          hideCartridgeDropdown();
-          currentCartridgeId = cartridgeId;
-          localStorage.setItem('lastCartridgeId', cartridgeId);
-          document.getElementById('cartridge-select').value = cartridgeId;
-          loadCartridgeWithAnimation(cartridgeId);
-        } else {
-          hideCartridgeDropdown();
+    // Subject color schemes - using full Tailwind class names for JIT compatibility
+    const subjectColors = {
+      'AP Statistics': {
+        header: 'text-purple-600',
+        btnHover: 'hover:bg-purple-50 hover:border-purple-300',
+        cartridge: 'from-purple-500 to-purple-700'
+      },
+      'Algebra 2': {
+        header: 'text-green-600',
+        btnHover: 'hover:bg-green-50 hover:border-green-300',
+        cartridge: 'from-green-500 to-green-700'
+      },
+      'default': {
+        header: 'text-blue-600',
+        btnHover: 'hover:bg-blue-50 hover:border-blue-300',
+        cartridge: 'from-blue-500 to-blue-700'
+      }
+    };
+
+    // Populate cartridge list from registry
+    async function populateCartridgeList() {
+      const loader = new CartridgeLoader({ basePath: '/cartridges' });
+      const grouped = await loader.getCartridgesBySubject();
+      const listEl = document.getElementById('cartridge-list');
+      const selectEl = document.getElementById('cartridge-select');
+
+      // Clear loading placeholder
+      listEl.innerHTML = '';
+      selectEl.innerHTML = '';
+
+      // Build HTML for each subject group
+      for (const [subject, cartridges] of Object.entries(grouped)) {
+        const colors = subjectColors[subject] || subjectColors.default;
+
+        // Subject header
+        const header = document.createElement('div');
+        header.className = `text-xs font-bold ${colors.header} uppercase tracking-wide px-2 pt-1`;
+        header.textContent = subject;
+        listEl.appendChild(header);
+
+        // Cartridge buttons
+        for (const cart of cartridges) {
+          const btn = document.createElement('button');
+          btn.className = `cartridge-option w-full flex items-center gap-3 p-2 rounded-lg ${colors.btnHover} transition-colors border-2 border-transparent`;
+          btn.dataset.cartridge = cart.id;
+          btn.innerHTML = `
+            <div class="w-10 h-14 bg-gradient-to-b ${colors.cartridge} rounded flex items-center justify-center text-white text-xs font-bold shadow">
+              ${cart.shortCode || cart.id.substring(0, 4).toUpperCase()}
+            </div>
+            <div class="text-left flex-1">
+              <div class="font-semibold text-gray-800 text-sm">${cart.name}</div>
+              <div class="text-xs text-gray-500">${cart.description || ''}</div>
+            </div>
+          `;
+          listEl.appendChild(btn);
+
+          // Also add to hidden select
+          const option = document.createElement('option');
+          option.value = cart.id;
+          option.textContent = cart.name;
+          selectEl.appendChild(option);
         }
+      }
+
+      // Set up click handlers for the newly created buttons
+      setupCartridgeOptionListeners();
+    }
+
+    // Cartridge option click handlers (called after DOM is populated)
+    function setupCartridgeOptionListeners() {
+      document.querySelectorAll('.cartridge-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cartridgeId = btn.dataset.cartridge;
+          if (cartridgeId && cartridgeId !== currentCartridgeId) {
+            hideCartridgeDropdown();
+            currentCartridgeId = cartridgeId;
+            localStorage.setItem('lastCartridgeId', cartridgeId);
+            document.getElementById('cartridge-select').value = cartridgeId;
+            loadCartridgeWithAnimation(cartridgeId);
+          } else {
+            hideCartridgeDropdown();
+          }
+        });
       });
-    });
+    }
 
     async function loadCartridgeWithAnimation(cartridgeId) {
       console.log(`[App] loadCartridgeWithAnimation called with: "${cartridgeId}"`);
@@ -2181,10 +2222,12 @@
           rightPane.classList.add('lg:w-1/2');
           graphCard.classList.remove('hidden');
         } else {
-          // Full-width layout without graph
-          leftPane.classList.add('hidden');
+          // Narrower left pane for scenario only (no graph)
+          leftPane.classList.remove('hidden');
+          leftPane.classList.remove('lg:w-1/2');
+          leftPane.classList.add('lg:w-1/3');
           rightPane.classList.remove('lg:w-1/2');
-          rightPane.classList.add('lg:w-full');
+          rightPane.classList.add('lg:w-2/3');
           graphCard.classList.add('hidden');
         }
 
@@ -2252,8 +2295,42 @@
       const problem = platform.currentProblem;
       if (!problem) return;
 
-      document.getElementById('scenario-title').textContent = problem.context?.topic || 'Practice Problem';
+      document.getElementById('scenario-title').textContent = problem.context?.topic || problem.context?.modeName || 'Practice Problem';
       document.getElementById('scenario-text').textContent = problem.scenario || '';
+
+      // Render "given" values if present (for calculation-type cartridges)
+      const infoPanel = document.getElementById('info-panel');
+      if (problem.given && infoPanel) {
+        const givenHtml = Object.entries(problem.given).map(([key, value]) => {
+          // Format the label (e.g., 'sx' -> 'sₓ', 'xBar' -> 'x̄')
+          const labelMap = {
+            r: 'r',
+            sx: 'sₓ',
+            sy: 'sᵧ',
+            xBar: 'x̄',
+            yBar: 'ȳ',
+            b: 'b',
+            a: 'a',
+            n: 'n',
+            dataset: 'Data'
+          };
+          const label = labelMap[key] || key;
+
+          // Format array values
+          let displayValue = value;
+          if (Array.isArray(value)) {
+            displayValue = value.join(', ');
+          } else if (typeof value === 'number') {
+            displayValue = value;
+          }
+
+          return `<div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-gray-200">
+            <span class="text-gray-500 text-xs">${label}</span>
+            <span class="font-mono font-bold text-purple-700 ml-1">${displayValue}</span>
+          </div>`;
+        }).join('');
+        infoPanel.innerHTML = givenHtml;
+      }
 
       // Start tracking this problem
       const problemId = `${currentCartridgeId}-${platform.currentMode}-${Date.now()}`;
@@ -2311,6 +2388,9 @@
     async function init() {
       // Load settings first
       loadSettings();
+
+      // Populate cartridge list from registry (auto-detects cartridges)
+      await populateCartridgeList();
 
       // Update initial cartridge display from saved preference
       const savedCartridge = localStorage.getItem('lastCartridgeId');

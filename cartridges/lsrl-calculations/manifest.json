@@ -1,0 +1,318 @@
+{
+  "meta": {
+    "id": "lsrl-calculations",
+    "name": "LSRL Calculations",
+    "subject": "AP Statistics",
+    "unit": "2",
+    "lesson": "8",
+    "skill": "Calculate slope (b), y-intercept (a), and standard deviation using formulas",
+    "description": "Students practice computational skills for regression: b = r(sᵧ/sₓ), a = ȳ - bx̄, and s = √[Σ(x-x̄)²/(n-1)]"
+  },
+  "config": {
+    "contextsFile": "contexts.json",
+    "skills": ["slope-calculation", "intercept-calculation", "standard-deviation", "full-lsrl"]
+  },
+  "display": {
+    "showGraph": false,
+    "showFormulaReference": true,
+    "formulaPanel": {
+      "slope": "b = r · (sᵧ / sₓ)",
+      "intercept": "a = ȳ − b · x̄",
+      "stdDev": "s = √[Σ(xᵢ − x̄)² / (n − 1)]"
+    },
+    "infoPanel": [
+      { "label": "Mode", "value": "{{modeName}}" },
+      { "label": "Problem", "value": "{{problemNumber}} of {{totalProblems}}" }
+    ]
+  },
+  "modes": [
+    {
+      "id": "find-b",
+      "name": "Find Slope (b)",
+      "unlockedBy": "default",
+      "description": "Given r, sₓ, and sᵧ, calculate the slope b",
+      "layout": {
+        "given": [
+          { "id": "r", "label": "r", "format": "decimal3" },
+          { "id": "sx", "label": "sₓ", "format": "decimal2" },
+          { "id": "sy", "label": "sᵧ", "format": "decimal2" }
+        ],
+        "inputs": [
+          {
+            "id": "b",
+            "label": "b = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "Calculate slope",
+            "width": "medium"
+          }
+        ],
+        "formulaHint": "b = r · (sᵧ / sₓ)"
+      }
+    },
+    {
+      "id": "find-a",
+      "name": "Find Y-Intercept (a)",
+      "unlockedBy": "default",
+      "description": "Given x̄, ȳ, and b, calculate the y-intercept a",
+      "layout": {
+        "given": [
+          { "id": "xBar", "label": "x̄", "format": "decimal2" },
+          { "id": "yBar", "label": "ȳ", "format": "decimal2" },
+          { "id": "b", "label": "b", "format": "decimal3" }
+        ],
+        "inputs": [
+          {
+            "id": "a",
+            "label": "a = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "Calculate y-intercept",
+            "width": "medium"
+          }
+        ],
+        "formulaHint": "a = ȳ − b · x̄"
+      }
+    },
+    {
+      "id": "full-lsrl",
+      "name": "Full LSRL Equation",
+      "unlockedBy": { "gold": 5 },
+      "description": "Given summary statistics, find both b and a",
+      "celebrationMessage": "🎉 Full LSRL Mode Unlocked! You've mastered the individual formulas.",
+      "layout": {
+        "given": [
+          { "id": "r", "label": "r", "format": "decimal3" },
+          { "id": "sx", "label": "sₓ", "format": "decimal2" },
+          { "id": "sy", "label": "sᵧ", "format": "decimal2" },
+          { "id": "xBar", "label": "x̄", "format": "decimal2" },
+          { "id": "yBar", "label": "ȳ", "format": "decimal2" }
+        ],
+        "inputs": [
+          {
+            "id": "b",
+            "label": "b = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "Calculate slope first",
+            "width": "medium",
+            "order": 1
+          },
+          {
+            "id": "a",
+            "label": "a = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "Then calculate y-intercept",
+            "width": "medium",
+            "order": 2
+          }
+        ],
+        "equationPreview": {
+          "template": "ŷ = {{a}} + {{b}}x",
+          "showWhenComplete": true
+        }
+      }
+    },
+    {
+      "id": "std-dev",
+      "name": "Standard Deviation",
+      "unlockedBy": { "gold": 3 },
+      "description": "Given a small dataset, calculate the mean and sample standard deviation",
+      "celebrationMessage": "📊 Standard Deviation Mode Unlocked!",
+      "layout": {
+        "given": [
+          { "id": "dataset", "label": "Data", "format": "array", "display": "inline" },
+          { "id": "n", "label": "n", "format": "integer" }
+        ],
+        "inputs": [
+          {
+            "id": "mean",
+            "label": "x̄ = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "Calculate mean first",
+            "width": "medium",
+            "order": 1
+          },
+          {
+            "id": "stdDev",
+            "label": "s = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "Then calculate std dev",
+            "width": "medium",
+            "order": 2
+          }
+        ],
+        "showWorkTable": {
+          "enabled": true,
+          "columns": ["xᵢ", "(xᵢ − x̄)", "(xᵢ − x̄)²"],
+          "helperRow": "Σ(xᵢ − x̄)² = ?"
+        }
+      }
+    },
+    {
+      "id": "sign-check",
+      "name": "Quick Sign Check",
+      "unlockedBy": "default",
+      "description": "Conceptual warm-up: predict the sign of the slope",
+      "layout": {
+        "given": [
+          { "id": "r", "label": "r", "format": "decimal3" }
+        ],
+        "inputs": [
+          {
+            "id": "slopeSign",
+            "label": "The slope b will be:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "positive", "label": "Positive (+)" },
+              { "id": "negative", "label": "Negative (−)" },
+              { "id": "zero", "label": "Zero (0)" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "ratio-check",
+      "name": "Ratio Reasoning",
+      "unlockedBy": { "gold": 2 },
+      "description": "Conceptual check: when sᵧ = sₓ, what happens?",
+      "celebrationMessage": "🧠 Ratio Reasoning Unlocked!",
+      "layout": {
+        "given": [
+          { "id": "r", "label": "r", "format": "decimal3" },
+          { "id": "sx", "label": "sₓ", "format": "decimal2" },
+          { "id": "sy", "label": "sᵧ", "format": "decimal2" },
+          { "id": "note", "label": "Notice", "value": "sₓ = sᵧ" }
+        ],
+        "inputs": [
+          {
+            "id": "b",
+            "label": "b = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "What is b when sₓ = sᵧ?",
+            "width": "medium"
+          },
+          {
+            "id": "insight",
+            "label": "When sₓ = sᵧ, b equals:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "r", "label": "r (the correlation)" },
+              { "id": "one", "label": "1" },
+              { "id": "zero", "label": "0" },
+              { "id": "sy", "label": "sᵧ" }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct - within acceptable tolerance",
+        "P": "Partially Correct - minor rounding/arithmetic error",
+        "I": "Incorrect - significant error or wrong approach"
+      }
+    },
+    "tolerances": {
+      "tight": { "absolute": 0.01, "relative": 0.01 },
+      "standard": { "absolute": 0.05, "relative": 0.02 },
+      "loose": { "absolute": 0.1, "relative": 0.05 }
+    },
+    "composite": {
+      "rule": "all-E-for-star",
+      "starTiers": ["gold", "silver", "bronze", "tin"]
+    }
+  },
+  "hints": {
+    "perMode": {
+      "find-b": {
+        "formula": "<strong>Formula:</strong> b = r · (sᵧ / sₓ)<br><br><strong>Steps:</strong><br>1. Divide sᵧ by sₓ<br>2. Multiply the result by r<br><br><strong>Watch out:</strong> The sign of b matches the sign of r!",
+        "example": "If r = 0.8, sᵧ = 12, sₓ = 4:<br>b = 0.8 × (12 ÷ 4) = 0.8 × 3 = 2.4"
+      },
+      "find-a": {
+        "formula": "<strong>Formula:</strong> a = ȳ − b · x̄<br><br><strong>Steps:</strong><br>1. Multiply b by x̄<br>2. Subtract that product from ȳ<br><br><strong>Watch out:</strong> If b is negative, subtracting a negative makes it addition!",
+        "example": "If ȳ = 50, b = 3, x̄ = 10:<br>a = 50 − (3 × 10) = 50 − 30 = 20"
+      },
+      "full-lsrl": {
+        "formula": "<strong>Two-step process:</strong><br><br><strong>Step 1:</strong> Find b = r · (sᵧ / sₓ)<br><strong>Step 2:</strong> Find a = ȳ − b · x̄<br><br>Then write: ŷ = a + bx",
+        "memoryTrick": "The LSRL always passes through the point (x̄, ȳ). That's why we use the means to find a!"
+      },
+      "std-dev": {
+        "formula": "<strong>Formula:</strong> s = √[Σ(xᵢ − x̄)² / (n − 1)]<br><br><strong>Steps:</strong><br>1. Find the mean x̄<br>2. Subtract x̄ from each value<br>3. Square each deviation<br>4. Sum the squares<br>5. Divide by (n − 1), not n!<br>6. Take the square root",
+        "whyN1": "We divide by (n−1) for the <em>sample</em> standard deviation. This gives us a better estimate of the population spread."
+      },
+      "sign-check": {
+        "rule": "<strong>Key insight:</strong> The sign of the slope b is ALWAYS the same as the sign of r.<br><br>• Positive r → Positive slope (line goes up)<br>• Negative r → Negative slope (line goes down)<br>• r = 0 → Slope = 0 (horizontal line)"
+      },
+      "ratio-check": {
+        "insight": "<strong>When sₓ = sᵧ:</strong><br><br>b = r × (sᵧ / sₓ) = r × (sᵧ / sᵧ) = r × 1 = <strong>r</strong><br><br>So when the standard deviations are equal, the slope equals the correlation coefficient exactly!"
+      }
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "streaksPerMode": true,
+    "tiers": [
+      {
+        "id": "find-b",
+        "name": "Find Slope (b)",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "find-a",
+        "name": "Find Y-Intercept (a)",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "sign-check",
+        "name": "Quick Sign Check",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "ratio-check",
+        "name": "Ratio Reasoning",
+        "unlockedBy": { "gold": 2 },
+        "celebrationMessage": "🧠 Ratio Reasoning Unlocked! You're seeing the deeper patterns."
+      },
+      {
+        "id": "std-dev",
+        "name": "Standard Deviation",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "📊 Standard Deviation Mode Unlocked! Time to measure spread."
+      },
+      {
+        "id": "full-lsrl",
+        "name": "Full LSRL Equation",
+        "unlockedBy": { "gold": 5 },
+        "celebrationMessage": "🎉 Full LSRL Mode Unlocked! Put it all together."
+      }
+    ]
+  },
+  "accessibility": {
+    "keyboardNav": true,
+    "screenReaderLabels": {
+      "r": "correlation coefficient r",
+      "sx": "standard deviation of x, s sub x",
+      "sy": "standard deviation of y, s sub y",
+      "xBar": "x bar, the mean of x",
+      "yBar": "y bar, the mean of y",
+      "b": "slope b",
+      "a": "y-intercept a"
+    }
+  }
+}
