@@ -359,18 +359,39 @@ export function getModeConfig(modeId) {
  * @returns {Object} { score: 'E'|'P'|'I', feedback: string }
  */
 export function gradeField(fieldId, answer, context) {
-  // Get expected answer from context.answers or context.validation
-  const expectedData = context.answers?.[fieldId] || context.validation?.[fieldId];
+  // The platform spreads problem.answers into context, so expected data is at context[fieldId]
+  // It could be: { value: x, formula: "...", steps: [...] } or just a number
+  let expectedData = context[fieldId];
 
-  if (!expectedData) {
+  // Also check nested structures just in case
+  if (!expectedData && context.answers) {
+    expectedData = context.answers[fieldId];
+  }
+  if (!expectedData && context.validation) {
+    expectedData = context.validation[fieldId];
+  }
+
+  if (expectedData === undefined || expectedData === null) {
     return {
       score: 'I',
-      feedback: 'Unable to grade - no expected answer configured'
+      feedback: `Unable to grade - no expected answer found for ${fieldId}`
     };
   }
 
-  // Get expected value
-  const expected = expectedData.value !== undefined ? expectedData.value : expectedData.expected;
+  // Get expected value - handle both { value: x } objects and direct numbers
+  let expected;
+  if (typeof expectedData === 'object' && expectedData !== null) {
+    expected = expectedData.value !== undefined ? expectedData.value : expectedData.expected;
+  } else {
+    expected = expectedData;
+  }
+
+  if (expected === undefined || expected === null) {
+    return {
+      score: 'I',
+      feedback: `Unable to grade - expected value not found for ${fieldId}`
+    };
+  }
 
   // Determine grading type based on field
   const multipleChoiceFields = ['slopeSign', 'insight'];
