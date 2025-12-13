@@ -256,8 +256,18 @@ function generateIncorrectFeedback(student, expected) {
   }
   
   // Inverted ratio (used sₓ/sᵧ instead of sᵧ/sₓ)
-  if (expected !== 0 && Math.abs(student - 1/expected) < 0.1) {
-    return `Did you invert the ratio? Remember: b = r × (sᵧ / sₓ), not (sₓ / sᵧ). Expected: ${expected}`;
+  // When inverted, student/expected = (sₓ/sᵧ)² which is typically < 1 when sᵧ > sₓ
+  // A good heuristic: if student is much smaller than expected but same sign,
+  // and the ratio student/expected is between 0.1 and 0.7, likely inverted
+  if (expected !== 0 && student !== 0 && student * expected > 0) {
+    const ratio = student / expected;
+    if (ratio > 0.1 && ratio < 0.7) {
+      return `Did you invert the ratio? Remember: b = r × (sᵧ / sₓ), not (sₓ / sᵧ). Expected: ${expected}`;
+    }
+    // Also check if they got the reciprocal (ratio > 1.4)
+    if (ratio > 1.4 && ratio < 10) {
+      return `Did you invert the ratio? Remember: b = r × (sᵧ / sₓ), not (sₓ / sᵧ). Expected: ${expected}`;
+    }
   }
   
   // Divided by n instead of (n-1) for std dev

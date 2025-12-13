@@ -3,6 +3,8 @@
  * Handles username generation, login, IndexedDB storage, and teacher mode
  */
 
+import Dexie from 'dexie';
+
 // ==================== USERNAME GENERATOR ====================
 const FRUITS = [
   'Apple', 'Mango', 'Kiwi', 'Strawberry', 'Banana',

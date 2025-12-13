@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/* Tell Tailwind where to scan for classes */
+@source "../platform/**/*.{html,js}";
+@source "../cartridges/**/*.{html,js}";
+@source "../*.html";
+
+/* Custom styles from app.html */
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.streak-pulse {
+  animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.feedback-card {
+  transition: all 0.3s ease-out;
+}
+
+.katex-like {
+  font-family: "Times New Roman", serif;
+  font-style: italic;
+}
+
+@keyframes flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+.star-gold { color: #fbbf24; }
+.star-silver { color: #9ca3af; }
+.star-bronze { color: #d97706; }
+.star-tin { color: #6b7280; }
+
+.feedback-E { background-color: #dcfce7; border-color: #22c55e; }
+.feedback-P { background-color: #fef9c3; border-color: #eab308; }
+.feedback-I { background-color: #fee2e2; border-color: #ef4444; }
+
+@keyframes streak-glow {
+  0% { box-shadow: 0 0 5px rgba(251, 191, 36, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 30px rgba(251, 191, 36, 0.4); }
+  100% { box-shadow: 0 0 5px rgba(251, 191, 36, 0.5); }
+}
+
+.streak-glow {
+  animation: streak-glow 2s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes alert-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.alert-pulse {
+  animation: alert-pulse 1s ease-in-out infinite;
+}
