@@ -234,29 +234,13 @@
     }
   },
   "hints": {
-    "perMode": {
-      "find-b": {
-        "formula": "<strong>Formula:</strong> b = r · (sᵧ / sₓ)<br><br><strong>Steps:</strong><br>1. Divide sᵧ by sₓ<br>2. Multiply the result by r<br><br><strong>Watch out:</strong> The sign of b matches the sign of r!",
-        "example": "If r = 0.8, sᵧ = 12, sₓ = 4:<br>b = 0.8 × (12 ÷ 4) = 0.8 × 3 = 2.4"
-      },
-      "find-a": {
-        "formula": "<strong>Formula:</strong> a = ȳ − b · x̄<br><br><strong>Steps:</strong><br>1. Multiply b by x̄<br>2. Subtract that product from ȳ<br><br><strong>Watch out:</strong> If b is negative, subtracting a negative makes it addition!",
-        "example": "If ȳ = 50, b = 3, x̄ = 10:<br>a = 50 − (3 × 10) = 50 − 30 = 20"
-      },
-      "full-lsrl": {
-        "formula": "<strong>Two-step process:</strong><br><br><strong>Step 1:</strong> Find b = r · (sᵧ / sₓ)<br><strong>Step 2:</strong> Find a = ȳ − b · x̄<br><br>Then write: ŷ = a + bx",
-        "memoryTrick": "The LSRL always passes through the point (x̄, ȳ). That's why we use the means to find a!"
-      },
-      "std-dev": {
-        "formula": "<strong>Formula:</strong> s = √[Σ(xᵢ − x̄)² / (n − 1)]<br><br><strong>Steps:</strong><br>1. Find the mean x̄<br>2. Subtract x̄ from each value<br>3. Square each deviation<br>4. Sum the squares<br>5. Divide by (n − 1), not n!<br>6. Take the square root",
-        "whyN1": "We divide by (n−1) for the <em>sample</em> standard deviation. This gives us a better estimate of the population spread."
-      },
-      "sign-check": {
-        "rule": "<strong>Key insight:</strong> The sign of the slope b is ALWAYS the same as the sign of r.<br><br>• Positive r → Positive slope (line goes up)<br>• Negative r → Negative slope (line goes down)<br>• r = 0 → Slope = 0 (horizontal line)"
-      },
-      "ratio-check": {
-        "insight": "<strong>When sₓ = sᵧ:</strong><br><br>b = r × (sᵧ / sₓ) = r × (sᵧ / sᵧ) = r × 1 = <strong>r</strong><br><br>So when the standard deviations are equal, the slope equals the correlation coefficient exactly!"
-      }
+    "perField": {
+      "b": "<strong>Formula:</strong> b = r · (sᵧ / sₓ)<br><br><strong>Steps:</strong><br>1. First, divide sᵧ by sₓ to get the ratio<br>2. Then multiply that ratio by r<br><br><strong>Tip:</strong> The sign of b always matches the sign of r!",
+      "a": "<strong>Formula:</strong> a = ȳ − b · x̄<br><br><strong>Steps:</strong><br>1. First, multiply b by x̄<br>2. Then subtract that product from ȳ<br><br><strong>Watch out:</strong> If b is negative, subtracting a negative means you add!",
+      "mean": "<strong>Formula:</strong> x̄ = Σxᵢ / n<br><br><strong>Steps:</strong><br>1. Add up all the values<br>2. Divide by the count (n)<br><br><strong>Tip:</strong> The mean is the \"balance point\" of the data.",
+      "stdDev": "<strong>Formula:</strong> s = √[Σ(xᵢ − x̄)² / (n − 1)]<br><br><strong>Steps:</strong><br>1. Find each deviation: (value − mean)<br>2. Square each deviation<br>3. Sum all squared deviations<br>4. Divide by (n − 1), <em>not n</em>!<br>5. Take the square root<br><br><strong>Remember:</strong> We use (n−1) for sample standard deviation.",
+      "slopeSign": "<strong>Key relationship:</strong><br><br>The sign of slope b <em>always</em> matches the sign of r.<br><br>Think about it: sₓ and sᵧ are always positive (they're standard deviations), so the only thing that determines the sign of b is r!",
+      "insight": "<strong>Think about the formula:</strong><br><br>b = r × (sᵧ / sₓ)<br><br>What happens to (sᵧ / sₓ) when sᵧ equals sₓ?<br><br>Any number divided by itself equals..."
     },
     "penalty": {
       "0": "gold",
