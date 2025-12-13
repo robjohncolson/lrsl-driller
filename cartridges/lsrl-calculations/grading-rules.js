@@ -351,10 +351,68 @@ export function getModeConfig(modeId) {
   return modeRules[modeId] || null;
 }
 
-export default { 
-  gradeNumeric, 
-  gradeMultipleChoice, 
-  gradeProblem, 
+/**
+ * Main grading entry point - called by platform for each field
+ * @param {string} fieldId - The field being graded (b, a, mean, stdDev, slopeSign, insight)
+ * @param {any} answer - The student's answer
+ * @param {Object} context - Problem context including expected answers
+ * @returns {Object} { score: 'E'|'P'|'I', feedback: string }
+ */
+export function gradeField(fieldId, answer, context) {
+  // Get expected answer from context.answers or context.validation
+  const expectedData = context.answers?.[fieldId] || context.validation?.[fieldId];
+
+  if (!expectedData) {
+    return {
+      score: 'I',
+      feedback: 'Unable to grade - no expected answer configured'
+    };
+  }
+
+  // Get expected value
+  const expected = expectedData.value !== undefined ? expectedData.value : expectedData.expected;
+
+  // Determine grading type based on field
+  const multipleChoiceFields = ['slopeSign', 'insight'];
+
+  if (multipleChoiceFields.includes(fieldId)) {
+    return gradeMultipleChoice(answer, expected);
+  } else {
+    // Numeric grading with appropriate tolerance
+    const toleranceMap = {
+      b: 'tight',
+      a: 'tight',
+      mean: 'tight',
+      stdDev: 'standard'
+    };
+    const tolerance = toleranceMap[fieldId] || 'standard';
+    return gradeNumeric(answer, expected, tolerance);
+  }
+}
+
+/**
+ * Get grading rule for a field (alternate interface)
+ */
+export function getRule(fieldId) {
+  // For numeric fields, return tolerance-based rule
+  const numericFields = ['b', 'a', 'mean', 'stdDev'];
+  const mcFields = ['slopeSign', 'insight'];
+
+  if (numericFields.includes(fieldId)) {
+    return { type: 'numeric', tolerance: fieldId === 'stdDev' ? 'standard' : 'tight' };
+  }
+  if (mcFields.includes(fieldId)) {
+    return { type: 'exact' };
+  }
+  return null;
+}
+
+export default {
+  gradeField,
+  getRule,
+  gradeNumeric,
+  gradeMultipleChoice,
+  gradeProblem,
   getModeConfig,
-  TOLERANCES 
+  TOLERANCES
 };
