@@ -9,6 +9,7 @@ import { GradingEngine } from './core/grading-engine.js';
 import { GraphEngine } from './core/graph-engine.js';
 import { InputRenderer } from './core/input-renderer.js';
 import { CartridgeLoader } from './core/cartridge-loader.js';
+import { ProblemShuffleBag } from './core/shuffle-bag.js';
 
 export class Platform {
   constructor(config = {}) {
@@ -47,6 +48,9 @@ export class Platform {
     this.isGrading = false;
     this.preferProvider = config.preferProvider || null; // 'gemini', 'groq', or null (auto)
 
+    // Shuffle bags for fair problem distribution (one per mode)
+    this.shuffleBags = new Map();
+
     // Callbacks
     this.onProblemLoaded = config.onProblemLoaded || (() => {});
     this.onGradingComplete = config.onGradingComplete || (() => {});
@@ -82,6 +86,10 @@ export class Platform {
   async loadCartridge(cartridgeId, onProgress = null) {
     try {
       console.log(`[Platform] Loading cartridge: ${cartridgeId}`);
+
+      // Clear shuffle bags when loading new cartridge
+      this.shuffleBags.clear();
+
       this.currentCartridge = await this.cartridgeLoader.load(cartridgeId, onProgress);
       console.log(`[Platform] Cartridge loaded:`, this.currentCartridge.manifest?.meta?.name);
       console.log(`[Platform] Available modes:`, this.currentCartridge.manifest?.modes?.map(m => m.id));
@@ -147,6 +155,21 @@ export class Platform {
   }
 
   /**
+   * Get or create a shuffle bag for the current mode
+   */
+  getShuffleBag(modeId) {
+    if (!this.shuffleBags.has(modeId)) {
+      const bag = new ProblemShuffleBag({
+        generator: () => this.cartridgeLoader.generateProblem(modeId),
+        batchSize: 12,    // Generate 12 problems at a time
+        historySize: 4    // Remember last 4 to avoid near-repeats
+      });
+      this.shuffleBags.set(modeId, bag);
+    }
+    return this.shuffleBags.get(modeId);
+  }
+
+  /**
    * Load a new problem
    */
   async loadProblem() {
@@ -157,32 +180,53 @@ export class Platform {
     // Reset hints for new problem
     this.gameEngine.resetHintsForNewProblem();
 
-    // Generate problem
-    this.currentProblem = await this.cartridgeLoader.generateProblem(this.currentMode);
+    // Draw from shuffle bag for fair distribution
+    const bag = this.getShuffleBag(this.currentMode);
+    this.currentProblem = await bag.draw();
 
     // Render graph
     if (this.graphEngine && this.currentProblem.graphConfig) {
       // Transform generator's config to GraphEngine's expected format
       const gc = this.currentProblem.graphConfig;
-      const graphConfig = {
-        type: gc.type,
-        data: gc.points || gc.data,
-        labels: { x: gc.xLabel, y: gc.yLabel },
-        xMin: gc.xDomain?.[0],
-        xMax: gc.xDomain?.[1],
-        yMin: gc.yDomain?.[0],
-        yMax: gc.yDomain?.[1],
-        regression: gc.regression,
-        features: {
-          regressionLine: gc.regression?.show,
-          showEquation: gc.showEquation,
-          showR: gc.showR,
-          highlightId: gc.highlight?.index,
-          showResidualLine: gc.showResidualLine,
-          zeroLine: gc.showZeroLine
-        }
-      };
-      this.graphEngine.render(graphConfig);
+
+      // Handle normal-curve type directly
+      if (gc.type === 'normal-curve') {
+        this.graphEngine.render({
+          type: 'normal-curve',
+          mean: gc.mean,
+          sd: gc.sd,
+          markedValue: gc.markedValue,
+          showXUnknown: gc.showXUnknown || false,
+          showZLabels: gc.showZLabels || false,
+          labels: gc.labels || {}
+        });
+      } else if (gc.type === 'dual-normal-curve') {
+        this.graphEngine.render({
+          type: 'dual-normal-curve',
+          distributions: gc.distributions
+        });
+      } else {
+        // Standard chart types (scatterplot, residual-plot, etc.)
+        const graphConfig = {
+          type: gc.type,
+          data: gc.points || gc.data,
+          labels: { x: gc.xLabel, y: gc.yLabel },
+          xMin: gc.xDomain?.[0],
+          xMax: gc.xDomain?.[1],
+          yMin: gc.yDomain?.[0],
+          yMax: gc.yDomain?.[1],
+          regression: gc.regression,
+          features: {
+            regressionLine: gc.regression?.show,
+            showEquation: gc.showEquation,
+            showR: gc.showR,
+            highlightId: gc.highlight?.index,
+            showResidualLine: gc.showResidualLine,
+            zeroLine: gc.showZeroLine
+          }
+        };
+        this.graphEngine.render(graphConfig);
+      }
     }
 
     // Render inputs
@@ -301,10 +345,13 @@ export class Platform {
               // Check if AI feedback is actually useful
               const aiFb = aiResult.feedback || '';
               const keywordFb = currentResult._keywordFeedback || '';
-              const aiHasRealFeedback = aiFb &&
-                !aiFb.includes('Score extracted from response') &&
-                !aiFb.includes('extracted') &&
-                aiFb.length > 20;
+
+              // AI feedback is "real" if:
+              // - Not extracted/malformed
+              // - Either has substantive text (>20 chars) OR is a short positive response for E scores
+              const isExtracted = aiFb.includes('Score extracted from response') || aiFb.includes('extracted');
+              const isShortPositive = aiScoreVal === 3 && aiFb.length > 0 && aiFb.length <= 20; // E score with brief "Correct!" type feedback
+              const aiHasRealFeedback = aiFb && !isExtracted && (aiFb.length > 20 || isShortPositive);
 
               // AVERAGE the scores (round to nearest, tie goes up)
               const avgScoreVal = Math.round((keywordScoreVal + aiScoreVal) / 2);
@@ -325,9 +372,12 @@ export class Platform {
                 if (aiScoreVal !== keywordScoreVal) {
                   currentResult.feedback += ` <span class="text-blue-600 text-sm">(AI scored: ${aiResult.score})</span>`;
                 }
-                // Mark that AI feedback was incomplete
-                currentResult._aiIncomplete = true;
-                anyAILower = true; // Allow teacher review when AI feedback is incomplete
+                // Only mark as incomplete if AI gave a non-E score without explanation
+                // Don't flag short positive feedback (like "Correct!") as incomplete
+                if (!isShortPositive) {
+                  currentResult._aiIncomplete = true;
+                  anyAILower = true; // Allow teacher review when AI feedback is truly incomplete
+                }
               }
 
               // Track if AI graded lower than keywords (student may want to appeal)
@@ -416,10 +466,47 @@ export class Platform {
       pattern: context.pattern,
       appropriate: context.appropriate,
 
+      // Z-score and LSRL calculation fields
+      modeId: context.modeId,
+      modeName: context.modeName,
+      x: context.x,
+      mean: context.mean,
+      sd: context.sd,
+      zscore: context.zscore,
+      x1: context.x1,
+      x2: context.x2,
+      mean1: context.mean1,
+      mean2: context.mean2,
+      sd1: context.sd1,
+      sd2: context.sd2,
+      z1: context.z1,
+      z2: context.z2,
+      comparison: context.comparison,
+      sx: context.sx,
+      sy: context.sy,
+      xBar: context.xBar,
+      yBar: context.yBar,
+      b: context.b,
+      a: context.a,
+
       // Mode info for conditional prompts
       mode: context.mode,
       cartridgeId: this.currentCartridge?.id
     };
+
+    // Build givenValues and gradingPairs for AI prompt template
+    const givenKeys = this.currentProblem?.given ? Object.keys(this.currentProblem.given) : [];
+    scenario.givenValues = givenKeys.map(k => `${k}=${this.currentProblem.given[k]}`).join(', ');
+
+    // Build grading pairs: "fieldName: expected=X, student=Y"
+    const expectedAnswers = this.currentProblem?.answers || {};
+    const pairs = [];
+    for (const [fieldId, studentAnswer] of Object.entries(answers)) {
+      const expectedData = expectedAnswers[fieldId];
+      const expected = typeof expectedData === 'object' ? expectedData?.value : expectedData;
+      pairs.push(`${fieldId}: expected=${expected}, student=${studentAnswer}`);
+    }
+    scenario.gradingPairs = pairs.join('\n');
 
     // Load cartridge-specific AI prompt if available
     let aiPromptTemplate = null;

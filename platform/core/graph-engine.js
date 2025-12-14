@@ -118,6 +118,12 @@ export class GraphEngine {
       case 'boxplot':
         this.renderBoxplot(config);
         break;
+      case 'normal-curve':
+        this.renderNormalCurve(config);
+        break;
+      case 'dual-normal-curve':
+        this.renderDualNormalCurve(config);
+        break;
       default:
         console.warn('Unknown graph type:', config.type);
     }
@@ -132,47 +138,113 @@ export class GraphEngine {
   // ============== SCATTERPLOT ==============
 
   renderScatterplot(config) {
-    const { data, labels, features = {}, regression } = config;
+    const { data, points, labels, features = {}, regression, centroid, xLabel, yLabel } = config;
+
+    // Support both 'data' and 'points' for flexibility
+    const plotData = data || points || [];
 
     // Calculate scales
-    const xValues = data.map(d => d.x);
-    const yValues = data.map(d => d.y);
+    const xValues = plotData.map(d => d.x);
+    const yValues = plotData.map(d => d.y);
+
+    // Include regression line endpoints in scale calculation
+    let allYValues = [...yValues];
+    if (regression && regression.show) {
+      const minX = Math.min(...xValues);
+      const maxX = Math.max(...xValues);
+      allYValues.push(regression.a + regression.b * minX);
+      allYValues.push(regression.a + regression.b * maxX);
+    }
 
     const xMin = config.xMin ?? Math.min(...xValues) * 0.9;
     const xMax = config.xMax ?? Math.max(...xValues) * 1.1;
-    const yMin = config.yMin ?? Math.min(...yValues) * 0.9;
-    const yMax = config.yMax ?? Math.max(...yValues) * 1.1;
+    const yMin = config.yMin ?? Math.min(...allYValues) * 0.9;
+    const yMax = config.yMax ?? Math.max(...allYValues) * 1.1;
 
     const scales = this.calculateScales(xMin, xMax, yMin, yMax);
 
     // Draw grid
     this.drawGrid(scales);
 
-    // Draw axes
-    this.drawAxes(scales, labels);
+    // Draw axes with flexible label support
+    this.drawAxes(scales, labels || { x: xLabel || 'X', y: yLabel || 'Y' });
 
-    // Draw regression line if requested
-    if (features.regressionLine && regression) {
+    // Draw regression line if requested (support both formats)
+    const showRegression = (features.regressionLine && regression) || (regression && regression.show);
+    if (showRegression && regression) {
       this.drawRegressionLine(scales, regression, xMin, xMax);
     }
 
     // Draw residual line for highlighted point
     if (features.showResidualLine && features.highlightId && regression) {
-      const point = data.find(d => d.id === features.highlightId);
+      const point = plotData.find(d => d.id === features.highlightId);
       if (point) {
         this.drawResidualSegment(scales, point, regression);
       }
     }
 
     // Draw points
-    data.forEach(point => {
+    plotData.forEach(point => {
       const isHighlight = features.highlightId === point.id;
       this.drawPoint(scales, point, isHighlight);
     });
 
+    // Draw centroid marker if provided (useful for find-a mode)
+    if (centroid && centroid.show) {
+      this.drawCentroid(scales, centroid);
+    }
+
     // Draw equation if requested
     if (features.showEquation && regression) {
       this.drawEquation(regression);
+    }
+  }
+
+  /**
+   * Draw centroid marker (x̄, ȳ) with label
+   */
+  drawCentroid(scales, centroid) {
+    const { ctx } = this;
+    const px = scales.xScale(centroid.x);
+    const py = scales.yScale(centroid.y);
+
+    // Draw crosshair
+    ctx.strokeStyle = '#059669'; // emerald-600
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 2]);
+
+    // Horizontal line through centroid
+    ctx.beginPath();
+    ctx.moveTo(this.padding.left, py);
+    ctx.lineTo(px, py);
+    ctx.stroke();
+
+    // Vertical line through centroid
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px, this.height - this.padding.bottom);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+
+    // Draw point
+    ctx.fillStyle = '#059669';
+    ctx.beginPath();
+    ctx.arc(px, py, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw white inner circle
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(px, py, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Label
+    if (centroid.label) {
+      ctx.fillStyle = '#059669';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(centroid.label, px + 10, py - 8);
     }
   }
 
@@ -327,7 +399,9 @@ export class GraphEngine {
 
   drawRegressionLine(scales, regression, xMin, xMax) {
     const ctx = this.ctx;
-    const { slope, intercept } = regression;
+    // Support both naming conventions: {slope, intercept} or {b, a}
+    const slope = regression.slope ?? regression.b;
+    const intercept = regression.intercept ?? regression.a;
 
     const x1 = xMin;
     const y1 = intercept + slope * x1;
@@ -344,7 +418,9 @@ export class GraphEngine {
 
   drawResidualSegment(scales, point, regression) {
     const ctx = this.ctx;
-    const predicted = regression.intercept + regression.slope * point.x;
+    const slope = regression.slope ?? regression.b;
+    const intercept = regression.intercept ?? regression.a;
+    const predicted = intercept + slope * point.x;
 
     ctx.strokeStyle = point.y > predicted ? this.colors.positive : this.colors.negative;
     ctx.lineWidth = 2;
@@ -390,6 +466,432 @@ export class GraphEngine {
     ctx.font = 'bold 12px system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(equation, this.padding.left + 10, this.padding.top + 15);
+  }
+
+  // ============== NORMAL CURVE ==============
+
+  renderNormalCurve(config) {
+    const { mean, sd, markedValue, labels = {}, showZLabels = false, showXUnknown = false } = config;
+    const ctx = this.ctx;
+
+    // Calculate display range: mean ± 4 standard deviations
+    const xMin = mean - 4 * sd;
+    const xMax = mean + 4 * sd;
+
+    // Y range for normal PDF (max height at mean)
+    const yMax = this.normalPDF(mean, mean, sd) * 1.15;
+    const yMin = 0;
+
+    const scales = this.calculateScales(xMin, xMax, yMin, yMax);
+
+    // Draw light grid
+    this.drawNormalGrid(scales, mean, sd);
+
+    // Draw the normal curve
+    this.drawNormalCurvePath(scales, mean, sd);
+
+    // Draw x-axis
+    this.drawNormalAxis(scales, mean, sd, labels, showZLabels);
+
+    // Mark the mean
+    this.drawMeanLine(scales, mean, sd);
+
+    // Mark standard deviation lines at ±1, ±2, ±3
+    this.drawSDLines(scales, mean, sd);
+
+    // If there's a marked value, highlight it
+    if (markedValue !== undefined) {
+      this.drawMarkedValue(scales, mean, sd, markedValue);
+    }
+
+    // Draw legend/info
+    this.drawNormalInfo(mean, sd, markedValue, showXUnknown);
+  }
+
+  // ============== DUAL NORMAL CURVE (for comparing distributions) ==============
+
+  renderDualNormalCurve(config) {
+    const { distributions } = config;
+    const ctx = this.ctx;
+
+    // We'll draw two curves side by side
+    const dist1 = distributions[0]; // { mean, sd, markedValue, label }
+    const dist2 = distributions[1];
+
+    // Calculate the plotting area - split into two halves
+    const halfWidth = (this.width - this.padding.left - this.padding.right) / 2;
+    const gapBetween = 20;
+
+    // Draw distribution A (left side)
+    this.renderSingleNormalInRegion(
+      dist1,
+      this.padding.left,
+      halfWidth - gapBetween / 2,
+      'A',
+      '#6366f1' // Indigo
+    );
+
+    // Draw distribution B (right side)
+    this.renderSingleNormalInRegion(
+      dist2,
+      this.padding.left + halfWidth + gapBetween / 2,
+      halfWidth - gapBetween / 2,
+      'B',
+      '#8b5cf6' // Purple
+    );
+  }
+
+  renderSingleNormalInRegion(dist, startX, width, label, color) {
+    const ctx = this.ctx;
+    const { mean, sd, markedValue } = dist;
+
+    // Calculate display range for this distribution
+    const xMin = mean - 3.5 * sd;
+    const xMax = mean + 3.5 * sd;
+    const yMax = this.normalPDF(mean, mean, sd) * 1.15;
+
+    // Create local scales for this region
+    const plotHeight = this.height - this.padding.top - this.padding.bottom - 40; // Extra space for labels
+    const scales = {
+      xMin, xMax,
+      yMin: 0, yMax,
+      xScale: (x) => startX + ((x - xMin) / (xMax - xMin)) * width,
+      yScale: (y) => this.padding.top + 20 + plotHeight - (y / yMax) * plotHeight
+    };
+
+    // Draw label at top
+    ctx.fillStyle = color;
+    ctx.font = 'bold 14px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Distribution ${label}`, startX + width / 2, this.padding.top + 12);
+
+    // Draw the curve fill
+    ctx.beginPath();
+    ctx.moveTo(scales.xScale(xMin), scales.yScale(0));
+    const step = (xMax - xMin) / 100;
+    for (let x = xMin; x <= xMax; x += step) {
+      const y = this.normalPDF(x, mean, sd);
+      ctx.lineTo(scales.xScale(x), scales.yScale(y));
+    }
+    ctx.lineTo(scales.xScale(xMax), scales.yScale(0));
+    ctx.closePath();
+    ctx.fillStyle = color.replace(')', ', 0.15)').replace('rgb', 'rgba').replace('#', '');
+    // Convert hex to rgba
+    const r = parseInt(color.slice(1, 3), 16);
+    const g = parseInt(color.slice(3, 5), 16);
+    const b = parseInt(color.slice(5, 7), 16);
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.15)`;
+    ctx.fill();
+
+    // Draw the curve outline
+    ctx.beginPath();
+    for (let x = xMin; x <= xMax; x += step) {
+      const y = this.normalPDF(x, mean, sd);
+      if (x === xMin) {
+        ctx.moveTo(scales.xScale(x), scales.yScale(y));
+      } else {
+        ctx.lineTo(scales.xScale(x), scales.yScale(y));
+      }
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw x-axis
+    ctx.strokeStyle = this.colors.axis;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(startX, scales.yScale(0));
+    ctx.lineTo(startX + width, scales.yScale(0));
+    ctx.stroke();
+
+    // Draw mean line
+    const meanPx = scales.xScale(mean);
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(meanPx, scales.yScale(0));
+    ctx.lineTo(meanPx, scales.yScale(this.normalPDF(mean, mean, sd)));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw marked value if present
+    if (markedValue !== undefined && markedValue !== null) {
+      const px = scales.xScale(markedValue);
+      const y = this.normalPDF(markedValue, mean, sd);
+      const py = scales.yScale(y);
+
+      // Vertical line
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px, scales.yScale(0));
+      ctx.lineTo(px, py);
+      ctx.stroke();
+
+      // Point on curve
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ef4444';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    // Draw info box
+    const boxX = startX + 5;
+    const boxY = scales.yScale(0) + 8;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, width - 10, 52, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#374151';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`μ = ${mean}`, boxX + 8, boxY + 15);
+    ctx.fillText(`σ = ${sd}`, boxX + 8, boxY + 30);
+
+    if (markedValue !== undefined && markedValue !== null) {
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.fillText(`x = ${markedValue}`, boxX + 8, boxY + 45);
+    }
+  }
+
+  normalPDF(x, mean, sd) {
+    const coefficient = 1 / (sd * Math.sqrt(2 * Math.PI));
+    const exponent = -0.5 * Math.pow((x - mean) / sd, 2);
+    return coefficient * Math.exp(exponent);
+  }
+
+  drawNormalGrid(scales, mean, sd) {
+    const ctx = this.ctx;
+    ctx.strokeStyle = '#f0f0f0';
+    ctx.lineWidth = 1;
+
+    // Vertical lines at each standard deviation
+    for (let z = -3; z <= 3; z++) {
+      const x = mean + z * sd;
+      const px = scales.xScale(x);
+      ctx.beginPath();
+      ctx.moveTo(px, this.padding.top);
+      ctx.lineTo(px, this.height - this.padding.bottom);
+      ctx.stroke();
+    }
+  }
+
+  drawNormalCurvePath(scales, mean, sd) {
+    const ctx = this.ctx;
+    const xMin = mean - 4 * sd;
+    const xMax = mean + 4 * sd;
+    const step = (xMax - xMin) / 200;
+
+    // Fill under the curve
+    ctx.beginPath();
+    ctx.moveTo(scales.xScale(xMin), scales.yScale(0));
+
+    for (let x = xMin; x <= xMax; x += step) {
+      const y = this.normalPDF(x, mean, sd);
+      ctx.lineTo(scales.xScale(x), scales.yScale(y));
+    }
+
+    ctx.lineTo(scales.xScale(xMax), scales.yScale(0));
+    ctx.closePath();
+
+    // Light fill
+    ctx.fillStyle = 'rgba(99, 102, 241, 0.15)';
+    ctx.fill();
+
+    // Draw the curve outline
+    ctx.beginPath();
+    for (let x = xMin; x <= xMax; x += step) {
+      const y = this.normalPDF(x, mean, sd);
+      if (x === xMin) {
+        ctx.moveTo(scales.xScale(x), scales.yScale(y));
+      } else {
+        ctx.lineTo(scales.xScale(x), scales.yScale(y));
+      }
+    }
+    ctx.strokeStyle = '#6366f1';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+
+  drawNormalAxis(scales, mean, sd, labels, showZLabels = false) {
+    const ctx = this.ctx;
+
+    // X-axis line
+    ctx.strokeStyle = this.colors.axis;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(this.padding.left, this.height - this.padding.bottom);
+    ctx.lineTo(this.width - this.padding.right, this.height - this.padding.bottom);
+    ctx.stroke();
+
+    // Tick marks and labels at each standard deviation
+    ctx.fillStyle = this.colors.text;
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+
+    for (let z = -3; z <= 3; z++) {
+      const x = mean + z * sd;
+      const px = scales.xScale(x);
+
+      // Tick mark
+      ctx.beginPath();
+      ctx.moveTo(px, this.height - this.padding.bottom);
+      ctx.lineTo(px, this.height - this.padding.bottom + 6);
+      ctx.stroke();
+
+      // Value label
+      const displayVal = Number.isInteger(x) ? x : x.toFixed(1);
+      ctx.fillText(displayVal, px, this.height - this.padding.bottom + 18);
+
+      // Z-score label (smaller, below) - only if showZLabels is true
+      if (showZLabels && z !== 0) {
+        ctx.font = '9px system-ui, sans-serif';
+        ctx.fillStyle = '#9ca3af';
+        ctx.fillText(`z=${z}`, px, this.height - this.padding.bottom + 30);
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.fillStyle = this.colors.text;
+      }
+    }
+
+    // X-axis label
+    if (labels.x) {
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.fillText(labels.x, this.width / 2, this.height - 3);
+    }
+  }
+
+  drawMeanLine(scales, mean, sd) {
+    const ctx = this.ctx;
+    const px = scales.xScale(mean);
+    const yTop = scales.yScale(this.normalPDF(mean, mean, sd));
+
+    // Dashed line from axis to peak
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(px, this.height - this.padding.bottom);
+    ctx.lineTo(px, yTop);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Mean label
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('μ', px, yTop - 8);
+  }
+
+  drawSDLines(scales, mean, sd) {
+    const ctx = this.ctx;
+
+    // Draw lighter lines at ±1σ, ±2σ
+    ctx.strokeStyle = 'rgba(156, 163, 175, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+
+    [-2, -1, 1, 2].forEach(z => {
+      const x = mean + z * sd;
+      const px = scales.xScale(x);
+      const yTop = scales.yScale(this.normalPDF(x, mean, sd));
+
+      ctx.beginPath();
+      ctx.moveTo(px, this.height - this.padding.bottom);
+      ctx.lineTo(px, yTop);
+      ctx.stroke();
+    });
+
+    ctx.setLineDash([]);
+  }
+
+  drawMarkedValue(scales, mean, sd, value) {
+    const ctx = this.ctx;
+    const px = scales.xScale(value);
+    const y = this.normalPDF(value, mean, sd);
+    const py = scales.yScale(y);
+    const z = (value - mean) / sd;
+
+    // Vertical line from axis to curve
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(px, this.height - this.padding.bottom);
+    ctx.lineTo(px, py);
+    ctx.stroke();
+
+    // Point on curve
+    ctx.beginPath();
+    ctx.arc(px, py, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#ef4444';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Label showing x value
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+
+    // Position label to avoid overlap with mean
+    const labelY = py - 15;
+    ctx.fillText(`x = ${value}`, px, labelY);
+
+    // Arrow pointing to the point on x-axis
+    ctx.beginPath();
+    ctx.moveTo(px, this.height - this.padding.bottom + 2);
+    ctx.lineTo(px - 5, this.height - this.padding.bottom + 8);
+    ctx.lineTo(px + 5, this.height - this.padding.bottom + 8);
+    ctx.closePath();
+    ctx.fillStyle = '#ef4444';
+    ctx.fill();
+  }
+
+  drawNormalInfo(mean, sd, markedValue, showXUnknown = false) {
+    const ctx = this.ctx;
+
+    // Info box in top-right
+    const boxX = this.width - this.padding.right - 130;
+    const boxY = this.padding.top + 5;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+
+    const showXLine = markedValue !== undefined && markedValue !== null || showXUnknown;
+    const boxHeight = showXLine ? 70 : 50;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, 125, boxHeight, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#374151';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+
+    ctx.fillText(`μ = ${mean}`, boxX + 10, boxY + 18);
+    ctx.fillText(`σ = ${sd}`, boxX + 10, boxY + 36);
+
+    if (markedValue !== undefined && markedValue !== null) {
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.fillText(`x = ${markedValue}`, boxX + 10, boxY + 54);
+    } else if (showXUnknown) {
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.fillText(`x = ?`, boxX + 10, boxY + 54);
+    }
   }
 
   // ============== HISTOGRAM ==============

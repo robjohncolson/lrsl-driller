@@ -108,9 +108,11 @@ export class InputRenderer {
         inputEl = this.renderNumber(field, context);
         break;
       case 'choice':
+      case 'multiple-choice':  // Alias for choice
         inputEl = this.renderChoice(field, context);
         break;
       case 'dropdown':
+      case 'select':  // Alias for dropdown
         inputEl = this.renderDropdown(field, context);
         break;
       case 'text':
@@ -198,7 +200,7 @@ export class InputRenderer {
 
   renderChoice(field, context) {
     const wrapper = document.createElement('div');
-    wrapper.className = 'flex gap-4';
+    wrapper.className = 'flex flex-wrap gap-4';
 
     const options = field.options || ['Yes', 'No'];
 
@@ -209,12 +211,23 @@ export class InputRenderer {
       const radio = document.createElement('input');
       radio.type = 'radio';
       radio.name = `field-${field.id}`;
-      radio.value = option;
       radio.className = 'w-4 h-4 text-purple-600 focus:ring-purple-500';
       if (i === 0) radio.dataset.fieldId = field.id; // Mark first for getValue
 
+      // Handle both string options and object options {id, label}
+      let optionValue, optionLabel;
+      if (typeof option === 'object' && option !== null) {
+        optionValue = option.id || option.value || option.label;
+        optionLabel = option.label || option.id || option.value;
+      } else {
+        optionValue = option;
+        optionLabel = this.interpolate(option, context);
+      }
+
+      radio.value = optionValue;
+
       const text = document.createElement('span');
-      text.textContent = this.interpolate(option, context);
+      text.textContent = optionLabel;
 
       label.appendChild(radio);
       label.appendChild(text);
@@ -246,12 +259,18 @@ export class InputRenderer {
     placeholder.selected = true;
     select.appendChild(placeholder);
 
-    // Options
+    // Options - handle both string options and {value, label} objects
     const options = field.options || [];
     options.forEach(option => {
       const opt = document.createElement('option');
-      opt.value = option;
-      opt.textContent = this.interpolate(option, context);
+      // Handle both string options and object options {value, label}
+      if (typeof option === 'object' && option !== null) {
+        opt.value = option.value;
+        opt.textContent = option.label || option.value;
+      } else {
+        opt.value = option;
+        opt.textContent = this.interpolate(option, context);
+      }
       select.appendChild(opt);
     });
 
@@ -387,7 +406,7 @@ export class InputRenderer {
     if (!input) return null;
 
     // Handle radio buttons
-    if (field.config.type === 'choice') {
+    if (field.config.type === 'choice' || field.config.type === 'multiple-choice') {
       const checked = this.container.querySelector(
         `input[name="field-${fieldId}"]:checked`
       );

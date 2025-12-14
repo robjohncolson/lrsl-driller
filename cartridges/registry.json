@@ -9,9 +9,9 @@
     },
     {
       "id": "lsrl-calculations",
-      "name": "LSRL Calculations",
+      "name": "LSRL & Z-Score Calculations",
       "subject": "AP Statistics",
-      "description": "Calculate b, a, and standard deviation",
+      "description": "Z-scores, slope (b), intercept (a), standard deviation",
       "shortCode": "CALC"
     },
     {

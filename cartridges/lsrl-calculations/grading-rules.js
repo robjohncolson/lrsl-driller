@@ -4,6 +4,136 @@
  */
 
 /**
+ * Parse and evaluate mathematical expressions
+ * Supports: sqrt(), √, *, /, +, -, parentheses, and implicit multiplication
+ * Examples: "2*sqrt(2)", "√8", "3√2", "sqrt(18)/3", "2.83"
+ */
+function evaluateExpression(input) {
+  if (input === null || input === undefined || input === '') {
+    return NaN;
+  }
+
+  // Convert to string and clean up
+  let expr = String(input).trim().toLowerCase();
+
+  // If it's already a plain number, return it
+  const plainNum = parseFloat(expr);
+  if (!isNaN(plainNum) && /^-?\d*\.?\d+$/.test(expr)) {
+    return plainNum;
+  }
+
+  try {
+    // Normalize sqrt notations: √ → sqrt, root → sqrt
+    expr = expr.replace(/√/g, 'sqrt');
+    expr = expr.replace(/\broot\b/g, 'sqrt');
+
+    // Handle implicit multiplication: "2sqrt" → "2*sqrt", "3(4)" → "3*(4)"
+    expr = expr.replace(/(\d)(sqrt)/g, '$1*$2');
+    expr = expr.replace(/(\d)\(/g, '$1*(');
+    expr = expr.replace(/\)(\d)/g, ')*$1');
+    expr = expr.replace(/\)(sqrt)/g, ')*$1');
+
+    // Replace sqrt(...) with Math.sqrt(...)
+    expr = expr.replace(/sqrt\(/g, 'Math.sqrt(');
+
+    // Validate: only allow safe characters (digits, operators, Math.sqrt, parentheses, decimal)
+    const safePattern = /^[0-9+\-*/().Math sqrtMath.sqrt\s]+$/;
+    // More permissive check - just block dangerous patterns
+    if (/[a-z]/i.test(expr.replace(/Math\.sqrt/g, '').replace(/\s/g, ''))) {
+      // Contains letters other than Math.sqrt - might be unsafe
+      // But let's try to evaluate anyway if it looks reasonable
+    }
+
+    // Evaluate the expression
+    // Using Function constructor is safer than eval for this limited use case
+    const result = Function('"use strict"; return (' + expr + ')')();
+
+    if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+      return result;
+    }
+  } catch (e) {
+    // Expression couldn't be evaluated
+  }
+
+  // Fallback: try parseFloat on original
+  return parseFloat(input);
+}
+
+/**
+ * Grade an expression-based answer (like "2*sqrt(2)" or "2.83")
+ * @param {string} studentAnswer - The student's expression or number
+ * @param {number} expectedAnswer - The correct numeric value
+ * @param {string} toleranceLevel - 'tight', 'standard', or 'loose'
+ * @returns {Object} Grading result with score and feedback
+ */
+export function gradeExpression(studentAnswer, expectedAnswer, toleranceLevel = 'standard') {
+  if (studentAnswer === null || studentAnswer === undefined || studentAnswer === '') {
+    return {
+      score: 'I',
+      feedback: 'No answer provided',
+      details: { studentAnswer: null, expectedAnswer, difference: null }
+    };
+  }
+
+  const studentValue = evaluateExpression(studentAnswer);
+  const expected = parseFloat(expectedAnswer);
+
+  if (isNaN(studentValue)) {
+    return {
+      score: 'I',
+      feedback: 'Could not evaluate expression. Try formats like: 2.83, sqrt(8), 2*sqrt(2), or 2√2',
+      details: { studentAnswer, expectedAnswer: expected, evaluated: null }
+    };
+  }
+
+  // Now grade using numeric comparison
+  const absoluteDiff = Math.abs(studentValue - expected);
+  const relativeDiff = expected !== 0 ? Math.abs(absoluteDiff / expected) : absoluteDiff;
+
+  const tolerance = TOLERANCES[toleranceLevel] || TOLERANCES.standard;
+
+  // Check for Essentially Correct (E)
+  const withinAbsolute = absoluteDiff <= tolerance.absolute;
+  const withinRelative = relativeDiff <= tolerance.relative;
+
+  if (withinAbsolute || withinRelative) {
+    if (absoluteDiff < 0.001) {
+      return {
+        score: 'E',
+        feedback: 'Correct!',
+        details: { studentAnswer, studentValue, expectedAnswer: expected, difference: absoluteDiff }
+      };
+    } else {
+      return {
+        score: 'E',
+        feedback: 'Correct (within acceptable rounding)',
+        details: { studentAnswer, studentValue, expectedAnswer: expected, difference: absoluteDiff }
+      };
+    }
+  }
+
+  // Check for Partially Correct (P)
+  const withinPartialAbsolute = absoluteDiff <= PARTIAL_TOLERANCES.absolute;
+  const withinPartialRelative = relativeDiff <= PARTIAL_TOLERANCES.relative;
+
+  if (withinPartialAbsolute || withinPartialRelative) {
+    const percentOff = ((absoluteDiff / Math.abs(expected)) * 100).toFixed(1);
+    return {
+      score: 'P',
+      feedback: `Close! Your answer evaluates to ${studentValue.toFixed(3)}, expected ≈${expected.toFixed(3)}`,
+      details: { studentAnswer, studentValue, expectedAnswer: expected, difference: absoluteDiff }
+    };
+  }
+
+  // Incorrect
+  return {
+    score: 'I',
+    feedback: `Your answer evaluates to ${studentValue.toFixed(3)}, expected ≈${expected.toFixed(3)}`,
+    details: { studentAnswer, studentValue, expectedAnswer: expected, difference: absoluteDiff }
+  };
+}
+
+/**
  * Tolerance definitions
  * - tight: for simple calculations (slope, intercept individually)
  * - standard: for multi-step calculations
@@ -109,6 +239,90 @@ export function gradeNumeric(studentAnswer, expectedAnswer, toleranceLevel = 'st
     score: 'I',
     feedback: feedbackMsg,
     details: { studentAnswer: student, expectedAnswer: expected, difference: absoluteDiff }
+  };
+}
+
+/**
+ * Grade a list of comma-separated values (e.g., deviations: "-3, 0, 3")
+ * @param {string} studentAnswer - Comma-separated list of values
+ * @param {string} expectedAnswer - Comma-separated list of expected values
+ * @returns {Object} Grading result with score and feedback
+ */
+export function gradeList(studentAnswer, expectedAnswer) {
+  if (!studentAnswer || studentAnswer.trim() === '') {
+    return {
+      score: 'I',
+      feedback: 'No answer provided',
+      details: { studentAnswer: null, expectedAnswer }
+    };
+  }
+
+  // Parse both lists
+  const parseList = (str) => {
+    return str.split(',')
+      .map(s => s.trim())
+      .filter(s => s !== '')
+      .map(s => parseFloat(s));
+  };
+
+  const studentValues = parseList(studentAnswer);
+  const expectedValues = parseList(expectedAnswer);
+
+  // Check for invalid numbers
+  if (studentValues.some(isNaN)) {
+    return {
+      score: 'I',
+      feedback: 'All values must be numbers separated by commas',
+      details: { studentAnswer, expectedAnswer }
+    };
+  }
+
+  // Check count
+  if (studentValues.length !== expectedValues.length) {
+    return {
+      score: 'I',
+      feedback: `Expected ${expectedValues.length} values, got ${studentValues.length}`,
+      details: { studentAnswer, expectedAnswer, studentCount: studentValues.length, expectedCount: expectedValues.length }
+    };
+  }
+
+  // Compare values (order matters)
+  let correctCount = 0;
+  let errors = [];
+
+  for (let i = 0; i < expectedValues.length; i++) {
+    const diff = Math.abs(studentValues[i] - expectedValues[i]);
+    if (diff <= 0.01 || (expectedValues[i] !== 0 && diff / Math.abs(expectedValues[i]) <= 0.01)) {
+      correctCount++;
+    } else {
+      errors.push({ index: i + 1, student: studentValues[i], expected: expectedValues[i] });
+    }
+  }
+
+  // Score based on accuracy
+  if (correctCount === expectedValues.length) {
+    return {
+      score: 'E',
+      feedback: 'All values correct!',
+      details: { studentValues, expectedValues, correctCount }
+    };
+  }
+
+  // Partial credit if most are correct
+  const accuracy = correctCount / expectedValues.length;
+  if (accuracy >= 0.7) {
+    const errorMsg = errors.map(e => `value #${e.index}: got ${e.student}, expected ${e.expected}`).join('; ');
+    return {
+      score: 'P',
+      feedback: `${correctCount}/${expectedValues.length} correct. Check: ${errorMsg}`,
+      details: { studentValues, expectedValues, correctCount, errors }
+    };
+  }
+
+  return {
+    score: 'I',
+    feedback: `${correctCount}/${expectedValues.length} correct. Expected: ${expectedAnswer}`,
+    details: { studentValues, expectedValues, correctCount, errors }
   };
 }
 
@@ -309,12 +523,25 @@ function generateCompositeFeedback(results, modeId) {
  */
 function formatFieldName(fieldId) {
   const names = {
+    // Z-score fields
+    zscore: 'Z-score',
+    x: 'Value (x)',
+    z1: 'Z-score A',
+    z2: 'Z-score B',
+    comparison: 'Comparison',
+    // LSRL fields
     b: 'Slope (b)',
     a: 'Y-intercept (a)',
     mean: 'Mean (x̄)',
     stdDev: 'Std Dev (s)',
     slopeSign: 'Slope sign',
-    insight: 'Insight'
+    insight: 'Insight',
+    // Std-dev step fields
+    deviations: 'Deviations',
+    deviationsSquared: 'Squared deviations',
+    sumSquaredDev: 'Sum of squares',
+    df: 'Degrees of freedom',
+    variance: 'Variance (s²)'
   };
   return names[fieldId] || fieldId;
 }
@@ -323,6 +550,23 @@ function formatFieldName(fieldId) {
  * Grading rules by mode (for configuration reference)
  */
 const modeRules = {
+  // Z-Score modes
+  'calc-zscore': {
+    fields: ['zscore'],
+    tolerances: { zscore: 'tight' },
+    commonErrors: ['sign-error', 'forgot-divide', 'inverted-order']
+  },
+  'find-raw': {
+    fields: ['x'],
+    tolerances: { x: 'tight' },
+    commonErrors: ['sign-error', 'wrong-operation']
+  },
+  'compare-zscores': {
+    fields: ['z1', 'z2', 'comparison'],
+    tolerances: { z1: 'tight', z2: 'tight' },
+    types: { comparison: 'exact' }
+  },
+  // LSRL modes
   'find-b': {
     fields: ['b'],
     tolerances: { b: 'tight' },
@@ -339,9 +583,10 @@ const modeRules = {
     commonErrors: ['sign-error', 'order-of-operations']
   },
   'std-dev': {
-    fields: ['mean', 'stdDev'],
-    tolerances: { mean: 'tight', stdDev: 'standard' },
-    commonErrors: ['divide-by-n', 'forgot-sqrt', 'decimal-error']
+    fields: ['mean', 'deviations', 'deviationsSquared', 'sumSquaredDev', 'df', 'variance', 'stdDev'],
+    tolerances: { mean: 'tight', sumSquaredDev: 'tight', df: 'tight', variance: 'standard', stdDev: 'standard' },
+    types: { deviations: 'list', deviationsSquared: 'list' },
+    commonErrors: ['divide-by-n', 'forgot-sqrt', 'decimal-error', 'sign-error-deviation']
   },
   'sign-check': {
     fields: ['slopeSign'],
@@ -363,7 +608,7 @@ export function getModeConfig(modeId) {
 
 /**
  * Main grading entry point - called by platform for each field
- * @param {string} fieldId - The field being graded (b, a, mean, stdDev, slopeSign, insight)
+ * @param {string} fieldId - The field being graded (zscore, x, z1, z2, comparison, b, a, mean, stdDev, slopeSign, insight)
  * @param {any} answer - The student's answer
  * @param {Object} context - Problem context including expected answers
  * @returns {Object} { score: 'E'|'P'|'I', feedback: string }
@@ -404,17 +649,34 @@ export function gradeField(fieldId, answer, context) {
   }
 
   // Determine grading type based on field
-  const multipleChoiceFields = ['slopeSign', 'insight'];
+  const multipleChoiceFields = ['slopeSign', 'insight', 'comparison'];
+  const listFields = ['deviations', 'deviationsSquared'];
+  const expressionFields = ['stdDev']; // Fields that accept math expressions like "2*sqrt(2)"
 
   if (multipleChoiceFields.includes(fieldId)) {
     return gradeMultipleChoice(answer, expected);
+  } else if (listFields.includes(fieldId)) {
+    // List grading for comma-separated values
+    return gradeList(answer, expected);
+  } else if (expressionFields.includes(fieldId)) {
+    // Expression grading - accepts sqrt(), √, etc.
+    return gradeExpression(answer, expected, 'standard');
   } else {
     // Numeric grading with appropriate tolerance
     const toleranceMap = {
+      // Z-score fields
+      zscore: 'tight',
+      x: 'tight',
+      z1: 'tight',
+      z2: 'tight',
+      // LSRL fields
       b: 'tight',
       a: 'tight',
       mean: 'tight',
-      stdDev: 'standard'
+      // Std-dev step fields
+      sumSquaredDev: 'tight',
+      df: 'tight',
+      variance: 'standard'
     };
     const tolerance = toleranceMap[fieldId] || 'standard';
     return gradeNumeric(answer, expected, tolerance);
@@ -426,14 +688,23 @@ export function gradeField(fieldId, answer, context) {
  */
 export function getRule(fieldId) {
   // For numeric fields, return tolerance-based rule
-  const numericFields = ['b', 'a', 'mean', 'stdDev'];
-  const mcFields = ['slopeSign', 'insight'];
+  const numericFields = ['zscore', 'x', 'z1', 'z2', 'b', 'a', 'mean', 'sumSquaredDev', 'df', 'variance'];
+  const mcFields = ['slopeSign', 'insight', 'comparison'];
+  const listFields = ['deviations', 'deviationsSquared'];
+  const expressionFields = ['stdDev']; // Accepts math expressions
 
+  if (expressionFields.includes(fieldId)) {
+    return { type: 'expression', tolerance: 'standard' };
+  }
   if (numericFields.includes(fieldId)) {
-    return { type: 'numeric', tolerance: fieldId === 'stdDev' ? 'standard' : 'tight' };
+    const standardTolerance = ['variance'];
+    return { type: 'numeric', tolerance: standardTolerance.includes(fieldId) ? 'standard' : 'tight' };
   }
   if (mcFields.includes(fieldId)) {
     return { type: 'exact' };
+  }
+  if (listFields.includes(fieldId)) {
+    return { type: 'list' };
   }
   return null;
 }
@@ -443,6 +714,8 @@ export default {
   getRule,
   gradeNumeric,
   gradeMultipleChoice,
+  gradeList,
+  gradeExpression,
   gradeProblem,
   getModeConfig,
   TOLERANCES

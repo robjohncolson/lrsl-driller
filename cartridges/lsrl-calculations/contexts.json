@@ -1,9 +1,91 @@
 {
   "meta": {
     "id": "lsrl-calculations-contexts",
-    "description": "Parameter ranges and difficulty settings for LSRL calculation problems",
+    "description": "Parameter ranges and difficulty settings for LSRL and Z-score calculation problems",
     "compatibleWith": ["lsrl-calculations"]
   },
+  "zscoreContexts": [
+    {
+      "id": "sat-scores",
+      "topic": "SAT Scores",
+      "variable": "SAT score",
+      "units": "points",
+      "typicalMean": 1060,
+      "typicalSd": 200
+    },
+    {
+      "id": "act-scores",
+      "topic": "ACT Scores",
+      "variable": "ACT score",
+      "units": "points",
+      "typicalMean": 21,
+      "typicalSd": 5
+    },
+    {
+      "id": "iq-scores",
+      "topic": "IQ Testing",
+      "variable": "IQ score",
+      "units": "points",
+      "typicalMean": 100,
+      "typicalSd": 15
+    },
+    {
+      "id": "height-men",
+      "topic": "Adult Male Height",
+      "variable": "height",
+      "units": "inches",
+      "typicalMean": 70,
+      "typicalSd": 3
+    },
+    {
+      "id": "height-women",
+      "topic": "Adult Female Height",
+      "variable": "height",
+      "units": "inches",
+      "typicalMean": 64,
+      "typicalSd": 2.5
+    },
+    {
+      "id": "test-scores",
+      "topic": "Exam Performance",
+      "variable": "exam score",
+      "units": "points",
+      "typicalMean": 75,
+      "typicalSd": 10
+    },
+    {
+      "id": "birth-weight",
+      "topic": "Newborn Birth Weight",
+      "variable": "birth weight",
+      "units": "pounds",
+      "typicalMean": 7.5,
+      "typicalSd": 1.25
+    },
+    {
+      "id": "marathon-times",
+      "topic": "Marathon Finish Times",
+      "variable": "finish time",
+      "units": "minutes",
+      "typicalMean": 270,
+      "typicalSd": 45
+    },
+    {
+      "id": "blood-pressure",
+      "topic": "Systolic Blood Pressure",
+      "variable": "blood pressure",
+      "units": "mmHg",
+      "typicalMean": 120,
+      "typicalSd": 15
+    },
+    {
+      "id": "reaction-time",
+      "topic": "Reaction Time Test",
+      "variable": "reaction time",
+      "units": "milliseconds",
+      "typicalMean": 250,
+      "typicalSd": 40
+    }
+  ],
   "difficulty": {
     "easy": {
       "description": "Nice numbers, positive correlations",
@@ -154,6 +236,18 @@
     ]
   },
   "formulaReference": {
+    "zscore": {
+      "formula": "z = (x − μ) / σ",
+      "latex": "z = \\frac{x - \\mu}{\\sigma}",
+      "words": "Z-score equals the value minus the mean, divided by the standard deviation",
+      "memoryTip": "How many standard deviations from the mean? Subtract mean, divide by std dev."
+    },
+    "rawFromZ": {
+      "formula": "x = μ + z × σ",
+      "latex": "x = \\mu + z \\cdot \\sigma",
+      "words": "Value equals mean plus z-score times standard deviation",
+      "memoryTip": "Start at the mean, move z standard deviations away."
+    },
     "slope": {
       "formula": "b = r × (sᵧ / sₓ)",
       "latex": "b = r \\cdot \\frac{s_y}{s_x}",

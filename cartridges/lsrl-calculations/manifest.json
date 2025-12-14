@@ -1,21 +1,24 @@
 {
   "meta": {
     "id": "lsrl-calculations",
-    "name": "LSRL Calculations",
+    "name": "LSRL & Z-Score Calculations",
     "subject": "AP Statistics",
-    "unit": "2",
-    "lesson": "8",
-    "skill": "Calculate slope (b), y-intercept (a), and standard deviation using formulas",
-    "description": "Students practice computational skills for regression: b = r(sᵧ/sₓ), a = ȳ - bx̄, and s = √[Σ(x-x̄)²/(n-1)]"
+    "unit": "1-2",
+    "lesson": "5-8",
+    "skill": "Calculate z-scores, slope (b), y-intercept (a), and standard deviation using formulas",
+    "description": "Students practice computational skills: z = (x-μ)/σ, b = r(sᵧ/sₓ), a = ȳ - bx̄, and s = √[Σ(x-x̄)²/(n-1)]"
   },
   "config": {
     "contextsFile": "contexts.json",
-    "skills": ["slope-calculation", "intercept-calculation", "standard-deviation", "full-lsrl"]
+    "skills": ["zscore-calculation", "slope-calculation", "intercept-calculation", "standard-deviation", "full-lsrl", "zscore-comparison"]
   },
   "display": {
-    "showGraph": false,
+    "showGraph": true,
+    "graphType": "normal-curve",
     "showFormulaReference": true,
     "formulaPanel": {
+      "zscore": "z = (x − μ) / σ",
+      "rawValue": "x = μ + z · σ",
       "slope": "b = r · (sᵧ / sₓ)",
       "intercept": "a = ȳ − b · x̄",
       "stdDev": "s = √[Σ(xᵢ − x̄)² / (n − 1)]"
@@ -27,10 +30,113 @@
   },
   "modes": [
     {
+      "id": "calc-zscore",
+      "name": "Calculate Z-Score",
+      "unlockedBy": "default",
+      "description": "Given a value, mean, and standard deviation, calculate the z-score",
+      "showGraph": true,
+      "graphType": "normal-curve",
+      "layout": {
+        "given": [
+          { "id": "x", "label": "x (value)", "format": "decimal1" },
+          { "id": "mean", "label": "μ (mean)", "format": "decimal1" },
+          { "id": "sd", "label": "σ (std dev)", "format": "decimal1" }
+        ],
+        "inputs": [
+          {
+            "id": "zscore",
+            "label": "z = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "",
+            "width": "medium"
+          }
+        ],
+        "formulaHint": "z = (x − μ) / σ"
+      }
+    },
+    {
+      "id": "find-raw",
+      "name": "Find Raw Value from Z",
+      "unlockedBy": { "gold": 2 },
+      "description": "Given a z-score, mean, and standard deviation, find the original value",
+      "celebrationMessage": "📊 Find Raw Value Unlocked! Work the formula backwards.",
+      "showGraph": true,
+      "graphType": "normal-curve",
+      "layout": {
+        "given": [
+          { "id": "zscore", "label": "z", "format": "decimal2" },
+          { "id": "mean", "label": "μ (mean)", "format": "decimal1" },
+          { "id": "sd", "label": "σ (std dev)", "format": "decimal1" }
+        ],
+        "inputs": [
+          {
+            "id": "x",
+            "label": "x = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "",
+            "width": "medium"
+          }
+        ],
+        "formulaHint": "x = μ + z · σ"
+      }
+    },
+    {
+      "id": "compare-zscores",
+      "name": "Compare Z-Scores",
+      "unlockedBy": { "gold": 4 },
+      "description": "Compare two values from different distributions using z-scores",
+      "celebrationMessage": "🎯 Compare Z-Scores Unlocked! Master of standardization.",
+      "layout": {
+        "given": [
+          { "id": "x1", "label": "Value A", "format": "decimal1" },
+          { "id": "mean1", "label": "Mean A", "format": "decimal1" },
+          { "id": "sd1", "label": "Std Dev A", "format": "decimal1" },
+          { "id": "x2", "label": "Value B", "format": "decimal1" },
+          { "id": "mean2", "label": "Mean B", "format": "decimal1" },
+          { "id": "sd2", "label": "Std Dev B", "format": "decimal1" }
+        ],
+        "inputs": [
+          {
+            "id": "z1",
+            "label": "z for A = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "",
+            "width": "medium",
+            "order": 1
+          },
+          {
+            "id": "z2",
+            "label": "z for B = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "",
+            "width": "medium",
+            "order": 2
+          },
+          {
+            "id": "comparison",
+            "label": "Which is more extreme?",
+            "type": "select",
+            "options": [
+              { "value": "A", "label": "A is more extreme" },
+              { "value": "B", "label": "B is more extreme" },
+              { "value": "same", "label": "They are equally extreme" }
+            ],
+            "order": 3
+          }
+        ]
+      }
+    },
+    {
       "id": "find-b",
       "name": "Find Slope (b)",
       "unlockedBy": "default",
       "description": "Given r, sₓ, and sᵧ, calculate the slope b",
+      "showGraph": true,
+      "graphType": "scatterplot",
       "layout": {
         "given": [
           { "id": "r", "label": "r", "format": "decimal3" },
@@ -43,7 +149,7 @@
             "label": "b = ",
             "type": "number",
             "step": "any",
-            "placeholder": "Calculate slope",
+            "placeholder": "",
             "width": "medium"
           }
         ],
@@ -55,6 +161,8 @@
       "name": "Find Y-Intercept (a)",
       "unlockedBy": "default",
       "description": "Given x̄, ȳ, and b, calculate the y-intercept a",
+      "showGraph": true,
+      "graphType": "scatterplot",
       "layout": {
         "given": [
           { "id": "xBar", "label": "x̄", "format": "decimal2" },
@@ -67,7 +175,7 @@
             "label": "a = ",
             "type": "number",
             "step": "any",
-            "placeholder": "Calculate y-intercept",
+            "placeholder": "",
             "width": "medium"
           }
         ],
@@ -77,9 +185,10 @@
     {
       "id": "full-lsrl",
       "name": "Full LSRL Equation",
-      "unlockedBy": { "gold": 5 },
+      "unlockedBy": { "gold": 7 },
       "description": "Given summary statistics, find both b and a",
       "celebrationMessage": "🎉 Full LSRL Mode Unlocked! You've mastered the individual formulas.",
+      "showGraph": false,
       "layout": {
         "given": [
           { "id": "r", "label": "r", "format": "decimal3" },
@@ -94,7 +203,7 @@
             "label": "b = ",
             "type": "number",
             "step": "any",
-            "placeholder": "Calculate slope first",
+            "placeholder": "",
             "width": "medium",
             "order": 1
           },
@@ -103,7 +212,7 @@
             "label": "a = ",
             "type": "number",
             "step": "any",
-            "placeholder": "Then calculate y-intercept",
+            "placeholder": "",
             "width": "medium",
             "order": 2
           }
@@ -117,9 +226,10 @@
     {
       "id": "std-dev",
       "name": "Standard Deviation",
-      "unlockedBy": { "gold": 3 },
-      "description": "Given a small dataset, calculate the mean and sample standard deviation",
+      "unlockedBy": { "gold": 5 },
+      "description": "Step-by-step: calculate sample standard deviation",
       "celebrationMessage": "📊 Standard Deviation Mode Unlocked!",
+      "showGraph": false,
       "layout": {
         "given": [
           { "id": "dataset", "label": "Data", "format": "array", "display": "inline" },
@@ -128,28 +238,65 @@
         "inputs": [
           {
             "id": "mean",
-            "label": "x̄ = ",
+            "label": "1. Mean (x̄) = ",
             "type": "number",
             "step": "any",
-            "placeholder": "Calculate mean first",
+            "placeholder": "",
             "width": "medium",
             "order": 1
           },
           {
-            "id": "stdDev",
-            "label": "s = ",
+            "id": "deviations",
+            "label": "2. Deviations = ",
+            "type": "text",
+            "placeholder": "",
+            "width": "large",
+            "order": 2
+          },
+          {
+            "id": "deviationsSquared",
+            "label": "3. Squared = ",
+            "type": "text",
+            "placeholder": "",
+            "width": "large",
+            "order": 3
+          },
+          {
+            "id": "sumSquaredDev",
+            "label": "4. Sum = ",
             "type": "number",
             "step": "any",
-            "placeholder": "Then calculate std dev",
+            "placeholder": "",
             "width": "medium",
-            "order": 2
+            "order": 4
+          },
+          {
+            "id": "df",
+            "label": "5. df = ",
+            "type": "number",
+            "step": "1",
+            "placeholder": "",
+            "width": "small",
+            "order": 5
+          },
+          {
+            "id": "variance",
+            "label": "6. Variance (s²) = ",
+            "type": "number",
+            "step": "any",
+            "placeholder": "",
+            "width": "medium",
+            "order": 6
+          },
+          {
+            "id": "stdDev",
+            "label": "7. Std Dev (s) = ",
+            "type": "text",
+            "placeholder": "",
+            "width": "medium",
+            "order": 7
           }
-        ],
-        "showWorkTable": {
-          "enabled": true,
-          "columns": ["xᵢ", "(xᵢ − x̄)", "(xᵢ − x̄)²"],
-          "helperRow": "Σ(xᵢ − x̄)² = ?"
-        }
+        ]
       }
     },
     {
@@ -157,6 +304,7 @@
       "name": "Quick Sign Check",
       "unlockedBy": "default",
       "description": "Conceptual warm-up: predict the sign of the slope",
+      "showGraph": false,
       "layout": {
         "given": [
           { "id": "r", "label": "r", "format": "decimal3" }
@@ -178,15 +326,15 @@
     {
       "id": "ratio-check",
       "name": "Ratio Reasoning",
-      "unlockedBy": { "gold": 2 },
-      "description": "Conceptual check: when sᵧ = sₓ, what happens?",
+      "unlockedBy": { "gold": 3 },
+      "description": "Understand how sᵧ/sₓ affects the slope",
       "celebrationMessage": "🧠 Ratio Reasoning Unlocked!",
+      "showGraph": false,
       "layout": {
         "given": [
           { "id": "r", "label": "r", "format": "decimal3" },
           { "id": "sx", "label": "sₓ", "format": "decimal2" },
-          { "id": "sy", "label": "sᵧ", "format": "decimal2" },
-          { "id": "note", "label": "Notice", "value": "sₓ = sᵧ" }
+          { "id": "sy", "label": "sᵧ", "format": "decimal2" }
         ],
         "inputs": [
           {
@@ -194,18 +342,18 @@
             "label": "b = ",
             "type": "number",
             "step": "any",
-            "placeholder": "What is b when sₓ = sᵧ?",
+            "placeholder": "",
             "width": "medium"
           },
           {
             "id": "insight",
-            "label": "When sₓ = sᵧ, b equals:",
+            "label": "The relationship:",
             "type": "multiple-choice",
             "options": [
-              { "id": "r", "label": "r (the correlation)" },
-              { "id": "one", "label": "1" },
-              { "id": "zero", "label": "0" },
-              { "id": "sy", "label": "sᵧ" }
+              { "id": "r", "label": "b = r" },
+              { "id": "2r", "label": "b = 2r" },
+              { "id": "r/2", "label": "b = r/2" },
+              { "id": "3r", "label": "b = 3r" }
             ]
           }
         ]
@@ -235,12 +383,22 @@
   },
   "hints": {
     "perField": {
+      "zscore": "<strong>Formula:</strong> z = (x − μ) / σ<br><br><strong>Steps:</strong><br>1. Subtract the mean from the value: (x − μ)<br>2. Divide by the standard deviation<br><br><strong>Interpretation:</strong> The z-score tells you how many standard deviations the value is from the mean. Positive = above mean, Negative = below mean.",
+      "x": "<strong>Formula:</strong> x = μ + z · σ<br><br><strong>Steps:</strong><br>1. Multiply the z-score by the standard deviation<br>2. Add the mean<br><br><strong>Think of it as:</strong> Start at the mean, then move z standard deviations away.",
+      "z1": "<strong>Formula:</strong> z = (x − μ) / σ<br><br>Calculate the z-score for distribution A using its mean and standard deviation.",
+      "z2": "<strong>Formula:</strong> z = (x − μ) / σ<br><br>Calculate the z-score for distribution B using its mean and standard deviation.",
+      "comparison": "<strong>Comparing z-scores:</strong><br><br>The more extreme value has the z-score with the larger <em>absolute value</em>.<br><br>• |z| = 2 is more extreme than |z| = 1<br>• z = -2.5 and z = 2.5 are equally extreme<br><br>Compare |z₁| vs |z₂| to determine which is more extreme.",
       "b": "<strong>Formula:</strong> b = r · (sᵧ / sₓ)<br><br><strong>Steps:</strong><br>1. First, divide sᵧ by sₓ to get the ratio<br>2. Then multiply that ratio by r<br><br><strong>Tip:</strong> The sign of b always matches the sign of r!",
       "a": "<strong>Formula:</strong> a = ȳ − b · x̄<br><br><strong>Steps:</strong><br>1. First, multiply b by x̄<br>2. Then subtract that product from ȳ<br><br><strong>Watch out:</strong> If b is negative, subtracting a negative means you add!",
       "mean": "<strong>Formula:</strong> x̄ = Σxᵢ / n<br><br><strong>Steps:</strong><br>1. Add up all the values<br>2. Divide by the count (n)<br><br><strong>Tip:</strong> The mean is the \"balance point\" of the data.",
-      "stdDev": "<strong>Formula:</strong> s = √[Σ(xᵢ − x̄)² / (n − 1)]<br><br><strong>Steps:</strong><br>1. Find each deviation: (value − mean)<br>2. Square each deviation<br>3. Sum all squared deviations<br>4. Divide by (n − 1), <em>not n</em>!<br>5. Take the square root<br><br><strong>Remember:</strong> We use (n−1) for sample standard deviation.",
+      "deviations": "<strong>Deviation:</strong> Each deviation is (value − mean)<br><br>For each value in the data, subtract the mean. Keep the signs!<br><br><strong>Example:</strong> If data is [2, 5, 8] and mean is 5:<br>• 2 − 5 = <strong>−3</strong><br>• 5 − 5 = <strong>0</strong><br>• 8 − 5 = <strong>3</strong><br><br>Enter as: −3, 0, 3",
+      "deviationsSquared": "<strong>Squared deviations:</strong> Square each deviation<br><br>Take each deviation and multiply it by itself.<br><br><strong>Remember:</strong> Squaring a negative gives a positive!<br>• (−3)² = 9<br>• (0)² = 0<br>• (3)² = 9<br><br>Enter as: 9, 0, 9",
+      "sumSquaredDev": "<strong>Sum of squared deviations:</strong> Σ(xᵢ − x̄)²<br><br>Add up all the squared deviations from the previous step.<br><br><strong>Example:</strong> 9 + 0 + 9 = 18",
+      "df": "<strong>Degrees of freedom:</strong> df = n − 1<br><br>For a <em>sample</em> standard deviation, we divide by (n − 1), not n.<br><br><strong>Why?</strong> This corrects for the fact that we estimated the mean from the same data.",
+      "variance": "<strong>Variance:</strong> s² = Σ(xᵢ − x̄)² / (n − 1)<br><br>Divide the sum of squared deviations by the degrees of freedom.<br><br><strong>Example:</strong> 18 / 2 = 9",
+      "stdDev": "<strong>Standard deviation:</strong> s = √s² = √variance<br><br>Take the square root of the variance.<br><br><strong>Example:</strong> √9 = 3<br><br><strong>Accepted formats:</strong> You can enter:<br>• A decimal: <code>2.83</code><br>• Square root: <code>sqrt(8)</code> or <code>√8</code><br>• Expression: <code>2*sqrt(2)</code> or <code>2√2</code>",
       "slopeSign": "<strong>Key relationship:</strong><br><br>The sign of slope b <em>always</em> matches the sign of r.<br><br>Think about it: sₓ and sᵧ are always positive (they're standard deviations), so the only thing that determines the sign of b is r!",
-      "insight": "<strong>Think about the formula:</strong><br><br>b = r × (sᵧ / sₓ)<br><br>What happens to (sᵧ / sₓ) when sᵧ equals sₓ?<br><br>Any number divided by itself equals..."
+      "insight": "<strong>The ratio sᵧ/sₓ is key:</strong><br><br>b = r × (sᵧ / sₓ)<br><br>• If sᵧ = sₓ → ratio = 1 → b = r<br>• If sᵧ = 2sₓ → ratio = 2 → b = 2r<br>• If sᵧ = sₓ/2 → ratio = 0.5 → b = r/2<br>• If sᵧ = 3sₓ → ratio = 3 → b = 3r<br><br>The slope is <em>r times the ratio</em>!"
     },
     "penalty": {
       "0": "gold",
@@ -252,6 +410,11 @@
   "progression": {
     "streaksPerMode": true,
     "tiers": [
+      {
+        "id": "calc-zscore",
+        "name": "Calculate Z-Score",
+        "unlockedBy": "default"
+      },
       {
         "id": "find-b",
         "name": "Find Slope (b)",
@@ -268,21 +431,33 @@
         "unlockedBy": "default"
       },
       {
+        "id": "find-raw",
+        "name": "Find Raw Value from Z",
+        "unlockedBy": { "gold": 2 },
+        "celebrationMessage": "📊 Find Raw Value Unlocked! Work the formula backwards."
+      },
+      {
         "id": "ratio-check",
         "name": "Ratio Reasoning",
-        "unlockedBy": { "gold": 2 },
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "🧠 Ratio Reasoning Unlocked! You're seeing the deeper patterns."
+      },
+      {
+        "id": "compare-zscores",
+        "name": "Compare Z-Scores",
+        "unlockedBy": { "gold": 4 },
+        "celebrationMessage": "🎯 Compare Z-Scores Unlocked! Master of standardization."
       },
       {
         "id": "std-dev",
         "name": "Standard Deviation",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": { "gold": 5 },
         "celebrationMessage": "📊 Standard Deviation Mode Unlocked! Time to measure spread."
       },
       {
         "id": "full-lsrl",
         "name": "Full LSRL Equation",
-        "unlockedBy": { "gold": 5 },
+        "unlockedBy": { "gold": 7 },
         "celebrationMessage": "🎉 Full LSRL Mode Unlocked! Put it all together."
       }
     ]
@@ -290,6 +465,13 @@
   "accessibility": {
     "keyboardNav": true,
     "screenReaderLabels": {
+      "x": "x, the data value",
+      "mean": "mu, the mean",
+      "sd": "sigma, the standard deviation",
+      "zscore": "z-score",
+      "z1": "z-score for distribution A",
+      "z2": "z-score for distribution B",
+      "comparison": "which value is more extreme",
       "r": "correlation coefficient r",
       "sx": "standard deviation of x, s sub x",
       "sy": "standard deviation of y, s sub y",
