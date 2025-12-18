@@ -192,6 +192,13 @@
           <button id="btn-next" class="hidden flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg shadow-lg transition-all transform hover:scale-[1.02]">
             Next →
           </button>
+          <!-- Escalation buttons: AI Review → Teacher Review -->
+          <button id="btn-ai-review" class="hidden bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-4 py-3 rounded-lg shadow-lg transition-all flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+            Request AI Review
+          </button>
           <button id="btn-teacher-review" class="hidden bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-3 rounded-lg shadow-lg transition-all flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
@@ -203,17 +210,13 @@
           </button>
         </div>
 
-        <!-- AI Toggle & Hint Status -->
+        <!-- Grading level indicator -->
+        <div id="grading-level-indicator" class="hidden text-center text-xs text-gray-500 mt-1">
+          <span id="grading-level-text">Graded by: Algorithm</span>
+        </div>
+
+        <!-- Hint Status -->
         <div class="flex justify-center items-center gap-4 text-sm">
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-500">Keywords</span>
-            <button id="ai-toggle" class="relative inline-flex h-5 w-9 items-center rounded-full bg-purple-600 transition-colors" title="Toggle AI grading">
-              <span class="sr-only">Enable AI grading</span>
-              <span id="ai-toggle-dot" class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform translate-x-5"></span>
-            </button>
-            <span class="text-xs text-gray-500">+ AI</span>
-            <span id="grading-status" class="text-xs text-gray-400 ml-1"></span>
-          </div>
           <div id="hint-status" class="flex items-center gap-1">
             <span class="text-yellow-400">★</span>
             <span id="potential-star" class="text-yellow-600 font-medium">Gold</span>
@@ -1288,9 +1291,6 @@
       if (geminiKey) localStorage.setItem('geminiApiKey', geminiKey);
       if (groqKey) localStorage.setItem('groqApiKey', groqKey);
 
-      // Update AI toggle state based on provider
-      updateAIToggleState(provider !== 'none');
-
       // Update platform's provider preference if loaded
       if (platform) {
         let preferProvider = null;
@@ -1328,39 +1328,44 @@
           ? 'Using Groq/Llama on server - no API key needed.'
           : 'No API key needed - grading handled by server.';
       }
-
-      // Set initial AI toggle state
-      updateAIToggleState(provider !== 'none');
     }
 
-    // ==================== AI TOGGLE ====================
-    let aiEnabled = true;
+    // ==================== GRADING ESCALATION SYSTEM ====================
+    // Flow: Algorithm (default) → AI (on request) → Teacher (on request)
+    let currentGradingLevel = 'algorithm'; // 'algorithm', 'ai', 'teacher'
+    let lastGradingResults = null; // Store results for escalation
 
-    function updateAIToggleState(enabled) {
-      aiEnabled = enabled;
-      const toggle = document.getElementById('ai-toggle');
-      const dot = document.getElementById('ai-toggle-dot');
-      const status = document.getElementById('grading-status');
+    function updateGradingLevelIndicator(level) {
+      const indicator = document.getElementById('grading-level-indicator');
+      const text = document.getElementById('grading-level-text');
 
-      if (enabled) {
-        toggle.classList.remove('bg-gray-400');
-        toggle.classList.add('bg-purple-600');
-        dot.classList.remove('translate-x-1');
-        dot.classList.add('translate-x-5');
-        status.textContent = '';
-      } else {
-        toggle.classList.add('bg-gray-400');
-        toggle.classList.remove('bg-purple-600');
-        dot.classList.add('translate-x-1');
-        dot.classList.remove('translate-x-5');
-        status.textContent = '(keywords only)';
+      if (level === 'algorithm') {
+        text.textContent = 'Graded by: Algorithm';
+        text.className = 'text-gray-600';
+      } else if (level === 'ai') {
+        text.textContent = 'Graded by: AI';
+        text.className = 'text-indigo-600 font-medium';
+      } else if (level === 'teacher') {
+        text.textContent = 'Graded by: Teacher';
+        text.className = 'text-blue-600 font-medium';
+      }
+
+      indicator.classList.remove('hidden');
+    }
+
+    function hideAllEscalationButtons() {
+      document.getElementById('btn-ai-review').classList.add('hidden');
+      document.getElementById('btn-teacher-review').classList.add('hidden');
+    }
+
+    function showEscalationButton(level) {
+      hideAllEscalationButtons();
+      if (level === 'ai') {
+        document.getElementById('btn-ai-review').classList.remove('hidden');
+      } else if (level === 'teacher') {
+        document.getElementById('btn-teacher-review').classList.remove('hidden');
       }
     }
-
-    document.getElementById('ai-toggle').addEventListener('click', () => {
-      updateAIToggleState(!aiEnabled);
-      localStorage.setItem('aiProvider', aiEnabled ? 'server' : 'none');
-    });
 
     // ==================== TEACHER LOGIN ====================
     let isTeacher = false;
@@ -2195,13 +2200,14 @@
                     star_type: starType,
                     all_correct: true,
                     hints_used: state.game.hintsUsed || 0,
-                    grading_mode: aiEnabled ? 'ai' : 'keywords'
+                    grading_mode: currentGradingLevel
                   })
                 }).catch(err => console.warn('Failed to save progress:', err));
               }
 
               document.getElementById('btn-grade').classList.add('hidden');
               document.getElementById('btn-next').classList.remove('hidden');
+              hideAllEscalationButtons();
 
               // Auto-advance to next problem after 10 seconds (user can click Next to go sooner)
               setTimeout(async () => {
@@ -2210,6 +2216,8 @@
                 if (nextBtn && !nextBtn.classList.contains('hidden')) {
                   nextBtn.classList.add('hidden');
                   document.getElementById('btn-grade').classList.remove('hidden');
+                  hideAllEscalationButtons();
+                  document.getElementById('grading-level-indicator').classList.add('hidden');
                   platform.inputRenderer?.clearAllFeedback();
                   await platform.loadProblem();
                   updateScenarioDisplay();
@@ -2222,6 +2230,16 @@
 
               document.getElementById('btn-grade').classList.add('hidden');
               document.getElementById('btn-try-again').classList.remove('hidden');
+
+              // Show escalation option based on current grading level
+              if (currentGradingLevel === 'algorithm') {
+                // Can escalate to AI
+                showEscalationButton('ai');
+              } else if (currentGradingLevel === 'ai') {
+                // Can escalate to Teacher
+                showEscalationButton('teacher');
+              }
+              // If already at teacher level, no further escalation
             }
           }
         });
@@ -2368,13 +2386,46 @@
     // ==================== ACTION BUTTONS ====================
     document.getElementById('btn-grade').addEventListener('click', async () => {
       soundEngine.init();
-      // Pass AI enabled state to grading
-      await platform.grade({ useAI: aiEnabled });
+      // Always use algorithm-only grading first
+      currentGradingLevel = 'algorithm';
+      updateGradingLevelIndicator('algorithm');
+      hideAllEscalationButtons();
+      await platform.grade({ useAI: false });
+    });
+
+    // Request AI Review - escalate from algorithm to AI
+    document.getElementById('btn-ai-review').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-ai-review');
+      btn.disabled = true;
+      btn.innerHTML = `
+        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        AI Reviewing...
+      `;
+
+      try {
+        currentGradingLevel = 'ai';
+        updateGradingLevelIndicator('ai');
+        // Re-grade with AI enabled
+        await platform.grade({ useAI: true });
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+          Request AI Review
+        `;
+      }
     });
 
     document.getElementById('btn-try-again').addEventListener('click', () => {
       document.getElementById('btn-try-again').classList.add('hidden');
       document.getElementById('btn-grade').classList.remove('hidden');
+      hideAllEscalationButtons();
+      document.getElementById('grading-level-indicator').classList.add('hidden');
       // Clear feedback and re-enable inputs
       platform.inputRenderer?.clearAllFeedback();
       platform.inputRenderer?.enable();
@@ -2386,6 +2437,8 @@
       document.getElementById('btn-next').classList.add('hidden');
       document.getElementById('btn-try-again').classList.add('hidden');
       document.getElementById('btn-grade').classList.remove('hidden');
+      hideAllEscalationButtons();
+      document.getElementById('grading-level-indicator').classList.add('hidden');
       // Clear any leftover feedback before loading new problem
       platform.inputRenderer?.clearAllFeedback();
       await platform.loadProblem();
@@ -2395,6 +2448,8 @@
 
     document.getElementById('btn-skip').addEventListener('click', async () => {
       platform.inputRenderer?.clearAllFeedback();
+      hideAllEscalationButtons();
+      document.getElementById('grading-level-indicator').classList.add('hidden');
       await platform.loadProblem();
       updateScenarioDisplay();
       clearTeacherReview();
@@ -2405,7 +2460,6 @@
     function clearTeacherReview() {
       pendingTeacherReview = null;
       document.getElementById('btn-teacher-review')?.classList.add('hidden');
-      document.getElementById('grading-status').textContent = '';
     }
 
     document.getElementById('cartridge-select').addEventListener('change', (e) => {
