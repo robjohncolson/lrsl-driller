@@ -75,8 +75,9 @@ function roundTo(num, decimals) {
 }
 
 /**
- * Compute the correct answers from raw data in context
+ * Compute the correct answers AND explanations from raw data in context
  * This is the KEY function that calculates everything in real-time
+ * Returns both answers and explanations that mirror the hint logic
  */
 function computeCorrectAnswers(context) {
   const result = {
@@ -89,30 +90,50 @@ function computeCorrectAnswers(context) {
     isInfluential: null,
     slopeChange: null,
     rChange: null,
-    influential: null
+    influential: null,
+    // Explanations for each field
+    explanations: {}
   };
 
   // Handle compare-with-without mode (no graph, uses given values)
   if (context.modeId === 'compare-with-without') {
-    if (context.slopeWith !== undefined && context.slopeWithout !== undefined) {
-      result.slopeChange = roundTo(context.slopeWith - context.slopeWithout, 2);
+    const slopeWith = context.slopeWith;
+    const slopeWithout = context.slopeWithout;
+    const rWith = context.rWith;
+    const rWithout = context.rWithout;
+
+    if (slopeWith !== undefined && slopeWithout !== undefined) {
+      result.slopeChange = roundTo(slopeWith - slopeWithout, 2);
+      result.explanations.slopeChange = `Slope change = b<sub>with</sub> − b<sub>without</sub> = ${slopeWith} − ${slopeWithout} = <strong>${result.slopeChange}</strong>`;
     }
-    if (context.rWith !== undefined && context.rWithout !== undefined) {
-      result.rChange = roundTo(Math.abs(context.rWith) - Math.abs(context.rWithout), 2);
+    if (rWith !== undefined && rWithout !== undefined) {
+      result.rChange = roundTo(Math.abs(rWith) - Math.abs(rWithout), 2);
+      result.explanations.rChange = `r change = |r<sub>with</sub>| − |r<sub>without</sub>| = ${Math.abs(rWith).toFixed(2)} − ${Math.abs(rWithout).toFixed(2)} = <strong>${result.rChange}</strong>`;
     }
     // Influential threshold: |slope change| >= 0.2 OR |r change| >= 0.1
     if (result.slopeChange !== null && result.rChange !== null) {
-      const isInfluentialCalc = Math.abs(result.slopeChange) >= 0.2 || Math.abs(result.rChange) >= 0.1;
+      const absSlopeChange = Math.abs(result.slopeChange);
+      const absRChange = Math.abs(result.rChange);
+      const slopeMeetsThreshold = absSlopeChange >= 0.2;
+      const rMeetsThreshold = absRChange >= 0.1;
+      const isInfluentialCalc = slopeMeetsThreshold || rMeetsThreshold;
       result.influential = isInfluentialCalc ? 'yes' : 'no';
+
+      if (isInfluentialCalc) {
+        const reasons = [];
+        if (slopeMeetsThreshold) reasons.push(`|slope change| = ${absSlopeChange} ≥ 0.2`);
+        if (rMeetsThreshold) reasons.push(`|r change| = ${absRChange} ≥ 0.1`);
+        result.explanations.influential = `<strong>Yes, influential</strong> because ${reasons.join(' and ')}.`;
+      } else {
+        result.explanations.influential = `<strong>Not influential</strong> because |slope change| = ${absSlopeChange} < 0.2 AND |r change| = ${absRChange} < 0.1.`;
+      }
     }
-    console.log('[Grading] compare-with-without computed:', result);
     return result;
   }
 
   // Get data from graphConfig if available
   const graphConfig = context.graphConfig;
   if (!graphConfig || !graphConfig.points) {
-    // Fall back to pre-computed values if no raw data
     return null;
   }
 
@@ -132,83 +153,101 @@ function computeCorrectAnswers(context) {
   // Calculate stats WITHOUT the highlighted point
   const statsWithout = calculateRegression(pointsWithout);
 
+  const xMean = roundTo(statsWith.xMean, 1);
+  const pointX = roundTo(highlightedPoint.x, 1);
+  const pointY = roundTo(highlightedPoint.y, 1);
+
   // ---- LEVERAGE ----
   // High leverage if x is far from x̄
   const xDistance = Math.abs(highlightedPoint.x - statsWith.xMean);
-  const xSpread = statsWith.sx * Math.sqrt(statsWith.n - 1); // total spread
-  const leverageThreshold = xSpread * 0.4; // 40% of spread = high leverage
+  const xSpread = statsWith.sx * Math.sqrt(statsWith.n - 1);
+  const leverageThreshold = xSpread * 0.4;
   result.leverage = xDistance > leverageThreshold ? 'high' : 'low';
 
+  if (result.leverage === 'high') {
+    result.explanations.leverage = `<strong>High leverage</strong>: The point's x-value (${pointX}) is far from x̄ = ${xMean}. Points far left or right of center have high leverage.`;
+  } else {
+    result.explanations.leverage = `<strong>Low leverage</strong>: The point's x-value (${pointX}) is close to x̄ = ${xMean}. Points near the center have low leverage.`;
+  }
+
   // ---- RESIDUAL SIZE ----
-  // Large residual if point is far from the regression line
   const predictedY = statsWith.intercept + statsWith.slope * highlightedPoint.x;
   const residual = highlightedPoint.y - predictedY;
   const absResidual = Math.abs(residual);
 
-  // Calculate typical residual size (use RMSE-like measure)
   let sumSquaredResiduals = 0;
   for (const p of allPoints) {
     const pred = statsWith.intercept + statsWith.slope * p.x;
     sumSquaredResiduals += (p.y - pred) ** 2;
   }
   const typicalResidual = Math.sqrt(sumSquaredResiduals / allPoints.length);
-  const residualThreshold = typicalResidual * 1.5; // 1.5x typical = large
+  const residualThreshold = typicalResidual * 1.5;
   result.residualSize = absResidual > residualThreshold ? 'large' : 'small';
+
+  const residualRounded = roundTo(residual, 2);
+  if (result.residualSize === 'large') {
+    result.explanations.residualSize = `<strong>Large residual</strong>: The residual is ${residualRounded} — the point is far from the regression line. This is an outlier in the y-direction.`;
+  } else {
+    result.explanations.residualSize = `<strong>Small residual</strong>: The residual is ${residualRounded} — the point is close to the regression line.`;
+  }
 
   // ---- CLASSIFICATION ----
   result.classification = `${result.leverage}-${result.residualSize === 'large' ? 'high' : 'low'}`;
 
+  const classificationDescriptions = {
+    'low-low': 'A typical point with minimal influence on the regression.',
+    'low-high': 'An outlier in the y-direction. Affects r more than slope.',
+    'high-low': 'Reinforces the existing pattern. Has leverage but fits the line.',
+    'high-high': '<strong>INFLUENTIAL</strong> — dramatically affects both slope and r!'
+  };
+  result.explanations.classification = `<strong>${result.leverage === 'high' ? 'High' : 'Low'} leverage, ${result.residualSize} residual</strong>: ${classificationDescriptions[result.classification]}`;
+
   // ---- SLOPE EFFECT ----
-  // If we remove the point, what happens to slope?
   const slopeDiff = statsWith.slope - statsWithout.slope;
+  const slopeWith = roundTo(statsWith.slope, 3);
+  const slopeWithout = roundTo(statsWithout.slope, 3);
+
   if (Math.abs(slopeDiff) < 0.05) {
     result.slopeEffect = 'same';
+    result.explanations.slopeEffect = `<strong>Slope stays about the same</strong>: This point has little effect on slope (b = ${slopeWith} with, ${slopeWithout} without). ${result.leverage === 'low' ? 'Low leverage points have minimal pull on the line.' : 'The point falls near the existing pattern.'}`;
   } else if (slopeDiff > 0) {
-    // Point increases slope, removing decreases it
     result.slopeEffect = 'decrease';
+    result.explanations.slopeEffect = `<strong>Slope would DECREASE</strong>: The point is pulling the line steeper (b = ${slopeWith} → ${slopeWithout} without it). Think of the line as a seesaw — this point pulls ${highlightedPoint.x > statsWith.xMean ? 'the right side up' : 'the left side down'}.`;
   } else {
-    // Point decreases slope, removing increases it
     result.slopeEffect = 'increase';
+    result.explanations.slopeEffect = `<strong>Slope would INCREASE</strong>: The point is pulling the line flatter (b = ${slopeWith} → ${slopeWithout} without it). Removing it lets the line tilt more steeply.`;
   }
 
   // ---- R EFFECT ----
-  // If we remove the point, what happens to |r|?
   const rDiff = Math.abs(statsWith.r) - Math.abs(statsWithout.r);
+  const rWith = roundTo(statsWith.r, 3);
+  const rWithout = roundTo(statsWithout.r, 3);
+
   if (Math.abs(rDiff) < 0.02) {
     result.rEffect = 'same';
+    result.explanations.rEffect = `<strong>|r| stays about the same</strong>: This point has little effect on correlation (r = ${rWith} with, ${rWithout} without).`;
   } else if (rDiff > 0) {
-    // Point strengthens r, removing weakens it
     result.rEffect = 'decrease';
+    result.explanations.rEffect = `<strong>|r| would DECREASE</strong>: The point strengthens the linear pattern (r = ${rWith} → ${rWithout} without it). Points close to the line strengthen r; removing them weakens it.`;
   } else {
-    // Point weakens r, removing strengthens it
     result.rEffect = 'increase';
+    result.explanations.rEffect = `<strong>|r| would INCREASE</strong>: The point weakens the linear pattern (r = ${rWith} → ${rWithout} without it). This outlier pulls r toward zero; removing it strengthens the correlation.`;
   }
 
   // r² follows |r|
   result.r2Effect = result.rEffect;
+  result.explanations.r2Effect = `Since r² = (r)², it moves the same direction as |r|. ${result.rEffect === 'increase' ? 'Removing this outlier would increase r².' : result.rEffect === 'decrease' ? 'Removing this point would decrease r².' : 'r² stays about the same.'}`;
 
   // ---- INFLUENTIAL ----
-  // A point is influential if it has high leverage AND large residual
-  // OR if removing it substantially changes the regression
   const isInfluential = (result.leverage === 'high' && result.residualSize === 'large') ||
     Math.abs(slopeDiff) > 0.1 ||
     Math.abs(rDiff) > 0.05;
   result.isInfluential = isInfluential ? 'yes' : 'no';
 
-  // ---- NUMERIC CALCULATIONS (for compare-with-without mode) ----
-  // These use the given values, not computed ones
-  if (context.slopeWith !== undefined && context.slopeWithout !== undefined) {
-    result.slopeChange = roundTo(context.slopeWith - context.slopeWithout, 2);
-  }
-  if (context.rWith !== undefined && context.rWithout !== undefined) {
-    result.rChange = roundTo(Math.abs(context.rWith) - Math.abs(context.rWithout), 2);
-  }
-
-  // For the "influential" field in compare-with-without mode
-  // Use thresholds: |slope change| >= 0.2 OR |r change| >= 0.1
-  if (result.slopeChange !== null && result.rChange !== null) {
-    const isInfluentialCalc = Math.abs(result.slopeChange) >= 0.2 || Math.abs(result.rChange) >= 0.1;
-    result.influential = isInfluentialCalc ? 'yes' : 'no';
+  if (isInfluential) {
+    result.explanations.isInfluential = `<strong>Yes, influential</strong>: ${result.leverage === 'high' && result.residualSize === 'large' ? 'High leverage + large residual = influential!' : 'Removing this point substantially changes the regression.'} An influential point has both the leverage (x far from mean) AND pulls the line away from where it would otherwise be.`;
+  } else {
+    result.explanations.isInfluential = `<strong>Not influential</strong>: ${result.leverage === 'low' ? 'Low leverage points cannot strongly influence the line.' : 'Although high leverage, the point fits the existing pattern (small residual).'} A point needs BOTH high leverage AND large residual to be influential.`;
   }
 
   return result;
@@ -422,6 +461,7 @@ export function gradeEffectPrediction(studentAnswer, expectedAnswer) {
 /**
  * Main grading entry point - called by platform for each field
  * COMPUTES correct answers in real-time from raw data
+ * Includes explanatory feedback that mirrors the hints
  *
  * @param {string} fieldId - The field being graded
  * @param {any} answer - The student's answer
@@ -433,11 +473,13 @@ export function gradeField(fieldId, answer, context) {
   const computed = computeCorrectAnswers(context);
 
   let expected = null;
+  let explanation = null;
   let source = 'computed';
 
   // Use computed value if available
   if (computed && computed[fieldId] !== null && computed[fieldId] !== undefined) {
     expected = computed[fieldId];
+    explanation = computed.explanations?.[fieldId] || null;
     console.log(`[Grading] ${fieldId}: computed answer = "${expected}" from raw data`);
   } else {
     // Fall back to pre-computed values in context
@@ -454,6 +496,7 @@ export function gradeField(fieldId, answer, context) {
     if (expectedData !== undefined && expectedData !== null) {
       if (typeof expectedData === 'object' && expectedData !== null) {
         expected = expectedData.value !== undefined ? expectedData.value : expectedData.expected;
+        explanation = expectedData.explanation || null;
       } else {
         expected = expectedData;
       }
@@ -492,9 +535,22 @@ export function gradeField(fieldId, answer, context) {
     result = gradeMultipleChoice(answer, expected);
   }
 
+  // ALWAYS add the computed explanation to feedback
+  // This explains WHY the answer is what it is, following hint logic
+  if (explanation) {
+    if (result.score === 'E') {
+      // Correct - show explanation with positive framing
+      result.feedback = `Correct! ${explanation}`;
+    } else {
+      // Incorrect - show explanation to help student understand
+      result.feedback = `${explanation}`;
+    }
+  }
+
   // Add debug info to result
   result._computed = source === 'computed';
   result._expected = expected;
+  result._explanation = explanation;
 
   return result;
 }
