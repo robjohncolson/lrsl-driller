@@ -632,32 +632,40 @@ function generateInfluentialAnalysis(context, config) {
 
 /**
  * Mode 7: Compare with and without point (calculate actual changes)
+ * Uses pre-computed nice values for mental math
  */
 function generateCompareWithWithout(context, config) {
-  const dataset = generateBaseDataset({ n: 8 });
+  // Pre-computed scenarios with nice round numbers for mental math
+  // Format: { slopeWith, slopeWithout, rWith, rWithout, isInfluential }
+  // Influential threshold: |slope change| >= 0.2 OR |r change| >= 0.1
+  const scenarios = [
+    // INFLUENTIAL cases (large changes)
+    { slopeWith: 1.5, slopeWithout: 0.9, rWith: 0.75, rWithout: 0.85, isInfluential: true },
+    { slopeWith: 2.1, slopeWithout: 1.6, rWith: 0.6, rWithout: 0.8, isInfluential: true },
+    { slopeWith: -0.8, slopeWithout: -1.2, rWith: -0.7, rWithout: -0.85, isInfluential: true },
+    { slopeWith: 1.2, slopeWithout: 0.8, rWith: 0.65, rWithout: 0.9, isInfluential: true },
+    { slopeWith: 0.6, slopeWithout: 1.1, rWith: 0.55, rWithout: 0.75, isInfluential: true },
+    { slopeWith: -1.4, slopeWithout: -0.9, rWith: -0.6, rWithout: -0.8, isInfluential: true },
+    { slopeWith: 2.0, slopeWithout: 1.5, rWith: 0.7, rWithout: 0.85, isInfluential: true },
+    { slopeWith: 0.5, slopeWithout: 1.0, rWith: 0.5, rWithout: 0.7, isInfluential: true },
 
-  // Always use an influential point for this mode
-  const types = ['high-high', 'high-high', 'high-low'];
-  const type = types[Math.floor(Math.random() * types.length)];
+    // NOT influential cases (small changes)
+    { slopeWith: 1.3, slopeWithout: 1.2, rWith: 0.82, rWithout: 0.85, isInfluential: false },
+    { slopeWith: 0.95, slopeWithout: 0.9, rWith: 0.78, rWithout: 0.8, isInfluential: false },
+    { slopeWith: -0.85, slopeWithout: -0.8, rWith: -0.72, rWithout: -0.75, isInfluential: false },
+    { slopeWith: 1.55, slopeWithout: 1.5, rWith: 0.88, rWithout: 0.9, isInfluential: false },
+  ];
 
-  const special = generateSpecialPoint(dataset, type);
-  const allPoints = [...dataset.points, special.point];
-  const highlightIndex = allPoints.length - 1;
+  const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
 
-  // Calculate stats with and without
-  const statsWith = calculateRegression(allPoints);
-  const statsWithout = calculateRegression(dataset.points);
+  const slopeWith = scenario.slopeWith;
+  const slopeWithout = scenario.slopeWithout;
+  const rWith = scenario.rWith;
+  const rWithout = scenario.rWithout;
+  const isInfluential = scenario.isInfluential;
 
-  const slopeWith = roundTo(statsWith.slope, 3);
-  const slopeWithout = roundTo(statsWithout.slope, 3);
-  const rWith = roundTo(statsWith.r, 3);
-  const rWithout = roundTo(statsWithout.r, 3);
-
-  const slopeChange = roundTo(slopeWith - slopeWithout, 3);
-  const rChange = roundTo(Math.abs(rWith) - Math.abs(rWithout), 3);
-
-  // Influential if changes are substantial
-  const isInfluential = Math.abs(slopeChange) > 0.1 || Math.abs(rChange) > 0.05;
+  const slopeChange = roundTo(slopeWith - slopeWithout, 2);
+  const rChange = roundTo(Math.abs(rWith) - Math.abs(rWithout), 2);
 
   const answers = {
     slopeChange: {
@@ -666,18 +674,18 @@ function generateCompareWithWithout(context, config) {
     },
     rChange: {
       value: rChange,
-      formula: `|${rWith}| - |${rWithout}| = ${Math.abs(rWith).toFixed(3)} - ${Math.abs(rWithout).toFixed(3)} = ${rChange}`
+      formula: `|${rWith}| - |${rWithout}| = ${Math.abs(rWith).toFixed(2)} - ${Math.abs(rWithout).toFixed(2)} = ${rChange}`
     },
     influential: {
       value: isInfluential ? 'yes' : 'no',
       explanation: isInfluential
-        ? `The point causes substantial changes: slope changes by ${slopeChange}, |r| changes by ${rChange}.`
-        : 'The changes are relatively small, so the point is not highly influential.'
+        ? `The point IS influential: |slope change| = ${Math.abs(slopeChange)} >= 0.2 OR |r change| = ${Math.abs(rChange)} >= 0.1`
+        : `The point is NOT influential: |slope change| = ${Math.abs(slopeChange)} < 0.2 AND |r change| = ${Math.abs(rChange)} < 0.1`
     }
   };
 
   return {
-    scenario: `Compare the regression statistics WITH and WITHOUT the highlighted point. Calculate the changes.`,
+    scenario: `Calculate the changes in slope and r when the point is removed. Then determine if the point is influential.`,
     context: {
       ...context,
       modeId: 'compare-with-without',
@@ -697,22 +705,7 @@ function generateCompareWithWithout(context, config) {
       rWith,
       rWithout
     },
-    graphConfig: {
-      type: 'dual-scatterplot',
-      leftPlot: {
-        points: allPoints,
-        regression: { a: statsWith.intercept, b: statsWith.slope },
-        highlight: { index: highlightIndex, x: special.point.x, y: special.point.y },
-        title: 'WITH point'
-      },
-      rightPlot: {
-        points: dataset.points,
-        regression: { a: statsWithout.intercept, b: statsWithout.slope },
-        title: 'WITHOUT point'
-      },
-      xLabel: 'x',
-      yLabel: 'y'
-    },
+    graphConfig: null, // This mode focuses on calculation, no graph needed
     validation: {
       slopeChange: { expected: slopeChange, tolerance: 'standard' },
       rChange: { expected: rChange, tolerance: 'standard' },
