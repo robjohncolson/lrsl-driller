@@ -378,14 +378,8 @@ function generatePredictSlopeEffect(context, config) {
     slopeEffect = 'increase';
   }
 
-  // Describe position relative to pattern
-  const aboveLine = special.residual > 0;
-  const rightOfMean = special.point.x > statsWith.xMean;
-  let pointPosition;
-  if (rightOfMean && aboveLine) pointPosition = 'upper right (above line, right of center)';
-  else if (rightOfMean && !aboveLine) pointPosition = 'lower right (below line, right of center)';
-  else if (!rightOfMean && aboveLine) pointPosition = 'upper left (above line, left of center)';
-  else pointPosition = 'lower left (below line, left of center)';
+  // Format point coordinates
+  const pointCoords = `(${special.point.x}, ${special.point.y})`;
 
   const answers = {
     slopeEffect: {
@@ -402,20 +396,20 @@ function generatePredictSlopeEffect(context, config) {
       ...context,
       modeId: 'predict-slope-effect',
       modeName: 'Effect on Slope',
+      pointCoords,
       currentSlope: roundTo(statsWith.slope, 3),
-      leverage: special.leverage,
-      residualSize: special.residualSize,
-      pointPosition,
+      leverage: special.leverage === 'high' ? 'High' : 'Low',
+      residualSize: special.residualSize === 'large' ? 'Large' : 'Small',
       slopeEffect,
       slopeWith: roundTo(statsWith.slope, 3),
       slopeWithout: roundTo(statsWithout.slope, 3)
     },
     answers,
     given: {
+      pointCoords,
       currentSlope: roundTo(statsWith.slope, 3),
       leverage: special.leverage === 'high' ? 'High' : 'Low',
-      residualSize: special.residualSize === 'large' ? 'Large' : 'Small',
-      pointPosition
+      residualSize: special.residualSize === 'large' ? 'Large' : 'Small'
     },
     graphConfig: {
       type: 'scatterplot',

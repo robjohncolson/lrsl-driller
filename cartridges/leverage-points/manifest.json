@@ -150,10 +150,10 @@
       "layout": {
         "graph": "scatterplot-with-highlight",
         "given": [
+          { "id": "pointCoords", "label": "Point", "format": "text" },
           { "id": "currentSlope", "label": "Current slope (b)", "format": "decimal3" },
-          { "id": "leverage", "label": "Point leverage", "format": "text" },
-          { "id": "residualSize", "label": "Residual size", "format": "text" },
-          { "id": "pointPosition", "label": "Point position", "format": "text" }
+          { "id": "leverage", "label": "Leverage", "format": "text" },
+          { "id": "residualSize", "label": "Residual", "format": "text" }
         ],
         "inputs": [
           {
