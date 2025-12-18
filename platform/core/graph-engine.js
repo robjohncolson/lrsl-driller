@@ -22,13 +22,19 @@ export class GraphEngine {
       pointHover: '#4f46e5',
       highlight: '#ef4444',   // Red
       line: '#10b981',        // Emerald
+      lineAfter: '#3b82f6',   // Blue (for "after removal" regression)
+      lineBefore: '#9ca3af',  // Gray (for "before" regression, dashed)
       grid: '#e5e7eb',
       axis: '#374151',
       text: '#6b7280',
       zeroLine: '#9ca3af',
       positive: '#22c55e',    // Green (for positive residuals)
-      negative: '#ef4444'     // Red (for negative residuals)
+      negative: '#ef4444',    // Red (for negative residuals)
+      removedPoint: '#fca5a5' // Light red (faded removed point)
     };
+
+    // Animation state
+    this.animationState = null;
 
     this.init();
   }
@@ -1028,10 +1034,257 @@ export class GraphEngine {
     }
   }
 
+  // ============== POINT REMOVAL ANIMATION ==============
+
+  /**
+   * Animate the effect of removing a point from the dataset
+   * Shows: point fading out, regression line changing
+   *
+   * @param {Object} options
+   * @param {number} options.removeIndex - Index of the point to remove
+   * @param {Object} options.newRegression - New regression { a, b } after removal
+   * @param {number} options.duration - Animation duration in ms (default 1500)
+   * @param {Function} options.onComplete - Callback when animation finishes
+   */
+  animatePointRemoval(options = {}) {
+    const {
+      removeIndex,
+      newRegression,
+      duration = 1500,
+      onComplete
+    } = options;
+
+    if (!this.currentConfig || removeIndex === undefined) {
+      console.warn('Cannot animate: missing config or removeIndex');
+      return;
+    }
+
+    const config = this.currentConfig;
+    const points = config.points || config.data || [];
+    const oldRegression = config.regression;
+
+    if (!oldRegression || !newRegression) {
+      console.warn('Cannot animate: missing regression data');
+      return;
+    }
+
+    // Animation phases:
+    // 1. (0-500ms) Point fades and shrinks
+    // 2. (500-1500ms) Regression line morphs to new position
+
+    const startTime = performance.now();
+    const pointFadeDuration = 500;
+    const lineMorphDuration = 1000;
+
+    const animate = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Clear and redraw base elements
+      this.clear();
+
+      // Recalculate scales
+      const xValues = points.map(d => d.x);
+      const yValues = points.map(d => d.y);
+      const xMin = config.xMin ?? Math.min(...xValues) * 0.9;
+      const xMax = config.xMax ?? Math.max(...xValues) * 1.1;
+      const yMin = config.yMin ?? Math.min(...yValues) * 0.9;
+      const yMax = config.yMax ?? Math.max(...yValues) * 1.1;
+      const scales = this.calculateScales(xMin, xMax, yMin, yMax);
+
+      // Draw grid
+      this.drawGrid(scales);
+
+      // Draw axes
+      this.drawAxes(scales, { x: config.xLabel || 'X', y: config.yLabel || 'Y' });
+
+      // Phase 1: Calculate point opacity (fades out in first 500ms)
+      const pointProgress = Math.min(elapsed / pointFadeDuration, 1);
+      const pointOpacity = 1 - this.easeOutCubic(pointProgress);
+      const pointScale = 1 - this.easeOutCubic(pointProgress) * 0.5;
+
+      // Phase 2: Calculate line morph (starts at 400ms, ends at duration)
+      const lineMorphStart = 400;
+      const lineProgress = Math.max(0, Math.min((elapsed - lineMorphStart) / lineMorphDuration, 1));
+      const lineEased = this.easeInOutCubic(lineProgress);
+
+      // Interpolate between old and new regression
+      const currentSlope = oldRegression.b + (newRegression.b - oldRegression.b) * lineEased;
+      const currentIntercept = oldRegression.a + (newRegression.a - oldRegression.a) * lineEased;
+
+      // Draw the "before" regression line (faded, dashed) if animation started
+      if (lineProgress > 0 && lineProgress < 1) {
+        this.ctx.strokeStyle = this.colors.lineBefore;
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([5, 5]);
+        this.ctx.globalAlpha = 0.5;
+
+        const x1 = xMin;
+        const y1 = oldRegression.a + oldRegression.b * x1;
+        const x2 = xMax;
+        const y2 = oldRegression.a + oldRegression.b * x2;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(scales.xScale(x1), scales.yScale(y1));
+        this.ctx.lineTo(scales.xScale(x2), scales.yScale(y2));
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+        this.ctx.globalAlpha = 1;
+      }
+
+      // Draw the current/morphing regression line
+      const lineColor = lineProgress >= 1 ? this.colors.lineAfter : this.colors.line;
+      this.ctx.strokeStyle = lineColor;
+      this.ctx.lineWidth = 2.5;
+
+      const lx1 = xMin;
+      const ly1 = currentIntercept + currentSlope * lx1;
+      const lx2 = xMax;
+      const ly2 = currentIntercept + currentSlope * lx2;
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(scales.xScale(lx1), scales.yScale(ly1));
+      this.ctx.lineTo(scales.xScale(lx2), scales.yScale(ly2));
+      this.ctx.stroke();
+
+      // Draw mean lines if configured
+      if (config.showMeanLines && config.xMean !== undefined) {
+        this.ctx.strokeStyle = '#9ca3af';
+        this.ctx.lineWidth = 1;
+        this.ctx.setLineDash([3, 3]);
+
+        const meanPx = scales.xScale(config.xMean);
+        this.ctx.beginPath();
+        this.ctx.moveTo(meanPx, this.padding.top);
+        this.ctx.lineTo(meanPx, this.height - this.padding.bottom);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+      }
+
+      // Draw all points
+      points.forEach((point, index) => {
+        const isRemoved = index === removeIndex;
+        const isHighlight = config.highlight?.index === index;
+
+        if (isRemoved) {
+          // Animate the removed point
+          if (pointOpacity > 0.01) {
+            const radius = (isHighlight ? 8 : 5) * pointScale;
+            const px = scales.xScale(point.x);
+            const py = scales.yScale(point.y);
+
+            this.ctx.globalAlpha = pointOpacity;
+            this.ctx.beginPath();
+            this.ctx.arc(px, py, radius, 0, Math.PI * 2);
+            this.ctx.fillStyle = this.colors.highlight;
+            this.ctx.fill();
+
+            if (isHighlight) {
+              this.ctx.strokeStyle = '#fff';
+              this.ctx.lineWidth = 2;
+              this.ctx.stroke();
+            }
+            this.ctx.globalAlpha = 1;
+          }
+
+          // Show "X" mark where point was removed (after fade)
+          if (pointProgress >= 1) {
+            const px = scales.xScale(point.x);
+            const py = scales.yScale(point.y);
+
+            this.ctx.strokeStyle = this.colors.removedPoint;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(px - 6, py - 6);
+            this.ctx.lineTo(px + 6, py + 6);
+            this.ctx.moveTo(px + 6, py - 6);
+            this.ctx.lineTo(px - 6, py + 6);
+            this.ctx.stroke();
+          }
+        } else {
+          // Draw normal point
+          this.drawPoint(scales, point, false);
+        }
+      });
+
+      // Draw info box showing slope/r changes
+      if (lineProgress > 0) {
+        this.drawAnimationInfo(oldRegression, newRegression, lineEased);
+      }
+
+      // Continue animation or finish
+      if (progress < 1) {
+        this.animationState = requestAnimationFrame(animate);
+      } else {
+        this.animationState = null;
+        if (onComplete) onComplete();
+      }
+    };
+
+    // Start animation
+    this.animationState = requestAnimationFrame(animate);
+  }
+
+  /**
+   * Draw info box showing before/after values during animation
+   */
+  drawAnimationInfo(oldReg, newReg, progress) {
+    const ctx = this.ctx;
+    const boxX = this.width - this.padding.right - 160;
+    const boxY = this.padding.top + 10;
+
+    // Background
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, 150, 70, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+
+    // "Before" values (fading out)
+    ctx.fillStyle = `rgba(156, 163, 175, ${1 - progress * 0.7})`;
+    ctx.fillText(`Before:`, boxX + 10, boxY + 16);
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.fillText(`slope = ${oldReg.b.toFixed(3)}`, boxX + 15, boxY + 30);
+
+    // "After" values (fading in)
+    ctx.fillStyle = `rgba(59, 130, 246, ${0.3 + progress * 0.7})`;
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.fillText(`After removal:`, boxX + 10, boxY + 48);
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.fillText(`slope = ${newReg.b.toFixed(3)}`, boxX + 15, boxY + 62);
+  }
+
+  /**
+   * Stop any running animation
+   */
+  stopAnimation() {
+    if (this.animationState) {
+      cancelAnimationFrame(this.animationState);
+      this.animationState = null;
+    }
+  }
+
+  /**
+   * Easing functions for smooth animations
+   */
+  easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
   /**
    * Clean up resources
    */
   destroy() {
+    this.stopAnimation();
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;

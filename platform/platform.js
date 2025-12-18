@@ -428,6 +428,9 @@ export class Platform {
       // Show feedback
       this.inputRenderer?.showAllFeedback(results);
 
+      // Trigger point removal animation for leverage-points modes that ask about removal
+      this.maybeAnimatePointRemoval(context, results);
+
       this.onGradingComplete(results);
       this.onStateChange(this.getState());
 
@@ -640,6 +643,77 @@ export class Platform {
     return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
       return context[key] !== undefined ? context[key] : match;
     });
+  }
+
+  /**
+   * Animate point removal for leverage-points modes that ask about removing a point
+   * Shows the effect on the regression line when the highlighted point is removed
+   */
+  maybeAnimatePointRemoval(context, results) {
+    // Only animate for specific modes that ask about point removal effects
+    const removalModes = ['predict-slope-effect', 'predict-r-effect', 'influential-analysis'];
+    if (!removalModes.includes(context.modeId)) {
+      return;
+    }
+
+    // Need graph engine and graph config
+    if (!this.graphEngine || !context.graphConfig) {
+      return;
+    }
+
+    const graphConfig = context.graphConfig;
+    const points = graphConfig.points;
+    const highlightIndex = graphConfig.highlight?.index;
+
+    if (!points || highlightIndex === undefined) {
+      return;
+    }
+
+    // Calculate the new regression without the highlighted point
+    const pointsWithout = points.filter((_, i) => i !== highlightIndex);
+    const newStats = this.calculateRegression(pointsWithout);
+
+    // Delay animation slightly so feedback is visible first
+    setTimeout(() => {
+      this.graphEngine.animatePointRemoval({
+        removeIndex: highlightIndex,
+        newRegression: {
+          a: newStats.intercept,
+          b: newStats.slope
+        },
+        duration: 2000
+      });
+    }, 500);
+  }
+
+  /**
+   * Calculate regression statistics from points (helper for animation)
+   */
+  calculateRegression(points) {
+    const n = points.length;
+    if (n < 2) return { slope: 0, intercept: 0, r: 0 };
+
+    let sumX = 0, sumY = 0;
+    for (const p of points) {
+      sumX += p.x;
+      sumY += p.y;
+    }
+
+    const xMean = sumX / n;
+    const yMean = sumY / n;
+
+    let ssX = 0, ssY = 0, ssXY = 0;
+    for (const p of points) {
+      ssX += (p.x - xMean) ** 2;
+      ssY += (p.y - yMean) ** 2;
+      ssXY += (p.x - xMean) * (p.y - yMean);
+    }
+
+    const slope = ssX > 0 ? ssXY / ssX : 0;
+    const intercept = yMean - slope * xMean;
+    const r = (ssX > 0 && ssY > 0) ? ssXY / Math.sqrt(ssX * ssY) : 0;
+
+    return { slope, intercept, r, xMean, yMean };
   }
 
   // Simple event emitter
