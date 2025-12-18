@@ -1000,29 +1000,9 @@
     }
 
     function showTeacherReviewOption(results, message) {
-      // Store for later submission - include cartridge info and expected answers
-      const problem = platform.currentProblem;
-      const mode = platform.cartridgeLoader?.getMode(platform.currentMode);
-      const fieldIds = mode?.layout?.inputs?.map(i => i.id) || Object.keys(results.fields || {});
-
-      pendingTeacherReview = {
-        results,
-        problem,
-        answers: platform.inputRenderer?.getAllValues(),
-        expectedAnswers: problem?.answers || {},
-        cartridgeId: currentCartridgeId,
-        cartridgeName: platform.currentCartridge?.manifest?.meta?.name || currentCartridgeId,
-        modeId: platform.currentMode,
-        fieldIds, // Store which fields to grade
-        timestamp: new Date().toISOString(),
-        username: userSystem.currentUser?.username
-      };
-
-      // Show teacher review button
-      const reviewBtn = document.getElementById('btn-teacher-review');
-      if (reviewBtn) {
-        reviewBtn.classList.remove('hidden');
-      }
+      // pendingTeacherReview should already be set by onGradingComplete
+      // Just show the button and message
+      showEscalationButton('teacher');
 
       // Show info toast with custom message
       celebration.showToast(message || 'Teacher review available.', 'info', 5000);
@@ -1398,11 +1378,11 @@
       if (level === 'ai') {
         document.getElementById('btn-ai-review').classList.remove('hidden');
       } else if (level === 'teacher') {
+        // Teacher review only shown after appeal or AI failure
         document.getElementById('btn-teacher-review').classList.remove('hidden');
       } else if (level === 'ai-appeal') {
-        // Show appeal button after AI grading (alongside teacher review option)
+        // After AI grading, show ONLY appeal button (no teacher review yet)
         document.getElementById('btn-ai-appeal').classList.remove('hidden');
-        document.getElementById('btn-teacher-review').classList.remove('hidden');
       }
     }
 
@@ -2186,20 +2166,29 @@
             // Update grading status display
             updateGradingStatus(results);
 
-            // Handle teacher review - available whenever student might want a second opinion
-            if (results._aiFailed && results._gradingMethod === 'keywords+teacher-review') {
+            // Store pending review data for potential teacher escalation later
+            if (!results.allCorrect) {
+              const problem = platform.currentProblem;
+              const mode = platform.cartridgeLoader?.getMode(platform.currentMode);
+              const fieldIds = mode?.layout?.inputs?.map(i => i.id) || Object.keys(results.fields || {});
+
+              pendingTeacherReview = {
+                results,
+                problem,
+                answers: platform.inputRenderer?.getAllValues(),
+                expectedAnswers: problem?.answers || {},
+                cartridgeId: currentCartridgeId,
+                cartridgeName: platform.currentCartridge?.manifest?.meta?.name || currentCartridgeId,
+                modeId: platform.currentMode,
+                fieldIds,
+                timestamp: new Date().toISOString(),
+                username: userSystem.currentUser?.username
+              };
+            }
+
+            // Show teacher review ONLY if AI failed during AI grading attempt
+            if (results._aiFailed && currentGradingLevel === 'ai') {
               showTeacherReviewOption(results, 'AI grading unavailable. Your work can be submitted for teacher review.');
-            } else if (results._aiGradedLower) {
-              // Check if it's because of incomplete AI feedback
-              const hasIncomplete = Object.values(results.fields || {}).some(f => f._aiIncomplete);
-              if (hasIncomplete) {
-                showTeacherReviewOption(results, 'AI feedback was limited. Request teacher review for detailed feedback.');
-              } else {
-                showTeacherReviewOption(results, 'AI and keywords disagree on some answers. Request teacher review if needed.');
-              }
-            } else if (!results.allCorrect) {
-              // Always offer teacher review when student got something wrong - they may want to appeal
-              showTeacherReviewOption(results, 'Think your answer deserves a better grade? Request teacher review.');
             }
 
             if (results.allCorrect) {
