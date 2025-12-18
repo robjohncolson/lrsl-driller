@@ -54,8 +54,8 @@
             "label": "This point has:",
             "type": "multiple-choice",
             "options": [
-              { "id": "high", "label": "High leverage (far from x̄)" },
-              { "id": "low", "label": "Low leverage (near x̄)" }
+              { "id": "high", "label": "High leverage" },
+              { "id": "low", "label": "Low leverage" }
             ]
           }
         ]
@@ -81,8 +81,8 @@
             "label": "This point has:",
             "type": "multiple-choice",
             "options": [
-              { "id": "large", "label": "Large residual (far from line)" },
-              { "id": "small", "label": "Small residual (close to line)" }
+              { "id": "large", "label": "Large residual" },
+              { "id": "small", "label": "Small residual" }
             ]
           }
         ]
@@ -119,8 +119,8 @@
             "label": "Residual:",
             "type": "multiple-choice",
             "options": [
-              { "id": "large", "label": "Large (outlier)" },
-              { "id": "small", "label": "Small (fits pattern)" }
+              { "id": "large", "label": "Large" },
+              { "id": "small", "label": "Small" }
             ],
             "order": 2
           },
@@ -129,10 +129,10 @@
             "label": "Classification:",
             "type": "select",
             "options": [
-              { "value": "low-low", "label": "Low leverage, small residual (typical point)" },
-              { "value": "low-high", "label": "Low leverage, large residual (outlier in y)" },
-              { "value": "high-low", "label": "High leverage, small residual (reinforces pattern)" },
-              { "value": "high-high", "label": "High leverage, large residual (INFLUENTIAL)" }
+              { "value": "low-low", "label": "Low leverage, small residual" },
+              { "value": "low-high", "label": "Low leverage, large residual" },
+              { "value": "high-low", "label": "High leverage, small residual" },
+              { "value": "high-high", "label": "High leverage, large residual" }
             ],
             "order": 3
           }
@@ -161,8 +161,8 @@
             "label": "If this point is REMOVED, the slope will:",
             "type": "multiple-choice",
             "options": [
-              { "id": "increase", "label": "Increase (become more positive or less negative)" },
-              { "id": "decrease", "label": "Decrease (become less positive or more negative)" },
+              { "id": "increase", "label": "Increase" },
+              { "id": "decrease", "label": "Decrease" },
               { "id": "same", "label": "Stay about the same" }
             ]
           }
@@ -189,8 +189,8 @@
             "label": "If this point is REMOVED, |r| will:",
             "type": "multiple-choice",
             "options": [
-              { "id": "increase", "label": "Increase (stronger correlation)" },
-              { "id": "decrease", "label": "Decrease (weaker correlation)" },
+              { "id": "increase", "label": "Increase" },
+              { "id": "decrease", "label": "Decrease" },
               { "id": "same", "label": "Stay about the same" }
             ]
           },
@@ -242,8 +242,8 @@
             "label": "Is this point influential?",
             "type": "multiple-choice",
             "options": [
-              { "id": "yes", "label": "Yes - removing it significantly changes LSRL" },
-              { "id": "no", "label": "No - removing it has little effect" }
+              { "id": "yes", "label": "Yes" },
+              { "id": "no", "label": "No" }
             ],
             "order": 2
           },
@@ -312,8 +312,8 @@
             "label": "Is this point influential?",
             "type": "multiple-choice",
             "options": [
-              { "id": "yes", "label": "Yes (large changes)" },
-              { "id": "no", "label": "No (small changes)" }
+              { "id": "yes", "label": "Yes" },
+              { "id": "no", "label": "No" }
             ],
             "order": 3
           }
