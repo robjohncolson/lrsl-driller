@@ -1,6 +1,7 @@
 /**
  * Leverage & Influential Points - Grading Rules
- * Handles grading for multiple-choice and numeric answers about leverage and influence
+ * Computes correct answers in REAL-TIME from actual data points
+ * Does NOT rely on pre-computed expected values
  */
 
 /**
@@ -29,6 +30,173 @@ const PARTIAL_TOLERANCES = {
   relative: 0.08
 };
 
+// ============ STATISTICAL CALCULATIONS ============
+
+/**
+ * Calculate regression statistics from points
+ * @param {Array} points - Array of {x, y} objects
+ * @returns {Object} { slope, intercept, r, xMean, yMean, sx, sy }
+ */
+function calculateRegression(points) {
+  const n = points.length;
+  if (n < 2) return { slope: 0, intercept: 0, r: 0, xMean: 0, yMean: 0, sx: 0, sy: 0 };
+
+  let sumX = 0, sumY = 0;
+  for (const p of points) {
+    sumX += p.x;
+    sumY += p.y;
+  }
+
+  const xMean = sumX / n;
+  const yMean = sumY / n;
+
+  let ssX = 0, ssY = 0, ssXY = 0;
+  for (const p of points) {
+    ssX += (p.x - xMean) ** 2;
+    ssY += (p.y - yMean) ** 2;
+    ssXY += (p.x - xMean) * (p.y - yMean);
+  }
+
+  const slope = ssX > 0 ? ssXY / ssX : 0;
+  const intercept = yMean - slope * xMean;
+  const r = (ssX > 0 && ssY > 0) ? ssXY / Math.sqrt(ssX * ssY) : 0;
+  const sx = Math.sqrt(ssX / (n - 1));
+  const sy = Math.sqrt(ssY / (n - 1));
+
+  return { slope, intercept, r, xMean, yMean, sx, sy, n };
+}
+
+/**
+ * Round to specified decimal places
+ */
+function roundTo(num, decimals) {
+  const factor = Math.pow(10, decimals);
+  return Math.round(num * factor) / factor;
+}
+
+/**
+ * Compute the correct answers from raw data in context
+ * This is the KEY function that calculates everything in real-time
+ */
+function computeCorrectAnswers(context) {
+  const result = {
+    leverage: null,
+    residualSize: null,
+    classification: null,
+    slopeEffect: null,
+    rEffect: null,
+    r2Effect: null,
+    isInfluential: null,
+    slopeChange: null,
+    rChange: null,
+    influential: null
+  };
+
+  // Get data from graphConfig if available
+  const graphConfig = context.graphConfig;
+  if (!graphConfig || !graphConfig.points) {
+    // Fall back to pre-computed values if no raw data
+    return null;
+  }
+
+  const allPoints = graphConfig.points;
+  const highlightIndex = graphConfig.highlight?.index;
+
+  if (highlightIndex === undefined || highlightIndex === null) {
+    return null;
+  }
+
+  // Separate the highlighted point from the rest
+  const highlightedPoint = allPoints[highlightIndex];
+  const pointsWithout = allPoints.filter((_, i) => i !== highlightIndex);
+
+  // Calculate stats WITH the highlighted point (all points)
+  const statsWith = calculateRegression(allPoints);
+  // Calculate stats WITHOUT the highlighted point
+  const statsWithout = calculateRegression(pointsWithout);
+
+  // ---- LEVERAGE ----
+  // High leverage if x is far from x̄
+  const xDistance = Math.abs(highlightedPoint.x - statsWith.xMean);
+  const xSpread = statsWith.sx * Math.sqrt(statsWith.n - 1); // total spread
+  const leverageThreshold = xSpread * 0.4; // 40% of spread = high leverage
+  result.leverage = xDistance > leverageThreshold ? 'high' : 'low';
+
+  // ---- RESIDUAL SIZE ----
+  // Large residual if point is far from the regression line
+  const predictedY = statsWith.intercept + statsWith.slope * highlightedPoint.x;
+  const residual = highlightedPoint.y - predictedY;
+  const absResidual = Math.abs(residual);
+
+  // Calculate typical residual size (use RMSE-like measure)
+  let sumSquaredResiduals = 0;
+  for (const p of allPoints) {
+    const pred = statsWith.intercept + statsWith.slope * p.x;
+    sumSquaredResiduals += (p.y - pred) ** 2;
+  }
+  const typicalResidual = Math.sqrt(sumSquaredResiduals / allPoints.length);
+  const residualThreshold = typicalResidual * 1.5; // 1.5x typical = large
+  result.residualSize = absResidual > residualThreshold ? 'large' : 'small';
+
+  // ---- CLASSIFICATION ----
+  result.classification = `${result.leverage}-${result.residualSize === 'large' ? 'high' : 'low'}`;
+
+  // ---- SLOPE EFFECT ----
+  // If we remove the point, what happens to slope?
+  const slopeDiff = statsWith.slope - statsWithout.slope;
+  if (Math.abs(slopeDiff) < 0.05) {
+    result.slopeEffect = 'same';
+  } else if (slopeDiff > 0) {
+    // Point increases slope, removing decreases it
+    result.slopeEffect = 'decrease';
+  } else {
+    // Point decreases slope, removing increases it
+    result.slopeEffect = 'increase';
+  }
+
+  // ---- R EFFECT ----
+  // If we remove the point, what happens to |r|?
+  const rDiff = Math.abs(statsWith.r) - Math.abs(statsWithout.r);
+  if (Math.abs(rDiff) < 0.02) {
+    result.rEffect = 'same';
+  } else if (rDiff > 0) {
+    // Point strengthens r, removing weakens it
+    result.rEffect = 'decrease';
+  } else {
+    // Point weakens r, removing strengthens it
+    result.rEffect = 'increase';
+  }
+
+  // r² follows |r|
+  result.r2Effect = result.rEffect;
+
+  // ---- INFLUENTIAL ----
+  // A point is influential if it has high leverage AND large residual
+  // OR if removing it substantially changes the regression
+  const isInfluential = (result.leverage === 'high' && result.residualSize === 'large') ||
+    Math.abs(slopeDiff) > 0.1 ||
+    Math.abs(rDiff) > 0.05;
+  result.isInfluential = isInfluential ? 'yes' : 'no';
+
+  // ---- NUMERIC CALCULATIONS (for compare-with-without mode) ----
+  // These use the given values, not computed ones
+  if (context.slopeWith !== undefined && context.slopeWithout !== undefined) {
+    result.slopeChange = roundTo(context.slopeWith - context.slopeWithout, 2);
+  }
+  if (context.rWith !== undefined && context.rWithout !== undefined) {
+    result.rChange = roundTo(Math.abs(context.rWith) - Math.abs(context.rWithout), 2);
+  }
+
+  // For the "influential" field in compare-with-without mode
+  // Use thresholds: |slope change| >= 0.2 OR |r change| >= 0.1
+  if (result.slopeChange !== null && result.rChange !== null) {
+    const isInfluentialCalc = Math.abs(result.slopeChange) >= 0.2 || Math.abs(result.rChange) >= 0.1;
+    result.influential = isInfluentialCalc ? 'yes' : 'no';
+  }
+
+  return result;
+}
+
 /**
  * Grade a multiple choice answer
  * @param {string} studentAnswer - Student's selected answer
@@ -39,7 +207,7 @@ export function gradeMultipleChoice(studentAnswer, expectedAnswer) {
   if (!studentAnswer) {
     return {
       score: 'I',
-      feedback: 'No answer selected',
+      feedback: 'No answer selected. Please select an option.',
       details: { studentAnswer: null, expectedAnswer }
     };
   }
@@ -48,9 +216,12 @@ export function gradeMultipleChoice(studentAnswer, expectedAnswer) {
   const expected = String(expectedAnswer).toLowerCase().trim();
   const isCorrect = student === expected;
 
+  // Provide helpful feedback with capitalized answer
+  const displayExpected = expected.charAt(0).toUpperCase() + expected.slice(1);
+
   return {
     score: isCorrect ? 'E' : 'I',
-    feedback: isCorrect ? 'Correct!' : `The correct answer is: ${expectedAnswer}`,
+    feedback: isCorrect ? 'Correct!' : `Incorrect. The answer is: <strong>${displayExpected}</strong>`,
     details: { studentAnswer, expectedAnswer }
   };
 }
@@ -65,13 +236,21 @@ export function gradeClassification(studentAnswer, expectedAnswer) {
   if (!studentAnswer) {
     return {
       score: 'I',
-      feedback: 'No classification selected',
+      feedback: 'No classification selected. Please choose a classification.',
       details: { studentAnswer: null, expectedAnswer }
     };
   }
 
   const student = String(studentAnswer).toLowerCase().trim();
   const expected = String(expectedAnswer).toLowerCase().trim();
+
+  // Human-readable classification names
+  const classificationNames = {
+    'low-low': 'Low leverage, small residual',
+    'low-high': 'Low leverage, large residual',
+    'high-low': 'High leverage, small residual',
+    'high-high': 'High leverage, large residual (INFLUENTIAL)'
+  };
 
   if (student === expected) {
     return {
@@ -91,17 +270,19 @@ export function gradeClassification(studentAnswer, expectedAnswer) {
 
     if (leverageMatch || residualMatch) {
       const wrongPart = leverageMatch ? 'residual size' : 'leverage';
+      const displayName = classificationNames[expected] || expected;
       return {
         score: 'P',
-        feedback: `Partially correct - check the ${wrongPart} assessment. Expected: ${expectedAnswer}`,
+        feedback: `Partially correct - recheck the ${wrongPart}. Correct: <strong>${displayName}</strong>`,
         details: { studentAnswer, expectedAnswer, leverageMatch, residualMatch }
       };
     }
   }
 
+  const displayName = classificationNames[expected] || expected;
   return {
     score: 'I',
-    feedback: `Incorrect. The correct classification is: ${expectedAnswer}`,
+    feedback: `Incorrect. The correct classification is: <strong>${displayName}</strong>`,
     details: { studentAnswer, expectedAnswer }
   };
 }
@@ -190,13 +371,20 @@ export function gradeEffectPrediction(studentAnswer, expectedAnswer) {
   if (!studentAnswer) {
     return {
       score: 'I',
-      feedback: 'No prediction selected',
+      feedback: 'No prediction selected. Please choose an option.',
       details: { studentAnswer: null, expectedAnswer }
     };
   }
 
   const student = String(studentAnswer).toLowerCase().trim();
   const expected = String(expectedAnswer).toLowerCase().trim();
+
+  // More helpful effect descriptions
+  const effectDescriptions = {
+    'increase': 'Increase',
+    'decrease': 'Decrease',
+    'same': 'Stay about the same'
+  };
 
   if (student === expected) {
     return {
@@ -206,54 +394,66 @@ export function gradeEffectPrediction(studentAnswer, expectedAnswer) {
     };
   }
 
-  // Partial credit: if expected is "same" and student said increase/decrease (or vice versa)
-  // No partial credit - these are conceptual questions
+  const displayExpected = effectDescriptions[expected] || expected;
   return {
     score: 'I',
-    feedback: `Incorrect. The effect would be: ${expectedAnswer}`,
+    feedback: `Incorrect. Removing this point would cause the value to: <strong>${displayExpected}</strong>`,
     details: { studentAnswer, expectedAnswer }
   };
 }
 
 /**
  * Main grading entry point - called by platform for each field
+ * COMPUTES correct answers in real-time from raw data
+ *
  * @param {string} fieldId - The field being graded
  * @param {any} answer - The student's answer
- * @param {Object} context - Problem context including expected answers
+ * @param {Object} context - Problem context including graphConfig with raw data
  * @returns {Object} { score: 'E'|'P'|'I', feedback: string }
  */
 export function gradeField(fieldId, answer, context) {
-  // Find expected answer - check various possible locations
-  let expectedData = context[fieldId];
+  // FIRST: Try to compute the correct answer from raw data
+  const computed = computeCorrectAnswers(context);
 
-  if (!expectedData && context.answers) {
-    expectedData = context.answers[fieldId];
-  }
-  if (!expectedData && context.validation) {
-    expectedData = context.validation[fieldId];
-  }
+  let expected = null;
+  let source = 'computed';
 
-  if (expectedData === undefined || expectedData === null) {
-    return {
-      score: 'I',
-      feedback: `Unable to grade - no expected answer found for ${fieldId}`
-    };
-  }
-
-  // Get expected value
-  let expected;
-  if (typeof expectedData === 'object' && expectedData !== null) {
-    expected = expectedData.value !== undefined ? expectedData.value : expectedData.expected;
+  // Use computed value if available
+  if (computed && computed[fieldId] !== null && computed[fieldId] !== undefined) {
+    expected = computed[fieldId];
+    console.log(`[Grading] ${fieldId}: computed answer = "${expected}" from raw data`);
   } else {
-    expected = expectedData;
+    // Fall back to pre-computed values in context
+    source = 'fallback';
+    let expectedData = context[fieldId];
+
+    if (!expectedData && context.answers) {
+      expectedData = context.answers[fieldId];
+    }
+    if (!expectedData && context.validation) {
+      expectedData = context.validation[fieldId];
+    }
+
+    if (expectedData !== undefined && expectedData !== null) {
+      if (typeof expectedData === 'object' && expectedData !== null) {
+        expected = expectedData.value !== undefined ? expectedData.value : expectedData.expected;
+      } else {
+        expected = expectedData;
+      }
+    }
+
+    console.log(`[Grading] ${fieldId}: using fallback answer = "${expected}"`);
   }
 
   if (expected === undefined || expected === null) {
     return {
       score: 'I',
-      feedback: `Unable to grade - expected value not found for ${fieldId}`
+      feedback: `Unable to grade - could not determine correct answer for ${fieldId}`
     };
   }
+
+  // Log the comparison for debugging
+  console.log(`[Grading] ${fieldId}: student="${answer}" vs expected="${expected}" (${source})`);
 
   // Determine grading type based on field
   const classificationFields = ['classification'];
@@ -261,18 +461,25 @@ export function gradeField(fieldId, answer, context) {
   const mcFields = ['leverage', 'residualSize', 'isInfluential', 'influential'];
   const numericFields = ['slopeChange', 'rChange'];
 
+  let result;
   if (classificationFields.includes(fieldId)) {
-    return gradeClassification(answer, expected);
+    result = gradeClassification(answer, expected);
   } else if (effectFields.includes(fieldId)) {
-    return gradeEffectPrediction(answer, expected);
+    result = gradeEffectPrediction(answer, expected);
   } else if (mcFields.includes(fieldId)) {
-    return gradeMultipleChoice(answer, expected);
+    result = gradeMultipleChoice(answer, expected);
   } else if (numericFields.includes(fieldId)) {
-    return gradeNumeric(answer, expected, 'standard');
+    result = gradeNumeric(answer, expected, 'standard');
   } else {
     // Default to multiple choice
-    return gradeMultipleChoice(answer, expected);
+    result = gradeMultipleChoice(answer, expected);
   }
+
+  // Add debug info to result
+  result._computed = source === 'computed';
+  result._expected = expected;
+
+  return result;
 }
 
 /**

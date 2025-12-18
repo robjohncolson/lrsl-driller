@@ -279,9 +279,11 @@ export class Platform {
       const answers = this.inputRenderer.getAllValues();
 
       // Build context for grading
+      // IMPORTANT: Include graphConfig so grading can compute answers from raw data
       const context = {
         ...this.currentProblem.context,
         ...this.currentProblem.answers,
+        graphConfig: this.currentProblem.graphConfig,  // Raw data for real-time grading
         scenario: this.currentProblem.scenario,
         mode: this.currentMode
       };
