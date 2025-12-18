@@ -884,6 +884,29 @@ BE GENEROUS: Accept synonyms, rounding differences, unit conversions (e.g., "100
 function buildCartridgePrompt(template, scenario, answers) {
   let prompt = template;
 
+  // Build problem context from scenario
+  const contextParts = [];
+  if (scenario.topic) contextParts.push(`Topic: ${scenario.topic}`);
+  if (scenario.mode) contextParts.push(`Mode: ${scenario.mode}`);
+  if (scenario.givenValues) contextParts.push(`Given values: ${scenario.givenValues}`);
+  if (scenario.r) contextParts.push(`r = ${scenario.r}`);
+  if (scenario.slope) contextParts.push(`Slope = ${scenario.slope}`);
+  if (scenario.intercept) contextParts.push(`Intercept = ${scenario.intercept}`);
+  const problemContext = contextParts.join('\n');
+
+  // Build student response from answers
+  const studentResponse = Object.entries(answers)
+    .map(([field, value]) => `${field}: ${value}`)
+    .join('\n');
+
+  // Build expected answer from gradingPairs if available
+  const expectedAnswer = scenario.gradingPairs || 'See grading pairs in context';
+
+  // Replace special template variables
+  prompt = prompt.replace(/\{\{problemContext\}\}/g, problemContext);
+  prompt = prompt.replace(/\{\{studentResponse\}\}/g, studentResponse);
+  prompt = prompt.replace(/\{\{expectedAnswer\}\}/g, expectedAnswer);
+
   // Replace scenario variables
   for (const [key, value] of Object.entries(scenario)) {
     if (value !== undefined && value !== null) {

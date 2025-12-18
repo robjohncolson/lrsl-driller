@@ -73,8 +73,19 @@ You are grading AP Statistics student responses about leverage points, outliers,
 {{expectedAnswer}}
 
 ## Your Task
-Evaluate the student's response and assign a score of E (Essentially Correct), P (Partially Correct), or I (Incorrect).
+Evaluate each student response field and assign scores. For each field in the student response:
+- E: Essentially Correct - accurate identification/prediction
+- P: Partially Correct - minor error in reasoning
+- I: Incorrect - major conceptual error
 
-Respond in this exact format:
-SCORE: [E/P/I]
-FEEDBACK: [Brief explanation of why the score was assigned]
+Respond with ONLY valid JSON in this exact format (no other text):
+{
+  "fieldName": {"score": "E", "feedback": "Brief explanation"},
+  "anotherField": {"score": "I", "feedback": "Explanation of error"}
+}
+
+Example for leverage and classification questions:
+{"leverage": {"score": "E", "feedback": "Correct - point is far from x̄"}, "classification": {"score": "E", "feedback": "Correctly identified as high leverage, large residual"}}
+
+Example for effect predictions:
+{"slopeEffect": {"score": "E", "feedback": "Correct - removing this influential point would decrease slope"}, "rEffect": {"score": "I", "feedback": "Incorrect - removing an outlier would increase |r|, not decrease it"}}
