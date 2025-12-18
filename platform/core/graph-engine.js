@@ -1117,12 +1117,13 @@ export class GraphEngine {
       const currentSlope = oldRegression.b + (newRegression.b - oldRegression.b) * lineEased;
       const currentIntercept = oldRegression.a + (newRegression.a - oldRegression.a) * lineEased;
 
-      // Draw the "before" regression line (faded, dashed) if animation started
-      if (lineProgress > 0 && lineProgress < 1) {
-        this.ctx.strokeStyle = this.colors.lineBefore;
+      // Draw the "before" regression line (faded, dashed) - persists after animation completes
+      if (lineProgress > 0) {
+        this.ctx.strokeStyle = this.colors.lineBefore || '#9ca3af';
         this.ctx.lineWidth = 2;
         this.ctx.setLineDash([5, 5]);
-        this.ctx.globalAlpha = 0.5;
+        // Fade in during morph, then stay visible at 0.6 opacity
+        this.ctx.globalAlpha = lineProgress < 1 ? 0.3 + lineProgress * 0.3 : 0.6;
 
         const x1 = xMin;
         const y1 = oldRegression.a + oldRegression.b * x1;
@@ -1217,12 +1218,105 @@ export class GraphEngine {
         this.drawAnimationInfo(oldRegression, newRegression, lineEased);
       }
 
-      // Continue animation or finish
+      // Continue animation - keep redrawing even after morph completes
+      // to persist the dotted line and info box until next problem loads
       if (progress < 1) {
         this.animationState = requestAnimationFrame(animate);
       } else {
-        this.animationState = null;
+        // Animation morph complete, but keep redrawing to show comparison
+        // Store state for persistence
+        this.animationComplete = true;
+        this.animationFinalState = {
+          oldRegression,
+          newRegression,
+          removeIndex,
+          displayMode: this.animationDisplayMode
+        };
+
         if (onComplete) onComplete();
+
+        // Keep redrawing at lower frequency to maintain the display
+        const maintainDisplay = () => {
+          if (!this.animationComplete) return; // Stop if cleared
+
+          // Redraw final state
+          this.clear();
+          const xValues = points.map(d => d.x);
+          const yValues = points.map(d => d.y);
+          const xMin = config.xMin ?? Math.min(...xValues) * 0.9;
+          const xMax = config.xMax ?? Math.max(...xValues) * 1.1;
+          const yMin = config.yMin ?? Math.min(...yValues) * 0.9;
+          const yMax = config.yMax ?? Math.max(...yValues) * 1.1;
+          const scales = this.calculateScales(xMin, xMax, yMin, yMax);
+
+          this.drawGrid(scales);
+          this.drawAxes(scales, { x: config.xLabel || 'X', y: config.yLabel || 'Y' });
+
+          // Draw the "before" regression line (dashed, persistent)
+          this.ctx.strokeStyle = this.colors.lineBefore || '#9ca3af';
+          this.ctx.lineWidth = 2;
+          this.ctx.setLineDash([5, 5]);
+          this.ctx.globalAlpha = 0.6;
+
+          let bx1 = xMin, by1 = oldRegression.a + oldRegression.b * bx1;
+          let bx2 = xMax, by2 = oldRegression.a + oldRegression.b * bx2;
+          this.ctx.beginPath();
+          this.ctx.moveTo(scales.xScale(bx1), scales.yScale(by1));
+          this.ctx.lineTo(scales.xScale(bx2), scales.yScale(by2));
+          this.ctx.stroke();
+          this.ctx.setLineDash([]);
+          this.ctx.globalAlpha = 1;
+
+          // Draw the "after" regression line (solid)
+          this.ctx.strokeStyle = this.colors.lineAfter || '#3b82f6';
+          this.ctx.lineWidth = 2.5;
+          let ax1 = xMin, ay1 = newRegression.a + newRegression.b * ax1;
+          let ax2 = xMax, ay2 = newRegression.a + newRegression.b * ax2;
+          this.ctx.beginPath();
+          this.ctx.moveTo(scales.xScale(ax1), scales.yScale(ay1));
+          this.ctx.lineTo(scales.xScale(ax2), scales.yScale(ay2));
+          this.ctx.stroke();
+
+          // Draw mean lines if configured
+          if (config.showMeanLines && config.xMean !== undefined) {
+            this.ctx.strokeStyle = '#9ca3af';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([3, 3]);
+            const meanPx = scales.xScale(config.xMean);
+            this.ctx.beginPath();
+            this.ctx.moveTo(meanPx, this.padding.top);
+            this.ctx.lineTo(meanPx, this.height - this.padding.bottom);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+          }
+
+          // Draw points (removed point stays hidden with X)
+          points.forEach((point, index) => {
+            if (index === removeIndex) {
+              // Draw X marker where removed point was
+              const px = scales.xScale(point.x);
+              const py = scales.yScale(point.y);
+              this.ctx.strokeStyle = this.colors.removedPoint || '#ef4444';
+              this.ctx.lineWidth = 2;
+              this.ctx.beginPath();
+              this.ctx.moveTo(px - 6, py - 6);
+              this.ctx.lineTo(px + 6, py + 6);
+              this.ctx.moveTo(px + 6, py - 6);
+              this.ctx.lineTo(px - 6, py + 6);
+              this.ctx.stroke();
+            } else {
+              this.drawPoint(scales, point, false);
+            }
+          });
+
+          // Draw info box
+          this.drawAnimationInfo(oldRegression, newRegression, 1);
+
+          // Continue maintaining display
+          this.animationState = requestAnimationFrame(maintainDisplay);
+        };
+
+        this.animationState = requestAnimationFrame(maintainDisplay);
       }
     };
 
@@ -1304,13 +1398,17 @@ export class GraphEngine {
   }
 
   /**
-   * Stop any running animation
+   * Stop any running animation and clear animation state
    */
   stopAnimation() {
     if (this.animationState) {
       cancelAnimationFrame(this.animationState);
       this.animationState = null;
     }
+    // Clear animation completion state so next draw is normal
+    this.animationComplete = false;
+    this.animationFinalState = null;
+    this.animationDisplayMode = null;
   }
 
   /**
