@@ -468,6 +468,9 @@ function generatePredictREffect(context, config) {
   // r² follows the same pattern
   const r2Effect = rEffect;
 
+  // Format point coordinates
+  const pointCoords = `(${special.point.x}, ${special.point.y})`;
+
   const classificationName = {
     'low-low': 'Low leverage, small residual',
     'low-high': 'Low leverage, large residual (outlier)',
@@ -496,6 +499,7 @@ function generatePredictREffect(context, config) {
       ...context,
       modeId: 'predict-r-effect',
       modeName: 'Effect on r',
+      pointCoords,
       currentR: roundTo(statsWith.r, 3),
       classification: classificationName[special.classification],
       rEffect,
@@ -505,6 +509,7 @@ function generatePredictREffect(context, config) {
     },
     answers,
     given: {
+      pointCoords,
       currentR: roundTo(statsWith.r, 3),
       classification: classificationName[special.classification]
     },

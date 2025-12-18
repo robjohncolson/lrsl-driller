@@ -180,6 +180,7 @@
       "layout": {
         "graph": "scatterplot-with-highlight",
         "given": [
+          { "id": "pointCoords", "label": "Point", "format": "text" },
           { "id": "currentR", "label": "Current r", "format": "decimal3" },
           { "id": "classification", "label": "Point type", "format": "text" }
         ],
