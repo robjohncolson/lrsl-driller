@@ -1,0 +1,427 @@
+{
+  "meta": {
+    "id": "leverage-points",
+    "name": "Leverage & Influential Points",
+    "subject": "AP Statistics",
+    "unit": "2",
+    "lesson": "8-9",
+    "skill": "Identify and analyze leverage points, outliers, and influential observations",
+    "description": "Students learn to classify points by leverage (x-distance from mean) and residual size, then predict effects on LSRL, r, and r²"
+  },
+
+  "config": {
+    "skills": ["identify-type", "predict-effect", "compare-influence", "full-analysis"]
+  },
+
+  "display": {
+    "showGraph": true,
+    "graphType": "scatterplot",
+    "graphConfig": {
+      "showRegression": true,
+      "highlightPoint": true,
+      "showMeanLines": true,
+      "showResidualLine": true
+    },
+    "infoPanel": [
+      { "label": "Mode", "value": "{{modeName}}" },
+      { "label": "Equation", "value": "ŷ = {{intercept}} + {{slope}}x" },
+      { "label": "r", "value": "{{r}}" }
+    ],
+    "formulaPanel": {
+      "leverage": "High leverage: x far from x̄",
+      "outlier": "Outlier: large |residual|",
+      "influential": "Influential = High leverage + Large residual"
+    }
+  },
+
+  "modes": [
+    {
+      "id": "identify-leverage",
+      "name": "Identify Leverage",
+      "unlockedBy": "default",
+      "description": "Determine if a point has high or low leverage based on its x-value",
+      "showGraph": true,
+      "graphType": "scatterplot",
+      "layout": {
+        "graph": "scatterplot-with-highlight",
+        "given": [
+          { "id": "xBar", "label": "x̄ (mean of x)", "format": "decimal2" },
+          { "id": "pointX", "label": "Point x-value", "format": "decimal2" }
+        ],
+        "inputs": [
+          {
+            "id": "leverage",
+            "label": "This point has:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "high", "label": "High leverage (far from x̄)" },
+              { "id": "low", "label": "Low leverage (near x̄)" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "identify-outlier",
+      "name": "Identify Residual Size",
+      "unlockedBy": "default",
+      "description": "Determine if a point has a large or small residual",
+      "showGraph": true,
+      "graphType": "scatterplot",
+      "layout": {
+        "graph": "scatterplot-with-highlight",
+        "given": [
+          { "id": "pointY", "label": "Actual y", "format": "decimal2" },
+          { "id": "predictedY", "label": "Predicted ŷ", "format": "decimal2" },
+          { "id": "residual", "label": "Residual", "format": "decimal2" }
+        ],
+        "inputs": [
+          {
+            "id": "residualSize",
+            "label": "This point has:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "large", "label": "Large residual (far from line)" },
+              { "id": "small", "label": "Small residual (close to line)" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "classify-point",
+      "name": "Classify Point",
+      "unlockedBy": { "gold": 2 },
+      "description": "Classify a point into one of four categories based on leverage and residual",
+      "celebrationMessage": "Point Classification Unlocked! Combine leverage and residual analysis.",
+      "showGraph": true,
+      "graphType": "scatterplot",
+      "layout": {
+        "graph": "scatterplot-with-highlight",
+        "given": [
+          { "id": "xBar", "label": "x̄", "format": "decimal2" },
+          { "id": "pointX", "label": "Point x", "format": "decimal2" },
+          { "id": "residual", "label": "Residual", "format": "decimal2" }
+        ],
+        "inputs": [
+          {
+            "id": "leverage",
+            "label": "Leverage:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "high", "label": "High" },
+              { "id": "low", "label": "Low" }
+            ],
+            "order": 1
+          },
+          {
+            "id": "residualSize",
+            "label": "Residual:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "large", "label": "Large (outlier)" },
+              { "id": "small", "label": "Small (fits pattern)" }
+            ],
+            "order": 2
+          },
+          {
+            "id": "classification",
+            "label": "Classification:",
+            "type": "select",
+            "options": [
+              { "value": "low-low", "label": "Low leverage, small residual (typical point)" },
+              { "value": "low-high", "label": "Low leverage, large residual (outlier in y)" },
+              { "value": "high-low", "label": "High leverage, small residual (reinforces pattern)" },
+              { "value": "high-high", "label": "High leverage, large residual (INFLUENTIAL)" }
+            ],
+            "order": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "predict-slope-effect",
+      "name": "Effect on Slope",
+      "unlockedBy": { "gold": 3 },
+      "description": "Predict how removing a point would affect the slope",
+      "celebrationMessage": "Slope Effects Unlocked! See how points pull the line.",
+      "showGraph": true,
+      "graphType": "scatterplot",
+      "layout": {
+        "graph": "scatterplot-with-highlight",
+        "given": [
+          { "id": "currentSlope", "label": "Current slope (b)", "format": "decimal3" },
+          { "id": "leverage", "label": "Point leverage", "format": "text" },
+          { "id": "residualSize", "label": "Residual size", "format": "text" },
+          { "id": "pointPosition", "label": "Point position", "format": "text" }
+        ],
+        "inputs": [
+          {
+            "id": "slopeEffect",
+            "label": "If this point is REMOVED, the slope will:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "increase", "label": "Increase (become more positive or less negative)" },
+              { "id": "decrease", "label": "Decrease (become less positive or more negative)" },
+              { "id": "same", "label": "Stay about the same" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "predict-r-effect",
+      "name": "Effect on r",
+      "unlockedBy": { "gold": 4 },
+      "description": "Predict how removing a point would affect the correlation",
+      "celebrationMessage": "Correlation Effects Unlocked! Master r and r².",
+      "showGraph": true,
+      "graphType": "scatterplot",
+      "layout": {
+        "graph": "scatterplot-with-highlight",
+        "given": [
+          { "id": "currentR", "label": "Current r", "format": "decimal3" },
+          { "id": "classification", "label": "Point type", "format": "text" }
+        ],
+        "inputs": [
+          {
+            "id": "rEffect",
+            "label": "If this point is REMOVED, |r| will:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "increase", "label": "Increase (stronger correlation)" },
+              { "id": "decrease", "label": "Decrease (weaker correlation)" },
+              { "id": "same", "label": "Stay about the same" }
+            ]
+          },
+          {
+            "id": "r2Effect",
+            "label": "And r² will:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "increase", "label": "Increase" },
+              { "id": "decrease", "label": "Decrease" },
+              { "id": "same", "label": "Stay about the same" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "influential-analysis",
+      "name": "Full Influence Analysis",
+      "unlockedBy": { "gold": 6 },
+      "description": "Complete analysis: classify point and predict all effects",
+      "celebrationMessage": "Full Analysis Unlocked! You're an influential point expert!",
+      "showGraph": true,
+      "graphType": "scatterplot",
+      "layout": {
+        "graph": "scatterplot-with-highlight",
+        "given": [
+          { "id": "xBar", "label": "x̄", "format": "decimal2" },
+          { "id": "pointX", "label": "Point x", "format": "decimal2" },
+          { "id": "residual", "label": "Residual", "format": "decimal2" },
+          { "id": "currentSlope", "label": "Current b", "format": "decimal3" },
+          { "id": "currentR", "label": "Current r", "format": "decimal3" }
+        ],
+        "inputs": [
+          {
+            "id": "classification",
+            "label": "Point classification:",
+            "type": "select",
+            "options": [
+              { "value": "low-low", "label": "Low leverage, small residual" },
+              { "value": "low-high", "label": "Low leverage, large residual" },
+              { "value": "high-low", "label": "High leverage, small residual" },
+              { "value": "high-high", "label": "High leverage, large residual" }
+            ],
+            "order": 1
+          },
+          {
+            "id": "isInfluential",
+            "label": "Is this point influential?",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "yes", "label": "Yes - removing it significantly changes LSRL" },
+              { "id": "no", "label": "No - removing it has little effect" }
+            ],
+            "order": 2
+          },
+          {
+            "id": "slopeEffect",
+            "label": "Effect on slope if removed:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "increase", "label": "Increase" },
+              { "id": "decrease", "label": "Decrease" },
+              { "id": "same", "label": "About the same" }
+            ],
+            "order": 3
+          },
+          {
+            "id": "rEffect",
+            "label": "Effect on |r| if removed:",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "increase", "label": "Increase" },
+              { "id": "decrease", "label": "Decrease" },
+              { "id": "same", "label": "About the same" }
+            ],
+            "order": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "compare-with-without",
+      "name": "Before & After",
+      "unlockedBy": { "gold": 8 },
+      "description": "Compare regression with and without an influential point",
+      "celebrationMessage": "Comparison Mode Unlocked! See the dramatic effects.",
+      "showGraph": true,
+      "graphType": "dual-scatterplot",
+      "layout": {
+        "graph": "dual-scatterplot",
+        "given": [
+          { "id": "slopeWith", "label": "Slope WITH point", "format": "decimal3" },
+          { "id": "slopeWithout", "label": "Slope WITHOUT point", "format": "decimal3" },
+          { "id": "rWith", "label": "r WITH point", "format": "decimal3" },
+          { "id": "rWithout", "label": "r WITHOUT point", "format": "decimal3" }
+        ],
+        "inputs": [
+          {
+            "id": "slopeChange",
+            "label": "Slope change (bwith - bwithout):",
+            "type": "number",
+            "step": "any",
+            "placeholder": "",
+            "width": "medium",
+            "order": 1
+          },
+          {
+            "id": "rChange",
+            "label": "r change (|rwith| - |rwithout|):",
+            "type": "number",
+            "step": "any",
+            "placeholder": "",
+            "width": "medium",
+            "order": 2
+          },
+          {
+            "id": "influential",
+            "label": "Is this point influential?",
+            "type": "multiple-choice",
+            "options": [
+              { "id": "yes", "label": "Yes (large changes)" },
+              { "id": "no", "label": "No (small changes)" }
+            ],
+            "order": 3
+          }
+        ]
+      }
+    }
+  ],
+
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct - accurate identification/prediction",
+        "P": "Partially Correct - minor error in reasoning",
+        "I": "Incorrect - major conceptual error"
+      }
+    },
+    "tolerances": {
+      "tight": { "absolute": 0.01, "relative": 0.01 },
+      "standard": { "absolute": 0.05, "relative": 0.02 },
+      "loose": { "absolute": 0.1, "relative": 0.05 }
+    },
+    "composite": {
+      "rule": "all-E-for-star",
+      "starTiers": ["gold", "silver", "bronze", "tin"]
+    }
+  },
+
+  "hints": {
+    "perField": {
+      "leverage": "<strong>Leverage is about the x-value:</strong><br><br>A point has <em>high leverage</em> if its x-value is far from the mean (x̄).<br><br><strong>Visual check:</strong> Is the point on the far left or far right of the scatterplot?<br><br>High leverage points have the <em>potential</em> to strongly influence the regression line.",
+      "residualSize": "<strong>Residual = Actual - Predicted:</strong><br><br>A <em>large residual</em> means the point is far from the regression line.<br><br><strong>Visual check:</strong> Draw a vertical line from the point to the regression line. Is it a long distance?<br><br>Points with large residuals are often called <strong>outliers</strong>.",
+      "classification": "<strong>Four types of points:</strong><br><br>1. <strong>Low leverage, small residual:</strong> A typical point, minimal effect<br><br>2. <strong>Low leverage, large residual:</strong> Outlier in y-direction, affects r more than slope<br><br>3. <strong>High leverage, small residual:</strong> Falls on/near the pattern, reinforces the line<br><br>4. <strong>High leverage, large residual:</strong> <strong>INFLUENTIAL</strong> - dramatically affects both slope and r",
+      "slopeEffect": "<strong>How points affect slope:</strong><br><br>Think of the regression line as a seesaw balanced at (x̄, ȳ).<br><br>• High leverage points have more \"pull\" (like sitting far from the fulcrum)<br>• The direction of pull depends on where the point is relative to the line<br>• If a point pulls the right side of the line UP, removing it makes slope DECREASE<br>• If a point pulls the right side of the line DOWN, removing it makes slope INCREASE",
+      "rEffect": "<strong>How points affect r:</strong><br><br>• Points close to the line <em>strengthen</em> r (increase |r|)<br>• Points far from the line <em>weaken</em> r (decrease |r|)<br><br><strong>Removing a point:</strong><br>• Remove outlier (large residual) → |r| usually INCREASES<br>• Remove point on the line → |r| usually DECREASES<br><br>r² follows the same pattern as |r|.",
+      "r2Effect": "<strong>r² and |r| move together:</strong><br><br>Since r² = (r)², whenever |r| increases, r² increases too.<br><br>• Removing an outlier → r² increases<br>• Removing a point on the pattern → r² decreases",
+      "isInfluential": "<strong>Influential points:</strong><br><br>A point is <strong>influential</strong> if removing it substantially changes the regression line.<br><br><strong>Key insight:</strong> High leverage + large residual = INFLUENTIAL<br><br>High leverage alone isn't enough - the point must also pull the line away from where it would otherwise be.",
+      "slopeChange": "<strong>Calculating slope change:</strong><br><br>Slope change = b<sub>with</sub> - b<sub>without</sub><br><br>• Positive change means the point increased the slope<br>• Negative change means the point decreased the slope<br>• Large magnitude = influential point",
+      "rChange": "<strong>Calculating r change:</strong><br><br>r change = |r<sub>with</sub>| - |r<sub>without</sub>|<br><br>• Negative change means the point weakened r (was an outlier)<br>• Positive change means the point strengthened r (was on pattern)<br>• Use absolute values since we're comparing strength, not direction"
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+
+  "progression": {
+    "streaksPerMode": true,
+    "tiers": [
+      {
+        "id": "identify-leverage",
+        "name": "Identify Leverage",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "identify-outlier",
+        "name": "Identify Residual Size",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "classify-point",
+        "name": "Classify Point",
+        "unlockedBy": { "gold": 2 },
+        "celebrationMessage": "Point Classification Unlocked!"
+      },
+      {
+        "id": "predict-slope-effect",
+        "name": "Effect on Slope",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Slope Effects Unlocked!"
+      },
+      {
+        "id": "predict-r-effect",
+        "name": "Effect on r",
+        "unlockedBy": { "gold": 4 },
+        "celebrationMessage": "Correlation Effects Unlocked!"
+      },
+      {
+        "id": "influential-analysis",
+        "name": "Full Influence Analysis",
+        "unlockedBy": { "gold": 6 },
+        "celebrationMessage": "Full Analysis Unlocked!"
+      },
+      {
+        "id": "compare-with-without",
+        "name": "Before & After",
+        "unlockedBy": { "gold": 8 },
+        "celebrationMessage": "Comparison Mode Unlocked!"
+      }
+    ]
+  },
+
+  "accessibility": {
+    "keyboardNav": true,
+    "screenReaderLabels": {
+      "leverage": "leverage classification, high or low",
+      "residualSize": "residual size, large or small",
+      "classification": "point classification",
+      "slopeEffect": "predicted effect on slope",
+      "rEffect": "predicted effect on correlation r",
+      "r2Effect": "predicted effect on r squared",
+      "isInfluential": "is this point influential",
+      "slopeChange": "calculated change in slope",
+      "rChange": "calculated change in correlation"
+    }
+  }
+}

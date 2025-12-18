@@ -22,6 +22,13 @@
       "shortCode": "RES"
     },
     {
+      "id": "leverage-points",
+      "name": "Leverage & Influential Points",
+      "subject": "AP Statistics",
+      "description": "Leverage, outliers, and influence on LSRL & r",
+      "shortCode": "LEV"
+    },
+    {
       "id": "algebra2-radicals",
       "name": "Simplify Radicals",
       "subject": "Algebra 2",
