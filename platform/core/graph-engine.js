@@ -1049,8 +1049,10 @@ export class GraphEngine {
   animatePointRemoval(options = {}) {
     const {
       removeIndex,
+      oldRegression: providedOldRegression,
       newRegression,
       duration = 1500,
+      displayMode = 'slope', // 'slope', 'r', or 'both'
       onComplete
     } = options;
 
@@ -1061,7 +1063,10 @@ export class GraphEngine {
 
     const config = this.currentConfig;
     const points = config.points || config.data || [];
-    const oldRegression = config.regression;
+    const oldRegression = providedOldRegression || config.regression;
+
+    // Store display mode for use in drawAnimationInfo
+    this.animationDisplayMode = displayMode;
 
     if (!oldRegression || !newRegression) {
       console.warn('Cannot animate: missing regression data');
@@ -1230,6 +1235,16 @@ export class GraphEngine {
    */
   drawAnimationInfo(oldReg, newReg, progress) {
     const ctx = this.ctx;
+    const displayMode = this.animationDisplayMode || 'slope';
+
+    // Determine box height based on what we're displaying
+    let boxHeight = 70;
+    if (displayMode === 'r') {
+      boxHeight = 85; // r and r²
+    } else if (displayMode === 'both') {
+      boxHeight = 110; // slope, r, and r²
+    }
+
     const boxX = this.width - this.padding.right - 160;
     const boxY = this.padding.top + 10;
 
@@ -1238,25 +1253,54 @@ export class GraphEngine {
     ctx.strokeStyle = '#e5e7eb';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(boxX, boxY, 150, 70, 6);
+    ctx.roundRect(boxX, boxY, 150, boxHeight, 6);
     ctx.fill();
     ctx.stroke();
 
     ctx.font = 'bold 11px system-ui, sans-serif';
     ctx.textAlign = 'left';
 
+    let yOffset = boxY + 16;
+
     // "Before" values (fading out)
     ctx.fillStyle = `rgba(156, 163, 175, ${1 - progress * 0.7})`;
-    ctx.fillText(`Before:`, boxX + 10, boxY + 16);
+    ctx.fillText(`Before:`, boxX + 10, yOffset);
     ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText(`slope = ${oldReg.b.toFixed(3)}`, boxX + 15, boxY + 30);
+    yOffset += 14;
+
+    if (displayMode === 'slope' || displayMode === 'both') {
+      ctx.fillText(`slope = ${oldReg.b.toFixed(3)}`, boxX + 15, yOffset);
+      yOffset += 12;
+    }
+    if (displayMode === 'r' || displayMode === 'both') {
+      const oldR = oldReg.r !== undefined ? oldReg.r : 0;
+      const oldR2 = oldReg.r2 !== undefined ? oldReg.r2 : oldR * oldR;
+      ctx.fillText(`r = ${oldR.toFixed(3)}`, boxX + 15, yOffset);
+      yOffset += 12;
+      ctx.fillText(`r² = ${oldR2.toFixed(3)}`, boxX + 15, yOffset);
+      yOffset += 12;
+    }
+
+    yOffset += 6;
 
     // "After" values (fading in)
     ctx.fillStyle = `rgba(59, 130, 246, ${0.3 + progress * 0.7})`;
     ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.fillText(`After removal:`, boxX + 10, boxY + 48);
+    ctx.fillText(`After removal:`, boxX + 10, yOffset);
     ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText(`slope = ${newReg.b.toFixed(3)}`, boxX + 15, boxY + 62);
+    yOffset += 14;
+
+    if (displayMode === 'slope' || displayMode === 'both') {
+      ctx.fillText(`slope = ${newReg.b.toFixed(3)}`, boxX + 15, yOffset);
+      yOffset += 12;
+    }
+    if (displayMode === 'r' || displayMode === 'both') {
+      const newR = newReg.r !== undefined ? newReg.r : 0;
+      const newR2 = newReg.r2 !== undefined ? newReg.r2 : newR * newR;
+      ctx.fillText(`r = ${newR.toFixed(3)}`, boxX + 15, yOffset);
+      yOffset += 12;
+      ctx.fillText(`r² = ${newR2.toFixed(3)}`, boxX + 15, yOffset);
+    }
   }
 
   /**

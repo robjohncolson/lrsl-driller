@@ -578,7 +578,7 @@ export class Platform {
   async submitAppeal(appealText, previousResults) {
     const serverUrl = this.gradingEngine.serverUrl;
     const context = this.currentProblem?.context || {};
-    const answers = this.inputRenderer?.getAnswers() || {};
+    const answers = this.inputRenderer?.getAllValues() || {};
 
     // Build scenario with appeal context
     const scenario = {
@@ -764,19 +764,39 @@ export class Platform {
       return;
     }
 
+    // Calculate the current regression stats (with the highlighted point)
+    const currentStats = this.calculateRegression(points);
+
     // Calculate the new regression without the highlighted point
     const pointsWithout = points.filter((_, i) => i !== highlightIndex);
     const newStats = this.calculateRegression(pointsWithout);
+
+    // Determine what statistics to display based on mode
+    let displayMode = 'slope'; // default
+    if (context.modeId === 'predict-r-effect') {
+      displayMode = 'r';
+    } else if (context.modeId === 'influential-analysis') {
+      displayMode = 'both';
+    }
 
     // Delay animation slightly so feedback is visible first
     setTimeout(() => {
       this.graphEngine.animatePointRemoval({
         removeIndex: highlightIndex,
+        oldRegression: {
+          a: currentStats.intercept,
+          b: currentStats.slope,
+          r: currentStats.r,
+          r2: currentStats.r * currentStats.r
+        },
         newRegression: {
           a: newStats.intercept,
-          b: newStats.slope
+          b: newStats.slope,
+          r: newStats.r,
+          r2: newStats.r * newStats.r
         },
-        duration: 2000
+        duration: 2000,
+        displayMode: displayMode
       });
     }, 500);
   }
