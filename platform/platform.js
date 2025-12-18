@@ -627,15 +627,27 @@ export class Platform {
 
       console.log('AI appeal result:', result);
 
+      // Extract fields from result - they may be at top level or nested
+      // Filter out metadata fields (starting with _ or known non-field keys)
+      const metaKeys = ['appealResponse', 'feedback', '_gradingMode', '_serverGraded', '_appealProcessed', '_provider', '_keyId'];
+      const fieldEntries = Object.entries(result).filter(([key, val]) =>
+        !key.startsWith('_') &&
+        !metaKeys.includes(key) &&
+        val && typeof val === 'object' && 'score' in val
+      );
+
+      const fields = Object.fromEntries(fieldEntries);
+
       // Check if all fields are now correct
-      const allCorrect = result.fields ?
-        Object.values(result.fields).every(f => f.score === 'E') :
-        false;
+      const allCorrect = fieldEntries.length > 0 &&
+        fieldEntries.every(([_, f]) => f.score === 'E');
+
+      console.log('Appeal fields extracted:', fields, 'allCorrect:', allCorrect);
 
       return {
         success: true,
         allCorrect,
-        fields: result.fields || result,
+        fields: fields,
         feedback: result.appealResponse || result.feedback || 'Appeal reviewed'
       };
     } catch (err) {
