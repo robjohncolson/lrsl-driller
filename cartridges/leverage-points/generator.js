@@ -141,7 +141,7 @@ function generateSpecialPoint(dataset, type) {
     residualSize,
     predicted,
     residual,
-    classification: `${leverage}-${residualSize}`
+    classification: `${leverage}-${residualSize === 'large' ? 'high' : 'low'}`
   };
 }
 
