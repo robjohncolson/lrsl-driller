@@ -571,6 +571,83 @@ export class Platform {
   }
 
   /**
+   * Submit an appeal to AI for re-evaluation with student's reasoning
+   * @param {string} appealText - Student's explanation for why they think their answer is correct
+   * @param {Object} previousResults - The previous grading results
+   */
+  async submitAppeal(appealText, previousResults) {
+    const serverUrl = this.gradingEngine.serverUrl;
+    const context = this.currentProblem?.context || {};
+    const answers = this.inputRenderer?.getAnswers() || {};
+
+    // Build scenario with appeal context
+    const scenario = {
+      topic: context.topic || this.currentCartridge?.manifest?.meta?.name,
+      mode: this.currentMode,
+      cartridgeId: this.currentCartridge?.id,
+      r: context.r,
+      slope: context.slope,
+      intercept: context.intercept,
+      givenValues: this.currentProblem?.given ? Object.entries(this.currentProblem.given).map(([k, v]) => `${k}=${v}`).join(', ') : '',
+      previousFeedback: previousResults?.fields ? Object.entries(previousResults.fields).map(([field, result]) =>
+        `${field}: score=${result.score}, feedback="${result.feedback || 'No feedback'}"`
+      ).join('\n') : '',
+      appealReason: appealText
+    };
+
+    // Load cartridge-specific AI prompt if available
+    let aiPromptTemplate = null;
+    if (this.currentCartridge?.aiPrompt) {
+      aiPromptTemplate = this.currentCartridge.aiPrompt;
+    }
+
+    console.log('Sending AI appeal request:', { scenario, answers, appealText });
+
+    try {
+      const response = await fetch(`${serverUrl}/api/ai/appeal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scenario,
+          answers,
+          appealText,
+          previousResults: previousResults?.fields,
+          preferProvider: this.preferProvider,
+          aiPromptTemplate,
+          cartridgeId: this.currentCartridge?.id
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('AI appeal error:', result);
+        throw new Error(result.error || 'AI appeal failed');
+      }
+
+      console.log('AI appeal result:', result);
+
+      // Check if all fields are now correct
+      const allCorrect = result.fields ?
+        Object.values(result.fields).every(f => f.score === 'E') :
+        false;
+
+      return {
+        success: true,
+        allCorrect,
+        fields: result.fields || result,
+        feedback: result.appealResponse || result.feedback || 'Appeal reviewed'
+      };
+    } catch (err) {
+      console.error('Appeal submission failed:', err);
+      return {
+        success: false,
+        error: err.message
+      };
+    }
+  }
+
+  /**
    * Set preferred AI provider for server grading
    * @param {string|null} provider - 'gemini', 'groq', or null (auto)
    */

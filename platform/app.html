@@ -205,9 +205,42 @@
             </svg>
             Request Teacher Review
           </button>
+          <!-- AI Appeal button - appears after AI grading -->
+          <button id="btn-ai-appeal" class="hidden bg-amber-500 hover:bg-amber-600 text-white font-semibold px-4 py-3 rounded-lg shadow-lg transition-all flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Appeal AI Decision
+          </button>
           <button id="btn-skip" class="bg-gray-400 hover:bg-gray-500 text-white font-semibold px-6 py-3 rounded-lg shadow transition-all">
             Skip
           </button>
+        </div>
+
+        <!-- AI Appeal Input (hidden by default) -->
+        <div id="ai-appeal-container" class="hidden mt-3">
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <label class="block text-sm font-medium text-amber-800 mb-2">
+              Explain why you think your answer deserves a different grade:
+            </label>
+            <textarea
+              id="ai-appeal-input"
+              class="w-full p-2 border border-amber-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              rows="3"
+              placeholder="e.g., 'I said the slope would decrease because removing a point above the line on the right side would pull the line down...'"
+            ></textarea>
+            <div class="flex gap-2 mt-2">
+              <button id="btn-submit-appeal" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                </svg>
+                Submit Appeal
+              </button>
+              <button id="btn-cancel-appeal" class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-all">
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Grading level indicator -->
@@ -1356,6 +1389,8 @@
     function hideAllEscalationButtons() {
       document.getElementById('btn-ai-review').classList.add('hidden');
       document.getElementById('btn-teacher-review').classList.add('hidden');
+      document.getElementById('btn-ai-appeal').classList.add('hidden');
+      document.getElementById('ai-appeal-container').classList.add('hidden');
     }
 
     function showEscalationButton(level) {
@@ -1363,6 +1398,10 @@
       if (level === 'ai') {
         document.getElementById('btn-ai-review').classList.remove('hidden');
       } else if (level === 'teacher') {
+        document.getElementById('btn-teacher-review').classList.remove('hidden');
+      } else if (level === 'ai-appeal') {
+        // Show appeal button after AI grading (alongside teacher review option)
+        document.getElementById('btn-ai-appeal').classList.remove('hidden');
         document.getElementById('btn-teacher-review').classList.remove('hidden');
       }
     }
@@ -2240,13 +2279,16 @@
               document.getElementById('btn-grade').classList.add('hidden');
               document.getElementById('btn-try-again').classList.remove('hidden');
 
+              // Store results for potential appeal
+              lastGradingResults = results;
+
               // Show escalation option based on current grading level
               if (currentGradingLevel === 'algorithm') {
                 // Can escalate to AI
                 showEscalationButton('ai');
               } else if (currentGradingLevel === 'ai') {
-                // Can escalate to Teacher
-                showEscalationButton('teacher');
+                // After AI grading, show appeal option + teacher review
+                showEscalationButton('ai-appeal');
               }
               // If already at teacher level, no further escalation
             }
@@ -2470,6 +2512,91 @@
       pendingTeacherReview = null;
       document.getElementById('btn-teacher-review')?.classList.add('hidden');
     }
+
+    // ==================== AI APPEAL HANDLERS ====================
+    // Show appeal input form when Appeal button is clicked
+    document.getElementById('btn-ai-appeal').addEventListener('click', () => {
+      document.getElementById('btn-ai-appeal').classList.add('hidden');
+      document.getElementById('ai-appeal-container').classList.remove('hidden');
+      document.getElementById('ai-appeal-input').focus();
+    });
+
+    // Cancel appeal - hide form, show buttons again
+    document.getElementById('btn-cancel-appeal').addEventListener('click', () => {
+      document.getElementById('ai-appeal-container').classList.add('hidden');
+      document.getElementById('ai-appeal-input').value = '';
+      document.getElementById('btn-ai-appeal').classList.remove('hidden');
+    });
+
+    // Submit appeal to AI with follow-up question
+    document.getElementById('btn-submit-appeal').addEventListener('click', async () => {
+      const appealText = document.getElementById('ai-appeal-input').value.trim();
+      if (!appealText) {
+        document.getElementById('ai-appeal-input').classList.add('border-red-500');
+        document.getElementById('ai-appeal-input').placeholder = 'Please explain your reasoning...';
+        return;
+      }
+
+      const submitBtn = document.getElementById('btn-submit-appeal');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Reviewing Appeal...
+      `;
+
+      try {
+        // Send appeal to AI for re-evaluation
+        const result = await platform.submitAppeal(appealText, lastGradingResults);
+
+        // Update grading level indicator
+        updateGradingLevelIndicator('ai');
+        document.getElementById('grading-level-text').textContent = 'Graded by: AI (Appeal)';
+
+        // Clear appeal form
+        document.getElementById('ai-appeal-container').classList.add('hidden');
+        document.getElementById('ai-appeal-input').value = '';
+
+        // Display new feedback from appeal
+        if (result.success) {
+          // Update the feedback display with appeal response
+          platform.inputRenderer?.displayAppealResponse(result);
+
+          // If appeal was successful and all correct now, celebrate
+          if (result.allCorrect) {
+            const state = platform.getState();
+            const starType = ['gold', 'silver', 'bronze', 'tin'][Math.min(state.game.hintsUsed || 0, 3)];
+            soundEngine.init();
+            soundEngine.starSound(starType);
+            celebration.celebrate(starType);
+
+            document.getElementById('btn-try-again').classList.add('hidden');
+            document.getElementById('btn-next').classList.remove('hidden');
+            hideAllEscalationButtons();
+          } else {
+            // Appeal reviewed but still not all correct - can still escalate to teacher
+            showEscalationButton('teacher');
+          }
+        } else {
+          // Appeal failed or error
+          showEscalationButton('teacher');
+        }
+      } catch (err) {
+        console.error('Appeal submission error:', err);
+        alert('Failed to submit appeal. You can request teacher review instead.');
+        showEscalationButton('teacher');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+          </svg>
+          Submit Appeal
+        `;
+      }
+    });
 
     document.getElementById('cartridge-select').addEventListener('change', (e) => {
       loadCartridge(e.target.value);

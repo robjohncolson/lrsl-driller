@@ -538,6 +538,48 @@ export class InputRenderer {
     for (const [fieldId] of this.fields) {
       this.hideFeedback(fieldId);
     }
+    // Also clear appeal response if present
+    const appealResponse = this.container.querySelector('[data-appeal-response]');
+    if (appealResponse) appealResponse.remove();
+  }
+
+  /**
+   * Display response from AI appeal
+   */
+  displayAppealResponse(result) {
+    // Update field feedback with new scores
+    if (result.fields) {
+      for (const [fieldId, fieldResult] of Object.entries(result.fields)) {
+        // Skip non-field entries like appealResponse
+        if (fieldId === 'appealResponse' || fieldId.startsWith('_')) continue;
+        this.showFeedback(fieldId, fieldResult);
+      }
+    }
+
+    // Show overall appeal response if provided
+    const appealText = result.fields?.appealResponse || result.feedback;
+    if (appealText) {
+      // Remove any existing appeal response
+      const existing = this.container.querySelector('[data-appeal-response]');
+      if (existing) existing.remove();
+
+      // Create appeal response box
+      const responseBox = document.createElement('div');
+      responseBox.setAttribute('data-appeal-response', 'true');
+      responseBox.className = 'mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg';
+      responseBox.innerHTML = `
+        <div class="flex items-start gap-2">
+          <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <div>
+            <div class="font-medium text-amber-800 mb-1">Appeal Response</div>
+            <div class="text-amber-700 text-sm">${appealText}</div>
+          </div>
+        </div>
+      `;
+      this.container.appendChild(responseBox);
+    }
   }
 
   // ============== HELPERS ==============

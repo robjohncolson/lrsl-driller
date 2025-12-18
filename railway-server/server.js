@@ -1144,6 +1144,100 @@ app.post('/api/ai/grade-paragraph', async (req, res) => {
 });
 
 // ============================================
+// AI APPEAL ENDPOINT
+// ============================================
+
+app.post('/api/ai/appeal', async (req, res) => {
+  try {
+    const { scenario, answers, appealText, previousResults, preferProvider, aiPromptTemplate, cartridgeId } = req.body;
+
+    if (!scenario || !answers || !appealText) {
+      return res.status(400).json({ error: 'Missing scenario, answers, or appeal text' });
+    }
+
+    // Check if we have any keys available
+    await keyPool.refreshKeys();
+    const stats = keyPool.getStats();
+    const hasKeys = stats.gemini.total > 0 || stats.groq.total > 0 ||
+                    stats.hasEnvKeys.gemini || stats.hasEnvKeys.groq;
+
+    if (!hasKeys) {
+      return res.status(503).json({ error: 'No AI providers configured' });
+    }
+
+    // Build appeal prompt
+    const prompt = buildAppealPrompt(scenario, answers, appealText, previousResults);
+    const queuePos = gradingQueue.getQueueLength();
+
+    console.log(`Appeal request queued (position ${queuePos}): ${scenario.topic}, cartridge: ${cartridgeId || 'unknown'}`);
+
+    const result = await gradingQueue.add(() => gradeWithAI(prompt, preferProvider));
+
+    result._gradingMode = 'ai-appeal';
+    result._serverGraded = true;
+    result._appealProcessed = true;
+
+    res.json(result);
+  } catch (err) {
+    console.error('AI appeal error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Build prompt for AI appeal re-evaluation
+ */
+function buildAppealPrompt(scenario, answers, appealText, previousResults) {
+  // Format previous results
+  const previousFeedbackLines = previousResults ?
+    Object.entries(previousResults).map(([field, result]) =>
+      `- ${field}: Score=${result.score}, Feedback="${result.feedback || 'No feedback'}"`
+    ).join('\n') : 'No previous results available';
+
+  // Format student answers
+  const studentAnswers = Object.entries(answers)
+    .map(([field, value]) => `- ${field}: "${value}"`)
+    .join('\n');
+
+  return `You are an AP Statistics teacher reviewing a student's APPEAL of their grade.
+
+## Context
+Topic: ${scenario.topic || 'Statistics Practice'}
+Mode: ${scenario.mode || 'Practice'}
+${scenario.r ? `r = ${scenario.r}` : ''}
+${scenario.slope ? `Slope = ${scenario.slope}` : ''}
+${scenario.givenValues ? `Given: ${scenario.givenValues}` : ''}
+
+## Student's Answers
+${studentAnswers}
+
+## Previous AI Grading
+${previousFeedbackLines}
+
+## Student's Appeal
+The student disagrees with the grading and explains:
+"${appealText}"
+
+## Your Task
+Carefully reconsider the student's answers in light of their explanation. The student may have:
+1. Valid reasoning that wasn't initially recognized
+2. Used correct but different terminology
+3. Made a valid point that deserves reconsideration
+4. Misunderstood the question (in which case, explain clearly)
+
+Be FAIR but also ACCURATE. If the student's reasoning is sound, upgrade their score. If they're still incorrect, explain why clearly and kindly.
+
+Respond with ONLY valid JSON in this format:
+{
+  "fieldName": {"score": "E/P/I", "feedback": "Explanation addressing the appeal"},
+  "appealResponse": "Overall response to the student's appeal explaining your decision"
+}
+
+Example:
+{"slopeEffect": {"score": "E", "feedback": "After reviewing your explanation, you're correct - the point is above the line on the right side, so removing it would decrease the slope."}, "appealResponse": "Good catch! Your reasoning about the point's position relative to the line was correct. I've updated your grade."}`;
+}
+
+// ============================================
 // TEACHER REVIEW ENDPOINTS
 // ============================================
 
