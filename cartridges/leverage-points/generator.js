@@ -181,10 +181,11 @@ function generateIdentifyLeverage(context, config) {
       ...context,
       modeId: 'identify-leverage',
       modeName: 'Identify Leverage',
+      // Display values only - grading computes actual answer from graphConfig
       xBar: roundTo(stats.xMean, 2),
       pointX: special.point.x,
-      pointY: special.point.y,
-      leverage: special.leverage
+      pointY: special.point.y
+      // NOTE: leverage NOT stored here - grading computes it from raw data
     },
     answers,
     given: {
@@ -202,7 +203,7 @@ function generateIdentifyLeverage(context, config) {
       xMean: stats.xMean
     },
     validation: {
-      leverage: { expected: special.leverage, type: 'exact' }
+      leverage: { type: 'exact' }  // No expected - grading computes it
     }
   };
 }
@@ -240,10 +241,12 @@ function generateIdentifyOutlier(context, config) {
       ...context,
       modeId: 'identify-outlier',
       modeName: 'Identify Residual Size',
+      // Display values only - grading computes actual answer from graphConfig
+      pointX: special.point.x,
       pointY: special.point.y,
       predictedY: special.predicted,
-      residual: special.residual,
-      residualSize: special.residualSize
+      residual: special.residual
+      // NOTE: residualSize NOT stored here - grading computes it from raw data
     },
     answers,
     given: {
@@ -266,7 +269,7 @@ function generateIdentifyOutlier(context, config) {
       showResidualLine: true
     },
     validation: {
-      residualSize: { expected: special.residualSize, type: 'exact' }
+      residualSize: { type: 'exact' }  // No expected - grading computes it
     }
   };
 }
@@ -309,13 +312,12 @@ function generateClassifyPoint(context, config) {
       ...context,
       modeId: 'classify-point',
       modeName: 'Classify Point',
+      // Display values only - grading computes actual answers from graphConfig
       xBar: roundTo(stats.xMean, 2),
       pointX: special.point.x,
       pointY: special.point.y,
-      residual: special.residual,
-      leverage: special.leverage,
-      residualSize: special.residualSize,
-      classification: special.classification
+      residual: special.residual
+      // NOTE: leverage, residualSize, classification NOT stored - grading computes them
     },
     answers,
     given: {
@@ -340,9 +342,10 @@ function generateClassifyPoint(context, config) {
       xMean: stats.xMean
     },
     validation: {
-      leverage: { expected: special.leverage, type: 'exact' },
-      residualSize: { expected: special.residualSize, type: 'exact' },
-      classification: { expected: special.classification, type: 'exact' }
+      leverage: { type: 'exact' },
+      residualSize: { type: 'exact' },
+      classification: { type: 'exact' }
+      // No expected values - grading computes them from raw data
     }
   };
 }
@@ -396,20 +399,17 @@ function generatePredictSlopeEffect(context, config) {
       ...context,
       modeId: 'predict-slope-effect',
       modeName: 'Effect on Slope',
+      // Display values only - grading computes actual answer from graphConfig
       pointCoords,
-      currentSlope: roundTo(statsWith.slope, 3),
-      leverage: special.leverage === 'high' ? 'High' : 'Low',
-      residualSize: special.residualSize === 'large' ? 'Large' : 'Small',
-      slopeEffect,
-      slopeWith: roundTo(statsWith.slope, 3),
-      slopeWithout: roundTo(statsWithout.slope, 3)
+      pointX: special.point.x,
+      pointY: special.point.y,
+      currentSlope: roundTo(statsWith.slope, 3)
+      // NOTE: slopeEffect NOT stored - grading computes it from raw data
     },
     answers,
     given: {
       pointCoords,
-      currentSlope: roundTo(statsWith.slope, 3),
-      leverage: special.leverage === 'high' ? 'High' : 'Low',
-      residualSize: special.residualSize === 'large' ? 'Large' : 'Small'
+      currentSlope: roundTo(statsWith.slope, 3)
     },
     graphConfig: {
       type: 'scatterplot',
@@ -429,7 +429,7 @@ function generatePredictSlopeEffect(context, config) {
       yMean: statsWith.yMean
     },
     validation: {
-      slopeEffect: { expected: slopeEffect, type: 'exact' }
+      slopeEffect: { type: 'exact' }  // No expected - grading computes it
     }
   };
 }
@@ -499,19 +499,17 @@ function generatePredictREffect(context, config) {
       ...context,
       modeId: 'predict-r-effect',
       modeName: 'Effect on r',
+      // Display values only - grading computes actual answers from graphConfig
       pointCoords,
-      currentR: roundTo(statsWith.r, 3),
-      classification: classificationName[special.classification],
-      rEffect,
-      r2Effect,
-      rWith: roundTo(statsWith.r, 3),
-      rWithout: roundTo(statsWithout.r, 3)
+      pointX: special.point.x,
+      pointY: special.point.y,
+      currentR: roundTo(statsWith.r, 3)
+      // NOTE: rEffect, r2Effect NOT stored - grading computes them from raw data
     },
     answers,
     given: {
       pointCoords,
-      currentR: roundTo(statsWith.r, 3),
-      classification: classificationName[special.classification]
+      currentR: roundTo(statsWith.r, 3)
     },
     graphConfig: {
       type: 'scatterplot',
@@ -525,11 +523,14 @@ function generatePredictREffect(context, config) {
         y: special.point.y,
         predictedY: special.predicted
       },
-      showResidualLine: true
+      showMeanLines: true,
+      showResidualLine: true,
+      xMean: statsWith.xMean
     },
     validation: {
-      rEffect: { expected: rEffect, type: 'exact' },
-      r2Effect: { expected: r2Effect, type: 'exact' }
+      rEffect: { type: 'exact' },
+      r2Effect: { type: 'exact' }
+      // No expected values - grading computes them from raw data
     }
   };
 }
@@ -587,15 +588,14 @@ function generateInfluentialAnalysis(context, config) {
       ...context,
       modeId: 'influential-analysis',
       modeName: 'Full Influence Analysis',
+      // Display values only - grading computes actual answers from graphConfig
       xBar: roundTo(statsWith.xMean, 2),
       pointX: special.point.x,
+      pointY: special.point.y,
       residual: special.residual,
       currentSlope: roundTo(statsWith.slope, 3),
-      currentR: roundTo(statsWith.r, 3),
-      classification: special.classification,
-      isInfluential,
-      slopeEffect,
-      rEffect
+      currentR: roundTo(statsWith.r, 3)
+      // NOTE: classification, isInfluential, slopeEffect, rEffect NOT stored - grading computes them
     },
     answers,
     given: {
@@ -622,10 +622,11 @@ function generateInfluentialAnalysis(context, config) {
       xMean: statsWith.xMean
     },
     validation: {
-      classification: { expected: special.classification, type: 'exact' },
-      isInfluential: { expected: isInfluential ? 'yes' : 'no', type: 'exact' },
-      slopeEffect: { expected: slopeEffect, type: 'exact' },
-      rEffect: { expected: rEffect, type: 'exact' }
+      classification: { type: 'exact' },
+      isInfluential: { type: 'exact' },
+      slopeEffect: { type: 'exact' },
+      rEffect: { type: 'exact' }
+      // No expected values - grading computes them from raw data
     }
   };
 }
@@ -690,13 +691,12 @@ function generateCompareWithWithout(context, config) {
       ...context,
       modeId: 'compare-with-without',
       modeName: 'Before & After',
+      // Given values - grading computes slopeChange, rChange, and influential from these
       slopeWith,
       slopeWithout,
       rWith,
-      rWithout,
-      slopeChange,
-      rChange,
-      influential: isInfluential ? 'yes' : 'no'
+      rWithout
+      // NOTE: slopeChange, rChange, influential NOT stored - grading computes them
     },
     answers,
     given: {
@@ -707,9 +707,10 @@ function generateCompareWithWithout(context, config) {
     },
     graphConfig: null, // This mode focuses on calculation, no graph needed
     validation: {
-      slopeChange: { expected: slopeChange, tolerance: 'standard' },
-      rChange: { expected: rChange, tolerance: 'standard' },
-      influential: { expected: isInfluential ? 'yes' : 'no', type: 'exact' }
+      slopeChange: { tolerance: 'standard' },
+      rChange: { tolerance: 'standard' },
+      influential: { type: 'exact' }
+      // No expected values - grading computes them from given values
     }
   };
 }

@@ -92,6 +92,23 @@ function computeCorrectAnswers(context) {
     influential: null
   };
 
+  // Handle compare-with-without mode (no graph, uses given values)
+  if (context.modeId === 'compare-with-without') {
+    if (context.slopeWith !== undefined && context.slopeWithout !== undefined) {
+      result.slopeChange = roundTo(context.slopeWith - context.slopeWithout, 2);
+    }
+    if (context.rWith !== undefined && context.rWithout !== undefined) {
+      result.rChange = roundTo(Math.abs(context.rWith) - Math.abs(context.rWithout), 2);
+    }
+    // Influential threshold: |slope change| >= 0.2 OR |r change| >= 0.1
+    if (result.slopeChange !== null && result.rChange !== null) {
+      const isInfluentialCalc = Math.abs(result.slopeChange) >= 0.2 || Math.abs(result.rChange) >= 0.1;
+      result.influential = isInfluentialCalc ? 'yes' : 'no';
+    }
+    console.log('[Grading] compare-with-without computed:', result);
+    return result;
+  }
+
   // Get data from graphConfig if available
   const graphConfig = context.graphConfig;
   if (!graphConfig || !graphConfig.points) {
