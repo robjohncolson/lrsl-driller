@@ -1449,6 +1449,447 @@ export class GraphEngine {
   }
 
   /**
+   * Show leverage visualization - draws x̄ line and horizontal lines to high/low leverage points
+   * Used after grading to visualize which points have high/low leverage
+   *
+   * @param {Object} options
+   * @param {string} options.leverageType - 'high' or 'low'
+   * @param {string} options.color - Color for the leverage lines (default: orange for high, blue for low)
+   * @param {number} options.threshold - Custom threshold multiplier for leverage (default: 0.4)
+   */
+  showLeverageLines(options = {}) {
+    const {
+      leverageType = 'high',
+      color = leverageType === 'high' ? '#f97316' : '#3b82f6', // Orange for high, blue for low
+      threshold = 0.4
+    } = options;
+
+    if (!this.currentConfig) {
+      console.warn('Cannot show leverage lines: no current config');
+      return;
+    }
+
+    const config = this.currentConfig;
+    const points = config.data || config.points || [];
+    const regression = config.regression;
+
+    if (points.length === 0) {
+      console.warn('Cannot show leverage lines: no points');
+      return;
+    }
+
+    // Calculate x mean and spread
+    const xValues = points.map(p => p.x);
+    const xMean = xValues.reduce((a, b) => a + b, 0) / points.length;
+    const xSpread = Math.sqrt(xValues.reduce((sum, x) => sum + (x - xMean) ** 2, 0) / (points.length - 1)) * Math.sqrt(points.length - 1);
+    const leverageThreshold = xSpread * threshold;
+
+    // Classify points by leverage
+    const pointsWithLeverage = points.map(p => ({
+      ...p,
+      xDistance: Math.abs(p.x - xMean),
+      leverage: Math.abs(p.x - xMean) > leverageThreshold ? 'high' : 'low'
+    }));
+
+    // Find matching points
+    const matchingPoints = pointsWithLeverage.filter(p => p.leverage === leverageType);
+
+    // Recalculate scales
+    const yValues = points.map(d => d.y);
+    const xMin = config.xMin ?? Math.min(...xValues) * 0.9;
+    const xMax = config.xMax ?? Math.max(...xValues) * 1.1;
+    const yMin = config.yMin ?? Math.min(...yValues) * 0.9;
+    const yMax = config.yMax ?? Math.max(...yValues) * 1.1;
+    const scales = this.calculateScales(xMin, xMax, yMin, yMax);
+
+    // Clear and redraw the base graph
+    this.clear();
+    this.drawGrid(scales);
+    this.drawAxes(scales, { x: config.xLabel || config.labels?.x || 'X', y: config.yLabel || config.labels?.y || 'Y' });
+
+    // Draw regression line if present
+    if (regression && regression.show !== false) {
+      this.drawRegressionLine(scales, regression, xMin, xMax);
+    }
+
+    // Draw x̄ (mean) vertical line prominently
+    const ctx = this.ctx;
+    const xMeanPx = scales.xScale(xMean);
+
+    ctx.strokeStyle = '#10b981'; // Emerald for mean line
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(xMeanPx, this.padding.top);
+    ctx.lineTo(xMeanPx, this.height - this.padding.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Label the mean line
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('x̄', xMeanPx, this.padding.top - 5);
+
+    // Draw horizontal leverage lines from x̄ to matching points
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+
+    matchingPoints.forEach(p => {
+      const px = scales.xScale(p.x);
+      const py = scales.yScale(p.y);
+
+      // Horizontal line from x̄ to point's x position (at point's y level)
+      ctx.beginPath();
+      ctx.moveTo(xMeanPx, py);
+      ctx.lineTo(px, py);
+      ctx.stroke();
+    });
+
+    // Draw all points, with matching points highlighted
+    pointsWithLeverage.forEach((point, index) => {
+      const isMatching = matchingPoints.includes(point);
+      const isHighlight = config.features?.highlightId === point.id ||
+                          config.highlight?.index === index;
+
+      if (isMatching) {
+        // Draw matching points with emphasis
+        const px = scales.xScale(point.x);
+        const py = scales.yScale(point.y);
+
+        // Outer glow
+        ctx.beginPath();
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.3)`;
+        ctx.fill();
+
+        // Inner point
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        // Draw non-matching points normally
+        this.drawPoint(scales, point, isHighlight);
+      }
+    });
+
+    // Add legend
+    this.drawLeverageLegend(leverageType, color, matchingPoints.length, xMean);
+  }
+
+  /**
+   * Draw a legend box explaining the leverage visualization
+   */
+  drawLeverageLegend(leverageType, color, count, xMean) {
+    const ctx = this.ctx;
+    const boxX = this.padding.left + 10;
+    const boxY = this.padding.top + 10;
+    const boxWidth = 180;
+    const boxHeight = 50;
+
+    // Background
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // Icon - horizontal line with dot
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(boxX + 8, boxY + 25);
+    ctx.lineTo(boxX + 28, boxY + 25);
+    ctx.stroke();
+
+    // Dot at end
+    ctx.beginPath();
+    ctx.arc(boxX + 28, boxY + 25, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // Text
+    ctx.fillStyle = '#374151';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    const label = leverageType === 'high' ? 'High leverage' : 'Low leverage';
+    ctx.fillText(label, boxX + 38, boxY + 22);
+
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.fillStyle = '#6b7280';
+    ctx.fillText(`${count} point${count !== 1 ? 's' : ''} far from x̄`, boxX + 38, boxY + 38);
+  }
+
+  /**
+   * Show combined classification visualization for classify-point mode
+   * Shows both leverage lines and residual lines based on user's answers
+   *
+   * @param {Object} options
+   * @param {string} options.leverage - 'high' or 'low' (user's leverage answer)
+   * @param {string} options.residualSize - 'large' or 'small' (user's residual answer)
+   */
+  showClassificationVisualization(options = {}) {
+    const { leverage, residualSize } = options;
+
+    if (!this.currentConfig) {
+      console.warn('Cannot show classification visualization: no current config');
+      return;
+    }
+
+    const config = this.currentConfig;
+    const points = config.data || config.points || [];
+    const regression = config.regression;
+
+    if (points.length === 0) {
+      console.warn('Cannot show classification visualization: no points');
+      return;
+    }
+
+    // Get slope and intercept for residual calculation
+    const slope = regression?.slope ?? regression?.b ?? 0;
+    const intercept = regression?.intercept ?? regression?.a ?? 0;
+
+    // Calculate statistics
+    const xValues = points.map(p => p.x);
+    const xMean = xValues.reduce((a, b) => a + b, 0) / points.length;
+    const xSpread = Math.sqrt(xValues.reduce((sum, x) => sum + (x - xMean) ** 2, 0) / (points.length - 1)) * Math.sqrt(points.length - 1);
+    const leverageThreshold = xSpread * 0.4;
+
+    // Calculate residuals
+    const pointsWithStats = points.map(p => {
+      const predicted = intercept + slope * p.x;
+      const residual = p.y - predicted;
+      return {
+        ...p,
+        predicted,
+        residual,
+        absResidual: Math.abs(residual),
+        xDistance: Math.abs(p.x - xMean),
+        leverage: Math.abs(p.x - xMean) > leverageThreshold ? 'high' : 'low'
+      };
+    });
+
+    // Calculate residual threshold
+    const avgAbsResidual = pointsWithStats.reduce((sum, p) => sum + p.absResidual, 0) / points.length;
+    const residualThreshold = avgAbsResidual * 1.5;
+
+    // Add residual size classification
+    pointsWithStats.forEach(p => {
+      p.residualSize = p.absResidual > residualThreshold ? 'large' : 'small';
+    });
+
+    // Find points matching user's leverage choice
+    const leverageMatches = pointsWithStats.filter(p => p.leverage === leverage);
+    // Find points matching user's residual choice
+    const residualMatches = pointsWithStats.filter(p => p.residualSize === residualSize);
+
+    // Recalculate scales
+    const yValues = points.map(d => d.y);
+    const xMin = config.xMin ?? Math.min(...xValues) * 0.9;
+    const xMax = config.xMax ?? Math.max(...xValues) * 1.1;
+    const yMin = config.yMin ?? Math.min(...yValues) * 0.9;
+    const yMax = config.yMax ?? Math.max(...yValues) * 1.1;
+    const scales = this.calculateScales(xMin, xMax, yMin, yMax);
+
+    // Colors
+    const leverageColor = leverage === 'high' ? '#f97316' : '#3b82f6'; // Orange for high, blue for low
+    const residualColor = residualSize === 'large' ? '#ef4444' : '#22c55e'; // Red for large, green for small
+
+    // Clear and redraw the base graph
+    this.clear();
+    this.drawGrid(scales);
+    this.drawAxes(scales, { x: config.xLabel || config.labels?.x || 'X', y: config.yLabel || config.labels?.y || 'Y' });
+
+    // Draw regression line if present
+    if (regression && regression.show !== false) {
+      this.drawRegressionLine(scales, regression, xMin, xMax);
+    }
+
+    const ctx = this.ctx;
+
+    // Draw x̄ (mean) vertical line
+    const xMeanPx = scales.xScale(xMean);
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(xMeanPx, this.padding.top);
+    ctx.lineTo(xMeanPx, this.height - this.padding.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Label the mean line
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('x̄', xMeanPx, this.padding.top - 5);
+
+    // Draw horizontal leverage lines to matching points
+    ctx.strokeStyle = leverageColor;
+    ctx.lineWidth = 2.5;
+    leverageMatches.forEach(p => {
+      const px = scales.xScale(p.x);
+      const py = scales.yScale(p.y);
+      ctx.beginPath();
+      ctx.moveTo(xMeanPx, py);
+      ctx.lineTo(px, py);
+      ctx.stroke();
+    });
+
+    // Draw vertical residual lines to matching points
+    ctx.strokeStyle = residualColor;
+    ctx.lineWidth = 2.5;
+    residualMatches.forEach(p => {
+      const px = scales.xScale(p.x);
+      const pyActual = scales.yScale(p.y);
+      const pyPredicted = scales.yScale(p.predicted);
+      ctx.beginPath();
+      ctx.moveTo(px, pyActual);
+      ctx.lineTo(px, pyPredicted);
+      ctx.stroke();
+    });
+
+    // Draw all points
+    pointsWithStats.forEach((point, index) => {
+      const matchesLeverage = leverageMatches.includes(point);
+      const matchesResidual = residualMatches.includes(point);
+      const isHighlight = config.features?.highlightId === point.id ||
+                          config.highlight?.index === index;
+
+      const px = scales.xScale(point.x);
+      const py = scales.yScale(point.y);
+
+      if (matchesLeverage && matchesResidual) {
+        // Point matches both - use a combined highlight (purple)
+        ctx.beginPath();
+        ctx.arc(px, py, 12, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(147, 51, 234, 0.3)'; // Purple glow
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(px, py, 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#9333ea'; // Purple
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (matchesLeverage) {
+        // Only matches leverage
+        ctx.beginPath();
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        const r = parseInt(leverageColor.slice(1, 3), 16);
+        const g = parseInt(leverageColor.slice(3, 5), 16);
+        const b = parseInt(leverageColor.slice(5, 7), 16);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.3)`;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fillStyle = leverageColor;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (matchesResidual) {
+        // Only matches residual
+        ctx.beginPath();
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        const r = parseInt(residualColor.slice(1, 3), 16);
+        const g = parseInt(residualColor.slice(3, 5), 16);
+        const b = parseInt(residualColor.slice(5, 7), 16);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.3)`;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fillStyle = residualColor;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        // Normal point
+        this.drawPoint(scales, point, isHighlight);
+      }
+    });
+
+    // Draw combined legend
+    this.drawClassificationLegend(leverage, residualSize, leverageColor, residualColor, leverageMatches.length, residualMatches.length);
+  }
+
+  /**
+   * Draw a legend box explaining the classification visualization
+   */
+  drawClassificationLegend(leverage, residualSize, leverageColor, residualColor, leverageCount, residualCount) {
+    const ctx = this.ctx;
+    const boxX = this.padding.left + 10;
+    const boxY = this.padding.top + 10;
+    const boxWidth = 200;
+    const boxHeight = 75;
+
+    // Background
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = '#9ca3af';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // Leverage row
+    ctx.strokeStyle = leverageColor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(boxX + 8, boxY + 18);
+    ctx.lineTo(boxX + 25, boxY + 18);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(boxX + 25, boxY + 18, 3, 0, Math.PI * 2);
+    ctx.fillStyle = leverageColor;
+    ctx.fill();
+
+    ctx.fillStyle = '#374151';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    const leverageLabel = leverage === 'high' ? 'High leverage' : 'Low leverage';
+    ctx.fillText(`${leverageLabel} (${leverageCount})`, boxX + 35, boxY + 22);
+
+    // Residual row
+    ctx.strokeStyle = residualColor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(boxX + 16, boxY + 38);
+    ctx.lineTo(boxX + 16, boxY + 52);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(boxX + 16, boxY + 38, 3, 0, Math.PI * 2);
+    ctx.fillStyle = residualColor;
+    ctx.fill();
+
+    const residualLabel = residualSize === 'large' ? 'Large residual' : 'Small residual';
+    ctx.fillStyle = '#374151';
+    ctx.fillText(`${residualLabel} (${residualCount})`, boxX + 35, boxY + 48);
+
+    // Combined indicator
+    ctx.beginPath();
+    ctx.arc(boxX + 16, boxY + 65, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#9333ea';
+    ctx.fill();
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.fillText('Both = your classification', boxX + 28, boxY + 68);
+  }
+
+  /**
    * Easing functions for smooth animations
    */
   easeOutCubic(t) {

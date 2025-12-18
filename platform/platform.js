@@ -705,57 +705,109 @@ export class Platform {
   }
 
   /**
-   * Show residual visualization for identify-outlier mode
-   * Displays colored residual lines to all points matching the correct answer type
+   * Show post-submission visualization for leverage-points modes
+   * Displays visual feedback based on the user's answers (not just correct answers)
    * Returns a Promise that resolves after the visualization delay (for auto-advance)
    */
   maybeShowResidualVisualization(context, results) {
-    // Only show for identify-outlier mode
-    if (context.modeId !== 'identify-outlier') {
-      return null;
-    }
-
     // Need graph engine and graph config
     if (!this.graphEngine || !context.graphConfig) {
       return null;
     }
 
-    // Get the correct answer (what residual type was being asked about)
-    const residualSizeField = results.fields?.residualSize;
-    if (!residualSizeField) {
-      return null;
+    const modeId = context.modeId;
+
+    // Handle identify-outlier mode: show residual lines based on user's answer
+    if (modeId === 'identify-outlier') {
+      const residualSizeField = results.fields?.residualSize;
+      if (!residualSizeField) return null;
+
+      // Use the user's answer to show what they selected
+      const userAnswer = residualSizeField.details?.studentAnswer;
+      if (!userAnswer) return null;
+
+      const residualType = userAnswer.toLowerCase();
+
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          this.graphEngine.showResidualLines({
+            residualType,
+            color: residualType === 'large' ? '#f97316' : '#3b82f6'
+          });
+
+          this.emit('postSubmitVisualization', {
+            type: 'residualLines',
+            residualType,
+            duration: 10000
+          });
+
+          setTimeout(resolve, 10000);
+        }, 500);
+      });
     }
 
-    // The correct answer tells us which type to highlight
-    const correctAnswer = residualSizeField._expected || residualSizeField.details?.expectedAnswer;
-    if (!correctAnswer) {
-      return null;
+    // Handle identify-leverage mode: show leverage lines based on user's answer
+    if (modeId === 'identify-leverage') {
+      const leverageField = results.fields?.leverage;
+      if (!leverageField) return null;
+
+      // Use the user's answer
+      const userAnswer = leverageField.details?.studentAnswer;
+      if (!userAnswer) return null;
+
+      const leverageType = userAnswer.toLowerCase();
+
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          this.graphEngine.showLeverageLines({
+            leverageType,
+            color: leverageType === 'high' ? '#f97316' : '#3b82f6'
+          });
+
+          this.emit('postSubmitVisualization', {
+            type: 'leverageLines',
+            leverageType,
+            duration: 10000
+          });
+
+          setTimeout(resolve, 10000);
+        }, 500);
+      });
     }
 
-    // Determine the residual type to show (large or small)
-    const residualType = correctAnswer.toLowerCase();
+    // Handle classify-point mode: show combined visualization based on user's answers
+    if (modeId === 'classify-point') {
+      const leverageField = results.fields?.leverage;
+      const residualSizeField = results.fields?.residualSize;
 
-    // Delay visualization slightly so feedback is visible first
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Show the residual lines
-        this.graphEngine.showResidualLines({
-          residualType,
-          // Orange for large residuals, blue for small
-          color: residualType === 'large' ? '#f97316' : '#3b82f6'
-        });
+      if (!leverageField || !residualSizeField) return null;
 
-        // Emit event so app.html can handle the 10-second delay
-        this.emit('postSubmitVisualization', {
-          type: 'residualLines',
-          residualType,
-          duration: 10000
-        });
+      // Use the user's answers
+      const leverageAnswer = leverageField.details?.studentAnswer;
+      const residualAnswer = residualSizeField.details?.studentAnswer;
 
-        // Resolve after the display duration
-        setTimeout(resolve, 10000);
-      }, 500);
-    });
+      if (!leverageAnswer || !residualAnswer) return null;
+
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          this.graphEngine.showClassificationVisualization({
+            leverage: leverageAnswer.toLowerCase(),
+            residualSize: residualAnswer.toLowerCase()
+          });
+
+          this.emit('postSubmitVisualization', {
+            type: 'classification',
+            leverage: leverageAnswer,
+            residualSize: residualAnswer,
+            duration: 10000
+          });
+
+          setTimeout(resolve, 10000);
+        }, 500);
+      });
+    }
+
+    return null;
   }
 
   /**
