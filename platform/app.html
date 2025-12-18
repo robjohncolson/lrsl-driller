@@ -2209,9 +2209,8 @@
               document.getElementById('btn-next').classList.remove('hidden');
               hideAllEscalationButtons();
 
-              // Auto-advance to next problem after 10 seconds (user can click Next to go sooner)
-              setTimeout(async () => {
-                // Only advance if the Next button is still visible (user hasn't clicked it)
+              // Helper function for auto-advancing
+              const autoAdvance = async () => {
                 const nextBtn = document.getElementById('btn-next');
                 if (nextBtn && !nextBtn.classList.contains('hidden')) {
                   nextBtn.classList.add('hidden');
@@ -2223,7 +2222,17 @@
                   updateScenarioDisplay();
                   clearTeacherReview();
                 }
-              }, 10000);
+              };
+
+              // If there's a post-submit visualization (like residual lines), wait for it
+              // Otherwise use the default 10-second delay
+              if (results._postSubmitDelay) {
+                // Wait for the visualization to complete, then auto-advance
+                results._postSubmitDelay.then(autoAdvance);
+              } else {
+                // Auto-advance to next problem after 10 seconds (user can click Next to go sooner)
+                setTimeout(autoAdvance, 10000);
+              }
             } else {
               // Record problem attempt (not completed)
               timeTracker.endProblem(false, { allCorrect: false });

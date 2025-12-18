@@ -1270,6 +1270,185 @@ export class GraphEngine {
   }
 
   /**
+   * Show residual lines to all points that match a given residual size criterion
+   * Used after grading to visualize which points have large/small residuals
+   *
+   * @param {Object} options
+   * @param {string} options.residualType - 'large' or 'small'
+   * @param {string} options.color - Color for the residual lines (default: orange for large, blue for small)
+   * @param {number} options.threshold - Custom threshold multiplier for residual size (default: 1.5)
+   * @param {boolean} options.highlightMatching - If true, emphasize matching points (default: true)
+   */
+  showResidualLines(options = {}) {
+    const {
+      residualType = 'large',
+      color = residualType === 'large' ? '#f97316' : '#3b82f6', // Orange for large, blue for small
+      threshold = 1.5,
+      highlightMatching = true
+    } = options;
+
+    if (!this.currentConfig) {
+      console.warn('Cannot show residual lines: no current config');
+      return;
+    }
+
+    const config = this.currentConfig;
+    const points = config.data || config.points || [];
+    const regression = config.regression;
+
+    if (!regression || points.length === 0) {
+      console.warn('Cannot show residual lines: missing regression or points');
+      return;
+    }
+
+    // Get slope and intercept
+    const slope = regression.slope ?? regression.b;
+    const intercept = regression.intercept ?? regression.a;
+
+    // Calculate residuals for all points
+    const pointsWithResiduals = points.map(p => {
+      const predicted = intercept + slope * p.x;
+      const residual = p.y - predicted;
+      return { ...p, predicted, residual, absResidual: Math.abs(residual) };
+    });
+
+    // Calculate the typical (average) absolute residual
+    const avgAbsResidual = pointsWithResiduals.reduce((sum, p) => sum + p.absResidual, 0) / points.length;
+    const residualThreshold = avgAbsResidual * threshold;
+
+    // Find points that match the criterion
+    const matchingPoints = pointsWithResiduals.filter(p => {
+      if (residualType === 'large') {
+        return p.absResidual > residualThreshold;
+      } else {
+        return p.absResidual <= residualThreshold;
+      }
+    });
+
+    // Recalculate scales
+    const xValues = points.map(d => d.x);
+    const yValues = points.map(d => d.y);
+    const xMin = config.xMin ?? Math.min(...xValues) * 0.9;
+    const xMax = config.xMax ?? Math.max(...xValues) * 1.1;
+    const yMin = config.yMin ?? Math.min(...yValues) * 0.9;
+    const yMax = config.yMax ?? Math.max(...yValues) * 1.1;
+    const scales = this.calculateScales(xMin, xMax, yMin, yMax);
+
+    // Clear and redraw the base graph
+    this.clear();
+    this.drawGrid(scales);
+    this.drawAxes(scales, { x: config.xLabel || config.labels?.x || 'X', y: config.yLabel || config.labels?.y || 'Y' });
+
+    // Draw regression line
+    if (regression.show !== false) {
+      this.drawRegressionLine(scales, regression, xMin, xMax);
+    }
+
+    // Draw residual lines to ALL matching points
+    const ctx = this.ctx;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([]);
+
+    matchingPoints.forEach(p => {
+      const px = scales.xScale(p.x);
+      const pyActual = scales.yScale(p.y);
+      const pyPredicted = scales.yScale(p.predicted);
+
+      ctx.beginPath();
+      ctx.moveTo(px, pyActual);
+      ctx.lineTo(px, pyPredicted);
+      ctx.stroke();
+    });
+
+    // Draw all points, with matching points highlighted
+    pointsWithResiduals.forEach(point => {
+      const isMatching = matchingPoints.includes(point);
+      const isHighlight = config.features?.highlightId === point.id ||
+                          config.highlight?.index === points.indexOf(point);
+
+      if (isMatching && highlightMatching) {
+        // Draw matching points with emphasis
+        const px = scales.xScale(point.x);
+        const py = scales.yScale(point.y);
+
+        // Outer glow
+        ctx.beginPath();
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        ctx.fillStyle = color.replace(')', ', 0.3)').replace('rgb', 'rgba');
+        // Handle hex colors
+        if (color.startsWith('#')) {
+          const r = parseInt(color.slice(1, 3), 16);
+          const g = parseInt(color.slice(3, 5), 16);
+          const b = parseInt(color.slice(5, 7), 16);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.3)`;
+        }
+        ctx.fill();
+
+        // Inner point
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        // Draw non-matching points normally
+        this.drawPoint(scales, point, isHighlight);
+      }
+    });
+
+    // Add legend showing what the color means
+    this.drawResidualLegend(residualType, color, matchingPoints.length);
+  }
+
+  /**
+   * Draw a legend box explaining the residual visualization
+   */
+  drawResidualLegend(residualType, color, count) {
+    const ctx = this.ctx;
+    const boxX = this.padding.left + 10;
+    const boxY = this.padding.top + 10;
+    const boxWidth = 180;
+    const boxHeight = 50;
+
+    // Background
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // Icon - small residual line
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(boxX + 15, boxY + 15);
+    ctx.lineTo(boxX + 15, boxY + 35);
+    ctx.stroke();
+
+    // Dot at end
+    ctx.beginPath();
+    ctx.arc(boxX + 15, boxY + 15, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // Text
+    ctx.fillStyle = '#374151';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    const label = residualType === 'large' ? 'Large residuals' : 'Small residuals';
+    ctx.fillText(label, boxX + 30, boxY + 22);
+
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.fillStyle = '#6b7280';
+    ctx.fillText(`${count} point${count !== 1 ? 's' : ''} highlighted`, boxX + 30, boxY + 38);
+  }
+
+  /**
    * Easing functions for smooth animations
    */
   easeOutCubic(t) {

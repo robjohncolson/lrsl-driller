@@ -177,6 +177,11 @@ export class Platform {
       throw new Error('No cartridge loaded');
     }
 
+    // Stop any running animations from the previous problem
+    if (this.graphEngine) {
+      this.graphEngine.stopAnimation();
+    }
+
     // Reset hints for new problem
     this.gameEngine.resetHintsForNewProblem();
 
@@ -207,15 +212,20 @@ export class Platform {
         });
       } else {
         // Standard chart types (scatterplot, residual-plot, etc.)
+        const pointsData = gc.points || gc.data;
         const graphConfig = {
           type: gc.type,
-          data: gc.points || gc.data,
+          data: pointsData,
+          points: pointsData, // Include both for compatibility with showResidualLines
           labels: { x: gc.xLabel, y: gc.yLabel },
+          xLabel: gc.xLabel,
+          yLabel: gc.yLabel,
           xMin: gc.xDomain?.[0],
           xMax: gc.xDomain?.[1],
           yMin: gc.yDomain?.[0],
           yMax: gc.yDomain?.[1],
           regression: gc.regression,
+          highlight: gc.highlight, // Include highlight info for post-submit visualizations
           features: {
             regressionLine: gc.regression?.show,
             showEquation: gc.showEquation,
@@ -431,7 +441,15 @@ export class Platform {
       // Trigger point removal animation for leverage-points modes that ask about removal
       this.maybeAnimatePointRemoval(context, results);
 
+      // Trigger residual visualization for identify-outlier mode
+      const delayPromise = this.maybeShowResidualVisualization(context, results);
+
       this.onGradingComplete(results);
+
+      // Return the delay promise if visualization was shown (for auto-advance handling)
+      if (delayPromise) {
+        results._postSubmitDelay = delayPromise;
+      }
       this.onStateChange(this.getState());
 
       return results;
@@ -684,6 +702,60 @@ export class Platform {
         duration: 2000
       });
     }, 500);
+  }
+
+  /**
+   * Show residual visualization for identify-outlier mode
+   * Displays colored residual lines to all points matching the correct answer type
+   * Returns a Promise that resolves after the visualization delay (for auto-advance)
+   */
+  maybeShowResidualVisualization(context, results) {
+    // Only show for identify-outlier mode
+    if (context.modeId !== 'identify-outlier') {
+      return null;
+    }
+
+    // Need graph engine and graph config
+    if (!this.graphEngine || !context.graphConfig) {
+      return null;
+    }
+
+    // Get the correct answer (what residual type was being asked about)
+    const residualSizeField = results.fields?.residualSize;
+    if (!residualSizeField) {
+      return null;
+    }
+
+    // The correct answer tells us which type to highlight
+    const correctAnswer = residualSizeField._expected || residualSizeField.details?.expectedAnswer;
+    if (!correctAnswer) {
+      return null;
+    }
+
+    // Determine the residual type to show (large or small)
+    const residualType = correctAnswer.toLowerCase();
+
+    // Delay visualization slightly so feedback is visible first
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Show the residual lines
+        this.graphEngine.showResidualLines({
+          residualType,
+          // Orange for large residuals, blue for small
+          color: residualType === 'large' ? '#f97316' : '#3b82f6'
+        });
+
+        // Emit event so app.html can handle the 10-second delay
+        this.emit('postSubmitVisualization', {
+          type: 'residualLines',
+          residualType,
+          duration: 10000
+        });
+
+        // Resolve after the display duration
+        setTimeout(resolve, 10000);
+      }, 500);
+    });
   }
 
   /**
