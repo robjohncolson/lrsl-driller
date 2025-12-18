@@ -738,10 +738,10 @@ export class Platform {
           this.emit('postSubmitVisualization', {
             type: 'residualLines',
             residualType,
-            duration: 10000
+            duration: 15000
           });
 
-          setTimeout(resolve, 10000);
+          setTimeout(resolve, 15000);
         }, 500);
       });
     }
@@ -767,10 +767,10 @@ export class Platform {
           this.emit('postSubmitVisualization', {
             type: 'leverageLines',
             leverageType,
-            duration: 10000
+            duration: 15000
           });
 
-          setTimeout(resolve, 10000);
+          setTimeout(resolve, 15000);
         }, 500);
       });
     }
@@ -799,10 +799,10 @@ export class Platform {
             type: 'classification',
             leverage: leverageAnswer,
             residualSize: residualAnswer,
-            duration: 10000
+            duration: 15000
           });
 
-          setTimeout(resolve, 10000);
+          setTimeout(resolve, 15000);
         }, 500);
       });
     }
