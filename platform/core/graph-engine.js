@@ -1117,13 +1117,14 @@ export class GraphEngine {
       const currentSlope = oldRegression.b + (newRegression.b - oldRegression.b) * lineEased;
       const currentIntercept = oldRegression.a + (newRegression.a - oldRegression.a) * lineEased;
 
-      // Draw the "before" regression line (faded, dashed) - persists after animation completes
-      if (lineProgress > 0) {
-        this.ctx.strokeStyle = this.colors.lineBefore || '#9ca3af';
-        this.ctx.lineWidth = 2;
-        this.ctx.setLineDash([5, 5]);
-        // Fade in during morph, then stay visible at 0.6 opacity
-        this.ctx.globalAlpha = lineProgress < 1 ? 0.3 + lineProgress * 0.3 : 0.6;
+      // Draw the "before" regression line (faded, dashed) - ALWAYS draw once animation starts
+      // This ensures it persists throughout the animation and after
+      if (lineProgress > 0 || progress > 0.2) {
+        this.ctx.strokeStyle = this.colors.lineBefore || '#6b7280';
+        this.ctx.lineWidth = 2.5;
+        this.ctx.setLineDash([8, 6]);
+        // Solid 0.7 opacity to ensure visibility throughout
+        this.ctx.globalAlpha = 0.7;
 
         const x1 = xMin;
         const y1 = oldRegression.a + oldRegression.b * x1;
