@@ -365,13 +365,31 @@ export class Platform {
               const isShortPositive = aiScoreVal === 3 && aiFb.length > 0 && aiFb.length <= 20; // E score with brief "Correct!" type feedback
               const aiHasRealFeedback = aiFb && !isExtracted && (aiFb.length > 20 || isShortPositive);
 
-              // AVERAGE the scores (round to nearest, tie goes up)
-              const avgScoreVal = Math.round((keywordScoreVal + aiScoreVal) / 2);
-              currentResult.score = scoreFromValue[avgScoreVal] || 'I';
-              currentResult._method = 'keywords+ai';
+              // AI SUPERSEDES keyword grading when it says correct (E)
+              // This allows students to move forward when AI recognizes correct answers
+              // that regex-based keyword matching missed
+              if (aiScoreVal === 3) {
+                // AI says correct - trust it and override keywords
+                currentResult.score = 'E';
+                currentResult._method = 'ai-override';
+                currentResult._aiOverride = true;
+              } else {
+                // AI didn't give E - use the higher of the two scores
+                // (benefit of the doubt: if either method says it's good, accept it)
+                const finalScoreVal = Math.max(keywordScoreVal, aiScoreVal);
+                currentResult.score = scoreFromValue[finalScoreVal] || 'I';
+                currentResult._method = 'keywords+ai';
+              }
 
               // Build combined feedback showing BOTH (only if AI has real feedback)
-              if (aiHasRealFeedback && keywordFb && aiFb !== keywordFb) {
+              if (currentResult._aiOverride && keywordScoreVal < 3) {
+                // AI overrode keyword grading to accept the answer
+                currentResult.feedback = `<div class="space-y-2">
+                  <div class="text-green-600 font-semibold">✓ AI accepted your answer</div>
+                  ${aiHasRealFeedback ? `<div class="text-blue-600">${aiFb}</div>` : ''}
+                  ${keywordFb ? `<div class="text-gray-500 text-sm line-through">${keywordFb}</div>` : ''}
+                </div>`;
+              } else if (aiHasRealFeedback && keywordFb && aiFb !== keywordFb) {
                 currentResult.feedback = `<div class="space-y-2">
                   <div><span class="font-semibold text-gray-600">Keywords:</span> ${keywordFb}</div>
                   <div><span class="font-semibold text-blue-600">AI:</span> ${aiFb}</div>
