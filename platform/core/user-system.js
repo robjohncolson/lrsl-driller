@@ -247,6 +247,8 @@ export class UserSystem {
    * Verify existing user credentials
    */
   async verifyUser(username, password) {
+    let serverResult = null;
+
     if (this.serverUrl) {
       try {
         const response = await fetch(`${this.serverUrl}/api/users/verify`, {
@@ -254,17 +256,24 @@ export class UserSystem {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
-        const result = await response.json();
-        if (!result.valid) {
-          return { error: result.error || 'Invalid credentials' };
+        serverResult = await response.json();
+        if (!serverResult.valid) {
+          return { error: serverResult.error || 'Invalid credentials' };
         }
       } catch (err) {
         console.warn('Server verification failed:', err);
       }
     }
 
-    await this.setIdentity({ username, password });
-    return { valid: true };
+    // Store identity with real name from server
+    const realName = serverResult?.real_name || null;
+    await this.setIdentity({ username, password, realName });
+
+    return {
+      valid: true,
+      realName,
+      isTeacher: serverResult?.isTeacher || false
+    };
   }
 
   /**

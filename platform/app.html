@@ -1144,9 +1144,8 @@
           return;
         }
 
-        // Find the real name from stored data
-        const userData = this.usersData.find(u => u.username === existingSelect.value);
-        const displayName = userData?.real_name || existingSelect.value;
+        // Use real name from server response or fall back to stored data
+        const displayName = result.realName || this.usersData.find(u => u.username === existingSelect.value)?.real_name || existingSelect.value;
 
         document.getElementById('current-username').textContent = displayName;
         wsClient.connect(existingSelect.value);
@@ -1154,6 +1153,12 @@
         timeTracker.start(existingSelect.value);
         this.hide();
         soundEngine.init();
+
+        // If user is a teacher, activate teacher mode
+        if (result.isTeacher) {
+          await activateTeacherMode(existingPassword.value, true);
+        }
+
         loadCartridge(currentCartridgeId);
       },
 
@@ -1433,14 +1438,15 @@
 
     // ==================== TEACHER LOGIN ====================
     let isTeacher = false;
-    let teacherPassword = null; // Store the password used to login
+    let teacherPassword = null; // Store the password used for API calls
 
     // Activate teacher mode UI
-    function activateTeacherMode(password, showToast = true) {
+    async function activateTeacherMode(password, showToast = true) {
       isTeacher = true;
       teacherPassword = password;
-      localStorage.setItem('teacherMode', 'true');
-      localStorage.setItem('teacherPassword', password);
+
+      // Persist to userSystem (uses IndexedDB with localStorage fallback)
+      await userSystem.setMeta('teacherMode', { enabled: true, password });
 
       document.getElementById('teacher-badge').classList.remove('hidden');
 
@@ -1461,12 +1467,24 @@
     }
 
     // Check for persisted teacher mode on page load
-    function checkTeacherModePersistence() {
-      const savedTeacherMode = localStorage.getItem('teacherMode');
-      const savedPassword = localStorage.getItem('teacherPassword');
-      if (savedTeacherMode === 'true' && savedPassword) {
-        activateTeacherMode(savedPassword, false);
-        return true;
+    async function checkTeacherModePersistence() {
+      try {
+        const savedTeacher = await userSystem.getMeta('teacherMode');
+        if (savedTeacher?.enabled && savedTeacher?.password) {
+          // Verify password is still valid with server
+          const response = await fetch(`${SERVER_URL}/api/auth/teacher`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: savedTeacher.password })
+          });
+          const result = await response.json();
+          if (result.valid) {
+            await activateTeacherMode(savedTeacher.password, false);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not check teacher persistence:', err);
       }
       return false;
     }
@@ -1478,15 +1496,28 @@
     document.getElementById('teacher-submit-btn').addEventListener('click', async () => {
       const password = document.getElementById('teacher-password-input').value;
 
-      // Simple teacher password check (in production, verify server-side)
-      if (password === 'stats123' || password === 'teacher123') { // Accept both passwords
-        console.log('Teacher login successful');
-        activateTeacherMode(password);
-        usernameModal.hide();
-        soundEngine.init();
-        loadCartridge(currentCartridgeId);
-      } else {
-        document.getElementById('username-error').textContent = 'Invalid teacher password';
+      try {
+        // Verify teacher password with server
+        const response = await fetch(`${SERVER_URL}/api/auth/teacher`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const result = await response.json();
+
+        if (result.valid) {
+          console.log('Teacher login successful');
+          await activateTeacherMode(password);
+          usernameModal.hide();
+          soundEngine.init();
+          loadCartridge(currentCartridgeId);
+        } else {
+          document.getElementById('username-error').textContent = result.error || 'Invalid teacher password';
+          document.getElementById('username-error').classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error('Teacher auth error:', err);
+        document.getElementById('username-error').textContent = 'Could not verify password. Try again.';
         document.getElementById('username-error').classList.remove('hidden');
       }
     });

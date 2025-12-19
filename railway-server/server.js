@@ -111,7 +111,7 @@ app.post('/api/users/verify', async (req, res) => {
 
     const { data, error } = await supabase
       .from('users')
-      .select('username, password, real_name')
+      .select('username, password, real_name, user_type')
       .eq('username', username)
       .single();
 
@@ -123,9 +123,32 @@ app.post('/api/users/verify', async (req, res) => {
       return res.json({ valid: false, error: 'Incorrect password' });
     }
 
-    res.json({ valid: true, username: data.username, real_name: data.real_name });
+    res.json({
+      valid: true,
+      username: data.username,
+      real_name: data.real_name,
+      isTeacher: data.user_type === 'teacher'
+    });
   } catch (err) {
     console.error('POST /api/users/verify error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Verify teacher password (standalone teacher login)
+app.post('/api/auth/teacher', async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    // Check against known teacher passwords
+    const validPasswords = ['stats123', 'teacher123'];
+    if (!validPasswords.includes(password)) {
+      return res.json({ valid: false, error: 'Invalid teacher password' });
+    }
+
+    res.json({ valid: true, isTeacher: true });
+  } catch (err) {
+    console.error('POST /api/auth/teacher error:', err);
     res.status(500).json({ error: err.message });
   }
 });
