@@ -900,8 +900,8 @@
       // Handle star earning if all correct
       if (results.allCorrect) {
         const state = platform.getState();
-        const hintsUsed = state.game.hintsUsed || 0;
-        const starType = ['gold', 'silver', 'bronze', 'tin'][Math.min(hintsUsed, 3)];
+        // Use potentialStar which accounts for both hints AND retries
+        const starType = state.game.potentialStar || 'gold';
 
         // Play sounds and show celebration
         soundEngine.init();
@@ -2378,7 +2378,8 @@
 
             if (results.allCorrect) {
               const state = platform.getState();
-              const starType = ['gold', 'silver', 'bronze', 'tin'][Math.min(state.game.hintsUsed || 0, 3)];
+              // Use potentialStar which accounts for both hints AND retries
+              const starType = state.game.potentialStar || 'gold';
 
               soundEngine.init();
               soundEngine.starSound(starType);
@@ -2704,7 +2705,8 @@
           // If appeal was successful and all correct now, celebrate
           if (result.allCorrect) {
             const state = platform.getState();
-            const starType = ['gold', 'silver', 'bronze', 'tin'][Math.min(state.game.hintsUsed || 0, 3)];
+            // Use potentialStar which accounts for both hints AND retries
+            const starType = state.game.potentialStar || 'gold';
             soundEngine.init();
             soundEngine.starSound(starType);
             celebration.celebrate(starType);

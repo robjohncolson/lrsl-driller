@@ -265,14 +265,22 @@ export class InputRenderer {
     const options = field.options || [];
     options.forEach(option => {
       const opt = document.createElement('option');
-      // Handle both string options and object options {value, label}
+
       if (typeof option === 'object' && option !== null) {
-        opt.value = option.value;
-        opt.textContent = option.label || option.value;
+        // Allow templated values/labels in object options too
+        const value = option.value !== undefined ? option.value : option.label;
+        const label = option.label !== undefined ? option.label : option.value;
+        const resolvedValue = this.interpolate(String(value ?? ''), context);
+        const resolvedLabel = this.interpolate(String(label ?? ''), context);
+        opt.value = resolvedValue;
+        opt.textContent = resolvedLabel;
       } else {
-        opt.value = option;
-        opt.textContent = this.interpolate(option, context);
+        // String options (with possible {{placeholders}})
+        const resolved = this.interpolate(String(option), context);
+        opt.value = resolved;
+        opt.textContent = resolved;
       }
+
       select.appendChild(opt);
     });
 
