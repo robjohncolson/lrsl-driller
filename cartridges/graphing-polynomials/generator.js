@@ -84,6 +84,24 @@ function katex(expr) {
   return `$${expr}$`;
 }
 
+/** Convert exponents to Unicode superscripts for readable display in dropdowns */
+function toUnicodeSuperscript(expr) {
+  const superscripts = {
+    '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+    '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+    '-': '⁻', '+': '⁺'
+  };
+
+  // Convert x^{n} or x^n to x with superscript
+  return expr
+    .replace(/\^{(\d+)}/g, (match, digits) => {
+      return digits.split('').map(d => superscripts[d] || d).join('');
+    })
+    .replace(/\^(\d)/g, (match, digit) => {
+      return superscripts[digit] || digit;
+    });
+}
+
 function buildGraphPoints(coeffsAsc, xMin, xMax, step) {
   const points = [];
   for (let x = xMin; x <= xMax + 1e-9; x += step) {
@@ -214,14 +232,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
         "A polynomial is in **standard form** when terms are arranged from highest degree to lowest degree, and all like terms have been combined. For example, $3x^3 + 2x^2 - 5x + 1$ is in standard form because the powers go 3 → 2 → 1 → 0.",
         "Which expression below is already written in standard form?"
       ),
-      optA: options[0],
-      optB: options[1],
-      optC: options[2],
-      optD: options[3],
-      standardFormPick: { value: correct }
+      optA: toUnicodeSuperscript(options[0]),
+      optB: toUnicodeSuperscript(options[1]),
+      optC: toUnicodeSuperscript(options[2]),
+      optD: toUnicodeSuperscript(options[3]),
+      standardFormPick: { value: toUnicodeSuperscript(correct) }
     };
 
-    answers = { standardFormPick: { value: correct } };
+    answers = { standardFormPick: { value: toUnicodeSuperscript(correct) } };
     scenario = "Look for descending powers and no uncombined like terms.";
     return { context, graphConfig, answers, scenario };
   }
@@ -243,7 +261,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     // Wrong options
     const wrong1 = scramblePowersButKeepCoeffs(coeffs);
-    const wrong2 = standard + " + 0x^2"; // extra zero term
+    const wrong2 = standard + " + 0x^{2}"; // extra zero term
     const wrong3 = scrambled;
 
     const options = shuffle([standard, wrong1, wrong2, wrong3]);
@@ -254,14 +272,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
         "To write a polynomial in **standard form**: (1) Identify the degree of each term, (2) Arrange terms from highest to lowest degree, (3) Combine any like terms. The result should have powers in descending order.",
         `Rewrite in standard form: ${katex(scrambled)}`
       ),
-      optA: options[0],
-      optB: options[1],
-      optC: options[2],
-      optD: options[3],
-      rewrittenStandard: { value: standard }
+      optA: toUnicodeSuperscript(options[0]),
+      optB: toUnicodeSuperscript(options[1]),
+      optC: toUnicodeSuperscript(options[2]),
+      optD: toUnicodeSuperscript(options[3]),
+      rewrittenStandard: { value: toUnicodeSuperscript(standard) }
     };
 
-    answers = { rewrittenStandard: { value: standard } };
+    answers = { rewrittenStandard: { value: toUnicodeSuperscript(standard) } };
     scenario = "Rearrange so the highest power comes first, then decreasing powers.";
     return { context, graphConfig, answers, scenario };
   }
