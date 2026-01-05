@@ -283,7 +283,7 @@
           {
             "id": "monotonic",
             "type": "dropdown",
-            "label": "From the table, what is happening as x increases?",
+            "label": "From the table, what is happening as $x$ increases?",
             "options": [
               "Increasing",
               "Decreasing",
@@ -322,7 +322,7 @@
           {
             "id": "xIntercepts",
             "type": "text",
-            "label": "List the x-intercepts (zeros), comma-separated:",
+            "label": "List the $x$-intercepts (zeros), comma-separated:",
             "placeholder": "e.g., -3, 1, 4"
           }
         ]
@@ -358,7 +358,7 @@
           {
             "id": "verbalIntercepts",
             "type": "text",
-            "label": "From the sign changes, list the x-intercepts, comma-separated:",
+            "label": "From the sign changes, list the $x$-intercepts, comma-separated:",
             "placeholder": "e.g., -4, -1, 4"
           }
         ]
@@ -375,7 +375,7 @@
           {
             "id": "interceptSense",
             "type": "choice",
-            "label": "Do the x- and y-intercepts make sense in this context?",
+            "label": "Do the $x$- and $y$-intercepts make sense in this context?",
             "options": [
               "Yes",
               "No"
@@ -437,7 +437,7 @@
           {
             "id": "capXIntercepts",
             "type": "text",
-            "label": "x-intercept(s), comma-separated:",
+            "label": "$x$-intercept(s), comma-separated:",
             "placeholder": "e.g., -4, -2, 1, 3"
           }
         ]
@@ -462,29 +462,29 @@
   },
   "hints": {
     "perField": {
-      "isPolynomial": "A polynomial has whole-number exponents (0,1,2,…) and no variables in denominators or radicals.",
+      "isPolynomial": "A polynomial has non-negative integer exponents (0, 1, 2, 3, …). Negative exponents like $x^{-2}$ or fractional exponents like $x^{1/2} = \\sqrt{x}$ are NOT polynomials.",
       "standardFormPick": "Standard form lists terms by degree in descending order and combines like terms.",
       "rewrittenStandard": "Sort terms from highest power to lowest power; combine like terms.",
       "termDegree": "Degree of a one-variable term is its exponent.",
       "polyDegree": "Degree of a polynomial is the greatest exponent with a nonzero coefficient.",
       "numTerms": "Count the nonzero terms after combining like terms.",
       "leadingCoeff": "Leading coefficient is the coefficient of the highest-degree term (in standard form).",
-      "missingCoeff": "If a degree is missing (no x^k term), its coefficient is 0.",
-      "fxValue": "Substitute the given x-value into the function rule and simplify.",
-      "quadrants": "Even powers stay ≥ 0, odd powers keep the sign of x.",
+      "missingCoeff": "If a degree is missing (no $x^k$ term), its coefficient is 0.",
+      "fxValue": "Substitute the given $x$-value into the function rule and simplify.",
+      "quadrants": "Even powers stay $\\geq 0$, odd powers keep the sign of $x$.",
       "endBehavior": "End behavior depends on degree (even/odd) and the sign of the leading coefficient.",
-      "monotonic": "Compare f(x) values: if they go up as x increases → increasing; down → decreasing.",
-      "avgRate": "Average rate of change over [a,b] is (f(b)-f(a))/(b-a).",
-      "xIntercepts": "x-intercepts are where the graph crosses/touches y=0 (solutions to f(x)=0).",
+      "monotonic": "Compare $f(x)$ values: if they go up as $x$ increases → increasing; down → decreasing.",
+      "avgRate": "Average rate of change over $[a,b]$ is $\\frac{f(b)-f(a)}{b-a}$.",
+      "xIntercepts": "$x$-intercepts are where the graph crosses/touches $y=0$ (solutions to $f(x)=0$).",
       "turningPoints": "Turning points are where the graph changes direction (increasing ↔ decreasing).",
-      "verbalIntercepts": "Where the function changes sign (positive ↔ negative), there is an x-intercept.",
-      "interceptSense": "In real contexts, check whether negative x or negative y makes sense; you may need to limit domain/range.",
+      "verbalIntercepts": "Where the function changes sign (positive ↔ negative), there is an $x$-intercept.",
+      "interceptSense": "In real contexts, check whether negative $x$ or negative $y$ makes sense; you may need to limit domain/range.",
       "capNumTerms": "Count the nonzero terms in the polynomial (as written).",
       "capDegree": "Highest exponent with nonzero coefficient.",
-      "capLeadingCoeff": "Coefficient of x^degree (leading term).",
+      "capLeadingCoeff": "Coefficient of $x^{\\text{degree}}$ (leading term).",
       "capEndBehavior": "Degree parity + leading coefficient sign → end behavior.",
       "capTurningPoints": "Use the graph: count the direction changes.",
-      "capXIntercepts": "Look where the graph intersects the x-axis (y=0)."
+      "capXIntercepts": "Look where the graph intersects the $x$-axis ($y=0$)."
     },
     "penalty": {
       "0": "gold",

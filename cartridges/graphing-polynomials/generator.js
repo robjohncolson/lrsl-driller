@@ -50,7 +50,7 @@ function formatNumber(n) {
   return isInt ? String(Math.round(n)) : String(n);
 }
 
-/** Format polynomial in standard form from ascending coeffs. */
+/** Format polynomial in standard form from ascending coeffs (LaTeX-ready). */
 function formatPoly(coeffsAsc) {
   const deg = coeffsAsc.length - 1;
   const parts = [];
@@ -70,13 +70,18 @@ function formatPoly(coeffsAsc) {
     let term = "";
     if (p === 0) term = `${coeffStr || "1"}`;
     else if (p === 1) term = `${coeffStr}x`;
-    else term = `${coeffStr}x^${p}`;
+    else term = `${coeffStr}x^{${p}}`; // Use braces for proper LaTeX
 
     if (parts.length === 0) parts.push(c < 0 ? `-${term}` : `${term}`);
     else parts.push(` ${sign} ${term}`);
   }
 
   return parts.length ? parts.join("") : "0";
+}
+
+/** Wrap expression in KaTeX delimiters */
+function katex(expr) {
+  return `$${expr}$`;
 }
 
 function buildGraphPoints(coeffsAsc, xMin, xMax, step) {
@@ -136,16 +141,16 @@ export function generateProblem(modeId, contextFromFile, mode) {
   // -------------------------
   if (modeId === "l01-polynomial-or-not") {
     const good = [
-      "3x^2 - 4x + 1",
-      "-5x^3 + 2x - 7",
-      "x^4 + 6",
-      "2x - 9"
+      "$3x^2 - 4x + 1$",
+      "$-5x^3 + 2x - 7$",
+      "$x^4 + 6$",
+      "$2x - 9$"
     ];
     const bad = [
-      "x^-2 + 3",
-      "1/x + 2",
-      "√x + 1",
-      "2^x + 1"
+      "$x^{-2} + 3$",
+      "$\\frac{1}{x} + 2$",
+      "$\\sqrt{x} + 1$",
+      "$2^x + 1$"
     ];
     const isPoly = Math.random() < 0.5;
     const expression = isPoly ? choice(good) : choice(bad);
@@ -153,14 +158,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
     context = {
       ...makeContextBase(
         "Level 1: Polynomial or Not?",
-        "Decide whether the expression is a polynomial.",
+        "A **polynomial** is an expression with variables raised to non-negative integer exponents (0, 1, 2, 3, …) and combined using addition, subtraction, and multiplication by constants. Expressions with negative exponents (like $x^{-2}$), variables in denominators (like $\\frac{1}{x}$), or roots (like $\\sqrt{x}$) are NOT polynomials.",
         `Expression: ${expression}`
       ),
       isPolynomial: { value: isPoly ? "Yes" : "No" }
     };
 
     answers = { isPolynomial: { value: isPoly ? "Yes" : "No" } };
-    scenario = "Check the definition: whole-number exponents, no variables in denominators or radicals.";
+    scenario = "Check each exponent: Is it a whole number ≥ 0? Is there a variable in the denominator or under a radical?";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -206,18 +211,18 @@ export function generateProblem(modeId, contextFromFile, mode) {
     context = {
       ...makeContextBase(
         "Level 2: What is Standard Form?",
-        "Standard form lists terms in descending degree and combines like terms.",
-        "Pick the one written in standard form."
+        "A polynomial is in **standard form** when terms are arranged from highest degree to lowest degree, and all like terms have been combined. For example, $3x^3 + 2x^2 - 5x + 1$ is in standard form because the powers go 3 → 2 → 1 → 0.",
+        "Which expression below is already written in standard form?"
       ),
-      optA: options[0],
-      optB: options[1],
-      optC: options[2],
-      optD: options[3],
-      standardFormPick: { value: correct }
+      optA: katex(options[0]),
+      optB: katex(options[1]),
+      optC: katex(options[2]),
+      optD: katex(options[3]),
+      standardFormPick: { value: katex(correct) }
     };
 
-    answers = { standardFormPick: { value: correct } };
-    scenario = "Choose the expression already in standard form.";
+    answers = { standardFormPick: { value: katex(correct) } };
+    scenario = "Look for descending powers and no uncombined like terms.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -245,19 +250,19 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     context = {
       ...makeContextBase(
-        "Level 3: Choose the Standard Form",
-        "Select the standard form of the expression.",
-        `Expression: ${scrambled}`
+        "Level 3: Rewrite in Standard Form",
+        "To write a polynomial in **standard form**: (1) Identify the degree of each term, (2) Arrange terms from highest to lowest degree, (3) Combine any like terms. The result should have powers in descending order.",
+        `Rewrite in standard form: ${katex(scrambled)}`
       ),
-      optA: options[0],
-      optB: options[1],
-      optC: options[2],
-      optD: options[3],
-      rewrittenStandard: { value: standard }
+      optA: katex(options[0]),
+      optB: katex(options[1]),
+      optC: katex(options[2]),
+      optD: katex(options[3]),
+      rewrittenStandard: { value: katex(standard) }
     };
 
-    answers = { rewrittenStandard: { value: standard } };
-    scenario = "Put terms in descending powers and combine like terms.";
+    answers = { rewrittenStandard: { value: katex(standard) } };
+    scenario = "Rearrange so the highest power comes first, then decreasing powers.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -268,19 +273,19 @@ export function generateProblem(modeId, contextFromFile, mode) {
     const exp = choice([0, 1, 2, 3, 4, 5, 6]);
     const coeff = choice([-7, -5, -3, -2, -1, 1, 2, 3, 5, 7]);
 
-    const term = exp === 0 ? `${coeff}` : (exp === 1 ? `${coeff}x` : `${coeff}x^${exp}`);
+    const term = exp === 0 ? `${coeff}` : (exp === 1 ? `${coeff}x` : `${coeff}x^{${exp}}`);
 
     context = {
       ...makeContextBase(
         "Level 4: Degree of a Term",
-        "Find the degree of the term (the exponent).",
-        `Term: ${term}`
+        "The **degree of a term** is the exponent on the variable. For example: $5x^3$ has degree 3, $-2x$ has degree 1, and a constant like $7$ has degree 0 (since $7 = 7x^0$).",
+        `What is the degree of this term? ${katex(term)}`
       ),
       termDegree: { value: exp, tolerance: 0 }
     };
 
     answers = { termDegree: { value: exp, tolerance: 0 } };
-    scenario = "Degree of a one-variable term is its exponent.";
+    scenario = "Find the exponent on $x$. Constants have degree 0.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -310,8 +315,8 @@ export function generateProblem(modeId, contextFromFile, mode) {
     context = {
       ...makeContextBase(
         "Level 5: Degree & Number of Terms",
-        "Identify the degree and the number of terms.",
-        `Polynomial: ${expr}`
+        "The **degree of a polynomial** is the highest exponent among all its terms. The **number of terms** is how many separate pieces are added/subtracted (after combining like terms). For example, $2x^3 - 5x + 1$ has degree 3 and 3 terms.",
+        `Polynomial: ${katex(expr)}`
       ),
       polyDegree: { value: deg, tolerance: 0 },
       numTerms: { value: countTerms(coeffs), tolerance: 0 }
@@ -322,7 +327,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       numTerms: { value: countTerms(coeffs), tolerance: 0 }
     };
 
-    scenario = "Degree = highest exponent. Terms = nonzero pieces after combining.";
+    scenario = "Find the largest exponent for degree. Count the + and − separated pieces for number of terms.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -341,14 +346,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
     context = {
       ...makeContextBase(
         "Level 6: Leading Coefficient",
-        "Identify the leading coefficient (coefficient of the highest-degree term).",
-        `Polynomial (standard form): ${expr}`
+        "The **leading coefficient** is the number in front of the highest-degree term (when the polynomial is in standard form). For example, in $-3x^4 + 2x^2 - 1$, the leading coefficient is $-3$ because $x^4$ is the highest power.",
+        `Find the leading coefficient: ${katex(expr)}`
       ),
       leadingCoeff: { value: lead, tolerance: 0 }
     };
 
     answers = { leadingCoeff: { value: lead, tolerance: 0 } };
-    scenario = "Look at the leading (highest power) term.";
+    scenario = "Identify the term with the highest power, then read its coefficient (including the sign!).";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -367,20 +372,20 @@ export function generateProblem(modeId, contextFromFile, mode) {
     }
 
     const expr = formatPoly(coeffs);
-    const powerText = missingPower === 1 ? "x term" : `x^${missingPower} term`;
+    const powerText = missingPower === 1 ? "$x$ term" : `$x^{${missingPower}}$ term`;
 
     context = {
       ...makeContextBase(
-        "Level 7: Missing Term (0 Coefficient)",
-        "If a degree is missing, its coefficient is 0.",
-        `Polynomial: ${expr}`
+        "Level 7: Missing Terms Have Coefficient 0",
+        "When a polynomial is missing a power of $x$, that term has a **coefficient of 0**. For example, $x^3 + 5x + 2$ is missing the $x^2$ term, which means the coefficient of $x^2$ is 0. We could write it as $x^3 + 0x^2 + 5x + 2$.",
+        `Polynomial: ${katex(expr)}`
       ),
       missingPowerText: powerText,
       missingCoeff: { value: 0, tolerance: 0 }
     };
 
     answers = { missingCoeff: { value: 0, tolerance: 0 } };
-    scenario = "No x^k term means 0x^k is “there,” but hidden.";
+    scenario = "If a power doesn't appear, its coefficient must be 0.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -400,9 +405,9 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     context = {
       ...makeContextBase(
-        "Level 8: Evaluate f(x)",
-        "Use function notation and substitute the input value.",
-        `${funcName}(x) = ${expr}`
+        "Level 8: Function Notation — Evaluate $f(x)$",
+        "**Function notation** like $f(x)$ names a rule. To evaluate $f(2)$, substitute 2 for every $x$ in the rule and simplify. For example, if $f(x) = x^2 - 3$, then $f(2) = (2)^2 - 3 = 4 - 3 = 1$.",
+        `${katex(`${funcName}(x) = ${expr}`)}`
       ),
       funcName,
       inputX,
@@ -410,7 +415,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
 
     answers = { fxValue: { value: val, tolerance: 0.01 } };
-    scenario = "Substitute x and simplify carefully.";
+    scenario = "Replace every $x$ with the input value, then compute step by step.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -424,15 +429,15 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     context = {
       ...makeContextBase(
-        "Level 9: Graphs of f(x)=xⁿ",
-        "Decide which quadrants the graph passes through.",
-        `Function: f(x) = x^${n}`
+        "Level 9: Parent Graphs — Powers of $x$",
+        "The graphs of $f(x) = x^n$ behave differently based on whether $n$ is even or odd. **Even powers** ($x^2, x^4, x^6, ...$) are always $\\geq 0$, so the graph stays in Quadrants I and II (above the $x$-axis). **Odd powers** ($x^1, x^3, x^5, ...$) can be negative when $x < 0$, so the graph passes through Quadrants I and III.",
+        `Function: ${katex(`f(x) = x^{${n}}`)}`
       ),
       quadrants: { value: correct }
     };
 
     answers = { quadrants: { value: correct } };
-    scenario = "Even powers are always ≥ 0; odd powers keep the sign of x.";
+    scenario = "Even exponent → both ends up (Quadrants I & II). Odd exponent → opposite ends (Quadrants I & III).";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -447,14 +452,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
     context = {
       ...makeContextBase(
         "Level 10: End Behavior from Leading Term",
-        "Use degree parity and the sign of the leading coefficient.",
-        `Leading term looks like ${lead}x^${deg}`
+        "**End behavior** describes what happens to $f(x)$ as $x \\to \\pm\\infty$. It depends on two things: (1) **Degree parity**: Even degree → both ends go the same direction; Odd degree → ends go opposite directions. (2) **Leading coefficient sign**: Positive → right end goes UP; Negative → right end goes DOWN.",
+        `Leading term: ${katex(`${lead}x^{${deg}}`)}`
       ),
       endBehavior: { value: end }
     };
 
     answers = { endBehavior: { value: end } };
-    scenario = "Even: both ends same. Odd: ends opposite. Sign tells up/down.";
+    scenario = "Check: Is the degree even or odd? Is the leading coefficient positive or negative?";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -473,15 +478,15 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     context = {
       ...makeContextBase(
-        "Level 11: End Behavior from a Polynomial",
-        "Find the leading term (highest power) and use it to predict end behavior.",
-        `f(x) = ${expr}`
+        "Level 11: End Behavior from a Full Polynomial",
+        "For any polynomial, the **leading term** (highest-degree term) controls end behavior. The other terms become insignificant for very large $|x|$. First identify the leading term, then apply the end behavior rules: even degree + positive lead → both ends UP; even + negative → both DOWN; odd + positive → left DOWN, right UP; odd + negative → left UP, right DOWN.",
+        `${katex(`f(x) = ${expr}`)}`
       ),
       endBehavior: { value: end }
     };
 
     answers = { endBehavior: { value: end } };
-    scenario = "The leading term determines end behavior for large |x|.";
+    scenario = "Find the leading term first, then determine end behavior from its degree and sign.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -512,16 +517,16 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     context = {
       ...makeContextBase(
-        "Level 12: Increasing/Decreasing from a Table",
-        "Look at how f(x) changes as x increases.",
-        `f(x) = ${expr}`,
+        "Level 12: Increasing or Decreasing?",
+        "A function is **increasing** on an interval if $f(x)$ gets larger as $x$ gets larger. It's **decreasing** if $f(x)$ gets smaller as $x$ increases. Look at consecutive values in the table: if outputs go up as inputs go up → increasing; if outputs go down → decreasing; if it changes direction → neither (on that interval).",
+        `${katex(`f(x) = ${expr}`)}`,
         tableText
       ),
       monotonic: { value: trend }
     };
 
     answers = { monotonic: { value: trend } };
-    scenario = "Compare consecutive outputs as x moves left→right.";
+    scenario = "Compare $f(x)$ values from left to right. Do they consistently rise, fall, or change direction?";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -544,9 +549,9 @@ export function generateProblem(modeId, contextFromFile, mode) {
     context = {
       ...makeContextBase(
         "Level 13: Average Rate of Change",
-        "Compute (f(b) − f(a)) / (b − a).",
-        `f(x) = ${expr}`,
-        `Points: (${a}, ${fa}) and (${b}, ${fb})`
+        "The **average rate of change** of $f$ over an interval $[a, b]$ is the slope of the line connecting $(a, f(a))$ and $(b, f(b))$. Use the formula: $\\frac{f(b) - f(a)}{b - a}$ (rise over run). This tells you how fast $f$ is changing *on average* between those two $x$-values.",
+        `${katex(`f(x) = ${expr}`)}`,
+        `Points: $(${a}, ${fa})$ and $(${b}, ${fb})$`
       ),
       a,
       b,
@@ -554,7 +559,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
 
     answers = { avgRate: { value: avg, tolerance: 0.01 } };
-    scenario = "Use the slope formula between two points.";
+    scenario = "Calculate (change in $y$) ÷ (change in $x$) = $\\frac{f(b)-f(a)}{b-a}$.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -585,17 +590,17 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     context = {
       ...makeContextBase(
-        "Level 14: Zeros (x-intercepts) from a Graph",
-        "Find where the graph intersects y = 0 (solutions to f(x) = 0).",
-        "Tip: in this level, the x-intercepts are integers.",
+        "Level 14: Finding Zeros from a Graph",
+        "The **zeros** (or **$x$-intercepts**) of a polynomial are the $x$-values where $f(x) = 0$—that is, where the graph crosses or touches the $x$-axis. To find them from a graph, look for points where the curve meets the horizontal axis and read the $x$-coordinates.",
+        "Tip: In this level, all $x$-intercepts are integers.",
         ""
       ),
-      givenText: `Graph shown. (Optional check: one matching rule is f(x) = ${expr}.)`,
+      givenText: `Graph shown. (Optional check: one matching rule is ${katex(`f(x) = ${expr}`)}.)`,
       xIntercepts: { value: roots, tolerance: 0.05 }
     };
 
     answers = { xIntercepts: { value: roots, tolerance: 0.05 } };
-    scenario = "Zeros are the x-values where the graph touches/crosses the x-axis.";
+    scenario = "Find where the curve crosses or touches the $x$-axis (where $y = 0$).";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -644,15 +649,15 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     context = {
       ...makeContextBase(
-        "Level 15: Turning Points from a Graph",
-        "Count the turning points (direction changes) you see on the graph.",
-        "Look for where the curve switches from increasing to decreasing, or vice versa."
+        "Level 15: Counting Turning Points",
+        "A **turning point** is where the graph changes direction—from increasing to decreasing (a local maximum) or from decreasing to increasing (a local minimum). A polynomial of degree $n$ can have *at most* $n - 1$ turning points. For example, a quadratic (degree 2) has at most 1 turning point; a cubic (degree 3) has at most 2.",
+        "Count the turning points on this graph."
       ),
       turningPoints: { value: expectedTP, tolerance: 0 }
     };
 
     answers = { turningPoints: { value: expectedTP, tolerance: 0 } };
-    scenario = "Turning points are direction changes (not just where it crosses the x-axis).";
+    scenario = "Look for \"hills\" (local max) and \"valleys\" (local min) where the graph changes direction.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -687,20 +692,20 @@ export function generateProblem(modeId, contextFromFile, mode) {
     }
 
     const givenText =
-      `f(x) is positive on ${posIntervals.join(" and ")}.\n` +
-      `f(x) is negative on ${negIntervals.join(" and ")}.`;
+      `$f(x)$ is positive on ${posIntervals.join(" and ")}.\n` +
+      `$f(x)$ is negative on ${negIntervals.join(" and ")}.`;
 
     context = {
       ...makeContextBase(
-        "Level 16: From Verbal Description → x-intercepts",
-        "x-intercepts happen at sign changes (where f(x) switches positive ↔ negative).",
+        "Level 16: Sign Changes → $x$-intercepts",
+        "When $f(x)$ changes sign (from positive to negative or vice versa), the graph must cross the $x$-axis at that point—this gives us an **$x$-intercept**. If you're told $f(x) > 0$ on one interval and $f(x) < 0$ on an adjacent interval, the boundary between them is a zero.",
         givenText
       ),
       verbalIntercepts: { value: [a, b, c], tolerance: 0.05 }
     };
 
     answers = { verbalIntercepts: { value: [a, b, c], tolerance: 0.05 } };
-    scenario = "A sign change across x=k means the graph crosses the x-axis at x=k.";
+    scenario = "Find where positive and negative intervals meet—those boundaries are the $x$-intercepts.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -710,20 +715,20 @@ export function generateProblem(modeId, contextFromFile, mode) {
   if (modeId === "l17-real-world-domain") {
     const givenText =
       "Sofía mixes a fixed amount of baking soda with different amounts of vinegar.\n" +
-      "For x quarter-cups of vinegar, it takes f(x) seconds to inflate the balloon.\n" +
-      "A model’s graph has an x-intercept around 6.6 and a y-intercept around 13.2.";
+      "For $x$ quarter-cups of vinegar, it takes $f(x)$ seconds to inflate the balloon.\n" +
+      "A model's graph has an $x$-intercept around 6.6 and a $y$-intercept around 13.2.";
 
     context = {
       ...makeContextBase(
-        "Level 17: Real-World Model (Domain/Intercepts)",
-        "Do the intercepts make sense in this context?",
+        "Level 17: Interpreting Intercepts in Context",
+        "When a polynomial models a real-world situation, always ask: **Do the intercepts make sense?** The $y$-intercept ($x = 0$) represents the output when the input is zero. The $x$-intercept(s) ($y = 0$) represent when the output equals zero. Sometimes these values are impossible or meaningless in context, so you may need to restrict the domain.",
         givenText
       ),
       interceptSense: { value: "No" }
     };
 
     answers = { interceptSense: { value: "No" } };
-    scenario = "In context: does x=0 or y=0 correspond to something possible? Limit domain/range if needed.";
+    scenario = "Think: Can you have 0 quarter-cups of vinegar? Does 0 seconds make sense? Are negative values possible?";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -755,9 +760,9 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     context = {
       ...makeContextBase(
-        "Level 18: Concept Summary Check",
-        "Use the graph (and the rule) to identify key features.",
-        "f(x) = x^4 + 2x^3 − 13x^2 − 14x + 24"
+        "Level 18: Capstone — Putting It All Together",
+        "Let's apply everything you've learned! Given a polynomial and its graph, identify: (1) **Number of terms** — count the pieces; (2) **Degree** — highest exponent; (3) **Leading coefficient** — number in front of highest power; (4) **End behavior** — use degree parity and lead sign; (5) **Turning points** — count direction changes; (6) **$x$-intercepts** — where graph crosses $x$-axis.",
+        `${katex("f(x) = x^{4} + 2x^{3} - 13x^{2} - 14x + 24")}`
       ),
       capNumTerms: { value: 5, tolerance: 0 },
       capDegree: { value: 4, tolerance: 0 },

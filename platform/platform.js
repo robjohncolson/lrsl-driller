@@ -770,12 +770,24 @@ export class Platform {
       // Format math expressions for KaTeX
       const formattedValue = this.formatMathExpression(value);
 
-      html += `
-        <div class="mb-2">
-          <span class="text-gray-600 text-sm">${label}:</span>
-          <span class="font-mono font-medium ml-2">${formattedValue}</span>
-        </div>
-      `;
+      // Use different styling for long text (teaching content) vs short values
+      const isLongText = value.length > 80;
+
+      if (isLongText) {
+        html += `
+          <div class="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <div class="text-blue-800 font-semibold text-sm mb-1">${label}</div>
+            <div class="text-gray-800 text-sm leading-relaxed">${formattedValue}</div>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="mb-2">
+            <span class="text-gray-600 text-sm">${label}:</span>
+            <span class="font-medium ml-2">${formattedValue}</span>
+          </div>
+        `;
+      }
     }
 
     infoContainer.innerHTML = html;
@@ -793,12 +805,25 @@ export class Platform {
   }
 
   /**
-   * Convert common math notation to KaTeX format
-   * e.g., "x^3" -> "$x^3$", "f(x) = 2x^2 + 3x - 1" -> "$f(x) = 2x^2 + 3x - 1$"
+   * Format text for display with KaTeX math and markdown-style bold
+   * - Handles text that already contains $...$ delimiters
+   * - Converts **bold** to <strong>bold</strong>
+   * - Converts newlines to <br>
+   * - Auto-wraps plain math expressions in $...$ if needed
    */
   formatMathExpression(text) {
     if (!text || typeof text !== 'string') return text;
 
+    // If text already contains $ delimiters, it's pre-formatted for KaTeX
+    // Just handle markdown bold and newlines
+    if (text.includes('$')) {
+      return text
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')  // **bold** -> <strong>
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')              // *italic* -> <em>
+        .replace(/\n/g, '<br>');                              // newlines -> <br>
+    }
+
+    // For text without $ delimiters, check if it needs auto-wrapping
     // Patterns that indicate math content
     const mathPatterns = [
       /[a-zA-Z]\^[\d{}\w]+/,   // x^2, x^{10}
@@ -812,7 +837,12 @@ export class Platform {
     // Check if text contains math-like content
     const hasMath = mathPatterns.some(pattern => pattern.test(text));
 
-    if (!hasMath) return text;
+    if (!hasMath) {
+      return text
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+    }
 
     // If the text starts with a label like "Expression: " or "f(x) = ", wrap just the math part
     const labelMatch = text.match(/^(Expression:\s*|Function:\s*|Polynomial:\s*|Term:\s*|f\(x\)\s*=\s*)/i);

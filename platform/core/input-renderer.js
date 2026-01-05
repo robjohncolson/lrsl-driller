@@ -142,7 +142,9 @@ export class InputRenderer {
       const hintEl = document.createElement('div');
       hintEl.className = this.styles.hint + ' hidden';
       hintEl.dataset.hint = field.id;
-      hintEl.innerHTML = this.interpolate(field.hint, context);
+      // Format the hint text with bold and prepare for KaTeX
+      const hintText = this.interpolate(field.hint, context);
+      hintEl.innerHTML = this.formatHintText(hintText);
       wrapper.appendChild(hintEl);
     }
 
@@ -485,8 +487,28 @@ export class InputRenderer {
     const hintEl = this.container.querySelector(`[data-hint="${fieldId}"]`);
     if (hintEl) {
       hintEl.classList.remove('hidden');
+      // Render KaTeX math if available
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(hintEl, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ],
+          throwOnError: false
+        });
+      }
       this.onHintRequested(fieldId);
     }
+  }
+
+  /**
+   * Format hint text with markdown-style bold and prepare for KaTeX
+   */
+  formatHintText(text) {
+    if (!text || typeof text !== 'string') return text;
+    return text
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')  // **bold** -> <strong>
+      .replace(/\n/g, '<br>');                              // newlines -> <br>
   }
 
   hideHint(fieldId) {
