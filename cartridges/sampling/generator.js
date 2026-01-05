@@ -287,7 +287,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       chanceTrust: { value: scen.usesChance ? "Yes" : "No" }
     };
     answers = { chanceTrust: { value: scen.usesChance ? "Yes" : "No" } };
-    scenario = "Does this data collection method use chance?";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
@@ -309,7 +309,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       popOrSample: { value: scen.type }
     };
     answers = { popOrSample: { value: scen.type } };
-    scenario = "Is this a population or a sample?";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
@@ -330,7 +330,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       studyType: { value: scen.type }
     };
     answers = { studyType: { value: scen.type } };
-    scenario = "Observational study or experiment?";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
@@ -370,7 +370,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       canGeneralize: { value: canGen },
       whyGeneralize: { value: correctReason }
     };
-    scenario = "Can we generalize to the population?";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
@@ -409,7 +409,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       canCause: { value: canCause },
       whyCause: { value: correctReason }
     };
-    scenario = "Can we conclude causation?";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
@@ -436,7 +436,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       generalize: { value: scen.randomSelection ? "Yes" : "No" },
       causation: { value: scen.randomAssignment ? "Yes" : "No" }
     };
-    scenario = "Apply the scope of inference framework.";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
@@ -462,7 +462,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       srsKey: { value: "group" }
     };
     answers = { srsKey: { value: "group" } };
-    scenario = "Complete the SRS definition.";
+    scenario = "In an SRS, every _____ of size n has an equal chance of being selected.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -490,7 +490,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       stratKey: { value: "Take an SRS from EACH group" }
     };
     answers = { stratKey: { value: "Take an SRS from EACH group" } };
-    scenario = "How does stratified sampling work?";
+    scenario = "In stratified sampling, you divide into groups based on shared characteristics, then:";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -518,7 +518,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       clusterKey: { value: "Randomly select SOME groups, sample ALL in selected groups" }
     };
     answers = { clusterKey: { value: "Randomly select SOME groups, sample ALL in selected groups" } };
-    scenario = "How does cluster sampling work?";
+    scenario = "In cluster sampling, you divide into groups, then:";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -548,7 +548,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       stratIdeal: { value: "Homogeneous (similar within each group)" },
       clusterIdeal: { value: "Heterogeneous (diverse within each group)" }
     };
-    scenario = "Stratified works best when groups are ___. Cluster works best when groups are ___.";
+    scenario = "Match the ideal group characteristics to each sampling method.";
     return { context, graphConfig, answers, scenario };
   }
 
@@ -586,7 +586,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       methodType: { value: correct }
     };
     answers = { methodType: { value: correct } };
-    scenario = "What method is described?";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
@@ -630,7 +630,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       methodId: { value: correct }
     };
     answers = { methodId: { value: correct } };
-    scenario = "What sampling method is being used?";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
@@ -684,7 +684,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       methodId2: { value: correct },
       advantage: { value: scen.advantage }
     };
-    scenario = "What method is used, and what's an advantage here?";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
@@ -739,7 +739,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       capGeneralize: { value: canGen },
       capWhy: { value: whyGen }
     };
-    scenario = "Complete analysis of the sampling scenario.";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
@@ -784,7 +784,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       capGen2: { value: scen.randomSelection ? "Yes" : "No" },
       capCause2: { value: scen.randomAssignment ? "Yes" : "No" }
     };
-    scenario = "Complete scope of inference analysis.";
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 

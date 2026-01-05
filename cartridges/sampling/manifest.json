@@ -31,7 +31,7 @@
           {
             "id": "chanceTrust",
             "type": "choice",
-            "label": "Can we trust conclusions from this data collection method?",
+            "label": "Does this method use CHANCE (randomness)?",
             "options": ["Yes", "No"]
           }
         ]
@@ -46,7 +46,7 @@
           {
             "id": "popOrSample",
             "type": "choice",
-            "label": "Is this describing a population or a sample?",
+            "label": "This describes a:",
             "options": ["Population", "Sample"]
           }
         ]
