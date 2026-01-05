@@ -2808,14 +2808,40 @@
       // Populate cartridge list from registry (auto-detects cartridges)
       await populateCartridgeList();
 
-      // Update initial cartridge display from saved preference
-      const savedCartridge = localStorage.getItem('lastCartridgeId');
-      if (savedCartridge) {
-        const option = document.querySelector(`.cartridge-option[data-cartridge="${savedCartridge}"]`);
+      // Check URL parameters for cartridge selection
+      // Supports: ?cartridge=sampling or ?c=sampling
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCartridge = urlParams.get('cartridge') || urlParams.get('c');
+
+      // Priority: URL param > saved preference > default
+      let initialCartridge = null;
+      if (urlCartridge) {
+        // Validate the URL cartridge exists
+        const option = document.querySelector(`.cartridge-option[data-cartridge="${urlCartridge}"]`);
         if (option) {
-          const displayName = option.querySelector('.font-semibold')?.textContent || savedCartridge;
+          initialCartridge = urlCartridge;
+          console.log(`[App] Cartridge from URL: ${urlCartridge}`);
+        } else {
+          console.warn(`[App] URL cartridge "${urlCartridge}" not found, using saved/default`);
+        }
+      }
+
+      // Fall back to saved preference
+      if (!initialCartridge) {
+        const savedCartridge = localStorage.getItem('lastCartridgeId');
+        if (savedCartridge) {
+          initialCartridge = savedCartridge;
+        }
+      }
+
+      // Update display and set current cartridge
+      if (initialCartridge) {
+        currentCartridgeId = initialCartridge;
+        const option = document.querySelector(`.cartridge-option[data-cartridge="${initialCartridge}"]`);
+        if (option) {
+          const displayName = option.querySelector('.font-semibold')?.textContent || initialCartridge;
           document.getElementById('current-cartridge-name').textContent = displayName;
-          document.getElementById('cartridge-select').value = savedCartridge;
+          document.getElementById('cartridge-select').value = initialCartridge;
         }
       }
 

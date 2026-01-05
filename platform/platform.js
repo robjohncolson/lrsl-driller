@@ -117,6 +117,13 @@ export class Platform {
         console.log(`[Platform] Set initial mode: ${this.currentMode}`);
       }
 
+      // Sync gameEngine.currentTier with platform.currentMode
+      // This ensures stars are tracked to the correct mode
+      if (this.currentMode) {
+        this.gameEngine.setTier(this.currentMode);
+        console.log(`[Platform] Synced gameEngine.currentTier: ${this.gameEngine.currentTier}`);
+      }
+
       this.onStateChange(this.getState());
       return this.currentCartridge;
 
