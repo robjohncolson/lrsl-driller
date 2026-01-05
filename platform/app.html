@@ -796,9 +796,10 @@
       }
     }
 
-    function updatePotentialStar(hintsUsed) {
+    function updatePotentialStar(totalPenalties) {
+      // totalPenalties = hints used + retries (wrong answers)
       const tiers = ['Gold', 'Silver', 'Bronze', 'Tin', 'Tin'];
-      document.getElementById('potential-star').textContent = tiers[Math.min(hintsUsed, 4)];
+      document.getElementById('potential-star').textContent = tiers[Math.min(totalPenalties, 4)];
     }
 
     function showClassTimeBanner() {
@@ -2292,13 +2293,26 @@
       });
     }
 
-    // Listen for tier unlock events to update mode tabs in real-time
+    // Listen for tier unlock events to update mode tabs and auto-advance
     document.addEventListener('platform:tierUnlocked', (e) => {
       const tier = e.detail;
       console.log('[App] Tier unlocked:', tier.id, tier.name);
-      celebration.showToast(`New mode unlocked: ${tier.name}!`, 'success', 5000);
+
+      // Show celebration message
+      const message = tier.celebrationMessage || `Level unlocked: ${tier.name}!`;
+      celebration.showToast(message, 'success', 3000);
       soundEngine.unlock?.();
       renderModeTabs();
+
+      // Auto-advance to the newly unlocked level after a short delay
+      setTimeout(async () => {
+        if (platform.setMode(tier.id)) {
+          console.log('[App] Auto-advancing to:', tier.id);
+          renderModeTabs(); // Update active tab
+          await platform.loadProblem();
+          updateScenarioDisplay();
+        }
+      }, 1500); // Wait for celebration toast to be visible
     });
 
     // Also re-render tabs when a star is earned (in case it triggers an unlock)
@@ -2321,7 +2335,7 @@
               updateStarsDisplay(state.game.starCounts);
               updateStreaksDisplay(state.game.streaks);
               updateRankDisplay(state.game.starCounts);
-              updatePotentialStar(state.game.hintsUsed || 0);
+              updatePotentialStar(state.game.totalPenalties || 0);
             }
           },
           onGradingComplete: (results) => {
@@ -2596,6 +2610,10 @@
       document.getElementById('btn-grade').classList.remove('hidden');
       hideAllEscalationButtons();
       document.getElementById('grading-level-indicator').classList.add('hidden');
+
+      // Track retry as a penalty (like using a hint)
+      platform.useRetry();
+
       // Clear feedback and re-enable inputs
       platform.inputRenderer?.clearAllFeedback();
       platform.inputRenderer?.enable();

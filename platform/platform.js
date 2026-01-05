@@ -738,6 +738,15 @@ export class Platform {
     this.onStateChange(this.getState());
   }
 
+  /**
+   * Track a retry (wrong answer penalty)
+   * Called when user clicks "Try Again" after incorrect answer
+   */
+  useRetry() {
+    this.gameEngine.useRetry();
+    this.onStateChange(this.getState());
+  }
+
   // ============== HELPERS ==============
 
   renderInfoPanel() {

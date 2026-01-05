@@ -18,6 +18,9 @@ export class GameEngine {
     // Hint tracking for current problem
     this.hintsUsedThisProblem = new Set();
 
+    // Retry tracking (wrong answers count as penalties)
+    this.retriesThisProblem = 0;
+
     // Callbacks
     this.onStreakUpdate = config.onStreakUpdate || (() => {});
     this.onStarEarned = config.onStarEarned || (() => {});
@@ -92,12 +95,14 @@ export class GameEngine {
   }
 
   /**
-   * Determine star type based on hints used
+   * Determine star type based on hints used and retries
+   * Both hints and retries count as penalties
    */
   getStarType(hintsUsed) {
-    if (hintsUsed === 0) return 'gold';
-    if (hintsUsed === 1) return 'silver';
-    if (hintsUsed === 2) return 'bronze';
+    const totalPenalties = hintsUsed + this.retriesThisProblem;
+    if (totalPenalties === 0) return 'gold';
+    if (totalPenalties === 1) return 'silver';
+    if (totalPenalties === 2) return 'bronze';
     return 'tin';
   }
 
@@ -125,17 +130,33 @@ export class GameEngine {
   }
 
   /**
-   * Reset hints for new problem
+   * Track retry (wrong answer penalty)
    */
-  resetHintsForNewProblem() {
-    this.hintsUsedThisProblem.clear();
+  useRetry() {
+    this.retriesThisProblem++;
+    return this.retriesThisProblem;
   }
 
   /**
-   * Get potential star based on current hint usage
+   * Reset hints and retries for new problem
+   */
+  resetHintsForNewProblem() {
+    this.hintsUsedThisProblem.clear();
+    this.retriesThisProblem = 0;
+  }
+
+  /**
+   * Get potential star based on current hints and retries
    */
   getPotentialStar() {
     return this.getStarType(this.hintsUsedThisProblem.size);
+  }
+
+  /**
+   * Get total penalties (hints + retries)
+   */
+  getTotalPenalties() {
+    return this.hintsUsedThisProblem.size + this.retriesThisProblem;
   }
 
   /**
@@ -193,6 +214,8 @@ export class GameEngine {
       currentTier: this.currentTier,
       unlockedTiers: [...this.unlockedTiers],
       hintsUsed: this.hintsUsedThisProblem.size,
+      retriesUsed: this.retriesThisProblem,
+      totalPenalties: this.getTotalPenalties(),
       potentialStar: this.getPotentialStar()
     };
   }
