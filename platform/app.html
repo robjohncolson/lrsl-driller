@@ -2265,6 +2265,13 @@
         const modeGold = gameState.starsPerMode?.[mode.id]?.gold || 0;
         const isMastered = modeGold >= goldToMaster;
 
+        // Get the requirement to unlock the NEXT level (how many gold stars needed on THIS mode)
+        const nextMode = modes[i + 1];
+        const goldNeededForNext = nextMode?.unlockedBy?.gold || goldToUnlock;
+
+        // Get the requirement to unlock THIS level (from previous mode)
+        const thisLevelRequirement = mode.unlockedBy?.gold || goldToUnlock;
+
         const btn = document.createElement('button');
         btn.dataset.modeId = mode.id;
         btn.title = mode.name + (isMastered ? ' (Mastered!)' : '');
@@ -2279,14 +2286,14 @@
             if (isMastered) {
               btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>`;
             } else {
-              const stars = modeGold >= goldToUnlock ? '✓' : `${modeGold}/${goldToUnlock}`;
+              const stars = modeGold >= goldNeededForNext ? '✓' : `${modeGold}/${goldNeededForNext}`;
               btn.innerHTML = `${shortName} <span class="text-yellow-400 text-xs ml-1">★${stars}</span>`;
             }
           } else {
             // Mastered levels show graduation cap, completed show checkmark
             if (isMastered) {
               btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>`;
-            } else if (modeGold >= goldToUnlock) {
+            } else if (modeGold >= goldNeededForNext) {
               btn.innerHTML = `${shortName} <span class="text-green-500 text-xs ml-1">✓</span>`;
             } else {
               btn.textContent = shortName;
@@ -2308,10 +2315,10 @@
           // Locked mode - show what's needed (gold stars on previous level)
           const prevModeId = gameState.modeOrder?.[i - 1];
           const prevModeGold = prevModeId ? (gameState.starsPerMode?.[prevModeId]?.gold || 0) : 0;
-          btn.innerHTML = `<span class="opacity-50">${shortName}</span> <span class="text-xs">🔒${prevModeGold}/${goldToUnlock}</span>`;
+          btn.innerHTML = `<span class="opacity-50">${shortName}</span> <span class="text-xs">🔒${prevModeGold}/${thisLevelRequirement}</span>`;
           btn.className = lockedTabClass;
           btn.disabled = true;
-          btn.title = `Earn ${goldToUnlock} gold stars on the previous level to unlock`;
+          btn.title = `Earn ${thisLevelRequirement} gold star${thisLevelRequirement > 1 ? 's' : ''} on the previous level to unlock`;
         }
 
         tabsContainer.appendChild(btn);

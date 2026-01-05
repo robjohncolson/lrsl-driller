@@ -205,14 +205,15 @@ export class GameEngine {
       }
 
       // STRICT sequential unlock: previous level MUST have enough gold stars
-      // No fallback to legacy conditions - levels must be completed in order
+      // Use the tier's own unlockedBy.gold value, fallback to global goldToUnlock
       const previousModeId = this.modeOrder[i - 1];
       const previousModeStars = this.starsPerMode[previousModeId] || { gold: 0 };
+      const requiredGold = tier.unlockedBy?.gold || this.goldToUnlock;
 
       // Also check that the previous level is actually unlocked (prevents skipping)
       const previousUnlocked = this.unlockedTiers.includes(previousModeId);
 
-      if (previousUnlocked && previousModeStars.gold >= this.goldToUnlock) {
+      if (previousUnlocked && previousModeStars.gold >= requiredGold) {
         this.unlockedTiers.push(tier.id);
         this.onTierUnlocked(tier);
         this.saveState();
