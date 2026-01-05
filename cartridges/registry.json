@@ -34,6 +34,13 @@
       "subject": "Algebra 2",
       "description": "Numbers, polynomials, radicals",
       "shortCode": "RAD"
+    },
+    {
+      "id": "graphing-polynomials",
+      "name": "Graphing Polynomials",
+      "subject": "Algebra 2",
+      "description": "Degree, end behavior, zeros, turning points",
+      "shortCode": "POLY"
     }
   ]
 }

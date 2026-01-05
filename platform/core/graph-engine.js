@@ -130,6 +130,9 @@ export class GraphEngine {
       case 'dual-normal-curve':
         this.renderDualNormalCurve(config);
         break;
+      case 'function-curve':
+        this.renderFunctionCurve(config);
+        break;
       default:
         console.warn('Unknown graph type:', config.type);
     }
@@ -251,6 +254,93 @@ export class GraphEngine {
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(centroid.label, px + 10, py - 8);
+    }
+  }
+
+  // ============== FUNCTION CURVE ==============
+
+  /**
+   * Render a continuous curve by connecting points with a smooth line.
+   * Useful for polynomials, trig functions, etc.
+   * Points should be sorted by x-value for proper rendering.
+   */
+  renderFunctionCurve(config) {
+    const { data, points, labels, xLabel, yLabel, xDomain, yDomain, curveColor = '#3b82f6', lineWidth = 2 } = config;
+
+    const plotData = data || points || [];
+    if (plotData.length === 0) return;
+
+    // Sort by x to ensure proper line drawing
+    const sortedData = [...plotData].sort((a, b) => a.x - b.x);
+
+    // Calculate scales
+    const xValues = sortedData.map(d => d.x);
+    const yValues = sortedData.map(d => d.y);
+
+    const xMin = xDomain?.[0] ?? Math.min(...xValues);
+    const xMax = xDomain?.[1] ?? Math.max(...xValues);
+    const yMin = yDomain?.[0] ?? Math.min(...yValues);
+    const yMax = yDomain?.[1] ?? Math.max(...yValues);
+
+    const scales = this.calculateScales(xMin, xMax, yMin, yMax);
+
+    // Draw grid
+    this.drawGrid(scales);
+
+    // Draw axes
+    this.drawAxes(scales, labels || { x: xLabel || 'x', y: yLabel || 'y' });
+
+    // Draw the curve as connected line segments
+    const { ctx } = this;
+    ctx.strokeStyle = curveColor;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    let started = false;
+
+    for (const point of sortedData) {
+      const px = scales.xScale(point.x);
+      const py = scales.yScale(point.y);
+
+      // Skip points outside the visible area (with some margin)
+      if (py < -100 || py > this.height + 100) {
+        started = false;
+        continue;
+      }
+
+      if (!started) {
+        ctx.moveTo(px, py);
+        started = true;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+
+    // Draw x-intercept markers if provided
+    if (config.xIntercepts) {
+      ctx.fillStyle = '#ef4444'; // red
+      for (const x of config.xIntercepts) {
+        const px = scales.xScale(x);
+        const py = scales.yScale(0);
+        ctx.beginPath();
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Draw turning points if provided
+    if (config.turningPoints) {
+      ctx.fillStyle = '#22c55e'; // green
+      for (const tp of config.turningPoints) {
+        const px = scales.xScale(tp.x);
+        const py = scales.yScale(tp.y);
+        ctx.beginPath();
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 

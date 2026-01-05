@@ -752,15 +752,74 @@ export class Platform {
     for (const item of display) {
       const label = this.interpolate(item.label, context);
       const value = this.interpolate(item.value, context);
+
+      // Skip empty values
+      if (!value || value.trim() === '' || value === '{{' + item.value.replace(/[{}]/g, '') + '}}') {
+        continue;
+      }
+
+      // Format math expressions for KaTeX
+      const formattedValue = this.formatMathExpression(value);
+
       html += `
         <div class="mb-2">
           <span class="text-gray-600 text-sm">${label}:</span>
-          <span class="font-mono font-medium ml-2">${value}</span>
+          <span class="font-mono font-medium ml-2">${formattedValue}</span>
         </div>
       `;
     }
 
     infoContainer.innerHTML = html;
+
+    // Render math with KaTeX if available
+    if (typeof renderMathInElement !== 'undefined') {
+      renderMathInElement(infoContainer, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+  }
+
+  /**
+   * Convert common math notation to KaTeX format
+   * e.g., "x^3" -> "$x^3$", "f(x) = 2x^2 + 3x - 1" -> "$f(x) = 2x^2 + 3x - 1$"
+   */
+  formatMathExpression(text) {
+    if (!text || typeof text !== 'string') return text;
+
+    // Patterns that indicate math content
+    const mathPatterns = [
+      /[a-zA-Z]\^[\d{}\w]+/,   // x^2, x^{10}
+      /\d+x\^?\d*/,            // 2x, 3x^2
+      /[+-]\s*\d*x/,           // + 2x, - x
+      /f\(x\)\s*=/,            // f(x) =
+      /[√∛]/,                  // square/cube root symbols
+      /\^{/                    // explicit exponent braces
+    ];
+
+    // Check if text contains math-like content
+    const hasMath = mathPatterns.some(pattern => pattern.test(text));
+
+    if (!hasMath) return text;
+
+    // If the text starts with a label like "Expression: " or "f(x) = ", wrap just the math part
+    const labelMatch = text.match(/^(Expression:\s*|Function:\s*|Polynomial:\s*|Term:\s*|f\(x\)\s*=\s*)/i);
+
+    if (labelMatch) {
+      const label = labelMatch[1];
+      const mathPart = text.slice(label.length);
+      return `${label}$${mathPart}$`;
+    }
+
+    // Otherwise wrap the whole thing if it looks like an equation
+    if (/^[^$]*[=]/.test(text) || /^-?\d*[a-zA-Z]/.test(text)) {
+      return `$${text}$`;
+    }
+
+    return text;
   }
 
   interpolate(template, context) {

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Driller - AP Statistics Practice</title>
   <link rel="stylesheet" href="./styles.css">
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
   <!-- Header -->
@@ -30,6 +34,7 @@
           <option value="lsrl-interpretation">LSRL Interpretation</option>
           <option value="residuals">Residuals</option>
           <option value="algebra2-radicals">Simplify Radicals</option>
+          <option value="graphing-polynomials">Graphing Polynomials</option>
         </select>
       </div>
 
@@ -176,7 +181,7 @@
     <!-- Right Pane: Answers (scrollable) -->
     <div id="right-pane" class="lg:w-1/2 flex-1 overflow-y-auto space-y-4 pr-1">
         <!-- Mode Tabs -->
-        <div id="mode-tabs" class="flex gap-2 flex-wrap"></div>
+        <div id="mode-tabs" class="flex gap-2 flex-nowrap overflow-x-auto no-scrollbar pb-2 -mx-1 px-1 items-stretch snap-x snap-mandatory"></div>
 
         <!-- Input Cards -->
         <div id="input-container" class="space-y-4"></div>
@@ -2243,6 +2248,10 @@
       const gameState = platform.gameEngine.getState();
       const currentMode = platform.currentMode;
 
+      const baseTabClass = 'mode-tab snap-start';
+      const activeTabClass = 'mode-tab mode-tab-active snap-start';
+      const lockedTabClass = 'mode-tab mode-tab-locked snap-start';
+
       modes.forEach((mode, i) => {
         // Check if mode is unlocked
         const isUnlocked = mode.unlockedBy === 'default' ||
@@ -2253,19 +2262,19 @@
 
         const btn = document.createElement('button');
         btn.dataset.modeId = mode.id;
+        btn.title = mode.name;
+        btn.setAttribute('aria-label', mode.name);
 
         if (isUnlocked) {
-          btn.textContent = mode.name;
-          btn.className = isCurrentMode
-            ? 'px-4 py-2 rounded-lg bg-purple-600 text-white font-medium'
-            : 'px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200';
+          btn.textContent = mode.name.replace('Level ', 'L');
+          btn.className = isCurrentMode ? activeTabClass : baseTabClass;
           btn.addEventListener('click', async () => {
             tabsContainer.querySelectorAll('button').forEach(b => {
               if (!b.disabled) {
-                b.className = 'px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200';
+                b.className = baseTabClass;
               }
             });
-            btn.className = 'px-4 py-2 rounded-lg bg-purple-600 text-white font-medium';
+            btn.className = activeTabClass;
             platform.setMode(mode.id);
             await platform.loadProblem();
             updateScenarioDisplay();
@@ -2274,7 +2283,7 @@
           // Locked mode
           const requirement = mode.unlockedBy?.gold ? `${mode.unlockedBy.gold} gold ★` : 'locked';
           btn.textContent = `🔒 ${mode.name}`;
-          btn.className = 'px-4 py-2 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed';
+          btn.className = lockedTabClass;
           btn.disabled = true;
           btn.title = `Requires ${requirement} to unlock`;
         }

@@ -4,164 +4,123 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Teaching materials repository for AP Statistics, focusing on linear regression and correlation concepts. The project has two architectures:
-1. **Legacy**: Standalone HTML apps (file:// protocol, no build)
-2. **Modular Platform**: Cartridge-based system with Vite build (requires `npm run dev`)
+A subject-agnostic drill/quiz platform for teachers ("Driller Platform"). Think of it like a game console: the platform is the console, lessons are cartridges. Currently includes cartridges for AP Statistics (LSRL, residuals, z-scores, leverage points) and Algebra 2 (radicals).
 
-## Development
+**Deployment**: Vercel (frontend) + Railway (backend server for AI grading, WebSocket, time tracking)
 
-### Modular Platform (New)
+## Development Commands
+
 ```bash
 npm install
-npm run dev      # Start Vite dev server
-npm run build    # Build for production
-```
-Access at: http://localhost:5173/platform/demo.html
-
-### Legacy Apps
-Open HTML files directly in browser (file:// protocol works).
-
-## File Structure
-
-### Entry Points
-- `index.html` - Legacy LSRL trainer (monolithic)
-- `platform/demo.html` - Modular platform demo (uses ES modules)
-- `zscore_3d_explorer.html` - 3D visualization
-
-### Platform (Console) - Topic-Agnostic
-```
-platform/
-  platform.js           # Main orchestrator
-  core/
-    game-engine.js      # Streaks, stars, progression
-    grading-engine.js   # Numeric, regex, AI grading
-    graph-engine.js     # Canvas-based charts
-    input-renderer.js   # Dynamic form fields
-    cartridge-loader.js # Loads manifests and modules
+npm run dev      # Start Vite dev server at http://localhost:5173/platform/app.html
+npm run build    # Build for production (copies cartridges/ to dist/)
+npm run preview  # Preview production build
 ```
 
-### Cartridges (Topics) - Content-Specific
-```
-cartridges/
-  lsrl-interpretation/
-    manifest.json       # Config: modes, inputs, hints, progression
-    generator.js        # Problem generation
-    grading-rules.js    # E/P/I rubrics
-    ai-grader-prompt.txt
-  residuals/
-    manifest.json
-    generator.js
-    grading-rules.js
-    ai-grader-prompt.txt
-```
+The legacy `index.html` works standalone (file:// protocol) but the modular platform requires the dev server.
 
-### Cartridge Structure
-Each cartridge is fully self-contained with optional `contexts.json` for real-world scenarios.
+## Architecture
 
-## Creating New Cartridges
+### Console-Cartridge Pattern
 
-A cartridge requires 4 files:
+**Platform (Console)** - `platform/` - topic-agnostic orchestrator:
+- `platform.js` - Main orchestrator, loads cartridges, coordinates engines
+- `core/game-engine.js` - Streaks, stars (gold/silver/bronze/tin), tier progression
+- `core/grading-engine.js` - Dual grading: keywords (regex) + AI (Gemini/Groq)
+- `core/graph-engine.js` - Canvas-based scatterplots, regression lines, residual plots
+- `core/input-renderer.js` - Dynamic form fields with hint toggles
+- `core/cartridge-loader.js` - Loads manifests, generators, grading rules
+- `core/shuffle-bag.js` - Fair problem distribution (no near-repeats)
 
-### manifest.json
+**Cartridges (Lessons)** - `cartridges/{id}/` - content-specific, fully self-contained:
+- `manifest.json` - Config: modes, inputs, hints, progression, grading settings
+- `generator.js` - Exports `generateProblem(modeId, context, mode)`
+- `grading-rules.js` - Exports `gradeField(fieldId, answer, context)` returning `{score: 'E'|'P'|'I', feedback}`
+- `ai-grader-prompt.txt` - Template with `{{placeholders}}` for AI grading
+- `contexts.json` (optional) - Real-world scenarios for problem variety
+
+**Registry**: `cartridges/registry.json` lists all available cartridges.
+
+### Backend Server
+
+`railway-server/server.js` - Express + WebSocket server (deployed on Railway):
+- `/api/ai/grade` - Server-side AI grading with API key pool rotation
+- `/api/teacher-review` - Queue for teacher manual review
+- `/api/time-tracking/*` - Session and problem timing
+- `/api/users`, `/api/progress`, `/api/leaderboard` - User management
+- WebSocket broadcasts: star earned, user online/offline, class time events
+
+### Grading Flow
+
+1. **Keywords first** (fast, regex-based) - always runs
+2. **AI grading** (if enabled) - calls server, which tries Groq then Gemini with key rotation
+3. **Best score wins** - AI can override keywords when it recognizes correct answers
+4. **Teacher review** - fallback when AI fails or student appeals
+
+## Creating Cartridges
+
+See `CARTRIDGE-DEVELOPMENT-GUIDE.md` for full details. A cartridge requires 3-4 files:
+
+**manifest.json** - Declares UI, modes, hints, progression:
 ```json
 {
   "meta": { "id": "topic-id", "name": "Topic Name", "subject": "AP Statistics" },
-  "config": { "contextsFile": "contexts.json", "skills": ["skill1", "skill2"] },
-  "display": { "showGraph": true, "graphType": "scatterplot", "infoPanel": [...] },
-  "modes": [{ "id": "mode-id", "name": "Mode Name", "unlockedBy": "default", "layout": { "inputs": [...] } }],
+  "modes": [{ "id": "mode-id", "unlockedBy": "default", "layout": { "inputs": [...] } }],
   "grading": { "rubricFile": "grading-rules.js", "aiPromptFile": "ai-grader-prompt.txt" },
-  "hints": { "perField": { "fieldId": "Hint text with {{variables}}" } },
-  "progression": { "streakFields": ["field1"], "tiers": [...] }
+  "hints": { "perField": { "fieldId": "Hint with {{variables}}" } },
+  "progression": { "streakFields": ["field1"], "tiers": [{ "id": "mode-id", "unlockedBy": { "gold": 10 } }] }
 }
 ```
 
-### generator.js
+**generator.js** - Problem generation:
 ```javascript
 export function generateProblem(modeId, context, mode) {
   return {
     context: { ...context, /* computed values */ },
     graphConfig: { type: 'scatterplot', points: [...], xLabel, yLabel },
-    answers: { fieldId: { value, ... } },
-    scenario: "Problem description text"
+    answers: { fieldId: { value: correctAnswer } },
+    scenario: "Problem description"
   };
 }
 ```
 
-### grading-rules.js
+**grading-rules.js** - Keyword/programmatic grading:
 ```javascript
-export function getRule(fieldId) { return rules[fieldId]; }
 export function gradeField(fieldId, answer, context) {
-  return { score: 'E'|'P'|'I', feedback: "...", matched: [], missing: [] };
+  return { score: 'E'|'P'|'I', feedback: "..." };
 }
 ```
 
-### ai-grader-prompt.txt
-System prompt template with {{placeholders}} for AI grading.
+**ai-grader-prompt.txt** (optional) - Template for AI grading with `{{placeholder}}` substitution.
 
-## Architecture: Legacy LSRL Trainer
+After creating, add to `cartridges/registry.json` and the dropdown in `platform/app.html`.
 
-### ScenarioGenerator Class
-- 24 real-world contexts with x/y variables, units, and domain constraints
-- Generates random r (-0.95 to +0.95), calculates slope/intercept
-- `isInterceptMeaningful` flag determines if y-intercept interpretation makes sense
+## E/P/I Scoring System
 
-### Grader Class (dual-mode, runs both simultaneously)
-- **Keywords**: Regex-based checking for required elements (prediction language, direction, values, variables)
-- **AI**: Direct API calls to Gemini (`gemini-2.0-flash`) or Groq (`llama-3.3-70b-versatile`)
-- Best score from either method counts for streaks/stars
-- `formatAIError()` provides user-friendly error messages for quota limits, invalid keys, etc.
+- **E (Essentially Correct)**: All key elements present
+- **P (Partially Correct)**: Some elements missing
+- **I (Incorrect)**: Major errors or missing mandatory elements
 
-### Scoring (E/P/I system)
-- **Slope**: "predicted/on average", direction, slope value, both variables, "for every 1 unit"
-- **Intercept**: Reference x=0 with prediction language, OR identify when meaningless
-- **Correlation**: "linear", strength (weak/moderate/strong), direction, both variables
+Star tiers based on hints used: Gold (0), Silver (1), Bronze (2), Tin (3+)
 
-### Gamification
-- Streak counters per interpretation type
-- Star rewards based on hints used: Gold (0 hints + confetti), Silver (1), Bronze (2), Tin (3)
-- `hintsOpenedThisScenario` Set tracks which hints were viewed
+## Key Patterns
 
-### State (localStorage)
-- `lsrlStreaks` - streak counts per type
-- `lsrlStarCounts` - stars by tier (gold/silver/bronze/tin)
-- `geminiApiKey`, `groqApiKey` - separate keys per provider
-- `apiProvider` - current selection (gemini/groq/none)
+**Dual grading**: Keywords run first (fast), then AI (if enabled). Best score wins. AI can override keyword grading when it recognizes correct answers that regex missed.
 
-## Architecture: Z-Score Explorer
+**Shuffle bags**: `core/shuffle-bag.js` ensures fair problem distribution without near-repeats (batch of 12, history of 4).
 
-### Data Flow
-- `processData()` computes means, standard deviations, z-scores, r, and LSRL coefficients
-- `classData` object holds datasets (Class E, Class B, or synthetic from URL params)
+**State persistence**: Game engine uses localStorage with cartridge-prefixed keys (`{cartridgeId}_streaks`, `{cartridgeId}_stars`).
 
-### URL Parameter Integration
-When opened with params from LSRL trainer (`?topic=...&slope=...&r=...`):
-- `generateSyntheticData()` creates 12 points approximating target regression
-- Class selector hidden, shows "From LSRL Trainer" with back link
-- Displays target vs actual r/slope/intercept comparison
+**Template interpolation**: Use `{{variableName}}` in manifests - replaced with context values at runtime.
 
-### Views
-- `buildRawView()` - original units with mean lines and normal curves at means
-- `buildZScoreView()` - standardized coordinates, origin-centered, ±3 grid
+## Environment Variables (Railway Server)
 
-### Selection System
-- Click point to show product rectangle (green = positive, red = negative contribution to r)
-- Z-score view shows shaded regions under normal curves
-- Panel displays z-score calculations and quadrant info
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY` - Database connection
+- `GEMINI_API_KEY`, `GROQ_API_KEY` - AI grading (fallback if pool empty)
+- `TEACHER_PASSWORD` - For teacher review access
 
-### Question Generator
-- 10 question types: z-score calculation, product sign, quadrant, correlation direction/strength, LSRL prediction, residual, mean, standard deviation
-- Score tracking with immediate feedback and explanations
+## Testing
 
-## Integration Between Apps
-
-LSRL Trainer's "Explore in 3D" button opens Z-Score Explorer with URL params:
-```
-zscore_3d_explorer.html?topic=...&xVar=...&yVar=...&slope=...&intercept=...&r=...&xMin=...&xMax=...
-```
-
-## Technical Notes
-
-- Tailwind CSS via CDN (not for production, but acceptable for teaching tools)
-- Three.js r128 for 3D rendering
-- Direct API calls work from file:// because keys are passed as URL params (Gemini) or headers (Groq)
-- Button visibility uses `style.display` not Tailwind's `hidden` class for reliability
+1. `npm run dev` → http://localhost:5173/platform/app.html
+2. Select cartridge from dropdown
+3. Check browser console for grading/loading errors
