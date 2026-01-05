@@ -41,6 +41,13 @@
       "subject": "Algebra 2",
       "description": "Degree, end behavior, zeros, turning points",
       "shortCode": "POLY"
+    },
+    {
+      "id": "sampling",
+      "name": "Sampling Methods",
+      "subject": "AP Statistics",
+      "description": "SRS, stratified, cluster, bias, variability",
+      "shortCode": "SAMP"
     }
   ]
 }

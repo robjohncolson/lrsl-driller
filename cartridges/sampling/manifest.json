@@ -1,0 +1,397 @@
+{
+  "meta": {
+    "id": "sampling",
+    "name": "Sampling Methods & Evaluation",
+    "subject": "AP Statistics",
+    "description": "Master SRS, stratified, and cluster sampling—when to use each, their advantages/disadvantages, and how to evaluate bias and variability."
+  },
+
+  "config": {
+    "contextsFile": null,
+    "skills": ["sampling", "bias", "variability", "study-design"]
+  },
+
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      { "label": "Level", "value": "{{levelName}}" },
+      { "label": "Concept", "value": "{{problemText}}" },
+      { "label": "Scenario", "value": "{{givenText}}" }
+    ]
+  },
+
+  "modes": [
+    {
+      "id": "l01-vocab-bias",
+      "name": "Level 1: What is Bias?",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "biasDefn",
+            "type": "choice",
+            "label": "Bias is a measure of {{concept}}:",
+            "options": ["Accuracy", "Precision"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-vocab-variability",
+      "name": "Level 2: What is Variability?",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "varDefn",
+            "type": "choice",
+            "label": "Variability is a measure of {{concept}}:",
+            "options": ["Accuracy", "Precision"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-inverse-relationships",
+      "name": "Level 3: Inverse Pairs",
+      "unlockedBy": { "gold": 2 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "lowBias",
+            "type": "dropdown",
+            "label": "Low bias means {{blank1}} accuracy:",
+            "options": ["{{optA}}", "{{optB}}"],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "lowVar",
+            "type": "dropdown",
+            "label": "Low variability means {{blank2}} precision:",
+            "options": ["{{optC}}", "{{optD}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-srs-definition",
+      "name": "Level 4: What is an SRS?",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "srsKey",
+            "type": "dropdown",
+            "label": "In an SRS, every {{blank}} of size n has an equal chance of selection:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-stratified-definition",
+      "name": "Level 5: What is Stratified?",
+      "unlockedBy": { "gold": 4 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "stratHow",
+            "type": "dropdown",
+            "label": "In stratified sampling, you take an SRS {{blank}} each stratum:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-cluster-definition",
+      "name": "Level 6: What is Cluster?",
+      "unlockedBy": { "gold": 5 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "clusterHow",
+            "type": "dropdown",
+            "label": "In cluster sampling, you select {{blank}} clusters and sample {{blank2}} individuals in them:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l07-strat-vs-cluster-groups",
+      "name": "Level 7: Ideal Group Type",
+      "unlockedBy": { "gold": 6 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "stratIdeal",
+            "type": "dropdown",
+            "label": "Stratified works best when strata are:",
+            "options": ["{{optA}}", "{{optB}}"],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "clusterIdeal",
+            "type": "dropdown",
+            "label": "Cluster works best when clusters are:",
+            "options": ["{{optC}}", "{{optD}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l08-identify-method",
+      "name": "Level 8: Identify the Method",
+      "unlockedBy": { "gold": 7 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "methodId",
+            "type": "dropdown",
+            "label": "What sampling method is described?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l09-identify-method-2",
+      "name": "Level 9: Identify Method (Harder)",
+      "unlockedBy": { "gold": 8 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "methodId2",
+            "type": "dropdown",
+            "label": "What sampling method is described?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l10-bias-variability-combo",
+      "name": "Level 10: Bias & Variability Together",
+      "unlockedBy": { "gold": 9 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "biasLevel",
+            "type": "dropdown",
+            "label": "This sampling method has {{blank1}} bias:",
+            "options": ["{{optA}}", "{{optB}}"],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "varLevel",
+            "type": "dropdown",
+            "label": "This sampling method has {{blank2}} variability:",
+            "options": ["{{optC}}", "{{optD}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l11-disadvantage",
+      "name": "Level 11: Identify the Disadvantage",
+      "unlockedBy": { "gold": 10 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "disadv",
+            "type": "dropdown",
+            "label": "What is a disadvantage of this method in this scenario?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l12-choose-best-method",
+      "name": "Level 12: Choose the Best Method",
+      "unlockedBy": { "gold": 11 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "bestMethod",
+            "type": "dropdown",
+            "label": "Which sampling method would be BEST for this scenario?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}"],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "whyBest",
+            "type": "dropdown",
+            "label": "WHY is this method best?",
+            "options": ["{{optE}}", "{{optF}}", "{{optG}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l13-dartboard-analogy",
+      "name": "Level 13: Dartboard Interpretation",
+      "unlockedBy": { "gold": 12 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "dartBias",
+            "type": "dropdown",
+            "label": "The dartboard shows {{blank1}} (bias/unbiased):",
+            "options": ["{{optA}}", "{{optB}}"],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "dartVar",
+            "type": "dropdown",
+            "label": "The dartboard shows {{blank2}} variability:",
+            "options": ["{{optC}}", "{{optD}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l14-fix-the-sample",
+      "name": "Level 14: Fix the Sampling Problem",
+      "unlockedBy": { "gold": 13 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "problem",
+            "type": "dropdown",
+            "label": "What is WRONG with this sampling plan?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}"],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "fix",
+            "type": "dropdown",
+            "label": "How could you FIX it?",
+            "options": ["{{optD}}", "{{optE}}", "{{optF}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l15-capstone",
+      "name": "Level 15: Capstone",
+      "unlockedBy": { "gold": 14 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capMethod",
+            "type": "dropdown",
+            "label": "Identify the sampling method:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "capBias",
+            "type": "dropdown",
+            "label": "Is this method biased or unbiased?",
+            "options": ["{{optE}}", "{{optF}}"],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "capVar",
+            "type": "dropdown",
+            "label": "Expected variability level?",
+            "options": ["{{optG}}", "{{optH}}", "{{optI}}"],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "capBetter",
+            "type": "dropdown",
+            "label": "Would a different method be better here?",
+            "options": ["{{optJ}}", "{{optK}}", "{{optL}}"],
+            "placeholder": "Choose"
+          }
+        ]
+      }
+    }
+  ],
+
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": null,
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+
+  "hints": {
+    "perField": {
+      "biasDefn": "Bias = systematic error = off-center from truth. Think: are you HITTING the target? That's accuracy.",
+      "varDefn": "Variability = how spread out your shots are. Think: are they CLUSTERED together? That's precision.",
+      "lowBias": "If bias is LOW, you're centered on the truth. Low error = HIGH accuracy. They're inverses!",
+      "lowVar": "If variability is LOW, estimates are close together. Low spread = HIGH precision. They're inverses!",
+      "srsKey": "SRS: every GROUP of n individuals has equal chance. Not just every individual—every possible group!",
+      "stratHow": "Stratified: divide into groups, then sample WITHIN EACH. You get some from every stratum.",
+      "clusterHow": "Cluster: divide into groups, randomly pick SOME groups, then take ALL individuals from chosen groups.",
+      "stratIdeal": "Stratified works when groups are HOMOGENEOUS (similar within). Different groups, but consistent inside each.",
+      "clusterIdeal": "Cluster works when groups are HETEROGENEOUS (mixed within). Each cluster is a mini-population.",
+      "methodId": "SRS = random selection, everyone equal chance. Stratified = sample from each group. Cluster = pick entire groups.",
+      "methodId2": "Key question: Did they sample WITHIN each group (stratified) or take ENTIRE groups (cluster)?",
+      "biasLevel": "Random methods are typically unbiased. Non-random = likely biased.",
+      "varLevel": "Stratified with homogeneous strata → LOW variability. Cluster with different groups → HIGH variability.",
+      "disadv": "SRS: hard to implement across large areas. Stratified: complicated, must visit everywhere. Cluster: high variability if groups differ.",
+      "bestMethod": "Homogeneous within groups → stratified. Heterogeneous within groups → cluster. Neither pattern → SRS.",
+      "whyBest": "Match the method to the population structure. Stratified reduces variability when strata are homogeneous.",
+      "dartBias": "Centered on bullseye = unbiased. Off-center = biased. Look at WHERE the cluster is, not how tight.",
+      "dartVar": "Tight cluster = low variability. Spread out = high variability. Look at SPREAD, not location.",
+      "problem": "Common problems: convenience sampling (bias), cluster when groups differ (high variability), SRS when strata exist (misses precision).",
+      "fix": "Fix bias: use random selection. Fix high variability: stratify by the variable that differs between groups.",
+      "capMethod": "WHO was sampled? Random individuals (SRS), some from each group (stratified), or entire groups (cluster)?",
+      "capBias": "Was it random? Yes → unbiased. Convenience/voluntary → biased.",
+      "capVar": "Stratified + homogeneous strata = low. Cluster + heterogeneous clusters = high. SRS = moderate.",
+      "capBetter": "If groups are homogeneous within, stratified beats SRS. If practical constraints exist, cluster may be necessary."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["biasDefn", "varDefn", "srsKey", "stratHow", "clusterHow", "methodId", "bestMethod", "capMethod"],
+    "tiers": [
+      { "id": "l01-vocab-bias", "name": "01", "unlockedBy": "default", "celebrationMessage": "Bias = accuracy! Next: variability." },
+      { "id": "l02-vocab-variability", "name": "02", "unlockedBy": { "gold": 1 }, "celebrationMessage": "Variability = precision! Next: the inverse relationships." },
+      { "id": "l03-inverse-relationships", "name": "03", "unlockedBy": { "gold": 2 }, "celebrationMessage": "Got it! Low bias = high accuracy. Low variability = high precision." },
+      { "id": "l04-srs-definition", "name": "04", "unlockedBy": { "gold": 3 }, "celebrationMessage": "SRS mastered! Next: stratified sampling." },
+      { "id": "l05-stratified-definition", "name": "05", "unlockedBy": { "gold": 4 }, "celebrationMessage": "Stratified = sample WITHIN each. Next: cluster." },
+      { "id": "l06-cluster-definition", "name": "06", "unlockedBy": { "gold": 5 }, "celebrationMessage": "Cluster = take ENTIRE groups. Next: when to use each." },
+      { "id": "l07-strat-vs-cluster-groups", "name": "07", "unlockedBy": { "gold": 6 }, "celebrationMessage": "Key distinction! Stratified wants homogeneous, cluster wants heterogeneous." },
+      { "id": "l08-identify-method", "name": "08", "unlockedBy": { "gold": 7 }, "celebrationMessage": "Nice identification! Practice more." },
+      { "id": "l09-identify-method-2", "name": "09", "unlockedBy": { "gold": 8 }, "celebrationMessage": "You can spot the methods! Now: bias & variability together." },
+      { "id": "l10-bias-variability-combo", "name": "10", "unlockedBy": { "gold": 9 }, "celebrationMessage": "Connecting methods to outcomes! Next: disadvantages." },
+      { "id": "l11-disadvantage", "name": "11", "unlockedBy": { "gold": 10 }, "celebrationMessage": "Every method has trade-offs. Next: choosing the best." },
+      { "id": "l12-choose-best-method", "name": "12", "unlockedBy": { "gold": 11 }, "celebrationMessage": "Strategic thinking! Next: dartboard interpretation." },
+      { "id": "l13-dartboard-analogy", "name": "13", "unlockedBy": { "gold": 12 }, "celebrationMessage": "Visual mastery! Next: fixing sampling problems." },
+      { "id": "l14-fix-the-sample", "name": "14", "unlockedBy": { "gold": 13 }, "celebrationMessage": "Problem solver! Final level: capstone." },
+      { "id": "l15-capstone", "name": "15", "unlockedBy": { "gold": 14 }, "celebrationMessage": "🎉 COMPLETE! You've mastered sampling methods!" }
+    ]
+  }
+}
