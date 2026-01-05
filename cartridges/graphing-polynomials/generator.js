@@ -214,14 +214,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
         "A polynomial is in **standard form** when terms are arranged from highest degree to lowest degree, and all like terms have been combined. For example, $3x^3 + 2x^2 - 5x + 1$ is in standard form because the powers go 3 → 2 → 1 → 0.",
         "Which expression below is already written in standard form?"
       ),
-      optA: katex(options[0]),
-      optB: katex(options[1]),
-      optC: katex(options[2]),
-      optD: katex(options[3]),
-      standardFormPick: { value: katex(correct) }
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      standardFormPick: { value: correct }
     };
 
-    answers = { standardFormPick: { value: katex(correct) } };
+    answers = { standardFormPick: { value: correct } };
     scenario = "Look for descending powers and no uncombined like terms.";
     return { context, graphConfig, answers, scenario };
   }
@@ -254,14 +254,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
         "To write a polynomial in **standard form**: (1) Identify the degree of each term, (2) Arrange terms from highest to lowest degree, (3) Combine any like terms. The result should have powers in descending order.",
         `Rewrite in standard form: ${katex(scrambled)}`
       ),
-      optA: katex(options[0]),
-      optB: katex(options[1]),
-      optC: katex(options[2]),
-      optD: katex(options[3]),
-      rewrittenStandard: { value: katex(standard) }
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      rewrittenStandard: { value: standard }
     };
 
-    answers = { rewrittenStandard: { value: katex(standard) } };
+    answers = { rewrittenStandard: { value: standard } };
     scenario = "Rearrange so the highest power comes first, then decreasing powers.";
     return { context, graphConfig, answers, scenario };
   }
