@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Driller - AP Statistics Practice</title>
+  <title>Driller - Math Practice</title>
   <link rel="stylesheet" href="./styles.css">
   <!-- KaTeX for math rendering -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -2248,26 +2248,49 @@
       tabsContainer.innerHTML = '';
       const gameState = platform.gameEngine.getState();
       const currentMode = platform.currentMode;
+      const goldToUnlock = gameState.goldToUnlock || 3;
+      const goldToMaster = 10; // Auto-progress threshold
 
       const baseTabClass = 'mode-tab snap-start';
       const activeTabClass = 'mode-tab mode-tab-active snap-start';
       const lockedTabClass = 'mode-tab mode-tab-locked snap-start';
 
       modes.forEach((mode, i) => {
-        // Check if mode is unlocked
-        const isUnlocked = mode.unlockedBy === 'default' ||
-          gameState.unlockedTiers.includes(mode.id) ||
-          (mode.unlockedBy?.gold && gameState.starCounts.gold >= mode.unlockedBy.gold);
-
+        // Check if mode is unlocked using the game engine's sequential unlock logic
+        const isUnlocked = gameState.unlockedTiers.includes(mode.id);
         const isCurrentMode = mode.id === currentMode;
+
+        // Get gold stars earned on this mode
+        const modeGold = gameState.starsPerMode?.[mode.id]?.gold || 0;
+        const isMastered = modeGold >= goldToMaster;
 
         const btn = document.createElement('button');
         btn.dataset.modeId = mode.id;
-        btn.title = mode.name;
+        btn.title = mode.name + (isMastered ? ' (Mastered!)' : '');
         btn.setAttribute('aria-label', mode.name);
 
+        // Short name (L1, L2, etc.)
+        const shortName = mode.name.replace('Level ', 'L');
+
         if (isUnlocked) {
-          btn.textContent = mode.name.replace('Level ', 'L');
+          // Show progress indicator for current mode
+          if (isCurrentMode) {
+            if (isMastered) {
+              btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>`;
+            } else {
+              const stars = modeGold >= goldToUnlock ? '✓' : `${modeGold}/${goldToUnlock}`;
+              btn.innerHTML = `${shortName} <span class="text-yellow-400 text-xs ml-1">★${stars}</span>`;
+            }
+          } else {
+            // Mastered levels show graduation cap, completed show checkmark
+            if (isMastered) {
+              btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>`;
+            } else if (modeGold >= goldToUnlock) {
+              btn.innerHTML = `${shortName} <span class="text-green-500 text-xs ml-1">✓</span>`;
+            } else {
+              btn.textContent = shortName;
+            }
+          }
           btn.className = isCurrentMode ? activeTabClass : baseTabClass;
           btn.addEventListener('click', async () => {
             tabsContainer.querySelectorAll('button').forEach(b => {
@@ -2281,12 +2304,13 @@
             updateScenarioDisplay();
           });
         } else {
-          // Locked mode
-          const requirement = mode.unlockedBy?.gold ? `${mode.unlockedBy.gold} gold ★` : 'locked';
-          btn.textContent = `🔒 ${mode.name}`;
+          // Locked mode - show what's needed (gold stars on previous level)
+          const prevModeId = gameState.modeOrder?.[i - 1];
+          const prevModeGold = prevModeId ? (gameState.starsPerMode?.[prevModeId]?.gold || 0) : 0;
+          btn.innerHTML = `<span class="opacity-50">${shortName}</span> <span class="text-xs">🔒${prevModeGold}/${goldToUnlock}</span>`;
           btn.className = lockedTabClass;
           btn.disabled = true;
-          btn.title = `Requires ${requirement} to unlock`;
+          btn.title = `Earn ${goldToUnlock} gold stars on the previous level to unlock`;
         }
 
         tabsContainer.appendChild(btn);
@@ -2316,9 +2340,41 @@
     });
 
     // Also re-render tabs when a star is earned (in case it triggers an unlock)
-    document.addEventListener('platform:starEarned', (e) => {
+    // Auto-progress to next level after mastering current level (10 gold stars)
+    const GOLD_TO_MASTER = 10;
+
+    document.addEventListener('platform:starEarned', async (e) => {
       // Re-render mode tabs to check for newly unlocked modes
       renderModeTabs();
+
+      // Check if student has mastered current level (10 gold stars)
+      const { starType, modeId } = e.detail || {};
+      if (starType === 'gold' && modeId) {
+        const gameState = platform.gameEngine.getState();
+        const modeGold = gameState.starsPerMode?.[modeId]?.gold || 0;
+
+        if (modeGold >= GOLD_TO_MASTER) {
+          // Find next level
+          const modeOrder = gameState.modeOrder || [];
+          const currentIndex = modeOrder.indexOf(modeId);
+          const nextModeId = modeOrder[currentIndex + 1];
+
+          if (nextModeId && gameState.unlockedTiers.includes(nextModeId)) {
+            // Show mastery message and auto-advance
+            celebration.showToast(`🎓 Level Mastered! Moving to the next challenge...`, 'success', 3000);
+            soundEngine.unlock?.();
+
+            setTimeout(async () => {
+              if (platform.setMode(nextModeId)) {
+                console.log('[App] Auto-advancing after mastery to:', nextModeId);
+                renderModeTabs();
+                await platform.loadProblem();
+                updateScenarioDisplay();
+              }
+            }, 2000);
+          }
+        }
+      }
     });
 
     async function loadCartridge(cartridgeId) {
@@ -2480,28 +2536,8 @@
         document.getElementById('app-title').textContent = platform.currentCartridge?.manifest?.meta?.name || 'Driller';
         document.getElementById('current-cartridge-name').textContent = platform.currentCartridge?.manifest?.meta?.name || cartridgeId;
 
-        // Adjust layout based on whether this cartridge shows a graph
-        const showGraph = platform.currentCartridge?.manifest?.display?.showGraph !== false;
-        const leftPane = document.getElementById('left-pane');
-        const rightPane = document.getElementById('right-pane');
-        const graphCard = document.getElementById('graph-card');
-
-        if (showGraph) {
-          // Standard split layout with graph
-          leftPane.classList.remove('hidden');
-          leftPane.classList.add('lg:w-1/2');
-          rightPane.classList.remove('lg:w-full');
-          rightPane.classList.add('lg:w-1/2');
-          graphCard.classList.remove('hidden');
-        } else {
-          // Narrower left pane for scenario only (no graph)
-          leftPane.classList.remove('hidden');
-          leftPane.classList.remove('lg:w-1/2');
-          leftPane.classList.add('lg:w-1/3');
-          rightPane.classList.remove('lg:w-1/2');
-          rightPane.classList.add('lg:w-2/3');
-          graphCard.classList.add('hidden');
-        }
+        // Ensure left pane is visible (graph visibility is handled per-problem in updateScenarioDisplay)
+        document.getElementById('left-pane').classList.remove('hidden');
 
         // Render mode tabs (call the reusable function)
         renderModeTabs();
@@ -2528,6 +2564,28 @@
 
       document.getElementById('scenario-title').textContent = problem.context?.topic || problem.context?.modeName || 'Practice Problem';
       document.getElementById('scenario-text').textContent = problem.scenario || '';
+
+      // Show/hide graph card based on whether this problem has graph content
+      const graphCard = document.getElementById('graph-card');
+      const leftPane = document.getElementById('left-pane');
+      const rightPane = document.getElementById('right-pane');
+      const hasGraph = !!problem.graphConfig;
+
+      if (hasGraph) {
+        // Show graph with proper layout
+        graphCard.classList.remove('hidden');
+        leftPane.classList.remove('lg:w-1/3');
+        leftPane.classList.add('lg:w-1/2');
+        rightPane.classList.remove('lg:w-2/3');
+        rightPane.classList.add('lg:w-1/2');
+      } else {
+        // Hide graph, give more space to content
+        graphCard.classList.add('hidden');
+        leftPane.classList.remove('lg:w-1/2');
+        leftPane.classList.add('lg:w-1/3');
+        rightPane.classList.remove('lg:w-1/2');
+        rightPane.classList.add('lg:w-2/3');
+      }
 
       // Render "given" values if present (for calculation-type cartridges)
       const infoPanel = document.getElementById('info-panel');
@@ -2777,6 +2835,43 @@
         usernameModal.show(true); // First visit - cannot close modal
       }
     }
+
+    // ==================== CONSOLE COMMANDS ====================
+    // Reset progress for current cartridge (current user only - localStorage)
+    window.resetProgress = function() {
+      if (!platform?.gameEngine) {
+        console.error('No cartridge loaded. Load a cartridge first.');
+        return;
+      }
+      const cartridgeId = platform.currentCartridge?.manifest?.meta?.id || 'unknown';
+      const username = userSystem?.currentUser?.username || 'you';
+      if (!confirm(`Reset progress for "${cartridgeId}" (affects only ${username} on this browser)?\n\nThis cannot be undone.`)) {
+        console.log('Reset cancelled.');
+        return;
+      }
+      platform.gameEngine.resetProgress();
+      renderModeTabs();
+      console.log(`✓ Progress reset for "${cartridgeId}".`);
+      console.log(`  → Only Level 1 is now unlocked`);
+      console.log(`  → This only affects localStorage (your browser)`);
+      console.log(`  → Server leaderboard stats are NOT affected`);
+      console.log('Refresh the page to continue.');
+    };
+
+    // Clear all driller data (nuclear option)
+    window.resetAllProgress = function() {
+      if (!confirm('Reset ALL progress for ALL cartridges? This cannot be undone.')) {
+        console.log('Reset cancelled.');
+        return;
+      }
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('driller_'));
+      keys.forEach(k => localStorage.removeItem(k));
+      console.log(`✓ Cleared ${keys.length} saved items. Refresh the page to start fresh.`);
+    };
+
+    console.log('🎮 Console commands available:');
+    console.log('  resetProgress()    - Reset progress for current cartridge');
+    console.log('  resetAllProgress() - Reset ALL cartridge progress (nuclear option)');
 
     init();
   </script>

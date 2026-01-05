@@ -712,7 +712,7 @@ export class Platform {
     }
   }
 
-  onStarEarned(starType, counts) {
+  onStarEarned(starType, counts, modeId = null) {
     // Update star display
     const starsContainer = document.querySelector(this.containers.stars);
     if (starsContainer) {
@@ -724,8 +724,8 @@ export class Platform {
       }
     }
 
-    // Emit event for celebration effects
-    this.emit('starEarned', { starType, counts });
+    // Emit event for celebration effects (include modeId for mastery tracking)
+    this.emit('starEarned', { starType, counts, modeId });
   }
 
   onTierUnlocked(tier) {

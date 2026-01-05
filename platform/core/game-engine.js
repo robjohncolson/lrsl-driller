@@ -12,8 +12,10 @@ export class GameEngine {
     // Gamification state
     this.streaks = {};
     this.starCounts = { gold: 0, silver: 0, bronze: 0, tin: 0 };
+    this.starsPerMode = {};  // Track stars earned per level/mode
     this.currentTier = null;
     this.unlockedTiers = [];
+    this.modeOrder = [];  // Ordered list of mode IDs for sequential unlock
 
     // Hint tracking for current problem
     this.hintsUsedThisProblem = new Set();
@@ -33,6 +35,9 @@ export class GameEngine {
       2: 'bronze',
       3: 'tin'
     };
+
+    // Required gold stars to unlock next level
+    this.goldToUnlock = config.goldToUnlock || 3;
   }
 
   /**
@@ -45,6 +50,9 @@ export class GameEngine {
     // Store unlock rules for re-checking after stars are earned
     this.unlockRules = manifest.modes || manifest.progression?.tiers || [];
 
+    // Store ordered list of mode IDs for sequential unlocking
+    this.modeOrder = (manifest.modes || []).map(m => m.id);
+
     // Initialize streaks for each trackable field
     const streakFields = manifest.progression?.streakFields ||
                          manifest.modes?.map(m => m.id) ||
@@ -53,6 +61,13 @@ export class GameEngine {
     this.streaks = {};
     streakFields.forEach(field => {
       this.streaks[field] = 0;
+    });
+
+    // Initialize starsPerMode for each mode
+    this.modeOrder.forEach(modeId => {
+      if (!this.starsPerMode[modeId]) {
+        this.starsPerMode[modeId] = { gold: 0, silver: 0, bronze: 0, tin: 0 };
+      }
     });
 
     // Load saved state
@@ -83,7 +98,7 @@ export class GameEngine {
     if (allFieldsCorrect) {
       const hintsUsed = this.hintsUsedThisProblem.size;
       const starType = this.getStarType(hintsUsed);
-      this.awardStar(starType);
+      this.awardStar(starType, this.currentTier);
     }
 
     this.saveState();
@@ -107,11 +122,21 @@ export class GameEngine {
   }
 
   /**
-   * Award a star
+   * Award a star (tracks both total and per-mode)
    */
-  awardStar(starType) {
+  awardStar(starType, modeId = null) {
+    // Track total stars
     this.starCounts[starType]++;
-    this.onStarEarned(starType, this.starCounts);
+
+    // Track stars per mode
+    if (modeId) {
+      if (!this.starsPerMode[modeId]) {
+        this.starsPerMode[modeId] = { gold: 0, silver: 0, bronze: 0, tin: 0 };
+      }
+      this.starsPerMode[modeId][starType]++;
+    }
+
+    this.onStarEarned(starType, this.starCounts, modeId);
 
     // Re-check unlocks in case star earned unlocks new tier
     if (this.unlockRules) {
@@ -161,13 +186,16 @@ export class GameEngine {
 
   /**
    * Check and unlock tiers/modes based on progression rules
-   * Works with both manifest.modes and manifest.progression.tiers
+   * STRICT sequential unlocking: each level requires goldToUnlock gold stars on the previous level
+   * Levels must be completed in order - no skipping allowed
    */
   checkUnlocks(tierRules) {
-    for (const tier of tierRules) {
+    for (let i = 0; i < tierRules.length; i++) {
+      const tier = tierRules[i];
       if (this.unlockedTiers.includes(tier.id)) continue;
 
-      if (tier.unlockedBy === 'default') {
+      // First level is always unlocked
+      if (i === 0 || tier.unlockedBy === 'default') {
         this.unlockedTiers.push(tier.id);
         // Set first default tier as current if none set
         if (!this.currentTier) {
@@ -176,32 +204,45 @@ export class GameEngine {
         continue;
       }
 
-      // Check unlock conditions
-      const condition = tier.unlockedBy;
-      if (!condition) continue;
+      // STRICT sequential unlock: previous level MUST have enough gold stars
+      // No fallback to legacy conditions - levels must be completed in order
+      const previousModeId = this.modeOrder[i - 1];
+      const previousModeStars = this.starsPerMode[previousModeId] || { gold: 0 };
 
-      let unlocked = false;
+      // Also check that the previous level is actually unlocked (prevents skipping)
+      const previousUnlocked = this.unlockedTiers.includes(previousModeId);
 
-      if (condition.gold && this.starCounts.gold >= condition.gold) {
-        unlocked = true;
-      }
-      if (condition.totalStars) {
-        const total = Object.values(this.starCounts).reduce((a, b) => a + b, 0);
-        if (total >= condition.totalStars) unlocked = true;
-      }
-      if (condition.streak) {
-        const maxStreak = Math.max(...Object.values(this.streaks));
-        if (maxStreak >= condition.streak) unlocked = true;
-      }
-
-      if (unlocked) {
+      if (previousUnlocked && previousModeStars.gold >= this.goldToUnlock) {
         this.unlockedTiers.push(tier.id);
         this.onTierUnlocked(tier);
         this.saveState();
       }
+      // If previous level isn't complete, stop checking further levels
+      // (they can't be unlocked without completing earlier ones)
     }
 
     return this.unlockedTiers;
+  }
+
+  /**
+   * Get gold stars earned on a specific mode
+   */
+  getModeGoldStars(modeId) {
+    return this.starsPerMode[modeId]?.gold || 0;
+  }
+
+  /**
+   * Check if a mode is unlocked
+   */
+  isModeUnlocked(modeId) {
+    return this.unlockedTiers.includes(modeId);
+  }
+
+  /**
+   * Get the index of a mode in the progression order
+   */
+  getModeIndex(modeId) {
+    return this.modeOrder.indexOf(modeId);
   }
 
   /**
@@ -211,8 +252,11 @@ export class GameEngine {
     return {
       streaks: { ...this.streaks },
       starCounts: { ...this.starCounts },
+      starsPerMode: { ...this.starsPerMode },
       currentTier: this.currentTier,
       unlockedTiers: [...this.unlockedTiers],
+      modeOrder: [...this.modeOrder],
+      goldToUnlock: this.goldToUnlock,
       hintsUsed: this.hintsUsedThisProblem.size,
       retriesUsed: this.retriesThisProblem,
       totalPenalties: this.getTotalPenalties(),
@@ -227,6 +271,7 @@ export class GameEngine {
     const state = {
       streaks: this.streaks,
       starCounts: this.starCounts,
+      starsPerMode: this.starsPerMode,
       currentTier: this.currentTier,
       unlockedTiers: this.unlockedTiers
     };
@@ -243,8 +288,9 @@ export class GameEngine {
         const state = JSON.parse(saved);
         this.streaks = { ...this.streaks, ...state.streaks };
         this.starCounts = state.starCounts || this.starCounts;
-        this.currentTier = state.currentTier || 'basic';
-        this.unlockedTiers = state.unlockedTiers || ['basic'];
+        this.starsPerMode = { ...this.starsPerMode, ...state.starsPerMode };
+        this.currentTier = state.currentTier || null;
+        this.unlockedTiers = state.unlockedTiers || [];
       } catch (e) {
         console.warn('Failed to load game state:', e);
       }
@@ -257,8 +303,13 @@ export class GameEngine {
   resetProgress() {
     Object.keys(this.streaks).forEach(k => this.streaks[k] = 0);
     this.starCounts = { gold: 0, silver: 0, bronze: 0, tin: 0 };
-    this.currentTier = 'basic';
-    this.unlockedTiers = ['basic'];
+    // Reset stars per mode
+    Object.keys(this.starsPerMode).forEach(modeId => {
+      this.starsPerMode[modeId] = { gold: 0, silver: 0, bronze: 0, tin: 0 };
+    });
+    // Reset to first level only
+    this.currentTier = this.modeOrder[0] || null;
+    this.unlockedTiers = this.modeOrder[0] ? [this.modeOrder[0]] : [];
     this.saveState();
   }
 

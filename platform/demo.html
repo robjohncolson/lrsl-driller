@@ -120,36 +120,46 @@
       document.getElementById('cartridge-desc').textContent = manifest.meta.description;
     }
 
-    function updateModeTabs(modes, currentMode, unlockedTiers, starCounts = {}) {
+    function updateModeTabs(modes, currentMode, unlockedTiers, gameState = {}) {
       const container = document.getElementById('mode-tabs');
       container.innerHTML = '';
+      const goldToUnlock = gameState.goldToUnlock || 3;
+      const starsPerMode = gameState.starsPerMode || {};
+      const modeOrder = gameState.modeOrder || modes.map(m => m.id);
 
-      for (const mode of modes) {
+      modes.forEach((mode, i) => {
         const btn = document.createElement('button');
         btn.dataset.mode = mode.id;
-        btn.textContent = mode.name;
 
-        // Check unlock: default, already unlocked, or meets gold star requirement
-        const isUnlocked = mode.unlockedBy === 'default' ||
-          unlockedTiers.includes(mode.id) ||
-          (mode.unlockedBy?.gold && (starCounts.gold || 0) >= mode.unlockedBy.gold);
+        // Check unlock using sequential logic
+        const isUnlocked = unlockedTiers.includes(mode.id);
         const isActive = mode.id === currentMode;
+        const modeGold = starsPerMode[mode.id]?.gold || 0;
 
         if (isActive) {
+          const stars = modeGold >= goldToUnlock ? '✓' : `${modeGold}/${goldToUnlock}`;
+          btn.innerHTML = `${mode.name} <span class="text-yellow-400 text-sm ml-1">★${stars}</span>`;
           btn.className = 'px-4 py-2 rounded-lg bg-purple-600 text-white font-medium';
         } else if (isUnlocked) {
+          if (modeGold >= goldToUnlock) {
+            btn.innerHTML = `${mode.name} <span class="text-green-500 text-sm ml-1">✓</span>`;
+          } else {
+            btn.textContent = mode.name;
+          }
           btn.className = 'px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer';
           btn.addEventListener('click', () => switchMode(mode.id));
         } else {
+          // Locked - show progress on previous level
+          const prevModeId = modeOrder[i - 1];
+          const prevModeGold = prevModeId ? (starsPerMode[prevModeId]?.gold || 0) : 0;
+          btn.innerHTML = `${mode.name} 🔒<span class="text-xs ml-1">${prevModeGold}/${goldToUnlock}</span>`;
           btn.className = 'px-4 py-2 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed';
           btn.disabled = true;
-          const requirement = mode.unlockedBy?.gold ? `${mode.unlockedBy.gold} gold stars` : 'locked';
-          btn.title = `Unlock with ${requirement}`;
-          btn.innerHTML = `${mode.name} &#128274;`;
+          btn.title = `Earn ${goldToUnlock} gold stars on the previous level to unlock`;
         }
 
         container.appendChild(btn);
-      }
+      });
     }
 
     function updateStreaksDisplay(streaks) {
@@ -184,7 +194,7 @@
     // ==================== PLATFORM CALLBACKS ====================
     function onStateChange(state) {
       if (state.modes) {
-        updateModeTabs(state.modes, state.currentMode, state.game.unlockedTiers);
+        updateModeTabs(state.modes, state.currentMode, state.game.unlockedTiers, state.game);
       }
       if (state.game) {
         updateStreaksDisplay(state.game.streaks);

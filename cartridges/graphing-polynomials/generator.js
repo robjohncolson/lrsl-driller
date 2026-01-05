@@ -19,6 +19,35 @@ function shuffle(arr) {
   return a;
 }
 
+/** Shuffle until result differs from original (for generating wrong answers) */
+function shuffleDifferent(arr) {
+  const original = arr.join('|||');
+  let result = shuffle(arr);
+  let attempts = 0;
+  while (result.join('|||') === original && attempts < 10) {
+    result = shuffle(arr);
+    attempts++;
+  }
+  return result;
+}
+
+/** Ensure all options are unique, regenerating if needed */
+function ensureUniqueOptions(options, regenerateOption) {
+  const seen = new Set();
+  const result = [];
+  for (let i = 0; i < options.length; i++) {
+    let opt = options[i];
+    let attempts = 0;
+    while (seen.has(opt) && attempts < 5) {
+      opt = regenerateOption(i, opt);
+      attempts++;
+    }
+    seen.add(opt);
+    result.push(opt);
+  }
+  return result;
+}
+
 /** coefficients in ascending order: c0 + c1 x + ... + cn x^n */
 function evalPolyAsc(coeffs, x) {
   let y = 0;
@@ -192,19 +221,29 @@ export function generateProblem(modeId, contextFromFile, mode) {
   // -------------------------
   if (modeId === "l02-standard-form-select") {
     // Create a base polynomial (combined like terms) then make 3 non-standard variants.
-    const deg = choice([2, 3, 4]);
+    // Ensure at least 3 terms so shuffling produces different results
+    const deg = choice([3, 4]); // Use higher degree for more terms
     const coeffs = new Array(deg + 1).fill(0);
     coeffs[deg] = choice([1, 2, -1, -2]);
-    for (let p = deg - 1; p >= 0; p--) coeffs[p] = randInt(-5, 5);
+    // Ensure all coefficients are non-zero for more distinct shuffles
+    for (let p = deg - 1; p >= 0; p--) {
+      let c = randInt(-5, 5);
+      while (c === 0) c = randInt(-5, 5);
+      coeffs[p] = c;
+    }
 
     const standard = formatPoly(coeffs);
 
-    const shuffled = shuffle(
-      standard.split(/(?= \+ | - )/).map(s => s.trim()).filter(Boolean)
-    ).join(" + ").replace(/\+\s-/g, "- ");
+    // Shuffled: use shuffleDifferent to ensure it's different from standard
+    const terms = standard.split(/(?= \+ | - )/).map(s => s.trim()).filter(Boolean);
+    const shuffledTerms = shuffleDifferent(terms);
+    const shuffled = shuffledTerms.join(" + ").replace(/\+\s-/g, "- ");
 
-    const notCombined = standard.includes("x") ? `${standard} + ${choice([1,2,3])}x - ${choice([1,2,3])}x` : `${standard} + x - x`;
+    // Not combined: add uncombined like terms
+    const extraCoeff = choice([2, 3, 4]);
+    const notCombined = `${standard} + ${extraCoeff}x - ${extraCoeff}x`;
 
+    // Ascending: write in ascending order (lowest to highest power)
     const ascending = coeffs
       .map((c, p) => ({ c, p }))
       .filter(t => Math.abs(t.c) > 1e-12)
@@ -223,7 +262,20 @@ export function generateProblem(modeId, contextFromFile, mode) {
         return acc + ` ${t.sign} ${t.term}`;
       }, "");
 
-    const options = shuffle([standard, shuffled, notCombined, ascending]);
+    // Ensure all options are unique before shuffling
+    let rawOptions = [standard, shuffled, notCombined, ascending];
+    const uniqueSet = new Set(rawOptions);
+
+    // If we have duplicates, generate alternative wrong answers
+    if (uniqueSet.size < 4) {
+      // Create a different wrong answer: change a coefficient
+      const altCoeffs = coeffs.slice();
+      altCoeffs[0] = altCoeffs[0] + choice([1, 2, -1, -2]);
+      const altWrong = formatPoly(altCoeffs);
+      rawOptions = [standard, shuffled !== standard ? shuffled : altWrong, notCombined, ascending !== standard ? ascending : altWrong];
+    }
+
+    const options = shuffle(rawOptions);
     const correct = standard;
 
     context = {
@@ -248,23 +300,71 @@ export function generateProblem(modeId, contextFromFile, mode) {
   // Level 3: Choose the Standard Form of a scrambled expression
   // -------------------------
   if (modeId === "l03-standard-form-rewrite") {
-    const deg = choice([2, 3, 4]);
+    // Use higher degree and ensure non-zero coefficients for distinct options
+    const deg = choice([3, 4]);
     const coeffs = new Array(deg + 1).fill(0);
     coeffs[deg] = choice([1, 2, -1, -2]);
-    for (let p = deg - 1; p >= 0; p--) coeffs[p] = randInt(-6, 6);
+    for (let p = deg - 1; p >= 0; p--) {
+      let c = randInt(-6, 6);
+      while (c === 0) c = randInt(-6, 6);
+      coeffs[p] = c;
+    }
 
     const standard = formatPoly(coeffs);
 
-    // Create a scrambled version by shuffling term order
+    // Create a scrambled version by shuffling term order (ensure different from standard)
     const terms = standard.split(/(?= \+ | - )/).map(s => s.trim()).filter(Boolean);
-    const scrambled = shuffle(terms).join(" + ").replace(/\+\s-/g, "- ");
+    const scrambledTerms = shuffleDifferent(terms);
+    const scrambled = scrambledTerms.join(" + ").replace(/\+\s-/g, "- ");
 
-    // Wrong options
-    const wrong1 = scramblePowersButKeepCoeffs(coeffs);
-    const wrong2 = standard + " + 0x^{2}"; // extra zero term
-    const wrong3 = scrambled;
+    // Wrong option 1: wrong coefficient order (swap some coefficients between powers)
+    const wrong1Coeffs = coeffs.slice();
+    // Swap constant and linear coefficient
+    [wrong1Coeffs[0], wrong1Coeffs[1]] = [wrong1Coeffs[1], wrong1Coeffs[0]];
+    const wrong1 = formatPoly(wrong1Coeffs);
 
-    const options = shuffle([standard, wrong1, wrong2, wrong3]);
+    // Wrong option 2: wrong leading coefficient sign
+    const wrong2Coeffs = coeffs.slice();
+    wrong2Coeffs[deg] = -wrong2Coeffs[deg];
+    const wrong2 = formatPoly(wrong2Coeffs);
+
+    // Wrong option 3: ascending order (backwards)
+    const ascending = coeffs
+      .map((c, p) => ({ c, p }))
+      .filter(t => Math.abs(t.c) > 1e-12)
+      .map(({ c, p }) => {
+        const sign = c < 0 ? "-" : "+";
+        const abs = Math.abs(c);
+        const coeffStr = (p > 0 && Math.abs(abs - 1) < 1e-12) ? "" : formatNumber(abs);
+        let term = "";
+        if (p === 0) term = `${coeffStr || "1"}`;
+        else if (p === 1) term = `${coeffStr}x`;
+        else term = `${coeffStr}x^{${p}}`;
+        return { sign, term };
+      })
+      .reduce((acc, t, idx) => {
+        if (idx === 0) return (t.sign === "-" ? `-${t.term}` : `${t.term}`);
+        return acc + ` ${t.sign} ${t.term}`;
+      }, "");
+
+    // Ensure all 4 options are unique
+    let rawOptions = [standard, wrong1, wrong2, ascending];
+    const uniqueSet = new Set(rawOptions);
+
+    // Replace duplicates with alternative wrong answers
+    if (uniqueSet.size < 4) {
+      const altCoeffs = coeffs.slice();
+      altCoeffs[0] = altCoeffs[0] + choice([3, 4, -3, -4]);
+      rawOptions = Array.from(new Set([standard, wrong1, wrong2, ascending, formatPoly(altCoeffs)])).slice(0, 4);
+      // Pad if still not enough
+      while (rawOptions.length < 4) {
+        const padCoeffs = coeffs.slice();
+        padCoeffs[1] = padCoeffs[1] + choice([2, 3, -2, -3]);
+        rawOptions.push(formatPoly(padCoeffs));
+      }
+    }
+
+    const options = shuffle(rawOptions);
 
     context = {
       ...makeContextBase(
