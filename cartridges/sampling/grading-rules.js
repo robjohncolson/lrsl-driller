@@ -150,56 +150,85 @@ export function gradeField(fieldId, answer, context) {
 
   // ===== Level 7: SRS Key (Topic 3.3) =====
   if (fieldId === "srsKey") {
-    if (containsAny(answer, ["group"])) {
+    // Check for exact match first (handles varied questions)
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You understand what makes an SRS special." };
+    }
+    // Legacy support for "group" answer
+    if (containsAny(answer, ["group"]) && containsAny(expected, ["group"])) {
       return { score: "E", feedback: "Correct! In an SRS, every GROUP of n individuals has equal chance—not just every individual." };
+    }
+    // Partial credit for understanding it's about combinations/groups
+    if (containsAny(answer, ["combination", "possible", "group", "every possible"])) {
+      return { score: "P", feedback: "You're on the right track! The key is that every possible GROUP of size n has equal probability." };
     }
     if (containsAny(answer, ["individual"])) {
       return { score: "P", feedback: "Close! While individuals have equal chance, the KEY definition is every GROUP of size n has equal chance." };
     }
-    return { score: "I", feedback: "The answer is 'group.' SRS requires every possible group of n to have equal selection probability." };
+    return { score: "I", feedback: `Incorrect. ${expected}` };
   }
 
   // ===== Level 8: Stratified Key (Topic 3.3) =====
   if (fieldId === "stratKey") {
-    if (containsAny(answer, ["each", "from each", "srs from"])) {
+    // Check for exact match first (handles varied questions)
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You understand stratified sampling." };
+    }
+    if (containsAny(answer, ["each", "from each", "srs from", "all groups"])) {
       return { score: "E", feedback: "Correct! Stratified sampling takes an SRS FROM EACH stratum." };
     }
-    if (containsAny(answer, ["some", "all in"])) {
+    if (containsAny(answer, ["some groups", "all in", "entire"])) {
       return { score: "I", feedback: "That's CLUSTER sampling! Stratified samples FROM EACH group, cluster selects ENTIRE groups." };
     }
-    return { score: "I", feedback: "Stratified = divide into groups, then SRS FROM EACH group." };
+    return { score: "I", feedback: `Incorrect. ${expected}` };
   }
 
   // ===== Level 9: Cluster Key (Topic 3.3) =====
   if (fieldId === "clusterKey") {
-    if (containsAny(answer, ["some", "all in selected", "all in"])) {
+    // Check for exact match first (handles varied questions)
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You understand cluster sampling." };
+    }
+    if (containsAny(answer, ["some", "all in selected", "all in", "entire", "practical", "locations"])) {
       return { score: "E", feedback: "Correct! Cluster sampling selects SOME groups, then samples ALL in selected groups." };
     }
-    if (containsAny(answer, ["each", "from each"])) {
+    if (containsAny(answer, ["each", "from each", "every group"])) {
       return { score: "I", feedback: "That's STRATIFIED sampling! Cluster selects ENTIRE groups, stratified samples FROM EACH." };
     }
-    return { score: "I", feedback: "Cluster = randomly select SOME groups, sample ALL individuals in those groups." };
+    return { score: "I", feedback: `Incorrect. ${expected}` };
   }
 
   // ===== Level 10: Stratified vs Cluster Ideal Groups =====
   if (fieldId === "stratIdeal") {
-    if (containsAny(answer, ["homogeneous", "similar"])) {
-      return { score: "E", feedback: "Correct! Stratified works best when strata are HOMOGENEOUS (similar within)." };
+    // Check exact match first (handles varied questions like "ALL groups" vs "SOME groups")
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You understand stratified sampling." };
     }
-    if (containsAny(answer, ["heterogeneous", "diverse"])) {
+    if (containsAny(answer, ["homogeneous", "similar", "all"])) {
+      if (containsAny(expected, ["homogeneous", "similar", "all"])) {
+        return { score: "E", feedback: "Correct! Stratified works best when strata are HOMOGENEOUS (similar within)." };
+      }
+    }
+    if (containsAny(answer, ["heterogeneous", "diverse", "some"])) {
       return { score: "I", feedback: "That's for CLUSTER. Stratified wants HOMOGENEOUS strata (similar within each group)." };
     }
-    return { score: "I", feedback: "Stratified works best with homogeneous groups (similar within each stratum)." };
+    return { score: "I", feedback: `Incorrect. ${expected}` };
   }
 
   if (fieldId === "clusterIdeal") {
-    if (containsAny(answer, ["heterogeneous", "diverse"])) {
-      return { score: "E", feedback: "Correct! Cluster works best when clusters are HETEROGENEOUS (each is a mini-population)." };
+    // Check exact match first
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You understand cluster sampling." };
+    }
+    if (containsAny(answer, ["heterogeneous", "diverse", "some", "all (everyone)"])) {
+      if (containsAny(expected, ["heterogeneous", "diverse", "some", "all (everyone)"])) {
+        return { score: "E", feedback: "Correct! Cluster works best when clusters are HETEROGENEOUS (each is a mini-population)." };
+      }
     }
     if (containsAny(answer, ["homogeneous", "similar"])) {
       return { score: "I", feedback: "That's for STRATIFIED. Cluster wants HETEROGENEOUS clusters (diverse within)." };
     }
-    return { score: "I", feedback: "Cluster works best with heterogeneous groups (diverse within each cluster)." };
+    return { score: "I", feedback: `Incorrect. ${expected}` };
   }
 
   // ===== Level 11-13: Identify Sampling Method =====

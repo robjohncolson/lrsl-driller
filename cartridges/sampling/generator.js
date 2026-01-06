@@ -188,6 +188,163 @@ const inferenceScenarios = [
   }
 ];
 
+// Level 7: SRS definition questions (variety)
+const srsDefinitionQuestions = [
+  {
+    question: "In an SRS, every _____ of size n has an equal chance of being selected.",
+    answer: "group",
+    options: ["group", "individual", "cluster", "stratum"]
+  },
+  {
+    question: "What makes an SRS different from just giving every individual an equal chance?",
+    answer: "Every possible combination of n individuals must have equal probability",
+    options: [
+      "Every possible combination of n individuals must have equal probability",
+      "The sample size must be at least 30",
+      "The population must be divided into groups first",
+      "Individuals must volunteer to participate"
+    ]
+  },
+  {
+    question: "A researcher numbers all 500 employees 1-500 and uses a random number generator to pick 50. This is an SRS because:",
+    answer: "Every group of 50 employees has the same chance of being selected",
+    options: [
+      "Every group of 50 employees has the same chance of being selected",
+      "Every employee has a 10% chance of being selected",
+      "The researcher used technology",
+      "The sample is large enough"
+    ]
+  },
+  {
+    question: "Which statement correctly describes an SRS?",
+    answer: "Every possible sample of size n has equal probability of selection",
+    options: [
+      "Every possible sample of size n has equal probability of selection",
+      "Every individual has equal probability of selection",
+      "The first n individuals are selected",
+      "Individuals are selected based on convenience"
+    ]
+  }
+];
+
+// Level 8: Stratified definition questions (variety)
+const stratifiedDefinitionQuestions = [
+  {
+    question: "In stratified sampling, you divide into groups based on shared characteristics, then:",
+    answer: "Take an SRS from EACH group",
+    options: [
+      "Take an SRS from EACH group",
+      "Randomly select some groups and sample ALL in them",
+      "Select every nth individual from each group"
+    ]
+  },
+  {
+    question: "A university wants to survey students. They divide by class year (freshman, sophomore, junior, senior) and randomly select 25 FROM EACH. This is stratified because:",
+    answer: "They sampled from ALL groups (every class year is represented)",
+    options: [
+      "They sampled from ALL groups (every class year is represented)",
+      "They selected entire class years",
+      "They used a systematic approach",
+      "The groups are naturally occurring"
+    ]
+  },
+  {
+    question: "What is the KEY feature that identifies stratified sampling?",
+    answer: "Sample FROM EACH group, not entire groups",
+    options: [
+      "Sample FROM EACH group, not entire groups",
+      "Select SOME groups and take everyone in them",
+      "Groups must be geographic regions",
+      "Sample size must be equal in all groups"
+    ]
+  },
+  {
+    question: "Stratified sampling ensures representation by:",
+    answer: "Including individuals from every stratum in the sample",
+    options: [
+      "Including individuals from every stratum in the sample",
+      "Selecting entire groups at random",
+      "Using systematic selection within groups",
+      "Letting individuals choose their group"
+    ]
+  }
+];
+
+// Level 9: Cluster definition questions (variety)
+const clusterDefinitionQuestions = [
+  {
+    question: "In cluster sampling, you divide into groups, then:",
+    answer: "Randomly select SOME groups, sample ALL in selected groups",
+    options: [
+      "Randomly select SOME groups, sample ALL in selected groups",
+      "Take an SRS from EACH group",
+      "Select every nth group"
+    ]
+  },
+  {
+    question: "A researcher randomly selects 5 schools from 50 and surveys ALL students at those 5 schools. This is cluster sampling because:",
+    answer: "Entire groups (schools) were selected, and everyone in them was sampled",
+    options: [
+      "Entire groups (schools) were selected, and everyone in them was sampled",
+      "Students from every school are represented",
+      "The schools were divided by region",
+      "A random number generator was used"
+    ]
+  },
+  {
+    question: "What is the KEY feature that identifies cluster sampling?",
+    answer: "Select SOME groups, take ALL individuals from selected groups",
+    options: [
+      "Select SOME groups, take ALL individuals from selected groups",
+      "Sample from EACH group in the population",
+      "Groups must be similar to each other",
+      "Every individual has equal probability"
+    ]
+  },
+  {
+    question: "Cluster sampling is often used because:",
+    answer: "It's more practical when the population is spread across many locations",
+    options: [
+      "It's more practical when the population is spread across many locations",
+      "It always gives more accurate results",
+      "It ensures every subgroup is represented",
+      "It requires smaller sample sizes"
+    ]
+  }
+];
+
+// Level 10: Stratified vs Cluster comparison questions (variety)
+const stratVsClusterQuestions = [
+  {
+    question: "Match: Stratified works best when groups are _____, Cluster works best when groups are _____",
+    stratAnswer: "Homogeneous (similar within each group)",
+    clusterAnswer: "Heterogeneous (diverse within each group)",
+    stratOptions: ["Homogeneous (similar within each group)", "Heterogeneous (diverse within each group)"],
+    clusterOptions: ["Heterogeneous (diverse within each group)", "Homogeneous (similar within each group)"]
+  },
+  {
+    question: "In stratified sampling we use _____ groups; in cluster sampling we use _____ groups",
+    stratAnswer: "ALL",
+    clusterAnswer: "SOME",
+    stratOptions: ["ALL", "SOME"],
+    clusterOptions: ["SOME", "ALL"]
+  },
+  {
+    question: "From each group, stratified takes _____ individuals; cluster takes _____ individuals",
+    stratAnswer: "SOME (an SRS)",
+    clusterAnswer: "ALL (everyone)",
+    stratOptions: ["SOME (an SRS)", "ALL (everyone)"],
+    clusterOptions: ["ALL (everyone)", "SOME (an SRS)"]
+  },
+  {
+    question: "Stratified wants groups that are _____ within; Cluster wants groups that are _____ within",
+    stratAnswer: "Similar (homogeneous)",
+    clusterAnswer: "Diverse (heterogeneous)",
+    stratOptions: ["Similar (homogeneous)", "Diverse (heterogeneous)"],
+    clusterOptions: ["Diverse (heterogeneous)", "Similar (homogeneous)"]
+  }
+];
+
 // Level 7-13: Sampling method scenarios
 const samplingScenarios = {
   srs: [
@@ -472,10 +629,11 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
   // ========== LEVEL 7: SRS Definition (Topic 3.3) ==========
   if (modeId === "l07-srs-definition") {
-    const options = shuffle(["group", "individual", "cluster", "stratum"]);
+    const q = drawFromBag('srsDefinitionQuestions', srsDefinitionQuestions);
+    const options = shuffle([...q.options]);
 
     context = {
-      topicId: "3.3",
+      topicId: "3.3a",
       problemText: "**DAT-2.C.2:** A **Simple Random Sample (SRS)** is a sample in which every GROUP of a given size has an equal chance of being chosen.\n\n" +
                    "⚠️ **Common misconception:** SRS is NOT just 'every individual has equal chance.'\n\n" +
                    "The key requirement: every POSSIBLE GROUP of n individuals has equal probability.\n\n" +
@@ -484,28 +642,25 @@ export function generateProblem(modeId, contextFromFile, mode) {
                    "• Use random number generator to pick n numbers\n" +
                    "• Table of random digits\n" +
                    "• Draw names from a hat (without replacement)",
-      givenText: "In an SRS, every _____ of size n has an equal chance of being selected.",
+      givenText: q.question,
       optA: options[0],
       optB: options[1],
       optC: options[2],
-      optD: options[3],
-      srsKey: { value: "group" }
+      optD: options[3] || options[0],  // Fallback if only 3 options
+      srsKey: { value: q.answer }
     };
-    answers = { srsKey: { value: "group" } };
-    scenario = "In an SRS, every _____ of size n has an equal chance of being selected.";
+    answers = { srsKey: { value: q.answer } };
+    scenario = q.question;
     return { context, graphConfig, answers, scenario };
   }
 
   // ========== LEVEL 8: Stratified Definition (Topic 3.3) ==========
   if (modeId === "l08-stratified-definition") {
-    const options = shuffle([
-      "Take an SRS from EACH group",
-      "Randomly select some groups and sample ALL in them",
-      "Select every nth individual from each group"
-    ]);
+    const q = drawFromBag('stratifiedDefinitionQuestions', stratifiedDefinitionQuestions);
+    const options = shuffle([...q.options]);
 
     context = {
-      topicId: "3.3",
+      topicId: "3.3b",
       problemText: "**DAT-2.C.3:** A **Stratified Random Sample** involves:\n" +
                    "1. Divide population into separate groups called STRATA\n" +
                    "2. Take an SRS FROM EACH stratum\n" +
@@ -513,27 +668,25 @@ export function generateProblem(modeId, contextFromFile, mode) {
                    "**Key feature:** Sample includes individuals from EVERY stratum.\n\n" +
                    "**When to use:** When the population has distinct subgroups that may differ, and you want to ensure all subgroups are represented.\n\n" +
                    "**Example:** Stratify voters by age group (18-29, 30-44, 45-64, 65+) and sample from EACH.",
-      givenText: "In stratified sampling, you divide into groups based on shared characteristics, then:",
+      givenText: q.question,
       optA: options[0],
       optB: options[1],
       optC: options[2],
-      stratKey: { value: "Take an SRS from EACH group" }
+      optD: options[3] || options[0],
+      stratKey: { value: q.answer }
     };
-    answers = { stratKey: { value: "Take an SRS from EACH group" } };
-    scenario = "In stratified sampling, you divide into groups based on shared characteristics, then:";
+    answers = { stratKey: { value: q.answer } };
+    scenario = q.question;
     return { context, graphConfig, answers, scenario };
   }
 
   // ========== LEVEL 9: Cluster Definition (Topic 3.3) ==========
   if (modeId === "l09-cluster-definition") {
-    const options = shuffle([
-      "Randomly select SOME groups, sample ALL in selected groups",
-      "Take an SRS from EACH group",
-      "Select every nth group"
-    ]);
+    const q = drawFromBag('clusterDefinitionQuestions', clusterDefinitionQuestions);
+    const options = shuffle([...q.options]);
 
     context = {
-      topicId: "3.3",
+      topicId: "3.3c",
       problemText: "**DAT-2.C.4:** A **Cluster Random Sample** involves:\n" +
                    "1. Divide population into groups called CLUSTERS\n" +
                    "2. Randomly select SOME clusters\n" +
@@ -541,21 +694,24 @@ export function generateProblem(modeId, contextFromFile, mode) {
                    "**Key feature:** Only SOME clusters are in the sample, but you take EVERYONE from chosen clusters.\n\n" +
                    "**When to use:** When it's impractical or expensive to sample across the whole population, but you can easily access entire groups.\n\n" +
                    "**Example:** Randomly select 5 schools from a district, survey ALL students at those 5 schools.",
-      givenText: "In cluster sampling, you divide into groups, then:",
+      givenText: q.question,
       optA: options[0],
       optB: options[1],
       optC: options[2],
-      clusterKey: { value: "Randomly select SOME groups, sample ALL in selected groups" }
+      optD: options[3] || options[0],
+      clusterKey: { value: q.answer }
     };
-    answers = { clusterKey: { value: "Randomly select SOME groups, sample ALL in selected groups" } };
-    scenario = "In cluster sampling, you divide into groups, then:";
+    answers = { clusterKey: { value: q.answer } };
+    scenario = q.question;
     return { context, graphConfig, answers, scenario };
   }
 
   // ========== LEVEL 10: Stratified vs Cluster (Topic 3.3) ==========
   if (modeId === "l10-strat-vs-cluster") {
+    const q = drawFromBag('stratVsClusterQuestions', stratVsClusterQuestions);
+
     context = {
-      topicId: "3.3",
+      topicId: "3.3d",
       problemText: "**Stratified vs Cluster: The Key Difference**\n\n" +
                    "| Aspect | Stratified | Cluster |\n" +
                    "|--------|------------|--------|\n" +
@@ -566,19 +722,19 @@ export function generateProblem(modeId, contextFromFile, mode) {
                    "• **Stratified** works best when strata are HOMOGENEOUS (similar within each stratum)\n" +
                    "• **Cluster** works best when clusters are HETEROGENEOUS (each cluster is like a mini-population)\n\n" +
                    "**Memory trick:** Strata = Similar within. Clusters = Complete mini-populations.",
-      givenText: "Match the ideal group characteristics to each method.",
-      optA: "Homogeneous (similar within each group)",
-      optB: "Heterogeneous (diverse within each group)",
-      optC: "Heterogeneous (diverse within each group)",
-      optD: "Homogeneous (similar within each group)",
-      stratIdeal: { value: "Homogeneous (similar within each group)" },
-      clusterIdeal: { value: "Heterogeneous (diverse within each group)" }
+      givenText: q.question,
+      optA: q.stratOptions[0],
+      optB: q.stratOptions[1],
+      optC: q.clusterOptions[0],
+      optD: q.clusterOptions[1],
+      stratIdeal: { value: q.stratAnswer },
+      clusterIdeal: { value: q.clusterAnswer }
     };
     answers = {
-      stratIdeal: { value: "Homogeneous (similar within each group)" },
-      clusterIdeal: { value: "Heterogeneous (diverse within each group)" }
+      stratIdeal: { value: q.stratAnswer },
+      clusterIdeal: { value: q.clusterAnswer }
     };
-    scenario = "Match the ideal group characteristics to each sampling method.";
+    scenario = q.question;
     return { context, graphConfig, answers, scenario };
   }
 
