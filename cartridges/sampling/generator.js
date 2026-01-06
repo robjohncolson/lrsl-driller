@@ -314,34 +314,43 @@ const clusterDefinitionQuestions = [
 ];
 
 // Level 10: Stratified vs Cluster comparison questions (variety)
+// Each question has paired questions about stratified and cluster with consistent format
 const stratVsClusterQuestions = [
   {
-    question: "Match: Stratified works best when groups are _____, Cluster works best when groups are _____",
-    stratAnswer: "Homogeneous (similar within each group)",
-    clusterAnswer: "Heterogeneous (diverse within each group)",
-    stratOptions: ["Homogeneous (similar within each group)", "Heterogeneous (diverse within each group)"],
-    clusterOptions: ["Heterogeneous (diverse within each group)", "Homogeneous (similar within each group)"]
+    // Focus: How many GROUPS are used in the sample?
+    stratQuestion: "In STRATIFIED sampling, how many groups end up in the sample?",
+    stratAnswer: "ALL groups",
+    stratOptions: ["ALL groups", "SOME groups"],
+    clusterQuestion: "In CLUSTER sampling, how many groups end up in the sample?",
+    clusterAnswer: "SOME groups",
+    clusterOptions: ["ALL groups", "SOME groups"]
   },
   {
-    question: "In stratified sampling we use _____ groups; in cluster sampling we use _____ groups",
-    stratAnswer: "ALL",
-    clusterAnswer: "SOME",
-    stratOptions: ["ALL", "SOME"],
-    clusterOptions: ["SOME", "ALL"]
-  },
-  {
-    question: "From each group, stratified takes _____ individuals; cluster takes _____ individuals",
-    stratAnswer: "SOME (an SRS)",
+    // Focus: How many INDIVIDUALS from each group?
+    stratQuestion: "In STRATIFIED sampling, how many individuals are taken from each group?",
+    stratAnswer: "SOME (a random sample)",
+    stratOptions: ["SOME (a random sample)", "ALL (everyone)"],
+    clusterQuestion: "In CLUSTER sampling, how many individuals are taken from selected groups?",
     clusterAnswer: "ALL (everyone)",
-    stratOptions: ["SOME (an SRS)", "ALL (everyone)"],
-    clusterOptions: ["ALL (everyone)", "SOME (an SRS)"]
+    clusterOptions: ["SOME (a random sample)", "ALL (everyone)"]
   },
   {
-    question: "Stratified wants groups that are _____ within; Cluster wants groups that are _____ within",
-    stratAnswer: "Similar (homogeneous)",
-    clusterAnswer: "Diverse (heterogeneous)",
-    stratOptions: ["Similar (homogeneous)", "Diverse (heterogeneous)"],
-    clusterOptions: ["Diverse (heterogeneous)", "Similar (homogeneous)"]
+    // Focus: What type of groups work best?
+    stratQuestion: "STRATIFIED sampling works best when groups are:",
+    stratAnswer: "Homogeneous (similar within)",
+    stratOptions: ["Homogeneous (similar within)", "Heterogeneous (diverse within)"],
+    clusterQuestion: "CLUSTER sampling works best when groups are:",
+    clusterAnswer: "Heterogeneous (diverse within)",
+    clusterOptions: ["Homogeneous (similar within)", "Heterogeneous (diverse within)"]
+  },
+  {
+    // Focus: Key phrase identification
+    stratQuestion: "Which phrase signals STRATIFIED sampling?",
+    stratAnswer: "Sample FROM EACH group",
+    stratOptions: ["Sample FROM EACH group", "Select ENTIRE groups"],
+    clusterQuestion: "Which phrase signals CLUSTER sampling?",
+    clusterAnswer: "Select ENTIRE groups",
+    clusterOptions: ["Sample FROM EACH group", "Select ENTIRE groups"]
   }
 ];
 
@@ -686,29 +695,32 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     context = {
       topicId: "3.3d",
-      problemText: "**Stratified vs Cluster: The Key Difference**\n\n" +
+      problemText: "**Stratified vs Cluster: The Key Differences**\n\n" +
                    "| Aspect | Stratified | Cluster |\n" +
                    "|--------|------------|--------|\n" +
-                   "| Groups used | Strata (homogeneous within) | Clusters (heterogeneous within) |\n" +
-                   "| How many groups in sample? | ALL groups | SOME groups |\n" +
-                   "| How many individuals per group? | SOME (SRS from each) | ALL (everyone in selected clusters) |\n\n" +
-                   "**Ideal group types:**\n" +
-                   "• **Stratified** works best when strata are HOMOGENEOUS (similar within each stratum)\n" +
-                   "• **Cluster** works best when clusters are HETEROGENEOUS (each cluster is like a mini-population)\n\n" +
-                   "**Memory trick:** Strata = Similar within. Clusters = Complete mini-populations.",
-      givenText: q.question,
-      optA: q.stratOptions[0],
-      optB: q.stratOptions[1],
-      optC: q.clusterOptions[0],
-      optD: q.clusterOptions[1],
-      stratIdeal: { value: q.stratAnswer },
-      clusterIdeal: { value: q.clusterAnswer }
+                   "| Groups in sample | ALL groups | SOME groups |\n" +
+                   "| Individuals per group | SOME (SRS from each) | ALL (everyone) |\n" +
+                   "| Ideal group type | Homogeneous (similar within) | Heterogeneous (diverse within) |\n\n" +
+                   "**Memory tricks:**\n" +
+                   "• Stratified = Sample FROM EACH group\n" +
+                   "• Cluster = Select ENTIRE groups",
+      givenText: "Answer both questions about stratified and cluster sampling:",
+      // Dynamic question labels
+      stratQuestion: q.stratQuestion,
+      stratOptA: q.stratOptions[0],
+      stratOptB: q.stratOptions[1],
+      clusterQuestion: q.clusterQuestion,
+      clusterOptA: q.clusterOptions[0],
+      clusterOptB: q.clusterOptions[1],
+      // Answers
+      stratFeature: { value: q.stratAnswer },
+      clusterFeature: { value: q.clusterAnswer }
     };
     answers = {
-      stratIdeal: { value: q.stratAnswer },
-      clusterIdeal: { value: q.clusterAnswer }
+      stratFeature: { value: q.stratAnswer },
+      clusterFeature: { value: q.clusterAnswer }
     };
-    scenario = q.question;
+    scenario = "Stratified vs Cluster comparison";
     return { context, graphConfig, answers, scenario };
   }
 

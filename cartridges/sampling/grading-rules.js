@@ -241,37 +241,45 @@ export function gradeField(fieldId, answer, context) {
     return { score: "I", feedback: `Incorrect. ${expected}` };
   }
 
-  // ===== Level 10: Stratified vs Cluster Ideal Groups =====
-  if (fieldId === "stratIdeal") {
-    // Check exact match first (handles varied questions like "ALL groups" vs "SOME groups")
+  // ===== Level 10: Stratified vs Cluster Features =====
+  if (fieldId === "stratFeature") {
     if (studentNorm === expectedNorm) {
-      return { score: "E", feedback: "Correct! You understand stratified sampling." };
+      return { score: "E", feedback: "Correct! You understand this aspect of stratified sampling." };
     }
-    if (containsAny(answer, ["homogeneous", "similar", "all"])) {
-      if (containsAny(expected, ["homogeneous", "similar", "all"])) {
-        return { score: "E", feedback: "Correct! Stratified works best when strata are HOMOGENEOUS (similar within)." };
-      }
+    // Provide specific feedback based on common confusions
+    if (containsAny(expected, ["all groups"]) && containsAny(answer, ["some"])) {
+      return { score: "I", feedback: "Stratified uses ALL groups (samples from each). CLUSTER uses some groups." };
     }
-    if (containsAny(answer, ["heterogeneous", "diverse", "some"])) {
-      return { score: "I", feedback: "That's for CLUSTER. Stratified wants HOMOGENEOUS strata (similar within each group)." };
+    if (containsAny(expected, ["some", "random sample"]) && containsAny(answer, ["all", "everyone"])) {
+      return { score: "I", feedback: "Stratified takes SOME individuals from each group (an SRS). CLUSTER takes everyone." };
     }
-    return { score: "I", feedback: `Incorrect. ${expected}` };
+    if (containsAny(expected, ["homogeneous"]) && containsAny(answer, ["heterogeneous"])) {
+      return { score: "I", feedback: "Stratified works best with HOMOGENEOUS groups (similar within). CLUSTER wants heterogeneous." };
+    }
+    if (containsAny(expected, ["from each"]) && containsAny(answer, ["entire"])) {
+      return { score: "I", feedback: "'FROM EACH group' signals stratified. 'ENTIRE groups' signals cluster." };
+    }
+    return { score: "I", feedback: `Incorrect. The answer is: ${expected}` };
   }
 
-  if (fieldId === "clusterIdeal") {
-    // Check exact match first
+  if (fieldId === "clusterFeature") {
     if (studentNorm === expectedNorm) {
-      return { score: "E", feedback: "Correct! You understand cluster sampling." };
+      return { score: "E", feedback: "Correct! You understand this aspect of cluster sampling." };
     }
-    if (containsAny(answer, ["heterogeneous", "diverse", "some", "all (everyone)"])) {
-      if (containsAny(expected, ["heterogeneous", "diverse", "some", "all (everyone)"])) {
-        return { score: "E", feedback: "Correct! Cluster works best when clusters are HETEROGENEOUS (each is a mini-population)." };
-      }
+    // Provide specific feedback based on common confusions
+    if (containsAny(expected, ["some groups"]) && containsAny(answer, ["all"])) {
+      return { score: "I", feedback: "Cluster uses SOME groups (selects entire groups). STRATIFIED uses all groups." };
     }
-    if (containsAny(answer, ["homogeneous", "similar"])) {
-      return { score: "I", feedback: "That's for STRATIFIED. Cluster wants HETEROGENEOUS clusters (diverse within)." };
+    if (containsAny(expected, ["all", "everyone"]) && containsAny(answer, ["some", "random sample"])) {
+      return { score: "I", feedback: "Cluster takes ALL individuals from selected groups. STRATIFIED takes some from each." };
     }
-    return { score: "I", feedback: `Incorrect. ${expected}` };
+    if (containsAny(expected, ["heterogeneous"]) && containsAny(answer, ["homogeneous"])) {
+      return { score: "I", feedback: "Cluster works best with HETEROGENEOUS groups (diverse within, like mini-populations)." };
+    }
+    if (containsAny(expected, ["entire"]) && containsAny(answer, ["from each"])) {
+      return { score: "I", feedback: "'ENTIRE groups' signals cluster. 'FROM EACH group' signals stratified." };
+    }
+    return { score: "I", feedback: `Incorrect. The answer is: ${expected}` };
   }
 
   // ===== Level 11-13: Identify Sampling Method =====

@@ -185,18 +185,16 @@
       "layout": {
         "inputs": [
           {
-            "id": "stratIdeal",
-            "type": "dropdown",
-            "label": "Stratified works best when groups are:",
-            "options": ["{{optA}}", "{{optB}}"],
-            "placeholder": "Choose"
+            "id": "stratFeature",
+            "type": "choice",
+            "label": "{{stratQuestion}}",
+            "options": ["{{stratOptA}}", "{{stratOptB}}"]
           },
           {
-            "id": "clusterIdeal",
-            "type": "dropdown",
-            "label": "Cluster works best when groups are:",
-            "options": ["{{optC}}", "{{optD}}"],
-            "placeholder": "Choose"
+            "id": "clusterFeature",
+            "type": "choice",
+            "label": "{{clusterQuestion}}",
+            "options": ["{{clusterOptA}}", "{{clusterOptB}}"]
           }
         ]
       }
@@ -346,8 +344,8 @@
       "srsKey": "SRS: every GROUP of n individuals has equal chance. Not just every individual—every possible combination!",
       "stratKey": "Stratified: divide into homogeneous groups (strata), then take an SRS FROM EACH stratum.",
       "clusterKey": "Cluster: divide into groups (clusters), randomly select SOME clusters, then sample ALL individuals in selected clusters.",
-      "stratIdeal": "Stratified works when groups are HOMOGENEOUS within (similar inside each group, different between groups).",
-      "clusterIdeal": "Cluster works when groups are HETEROGENEOUS within (each cluster is like a mini-population).",
+      "stratFeature": "Stratified: uses ALL groups, takes SOME from each, works best with HOMOGENEOUS groups (similar within).",
+      "clusterFeature": "Cluster: uses SOME groups, takes ALL from each, works best with HETEROGENEOUS groups (diverse within).",
       "methodType": "Systematic = random start, then every kth individual. Census = everyone in the population (no sampling).",
       "methodId": "SRS = random from whole list. Stratified = sample from each group. Cluster = select entire groups. Systematic = every kth.",
       "methodId2": "Look for key phrases: 'from each' often means stratified. 'All in selected' often means cluster.",
