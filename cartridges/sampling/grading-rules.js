@@ -1,4 +1,4 @@
-// grading-rules.js - Collecting Data (Unit 3.1-3.3)
+// grading-rules.js - Collecting Data (Unit 3.1-3.4)
 // Aligned with AP Statistics Course Framework
 
 function getExpectedObj(context, fieldId) {
@@ -27,9 +27,23 @@ export function gradeField(fieldId, answer, context) {
   const expObj = getExpectedObj(context, fieldId);
   const expected = expObj.value;
 
-  if (isBlank(answer)) {
-    return { score: "I", feedback: "Please select an answer." };
+// Open-response fields should prompt students to write an explanation (not "select an answer")
+const openResponseFields = new Set([
+  "whyGeneralize", "capWhy",
+  "whyCause",
+  "advantage",
+  "biasExplain",
+  "methodExplain",
+  "largeExplain"
+]);
+
+if (isBlank(answer)) {
+  if (openResponseFields.has(fieldId)) {
+    return { score: "I", feedback: "Please enter an explanation." };
   }
+  return { score: "I", feedback: "Please select an answer." };
+}
+
 
   const studentNorm = normalize(answer);
   const expectedNorm = normalize(expected);
@@ -284,7 +298,7 @@ export function gradeField(fieldId, answer, context) {
 
   // ===== Level 11-13: Identify Sampling Method =====
   if (fieldId === "methodType" || fieldId === "methodId" || fieldId === "methodId2" ||
-      fieldId === "capMethod" || fieldId === "capMethod2") {
+      fieldId === "capMethod" || fieldId === "capMethod2" || fieldId === "methodChoice") {
 
     // Check for correct answer (flexible matching)
     const isCorrect = studentNorm === expectedNorm ||
@@ -297,9 +311,13 @@ export function gradeField(fieldId, answer, context) {
       (containsAny(expected, ["random selection"]) && containsAny(answer, ["random selection"])) ||
       (containsAny(expected, ["random assignment"]) && containsAny(answer, ["random assignment"]));
 
-    if (isCorrect) {
-      return { score: "E", feedback: "Correct! Great job identifying the method." };
-    }
+if (isCorrect) {
+  if (fieldId === "methodChoice") {
+    return { score: "E", feedback: "Correct! This method is a strong fit for the situation. Now make sure your explanation connects the method’s advantage to the scenario." };
+  }
+  return { score: "E", feedback: "Correct! Great job identifying the method." };
+}
+
 
     // Common confusions with partial credit
     if (containsAny(expected, ["stratified"]) && containsAny(answer, ["cluster"])) {
@@ -316,7 +334,14 @@ export function gradeField(fieldId, answer, context) {
   if (fieldId === "advantage") {
     // Check for method-specific advantages
     const mentionsSRSAdvantage = containsAny(answer, ["simple", "unbiased", "equal chance", "easy to understand", "foundation"]);
-    const mentionsStratifiedAdvantage = containsAny(answer, ["represent", "ensures", "every group", "reduces variability", "compare"]);
+    const mentionsStratifiedAdvantage = containsAny(answer, [
+      "represent", "ensures", "every group", "compare",
+      // Variability keywords (various phrasings)
+      "reduces variability", "reduce variability", "low variability", "lower variability", "less variability",
+      "more precise", "precision", "smaller margin",
+      // Bias keywords (stratified ensures representation → reduces bias)
+      "low bias", "less bias", "reduces bias", "reduce bias", "no bias", "avoid bias"
+    ]);
     const mentionsClusterAdvantage = containsAny(answer, ["practical", "convenient", "cheaper", "cost", "easier", "don't need to visit"]);
     const mentionsSystematicAdvantage = containsAny(answer, ["easy to implement", "no complete list", "evenly spaced"]);
     const mentionsAnyAdvantage = mentionsSRSAdvantage || mentionsStratifiedAdvantage || mentionsClusterAdvantage || mentionsSystematicAdvantage;
@@ -334,7 +359,198 @@ export function gradeField(fieldId, answer, context) {
     return { score: "I", feedback: "Think about why a researcher would choose this method. Consider: representation, practicality, cost, or variability reduction." };
   }
 
-  // ===== Generic Fallback =====
+  
+// ===== Level 16: Bias Type (Topic 3.4) =====
+if (fieldId === "biasType") {
+  if (studentNorm === expectedNorm) {
+    return { score: "E", feedback: "Correct! You identified the primary bias. Now explain how it could make the results unrepresentative." };
+  }
+
+  if (containsAny(expected, ["voluntary"])) {
+    return { score: "I", feedback: "This is **voluntary response bias**: people choose to respond (often those with strong opinions), so the sample may not represent the population." };
+  }
+  if (containsAny(expected, ["undercoverage"])) {
+    return { score: "I", feedback: "This is **undercoverage bias**: some groups are left out of the sampling frame (so they have little/no chance to be selected)." };
+  }
+  if (containsAny(expected, ["nonresponse"])) {
+    return { score: "I", feedback: "This is **nonresponse bias**: many selected individuals do not respond, and nonrespondents may differ from respondents." };
+  }
+  if (containsAny(expected, ["response bias"])) {
+    return { score: "I", feedback: "This is **response bias**: the wording/method of asking questions (or misreporting) can systematically change responses." };
+  }
+
+  return { score: "I", feedback: `Incorrect. The answer is: ${expected}` };
+}
+
+// ===== Level 16: Bias Explain (Open Response) =====
+if (fieldId === "biasExplain") {
+  const expectedBias = normalize(getExpectedObj(context, "biasType").value || "");
+
+  const mentionsNotRepresentative = containsAny(answer, [
+    "not representative", "unrepresentative", "biased", "skew", "overrepresent", "underrepresent", "doesn't represent"
+  ]);
+
+  const mentionsVoluntary = containsAny(answer, [
+    "voluntary", "volunteer", "self-select", "self select", "opt in", "choose to respond", "call in", "strong opinion", "strong opinions"
+  ]);
+
+  const mentionsUndercoverage = containsAny(answer, [
+    "undercoverage", "excluded", "left out", "not included", "missing", "not covered", "no chance", "sampling frame",
+    "phone book", "landline", "only online", "internet access", "only subway"
+  ]);
+
+  const mentionsNonresponse = containsAny(answer, [
+    "nonresponse", "didn't respond", "did not respond", "no response", "refuse", "refused", "low response", "response rate",
+    "returned", "return rate", "didn't answer", "did not answer"
+  ]);
+
+  const mentionsResponseBias = containsAny(answer, [
+    "response bias", "leading", "loaded", "wording", "phrasing", "double-barreled", "double barreled", "confusing",
+    "misreport", "lie", "lying", "underreport", "overreport", "sensitive"
+  ]);
+
+  const mentionsWrongConcept = containsAny(answer, ["random assignment", "treatment", "experiment", "confounding"]);
+
+  const mentionsSampleSizeOnly = containsAny(answer, ["sample size", "large sample", "big sample", "many people"]) &&
+    !(mentionsVoluntary || mentionsUndercoverage || mentionsNonresponse || mentionsResponseBias);
+
+  const wordCount = normalize(answer).split(/\s+/).filter(Boolean).length;
+
+  const justNamesBias =
+    wordCount <= 4 && (
+      containsAny(answer, ["voluntary response", "undercoverage", "nonresponse", "response bias"])
+    );
+
+  // If they confuse with causation/experiments, it's off-target
+  if (mentionsWrongConcept) {
+    return { score: "I", feedback: "Focus on **bias in sampling/measurement**, not random assignment or confounding. Explain how the data collection could systematically favor certain responses." };
+  }
+
+  // Match student explanation to expected bias type
+  const matchesExpected =
+    (expectedBias.includes("voluntary") && (mentionsVoluntary || containsAny(answer, ["voluntary response"]))) ||
+    (expectedBias.includes("undercoverage") && (mentionsUndercoverage || containsAny(answer, ["undercoverage"]))) ||
+    (expectedBias.includes("nonresponse") && (mentionsNonresponse || containsAny(answer, ["nonresponse"]))) ||
+    (expectedBias.includes("response bias") && (mentionsResponseBias || containsAny(answer, ["response bias"])));
+
+  const explainsMechanism =
+    (mentionsVoluntary && !justNamesBias) ||
+    (mentionsUndercoverage && !justNamesBias) ||
+    (mentionsNonresponse && !justNamesBias) ||
+    (mentionsResponseBias && !justNamesBias);
+
+  // E: Correct bias mechanism explained
+  if (matchesExpected && (explainsMechanism || mentionsNotRepresentative) && !mentionsSampleSizeOnly) {
+    return { score: "E", feedback: "Excellent! You explained how the data collection could systematically skew results and make the sample/responses unrepresentative." };
+  }
+
+  // P: Right bias but too vague (or only names it)
+  if (matchesExpected && (justNamesBias || mentionsNotRepresentative || mentionsSampleSizeOnly)) {
+    if (mentionsSampleSizeOnly) {
+      return { score: "P", feedback: "Sample size affects **precision**, but to explain **bias** you must describe *how* the data collection favors certain responses or leaves some groups out." };
+    }
+    return { score: "P", feedback: "Good start! Now explain the **mechanism**: who is more/less likely to be included (or how wording could change answers)?" };
+  }
+
+  // P: Notices bias/unrepresentativeness but mismatches the main bias type
+  if (!matchesExpected && (mentionsNotRepresentative || mentionsVoluntary || mentionsUndercoverage || mentionsNonresponse || mentionsResponseBias)) {
+    const expectedNice = getExpectedObj(context, "biasType").value || "the listed bias type";
+    return { score: "P", feedback: `You’re noticing potential bias, but the main issue here is **${expectedNice}**. Explain that specific mechanism.` };
+  }
+
+  return { score: "I", feedback: "Explain why the results might be biased (for example: volunteers self-select, a group is left out, many selected people don’t respond, or wording affects answers)." };
+}
+
+// ===== Level 17: Explain why the chosen method fits (Open Response) =====
+if (fieldId === "methodExplain") {
+  const expectedMethod = normalize(getExpectedObj(context, "methodChoice").value || "");
+
+  const mentionsStratified = containsAny(answer, [
+    "stratified", "from each", "each group", "each grade", "each department", "each stratum", "every group",
+    "ensure", "representation", "represent", "compare", "stratum", "strata",
+    // Variability keywords (various phrasings)
+    "reduces variability", "reduce variability", "low variability", "lower variability", "less variability",
+    "more precise", "precision", "smaller margin",
+    // Bias keywords (stratified ensures representation → reduces bias)
+    "low bias", "less bias", "reduces bias", "reduce bias", "avoid bias"
+  ]);
+
+  const mentionsCluster = containsAny(answer, [
+    "cluster", "entire", "whole group", "all in selected", "selected groups", "some groups",
+    "cheaper", "cost", "practical", "convenient", "travel", "locations", "easier"
+  ]);
+
+  const mentionsSystematic = containsAny(answer, [
+    "systematic", "random start", "starting point", "every kth", "every 10th", "every 20th", "every 50th",
+    "evenly spaced", "ordered list", "assembly line"
+  ]);
+
+  const mentionsSRS = containsAny(answer, [
+    "srs", "simple random", "random number", "randomly select", "equal chance", "unbiased", "fair", "complete list", "random sample"
+  ]);
+
+  const mentionsGeneric = containsAny(answer, ["random", "representative", "unbiased", "fair", "chance"]);
+
+  const wordCount = normalize(answer).split(/\s+/).filter(Boolean).length;
+
+  const matchesExpected =
+    (expectedMethod.includes("stratified") && mentionsStratified) ||
+    (expectedMethod.includes("cluster") && mentionsCluster) ||
+    (expectedMethod.includes("systematic") && mentionsSystematic) ||
+    ((expectedMethod.includes("srs") || expectedMethod.includes("simple random")) && mentionsSRS);
+
+  // E: Mentions a method-specific advantage tied to the scenario
+  if (matchesExpected && (wordCount >= 5) && !(mentionsGeneric && !(mentionsStratified || mentionsCluster || mentionsSystematic || mentionsSRS))) {
+    return { score: "E", feedback: "Great explanation! You tied the sampling method’s advantage to the scenario (representation, precision, or practicality)." };
+  }
+
+  // P: Vague but points in right direction
+  if (matchesExpected && (mentionsGeneric || wordCount < 5)) {
+    return { score: "P", feedback: "Good start! Be more specific: explain *how* this method helps here (e.g., ensures each subgroup is represented, reduces cost, uses every kth item, etc.)." };
+  }
+
+  // P: Explains a different method’s advantage (some understanding)
+  if (!matchesExpected && (mentionsStratified || mentionsCluster || mentionsSystematic || mentionsSRS)) {
+    const expectedNice = getExpectedObj(context, "methodChoice").value || "the correct method";
+    return { score: "P", feedback: `Your reasoning sounds like a different method. In this scenario, the best choice is **${expectedNice}**—explain why that method fits.` };
+  }
+
+  return { score: "I", feedback: "Explain why the chosen method is a good fit for this scenario. Mention a specific advantage (representation, precision/variability, or practicality/cost)." };
+}
+
+// ===== Level 18: Large sample misconception (Choice) =====
+if (fieldId === "largeGeneralize") {
+  if (studentNorm === expectedNorm) {
+    return { score: "E", feedback: "Correct! A large sample size does NOT guarantee a representative sample. Representativeness depends on random selection and lack of bias." };
+  }
+  return { score: "I", feedback: "Incorrect. Even a very large sample can be biased if it comes from volunteers or a convenience sample. Sample size affects precision, not bias." };
+}
+
+// ===== Level 18: Large sample misconception (Open Response) =====
+if (fieldId === "largeExplain") {
+  const mentionsRandomSelection = containsAny(answer, ["random selection", "randomly selected", "random sample", "selected at random"]);
+  const mentionsBias = containsAny(answer, ["bias", "biased", "not representative", "unrepresentative", "voluntary", "convenience", "self-select", "nonresponse", "undercoverage"]);
+  const mentionsPrecision = containsAny(answer, ["precision", "sampling error", "margin of error", "variability", "more precise"]);
+  const mentionsWrong = containsAny(answer, ["guarantee", "always", "definitely"]) && containsAny(answer, ["yes", "does"]);
+
+  const wordCount = normalize(answer).split(/\s+/).filter(Boolean).length;
+
+  if ((mentionsRandomSelection || mentionsBias) && !mentionsWrong) {
+    return { score: "E", feedback: "Excellent! You recognized that sample size improves precision, but without random selection a sample can still be biased and not representative." };
+  }
+
+  if (mentionsPrecision && !(mentionsRandomSelection || mentionsBias)) {
+    return { score: "P", feedback: "You’re right that larger samples improve precision. To be complete, also explain that **bias** isn’t fixed by sample size—you need random selection / an unbiased sampling process." };
+  }
+
+  if (wordCount < 5) {
+    return { score: "P", feedback: "Add more detail: explain why sample size does not fix a biased sampling method (volunteers/convenience/nonresponse/undercoverage)." };
+  }
+
+  return { score: "I", feedback: "A large sample does not guarantee representativeness. Explain that bias can remain if the sampling method is not random or excludes certain groups." };
+}
+
+// ===== Generic Fallback =====
   if (studentNorm === expectedNorm) {
     return { score: "E", feedback: "Correct!" };
   }
