@@ -703,6 +703,24 @@
     let currentCartridgeId = localStorage.getItem('lastCartridgeId') || 'lsrl-interpretation';
     let pendingTeacherReview = null; // Store results for teacher review
 
+    // Helper to get best available topic name for notifications/logging
+    function getCurrentTopicName() {
+      // Try: explicit topic > mode name > cartridge name > cartridge ID > 'Practice'
+      const context = platform?.currentProblem?.context;
+      if (context?.topic) return context.topic;
+
+      // Get current mode's name (e.g., "3.3d: Stratified vs Cluster")
+      const mode = platform?.cartridgeLoader?.getMode(platform?.currentMode);
+      if (mode?.name) return mode.name;
+
+      // Fall back to cartridge name (e.g., "Collecting Data (Unit 3.1-3.4)")
+      const cartridgeName = platform?.currentCartridge?.manifest?.meta?.name;
+      if (cartridgeName) return cartridgeName;
+
+      // Last resort: cartridge ID or 'Practice'
+      return currentCartridgeId || 'Practice';
+    }
+
     // ==================== RESPONSIVE LAYOUT ====================
     function updateMobileLayout() {
       const isMobile = window.innerWidth < 1024; // lg breakpoint
@@ -917,7 +935,7 @@
           wsClient.notifyStarEarned(
             userSystem.currentUser.username,
             starType,
-            platform.currentProblem?.context?.topic || 'Practice'
+            getCurrentTopicName()
           );
         }
 
@@ -934,7 +952,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               username: userSystem.currentUser.username,
-              scenario_topic: problem?.context?.topic || currentCartridgeId || 'Practice',
+              scenario_topic: getCurrentTopicName(),
               star_type: starType,
               all_correct: true,
               hints_used: hintsUsed,
@@ -2593,7 +2611,7 @@
                 wsClient.notifyStarEarned(
                   userSystem.currentUser.username,
                   starType,
-                  state.currentProblem?.context?.topic || 'Practice'
+                  getCurrentTopicName()
                 );
               }
 
@@ -2610,7 +2628,7 @@
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     username: userSystem.currentUser.username,
-                    scenario_topic: problem?.context?.topic || currentCartridgeId || 'Practice',
+                    scenario_topic: getCurrentTopicName(),
                     star_type: starType,
                     all_correct: true,
                     hints_used: state.game.hintsUsed || 0,
@@ -2712,7 +2730,7 @@
       const problem = platform.currentProblem;
       if (!problem) return;
 
-      document.getElementById('scenario-title').textContent = problem.context?.topic || problem.context?.modeName || 'Practice Problem';
+      document.getElementById('scenario-title').textContent = getCurrentTopicName();
       document.getElementById('scenario-text').textContent = problem.scenario || '';
 
       // Show/hide graph card based on whether this problem has graph content
