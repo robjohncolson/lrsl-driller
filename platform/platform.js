@@ -490,55 +490,19 @@ export class Platform {
   async gradeWithAI(answers, context) {
     const serverUrl = this.gradingEngine.serverUrl;
 
-    // Build the scenario object - include ALL context for cartridge-specific grading
+    // Build the scenario object - spread ALL context fields for cartridge-specific grading
+    // This ensures polynomial, sampling, and other cartridge fields are available
     const scenario = {
-      // Common fields
-      topic: context.topic,
-      xVar: context.xVar,
-      yVar: context.yVar,
-      xUnits: context.xUnits,
-      yUnits: context.yUnits,
+      // Spread all context fields first (includes problemText, givenText, tableText, etc.)
+      ...context,
+
+      // Override with parsed numeric values where needed
       slope: parseFloat(context.slope),
       intercept: parseFloat(context.intercept),
       r: parseFloat(context.r),
       isInterceptMeaningful: context.interceptMeaningful !== false,
-      interceptReason: context.interceptReason || null,
-
-      // Residuals-specific fields
-      selectedX: context.selectedX,
-      selectedY: context.selectedY,
-      predictedY: context.predictedY,
-      residual: context.residual,
-      residualAbs: context.residualAbs,
-      overUnder: context.overUnder,
-      pattern: context.pattern,
-      appropriate: context.appropriate,
-
-      // Z-score and LSRL calculation fields
-      modeId: context.modeId,
-      modeName: context.modeName,
-      x: context.x,
-      mean: context.mean,
-      sd: context.sd,
-      zscore: context.zscore,
-      x1: context.x1,
-      x2: context.x2,
-      mean1: context.mean1,
-      mean2: context.mean2,
-      sd1: context.sd1,
-      sd2: context.sd2,
-      z1: context.z1,
-      z2: context.z2,
-      comparison: context.comparison,
-      sx: context.sx,
-      sy: context.sy,
-      xBar: context.xBar,
-      yBar: context.yBar,
-      b: context.b,
-      a: context.a,
 
       // Mode info for conditional prompts
-      mode: context.mode,
       cartridgeId: this.currentCartridge?.id
     };
 
@@ -555,6 +519,16 @@ export class Platform {
       pairs.push(`${fieldId}: expected=${expected}, student=${studentAnswer}`);
     }
     scenario.gradingPairs = pairs.join('\n');
+
+    // For single-field cases (most cartridges), set fieldId/studentAnswer/expectedAnswer directly
+    const fieldIds = Object.keys(answers);
+    if (fieldIds.length === 1) {
+      const fieldId = fieldIds[0];
+      const expectedData = expectedAnswers[fieldId];
+      scenario.fieldId = fieldId;
+      scenario.studentAnswer = answers[fieldId];
+      scenario.expectedAnswer = typeof expectedData === 'object' ? expectedData?.value : expectedData;
+    }
 
     // Load cartridge-specific AI prompt if available
     let aiPromptTemplate = null;
