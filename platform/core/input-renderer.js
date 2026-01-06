@@ -233,8 +233,9 @@ export class InputRenderer {
         optionValue = option.id || option.value || option.label;
         optionLabel = option.label || option.id || option.value;
       } else {
-        optionValue = option;
-        optionLabel = this.interpolate(option, context);
+        // Interpolate both value and label so they match expected answers
+        optionValue = this.interpolate(option, context);
+        optionLabel = optionValue;
       }
 
       radio.value = optionValue;
