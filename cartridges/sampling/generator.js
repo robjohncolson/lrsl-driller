@@ -5,10 +5,6 @@ function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function choice(arr) {
-  return arr[randInt(0, arr.length - 1)];
-}
-
 function shuffle(arr) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
@@ -16,6 +12,30 @@ function shuffle(arr) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+// ============ SHUFFLE BAG SYSTEM ============
+// Prevents scenario repeats by cycling through all scenarios before any repeat
+// Each scenario bank gets its own bag that refills when empty
+
+const shuffleBags = {};  // Stores bags per scenario bank
+
+function getShuffleBag(bankName, sourceArray) {
+  if (!shuffleBags[bankName] || shuffleBags[bankName].length === 0) {
+    // Refill with shuffled copy of source array
+    shuffleBags[bankName] = shuffle(sourceArray);
+  }
+  return shuffleBags[bankName];
+}
+
+function drawFromBag(bankName, sourceArray) {
+  const bag = getShuffleBag(bankName, sourceArray);
+  return bag.pop();  // Draw from end (most efficient)
+}
+
+// Legacy choice function - still used for non-scenario selections
+function choice(arr) {
+  return arr[randInt(0, arr.length - 1)];
 }
 
 // ============ SCENARIO BANKS ============
@@ -268,7 +288,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
   // ========== LEVEL 1: Why Does Chance Matter? (Topic 3.1) ==========
   if (modeId === "l01-chance-matters") {
-    const scen = choice(chanceScenarios);
+    const scen = drawFromBag('chanceScenarios', chanceScenarios);
 
     context = {
       topicId: "3.1",
@@ -293,7 +313,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
   // ========== LEVEL 2: Population vs Sample (Topic 3.2a) ==========
   if (modeId === "l02-population-sample") {
-    const scen = choice(popSampleScenarios);
+    const scen = drawFromBag('popSampleScenarios', popSampleScenarios);
 
     context = {
       topicId: "3.2a",
@@ -315,7 +335,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
   // ========== LEVEL 3: Observational vs Experiment (Topic 3.2b) ==========
   if (modeId === "l03-obs-vs-exp") {
-    const scen = choice(obsExpScenarios);
+    const scen = drawFromBag('obsExpScenarios', obsExpScenarios);
 
     context = {
       topicId: "3.2b",
@@ -336,7 +356,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
   // ========== LEVEL 4: Random Selection → Generalization (Topic 3.2c) ==========
   if (modeId === "l04-random-selection") {
-    const scen = choice(inferenceScenarios);
+    const scen = drawFromBag('inferenceScenarios_l04', inferenceScenarios);
     const canGen = scen.randomSelection ? "Yes" : "No";
 
     // GENERALIZATION reasons - complete sentences that explain YES or NO
@@ -381,7 +401,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
   // ========== LEVEL 5: Random Assignment → Causation (Topic 3.2d) ==========
   if (modeId === "l05-random-assignment") {
-    const scen = choice(inferenceScenarios.filter(s => s.isExperiment !== undefined));
+    const scen = drawFromBag('inferenceScenarios_l05', inferenceScenarios);
     const canCause = scen.randomAssignment ? "Yes" : "No";
 
     // CAUSATION reasons - complete sentences that explain YES or NO
@@ -425,7 +445,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
   // ========== LEVEL 6: Scope of Inference 2x2 (Topic 3.2e) ==========
   if (modeId === "l06-scope-of-inference") {
-    const scen = choice(inferenceScenarios);
+    const scen = drawFromBag('inferenceScenarios_l06', inferenceScenarios);
 
     context = {
       topicId: "3.2e",
@@ -565,7 +585,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
   // ========== LEVEL 11: Systematic & Census (Topic 3.3) ==========
   if (modeId === "l11-systematic-census") {
     const type = choice(["systematic", "census"]);
-    const scen = choice(samplingScenarios[type]);
+    const scen = drawFromBag(`samplingScenarios_${type}_l11`, samplingScenarios[type]);
     const correct = type === "systematic" ? "Systematic random sample" : "Census";
 
     const options = shuffle([
@@ -603,7 +623,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
   // ========== LEVEL 12: Identify the Method (Topic 3.3) ==========
   if (modeId === "l12-identify-method") {
     const type = choice(["srs", "stratified", "cluster", "systematic"]);
-    const scen = choice(samplingScenarios[type]);
+    const scen = drawFromBag(`samplingScenarios_${type}_l12`, samplingScenarios[type]);
     const methodNames = {
       srs: "Simple random sample (SRS)",
       stratified: "Stratified random sample",
@@ -647,7 +667,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
   // ========== LEVEL 13: Why This Method? (Topic 3.3) ==========
   if (modeId === "l13-why-method") {
     const type = choice(["srs", "stratified", "cluster"]);
-    const scen = choice(samplingScenarios[type]);
+    const scen = drawFromBag(`samplingScenarios_${type}_l13`, samplingScenarios[type]);
     const methodNames = {
       srs: "Simple random sample (SRS)",
       stratified: "Stratified random sample",
@@ -701,7 +721,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
   // ========== LEVEL 14: Capstone - Sampling Methods ==========
   if (modeId === "l14-capstone-sampling") {
     const type = choice(["srs", "stratified", "cluster"]);
-    const scen = choice(samplingScenarios[type]);
+    const scen = drawFromBag(`samplingScenarios_${type}_l14`, samplingScenarios[type]);
     const methodNames = {
       srs: "Simple random sample (SRS)",
       stratified: "Stratified random sample",
@@ -756,7 +776,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
   // ========== LEVEL 15: Full Capstone (Unit 3.1-3.3) ==========
   if (modeId === "l15-capstone-full") {
-    const scen = choice(inferenceScenarios);
+    const scen = drawFromBag('inferenceScenarios_l15', inferenceScenarios);
     const studyType = scen.isExperiment ? "Experiment" : "Observational study";
     const method = scen.randomSelection
       ? "Random selection from population"
