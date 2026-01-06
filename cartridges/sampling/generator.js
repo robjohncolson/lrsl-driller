@@ -516,20 +516,10 @@ export function generateProblem(modeId, contextFromFile, mode) {
     const scen = drawFromBag('inferenceScenarios_l04', inferenceScenarios);
     const canGen = scen.randomSelection ? "Yes" : "No";
 
-    // GENERALIZATION reasons - complete sentences that explain YES or NO
-    // Each option should be a complete reason, not just a fact
-    const yesReason = "Yes, because random selection made the sample representative of the population";
-    const noReason = "No, because without random selection, the sample may not represent the population";
-    const wrongReason = "It depends on whether the sample size was large enough";  // Common misconception
-
-    const correctReason = scen.randomSelection ? yesReason : noReason;
-
-    // Include the opposite answer so students can make consistent (but wrong) choices
-    const reasonOptions = shuffle([
-      correctReason,
-      scen.randomSelection ? noReason : yesReason,  // Opposite of correct
-      wrongReason  // Misconception distractor
-    ]);
+    // Expected reasoning for open response (used by AI grader)
+    const expectedReasoning = scen.randomSelection
+      ? "Random selection gives every member of the population a chance to be in the sample, making it representative."
+      : "Without random selection, the sample may be biased and not representative of the population.";
 
     context = {
       topicId: "3.2c",
@@ -542,15 +532,12 @@ export function generateProblem(modeId, contextFromFile, mode) {
                    "• Convenience samples\n" +
                    "• People who choose to respond",
       givenText: scen.desc,
-      optA: reasonOptions[0],
-      optB: reasonOptions[1],
-      optC: reasonOptions[2],
       canGeneralize: { value: canGen },
-      whyGeneralize: { value: correctReason }
+      whyGeneralize: { value: expectedReasoning }
     };
     answers = {
       canGeneralize: { value: canGen },
-      whyGeneralize: { value: correctReason }
+      whyGeneralize: { value: expectedReasoning }
     };
     scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
@@ -561,20 +548,10 @@ export function generateProblem(modeId, contextFromFile, mode) {
     const scen = drawFromBag('inferenceScenarios_l05', inferenceScenarios);
     const canCause = scen.randomAssignment ? "Yes" : "No";
 
-    // CAUSATION reasons - complete sentences that explain YES or NO
-    // Each option should be a complete reason, not just a fact
-    const yesReason = "Yes, because random assignment balanced confounding variables across groups";
-    const noReason = "No, because without random assignment, lurking variables could explain differences";
-    const wrongReason = "It depends on whether the sample size was large enough";  // Common misconception
-
-    const correctReason = scen.randomAssignment ? yesReason : noReason;
-
-    // Include the opposite answer so students can make consistent (but wrong) choices
-    const reasonOptions = shuffle([
-      correctReason,
-      scen.randomAssignment ? noReason : yesReason,  // Opposite of correct
-      wrongReason  // Misconception distractor
-    ]);
+    // Expected reasoning for open response (used by AI grader)
+    const expectedReasoning = scen.randomAssignment
+      ? "Random assignment controls confounding variables across groups, so any difference can be attributed to the treatment."
+      : "Without random assignment, confounding/lurking variables could explain the observed differences. We can only show association, not causation.";
 
     context = {
       topicId: "3.2d",
@@ -586,15 +563,12 @@ export function generateProblem(modeId, contextFromFile, mode) {
                    "It balances CONFOUNDING VARIABLES across groups, so any difference in outcomes can be attributed to the treatment.\n\n" +
                    "**Note:** Only EXPERIMENTS can have random assignment. Observational studies never do.",
       givenText: scen.desc,
-      optA: reasonOptions[0],
-      optB: reasonOptions[1],
-      optC: reasonOptions[2],
       canCause: { value: canCause },
-      whyCause: { value: correctReason }
+      whyCause: { value: expectedReasoning }
     };
     answers = {
       canCause: { value: canCause },
-      whyCause: { value: correctReason }
+      whyCause: { value: expectedReasoning }
     };
     scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
@@ -838,14 +812,11 @@ export function generateProblem(modeId, contextFromFile, mode) {
       "Systematic random sample"
     ]);
 
-    const advantageOptions = shuffle([
-      scen.advantage,
-      "It's the only unbiased method",
-      "It always has the lowest cost"
-    ]);
+    // Expected advantage for open response (used by AI grader)
+    // The scen.advantage contains the specific advantage for this scenario
 
     context = {
-      topicId: "3.3",
+      topicId: "3.3g",
       problemText: "**DAT-2.D.1:** There are advantages and disadvantages for each sampling method depending on:\n" +
                    "• The question to be answered\n" +
                    "• The population structure\n" +
@@ -860,9 +831,6 @@ export function generateProblem(modeId, contextFromFile, mode) {
       optB: methodOptions[1],
       optC: methodOptions[2],
       optD: methodOptions[3],
-      optE: advantageOptions[0],
-      optF: advantageOptions[1],
-      optG: advantageOptions[2],
       methodId2: { value: correct },
       advantage: { value: scen.advantage }
     };
@@ -885,20 +853,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
     const correct = methodNames[type];
     const canGen = "Yes"; // All these are random methods
-    const whyGen = "Yes, because random selection made the sample representative of the population";
+    // Expected reasoning for open response (used by AI grader)
+    const expectedReasoning = "Random selection gives every member a chance to be selected, making the sample representative of the population.";
 
     const methodOptions = shuffle([
       "Simple random sample (SRS)",
       "Stratified random sample",
       "Cluster random sample",
       "Convenience sample"
-    ]);
-
-    // GENERALIZATION reasons - complete sentences that match the Yes/No answer
-    const whyOptions = shuffle([
-      whyGen,
-      "No, because without random selection, the sample may not represent the population",  // Wrong for random methods, but consistent if student picks "No"
-      "It depends on whether the sample size was large enough"  // Common misconception
     ]);
 
     context = {
@@ -914,17 +876,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
       optB: methodOptions[1],
       optC: methodOptions[2],
       optD: methodOptions[3],
-      optE: whyOptions[0],
-      optF: whyOptions[1],
-      optG: whyOptions[2],
       capMethod: { value: correct },
       capGeneralize: { value: canGen },
-      capWhy: { value: whyGen }
+      capWhy: { value: expectedReasoning }
     };
     answers = {
       capMethod: { value: correct },
       capGeneralize: { value: canGen },
-      capWhy: { value: whyGen }
+      capWhy: { value: expectedReasoning }
     };
     scenario = scen.desc;
     return { context, graphConfig, answers, scenario };

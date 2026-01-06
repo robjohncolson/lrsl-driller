@@ -81,10 +81,9 @@
           },
           {
             "id": "whyGeneralize",
-            "type": "dropdown",
-            "label": "Why or why not?",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}"],
-            "placeholder": "Choose reason"
+            "type": "text",
+            "label": "Explain why:",
+            "placeholder": "Explain your reasoning about generalization..."
           }
         ]
       }
@@ -103,10 +102,9 @@
           },
           {
             "id": "whyCause",
-            "type": "dropdown",
-            "label": "Why or why not?",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}"],
-            "placeholder": "Choose reason"
+            "type": "text",
+            "label": "Explain why:",
+            "placeholder": "Explain your reasoning about causation..."
           }
         ]
       }
@@ -250,10 +248,9 @@
           },
           {
             "id": "advantage",
-            "type": "dropdown",
+            "type": "text",
             "label": "What is an advantage of this method here?",
-            "options": ["{{optE}}", "{{optF}}", "{{optG}}"],
-            "placeholder": "Choose"
+            "placeholder": "Explain an advantage of this sampling method..."
           }
         ]
       }
@@ -279,10 +276,9 @@
           },
           {
             "id": "capWhy",
-            "type": "dropdown",
-            "label": "Why or why not?",
-            "options": ["{{optE}}", "{{optF}}", "{{optG}}"],
-            "placeholder": "Choose"
+            "type": "text",
+            "label": "Explain why:",
+            "placeholder": "Explain your reasoning about generalization..."
           }
         ]
       }

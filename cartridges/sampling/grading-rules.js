@@ -100,16 +100,37 @@ export function gradeField(fieldId, answer, context) {
     }
   }
 
-  // ===== Level 4: Why Generalize? =====
+  // ===== Level 4: Why Generalize? (Open Response) =====
   if (fieldId === "whyGeneralize" || fieldId === "capWhy") {
-    if (studentNorm === expectedNorm) {
-      return { score: "E", feedback: "Correct! You identified the key reasoning." };
+    // Check for key concepts about generalization
+    const mentionsRandomSelection = containsAny(answer, ["random selection", "randomly selected", "random sample"]);
+    const mentionsRepresentative = containsAny(answer, ["representative", "represents the population", "represent the"]);
+    const mentionsBias = containsAny(answer, ["biased", "not biased", "bias"]);
+    const mentionsChance = containsAny(answer, ["chance to be selected", "equal chance", "every member"]);
+    const mentionsWrongConcept = containsAny(answer, ["random assignment", "causation", "confounding", "treatment"]);
+    const mentionsSampleSize = containsAny(answer, ["sample size", "large enough", "big enough"]);
+
+    // E: Clearly explains random selection → generalization
+    if (mentionsRandomSelection || (mentionsRepresentative && mentionsChance)) {
+      return { score: "E", feedback: "Excellent! You correctly identified that random selection is key to generalization." };
     }
-    // Partial credit for mentioning random/selection/representative/biased
-    if (containsAny(answer, ["random", "selection", "chance", "representative", "biased", "population"])) {
-      return { score: "P", feedback: "You're on the right track! The key is whether RANDOM SELECTION makes the sample representative." };
+
+    // P: Shows partial understanding
+    if (mentionsRepresentative || mentionsBias || mentionsChance) {
+      return { score: "P", feedback: "Good start! To be complete, explain HOW random selection makes the sample representative of the population." };
     }
-    return { score: "I", feedback: `The correct reasoning is: ${expected}` };
+
+    // P: Common misconception about sample size
+    if (mentionsSampleSize && !mentionsRandomSelection) {
+      return { score: "P", feedback: "Sample size affects precision, but RANDOM SELECTION (not size) determines if we can generalize to the population." };
+    }
+
+    // I: Confuses generalization with causation
+    if (mentionsWrongConcept) {
+      return { score: "I", feedback: "You're confusing generalization with causation. Generalization depends on random SELECTION from the population, not random assignment." };
+    }
+
+    return { score: "I", feedback: "Generalization requires RANDOM SELECTION from the population. This gives every member a chance to be in the sample, making it representative." };
   }
 
   // ===== Level 5: Can Establish Causation? (Topic 3.2) =====
@@ -128,16 +149,38 @@ export function gradeField(fieldId, answer, context) {
     }
   }
 
-  // ===== Level 5: Why Causation? =====
+  // ===== Level 5: Why Causation? (Open Response) =====
   if (fieldId === "whyCause") {
-    if (studentNorm === expectedNorm) {
-      return { score: "E", feedback: "Correct! You identified the key reasoning." };
+    // Check for key concepts about causation
+    const mentionsRandomAssignment = containsAny(answer, ["random assignment", "randomly assigned", "assigned randomly"]);
+    const mentionsConfounding = containsAny(answer, ["confound", "lurking", "third variable", "other variable"]);
+    const mentionsTreatment = containsAny(answer, ["treatment", "treatments assigned", "assigned treatment"]);
+    const mentionsExperiment = containsAny(answer, ["experiment", "experimental"]);
+    const mentionsCauseEffect = containsAny(answer, ["cause and effect", "cause-and-effect", "causation", "causal"]);
+    const mentionsAssociation = containsAny(answer, ["association", "correlation", "only show"]);
+    const mentionsWrongConcept = containsAny(answer, ["random selection", "generalize", "representative", "population"]);
+
+    // E: Clearly explains random assignment → causation
+    if (mentionsRandomAssignment || (mentionsConfounding && (mentionsTreatment || mentionsExperiment))) {
+      return { score: "E", feedback: "Excellent! You correctly identified that random assignment controls confounding variables, allowing causal conclusions." };
     }
-    // Partial credit for mentioning assignment/confounding/lurking
-    if (containsAny(answer, ["random", "assignment", "confound", "lurking", "treatment", "cause"])) {
-      return { score: "P", feedback: "You're on the right track! The key is whether RANDOM ASSIGNMENT controlled confounding/lurking variables." };
+
+    // P: Shows partial understanding
+    if (mentionsConfounding || mentionsTreatment || mentionsCauseEffect || mentionsAssociation) {
+      return { score: "P", feedback: "Good start! To be complete, explain that RANDOM ASSIGNMENT of treatments balances confounding variables across groups." };
     }
-    return { score: "I", feedback: `The correct reasoning is: ${expected}` };
+
+    // P: Mentions experiment but not assignment
+    if (mentionsExperiment && !mentionsRandomAssignment) {
+      return { score: "P", feedback: "You're right that experiments can establish causation, but explain WHY: random assignment controls confounding variables." };
+    }
+
+    // I: Confuses causation with generalization
+    if (mentionsWrongConcept) {
+      return { score: "I", feedback: "You're confusing causation with generalization. Causation depends on random ASSIGNMENT of treatments, not random selection." };
+    }
+
+    return { score: "I", feedback: "Causation requires RANDOM ASSIGNMENT of treatments. This balances confounding variables, so any difference can be attributed to the treatment." };
   }
 
   // ===== Level 6: Scope of Inference =====
@@ -261,16 +304,26 @@ export function gradeField(fieldId, answer, context) {
     return { score: "I", feedback: `Incorrect. This is ${expected}. Look for key phrases in the description.` };
   }
 
-  // ===== Level 13: Advantage =====
+  // ===== Level 13: Advantage (Open Response) =====
   if (fieldId === "advantage") {
-    if (studentNorm === expectedNorm) {
-      return { score: "E", feedback: "Correct! You identified the key advantage for this scenario." };
+    // Check for method-specific advantages
+    const mentionsSRSAdvantage = containsAny(answer, ["simple", "unbiased", "equal chance", "easy to understand", "foundation"]);
+    const mentionsStratifiedAdvantage = containsAny(answer, ["represent", "ensures", "every group", "reduces variability", "compare"]);
+    const mentionsClusterAdvantage = containsAny(answer, ["practical", "convenient", "cheaper", "cost", "easier", "don't need to visit"]);
+    const mentionsSystematicAdvantage = containsAny(answer, ["easy to implement", "no complete list", "evenly spaced"]);
+    const mentionsAnyAdvantage = mentionsSRSAdvantage || mentionsStratifiedAdvantage || mentionsClusterAdvantage || mentionsSystematicAdvantage;
+
+    // E: Gives a valid, specific advantage
+    if (mentionsAnyAdvantage) {
+      return { score: "E", feedback: "Good! You identified a valid advantage of this sampling method." };
     }
-    // Partial credit for reasonable advantage mentioned
-    if (containsAny(answer, ["represent", "bias", "variab", "practical", "cost", "easy", "simple"])) {
-      return { score: "P", feedback: "That's a valid point, but not the specific advantage in this scenario." };
+
+    // P: Generic or vague answer
+    if (containsAny(answer, ["better", "good", "accurate", "works well", "effective"])) {
+      return { score: "P", feedback: "Try to be more specific. What SPECIFICALLY makes this method advantageous in this scenario?" };
     }
-    return { score: "I", feedback: `The key advantage here is: ${expected}` };
+
+    return { score: "I", feedback: "Think about why a researcher would choose this method. Consider: representation, practicality, cost, or variability reduction." };
   }
 
   // ===== Generic Fallback =====
