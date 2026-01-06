@@ -177,6 +177,28 @@ app.post('/api/progress', async (req, res) => {
       return res.status(400).json({ error: 'Username and scenario_topic required' });
     }
 
+    // Ensure user exists (auto-create if not) to prevent foreign key errors
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('username')
+      .eq('username', username)
+      .single();
+
+    if (!existingUser) {
+      // Auto-create user with default password
+      const { error: createError } = await supabase
+        .from('users')
+        .insert({
+          username,
+          password: 'auto-created',
+          user_type: 'student'
+        });
+
+      if (createError && !createError.message.includes('duplicate')) {
+        console.warn('Auto-create user warning:', createError);
+      }
+    }
+
     const { data, error } = await supabase
       .from('lsrl_progress')
       .insert({

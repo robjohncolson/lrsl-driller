@@ -945,7 +945,13 @@
               hints_used: hintsUsed,
               grading_mode: 'teacher'
             })
-          }).catch(err => console.warn('Failed to save progress:', err));
+          })
+          .then(r => r.json().then(data => ({ ok: r.ok, data })))
+          .then(({ ok, data }) => {
+            if (!ok) console.error('Server rejected progress:', data.error);
+            else console.log('Progress saved to leaderboard');
+          })
+          .catch(err => console.warn('Failed to save progress:', err));
         }
 
         // Update displays
@@ -2473,7 +2479,13 @@
                     hints_used: state.game.hintsUsed || 0,
                     grading_mode: currentGradingLevel
                   })
-                }).catch(err => console.warn('Failed to save progress:', err));
+                })
+                .then(r => r.json().then(data => ({ ok: r.ok, data })))
+                .then(({ ok, data }) => {
+                  if (!ok) console.error('Server rejected progress:', data.error);
+                  else console.log('Progress saved to leaderboard');
+                })
+                .catch(err => console.warn('Failed to save progress:', err));
               }
 
               document.getElementById('btn-grade').classList.add('hidden');
