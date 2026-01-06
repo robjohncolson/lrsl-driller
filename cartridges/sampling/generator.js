@@ -343,9 +343,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
       ? "Random selection gives every member a chance to be in the sample"
       : "Without random selection, the sample may not represent the population";
 
-    const wrongReasons = scen.randomSelection
-      ? ["The sample size is large enough", "The researchers are unbiased"]
-      : ["The sample size is too small", "The study took too long"];
+    // Always include both positive and negative reasons so students can make
+    // internally consistent choices (even if wrong), which aids learning
+    const wrongReasons = [
+      "The sample size determines generalizability",  // Neutral distractor
+      scen.randomSelection
+        ? "Without random selection, the sample may not represent the population"  // Negative (wrong for this scenario)
+        : "Random selection gives every member a chance to be in the sample"       // Positive (wrong for this scenario)
+    ];
 
     const reasonOptions = shuffle([correctReason, ...wrongReasons]);
 
@@ -383,9 +388,14 @@ export function generateProblem(modeId, contextFromFile, mode) {
       ? "Random assignment balances confounding variables across groups"
       : "Without random assignment, confounding variables may explain differences";
 
-    const wrongReasons = scen.randomAssignment
-      ? ["The sample was randomly selected", "The study had many participants"]
-      : ["The researchers were careful", "The measurements were accurate"];
+    // Always include both positive and negative reasons so students can make
+    // internally consistent choices (even if wrong), which aids learning
+    const wrongReasons = [
+      "The sample size determines if causation can be established",  // Neutral distractor
+      scen.randomAssignment
+        ? "Without random assignment, confounding variables may explain differences"  // Negative (wrong for this scenario)
+        : "Random assignment balances confounding variables across groups"            // Positive (wrong for this scenario)
+    ];
 
     const reasonOptions = shuffle([correctReason, ...wrongReasons]);
 
@@ -708,10 +718,11 @@ export function generateProblem(modeId, contextFromFile, mode) {
       "Convenience sample"
     ]);
 
+    // Include both positive and negative reasons for pedagogical consistency
     const whyOptions = shuffle([
       whyGen,
-      "The sample size is large",
-      "The researchers are experts"
+      "The sample is not representative of the population",  // Negative (wrong for random methods)
+      "The sample size determines generalizability"          // Neutral distractor
     ]);
 
     context = {
