@@ -623,11 +623,26 @@ export function generateProblem(modeId, contextFromFile, mode) {
     const ys = xs.map(x => evalPolyAsc(coeffs, x));
 
     // Determine trend across entire table
-    let trend = "Neither (it changes direction)";
-    const inc = ys.every((v, i) => i === 0 || v > ys[i - 1]);
-    const dec = ys.every((v, i) => i === 0 || v < ys[i - 1]);
-    if (inc) trend = "Increasing";
-    if (dec) trend = "Decreasing";
+    // Check if values ever go UP or ever go DOWN
+    let hasIncrease = false;
+    let hasDecrease = false;
+    for (let i = 1; i < ys.length; i++) {
+      if (ys[i] > ys[i - 1]) hasIncrease = true;
+      if (ys[i] < ys[i - 1]) hasDecrease = true;
+    }
+
+    // "Changes direction" means it goes up THEN down, or down THEN up
+    let trend;
+    if (hasIncrease && hasDecrease) {
+      trend = "Neither (it changes direction)";
+    } else if (hasIncrease) {
+      trend = "Increasing";
+    } else if (hasDecrease) {
+      trend = "Decreasing";
+    } else {
+      // All values equal (constant) - shouldn't happen with quadratic, but handle it
+      trend = "Neither (it changes direction)";
+    }
 
     const tableLines = ["x | f(x)", "---------"];
     for (let i = 0; i < xs.length; i++) tableLines.push(`${xs[i]} | ${ys[i]}`);
