@@ -448,11 +448,6 @@
           </svg>
         </button>
       </div>
-      <div class="px-6 py-3 bg-gray-50 border-b flex gap-2">
-        <button data-period="today" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400">Today</button>
-        <button data-period="week" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400">This Week</button>
-        <button data-period="all" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-yellow-400 text-white border border-yellow-400">All Time</button>
-      </div>
       <div id="leaderboard-content" class="flex-1 overflow-y-auto p-4">
         <div id="leaderboard-loading" class="flex items-center justify-center h-32">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
@@ -1566,16 +1561,6 @@
     document.getElementById('leaderboard-btn').addEventListener('click', () => leaderboard.open());
     document.getElementById('close-leaderboard').addEventListener('click', () => leaderboard.close());
     document.getElementById('leaderboard-backdrop').addEventListener('click', () => leaderboard.close());
-
-    document.querySelectorAll('.leaderboard-period-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.leaderboard-period-btn').forEach(b => {
-          b.className = 'leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400';
-        });
-        btn.className = 'leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-yellow-400 text-white border border-yellow-400';
-        leaderboard.setPeriod(btn.dataset.period);
-      });
-    });
 
     // ==================== ONLINE DROPDOWN ====================
     document.getElementById('online-btn').addEventListener('click', () => {

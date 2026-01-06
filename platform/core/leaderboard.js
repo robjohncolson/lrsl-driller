@@ -221,12 +221,6 @@ export class Leaderboard {
             </button>
           </div>
 
-          <!-- Period Filter -->
-          <div class="px-6 py-3 bg-gray-50 border-b flex gap-2">
-            <button data-period="today" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400">Today</button>
-            <button data-period="week" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-yellow-400">This Week</button>
-            <button data-period="all" class="leaderboard-period-btn px-3 py-1 text-sm rounded-full bg-yellow-400 text-white border border-yellow-400">All Time</button>
-          </div>
 
           <!-- Content -->
           <div id="leaderboard-content" class="flex-1 overflow-y-auto p-4">
