@@ -1,4 +1,4 @@
-// generator.js - Collecting Data (Unit 3.1-3.3)
+// generator.js - Collecting Data (Unit 3.1-3.4)
 // Aligned with AP Statistics Course Framework
 
 function randInt(min, max) {
@@ -444,6 +444,187 @@ const samplingScenarios = {
   ]
 };
 
+
+// ============ NEW SCENARIO BANKS (Bias + Trade-offs) ============
+
+// Level 16: Sampling / response bias scenarios (Topic 3.4)
+// NOTE: These focus on common AP Stats bias categories:
+// - Voluntary response bias (self-selection)
+// - Undercoverage bias (some groups left out of sampling frame)
+// - Nonresponse bias (selected individuals don't respond)
+// - Response bias (leading wording / misreporting / sensitive topics)
+const biasTypeNames = [
+  "Voluntary response bias",
+  "Undercoverage bias",
+  "Nonresponse bias",
+  "Response bias"
+];
+
+const biasScenarios = [
+  {
+    desc: "A news website posts a poll and asks visitors to click a button to vote on a controversial issue.",
+    bias: "Voluntary response bias",
+    explanation: "People choose to respond, and those with strong opinions are more likely to participate, so the sample may not represent the whole population."
+  },
+  {
+    desc: "A radio talk show host asks listeners to call in and share whether they support a new law. Hundreds of callers respond.",
+    bias: "Voluntary response bias",
+    explanation: "Only volunteers who call in are included, so the sample is self-selected and likely overrepresents extreme opinions."
+  },
+  {
+    desc: "A teacher wants to know students’ opinions about school lunches and asks students to fill out an optional survey posted on the class website.",
+    bias: "Voluntary response bias",
+    explanation: "Students who choose to complete the optional survey may differ from those who don’t, so the results may be biased."
+  },
+
+  {
+    desc: "A researcher randomly selects names from a landline phone book to survey adults in a city.",
+    bias: "Undercoverage bias",
+    explanation: "Some adults are not in the sampling frame (for example, people with only cell phones or unlisted numbers), so certain groups are underrepresented."
+  },
+  {
+    desc: "A school surveys students by texting a link to a questionnaire, but many students do not have cell phones with texting.",
+    bias: "Undercoverage bias",
+    explanation: "Students without texting access have little or no chance to be included, so the sample undercovers part of the population."
+  },
+  {
+    desc: "To estimate opinions of all commuters, a city surveys only people who take the subway.",
+    bias: "Undercoverage bias",
+    explanation: "Commuters who drive, bike, or walk are excluded, so the sample does not cover the entire population of commuters."
+  },
+
+  {
+    desc: "A company randomly selects 2,000 customers to email a survey, but only 12% respond.",
+    bias: "Nonresponse bias",
+    explanation: "Many selected individuals did not respond, and those who respond may differ from those who don’t, which can bias the results."
+  },
+  {
+    desc: "A polling firm randomly selects 800 voters to call, but 40% refuse to answer the questions.",
+    bias: "Nonresponse bias",
+    explanation: "If the people who refuse differ from those who respond, the resulting data may not represent the population."
+  },
+  {
+    desc: "A school mails surveys to a random sample of parents, but many never return the survey.",
+    bias: "Nonresponse bias",
+    explanation: "Nonrespondents might have systematically different opinions than respondents, which can distort the results."
+  },
+
+  {
+    desc: "A survey asks: 'Don’t you agree that our school should start later so students can get more sleep?'",
+    bias: "Response bias",
+    explanation: "The question is leading and may push respondents toward agreeing, which can bias the responses."
+  },
+  {
+    desc: "Students are asked to report how many times they cheated on a test in the past year.",
+    bias: "Response bias",
+    explanation: "Because the topic is sensitive, some students may lie or underreport, so responses may be inaccurate (response bias)."
+  },
+  {
+    desc: "A survey question asks: 'How satisfied are you with the cafeteria food and the school’s discipline policy?'",
+    bias: "Response bias",
+    explanation: "This question is unclear/double-barreled (two topics at once), which can confuse respondents and bias the responses."
+  }
+];
+
+// Level 17: “Best method” trade-off scenarios (Topic 3.4-ish, still sampling)
+// Goal: pick the most appropriate method for the situation AND explain why.
+const methodNames = [
+  "Simple random sample (SRS)",
+  "Stratified random sample",
+  "Cluster random sample",
+  "Systematic random sample"
+];
+
+const methodTradeoffScenarios = [
+  {
+    desc: "A high school wants to estimate average hours of sleep for students. Students are in grades 9–12 and sleep may differ by grade. The school wants every grade represented.",
+    bestMethod: "Stratified random sample",
+    explanation: "Stratified sampling (by grade) ensures each grade is represented. This can also reduce variability if sleep differs by grade, improving precision."
+  },
+  {
+    desc: "A company has departments (Sales, Engineering, HR, Marketing). Job satisfaction may differ by department, and the company wants to be sure each department is included.",
+    bestMethod: "Stratified random sample",
+    explanation: "Stratifying by department guarantees representation from each department and can yield more precise overall estimates."
+  },
+  {
+    desc: "A polling organization wants opinions from Democrats, Republicans, and Independents, and wants each group included in the sample.",
+    bestMethod: "Stratified random sample",
+    explanation: "Stratifying by political group ensures every group is represented, which helps avoid underrepresenting smaller groups."
+  },
+
+  {
+    desc: "A city wants to survey households, but the city is spread out and it is expensive to travel everywhere. The city randomly selects 10 city blocks and surveys every household on those blocks.",
+    bestMethod: "Cluster random sample",
+    explanation: "Cluster sampling is practical and cheaper because data collectors focus on a few locations (blocks). It trades some precision for feasibility."
+  },
+  {
+    desc: "A school district wants to survey teachers. It randomly selects 6 schools (out of 40) and surveys all teachers at the selected schools.",
+    bestMethod: "Cluster random sample",
+    explanation: "Selecting entire schools (clusters) is more practical than sampling teachers from every school, because it reduces travel/coordination."
+  },
+  {
+    desc: "A hospital system wants patient feedback across many clinics. It randomly selects a few clinics and surveys all patients at those clinics.",
+    bestMethod: "Cluster random sample",
+    explanation: "Cluster sampling reduces cost and effort by surveying whole clinics instead of tracking down individuals spread across all clinics."
+  },
+
+  {
+    desc: "An inspector on a production line chooses a random starting item, then inspects every 50th item for defects.",
+    bestMethod: "Systematic random sample",
+    explanation: "Systematic sampling is easy to implement on a stream/ordered process. A random start plus every kth item spreads the sample across the run."
+  },
+  {
+    desc: "A researcher has a long ordered list of patients. They pick a random starting point, then select every 10th patient.",
+    bestMethod: "Systematic random sample",
+    explanation: "Systematic sampling is straightforward once you have an ordered list: random start, then every kth individual."
+  },
+  {
+    desc: "At a stadium, staff select every 20th person who enters the gate, starting with a randomly chosen number from 1 to 20.",
+    bestMethod: "Systematic random sample",
+    explanation: "This uses a random start and then every kth person, making it fast and easy without needing a full list of attendees."
+  },
+
+  {
+    desc: "A researcher has a complete list of all 5,000 members of a club and wants a sample of 200 with no special subgroups to guarantee.",
+    bestMethod: "Simple random sample (SRS)",
+    explanation: "An SRS is appropriate when you have a complete list and no specific subgroup representation is needed. Randomly selecting from the whole list is unbiased."
+  },
+  {
+    desc: "A teacher has a list of all students in the school and wants to randomly choose 60 students for a survey.",
+    bestMethod: "Simple random sample (SRS)",
+    explanation: "An SRS from the full list gives every possible group of 60 students an equal chance of selection, making the sample unbiased."
+  },
+  {
+    desc: "A quality-control manager numbers all 12,000 items produced today and uses a random number generator to select 150 items to inspect.",
+    bestMethod: "Simple random sample (SRS)",
+    explanation: "Selecting random item numbers from the full list is a straightforward SRS and avoids systematic bias (assuming the list represents all items)."
+  }
+];
+
+// Level 18: Large sample vs representative sample misconception checks
+const largeSampleScenarios = [
+  {
+    desc: "A student posts a survey link on social media and gets 800 responses. The student claims the results must be representative because the sample is large.",
+    correct: "No",
+    explanation: "A large sample size does not guarantee representativeness. This is a voluntary response sample (not randomly selected), so it can be biased even if it is large."
+  },
+  {
+    desc: "A store surveys the first 1,000 customers who enter on Saturday morning. The manager says the sample is big enough to represent all customers.",
+    correct: "No",
+    explanation: "Even a large convenience sample can be biased. Representativeness depends on random selection, not just sample size."
+  },
+  {
+    desc: "A city emails a survey to 5,000 residents but only residents who choose to respond are included. The city says the huge number of emails makes the results representative.",
+    correct: "No",
+    explanation: "This can still be biased due to voluntary response and/or nonresponse. Sample size does not fix bias from a nonrandom response process."
+  },
+  {
+    desc: "A company uses online product reviews from 10,000 customers to judge overall satisfaction. They claim the number of reviews guarantees accuracy.",
+    correct: "No",
+    explanation: "People who leave online reviews are self-selected and may differ from typical customers. A large biased sample is still biased."
+  }
+];
+
 // ============ GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, contextFromFile, mode) {
@@ -629,7 +810,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
       optA: options[0],
       optB: options[1],
       optC: options[2],
-      optD: options[3] || options[0],  // Fallback if only 3 options
+      optD: options[3] || options[0],
       srsKey: { value: q.answer }
     };
     answers = { srsKey: { value: q.answer } };
@@ -901,7 +1082,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     return { context, graphConfig, answers, scenario };
   }
 
-  // ========== LEVEL 15: Full Capstone (Unit 3.1-3.3) ==========
+  // ========== LEVEL 15: Full Capstone (Unit 3.1-3.4) ==========
   if (modeId === "l15-capstone-full") {
     const scen = drawFromBag('inferenceScenarios_l15', inferenceScenarios);
     const studyType = scen.isExperiment ? "Experiment" : "Observational study";
@@ -918,7 +1099,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
 
     context = {
       topicId: "3.1-3.3",
-      problemText: "**Unit 3.1-3.3 Capstone**\n\n" +
+      problemText: "**Unit 3.1-3.4 Capstone**\n\n" +
                    "Apply everything you've learned:\n\n" +
                    "1. **Study type:** Observational or Experiment?\n" +
                    "   - Were treatments ASSIGNED? → Experiment\n" +
@@ -942,6 +1123,99 @@ export function generateProblem(modeId, contextFromFile, mode) {
       capGen2: { value: scen.randomSelection ? "Yes" : "No" },
       capCause2: { value: scen.randomAssignment ? "Yes" : "No" }
     };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+
+  // ========== LEVEL 16: Sampling Biases (Topic 3.4a) ==========
+  if (modeId === "l16-sampling-bias") {
+    const scen = drawFromBag("biasScenarios", biasScenarios);
+
+    const options = shuffle([...biasTypeNames]);
+
+    context = {
+      topicId: "3.4a",
+      problemText:
+        "**DAT-2.E:** Identify sources of bias in data collection.\n\n" +
+        "**Common biases:**\n" +
+        "• **Voluntary response:** people choose to respond (often strong opinions)\n" +
+        "• **Undercoverage:** some groups are left out of the sampling frame\n" +
+        "• **Nonresponse:** selected individuals do not respond\n" +
+        "• **Response bias:** question wording/misreporting changes answers\n\n" +
+        "**Task:** Identify the primary bias and explain why it could make results unrepresentative.",
+      givenText: scen.desc,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      biasType: { value: scen.bias },
+      biasExplain: { value: scen.explanation }
+    };
+
+    answers = {
+      biasType: { value: scen.bias },
+      biasExplain: { value: scen.explanation }
+    };
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 17: Choosing a Sampling Method (Trade-offs) (Topic 3.4b) ==========
+  if (modeId === "l17-method-tradeoffs") {
+    const scen = drawFromBag("methodTradeoffScenarios", methodTradeoffScenarios);
+
+    const options = shuffle([...methodNames]);
+
+    context = {
+      topicId: "3.4b",
+      problemText:
+        "**DAT-2.D:** Choose a sampling method that fits the situation.\n\n" +
+        "**Think about:**\n" +
+        "• **Representation:** Do we need every subgroup included?\n" +
+        "• **Precision:** Would stratifying reduce variability?\n" +
+        "• **Practicality:** Is it cheaper/easier to sample by groups or by an ordered process?\n\n" +
+        "**Task:** Pick the BEST method for this scenario and explain why.",
+      givenText: scen.desc,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      methodChoice: { value: scen.bestMethod },
+      methodExplain: { value: scen.explanation }
+    };
+
+    answers = {
+      methodChoice: { value: scen.bestMethod },
+      methodExplain: { value: scen.explanation }
+    };
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 18: Large Sample vs Representative Sample (Topic 3.4c) ==========
+  if (modeId === "l18-large-sample") {
+    const scen = drawFromBag("largeSampleScenarios", largeSampleScenarios);
+
+    context = {
+      topicId: "3.4c",
+      problemText:
+        "**Key idea:** A larger sample size usually improves **precision** (less random error), " +
+        "but it does **NOT** automatically fix **bias**.\n\n" +
+        "**Representativeness depends on HOW you sample** (random selection), not just how many you have.\n\n" +
+        "**Task:** Decide whether the claim is correct and explain your reasoning.",
+      givenText: scen.desc,
+      largeGeneralize: { value: scen.correct },
+      largeExplain: { value: scen.explanation }
+    };
+
+    answers = {
+      largeGeneralize: { value: scen.correct },
+      largeExplain: { value: scen.explanation }
+    };
+
     scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
