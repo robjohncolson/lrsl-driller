@@ -721,6 +721,13 @@
       return currentCartridgeId || 'Practice';
     }
 
+    // Map frontend grading levels to database-compatible values
+    function getDbGradingMode(level) {
+      // Database constraint only allows: 'keywords', 'ai', 'teacher'
+      if (level === 'algorithm') return 'keywords';
+      return level; // 'ai' and 'teacher' pass through
+    }
+
     // ==================== RESPONSIVE LAYOUT ====================
     function updateMobileLayout() {
       const isMobile = window.innerWidth < 1024; // lg breakpoint
@@ -2632,7 +2639,7 @@
                     star_type: starType,
                     all_correct: true,
                     hints_used: state.game.hintsUsed || 0,
-                    grading_mode: currentGradingLevel
+                    grading_mode: getDbGradingMode(currentGradingLevel)
                   })
                 })
                 .then(r => r.json().then(data => ({ ok: r.ok, data })))
