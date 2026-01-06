@@ -291,12 +291,12 @@ export function generateProblem(modeId, contextFromFile, mode) {
     return { context, graphConfig, answers, scenario };
   }
 
-  // ========== LEVEL 2: Population vs Sample (Topic 3.2) ==========
+  // ========== LEVEL 2: Population vs Sample (Topic 3.2a) ==========
   if (modeId === "l02-population-sample") {
     const scen = choice(popSampleScenarios);
 
     context = {
-      topicId: "3.2",
+      topicId: "3.2a",
       problemText: "**DAT-2.A.1:** A **population** consists of ALL items or subjects of interest.\n\n" +
                    "**DAT-2.A.2:** A **sample** is a SUBSET of the population selected for study.\n\n" +
                    "**Key distinction:**\n" +
@@ -313,12 +313,12 @@ export function generateProblem(modeId, contextFromFile, mode) {
     return { context, graphConfig, answers, scenario };
   }
 
-  // ========== LEVEL 3: Observational vs Experiment (Topic 3.2) ==========
+  // ========== LEVEL 3: Observational vs Experiment (Topic 3.2b) ==========
   if (modeId === "l03-obs-vs-exp") {
     const scen = choice(obsExpScenarios);
 
     context = {
-      topicId: "3.2",
+      topicId: "3.2b",
       problemText: "**DAT-2.A.3:** In an **observational study**, treatments are NOT imposed. Researchers just observe/record what already exists.\n\n" +
                    "**DAT-2.A.4:** In an **experiment**, researchers ASSIGN different treatments to experimental units.\n\n" +
                    "**Key question:** Did researchers IMPOSE/ASSIGN treatments, or just OBSERVE?\n\n" +
@@ -334,28 +334,30 @@ export function generateProblem(modeId, contextFromFile, mode) {
     return { context, graphConfig, answers, scenario };
   }
 
-  // ========== LEVEL 4: Random Selection → Generalization (Topic 3.2) ==========
+  // ========== LEVEL 4: Random Selection → Generalization (Topic 3.2c) ==========
   if (modeId === "l04-random-selection") {
     const scen = choice(inferenceScenarios);
     const canGen = scen.randomSelection ? "Yes" : "No";
 
+    // GENERALIZATION reasons - these are about extending results to the population
+    // NOT about causation (that's level 5)
     const correctReason = scen.randomSelection
-      ? "Random selection gives every member a chance to be in the sample"
-      : "Without random selection, the sample may not represent the population";
+      ? "Random selection makes the sample representative of the population"
+      : "Without random selection, the sample may be biased and not represent the population";
 
     // Always include both positive and negative reasons so students can make
     // internally consistent choices (even if wrong), which aids learning
     const wrongReasons = [
-      "The sample size determines generalizability",  // Neutral distractor
+      "The study design determines if results apply to everyone",  // Neutral distractor
       scen.randomSelection
-        ? "Without random selection, the sample may not represent the population"  // Negative (wrong for this scenario)
-        : "Random selection gives every member a chance to be in the sample"       // Positive (wrong for this scenario)
+        ? "Without random selection, the sample may be biased and not represent the population"  // Negative
+        : "Random selection makes the sample representative of the population"                   // Positive
     ];
 
     const reasonOptions = shuffle([correctReason, ...wrongReasons]);
 
     context = {
-      topicId: "3.2",
+      topicId: "3.2c",
       problemText: "**DAT-2.B.1:** It is only appropriate to GENERALIZE to a population if the sample was RANDOMLY SELECTED from that population.\n\n" +
                    "**Random Selection** = using chance to choose WHO is in the study\n\n" +
                    "✓ Random selection → Can generalize to the population\n" +
@@ -379,28 +381,30 @@ export function generateProblem(modeId, contextFromFile, mode) {
     return { context, graphConfig, answers, scenario };
   }
 
-  // ========== LEVEL 5: Random Assignment → Causation (Topic 3.2) ==========
+  // ========== LEVEL 5: Random Assignment → Causation (Topic 3.2d) ==========
   if (modeId === "l05-random-assignment") {
     const scen = choice(inferenceScenarios.filter(s => s.isExperiment !== undefined));
     const canCause = scen.randomAssignment ? "Yes" : "No";
 
+    // CAUSATION reasons - these are about proving cause-and-effect
+    // NOT about generalization (that's level 4)
     const correctReason = scen.randomAssignment
-      ? "Random assignment balances confounding variables across groups"
-      : "Without random assignment, confounding variables may explain differences";
+      ? "Random assignment controls confounding variables, so differences must be due to treatment"
+      : "Without random assignment, lurking variables could explain the observed differences";
 
     // Always include both positive and negative reasons so students can make
     // internally consistent choices (even if wrong), which aids learning
     const wrongReasons = [
-      "The sample size determines if causation can be established",  // Neutral distractor
+      "The sample was randomly selected from the population",  // Wrong concept (this is about generalization, not causation)
       scen.randomAssignment
-        ? "Without random assignment, confounding variables may explain differences"  // Negative (wrong for this scenario)
-        : "Random assignment balances confounding variables across groups"            // Positive (wrong for this scenario)
+        ? "Without random assignment, lurking variables could explain the observed differences"  // Negative
+        : "Random assignment controls confounding variables, so differences must be due to treatment"  // Positive
     ];
 
     const reasonOptions = shuffle([correctReason, ...wrongReasons]);
 
     context = {
-      topicId: "3.2",
+      topicId: "3.2d",
       problemText: "**DAT-2.B.3:** It is NOT possible to determine CAUSAL relationships from observational studies.\n\n" +
                    "**Random Assignment** = using chance to decide WHO GETS WHICH TREATMENT\n\n" +
                    "✓ Random assignment → Can establish causation\n" +
@@ -423,12 +427,12 @@ export function generateProblem(modeId, contextFromFile, mode) {
     return { context, graphConfig, answers, scenario };
   }
 
-  // ========== LEVEL 6: Scope of Inference 2x2 (Topic 3.2) ==========
+  // ========== LEVEL 6: Scope of Inference 2x2 (Topic 3.2e) ==========
   if (modeId === "l06-scope-of-inference") {
     const scen = choice(inferenceScenarios);
 
     context = {
-      topicId: "3.2",
+      topicId: "3.2e",
       problemText: "**The Scope of Inference 2×2 Table:**\n\n" +
                    "| | Random Selection? YES | Random Selection? NO |\n" +
                    "|---|---|---|\n" +
@@ -709,7 +713,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
     const correct = methodNames[type];
     const canGen = "Yes"; // All these are random methods
-    const whyGen = "Random selection gives every member a chance to be selected";
+    const whyGen = "Random selection makes the sample representative of the population";
 
     const methodOptions = shuffle([
       "Simple random sample (SRS)",
@@ -718,11 +722,11 @@ export function generateProblem(modeId, contextFromFile, mode) {
       "Convenience sample"
     ]);
 
-    // Include both positive and negative reasons for pedagogical consistency
+    // GENERALIZATION reasons - include both positive and negative for pedagogical consistency
     const whyOptions = shuffle([
       whyGen,
-      "The sample is not representative of the population",  // Negative (wrong for random methods)
-      "The sample size determines generalizability"          // Neutral distractor
+      "Without random selection, the sample may be biased and not represent the population",  // Negative (wrong for random methods, but consistent if student picks "No")
+      "The study design determines if results apply to everyone"  // Neutral distractor
     ]);
 
     context = {

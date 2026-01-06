@@ -105,9 +105,9 @@ export function gradeField(fieldId, answer, context) {
     if (studentNorm === expectedNorm) {
       return { score: "E", feedback: "Correct! You identified the key reasoning." };
     }
-    // Partial credit for mentioning random/selection
-    if (containsAny(answer, ["random", "selection", "chance", "representative"])) {
-      return { score: "P", feedback: "You're on the right track! The key is whether RANDOM SELECTION was used." };
+    // Partial credit for mentioning random/selection/representative/biased
+    if (containsAny(answer, ["random", "selection", "chance", "representative", "biased", "population"])) {
+      return { score: "P", feedback: "You're on the right track! The key is whether RANDOM SELECTION makes the sample representative." };
     }
     return { score: "I", feedback: `The correct reasoning is: ${expected}` };
   }
@@ -133,9 +133,9 @@ export function gradeField(fieldId, answer, context) {
     if (studentNorm === expectedNorm) {
       return { score: "E", feedback: "Correct! You identified the key reasoning." };
     }
-    // Partial credit for mentioning assignment/confounding
-    if (containsAny(answer, ["random", "assignment", "confound", "balance"])) {
-      return { score: "P", feedback: "You're on the right track! The key is whether RANDOM ASSIGNMENT balanced confounding variables." };
+    // Partial credit for mentioning assignment/confounding/lurking
+    if (containsAny(answer, ["random", "assignment", "confound", "lurking", "treatment", "cause"])) {
+      return { score: "P", feedback: "You're on the right track! The key is whether RANDOM ASSIGNMENT controlled confounding/lurking variables." };
     }
     return { score: "I", feedback: `The correct reasoning is: ${expected}` };
   }
