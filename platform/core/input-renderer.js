@@ -59,6 +59,17 @@ export class InputRenderer {
       });
     }
 
+    // Render LaTeX math in labels and other text
+    if (typeof renderMathInElement !== 'undefined') {
+      renderMathInElement(this.container, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+
     return this;
   }
 
@@ -76,7 +87,7 @@ export class InputRenderer {
 
     const label = document.createElement('label');
     label.className = this.styles.label;
-    label.textContent = this.interpolate(field.label, context);
+    label.innerHTML = this.interpolate(field.label, context);
     label.htmlFor = `field-${field.id}`;
     labelRow.appendChild(label);
 
@@ -229,7 +240,7 @@ export class InputRenderer {
       radio.value = optionValue;
 
       const text = document.createElement('span');
-      text.textContent = optionLabel;
+      text.innerHTML = optionLabel;
 
       label.appendChild(radio);
       label.appendChild(text);
@@ -545,6 +556,17 @@ export class InputRenderer {
     // Note: no 'hidden' class - feedback should be visible
     feedbackEl.className = `${this.styles.feedback} ${scoreClass}`;
     feedbackEl.innerHTML = result.feedback || (score === 'E' ? 'Correct!' : 'Review your answer.');
+
+    // Render LaTeX math in feedback if available
+    if (typeof renderMathInElement !== 'undefined') {
+      renderMathInElement(feedbackEl, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    }
 
     // Ensure it's visible (remove hidden if it was there)
     feedbackEl.style.display = '';
