@@ -2097,9 +2097,16 @@
             </div>
 
             ${!isReviewed ? `
-              <div class="mt-4 flex justify-end">
+              <div class="mt-4 flex justify-between">
+                <button onclick="loadReviewProblem(${review.id})" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                  </svg>
+                  View & Grade
+                </button>
                 <button onclick="submitTeacherGrades('${review.id}')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                  Submit Grades
+                  Quick Grade
                 </button>
               </div>
             ` : `
@@ -2189,6 +2196,126 @@
         console.error('Failed to submit grades:', err);
         celebration.showToast('Failed to submit grades', 'error');
       }
+    };
+
+    // Track currently loaded review for grading
+    let activeReviewId = null;
+
+    window.loadReviewProblem = async function(reviewId) {
+      // Find the review in cache
+      const review = pendingReviewsCache.find(r => r.id === reviewId);
+      if (!review) {
+        celebration.showToast('Review not found', 'error');
+        return;
+      }
+
+      console.log('Loading review problem:', review);
+
+      // Close the teacher review panel
+      closeTeacherReviewPanel();
+
+      // Store the active review ID for later grading
+      activeReviewId = reviewId;
+
+      // Check if we need to switch cartridges
+      const targetCartridge = review.cartridge_id || 'lsrl-interpretation';
+      if (currentCartridgeId !== targetCartridge) {
+        // Switch cartridge
+        await loadCartridge(targetCartridge);
+        document.getElementById('cartridge-select').value = targetCartridge;
+      }
+
+      // Set the mode if available
+      if (review.mode_id && platform.cartridgeLoader) {
+        platform.currentMode = review.mode_id;
+        // Update mode tabs if visible
+        const modeTab = document.querySelector(`[data-mode="${review.mode_id}"]`);
+        if (modeTab) modeTab.click();
+      }
+
+      // Create a reconstructed problem from the stored context
+      const reconstructedProblem = {
+        context: review.scenario_context || {},
+        answers: review.expected_answers || {},
+        scenario: review.scenario_topic || 'Review Problem',
+        graphConfig: review.scenario_context?.graphConfig || null
+      };
+
+      // Manually set the platform's current problem
+      platform.currentProblem = reconstructedProblem;
+
+      // Update the info panel with the scenario
+      const infoPanel = document.getElementById('info-panel');
+      if (infoPanel) {
+        const ctx = reconstructedProblem.context;
+        let infoHtml = `<div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4">
+          <div class="font-semibold text-blue-800">📝 Reviewing: ${review.real_name || review.username}</div>
+          <div class="text-sm text-blue-600">${review.cartridge_name || 'Practice'} - ${review.scenario_topic || 'Problem'}</div>
+        </div>`;
+
+        // Add problem text if available
+        if (ctx.problemText) {
+          infoHtml += `<div class="prose prose-sm max-w-none mb-4">${ctx.problemText.replace(/\n/g, '<br>')}</div>`;
+        }
+
+        // Add given text/scenario if available
+        if (ctx.givenText) {
+          infoHtml += `<div class="bg-gray-50 rounded p-3 mb-4">${ctx.givenText.replace(/\n/g, '<br>')}</div>`;
+        }
+
+        // For LSRL-type problems, show the regression context
+        if (ctx.xVar && ctx.yVar) {
+          infoHtml += `<div class="bg-gray-50 rounded p-3 text-sm">
+            <div><strong>x:</strong> ${ctx.xVar} (${ctx.xUnits || ''})</div>
+            <div><strong>y:</strong> ${ctx.yVar} (${ctx.yUnits || ''})</div>
+            ${ctx.slope !== undefined ? `<div><strong>Equation:</strong> ŷ = ${ctx.intercept} + ${ctx.slope}x</div>` : ''}
+            ${ctx.r !== undefined ? `<div><strong>r:</strong> ${ctx.r}</div>` : ''}
+          </div>`;
+        }
+
+        infoPanel.innerHTML = infoHtml;
+
+        // Render math if KaTeX is available
+        if (typeof renderMathInElement !== 'undefined') {
+          renderMathInElement(infoPanel, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ],
+            throwOnError: false
+          });
+        }
+      }
+
+      // Render the graph if there's graph config
+      if (reconstructedProblem.graphConfig && platform.graphEngine) {
+        platform.graphEngine.render(reconstructedProblem.graphConfig);
+      }
+
+      // Get the mode layout to render inputs
+      const mode = platform.cartridgeLoader?.getMode(review.mode_id);
+      const fields = mode?.layout?.inputs || review.field_ids?.map(id => ({ id, type: 'text', label: id })) || [];
+
+      // Render input fields
+      if (platform.inputRenderer && fields.length > 0) {
+        platform.inputRenderer.render(fields, reconstructedProblem.context);
+
+        // Pre-fill with student's answers
+        const studentAnswers = review.student_answers || {};
+        setTimeout(() => {
+          for (const [fieldId, value] of Object.entries(studentAnswers)) {
+            platform.inputRenderer.setValue(fieldId, value);
+          }
+        }, 100);
+      }
+
+      // Show the grade button and set up for teacher grading
+      document.getElementById('btn-grade').classList.remove('hidden');
+      document.getElementById('btn-try-again').classList.add('hidden');
+      document.getElementById('btn-next').classList.add('hidden');
+
+      // Show a banner indicating teacher review mode
+      celebration.showToast(`Reviewing ${review.real_name || review.username}'s work - Click Grade to evaluate`, 'info', 5000);
     };
 
     // Teacher review panel event listeners
@@ -2398,6 +2525,31 @@
 
             // Update grading status display
             updateGradingStatus(results);
+
+            // If we're reviewing a student's submission, submit the teacher grades
+            if (activeReviewId) {
+              const grades = {};
+              for (const [fieldId, result] of Object.entries(results.fields || {})) {
+                grades[fieldId] = result.score;
+              }
+
+              fetch(`${SERVER_URL}/api/teacher-review/${activeReviewId}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-teacher-password': teacherPassword || 'stats123'
+                },
+                body: JSON.stringify({ grades })
+              })
+              .then(r => {
+                if (r.ok) {
+                  celebration.showToast('Student review submitted!', 'success');
+                  activeReviewId = null;
+                  loadPendingReviews(); // Refresh the review list
+                }
+              })
+              .catch(err => console.error('Failed to submit review:', err));
+            }
 
             // Store pending review data for potential teacher escalation later
             if (!results.allCorrect) {
