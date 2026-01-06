@@ -339,22 +339,20 @@ export function generateProblem(modeId, contextFromFile, mode) {
     const scen = choice(inferenceScenarios);
     const canGen = scen.randomSelection ? "Yes" : "No";
 
-    // GENERALIZATION reasons - these are about extending results to the population
-    // NOT about causation (that's level 5)
-    const correctReason = scen.randomSelection
-      ? "Random selection makes the sample representative of the population"
-      : "Without random selection, the sample may be biased and not represent the population";
+    // GENERALIZATION reasons - complete sentences that explain YES or NO
+    // Each option should be a complete reason, not just a fact
+    const yesReason = "Yes, because random selection made the sample representative of the population";
+    const noReason = "No, because without random selection, the sample may not represent the population";
+    const wrongReason = "It depends on whether the sample size was large enough";  // Common misconception
 
-    // Always include both positive and negative reasons so students can make
-    // internally consistent choices (even if wrong), which aids learning
-    const wrongReasons = [
-      "The study design determines if results apply to everyone",  // Neutral distractor
-      scen.randomSelection
-        ? "Without random selection, the sample may be biased and not represent the population"  // Negative
-        : "Random selection makes the sample representative of the population"                   // Positive
-    ];
+    const correctReason = scen.randomSelection ? yesReason : noReason;
 
-    const reasonOptions = shuffle([correctReason, ...wrongReasons]);
+    // Include the opposite answer so students can make consistent (but wrong) choices
+    const reasonOptions = shuffle([
+      correctReason,
+      scen.randomSelection ? noReason : yesReason,  // Opposite of correct
+      wrongReason  // Misconception distractor
+    ]);
 
     context = {
       topicId: "3.2c",
@@ -386,22 +384,20 @@ export function generateProblem(modeId, contextFromFile, mode) {
     const scen = choice(inferenceScenarios.filter(s => s.isExperiment !== undefined));
     const canCause = scen.randomAssignment ? "Yes" : "No";
 
-    // CAUSATION reasons - these are about proving cause-and-effect
-    // NOT about generalization (that's level 4)
-    const correctReason = scen.randomAssignment
-      ? "Random assignment controls confounding variables, so differences must be due to treatment"
-      : "Without random assignment, lurking variables could explain the observed differences";
+    // CAUSATION reasons - complete sentences that explain YES or NO
+    // Each option should be a complete reason, not just a fact
+    const yesReason = "Yes, because random assignment balanced confounding variables across groups";
+    const noReason = "No, because without random assignment, lurking variables could explain differences";
+    const wrongReason = "It depends on whether the sample size was large enough";  // Common misconception
 
-    // Always include both positive and negative reasons so students can make
-    // internally consistent choices (even if wrong), which aids learning
-    const wrongReasons = [
-      "The sample was randomly selected from the population",  // Wrong concept (this is about generalization, not causation)
-      scen.randomAssignment
-        ? "Without random assignment, lurking variables could explain the observed differences"  // Negative
-        : "Random assignment controls confounding variables, so differences must be due to treatment"  // Positive
-    ];
+    const correctReason = scen.randomAssignment ? yesReason : noReason;
 
-    const reasonOptions = shuffle([correctReason, ...wrongReasons]);
+    // Include the opposite answer so students can make consistent (but wrong) choices
+    const reasonOptions = shuffle([
+      correctReason,
+      scen.randomAssignment ? noReason : yesReason,  // Opposite of correct
+      wrongReason  // Misconception distractor
+    ]);
 
     context = {
       topicId: "3.2d",
@@ -713,7 +709,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
     const correct = methodNames[type];
     const canGen = "Yes"; // All these are random methods
-    const whyGen = "Random selection makes the sample representative of the population";
+    const whyGen = "Yes, because random selection made the sample representative of the population";
 
     const methodOptions = shuffle([
       "Simple random sample (SRS)",
@@ -722,11 +718,11 @@ export function generateProblem(modeId, contextFromFile, mode) {
       "Convenience sample"
     ]);
 
-    // GENERALIZATION reasons - include both positive and negative for pedagogical consistency
+    // GENERALIZATION reasons - complete sentences that match the Yes/No answer
     const whyOptions = shuffle([
       whyGen,
-      "Without random selection, the sample may be biased and not represent the population",  // Negative (wrong for random methods, but consistent if student picks "No")
-      "The study design determines if results apply to everyone"  // Neutral distractor
+      "No, because without random selection, the sample may not represent the population",  // Wrong for random methods, but consistent if student picks "No"
+      "It depends on whether the sample size was large enough"  // Common misconception
     ]);
 
     context = {
