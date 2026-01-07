@@ -218,7 +218,7 @@ export class Platform {
           distributions: gc.distributions
         });
       } else {
-        // Standard chart types (scatterplot, residual-plot, etc.)
+        // Standard chart types (scatterplot, residual-plot, function-curve, etc.)
         const pointsData = gc.points || gc.data;
         const graphConfig = {
           type: gc.type,
@@ -240,7 +240,16 @@ export class Platform {
             highlightId: gc.highlight?.index,
             showResidualLine: gc.showResidualLine,
             zeroLine: gc.showZeroLine
-          }
+          },
+          // Function curve features
+          originAxes: gc.originAxes,
+          quadrantLabels: gc.quadrantLabels,
+          quadrantLabelsOnHint: gc.quadrantLabelsOnHint,
+          secantLine: gc.secantLine,
+          labeledPoints: gc.labeledPoints,
+          xIntercepts: gc.xIntercepts,
+          turningPoints: gc.turningPoints,
+          curveColor: gc.curveColor
         };
         this.graphEngine.render(graphConfig);
       }

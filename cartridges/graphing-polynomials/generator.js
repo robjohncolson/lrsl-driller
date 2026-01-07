@@ -737,6 +737,8 @@ export function generateProblem(modeId, contextFromFile, mode) {
       xDomain: [xMin, xMax],
       yDomain,
       regression: { show: false },
+      // Show x and y axes through origin
+      originAxes: true,
       // Secant line connecting (a, f(a)) and (b, f(b))
       secantLine: {
         x1: a,
