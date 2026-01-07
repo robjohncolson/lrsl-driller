@@ -835,6 +835,42 @@
       return currentCartridgeId || 'Practice';
     }
 
+    /**
+     * Get level multiplier based on current mode's position in progression
+     * Early levels: 0.5x, Final levels: 5.0x (linear interpolation)
+     */
+    function getLevelMultiplier() {
+      const modes = platform?.currentCartridge?.manifest?.modes;
+      const currentModeId = platform?.currentMode;
+
+      if (!modes || !currentModeId || modes.length <= 1) {
+        return 1.0; // Default multiplier if no progression
+      }
+
+      const modeIndex = modes.findIndex(m => m.id === currentModeId);
+      if (modeIndex === -1) return 1.0;
+
+      // Linear interpolation from 0.5 (first level) to 5.0 (last level)
+      const minMultiplier = 0.5;
+      const maxMultiplier = 5.0;
+      const progress = modeIndex / (modes.length - 1); // 0 to 1
+
+      return minMultiplier + progress * (maxMultiplier - minMultiplier);
+    }
+
+    /**
+     * Get current level index (0-based)
+     */
+    function getCurrentLevelIndex() {
+      const modes = platform?.currentCartridge?.manifest?.modes;
+      const currentModeId = platform?.currentMode;
+
+      if (!modes || !currentModeId) return 0;
+
+      const index = modes.findIndex(m => m.id === currentModeId);
+      return index >= 0 ? index : 0;
+    }
+
     // Map frontend grading levels to database-compatible values
     function getDbGradingMode(level) {
       // Database constraint only allows: 'keywords', 'ai', 'teacher'
@@ -1068,6 +1104,7 @@
         // Persist to database for leaderboard
         if (userSystem.currentUser) {
           const problem = platform.currentProblem;
+          const multiplier = getLevelMultiplier();
           fetch(`${SERVER_URL}/api/progress`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1077,13 +1114,15 @@
               star_type: starType,
               all_correct: true,
               hints_used: hintsUsed,
-              grading_mode: 'teacher'
+              grading_mode: 'teacher',
+              level_index: getCurrentLevelIndex(),
+              level_multiplier: multiplier
             })
           })
           .then(r => r.json().then(data => ({ ok: r.ok, data })))
           .then(({ ok, data }) => {
             if (!ok) console.error('Server rejected progress:', data.error);
-            else console.log('Progress saved to leaderboard');
+            else console.log(`Progress saved (${multiplier.toFixed(1)}x multiplier)`);
           })
           .catch(err => console.warn('Failed to save progress:', err));
         }
@@ -2834,6 +2873,7 @@
               // Persist to database for leaderboard
               if (userSystem.currentUser) {
                 const problem = platform.currentProblem;
+                const multiplier = getLevelMultiplier();
                 fetch(`${SERVER_URL}/api/progress`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -2843,13 +2883,15 @@
                     star_type: starType,
                     all_correct: true,
                     hints_used: state.game.hintsUsed || 0,
-                    grading_mode: getDbGradingMode(currentGradingLevel)
+                    grading_mode: getDbGradingMode(currentGradingLevel),
+                    level_index: getCurrentLevelIndex(),
+                    level_multiplier: multiplier
                   })
                 })
                 .then(r => r.json().then(data => ({ ok: r.ok, data })))
                 .then(({ ok, data }) => {
                   if (!ok) console.error('Server rejected progress:', data.error);
-                  else console.log('Progress saved to leaderboard');
+                  else console.log(`Progress saved (${multiplier.toFixed(1)}x multiplier)`);
                 })
                 .catch(err => console.warn('Failed to save progress:', err));
               }

@@ -170,7 +170,9 @@ app.post('/api/progress', async (req, res) => {
       star_type,
       all_correct,
       grading_mode,
-      ai_provider
+      ai_provider,
+      level_index,
+      level_multiplier
     } = req.body;
 
     if (!username || !scenario_topic) {
@@ -199,6 +201,11 @@ app.post('/api/progress', async (req, res) => {
       }
     }
 
+    // Calculate weighted points: base star value * level multiplier
+    const basePoints = { gold: 4, silver: 3, bronze: 2, tin: 1 };
+    const multiplier = level_multiplier || 1.0;
+    const weighted_points = star_type ? (basePoints[star_type] || 0) * multiplier : 0;
+
     const { data, error } = await supabase
       .from('lsrl_progress')
       .insert({
@@ -211,7 +218,10 @@ app.post('/api/progress', async (req, res) => {
         star_type: star_type || null,
         all_correct: all_correct || false,
         grading_mode,
-        ai_provider
+        ai_provider,
+        level_index: level_index || 0,
+        level_multiplier: multiplier,
+        weighted_points: weighted_points
       })
       .select()
       .single();
@@ -344,7 +354,8 @@ app.post('/api/progress/:username/sync', async (req, res) => {
     const totalMissing = missing.gold + missing.silver + missing.bronze + missing.tin;
 
     if (totalMissing > 0) {
-      // Insert missing stars as sync records
+      // Insert missing stars as sync records with base multiplier
+      const basePoints = { gold: 4, silver: 3, bronze: 2, tin: 1 };
       const inserts = [];
       for (const [starType, count] of Object.entries(missing)) {
         for (let i = 0; i < count; i++) {
@@ -354,7 +365,9 @@ app.post('/api/progress/:username/sync', async (req, res) => {
             star_type: starType,
             all_correct: true,
             hints_used: 0,
-            grading_mode: 'sync'
+            grading_mode: 'sync',
+            level_multiplier: 1.0, // Default multiplier for recovered stars
+            weighted_points: basePoints[starType] || 0
           });
         }
       }
@@ -392,66 +405,73 @@ app.get('/api/leaderboard', async (req, res) => {
     const period = req.query.period || 'all';
     const limit = parseInt(req.query.limit) || 20;
 
-    // For time-based periods, query directly instead of using stored procedure
+    // Build query with optional time filter
+    let query = supabase
+      .from('lsrl_progress')
+      .select('username, star_type, weighted_points, level_multiplier')
+      .not('star_type', 'is', null);
+
+    // Add time filter for hourly leaderboard
     if (period === '1h' || period === 'hour') {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-      const { data: progress, error: progressError } = await supabase
-        .from('lsrl_progress')
-        .select('username, star_type')
-        .gte('completed_at', oneHourAgo)
-        .not('star_type', 'is', null);
-
-      if (progressError) throw progressError;
-
-      // Aggregate by user
-      const userStats = {};
-      for (const p of progress) {
-        if (!userStats[p.username]) {
-          userStats[p.username] = { gold: 0, silver: 0, bronze: 0, tin: 0 };
-        }
-        if (p.star_type && userStats[p.username][p.star_type] !== undefined) {
-          userStats[p.username][p.star_type]++;
-        }
-      }
-
-      // Get user real names
-      const usernames = Object.keys(userStats);
-      let usersMap = {};
-      if (usernames.length > 0) {
-        const { data: users } = await supabase
-          .from('users')
-          .select('username, real_name')
-          .in('username', usernames);
-
-        for (const u of users || []) {
-          usersMap[u.username] = u.real_name;
-        }
-      }
-
-      // Calculate weighted scores and format
-      const leaderboard = Object.entries(userStats).map(([username, stars]) => ({
-        username,
-        real_name: usersMap[username] || null,
-        gold: stars.gold,
-        silver: stars.silver,
-        bronze: stars.bronze,
-        tin: stars.tin,
-        weighted_score: stars.gold * 4 + stars.silver * 3 + stars.bronze * 2 + stars.tin * 1
-      }));
-
-      // Sort by weighted score descending
-      leaderboard.sort((a, b) => b.weighted_score - a.weighted_score);
-
-      return res.json(leaderboard.slice(0, limit));
+      query = query.gte('completed_at', oneHourAgo);
     }
 
-    // Default: use stored procedure for all-time
-    const { data, error } = await supabase
-      .rpc('get_leaderboard', { period, limit_count: limit });
+    const { data: progress, error: progressError } = await query;
+    if (progressError) throw progressError;
 
-    if (error) throw error;
-    res.json(data);
+    // Aggregate by user
+    const userStats = {};
+    const basePoints = { gold: 4, silver: 3, bronze: 2, tin: 1 };
+
+    for (const p of progress) {
+      if (!userStats[p.username]) {
+        userStats[p.username] = { gold: 0, silver: 0, bronze: 0, tin: 0, weighted_score: 0 };
+      }
+      if (p.star_type && userStats[p.username][p.star_type] !== undefined) {
+        userStats[p.username][p.star_type]++;
+      }
+
+      // Use stored weighted_points if available, otherwise calculate with multiplier or use base
+      if (p.weighted_points) {
+        userStats[p.username].weighted_score += p.weighted_points;
+      } else if (p.level_multiplier && p.star_type) {
+        userStats[p.username].weighted_score += (basePoints[p.star_type] || 0) * p.level_multiplier;
+      } else if (p.star_type) {
+        // Fallback for old records without multiplier
+        userStats[p.username].weighted_score += basePoints[p.star_type] || 0;
+      }
+    }
+
+    // Get user real names
+    const usernames = Object.keys(userStats);
+    let usersMap = {};
+    if (usernames.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('username, real_name')
+        .in('username', usernames);
+
+      for (const u of users || []) {
+        usersMap[u.username] = u.real_name;
+      }
+    }
+
+    // Format leaderboard
+    const leaderboard = Object.entries(userStats).map(([username, stats]) => ({
+      username,
+      real_name: usersMap[username] || null,
+      gold: stats.gold,
+      silver: stats.silver,
+      bronze: stats.bronze,
+      tin: stats.tin,
+      weighted_score: Math.round(stats.weighted_score * 10) / 10 // Round to 1 decimal
+    }));
+
+    // Sort by weighted score descending
+    leaderboard.sort((a, b) => b.weighted_score - a.weighted_score);
+
+    res.json(leaderboard.slice(0, limit));
   } catch (err) {
     console.error('GET /api/leaderboard error:', err);
     res.status(500).json({ error: err.message });
