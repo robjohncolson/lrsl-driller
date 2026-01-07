@@ -2473,7 +2473,17 @@
       renderModeTabs();
 
       // Auto-advance to the newly unlocked level after a short delay
+      // BUT: Don't auto-advance if user is viewing feedback (Next button visible)
+      // The correct-answer flow's 10-second timer will handle auto-advance in that case
       setTimeout(async () => {
+        const nextBtn = document.getElementById('btn-next');
+        const feedbackShowing = nextBtn && !nextBtn.classList.contains('hidden');
+
+        if (feedbackShowing) {
+          console.log('[App] Skipping tier unlock auto-advance - feedback is showing');
+          return;
+        }
+
         if (platform.setMode(tier.id)) {
           console.log('[App] Auto-advancing to:', tier.id);
           renderModeTabs(); // Update active tab
@@ -2509,6 +2519,15 @@
             soundEngine.unlock?.();
 
             setTimeout(async () => {
+              // Don't auto-advance if user is still viewing feedback
+              const nextBtn = document.getElementById('btn-next');
+              const feedbackShowing = nextBtn && !nextBtn.classList.contains('hidden');
+
+              if (feedbackShowing) {
+                console.log('[App] Skipping mastery auto-advance - feedback is showing');
+                return;
+              }
+
               if (platform.setMode(nextModeId)) {
                 console.log('[App] Auto-advancing after mastery to:', nextModeId);
                 renderModeTabs();
