@@ -244,8 +244,7 @@ const stratifiedDefinitionQuestions = [
     options: [
       "They sampled from ALL groups (every class year is represented)",
       "They selected entire class years",
-      "They used a systematic approach",
-      "The groups are naturally occurring"
+      "They used a systematic approach"
     ]
   },
   {
@@ -254,7 +253,6 @@ const stratifiedDefinitionQuestions = [
     options: [
       "Sample FROM EACH group, not entire groups",
       "Select SOME groups and take everyone in them",
-      "Groups must be geographic regions",
       "Sample size must be equal in all groups"
     ]
   },
@@ -264,8 +262,7 @@ const stratifiedDefinitionQuestions = [
     options: [
       "Including individuals from every stratum in the sample",
       "Selecting entire groups at random",
-      "Using systematic selection within groups",
-      "Letting individuals choose their group"
+      "Using systematic selection within groups"
     ]
   }
 ];
@@ -287,8 +284,7 @@ const clusterDefinitionQuestions = [
     options: [
       "Entire groups (schools) were selected, and everyone in them was sampled",
       "Students from every school are represented",
-      "The schools were divided by region",
-      "A random number generator was used"
+      "The schools were divided by region"
     ]
   },
   {
@@ -297,7 +293,6 @@ const clusterDefinitionQuestions = [
     options: [
       "Select SOME groups, take ALL individuals from selected groups",
       "Sample from EACH group in the population",
-      "Groups must be similar to each other",
       "Every individual has equal probability"
     ]
   },
@@ -307,8 +302,7 @@ const clusterDefinitionQuestions = [
     options: [
       "It's more practical when the population is spread across many locations",
       "It always gives more accurate results",
-      "It ensures every subgroup is represented",
-      "It requires smaller sample sizes"
+      "It ensures every subgroup is represented"
     ]
   }
 ];
