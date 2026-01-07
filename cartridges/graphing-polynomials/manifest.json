@@ -497,7 +497,7 @@
       "endBehavior": "End behavior depends on degree (even/odd) and the sign of the leading coefficient.",
       "monotonic": "Compare $f(x)$ values: if they go up as $x$ increases → increasing; down → decreasing.",
       "avgRate": "Average rate of change over $[a,b]$ is $\\frac{f(b)-f(a)}{b-a}$.",
-      "xIntercepts": "$x$-intercepts are where the graph crosses/touches $y=0$ (solutions to $f(x)=0$).",
+      "xIntercepts": "$x$-intercepts are where the graph crosses/touches the $x$-axis ($y=0$). **From the graph**: read the $x$-values at crossings. **Algebraically**: For quadratics $ax^2+bx+c$, use $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$. **Tip**: Type the equation into [Desmos](https://desmos.com/calculator) to verify your answers!",
       "turningPoints": "Turning points are where the graph changes direction (increasing ↔ decreasing).",
       "verbalIntercepts": "Where the function changes sign (positive ↔ negative), there is an $x$-intercept.",
       "interceptSense": "In real contexts, check whether negative $x$ or negative $y$ makes sense; you may need to limit domain/range.",

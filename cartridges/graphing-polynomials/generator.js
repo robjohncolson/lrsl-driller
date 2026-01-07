@@ -795,17 +795,21 @@ export function generateProblem(modeId, contextFromFile, mode) {
       yLabel: "f(x)",
       xDomain: [xMin, xMax],
       yDomain,
-      regression: { show: false }
+      regression: { show: false },
+      // Show x and y axes through origin to make x-axis crossings clear
+      originAxes: true
     };
 
     context = {
       ...makeContextBase(
         "Level 14: Finding Zeros from a Graph",
         "The **zeros** (or **$x$-intercepts**) of a polynomial are the $x$-values where $f(x) = 0$—that is, where the graph crosses or touches the $x$-axis. To find them from a graph, look for points where the curve meets the horizontal axis and read the $x$-coordinates.",
-        "Tip: In this level, all $x$-intercepts are integers.",
-        ""
+        `${katex(`f(x) = ${expr}`)}`,
+        "Tip: All $x$-intercepts in this level are integers."
       ),
-      givenText: `Graph shown. (Optional check: one matching rule is ${katex(`f(x) = ${expr}`)}.)`,
+      // Store polynomial info for potential formula solver
+      polynomialDegree: deg,
+      coefficients: coeffs,
       xIntercepts: { value: roots, tolerance: 0.05 }
     };
 
