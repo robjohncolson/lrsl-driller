@@ -392,6 +392,61 @@ app.get('/api/leaderboard', async (req, res) => {
     const period = req.query.period || 'all';
     const limit = parseInt(req.query.limit) || 20;
 
+    // For time-based periods, query directly instead of using stored procedure
+    if (period === '1h' || period === 'hour') {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+      const { data: progress, error: progressError } = await supabase
+        .from('lsrl_progress')
+        .select('username, star_type')
+        .gte('completed_at', oneHourAgo)
+        .not('star_type', 'is', null);
+
+      if (progressError) throw progressError;
+
+      // Aggregate by user
+      const userStats = {};
+      for (const p of progress) {
+        if (!userStats[p.username]) {
+          userStats[p.username] = { gold: 0, silver: 0, bronze: 0, tin: 0 };
+        }
+        if (p.star_type && userStats[p.username][p.star_type] !== undefined) {
+          userStats[p.username][p.star_type]++;
+        }
+      }
+
+      // Get user real names
+      const usernames = Object.keys(userStats);
+      let usersMap = {};
+      if (usernames.length > 0) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('username, real_name')
+          .in('username', usernames);
+
+        for (const u of users || []) {
+          usersMap[u.username] = u.real_name;
+        }
+      }
+
+      // Calculate weighted scores and format
+      const leaderboard = Object.entries(userStats).map(([username, stars]) => ({
+        username,
+        real_name: usersMap[username] || null,
+        gold: stars.gold,
+        silver: stars.silver,
+        bronze: stars.bronze,
+        tin: stars.tin,
+        weighted_score: stars.gold * 4 + stars.silver * 3 + stars.bronze * 2 + stars.tin * 1
+      }));
+
+      // Sort by weighted score descending
+      leaderboard.sort((a, b) => b.weighted_score - a.weighted_score);
+
+      return res.json(leaderboard.slice(0, limit));
+    }
+
+    // Default: use stored procedure for all-time
     const { data, error } = await supabase
       .rpc('get_leaderboard', { period, limit_count: limit });
 

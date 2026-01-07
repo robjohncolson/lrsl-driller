@@ -221,6 +221,15 @@ export class Leaderboard {
             </button>
           </div>
 
+          <!-- Period Tabs -->
+          <div class="flex border-b bg-gray-50">
+            <button id="leaderboard-tab-all" class="flex-1 px-4 py-3 text-sm font-medium text-yellow-600 border-b-2 border-yellow-500 bg-white" data-period="all">
+              All Time
+            </button>
+            <button id="leaderboard-tab-1h" class="flex-1 px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent" data-period="1h">
+              Last Hour
+            </button>
+          </div>
 
           <!-- Content -->
           <div id="leaderboard-content" class="flex-1 overflow-y-auto p-4">
@@ -251,6 +260,47 @@ export class Leaderboard {
       </div>
       <div id="leaderboard-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
     `;
+  }
+
+  /**
+   * Initialize tab click handlers (call after panel is in DOM)
+   */
+  initTabs() {
+    const tabAll = document.getElementById('leaderboard-tab-all');
+    const tab1h = document.getElementById('leaderboard-tab-1h');
+
+    if (tabAll) {
+      tabAll.addEventListener('click', () => this.switchTab('all'));
+    }
+    if (tab1h) {
+      tab1h.addEventListener('click', () => this.switchTab('1h'));
+    }
+  }
+
+  /**
+   * Switch between leaderboard tabs
+   */
+  switchTab(period) {
+    this.currentPeriod = period;
+
+    // Update tab styles
+    const tabAll = document.getElementById('leaderboard-tab-all');
+    const tab1h = document.getElementById('leaderboard-tab-1h');
+
+    if (period === 'all') {
+      tabAll?.classList.add('text-yellow-600', 'border-yellow-500', 'bg-white');
+      tabAll?.classList.remove('text-gray-500', 'border-transparent');
+      tab1h?.classList.remove('text-yellow-600', 'border-yellow-500', 'bg-white');
+      tab1h?.classList.add('text-gray-500', 'border-transparent');
+    } else {
+      tab1h?.classList.add('text-yellow-600', 'border-yellow-500', 'bg-white');
+      tab1h?.classList.remove('text-gray-500', 'border-transparent');
+      tabAll?.classList.remove('text-yellow-600', 'border-yellow-500', 'bg-white');
+      tabAll?.classList.add('text-gray-500', 'border-transparent');
+    }
+
+    // Refresh data
+    this.refresh();
   }
 }
 
