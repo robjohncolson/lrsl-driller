@@ -215,8 +215,13 @@ export class Celebration {
    * @param {string} message - The message to display
    * @param {string} type - 'success', 'error', 'info', 'warning'
    * @param {number} duration - How long to show (ms)
+   * @param {Object} options - Optional settings
+   * @param {Function} options.onClick - Callback when toast is clicked (makes toast clickable)
+   * @param {string} options.clickHint - Text hint shown below message when clickable
    */
-  showToast(message, type = 'info', duration = 3000) {
+  showToast(message, type = 'info', duration = 3000, options = {}) {
+    const { onClick, clickHint } = options;
+
     const colors = {
       success: 'bg-green-500 border-green-600',
       error: 'bg-red-500 border-red-600',
@@ -232,21 +237,45 @@ export class Celebration {
     };
 
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-4 right-4 ${colors[type] || colors.info} text-white rounded-lg shadow-xl px-4 py-3 z-50 flex items-center gap-3 border-l-4`;
+    const clickableStyles = onClick ? 'cursor-pointer hover:scale-105 hover:shadow-2xl' : '';
+    toast.className = `fixed bottom-4 right-4 ${colors[type] || colors.info} text-white rounded-lg shadow-xl px-4 py-3 z-50 flex items-center gap-3 border-l-4 transition-transform ${clickableStyles}`;
     toast.style.cssText = 'animation: slide-in 0.3s ease-out;';
+
+    const hintHtml = onClick && clickHint ? `<div class="text-xs opacity-75 mt-1">${clickHint}</div>` : '';
     toast.innerHTML = `
       <span class="text-xl">${icons[type] || icons.info}</span>
-      <span>${message}</span>
+      <div>
+        <span>${message}</span>
+        ${hintHtml}
+      </div>
     `;
 
     document.body.appendChild(toast);
 
-    setTimeout(() => {
+    // Handle click if callback provided
+    if (onClick) {
+      toast.addEventListener('click', () => {
+        onClick();
+        // Remove toast immediately on click
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        toast.style.transition = 'all 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+      });
+    }
+
+    const timeoutId = setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(100%)';
       toast.style.transition = 'all 0.3s ease-out';
       setTimeout(() => toast.remove(), 300);
     }, duration);
+
+    // Return cleanup function to allow early dismissal
+    return () => {
+      clearTimeout(timeoutId);
+      toast.remove();
+    };
   }
 
   /**
