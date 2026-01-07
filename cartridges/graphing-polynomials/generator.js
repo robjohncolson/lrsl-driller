@@ -927,58 +927,131 @@ export function generateProblem(modeId, contextFromFile, mode) {
   // Level 17: Real-world model (domain/intercepts)
   // -------------------------
   if (modeId === "l17-real-world-domain") {
-    // Create a simple linear model: f(x) = 13.2 - 2x
-    // x-intercept at 6.6, y-intercept at 13.2
-    const xIntercept = 6.6;
-    const yIntercept = 13.2;
-    const slope = -yIntercept / xIntercept; // -2
+    // Multiple real-world scenarios
+    const scenarios = [
+      {
+        name: "Balloon Inflation",
+        description: "Sofía mixes a fixed amount of baking soda with different amounts of vinegar.\nFor $x$ quarter-cups of vinegar, it takes $f(x)$ seconds to inflate the balloon.",
+        xLabel: "x (quarter-cups)",
+        yLabel: "f(x) (seconds)",
+        xIntercept: 6.6,
+        yIntercept: 13.2,
+        xQuestion: "Can you have negative quarter-cups of vinegar?",
+        yQuestion: "Can inflation time be negative seconds?",
+        answer: "No"
+      },
+      {
+        name: "Phone Battery",
+        description: "Marcus tracks his phone battery percentage over time.\nAfter $x$ hours of use, the battery is at $f(x)$% charge.",
+        xLabel: "x (hours)",
+        yLabel: "f(x) (% charge)",
+        xIntercept: 8,
+        yIntercept: 100,
+        xQuestion: "Can time be negative?",
+        yQuestion: "Can battery percentage be negative?",
+        answer: "No"
+      },
+      {
+        name: "Water Tank",
+        description: "A water tank is being drained at a constant rate.\nAfter $x$ minutes, the tank contains $f(x)$ gallons of water.",
+        xLabel: "x (minutes)",
+        yLabel: "f(x) (gallons)",
+        xIntercept: 15,
+        yIntercept: 45,
+        xQuestion: "Can time be negative?",
+        yQuestion: "Can you have negative gallons of water?",
+        answer: "No"
+      },
+      {
+        name: "Candle Height",
+        description: "A candle burns at a steady rate.\nAfter $x$ hours of burning, the candle is $f(x)$ inches tall.",
+        xLabel: "x (hours)",
+        yLabel: "f(x) (inches)",
+        xIntercept: 6,
+        yIntercept: 12,
+        xQuestion: "Can burning time be negative?",
+        yQuestion: "Can the candle have negative height?",
+        answer: "No"
+      },
+      {
+        name: "Distance from Home",
+        description: "Jasmine walks away from her house at a constant speed.\nAfter $x$ minutes, she is $f(x)$ meters from home.",
+        xLabel: "x (minutes)",
+        yLabel: "f(x) (meters)",
+        xIntercept: -5,  // Negative x-intercept means she started away from home
+        yIntercept: 100,
+        xQuestion: "Can time be negative? (Before she started?)",
+        yQuestion: "Can distance be negative?",
+        answer: "No"
+      },
+      {
+        name: "Pool Filling",
+        description: "A pool is being filled with water.\nAfter $x$ hours, the pool has $f(x)$ cubic feet of water.",
+        xLabel: "x (hours)",
+        yLabel: "f(x) (cubic feet)",
+        xIntercept: -2,  // Started with some water
+        yIntercept: 400,
+        xQuestion: "Does negative time make sense here?",
+        yQuestion: "Can volume be negative?",
+        answer: "No"
+      }
+    ];
+
+    const s = choice(scenarios);
+    const slope = -s.yIntercept / s.xIntercept;
 
     // Build graph points for the line
-    const xMin = -2, xMax = 9;
+    const xMin = Math.min(-2, s.xIntercept - 2);
+    const xMax = Math.max(s.xIntercept + 3, 10);
     const points = [];
     for (let x = xMin; x <= xMax; x += 0.5) {
-      points.push({ x, y: yIntercept + slope * x });
+      points.push({ x, y: s.yIntercept + slope * x });
     }
 
-    // Configure graph with sign regions to show valid/invalid domains
+    // Calculate y range
+    const yValues = points.map(p => p.y);
+    const yMin = Math.min(...yValues, -5);
+    const yMax = Math.max(...yValues, s.yIntercept + 5);
+
+    // Configure graph with sign regions
     graphConfig = {
       type: "function-curve",
       points,
-      xLabel: "x (quarter-cups)",
-      yLabel: "f(x) (seconds)",
+      xLabel: s.xLabel,
+      yLabel: s.yLabel,
       xDomain: [xMin, xMax],
-      yDomain: [-6, 16],
+      yDomain: [yMin, yMax],
       regression: { show: false },
       originAxes: true,
-      curveColor: '#8b5cf6', // Purple for the model line
-      // Sign regions: red = positive (valid time), blue = negative (invalid)
-      signRegions: [
-        { xStart: -Infinity, xEnd: xIntercept, sign: 'positive', label: 'f(x) > 0' },
-        { xStart: xIntercept, xEnd: Infinity, sign: 'negative', label: 'f(x) < 0' }
+      curveColor: '#8b5cf6',
+      signRegions: slope < 0 ? [
+        { xStart: -Infinity, xEnd: s.xIntercept, sign: 'positive', label: 'f(x) > 0' },
+        { xStart: s.xIntercept, xEnd: Infinity, sign: 'negative', label: 'f(x) < 0' }
+      ] : [
+        { xStart: -Infinity, xEnd: s.xIntercept, sign: 'negative', label: 'f(x) < 0' },
+        { xStart: s.xIntercept, xEnd: Infinity, sign: 'positive', label: 'f(x) > 0' }
       ],
-      // Mark the intercepts
       labeledPoints: [
-        { x: 0, y: yIntercept, label: `(0, ${yIntercept})`, color: '#10b981', labelPosition: 'above' },
-        { x: xIntercept, y: 0, label: `(${xIntercept}, 0)`, color: '#f97316', labelPosition: 'below' }
+        { x: 0, y: s.yIntercept, label: `(0, ${s.yIntercept})`, color: '#10b981', labelPosition: 'above' },
+        { x: s.xIntercept, y: 0, label: `(${s.xIntercept}, 0)`, color: '#f97316', labelPosition: slope < 0 ? 'below' : 'above' }
       ]
     };
-
-    const givenText =
-      "Sofía mixes a fixed amount of baking soda with different amounts of vinegar.\n" +
-      "For $x$ quarter-cups of vinegar, it takes $f(x)$ seconds to inflate the balloon.";
 
     context = {
       ...makeContextBase(
         "Level 17: Interpreting Intercepts in Context",
-        "When a polynomial models a real-world situation, always ask: **Do the intercepts make sense?** The **red region** shows where $f(x) > 0$ (positive time). The **blue region** shows where $f(x) < 0$ (negative time—impossible!). Also consider: can $x$ be negative?",
-        givenText,
-        `$y$-intercept: $(0, ${yIntercept})$  •  $x$-intercept: $(${xIntercept}, 0)$`
+        "When a polynomial models a real-world situation, always ask: **Do the intercepts make sense?** The **red region** shows where $f(x) > 0$. The **blue region** shows where $f(x) < 0$. Consider: can either variable be negative in this context?",
+        s.description,
+        `$y$-intercept: $(0, ${s.yIntercept})$  •  $x$-intercept: $(${s.xIntercept}, 0)$`
       ),
-      interceptSense: { value: "No" }
+      scenarioName: s.name,
+      xQuestion: s.xQuestion,
+      yQuestion: s.yQuestion,
+      interceptSense: { value: s.answer }
     };
 
-    answers = { interceptSense: { value: "No" } };
-    scenario = "Look at the graph: Red = valid (positive seconds), Blue = invalid (negative seconds). What about negative $x$?";
+    answers = { interceptSense: { value: s.answer } };
+    scenario = `**${s.name}**: ${s.xQuestion} ${s.yQuestion} Do ALL intercepts make practical sense?`;
     return { context, graphConfig, answers, scenario };
   }
 
