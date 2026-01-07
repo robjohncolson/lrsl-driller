@@ -485,6 +485,18 @@
           </div>
         </div>
 
+        <!-- Classmate Notifications -->
+        <div class="border-t pt-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Classmate Notifications</label>
+          <div class="flex items-center gap-3">
+            <button id="notifications-toggle" class="relative inline-flex h-6 w-11 items-center rounded-full bg-purple-600 transition-colors">
+              <span id="notifications-toggle-dot" class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform translate-x-6"></span>
+            </button>
+            <span id="notifications-toggle-label" class="text-sm text-gray-600">Show when classmates earn stars</span>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">Turn off to reduce distractions</p>
+        </div>
+
         <!-- Progress Reset -->
         <div class="border-t pt-4">
           <label class="block text-sm font-medium text-gray-700 mb-2">Progress</label>
@@ -1437,6 +1449,29 @@
       dot.classList.toggle('translate-x-6', soundEngine.enabled);
       dot.classList.toggle('translate-x-1', !soundEngine.enabled);
       label.textContent = soundEngine.enabled ? 'Sound effects enabled' : 'Sound effects disabled';
+    });
+
+    // Initialize notifications toggle state from saved preference
+    const notifDot = document.getElementById('notifications-toggle-dot');
+    const notifLabel = document.getElementById('notifications-toggle-label');
+    const notifEnabled = !celebration.notificationsMuted;
+    notifDot.classList.toggle('translate-x-6', notifEnabled);
+    notifDot.classList.toggle('translate-x-1', !notifEnabled);
+    notifLabel.textContent = notifEnabled ? 'Show when classmates earn stars' : 'Classmate notifications muted';
+    document.getElementById('notifications-toggle').classList.toggle('bg-purple-600', notifEnabled);
+    document.getElementById('notifications-toggle').classList.toggle('bg-gray-300', !notifEnabled);
+
+    document.getElementById('notifications-toggle').addEventListener('click', () => {
+      const newMuted = !celebration.notificationsMuted;
+      celebration.setNotificationsMuted(newMuted);
+      const dot = document.getElementById('notifications-toggle-dot');
+      const label = document.getElementById('notifications-toggle-label');
+      const enabled = !newMuted;
+      dot.classList.toggle('translate-x-6', enabled);
+      dot.classList.toggle('translate-x-1', !enabled);
+      label.textContent = enabled ? 'Show when classmates earn stars' : 'Classmate notifications muted';
+      document.getElementById('notifications-toggle').classList.toggle('bg-purple-600', enabled);
+      document.getElementById('notifications-toggle').classList.toggle('bg-gray-300', !enabled);
     });
 
     // AI Provider dropdown - show/hide API keys section

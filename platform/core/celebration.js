@@ -5,6 +5,16 @@
 export class Celebration {
   constructor() {
     this.confettiColors = ['#fbbf24', '#f59e0b', '#ef4444', '#22c55e', '#3b82f6', '#a855f7'];
+    // Load notification mute preference from localStorage
+    this.notificationsMuted = localStorage.getItem('driller_notifications_muted') === 'true';
+  }
+
+  /**
+   * Set notification mute state
+   */
+  setNotificationsMuted(muted) {
+    this.notificationsMuted = muted;
+    localStorage.setItem('driller_notifications_muted', muted ? 'true' : 'false');
   }
 
   /**
@@ -145,8 +155,12 @@ export class Celebration {
 
   /**
    * Show notification toast (for other users' achievements)
+   * Respects notificationsMuted setting
    */
   showNotification(username, message, avatar = '⭐') {
+    // Don't show if notifications are muted
+    if (this.notificationsMuted) return;
+
     const toast = document.createElement('div');
     toast.className = 'fixed top-20 right-4 bg-white rounded-lg shadow-xl p-4 z-50 border-l-4 border-yellow-400';
     toast.style.cssText = 'animation: slide-in 0.3s ease-out;';
