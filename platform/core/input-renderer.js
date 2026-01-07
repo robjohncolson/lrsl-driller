@@ -176,6 +176,7 @@ export class InputRenderer {
     textarea.className = `${this.styles.input} ${this.styles.textarea}`;
     textarea.rows = field.rows || 3;
     textarea.placeholder = this.interpolate(field.placeholder || '', context);
+    textarea.autocomplete = 'off'; // Suppress browser autofill
     if (field.minLength) textarea.minLength = field.minLength;
     if (field.maxLength) textarea.maxLength = field.maxLength;
     return textarea;
@@ -192,6 +193,7 @@ export class InputRenderer {
     input.step = field.step || 'any';
     input.placeholder = this.interpolate(field.placeholder || '', context);
     input.dataset.fieldId = field.id; // Set data-field-id on actual input!
+    input.autocomplete = 'off'; // Suppress browser autofill (Edge password suggestions)
     if (field.min !== undefined) input.min = field.min;
     if (field.max !== undefined) input.max = field.max;
 
@@ -305,6 +307,7 @@ export class InputRenderer {
     input.id = `field-${field.id}`;
     input.className = this.styles.input;
     input.placeholder = this.interpolate(field.placeholder || '', context);
+    input.autocomplete = 'off'; // Suppress browser autofill (Edge password suggestions)
     if (field.minLength) input.minLength = field.minLength;
     if (field.maxLength) input.maxLength = field.maxLength;
     return input;
