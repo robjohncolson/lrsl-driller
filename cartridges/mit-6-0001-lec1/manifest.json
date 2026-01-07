@@ -1,0 +1,185 @@
+{
+  "meta": {
+    "id": "mit-6-0001-lec1",
+    "name": "MIT 6.0001 Lecture 1 \u2014 What is Computation?",
+    "subject": "Computer Science / Python",
+    "description": "Drills core ideas from MIT 6.0001 Lecture 1: computation, declarative vs imperative knowledge, what an algorithm needs, language aspects (syntax/static semantics/semantics), and Python basics (types, casting, operators, printing, bindings)."
+  },
+  "modes": [
+    {
+      "id": "L01-computation-basics",
+      "name": "Level 1 \u2014 Computation Basics",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "fundamentals",
+            "type": "select",
+            "label": "Fundamentally, a computer does two things. Pick the best pair:",
+            "options": [
+              "performs calculations and remembers results",
+              "understands goals and fills in missing steps",
+              "learns meanings from context like English",
+              "decides what you meant and fixes your code"
+            ]
+          },
+          {
+            "id": "explicit",
+            "type": "select",
+            "label": "Pick the statement that matches the lecture:",
+            "options": [
+              "computers only do what you tell them to do",
+              "computers know what you mean even if you say it wrong",
+              "computers infer intent from context like English",
+              "computers automatically correct incorrect logic"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "L02-knowledge-algorithms",
+      "name": "Level 2 \u2014 Knowledge & Algorithms",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "knowledge_kind",
+            "type": "select",
+            "label": "Is the example declarative knowledge or imperative knowledge?",
+            "options": [
+              "declarative",
+              "imperative"
+            ]
+          },
+          {
+            "id": "algorithm_parts",
+            "type": "select",
+            "label": "A 'recipe' becomes an algorithm when it has:",
+            "options": [
+              "sequence of simple steps + flow of control + a way to stop",
+              "variables + loops + functions",
+              "memory + ALU + control unit",
+              "syntax + semantics + static semantics"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "L03-language-aspects-errors",
+      "name": "Level 3 \u2014 Language Aspects & Error Types",
+      "unlockedBy": {
+        "gold": 6
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "aspect",
+            "type": "select",
+            "label": "Which aspect of languages is being highlighted?",
+            "options": [
+              "primitive constructs",
+              "syntax",
+              "static semantics",
+              "semantics"
+            ]
+          },
+          {
+            "id": "error_type",
+            "type": "select",
+            "label": "In lecture terms, what kind of issue is this?",
+            "options": [
+              "syntax error",
+              "static semantic error",
+              "valid but different than intended",
+              "no error"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "L04-python-basics-drill",
+      "name": "Level 4 \u2014 Python Basics Drill",
+      "unlockedBy": {
+        "gold": 9
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "printed",
+            "type": "text",
+            "label": "What does the program print? (Type what appears in the console.)",
+            "placeholder": "Example: 3.5, 8, None, True"
+          },
+          {
+            "id": "printed_type",
+            "type": "select",
+            "label": "What is the type of the printed value?",
+            "options": [
+              "int",
+              "float",
+              "bool",
+              "NoneType",
+              "no output"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js"
+  },
+  "hints": {
+    "perField": {
+      "fundamentals": "From the lecture: computation = performs calculations + remembers results.",
+      "explicit": "Key phrase: computers only know/do what you tell them to do.",
+      "knowledge_kind": "Declarative = statement of fact. Imperative = recipe/how-to steps. Example: {{knowledgeExample}}",
+      "algorithm_parts": "Algorithm = 1) simple steps 2) flow of control 3) a way to stop.",
+      "aspect": "Syntax = form. Static semantics = which syntactically valid strings have meaning. Semantics = meaning. Primitive constructs = basic building blocks.",
+      "error_type": "Syntax error = illegal form. Static semantic error = legal form but meaningless (e.g., 3 + \"hi\"). 'Valid but different than intended' = program runs but not what you meant.",
+      "printed": "Mentally run the code. Reminders: / always yields a float; int(3.9) truncates; % gives remainder; ** is power.",
+      "printed_type": "Type rules: ints are whole numbers; floats have decimals; True/False are bool; None is NoneType."
+    }
+  },
+  "progression": {
+    "streakFields": [
+      "fundamentals",
+      "explicit",
+      "knowledge_kind",
+      "algorithm_parts",
+      "aspect",
+      "error_type",
+      "printed",
+      "printed_type"
+    ],
+    "tiers": [
+      {
+        "id": "L01-computation-basics",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "L02-knowledge-algorithms",
+        "unlockedBy": {
+          "gold": 3
+        }
+      },
+      {
+        "id": "L03-language-aspects-errors",
+        "unlockedBy": {
+          "gold": 6
+        }
+      },
+      {
+        "id": "L04-python-basics-drill",
+        "unlockedBy": {
+          "gold": 9
+        }
+      }
+    ]
+  }
+}

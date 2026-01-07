@@ -48,6 +48,13 @@
       "subject": "AP Statistics",
       "description": "Random selection vs assignment, sampling methods, scope of inference",
       "shortCode": "DAT"
+    },
+    {
+      "id": "mit-6-0001-lec1",
+      "name": "MIT 6.0001 Lecture 1",
+      "subject": "Computer Science / Python",
+      "description": "Computation, knowledge types, algorithms, language aspects, Python basics",
+      "shortCode": "MIT1"
     }
   ]
 }
