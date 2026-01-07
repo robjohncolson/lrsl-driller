@@ -538,6 +538,46 @@ export function generateProblem(modeId, contextFromFile, mode) {
   }
 
   // -------------------------
+  // Level 8.5: Quadrants from a Graph (visual)
+  // -------------------------
+  if (modeId === "l085-quadrants-visual") {
+    const n = choice([1, 2, 3, 4, 5, 6]);
+    const even = n % 2 === 0;
+    const correct = even ? "Quadrants I and II" : "Quadrants I and III";
+
+    // Build coefficients for x^n (ascending order)
+    const coeffs = new Array(n + 1).fill(0);
+    coeffs[n] = 1;  // Leading coefficient = 1
+
+    const xMin = -3, xMax = 3;
+    const points = buildGraphPoints(coeffs, xMin, xMax, 0.1);
+    const yDomain = yDomainFromPoints(points);
+
+    graphConfig = {
+      type: "function-curve",
+      points,
+      xLabel: "x",
+      yLabel: "f(x)",
+      xDomain: [xMin, xMax],
+      yDomain,
+      regression: { show: false }
+    };
+
+    context = {
+      ...makeContextBase(
+        "Level 8.5: Quadrants from a Graph",
+        "Look at the graph of a **power function** $f(x) = x^n$. Based on where the curve goes, identify which quadrants the graph passes through.",
+        `Function: ${katex(`f(x) = x^{${n}}`)}`
+      ),
+      quadrantsVisual: { value: correct }
+    };
+
+    answers = { quadrantsVisual: { value: correct } };
+    scenario = "Examine the graph and determine which quadrants it occupies.";
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // -------------------------
   // Level 9: Graphs of f(x)=x^n (Quadrants)
   // -------------------------
   if (modeId === "l09-xn-quadrants") {

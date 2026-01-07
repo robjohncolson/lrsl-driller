@@ -204,10 +204,31 @@
       }
     },
     {
+      "id": "l085-quadrants-visual",
+      "name": "Level 8.5: Quadrants from a Graph",
+      "unlockedBy": {
+        "gold": 8
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "quadrantsVisual",
+            "type": "dropdown",
+            "label": "Looking at the graph, which quadrants does it pass through?",
+            "options": [
+              "Quadrants I and II",
+              "Quadrants I and III"
+            ],
+            "placeholder": "Choose one"
+          }
+        ]
+      }
+    },
+    {
       "id": "l09-xn-quadrants",
       "name": "Level 9: Graphs of f(x)=xⁿ",
       "unlockedBy": {
-        "gold": 8
+        "gold": 9
       },
       "layout": {
         "inputs": [
@@ -230,7 +251,7 @@
       "id": "l10-end-behavior-from-leading",
       "name": "Level 10: End Behavior from Leading Term",
       "unlockedBy": {
-        "gold": 9
+        "gold": 10
       },
       "layout": {
         "inputs": [
@@ -253,7 +274,7 @@
       "id": "l11-end-behavior-from-polynomial",
       "name": "Level 11: End Behavior from a Polynomial",
       "unlockedBy": {
-        "gold": 10
+        "gold": 11
       },
       "layout": {
         "inputs": [
@@ -276,7 +297,7 @@
       "id": "l12-increasing-decreasing",
       "name": "Level 12: Increasing/Decreasing from a Table",
       "unlockedBy": {
-        "gold": 11
+        "gold": 12
       },
       "layout": {
         "inputs": [
@@ -298,7 +319,7 @@
       "id": "l13-average-rate",
       "name": "Level 13: Average Rate of Change",
       "unlockedBy": {
-        "gold": 12
+        "gold": 13
       },
       "layout": {
         "inputs": [
@@ -315,7 +336,7 @@
       "id": "l14-zeros-from-graph",
       "name": "Level 14: Zeros (x-intercepts) from a Graph",
       "unlockedBy": {
-        "gold": 13
+        "gold": 14
       },
       "layout": {
         "inputs": [
@@ -332,7 +353,7 @@
       "id": "l15-turning-points-from-graph",
       "name": "Level 15: Turning Points from a Graph",
       "unlockedBy": {
-        "gold": 14
+        "gold": 15
       },
       "layout": {
         "inputs": [
@@ -351,7 +372,7 @@
       "id": "l16-from-verbal",
       "name": "Level 16: From Verbal Description → x-intercepts",
       "unlockedBy": {
-        "gold": 15
+        "gold": 16
       },
       "layout": {
         "inputs": [
@@ -368,7 +389,7 @@
       "id": "l17-real-world-domain",
       "name": "Level 17: Real-World Model (Domain/Intercepts)",
       "unlockedBy": {
-        "gold": 16
+        "gold": 17
       },
       "layout": {
         "inputs": [
@@ -388,7 +409,7 @@
       "id": "l18-capstone",
       "name": "Level 18: Concept Summary Check",
       "unlockedBy": {
-        "gold": 17
+        "gold": 18
       },
       "layout": {
         "inputs": [
@@ -471,6 +492,7 @@
       "leadingCoeff": "Leading coefficient is the coefficient of the highest-degree term (in standard form).",
       "missingCoeff": "If a degree is missing (no $x^k$ term), its coefficient is 0.",
       "fxValue": "Substitute the given $x$-value into the function rule and simplify.",
+      "quadrantsVisual": "Even powers ($x^2, x^4, ...$) stay above or on the $x$-axis (Quadrants I and II). Odd powers ($x^1, x^3, ...$) go through Quadrants I and III.",
       "quadrants": "Even powers stay $\\geq 0$, odd powers keep the sign of $x$.",
       "endBehavior": "End behavior depends on degree (even/odd) and the sign of the leading coefficient.",
       "monotonic": "Compare $f(x)$ values: if they go up as $x$ increases → increasing; down → decreasing.",
@@ -565,10 +587,18 @@
         "celebrationMessage": "Nice! Next level."
       },
       {
+        "id": "l085-quadrants-visual",
+        "name": "8.5",
+        "unlockedBy": {
+          "gold": 8
+        },
+        "celebrationMessage": "Nice! Next level."
+      },
+      {
         "id": "l09-xn-quadrants",
         "name": "09",
         "unlockedBy": {
-          "gold": 8
+          "gold": 9
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -576,7 +606,7 @@
         "id": "l10-end-behavior-from-leading",
         "name": "10",
         "unlockedBy": {
-          "gold": 9
+          "gold": 10
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -584,7 +614,7 @@
         "id": "l11-end-behavior-from-polynomial",
         "name": "11",
         "unlockedBy": {
-          "gold": 10
+          "gold": 11
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -592,7 +622,7 @@
         "id": "l12-increasing-decreasing",
         "name": "12",
         "unlockedBy": {
-          "gold": 11
+          "gold": 12
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -600,7 +630,7 @@
         "id": "l13-average-rate",
         "name": "13",
         "unlockedBy": {
-          "gold": 12
+          "gold": 13
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -608,7 +638,7 @@
         "id": "l14-zeros-from-graph",
         "name": "14",
         "unlockedBy": {
-          "gold": 13
+          "gold": 14
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -616,7 +646,7 @@
         "id": "l15-turning-points-from-graph",
         "name": "15",
         "unlockedBy": {
-          "gold": 14
+          "gold": 15
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -624,7 +654,7 @@
         "id": "l16-from-verbal",
         "name": "16",
         "unlockedBy": {
-          "gold": 15
+          "gold": 16
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -632,7 +662,7 @@
         "id": "l17-real-world-domain",
         "name": "17",
         "unlockedBy": {
-          "gold": 16
+          "gold": 17
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -640,7 +670,7 @@
         "id": "l18-capstone",
         "name": "18",
         "unlockedBy": {
-          "gold": 17
+          "gold": 18
         },
         "celebrationMessage": "Capstone complete!"
       }

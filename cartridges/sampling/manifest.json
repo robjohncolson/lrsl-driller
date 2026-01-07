@@ -1,26 +1,39 @@
 {
   "meta": {
     "id": "sampling",
-    "name": "Collecting Data (Unit 3.1-3.3)",
+    "name": "Collecting Data (Unit 3.1-3.4: Sampling)",
     "subject": "AP Statistics",
-    "description": "Planning studies, sampling methods, and the critical distinction between random selection and random assignment."
+    "description": "Planning studies, sampling methods, sampling bias, and the critical distinction between random selection and random assignment."
   },
-
   "config": {
     "contextsFile": null,
-    "skills": ["DAT-2.A", "DAT-2.B", "DAT-2.C", "DAT-2.D", "VAR-1.E"]
+    "skills": [
+      "DAT-2.A",
+      "DAT-2.B",
+      "DAT-2.C",
+      "DAT-2.D",
+      "VAR-1.E",
+      "DAT-2.E"
+    ]
   },
-
   "display": {
     "showGraph": false,
     "graphType": null,
     "infoPanel": [
-      { "label": "Topic", "value": "{{topicId}}" },
-      { "label": "Concept", "value": "{{problemText}}" },
-      { "label": "Scenario", "value": "{{givenText}}" }
+      {
+        "label": "Topic",
+        "value": "{{topicId}}"
+      },
+      {
+        "label": "Concept",
+        "value": "{{problemText}}"
+      },
+      {
+        "label": "Scenario",
+        "value": "{{givenText}}"
+      }
     ]
   },
-
   "modes": [
     {
       "id": "l01-chance-matters",
@@ -32,7 +45,10 @@
             "id": "chanceTrust",
             "type": "choice",
             "label": "Does this method use CHANCE (randomness)?",
-            "options": ["Yes", "No"]
+            "options": [
+              "Yes",
+              "No"
+            ]
           }
         ]
       }
@@ -40,14 +56,19 @@
     {
       "id": "l02-population-sample",
       "name": "3.2a: Population vs Sample",
-      "unlockedBy": { "gold": 1 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
             "id": "popOrSample",
             "type": "choice",
             "label": "This describes a:",
-            "options": ["Population", "Sample"]
+            "options": [
+              "Population",
+              "Sample"
+            ]
           }
         ]
       }
@@ -55,29 +76,39 @@
     {
       "id": "l03-obs-vs-exp",
       "name": "3.2b: Observational vs Experiment",
-      "unlockedBy": { "gold": 2 },
+      "unlockedBy": {
+        "gold": 2
+      },
       "layout": {
         "inputs": [
           {
             "id": "studyType",
             "type": "choice",
             "label": "Is this an observational study or an experiment?",
-            "options": ["Observational study", "Experiment"]
+            "options": [
+              "Observational study",
+              "Experiment"
+            ]
           }
         ]
       }
     },
     {
       "id": "l04-random-selection",
-      "name": "3.2c: Random Selection → Generalize",
-      "unlockedBy": { "gold": 3 },
+      "name": "3.2c: Random Selection \u2192 Generalize",
+      "unlockedBy": {
+        "gold": 3
+      },
       "layout": {
         "inputs": [
           {
             "id": "canGeneralize",
             "type": "choice",
             "label": "Can we generalize results to the population?",
-            "options": ["Yes", "No"]
+            "options": [
+              "Yes",
+              "No"
+            ]
           },
           {
             "id": "whyGeneralize",
@@ -90,15 +121,20 @@
     },
     {
       "id": "l05-random-assignment",
-      "name": "3.2d: Random Assignment → Causation",
-      "unlockedBy": { "gold": 4 },
+      "name": "3.2d: Random Assignment \u2192 Causation",
+      "unlockedBy": {
+        "gold": 4
+      },
       "layout": {
         "inputs": [
           {
             "id": "canCause",
             "type": "choice",
             "label": "Can we conclude causation?",
-            "options": ["Yes", "No"]
+            "options": [
+              "Yes",
+              "No"
+            ]
           },
           {
             "id": "whyCause",
@@ -112,20 +148,28 @@
     {
       "id": "l06-scope-of-inference",
       "name": "3.2e: Scope of Inference (2x2)",
-      "unlockedBy": { "gold": 5 },
+      "unlockedBy": {
+        "gold": 5
+      },
       "layout": {
         "inputs": [
           {
             "id": "generalize",
             "type": "choice",
             "label": "Can results be generalized to the population?",
-            "options": ["Yes", "No"]
+            "options": [
+              "Yes",
+              "No"
+            ]
           },
           {
             "id": "causation",
             "type": "choice",
             "label": "Can causation be established?",
-            "options": ["Yes", "No"]
+            "options": [
+              "Yes",
+              "No"
+            ]
           }
         ]
       }
@@ -133,14 +177,21 @@
     {
       "id": "l07-srs-definition",
       "name": "3.3a: Simple Random Sample (SRS)",
-      "unlockedBy": { "gold": 6 },
+      "unlockedBy": {
+        "gold": 6
+      },
       "layout": {
         "inputs": [
           {
             "id": "srsKey",
             "type": "dropdown",
             "label": "In an SRS, every _____ of size n has an equal chance of being selected:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose"
           }
         ]
@@ -149,14 +200,20 @@
     {
       "id": "l08-stratified-definition",
       "name": "3.3b: Stratified Random Sample",
-      "unlockedBy": { "gold": 7 },
+      "unlockedBy": {
+        "gold": 7
+      },
       "layout": {
         "inputs": [
           {
             "id": "stratKey",
             "type": "dropdown",
             "label": "In stratified sampling, you divide into groups then:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}"
+            ],
             "placeholder": "Choose"
           }
         ]
@@ -165,14 +222,20 @@
     {
       "id": "l09-cluster-definition",
       "name": "3.3c: Cluster Random Sample",
-      "unlockedBy": { "gold": 8 },
+      "unlockedBy": {
+        "gold": 8
+      },
       "layout": {
         "inputs": [
           {
             "id": "clusterKey",
             "type": "dropdown",
             "label": "In cluster sampling, you divide into groups then:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}"
+            ],
             "placeholder": "Choose"
           }
         ]
@@ -181,20 +244,28 @@
     {
       "id": "l10-strat-vs-cluster",
       "name": "3.3d: Stratified vs Cluster",
-      "unlockedBy": { "gold": 9 },
+      "unlockedBy": {
+        "gold": 9
+      },
       "layout": {
         "inputs": [
           {
             "id": "stratFeature",
             "type": "choice",
             "label": "{{stratQuestion}}",
-            "options": ["{{stratOptA}}", "{{stratOptB}}"]
+            "options": [
+              "{{stratOptA}}",
+              "{{stratOptB}}"
+            ]
           },
           {
             "id": "clusterFeature",
             "type": "choice",
             "label": "{{clusterQuestion}}",
-            "options": ["{{clusterOptA}}", "{{clusterOptB}}"]
+            "options": [
+              "{{clusterOptA}}",
+              "{{clusterOptB}}"
+            ]
           }
         ]
       }
@@ -202,14 +273,21 @@
     {
       "id": "l11-systematic-census",
       "name": "3.3e: Systematic & Census",
-      "unlockedBy": { "gold": 10 },
+      "unlockedBy": {
+        "gold": 10
+      },
       "layout": {
         "inputs": [
           {
             "id": "methodType",
             "type": "dropdown",
             "label": "What sampling method is described?",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose"
           }
         ]
@@ -218,14 +296,21 @@
     {
       "id": "l12-identify-method",
       "name": "3.3f: Identify the Method",
-      "unlockedBy": { "gold": 11 },
+      "unlockedBy": {
+        "gold": 11
+      },
       "layout": {
         "inputs": [
           {
             "id": "methodId",
             "type": "dropdown",
             "label": "What sampling method is being used?",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose"
           }
         ]
@@ -234,14 +319,21 @@
     {
       "id": "l13-why-method",
       "name": "3.3g: Why This Method?",
-      "unlockedBy": { "gold": 12 },
+      "unlockedBy": {
+        "gold": 12
+      },
       "layout": {
         "inputs": [
           {
             "id": "methodId2",
             "type": "dropdown",
             "label": "What method is being used?",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose"
           },
           {
@@ -256,21 +348,31 @@
     {
       "id": "l14-capstone-sampling",
       "name": "3.3 Capstone: Sampling Methods",
-      "unlockedBy": { "gold": 13 },
+      "unlockedBy": {
+        "gold": 13
+      },
       "layout": {
         "inputs": [
           {
             "id": "capMethod",
             "type": "dropdown",
             "label": "Identify the sampling method:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose"
           },
           {
             "id": "capGeneralize",
             "type": "choice",
             "label": "Can results generalize to the population?",
-            "options": ["Yes", "No"]
+            "options": [
+              "Yes",
+              "No"
+            ]
           },
           {
             "id": "capWhy",
@@ -284,44 +386,147 @@
     {
       "id": "l15-capstone-full",
       "name": "Unit 3.1-3.3 Capstone",
-      "unlockedBy": { "gold": 14 },
+      "unlockedBy": {
+        "gold": 14
+      },
       "layout": {
         "inputs": [
           {
             "id": "studyType2",
             "type": "choice",
             "label": "Is this an observational study or experiment?",
-            "options": ["Observational study", "Experiment"]
+            "options": [
+              "Observational study",
+              "Experiment"
+            ]
           },
           {
             "id": "capMethod2",
             "type": "dropdown",
             "label": "What sampling/assignment method was used?",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose"
           },
           {
             "id": "capGen2",
             "type": "choice",
             "label": "Generalize to population?",
-            "options": ["Yes", "No"]
+            "options": [
+              "Yes",
+              "No"
+            ]
           },
           {
             "id": "capCause2",
             "type": "choice",
             "label": "Establish causation?",
-            "options": ["Yes", "No"]
+            "options": [
+              "Yes",
+              "No"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l16-sampling-bias",
+      "name": "3.4a: Sampling Biases",
+      "unlockedBy": {
+        "gold": 15
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "biasType",
+            "type": "dropdown",
+            "label": "Identify the primary source of bias in this data collection:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "biasExplain",
+            "type": "text",
+            "label": "Explain why the results might be biased:",
+            "placeholder": "Explain what makes the sample/answers unrepresentative..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l17-method-tradeoffs",
+      "name": "3.4b: Choosing a Sampling Method",
+      "unlockedBy": {
+        "gold": 16
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "methodChoice",
+            "type": "dropdown",
+            "label": "Which sampling method is the BEST choice here?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose"
+          },
+          {
+            "id": "methodExplain",
+            "type": "text",
+            "label": "Explain why that method is a good choice here:",
+            "placeholder": "Tie your explanation to the scenario (representation, practicality, or precision)..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l18-large-sample",
+      "name": "3.4c: Large Sample vs Representative Sample",
+      "unlockedBy": {
+        "gold": 17
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "largeGeneralize",
+            "type": "choice",
+            "label": "Does a LARGE sample size guarantee a representative sample (and therefore generalization)?",
+            "options": [
+              "Yes",
+              "No"
+            ]
+          },
+          {
+            "id": "largeExplain",
+            "type": "text",
+            "label": "Explain why:",
+            "placeholder": "Explain why sample size does or does not fix bias..."
           }
         ]
       }
     }
   ],
-
   "grading": {
     "rubricFile": "grading-rules.js",
-    "aiPromptFile": null,
+    "aiPromptFile": "ai-grader-prompt.txt",
     "scoring": {
-      "scale": ["E", "P", "I"],
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
       "meanings": {
         "E": "Essentially Correct",
         "P": "Partially Correct",
@@ -329,7 +534,6 @@
       }
     }
   },
-
   "hints": {
     "perField": {
       "chanceTrust": "If data collection doesn't use CHANCE (randomness), we can't trust the conclusions. Look for random selection or random assignment.",
@@ -339,9 +543,9 @@
       "whyGeneralize": "Random selection gives every member of the population a chance to be in the sample, making the sample representative.",
       "canCause": "Can we say X CAUSED Y? Only if treatments were RANDOMLY ASSIGNED (which is only possible in experiments).",
       "whyCause": "Random assignment balances confounding variables across groups, so differences can be attributed to the treatment.",
-      "generalize": "RANDOM SELECTION from population → can generalize. No random selection → can only describe those in the study.",
-      "causation": "RANDOM ASSIGNMENT of treatments → can establish causation. No random assignment (observational) → only association.",
-      "srsKey": "SRS: every GROUP of n individuals has equal chance. Not just every individual—every possible combination!",
+      "generalize": "RANDOM SELECTION from population \u2192 can generalize. No random selection \u2192 can only describe those in the study.",
+      "causation": "RANDOM ASSIGNMENT of treatments \u2192 can establish causation. No random assignment (observational) \u2192 only association.",
+      "srsKey": "SRS: every GROUP of n individuals has equal chance. Not just every individual\u2014every possible combination!",
       "stratKey": "Stratified: divide into homogeneous groups (strata), then take an SRS FROM EACH stratum.",
       "clusterKey": "Cluster: divide into groups (clusters), randomly select SOME clusters, then sample ALL individuals in selected clusters.",
       "stratFeature": "Stratified: uses ALL groups, takes SOME from each, works best with HOMOGENEOUS groups (similar within).",
@@ -351,12 +555,18 @@
       "methodId2": "Look for key phrases: 'from each' often means stratified. 'All in selected' often means cluster.",
       "advantage": "SRS: simple, unbiased. Stratified: ensures representation, reduces variability. Cluster: practical, cheaper. Systematic: easy to implement.",
       "capMethod": "First identify: Was it random? If so, how were individuals or groups selected?",
-      "capGeneralize": "Was the sample randomly selected from the population? If yes → can generalize. If no → cannot generalize.",
+      "capGeneralize": "Was the sample randomly selected from the population? If yes \u2192 can generalize. If no \u2192 cannot generalize.",
       "capWhy": "Random selection allows generalization because every member had a chance to be selected.",
       "studyType2": "Were treatments assigned by the researcher (experiment) or did they just observe existing conditions (observational)?",
       "capMethod2": "Identify the method of selection (for samples) or assignment (for experiments).",
-      "capGen2": "Random selection from population → generalizable. Convenience/volunteer → not generalizable.",
-      "capCause2": "Random assignment → causation possible. No random assignment → only association (even in experiments!)."
+      "capGen2": "Random selection from population \u2192 generalizable. Convenience/volunteer \u2192 not generalizable.",
+      "capCause2": "Random assignment \u2192 causation possible. No random assignment \u2192 only association (even in experiments!).",
+      "biasType": "Identify the main bias: Voluntary response (people choose to respond), Undercoverage (some groups left out), Nonresponse (selected people don't respond), Response bias (question wording or lying/misreporting).",
+      "biasExplain": "Explain HOW the method could skew results. Who is overrepresented or underrepresented? Or how could the wording/method change answers?",
+      "methodChoice": "Pick the method that fits the situation: Stratified = sample from EACH group (better representation/precision). Cluster = select SOME groups and take all (cheaper/easier). Systematic = random start then every kth (easy). SRS = random from a complete list with no grouping.",
+      "methodExplain": "Give a scenario-based advantage. Stratified: ensures subgroups are represented/reduces variability. Cluster: cheaper/more practical for spread-out populations. Systematic: easy to implement with an ordering. SRS: unbiased and simple.",
+      "largeGeneralize": "Bigger samples reduce RANDOM error (variability), but they do NOT automatically fix BIAS. Representativeness depends on random selection, not just size.",
+      "largeExplain": "To earn full credit, mention that without random selection a sample can be biased even if it is large. Sample size helps precision, not bias."
     },
     "penalty": {
       "0": "gold",
@@ -365,26 +575,157 @@
       "3": "tin"
     }
   },
-
   "progression": {
     "streaksPerField": false,
-    "streakFields": ["studyType", "canGeneralize", "canCause", "methodId"],
+    "streakFields": [
+      "studyType",
+      "canGeneralize",
+      "canCause",
+      "methodId"
+    ],
     "tiers": [
-      { "id": "l01-chance-matters", "name": "3.1", "unlockedBy": "default", "celebrationMessage": "Chance matters! Next: population vs sample." },
-      { "id": "l02-population-sample", "name": "3.2a", "unlockedBy": { "gold": 1 }, "celebrationMessage": "Got it! Next: study types." },
-      { "id": "l03-obs-vs-exp", "name": "3.2b", "unlockedBy": { "gold": 2 }, "celebrationMessage": "Key distinction! Next: random selection." },
-      { "id": "l04-random-selection", "name": "3.2c", "unlockedBy": { "gold": 3 }, "celebrationMessage": "Random selection → generalize! Next: random assignment." },
-      { "id": "l05-random-assignment", "name": "3.2d", "unlockedBy": { "gold": 4 }, "celebrationMessage": "Random assignment → causation! Next: putting it together." },
-      { "id": "l06-scope-of-inference", "name": "3.2e", "unlockedBy": { "gold": 5 }, "celebrationMessage": "You've mastered the 2x2! Now: sampling methods." },
-      { "id": "l07-srs-definition", "name": "3.3a", "unlockedBy": { "gold": 6 }, "celebrationMessage": "SRS mastered! Next: stratified." },
-      { "id": "l08-stratified-definition", "name": "3.3b", "unlockedBy": { "gold": 7 }, "celebrationMessage": "Stratified = from each! Next: cluster." },
-      { "id": "l09-cluster-definition", "name": "3.3c", "unlockedBy": { "gold": 8 }, "celebrationMessage": "Cluster = entire groups! Next: comparing them." },
-      { "id": "l10-strat-vs-cluster", "name": "3.3d", "unlockedBy": { "gold": 9 }, "celebrationMessage": "Key distinction! Next: systematic & census." },
-      { "id": "l11-systematic-census", "name": "3.3e", "unlockedBy": { "gold": 10 }, "celebrationMessage": "All methods learned! Time to practice." },
-      { "id": "l12-identify-method", "name": "3.3f", "unlockedBy": { "gold": 11 }, "celebrationMessage": "Nice identification! Next: advantages." },
-      { "id": "l13-why-method", "name": "3.3g", "unlockedBy": { "gold": 12 }, "celebrationMessage": "Strategic thinking! Sampling capstone next." },
-      { "id": "l14-capstone-sampling", "name": "3.3Cap", "unlockedBy": { "gold": 13 }, "celebrationMessage": "Sampling mastered! Final capstone." },
-      { "id": "l15-capstone-full", "name": "Final", "unlockedBy": { "gold": 14 }, "celebrationMessage": "Unit 3.1-3.3 COMPLETE!" }
+      {
+        "id": "l01-chance-matters",
+        "name": "3.1",
+        "unlockedBy": "default",
+        "celebrationMessage": "Chance matters! Next: population vs sample."
+      },
+      {
+        "id": "l02-population-sample",
+        "name": "3.2a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Got it! Next: study types."
+      },
+      {
+        "id": "l03-obs-vs-exp",
+        "name": "3.2b",
+        "unlockedBy": {
+          "gold": 2
+        },
+        "celebrationMessage": "Key distinction! Next: random selection."
+      },
+      {
+        "id": "l04-random-selection",
+        "name": "3.2c",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Random selection \u2192 generalize! Next: random assignment."
+      },
+      {
+        "id": "l05-random-assignment",
+        "name": "3.2d",
+        "unlockedBy": {
+          "gold": 4
+        },
+        "celebrationMessage": "Random assignment \u2192 causation! Next: putting it together."
+      },
+      {
+        "id": "l06-scope-of-inference",
+        "name": "3.2e",
+        "unlockedBy": {
+          "gold": 5
+        },
+        "celebrationMessage": "You've mastered the 2x2! Now: sampling methods."
+      },
+      {
+        "id": "l07-srs-definition",
+        "name": "3.3a",
+        "unlockedBy": {
+          "gold": 6
+        },
+        "celebrationMessage": "SRS mastered! Next: stratified."
+      },
+      {
+        "id": "l08-stratified-definition",
+        "name": "3.3b",
+        "unlockedBy": {
+          "gold": 7
+        },
+        "celebrationMessage": "Stratified = from each! Next: cluster."
+      },
+      {
+        "id": "l09-cluster-definition",
+        "name": "3.3c",
+        "unlockedBy": {
+          "gold": 8
+        },
+        "celebrationMessage": "Cluster = entire groups! Next: comparing them."
+      },
+      {
+        "id": "l10-strat-vs-cluster",
+        "name": "3.3d",
+        "unlockedBy": {
+          "gold": 9
+        },
+        "celebrationMessage": "Key distinction! Next: systematic & census."
+      },
+      {
+        "id": "l11-systematic-census",
+        "name": "3.3e",
+        "unlockedBy": {
+          "gold": 10
+        },
+        "celebrationMessage": "All methods learned! Time to practice."
+      },
+      {
+        "id": "l12-identify-method",
+        "name": "3.3f",
+        "unlockedBy": {
+          "gold": 11
+        },
+        "celebrationMessage": "Nice identification! Next: advantages."
+      },
+      {
+        "id": "l13-why-method",
+        "name": "3.3g",
+        "unlockedBy": {
+          "gold": 12
+        },
+        "celebrationMessage": "Strategic thinking! Sampling capstone next."
+      },
+      {
+        "id": "l14-capstone-sampling",
+        "name": "3.3Cap",
+        "unlockedBy": {
+          "gold": 13
+        },
+        "celebrationMessage": "Sampling mastered! Final capstone."
+      },
+      {
+        "id": "l15-capstone-full",
+        "name": "3.1-3.3 Capstone",
+        "unlockedBy": {
+          "gold": 14
+        },
+        "celebrationMessage": "Awesome work! Next: sampling biases and how to spot them."
+      },
+      {
+        "id": "l16-sampling-bias",
+        "name": "3.4a",
+        "unlockedBy": {
+          "gold": 15
+        },
+        "celebrationMessage": "Bias spotted! Next: choosing the best sampling method."
+      },
+      {
+        "id": "l17-method-tradeoffs",
+        "name": "3.4b",
+        "unlockedBy": {
+          "gold": 16
+        },
+        "celebrationMessage": "Great choices! Next: big sample vs representative sample."
+      },
+      {
+        "id": "l18-large-sample",
+        "name": "3.4c",
+        "unlockedBy": {
+          "gold": 17
+        },
+        "celebrationMessage": "Unit 3 sampling COMPLETE! You can identify methods, bias, and scope of inference."
+      }
     ]
   }
 }

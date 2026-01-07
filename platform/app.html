@@ -2757,7 +2757,19 @@
       if (!problem) return;
 
       document.getElementById('scenario-title').textContent = getCurrentTopicName();
-      document.getElementById('scenario-text').textContent = problem.scenario || '';
+
+      // Use innerHTML and render LaTeX in scenario text
+      const scenarioEl = document.getElementById('scenario-text');
+      scenarioEl.innerHTML = problem.scenario || '';
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(scenarioEl, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ],
+          throwOnError: false
+        });
+      }
 
       // Show/hide graph card based on whether this problem has graph content
       const graphCard = document.getElementById('graph-card');

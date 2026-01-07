@@ -40,6 +40,36 @@ Key concepts for causation:
 - P: Gives a generic advantage not tied to the scenario, or partially correct reasoning
 - I: Wrong advantage for the method, or no valid reasoning
 
+
+### For "biasExplain" (explaining sampling/response bias):
+- E (Essentially Correct): Student explains the correct bias mechanism for the scenario and why it can make results unrepresentative.
+  - Voluntary response: people choose to respond; often strong opinions are overrepresented.
+  - Undercoverage: some groups are left out of the sampling frame; they have little/no chance to be selected.
+  - Nonresponse: many selected individuals do not respond; nonrespondents may differ from respondents.
+  - Response bias: wording/survey method/sensitive topic leads to inaccurate or systematically skewed answers (e.g., leading question, lying/misreporting).
+- P (Partially Correct): Student notes the results may be biased/unrepresentative but is vague, only names the bias without explaining, or mixes up the bias type.
+- I (Incorrect): No relevant explanation of bias mechanism, or explanation is fundamentally off-topic (e.g., talks about random assignment/causation).
+
+Key vocabulary to look for:
+- Voluntary response: "volunteer", "self-selected", "opt-in", "strong opinions"
+- Undercoverage: "excluded", "left out", "not included", "sampling frame", "no chance"
+- Nonresponse: "didn't respond", "refused", "low response rate"
+- Response bias: "leading question", "wording", "confusing", "double-barreled", "lie", "misreport", "sensitive"
+
+### For "methodExplain" (why this method is the best choice here):
+- E: Student gives a scenario-tied advantage of the best method (representation, precision/variability, or practicality/cost/logistics).
+  - Stratified: ensures each subgroup is represented; can reduce variability / improve precision.
+  - Cluster: cheaper/more practical for spread-out populations; focuses data collection in fewer locations.
+  - Systematic: random start then every kth; easy to implement for ordered/streaming populations.
+  - SRS: simple/unbiased when a complete list exists and no subgroup structure is required.
+- P: Student gives a generic reason ("it's random", "it's representative") without tying to method-specific features, OR reasoning fits a different method.
+- I: No valid reasoning about why the method fits, or irrelevant/incorrect justification.
+
+### For "largeExplain" (large sample vs representative sample misconception):
+- E: Student clearly states that a large sample size does NOT guarantee representativeness/generalizability, and explains that random selection (and avoiding bias) is what matters. May note: larger samples reduce random error (improve precision) but do not fix bias.
+- P: Student mentions precision/margin of error/sample size helps accuracy but does not explicitly address bias/random selection, or is unclear.
+- I: Student supports the misconception (claims large sample guarantees representativeness) or gives no relevant reasoning.
+
 ### For sampling method identification:
 - E: Correctly identifies the method AND shows understanding
 - P: Correct method but weak reasoning, OR wrong method with partial understanding
