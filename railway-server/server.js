@@ -305,6 +305,85 @@ app.get('/api/progress/:username/stats', async (req, res) => {
 });
 
 // ============================================
+// SYNC ENDPOINT - Reconcile local vs server star counts
+// ============================================
+
+app.post('/api/progress/:username/sync', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { starCounts } = req.body; // { gold: N, silver: N, bronze: N, tin: N }
+
+    if (!starCounts) {
+      return res.status(400).json({ error: 'starCounts required' });
+    }
+
+    // Get current server counts
+    const { data: serverProgress, error: fetchError } = await supabase
+      .from('lsrl_progress')
+      .select('star_type')
+      .eq('username', username)
+      .not('star_type', 'is', null);
+
+    if (fetchError) throw fetchError;
+
+    const serverCounts = { gold: 0, silver: 0, bronze: 0, tin: 0 };
+    for (const p of serverProgress || []) {
+      if (p.star_type && serverCounts[p.star_type] !== undefined) {
+        serverCounts[p.star_type]++;
+      }
+    }
+
+    // Calculate missing stars (local has more than server)
+    const missing = {
+      gold: Math.max(0, (starCounts.gold || 0) - serverCounts.gold),
+      silver: Math.max(0, (starCounts.silver || 0) - serverCounts.silver),
+      bronze: Math.max(0, (starCounts.bronze || 0) - serverCounts.bronze),
+      tin: Math.max(0, (starCounts.tin || 0) - serverCounts.tin)
+    };
+
+    const totalMissing = missing.gold + missing.silver + missing.bronze + missing.tin;
+
+    if (totalMissing > 0) {
+      // Insert missing stars as sync records
+      const inserts = [];
+      for (const [starType, count] of Object.entries(missing)) {
+        for (let i = 0; i < count; i++) {
+          inserts.push({
+            username,
+            scenario_topic: 'sync-recovery',
+            star_type: starType,
+            all_correct: true,
+            hints_used: 0,
+            grading_mode: 'sync'
+          });
+        }
+      }
+
+      if (inserts.length > 0) {
+        const { error: insertError } = await supabase
+          .from('lsrl_progress')
+          .insert(inserts);
+
+        if (insertError) throw insertError;
+
+        console.log(`[Sync] ${username}: Added ${totalMissing} missing stars`, missing);
+        broadcast({ type: 'leaderboard_update' });
+      }
+    }
+
+    res.json({
+      success: true,
+      serverCounts,
+      localCounts: starCounts,
+      synced: totalMissing
+    });
+  } catch (err) {
+    console.error('POST /api/progress/:username/sync error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // LEADERBOARD ENDPOINT
 // ============================================
 

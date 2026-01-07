@@ -780,6 +780,34 @@
     let currentCartridgeId = localStorage.getItem('lastCartridgeId') || 'lsrl-interpretation';
     let pendingTeacherReview = null; // Store results for teacher review
 
+    /**
+     * Sync local star counts with server to fix any discrepancies
+     * Called on login and periodically
+     */
+    async function syncStarsWithServer(username) {
+      if (!username || !platform) return;
+
+      try {
+        const state = platform.getState();
+        const starCounts = state?.game?.starCounts;
+        if (!starCounts) return;
+
+        const response = await fetch(`${SERVER_URL}/api/progress/${username}/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ starCounts })
+        });
+
+        const result = await response.json();
+        if (result.synced > 0) {
+          console.log(`[Sync] Recovered ${result.synced} missing stars for ${username}`);
+          celebration.showToast(`Synced ${result.synced} stars to leaderboard`, 'success', 3000);
+        }
+      } catch (err) {
+        console.warn('[Sync] Failed to sync stars:', err);
+      }
+    }
+
     // Helper to get best available topic name for notifications/logging
     function getCurrentTopicName() {
       // Try: explicit topic > mode name > cartridge name > cartridge ID > 'Practice'
@@ -1269,7 +1297,10 @@
           await activateTeacherMode(existingPassword.value, true);
         }
 
-        loadCartridge(currentCartridgeId);
+        await loadCartridge(currentCartridgeId);
+
+        // Sync local stars with server to fix any discrepancies
+        syncStarsWithServer(existingSelect.value);
       },
 
       async register() {
@@ -1302,7 +1333,10 @@
         timeTracker.start(username);
         this.hide();
         soundEngine.init();
-        loadCartridge(currentCartridgeId);
+        await loadCartridge(currentCartridgeId);
+
+        // Sync local stars with server (likely empty for new users)
+        syncStarsWithServer(username);
       }
     };
 
@@ -3203,7 +3237,10 @@
         wsClient.connect(userSystem.currentUser.username);
         leaderboard.setCurrentUser(userSystem.currentUser.username);
         timeTracker.start(userSystem.currentUser.username);
-        loadCartridge(currentCartridgeId);
+        await loadCartridge(currentCartridgeId);
+
+        // Sync local stars with server on return visit
+        syncStarsWithServer(userSystem.currentUser.username);
       } else {
         usernameModal.show(true); // First visit - cannot close modal
       }
