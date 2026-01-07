@@ -927,22 +927,58 @@ export function generateProblem(modeId, contextFromFile, mode) {
   // Level 17: Real-world model (domain/intercepts)
   // -------------------------
   if (modeId === "l17-real-world-domain") {
+    // Create a simple linear model: f(x) = 13.2 - 2x
+    // x-intercept at 6.6, y-intercept at 13.2
+    const xIntercept = 6.6;
+    const yIntercept = 13.2;
+    const slope = -yIntercept / xIntercept; // -2
+
+    // Build graph points for the line
+    const xMin = -2, xMax = 9;
+    const points = [];
+    for (let x = xMin; x <= xMax; x += 0.5) {
+      points.push({ x, y: yIntercept + slope * x });
+    }
+
+    // Configure graph with sign regions to show valid/invalid domains
+    graphConfig = {
+      type: "function-curve",
+      points,
+      xLabel: "x (quarter-cups)",
+      yLabel: "f(x) (seconds)",
+      xDomain: [xMin, xMax],
+      yDomain: [-6, 16],
+      regression: { show: false },
+      originAxes: true,
+      curveColor: '#8b5cf6', // Purple for the model line
+      // Sign regions: red = positive (valid time), blue = negative (invalid)
+      signRegions: [
+        { xStart: -Infinity, xEnd: xIntercept, sign: 'positive', label: 'f(x) > 0' },
+        { xStart: xIntercept, xEnd: Infinity, sign: 'negative', label: 'f(x) < 0' }
+      ],
+      // Mark the intercepts
+      labeledPoints: [
+        { x: 0, y: yIntercept, label: `(0, ${yIntercept})`, color: '#10b981', labelPosition: 'above' },
+        { x: xIntercept, y: 0, label: `(${xIntercept}, 0)`, color: '#f97316', labelPosition: 'below' }
+      ]
+    };
+
     const givenText =
       "Sofía mixes a fixed amount of baking soda with different amounts of vinegar.\n" +
-      "For $x$ quarter-cups of vinegar, it takes $f(x)$ seconds to inflate the balloon.\n" +
-      "A model's graph has an $x$-intercept around 6.6 and a $y$-intercept around 13.2.";
+      "For $x$ quarter-cups of vinegar, it takes $f(x)$ seconds to inflate the balloon.";
 
     context = {
       ...makeContextBase(
         "Level 17: Interpreting Intercepts in Context",
-        "When a polynomial models a real-world situation, always ask: **Do the intercepts make sense?** The $y$-intercept ($x = 0$) represents the output when the input is zero. The $x$-intercept(s) ($y = 0$) represent when the output equals zero. Sometimes these values are impossible or meaningless in context, so you may need to restrict the domain.",
-        givenText
+        "When a polynomial models a real-world situation, always ask: **Do the intercepts make sense?** The **red region** shows where $f(x) > 0$ (positive time). The **blue region** shows where $f(x) < 0$ (negative time—impossible!). Also consider: can $x$ be negative?",
+        givenText,
+        `$y$-intercept: $(0, ${yIntercept})$  •  $x$-intercept: $(${xIntercept}, 0)$`
       ),
       interceptSense: { value: "No" }
     };
 
     answers = { interceptSense: { value: "No" } };
-    scenario = "Think: Can you have 0 quarter-cups of vinegar? Does 0 seconds make sense? Are negative values possible?";
+    scenario = "Look at the graph: Red = valid (positive seconds), Blue = invalid (negative seconds). What about negative $x$?";
     return { context, graphConfig, answers, scenario };
   }
 

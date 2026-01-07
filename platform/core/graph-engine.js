@@ -290,6 +290,11 @@ export class GraphEngine {
     // Draw axes
     this.drawAxes(scales, labels || { x: xLabel || 'x', y: yLabel || 'y' });
 
+    // Draw sign regions (shaded areas for positive/negative) BEFORE curve
+    if (config.signRegions) {
+      this.drawSignRegions(scales, config.signRegions);
+    }
+
     // Draw origin axes if requested (x and y axes through 0,0)
     if (config.originAxes) {
       this.drawOriginAxes(scales, config.originAxesColor || '#374151');
@@ -547,6 +552,47 @@ export class GraphEngine {
     ctx.lineTo(this.width - this.padding.right, y0);
     ctx.stroke();
     ctx.setLineDash([]);
+  }
+
+  /**
+   * Draw shaded regions showing where function is positive (above x-axis) or negative (below)
+   * @param {Object} scales - The calculated scales
+   * @param {Array} regions - Array of { xStart, xEnd, sign: 'positive'|'negative' }
+   */
+  drawSignRegions(scales, regions) {
+    const ctx = this.ctx;
+    const y0 = scales.yScale(0);
+    const yTop = this.padding.top;
+    const yBottom = this.height - this.padding.bottom;
+
+    for (const region of regions) {
+      const xStart = region.xStart === -Infinity ? scales.xMin : region.xStart;
+      const xEnd = region.xEnd === Infinity ? scales.xMax : region.xEnd;
+
+      const pxStart = scales.xScale(xStart);
+      const pxEnd = scales.xScale(xEnd);
+      const width = pxEnd - pxStart;
+
+      if (region.sign === 'positive') {
+        // Shade above x-axis in red/pink
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'; // Red with low opacity
+        ctx.fillRect(pxStart, yTop, width, y0 - yTop);
+      } else {
+        // Shade below x-axis in blue
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.15)'; // Blue with low opacity
+        ctx.fillRect(pxStart, y0, width, yBottom - y0);
+      }
+
+      // Add label for the region
+      if (region.label) {
+        ctx.fillStyle = region.sign === 'positive' ? 'rgba(239, 68, 68, 0.7)' : 'rgba(59, 130, 246, 0.7)';
+        ctx.font = 'bold 12px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        const labelX = (pxStart + pxEnd) / 2;
+        const labelY = region.sign === 'positive' ? (yTop + y0) / 2 : (y0 + yBottom) / 2;
+        ctx.fillText(region.label, labelX, labelY);
+      }
+    }
   }
 
   /**

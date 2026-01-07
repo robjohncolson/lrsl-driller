@@ -249,7 +249,8 @@ export class Platform {
           labeledPoints: gc.labeledPoints,
           xIntercepts: gc.xIntercepts,
           turningPoints: gc.turningPoints,
-          curveColor: gc.curveColor
+          curveColor: gc.curveColor,
+          signRegions: gc.signRegions
         };
         this.graphEngine.render(graphConfig);
       }
