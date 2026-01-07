@@ -214,11 +214,6 @@ app.post('/api/progress', async (req, res) => {
       }
     }
 
-    // Calculate weighted points: base star value * level multiplier
-    const basePoints = { gold: 4, silver: 3, bronze: 2, tin: 1 };
-    const multiplier = level_multiplier || 1.0;
-    const weighted_points = star_type ? (basePoints[star_type] || 0) * multiplier : 0;
-
     const { data, error } = await supabase
       .from('lsrl_progress')
       .insert({
@@ -231,10 +226,8 @@ app.post('/api/progress', async (req, res) => {
         star_type: star_type || null,
         all_correct: all_correct || false,
         grading_mode,
-        ai_provider,
-        level_index: level_index || 0,
-        level_multiplier: multiplier,
-        weighted_points: weighted_points
+        ai_provider
+        // Note: level_index, level_multiplier, weighted_points columns not yet in DB
       })
       .select()
       .single();
@@ -367,8 +360,7 @@ app.post('/api/progress/:username/sync', async (req, res) => {
     const totalMissing = missing.gold + missing.silver + missing.bronze + missing.tin;
 
     if (totalMissing > 0) {
-      // Insert missing stars as sync records with base multiplier
-      const basePoints = { gold: 4, silver: 3, bronze: 2, tin: 1 };
+      // Insert missing stars as sync records
       const inserts = [];
       for (const [starType, count] of Object.entries(missing)) {
         for (let i = 0; i < count; i++) {
@@ -378,9 +370,7 @@ app.post('/api/progress/:username/sync', async (req, res) => {
             star_type: starType,
             all_correct: true,
             hints_used: 0,
-            grading_mode: 'sync',
-            level_multiplier: 1.0, // Default multiplier for recovered stars
-            weighted_points: basePoints[starType] || 0
+            grading_mode: 'sync'
           });
         }
       }
@@ -419,9 +409,11 @@ app.get('/api/leaderboard', async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
 
     // Build query with optional time filter
+    // Note: weighted_points and level_multiplier columns may not exist yet in DB
+    // The aggregation logic below handles this gracefully with fallback
     let query = supabase
       .from('lsrl_progress')
-      .select('username, star_type, weighted_points, level_multiplier')
+      .select('username, star_type, completed_at')
       .not('star_type', 'is', null);
 
     // Add time filter for hourly leaderboard
@@ -445,13 +437,9 @@ app.get('/api/leaderboard', async (req, res) => {
         userStats[p.username][p.star_type]++;
       }
 
-      // Use stored weighted_points if available, otherwise calculate with multiplier or use base
-      if (p.weighted_points) {
-        userStats[p.username].weighted_score += p.weighted_points;
-      } else if (p.level_multiplier && p.star_type) {
-        userStats[p.username].weighted_score += (basePoints[p.star_type] || 0) * p.level_multiplier;
-      } else if (p.star_type) {
-        // Fallback for old records without multiplier
+      // Calculate weighted score from star type
+      // Future: when weighted_points column exists, use it instead
+      if (p.star_type) {
         userStats[p.username].weighted_score += basePoints[p.star_type] || 0;
       }
     }
