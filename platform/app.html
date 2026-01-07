@@ -732,8 +732,8 @@
 
   <script type="module">
     import { Platform } from './platform.js';
-    import { SoundEngine } from './core/sound-engine.js';
-    import { Celebration } from './core/celebration.js';
+    import { soundEngine } from './core/sound-engine.js';
+    import { celebration } from './core/celebration.js';
     import { UserSystem, generateUsername, getAvatarForUsername, getCurrentRank, getRankProgress, getWeightedScore } from './core/user-system.js';
     import { WebSocketClient } from './core/websocket-client.js';
     import { Leaderboard } from './core/leaderboard.js';
@@ -745,8 +745,7 @@
     const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 
     // ==================== INITIALIZE MODULES ====================
-    const soundEngine = new SoundEngine();
-    const celebration = new Celebration();
+    // soundEngine and celebration are singletons imported from their modules
     const userSystem = new UserSystem({ serverUrl: SERVER_URL });
     const leaderboard = new Leaderboard({ serverUrl: SERVER_URL });
     const classTime = new ClassTime();
