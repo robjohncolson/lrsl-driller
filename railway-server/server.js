@@ -36,9 +36,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ============================================
+// VERSION - Update this when deploying new versions
+// ============================================
+const CURRENT_VERSION = '0.0.1';
+
 // Health check
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', service: 'lsrl-trainer-server' });
+  res.json({ status: 'ok', service: 'lsrl-trainer-server', version: CURRENT_VERSION });
+});
+
+// Version endpoint - clients check this to see if they need to update
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: CURRENT_VERSION,
+    message: 'Hard refresh (Ctrl+Shift+R) to update to the latest version'
+  });
 });
 
 // ============================================
