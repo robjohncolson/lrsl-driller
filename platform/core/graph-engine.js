@@ -342,6 +342,52 @@ export class GraphEngine {
         ctx.fill();
       }
     }
+
+    // Draw secant line if provided (dotted line connecting two points)
+    if (config.secantLine) {
+      const { x1, y1, x2, y2, color = '#f97316' } = config.secantLine;
+      const px1 = scales.xScale(x1);
+      const py1 = scales.yScale(y1);
+      const px2 = scales.xScale(x2);
+      const py2 = scales.yScale(y2);
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(px1, py1);
+      ctx.lineTo(px2, py2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Draw labeled points if provided
+    if (config.labeledPoints) {
+      for (const lp of config.labeledPoints) {
+        const px = scales.xScale(lp.x);
+        const py = scales.yScale(lp.y);
+        const color = lp.color || '#ef4444';
+
+        // Draw point
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw label
+        if (lp.label) {
+          ctx.fillStyle = '#374151';
+          ctx.font = 'bold 11px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          // Position label above or below point based on labelPosition
+          const labelOffset = lp.labelPosition === 'below' ? 18 : -12;
+          ctx.fillText(lp.label, px, py + labelOffset);
+        }
+      }
+    }
   }
 
   // ============== RESIDUAL PLOT ==============

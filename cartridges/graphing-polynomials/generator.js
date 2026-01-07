@@ -704,7 +704,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
   }
 
   // -------------------------
-  // Level 13: Average rate of change
+  // Level 13: Average rate of change (with graph)
   // -------------------------
   if (modeId === "l13-average-rate") {
     const deg = choice([2, 3]);
@@ -719,20 +719,50 @@ export function generateProblem(modeId, contextFromFile, mode) {
     const fb = evalPolyAsc(coeffs, b);
     const avg = (fb - fa) / (b - a);
 
+    // Build graph points for the curve
+    const xMin = -4, xMax = 4;
+    const points = buildGraphPoints(coeffs, xMin, xMax, 0.15);
+    const yDomain = yDomainFromPoints(points);
+
+    // Configure the graph with secant line and labeled points
+    graphConfig = {
+      type: "function-curve",
+      points,
+      xLabel: "x",
+      yLabel: "f(x)",
+      xDomain: [xMin, xMax],
+      yDomain,
+      regression: { show: false },
+      // Secant line connecting (a, f(a)) and (b, f(b))
+      secantLine: {
+        x1: a,
+        y1: fa,
+        x2: b,
+        y2: fb,
+        color: '#f97316' // Orange
+      },
+      // Labeled points showing coordinates
+      labeledPoints: [
+        { x: a, y: fa, label: `(${a}, ${fa})`, color: '#ef4444', labelPosition: fa > fb ? 'above' : 'below' },
+        { x: b, y: fb, label: `(${b}, ${fb})`, color: '#ef4444', labelPosition: fb > fa ? 'above' : 'below' }
+      ]
+    };
+
     context = {
       ...makeContextBase(
         "Level 13: Average Rate of Change",
-        "The **average rate of change** of $f$ over an interval $[a, b]$ is the slope of the line connecting $(a, f(a))$ and $(b, f(b))$. Use the formula: $\\frac{f(b) - f(a)}{b - a}$ (rise over run). This tells you how fast $f$ is changing *on average* between those two $x$-values.",
-        `${katex(`f(x) = ${expr}`)}`,
-        `Points: $(${a}, ${fa})$ and $(${b}, ${fb})$`
+        "The **average rate of change** of $f$ over an interval $[a, b]$ is the slope of the secant line connecting $(a, f(a))$ and $(b, f(b))$. Use the formula: $\\frac{f(b) - f(a)}{b - a}$ (rise over run).",
+        `${katex(`f(x) = ${expr}`)}`
       ),
       a,
       b,
+      fa,
+      fb,
       avgRate: { value: avg, tolerance: 0.01 }
     };
 
     answers = { avgRate: { value: avg, tolerance: 0.01 } };
-    scenario = "Calculate (change in $y$) ÷ (change in $x$) = $\\frac{f(b)-f(a)}{b-a}$.";
+    scenario = `Find the average rate of change between the two marked points using $\\frac{f(b)-f(a)}{b-a} = \\frac{${fb}-${fa > 0 ? `(${fa})` : fa}}{${b}-${a > 0 ? `(${a})` : a}}$.`;
     return { context, graphConfig, answers, scenario };
   }
 
