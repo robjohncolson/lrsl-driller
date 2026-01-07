@@ -927,7 +927,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
   // Level 17: Real-world model (domain/intercepts)
   // -------------------------
   if (modeId === "l17-real-world-domain") {
-    // Multiple real-world scenarios
+    // Multiple real-world scenarios - some have sensible intercepts (Yes), some don't (No)
     const scenarios = [
       {
         name: "Balloon Inflation",
@@ -937,8 +937,9 @@ export function generateProblem(modeId, contextFromFile, mode) {
         xIntercept: 6.6,
         yIntercept: 13.2,
         xQuestion: "Can you have negative quarter-cups of vinegar?",
-        yQuestion: "Can inflation time be negative seconds?",
-        answer: "No"
+        yQuestion: "Does 0 seconds inflation time make sense?",
+        answer: "No",
+        explanation: "The **$y$-intercept (0, 13.2)** says with 0 vinegar, the balloon takes 13.2 seconds—but with no vinegar, there's no reaction! The **$x$-intercept (6.6, 0)** says at 6.6 quarter-cups, time = 0 seconds (instant!)—also unrealistic. Neither intercept makes physical sense."
       },
       {
         name: "Phone Battery",
@@ -947,9 +948,10 @@ export function generateProblem(modeId, contextFromFile, mode) {
         yLabel: "f(x) (% charge)",
         xIntercept: 8,
         yIntercept: 100,
-        xQuestion: "Can time be negative?",
-        yQuestion: "Can battery percentage be negative?",
-        answer: "No"
+        xQuestion: "Does starting at 100% make sense?",
+        yQuestion: "Does reaching 0% make sense?",
+        answer: "Yes",
+        explanation: "The **$y$-intercept (0, 100)** means the battery starts fully charged—makes perfect sense! The **$x$-intercept (8, 0)** means after 8 hours the battery is dead—also realistic. Both intercepts have clear, practical meaning."
       },
       {
         name: "Water Tank",
@@ -958,9 +960,10 @@ export function generateProblem(modeId, contextFromFile, mode) {
         yLabel: "f(x) (gallons)",
         xIntercept: 15,
         yIntercept: 45,
-        xQuestion: "Can time be negative?",
-        yQuestion: "Can you have negative gallons of water?",
-        answer: "No"
+        xQuestion: "Does starting with 45 gallons make sense?",
+        yQuestion: "Does the tank becoming empty make sense?",
+        answer: "Yes",
+        explanation: "The **$y$-intercept (0, 45)** means the tank starts with 45 gallons—perfectly reasonable! The **$x$-intercept (15, 0)** means after 15 minutes it's empty—also makes sense. Both intercepts are practical."
       },
       {
         name: "Candle Height",
@@ -969,31 +972,34 @@ export function generateProblem(modeId, contextFromFile, mode) {
         yLabel: "f(x) (inches)",
         xIntercept: 6,
         yIntercept: 12,
-        xQuestion: "Can burning time be negative?",
-        yQuestion: "Can the candle have negative height?",
-        answer: "No"
+        xQuestion: "Does starting at 12 inches make sense?",
+        yQuestion: "Does burning down to 0 inches make sense?",
+        answer: "Yes",
+        explanation: "The **$y$-intercept (0, 12)** means the candle starts at 12 inches tall—makes perfect sense! The **$x$-intercept (6, 0)** means after 6 hours it's completely burned—also realistic. Both intercepts are meaningful."
       },
       {
         name: "Distance from Home",
-        description: "Jasmine walks away from her house at a constant speed.\nAfter $x$ minutes, she is $f(x)$ meters from home.",
+        description: "Jasmine starts walking away from her house at time $x = 0$.\nAfter $x$ minutes, she is $f(x)$ meters from home.",
         xLabel: "x (minutes)",
         yLabel: "f(x) (meters)",
-        xIntercept: -5,  // Negative x-intercept means she started away from home
+        xIntercept: -5,
         yIntercept: 100,
-        xQuestion: "Can time be negative? (Before she started?)",
-        yQuestion: "Can distance be negative?",
-        answer: "No"
+        xQuestion: "The $x$-intercept is at $x = -5$. Does negative time make sense?",
+        yQuestion: "Does starting 100m away make sense?",
+        answer: "No",
+        explanation: "The **$x$-intercept (-5, 0)** means she was at home 5 minutes *before* she started—negative time doesn't make sense in this context! We should restrict the domain to $x \\geq 0$."
       },
       {
         name: "Pool Filling",
-        description: "A pool is being filled with water.\nAfter $x$ hours, the pool has $f(x)$ cubic feet of water.",
+        description: "Workers start filling an empty pool at time $x = 0$.\nAfter $x$ hours, the pool has $f(x)$ cubic feet of water.",
         xLabel: "x (hours)",
         yLabel: "f(x) (cubic feet)",
-        xIntercept: -2,  // Started with some water
+        xIntercept: -2,
         yIntercept: 400,
-        xQuestion: "Does negative time make sense here?",
-        yQuestion: "Can volume be negative?",
-        answer: "No"
+        xQuestion: "The $x$-intercept is at $x = -2$. Does that make sense?",
+        yQuestion: "Does the $y$-intercept make sense if the pool started empty?",
+        answer: "No",
+        explanation: "The **$x$-intercept (-2, 0)** suggests the pool was empty 2 hours *before* filling started—meaningless! The **$y$-intercept (0, 400)** says at $x=0$ there's already 400 cubic feet, but the problem says it started empty. The model doesn't fit the situation."
       }
     ];
 
@@ -1047,7 +1053,9 @@ export function generateProblem(modeId, contextFromFile, mode) {
       scenarioName: s.name,
       xQuestion: s.xQuestion,
       yQuestion: s.yQuestion,
-      interceptSense: { value: s.answer }
+      interceptSense: { value: s.answer },
+      // Detailed explanation for feedback
+      interceptExplanation: s.explanation
     };
 
     answers = { interceptSense: { value: s.answer } };

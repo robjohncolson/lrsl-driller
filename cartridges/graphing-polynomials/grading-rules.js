@@ -148,12 +148,21 @@ export function gradeField(fieldId, answer, context) {
   const e = String(expected).trim().toLowerCase();
 
   if (s === e) {
+    // For interceptSense, add the explanation even when correct
+    if (fieldId === "interceptSense" && context?.interceptExplanation) {
+      return { score: "E", feedback: `Correct! ${context.interceptExplanation}` };
+    }
     return { score: "E", feedback: "Correct!" };
   }
 
   // Partial: same meaning but different arrow symbols etc.
   if ((fieldId === "endBehavior" || fieldId === "capEndBehavior") && s.replace(/[\s()]/g, "") === e.replace(/[\s()]/g, "")) {
     return { score: "E", feedback: "Correct!" };
+  }
+
+  // For interceptSense, provide detailed explanation on wrong answer
+  if (fieldId === "interceptSense" && context?.interceptExplanation) {
+    return { score: "I", feedback: `Incorrect—the answer is "${expected}". ${context.interceptExplanation}` };
   }
 
   return { score: "I", feedback: `Incorrect. Expected "${expected}".` };
