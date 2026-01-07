@@ -560,7 +560,11 @@ export function generateProblem(modeId, contextFromFile, mode) {
       yLabel: "f(x)",
       xDomain: [xMin, xMax],
       yDomain,
-      regression: { show: false }
+      regression: { show: false },
+      // Show x and y axes through origin to make quadrants visible
+      originAxes: true,
+      // Flag to show quadrant labels when hint is used
+      quadrantLabelsOnHint: true
     };
 
     context = {
@@ -751,8 +755,9 @@ export function generateProblem(modeId, contextFromFile, mode) {
     context = {
       ...makeContextBase(
         "Level 13: Average Rate of Change",
-        "The **average rate of change** of $f$ over an interval $[a, b]$ is the slope of the secant line connecting $(a, f(a))$ and $(b, f(b))$. Use the formula: $\\frac{f(b) - f(a)}{b - a}$ (rise over run).",
-        `${katex(`f(x) = ${expr}`)}`
+        "The **average rate of change** of $f$ over an interval $[a, b]$ is the slope of the secant line (the orange dashed line) connecting the two points. Use the formula: $\\frac{f(b) - f(a)}{b - a}$.",
+        `${katex(`f(x) = ${expr}`)}`,
+        `Point A: $(${a}, ${fa})$\nPoint B: $(${b}, ${fb})$`
       ),
       a,
       b,
@@ -762,7 +767,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
 
     answers = { avgRate: { value: avg, tolerance: 0.01 } };
-    scenario = `Find the average rate of change between the two marked points using $\\frac{f(b)-f(a)}{b-a} = \\frac{${fb}-${fa > 0 ? `(${fa})` : fa}}{${b}-${a > 0 ? `(${a})` : a}}$.`;
+    scenario = `Use the formula: average rate of change = $\\frac{f(b) - f(a)}{b - a}$.`;
     return { context, graphConfig, answers, scenario };
   }
 

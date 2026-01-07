@@ -717,6 +717,14 @@ export class Platform {
   onHintRequested(fieldId) {
     this.gameEngine.useHint(fieldId);
     this.onStateChange(this.getState());
+
+    // Check if the current problem's graph should show quadrant labels on hint
+    if (this.currentProblem?.graphConfig?.quadrantLabelsOnHint && this.graphEngine) {
+      // Update the graphConfig to show quadrant labels
+      this.currentProblem.graphConfig.quadrantLabels = true;
+      // Re-render the graph with quadrant labels
+      this.graphEngine.render(this.currentProblem.graphConfig);
+    }
   }
 
   /**

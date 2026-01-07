@@ -290,6 +290,16 @@ export class GraphEngine {
     // Draw axes
     this.drawAxes(scales, labels || { x: xLabel || 'x', y: yLabel || 'y' });
 
+    // Draw origin axes if requested (x and y axes through 0,0)
+    if (config.originAxes) {
+      this.drawOriginAxes(scales, config.originAxesColor || '#374151');
+    }
+
+    // Draw quadrant labels if requested
+    if (config.quadrantLabels) {
+      this.drawQuadrantLabels(scales);
+    }
+
     // Draw the curve as connected line segments
     const { ctx } = this;
     ctx.strokeStyle = curveColor;
@@ -537,6 +547,103 @@ export class GraphEngine {
     ctx.lineTo(this.width - this.padding.right, y0);
     ctx.stroke();
     ctx.setLineDash([]);
+  }
+
+  /**
+   * Draw axes through the origin (0,0) - useful for showing quadrants
+   */
+  drawOriginAxes(scales, color = '#374151') {
+    const ctx = this.ctx;
+    const { xMin, xMax, yMin, yMax } = scales;
+
+    // Only draw if origin is within the visible range
+    const originInView = xMin <= 0 && xMax >= 0 && yMin <= 0 && yMax >= 0;
+    if (!originInView) return;
+
+    const x0 = scales.xScale(0);
+    const y0 = scales.yScale(0);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+
+    // Y-axis (vertical line through x=0)
+    ctx.beginPath();
+    ctx.moveTo(x0, this.padding.top);
+    ctx.lineTo(x0, this.height - this.padding.bottom);
+    ctx.stroke();
+
+    // X-axis (horizontal line through y=0)
+    ctx.beginPath();
+    ctx.moveTo(this.padding.left, y0);
+    ctx.lineTo(this.width - this.padding.right, y0);
+    ctx.stroke();
+
+    // Draw arrows at the ends
+    const arrowSize = 8;
+
+    // Y-axis arrow (top)
+    ctx.beginPath();
+    ctx.moveTo(x0, this.padding.top);
+    ctx.lineTo(x0 - arrowSize / 2, this.padding.top + arrowSize);
+    ctx.lineTo(x0 + arrowSize / 2, this.padding.top + arrowSize);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // X-axis arrow (right)
+    ctx.beginPath();
+    ctx.moveTo(this.width - this.padding.right, y0);
+    ctx.lineTo(this.width - this.padding.right - arrowSize, y0 - arrowSize / 2);
+    ctx.lineTo(this.width - this.padding.right - arrowSize, y0 + arrowSize / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Label axes
+    ctx.fillStyle = color;
+    ctx.font = 'bold 14px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('y', x0 + 15, this.padding.top + 5);
+    ctx.fillText('x', this.width - this.padding.right - 5, y0 + 18);
+  }
+
+  /**
+   * Draw quadrant labels (I, II, III, IV) in each quadrant
+   */
+  drawQuadrantLabels(scales) {
+    const ctx = this.ctx;
+    const { xMin, xMax, yMin, yMax } = scales;
+
+    // Only draw if origin is within the visible range
+    const originInView = xMin <= 0 && xMax >= 0 && yMin <= 0 && yMax >= 0;
+    if (!originInView) return;
+
+    const x0 = scales.xScale(0);
+    const y0 = scales.yScale(0);
+
+    // Calculate quadrant center positions
+    const leftCenter = (this.padding.left + x0) / 2;
+    const rightCenter = (x0 + this.width - this.padding.right) / 2;
+    const topCenter = (this.padding.top + y0) / 2;
+    const bottomCenter = (y0 + this.height - this.padding.bottom) / 2;
+
+    ctx.font = 'bold 18px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(99, 102, 241, 0.6)'; // Semi-transparent indigo
+
+    // Quadrant I (top-right, x > 0, y > 0)
+    ctx.fillText('I', rightCenter, topCenter);
+
+    // Quadrant II (top-left, x < 0, y > 0)
+    ctx.fillText('II', leftCenter, topCenter);
+
+    // Quadrant III (bottom-left, x < 0, y < 0)
+    ctx.fillText('III', leftCenter, bottomCenter);
+
+    // Quadrant IV (bottom-right, x > 0, y < 0)
+    ctx.fillText('IV', rightCenter, bottomCenter);
+
+    ctx.textBaseline = 'alphabetic'; // Reset
   }
 
   drawRegressionLine(scales, regression, xMin, xMax) {
