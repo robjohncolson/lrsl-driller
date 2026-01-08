@@ -62,7 +62,7 @@ function generateL01() {
       kind: "keywords_any",
       prompt: `An experiment compares Fertilizer A to Fertilizer B for plant growth.\n\nQuestion: What is the explanatory variable (factor)?`,
       correctAnswer: "Type of fertilizer (A vs B)",
-      keywordsAny: ["fertilizer", "type", "a", "b"],
+      keywordsAny: ["fertilizer", "type of fertilizer", "fertilizer type", "which fertilizer", "treatment"],
       feedbackCorrect: "Correct — the explanatory variable is the factor being manipulated (the treatment condition).",
       feedbackIncorrect: "The explanatory variable is what the experimenter changes on purpose (here: fertilizer type)."
     },
@@ -252,9 +252,9 @@ function generateL03() {
       prompt: `In 2–4 sentences, explain why **random assignment** is essential for establishing a cause-and-effect relationship in an experiment.`,
       correctAnswer: "Random assignment balances confounding variables across groups (on average), so differences in outcomes can be attributed to the treatments rather than pre-existing differences.",
       requiredElements: [
-        { name: "uses chance", keywords: ["random", "chance"] },
-        { name: "balances confounders", keywords: ["balance", "confounding", "uncontrolled", "lurking"] },
-        { name: "attribute to treatment", keywords: ["attribute", "due to", "because of", "treatment"] }
+        { name: "uses chance", keywords: ["random", "chance", "randomly"] },
+        { name: "balances confounders", keywords: ["balance", "confounding", "uncontrolled", "lurking", "evenly", "distribute", "equal"] },
+        { name: "attribute to treatment", keywords: ["attribute", "due to", "because of", "treatment", "cause", "causal", "effect"] }
       ]
     },
     {

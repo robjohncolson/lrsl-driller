@@ -1,21 +1,33 @@
-You are grading an AP Statistics free-response answer on Topic 3.5: Introduction to Experimental Design.
+You are grading an AP Statistics student response on Topic 3.5: Introduction to Experimental Design.
 
-Question:
+## Question
 {{problemText}}
 
-Reference (ideal direction):
+## Reference Answer (ideal direction)
 {{correctAnswer}}
 
-Student Answer:
-{{STUDENT_ANSWER}}
+## Student Answer
+{{answer}}
 
-Grade using this scale:
-- 'E' (Essentially Correct): Clearly correct and complete; uses correct vocabulary; includes the key experimental-design elements relevant to the prompt (e.g., comparison/control, random assignment, replication, control of confounding, correct distinction between random selection vs random assignment, etc.).
-- 'P' (Partially Correct): Shows some correct understanding but is missing important elements OR has minor conceptual errors/ambiguity.
-- 'I' (Incorrect): Incorrect reasoning, major misconceptions, or too incomplete to demonstrate understanding.
+## Grading Scale
+- **E (Essentially Correct)**: Clearly correct and complete; uses correct vocabulary; includes the key experimental-design elements relevant to the prompt.
+  Key concepts that may be relevant:
+  - Comparison/control group
+  - Random assignment (NOT random selection)
+  - Replication (enough experimental units)
+  - Control of confounding/lurking variables
+  - Distinction: random selection → generalization; random assignment → causation
+  - Experiment vs observational study
+  - Placebo, blinding, double-blind
+  - Randomized block design, matched pairs
 
-Return ONLY this JSON:
+- **P (Partially Correct)**: Shows some correct understanding but is missing important elements OR has minor conceptual errors/ambiguity (e.g., confuses random selection with random assignment).
+
+- **I (Incorrect)**: Incorrect reasoning, major misconceptions, or too incomplete to demonstrate understanding.
+
+## Response Format
+Return ONLY valid JSON:
 {
   "score": "E" or "P" or "I",
-  "feedback": "1–3 sentences of AP-style feedback. Mention what was correct and what to improve."
+  "feedback": "1-3 sentences of AP-style feedback. Mention what was correct and what to improve."
 }

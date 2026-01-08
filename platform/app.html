@@ -204,6 +204,18 @@
       <div class="bg-gray-50 px-4 py-2 text-xs text-gray-500 border-t">
         Click to load a different topic
       </div>
+      <!-- Teacher-only: URL shortcuts section -->
+      <div id="cartridge-shortcuts" class="hidden border-t border-gray-300 bg-amber-50 px-3 py-2">
+        <div class="flex items-center gap-1 text-xs font-bold text-amber-700 mb-1">
+          <span>🔗</span> Direct URL Shortcuts
+        </div>
+        <div class="text-xs text-gray-600 space-y-0.5 font-mono" id="shortcut-list">
+          <!-- Populated dynamically -->
+        </div>
+        <div class="mt-1 text-xs text-amber-600 italic">
+          Share: app.html?c=<span class="font-bold">alias</span>
+        </div>
+      </div>
     </div>
   </div>
   <div id="cartridge-dropdown-backdrop" class="fixed inset-0 z-40 hidden"></div>
@@ -1902,8 +1914,37 @@
         celebration.showToast('Welcome, Teacher!', 'success');
       }
 
+      // Show URL shortcuts in cartridge dropdown
+      showCartridgeShortcuts();
+
       // Load pending reviews
       loadPendingReviews();
+    }
+
+    // Populate and show cartridge URL shortcuts for teachers
+    function showCartridgeShortcuts() {
+      const shortcutsSection = document.getElementById('cartridge-shortcuts');
+      const shortcutList = document.getElementById('shortcut-list');
+      if (!shortcutsSection || !shortcutList) return;
+
+      // These must match the aliases defined in init()
+      const shortcuts = [
+        { alias: 'exp', name: 'Experimental Design' },
+        { alias: 'lsrl', name: 'LSRL Interpretation' },
+        { alias: 'calc', name: 'LSRL Calculations' },
+        { alias: 'res', name: 'Residuals' },
+        { alias: 'lev', name: 'Leverage Points' },
+        { alias: 'rad', name: 'Radicals' },
+        { alias: 'poly', name: 'Polynomials' },
+        { alias: 'samp', name: 'Sampling/Data' },
+        { alias: 'mit', name: 'MIT 6.0001' }
+      ];
+
+      shortcutList.innerHTML = shortcuts.map(s =>
+        `<div class="flex justify-between"><span class="text-amber-700 font-bold">?c=${s.alias}</span><span class="text-gray-500">${s.name}</span></div>`
+      ).join('');
+
+      shortcutsSection.classList.remove('hidden');
     }
 
     // Check for persisted teacher mode on page load
@@ -3455,9 +3496,30 @@
       await populateCartridgeList();
 
       // Check URL parameters for cartridge selection
-      // Supports: ?cartridge=sampling or ?c=sampling
+      // Supports: ?cartridge=sampling or ?c=sampling or ?c=exp (aliases)
       const urlParams = new URLSearchParams(window.location.search);
-      const urlCartridge = urlParams.get('cartridge') || urlParams.get('c');
+      let urlCartridge = urlParams.get('cartridge') || urlParams.get('c');
+
+      // Short aliases for easy URLs (e.g., ?c=exp instead of ?c=apstats-u3l5-experimental-design)
+      const cartridgeAliases = {
+        'exp': 'apstats-u3l5-experimental-design',
+        'experimental': 'apstats-u3l5-experimental-design',
+        'lsrl': 'lsrl-interpretation',
+        'calc': 'lsrl-calculations',
+        'res': 'residuals',
+        'lev': 'leverage-points',
+        'rad': 'algebra2-radicals',
+        'poly': 'graphing-polynomials',
+        'samp': 'sampling',
+        'dat': 'sampling',
+        'mit': 'mit-6-0001-lec1'
+      };
+
+      // Resolve alias to full cartridge ID
+      if (urlCartridge && cartridgeAliases[urlCartridge.toLowerCase()]) {
+        urlCartridge = cartridgeAliases[urlCartridge.toLowerCase()];
+        console.log(`[App] Resolved alias to: ${urlCartridge}`);
+      }
 
       // Priority: URL param > saved preference > default
       let initialCartridge = null;
