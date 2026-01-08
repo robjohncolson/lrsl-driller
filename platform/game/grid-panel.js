@@ -76,20 +76,55 @@ export class GridPanel {
     if (!this.container) return;
 
     this.container.innerHTML = `
-      <div class="grid-wars-panel" style="background:#111827;color:#00ff41;font-family:monospace;border-radius:8px;overflow:hidden;border:1px solid #166534;box-shadow:0 4px 6px rgba(0,0,0,0.3);">
+      <div class="grid-wars-panel" style="background:#111827;color:#00ff41;font-family:monospace;border-radius:0;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.3);">
         <!-- Header (always visible) -->
-        <div id="gw-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#1f2937;cursor:pointer;">
+        <div id="gw-header" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#0f172a;border-bottom:1px solid #166534;">
           <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:1.1rem;">🎮</span>
-            <span style="font-weight:bold;color:#00ff41;">GRID WARS</span>
+            <span style="font-size:1.2rem;">🎮</span>
+            <span style="font-weight:bold;color:#00ff41;font-size:1.1rem;">GRID WARS</span>
           </div>
           <div style="display:flex;align-items:center;gap:12px;">
-            <div style="display:flex;align-items:center;gap:4px;">
+            <div style="display:flex;align-items:center;gap:4px;background:#1e293b;padding:4px 8px;border-radius:4px;">
               <span style="color:#22d3ee;">⚡</span>
-              <span id="gw-points-display" style="font-weight:bold;color:#67e8f9;">0</span>
+              <span id="gw-points-display" style="font-weight:bold;color:#67e8f9;font-size:1.1rem;">0</span>
             </div>
-            <span id="gw-expand-icon" style="color:#9ca3af;">▼</span>
+            <button id="gw-help-btn" style="background:transparent;border:1px solid #374151;color:#9ca3af;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:0.75rem;" title="How to Play">?</button>
           </div>
+        </div>
+
+        <!-- Help Section (collapsible) -->
+        <div id="gw-help" style="display:none;padding:12px 16px;background:#1e293b;border-bottom:1px solid #166534;font-size:0.75rem;line-height:1.5;">
+          <div style="color:#00ff41;font-weight:bold;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">How to Play</div>
+
+          <div style="color:#94a3b8;margin-bottom:8px;">
+            <span style="color:#22d3ee;">1.</span> <strong style="color:#e2e8f0;">Earn Points</strong> - Answer drill questions correctly!<br>
+            <span style="font-size:0.65rem;color:#64748b;margin-left:12px;">Gold ⭐ = 4pts | Silver = 3pts | Bronze = 2pts | Tin = 1pt</span>
+          </div>
+
+          <div style="color:#94a3b8;margin-bottom:8px;">
+            <span style="color:#22d3ee;">2.</span> <strong style="color:#e2e8f0;">Claim Territory</strong> - Click a grid cell, then click "Claim" (1⚡)
+          </div>
+
+          <div style="color:#94a3b8;margin-bottom:8px;">
+            <span style="color:#22d3ee;">3.</span> <strong style="color:#e2e8f0;">Build Structures</strong> - On your territory, build:
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:8px 0;padding:8px;background:#0f172a;border-radius:4px;">
+            <div style="color:#00ff41;"><span style="opacity:0.7;">■</span> Wall (2⚡) - Defense</div>
+            <div style="color:#00ff41;"><span style="opacity:0.7;">▲</span> Tower (3⚡) - Attack</div>
+            <div style="color:#00ffff;"><span style="opacity:0.7;">◇</span> Farm (4⚡) - +Points</div>
+            <div style="color:#ffbf00;"><span style="opacity:0.7;">★</span> Castle (10⚡) - HQ</div>
+          </div>
+
+          <div style="color:#94a3b8;">
+            <span style="color:#22d3ee;">4.</span> <strong style="color:#e2e8f0;">Compete!</strong> - Build the biggest empire with your class!
+          </div>
+        </div>
+
+        <!-- Main Toggle Header -->
+        <div id="gw-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#1f2937;cursor:pointer;border-bottom:1px solid #374151;">
+          <div style="font-size:0.7rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Map & Actions</div>
+          <span id="gw-expand-icon" style="color:#9ca3af;font-size:0.8rem;">▼</span>
         </div>
 
         <!-- Expandable content -->
@@ -172,8 +207,12 @@ export class GridPanel {
           opacity: 0.7;
         }
         .grid-wars-panel {
-          max-height: calc(100vh - 200px);
+          max-height: 100vh;
           overflow-y: auto;
+        }
+        #gw-help-btn:hover {
+          border-color: #00ff41;
+          color: #00ff41;
         }
       </style>
     `;
@@ -193,6 +232,12 @@ export class GridPanel {
       toggle.addEventListener('click', () => this.toggleExpand());
     }
 
+    // Help button toggle
+    const helpBtn = this.container.querySelector('#gw-help-btn');
+    if (helpBtn) {
+      helpBtn.addEventListener('click', () => this.toggleHelp());
+    }
+
     // Action buttons
     this.container.querySelectorAll('.gw-action-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -200,6 +245,22 @@ export class GridPanel {
         this.selectAction(action);
       });
     });
+  }
+
+  /**
+   * Toggle help section visibility
+   */
+  toggleHelp() {
+    const help = this.container.querySelector('#gw-help');
+    const btn = this.container.querySelector('#gw-help-btn');
+    if (!help) return;
+
+    const isVisible = help.style.display !== 'none';
+    help.style.display = isVisible ? 'none' : 'block';
+    if (btn) {
+      btn.style.borderColor = isVisible ? '#374151' : '#00ff41';
+      btn.style.color = isVisible ? '#9ca3af' : '#00ff41';
+    }
   }
 
   /**
