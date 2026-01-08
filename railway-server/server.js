@@ -161,9 +161,10 @@ app.get('/api/users/:username/stars', async (req, res) => {
 
     // Get all progress records for this user
     const { data: progress, error } = await supabase
-      .from('progress')
+      .from('lsrl_progress')
       .select('star_type')
-      .eq('username', username);
+      .eq('username', username)
+      .not('star_type', 'is', null);
 
     if (error) throw error;
 
