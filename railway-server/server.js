@@ -154,6 +154,34 @@ app.post('/api/users/verify', async (req, res) => {
   }
 });
 
+// Get user's total stars (for Grid Wars bootstrap)
+app.get('/api/users/:username/stars', async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    // Get all progress records for this user
+    const { data: progress, error } = await supabase
+      .from('progress')
+      .select('star_type')
+      .eq('username', username);
+
+    if (error) throw error;
+
+    // Count stars by type
+    const stars = { gold: 0, silver: 0, bronze: 0, tin: 0 };
+    for (const p of progress || []) {
+      if (p.star_type && stars[p.star_type] !== undefined) {
+        stars[p.star_type]++;
+      }
+    }
+
+    res.json({ stars });
+  } catch (err) {
+    console.error('GET /api/users/:username/stars error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Verify teacher password (standalone teacher login)
 app.post('/api/auth/teacher', async (req, res) => {
   try {

@@ -936,13 +936,52 @@
 
         if (success) {
           console.log('[GridWars] Initialized for', username);
-          updateGridWarsPointsBadge(gridPanel.getActionPoints());
+          const currentPoints = gridPanel.getActionPoints();
+          updateGridWarsPointsBadge(currentPoints);
+
+          // Bootstrap: If user has 0 Grid Wars points, sync their historical stars
+          if (currentPoints === 0) {
+            await bootstrapGridWarsPoints(username);
+          }
         } else {
           console.warn('[GridWars] Failed to initialize - tables may not exist yet');
         }
       } catch (err) {
         console.warn('[GridWars] Init error:', err.message, err);
         // Grid Wars is optional - don't break the app
+      }
+    }
+
+    /**
+     * Bootstrap Grid Wars points from historical stars (one-time sync)
+     * Calculates total points from all stars earned across all cartridges
+     */
+    async function bootstrapGridWarsPoints(username) {
+      try {
+        // Fetch user's star history from server
+        const response = await fetch(`${SERVER_URL}/api/users/${username}/stars`);
+        if (!response.ok) {
+          console.log('[GridWars] No star history found, skipping bootstrap');
+          return;
+        }
+
+        const { stars } = await response.json();
+        if (!stars) return;
+
+        // Calculate total points: Gold=4, Silver=3, Bronze=2, Tin=1
+        const totalPoints =
+          (stars.gold || 0) * 4 +
+          (stars.silver || 0) * 3 +
+          (stars.bronze || 0) * 2 +
+          (stars.tin || 0) * 1;
+
+        if (totalPoints > 0) {
+          console.log(`[GridWars] Bootstrapping ${totalPoints} points from historical stars`);
+          await gridPanel.state.addPoints(null, totalPoints);
+          updateGridWarsPointsBadge(gridPanel.getActionPoints());
+        }
+      } catch (err) {
+        console.warn('[GridWars] Bootstrap failed:', err.message);
       }
     }
 
