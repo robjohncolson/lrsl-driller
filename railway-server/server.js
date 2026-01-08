@@ -10,25 +10,30 @@ const { getWaveManager, AI_CONFIG } = require('./grid-wars-ai.js');
 // ============================================
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+// Use service role key to bypass RLS for server-side writes
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || 'stats123';
 
 // AI API Keys (for server-side grading)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables');
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY/SUPABASE_ANON_KEY environment variables');
   process.exit(1);
 }
 
-// Log AI provider availability
+// Log configuration
+console.log('Supabase configured:', {
+  url: SUPABASE_URL ? 'set' : 'missing',
+  key: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'service_role' : 'anon'
+});
 console.log('AI Providers configured:', {
   gemini: !!GEMINI_API_KEY,
   groq: !!GROQ_API_KEY
 });
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ============================================
 // EXPRESS APP SETUP
