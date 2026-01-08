@@ -7,9 +7,12 @@
 // Default server URL (Railway production)
 const DEFAULT_SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 
-// Game config (must match server)
-export const GRID_WARS_CONFIG = {
+// Game config (must match server - will be fetched from server on init)
+export let GRID_WARS_CONFIG = {
   claimCost: 10,
+  nodeClaimCost: 15,
+  surgeCost: 5,
+  reinforceCost: 5,
   starPoints: {
     gold: 4,
     silver: 3,
@@ -19,7 +22,17 @@ export const GRID_WARS_CONFIG = {
   mapSize: 20,
   classGoalTarget: 200,
   classGoalBonus: 10,
-  maxContiguityBonus: 3
+  maxContiguityBonus: 3,
+  contestationStartTime: 30,
+  contestationFlipTime: 90,
+  maxCellStrength: 3,
+  activeDrillingWindow: 60,
+  beaconDuration: 300,
+  anchorDuration: 180,
+  amplifierCharges: 5,
+  amplifierBonus: 3,
+  surgeDuration: 90,
+  nodePositions: []
 };
 
 /**
@@ -34,9 +47,10 @@ export class GridWarsState {
 
     // Local state cache
     this.game = null;
-    this.territories = new Map(); // "x,y" -> { owner, claimed_at, health }
-    this.players = new Map();     // username -> { action_points, territories_count, largest_cluster, health, position_x, position_y }
+    this.territories = new Map(); // "x,y" -> { owner, claimed_at, strength, contested_by, contested_since, node_type }
+    this.players = new Map();     // username -> { action_points, territories_count, largest_cluster, health, position_x, position_y, active_buffs, last_answer_at }
     this.classGoal = { current: 0, target: GRID_WARS_CONFIG.classGoalTarget };
+    this.surge = null;            // { x, y, expiresIn } or null
 
     // Event callbacks
     this.onStateChange = options.onStateChange || null;
@@ -44,6 +58,9 @@ export class GridWarsState {
     this.onPointsEarned = options.onPointsEarned || null;
     this.onTerritoryChanged = options.onTerritoryChanged || null;
     this.onClassGoalReached = options.onClassGoalReached || null;
+    this.onContestationAlert = options.onContestationAlert || null;
+    this.onBuffAcquired = options.onBuffAcquired || null;
+    this.onSurgeActivated = options.onSurgeActivated || null;
 
     // Pending state for optimistic updates
     this._pendingActions = [];
@@ -61,6 +78,17 @@ export class GridWarsState {
    */
   async init() {
     try {
+      // Fetch config from server
+      try {
+        const configResponse = await fetch(`${this.serverUrl}/api/grid-wars/config`);
+        if (configResponse.ok) {
+          const serverConfig = await configResponse.json();
+          Object.assign(GRID_WARS_CONFIG, serverConfig);
+        }
+      } catch (configErr) {
+        console.warn('Failed to fetch Grid Wars config, using defaults:', configErr);
+      }
+
       // Get or create active game
       const response = await fetch(`${this.serverUrl}/api/grid-wars/games/active`);
 
@@ -108,7 +136,10 @@ export class GridWarsState {
         this.territories.set(`${t.x},${t.y}`, {
           owner: t.owner,
           claimed_at: t.claimed_at,
-          health: t.health || 100
+          strength: t.strength || GRID_WARS_CONFIG.maxCellStrength,
+          contested_by: t.contested_by || null,
+          contested_since: t.contested_since || null,
+          node_type: t.node_type || null
         });
       }
 
@@ -122,6 +153,8 @@ export class GridWarsState {
           position_x: p.position_x,
           position_y: p.position_y,
           avatar_format: p.avatar_format,
+          active_buffs: p.active_buffs || {},
+          last_answer_at: p.last_answer_at || null,
           updated_at: p.updated_at
         });
       }
@@ -130,6 +163,9 @@ export class GridWarsState {
       if (state.classGoal) {
         this.classGoal = state.classGoal;
       }
+
+      // Update surge
+      this.surge = state.surge || null;
 
       this._emitStateChange();
       return state;
@@ -480,6 +516,82 @@ export class GridWarsState {
   }
 
   /**
+   * Get current player's active buffs
+   */
+  getActiveBuffs() {
+    if (!this.username) return {};
+    const player = this.players.get(this.username);
+    return player?.active_buffs || {};
+  }
+
+  /**
+   * Get contested cells that belong to current player
+   */
+  getMyContestedCells() {
+    const contested = [];
+    for (const [key, data] of this.territories) {
+      if (data.owner === this.username && data.contested_by) {
+        const [x, y] = key.split(',').map(Number);
+        contested.push({ x, y, contested_by: data.contested_by });
+      }
+    }
+    return contested;
+  }
+
+  /**
+   * Get surge cell info
+   */
+  getSurge() {
+    return this.surge;
+  }
+
+  /**
+   * Reinforce a contested cell remotely
+   */
+  async reinforceCell(x, y) {
+    if (!this.gameId || !this.username) {
+      throw new Error('Not initialized or no user set');
+    }
+
+    try {
+      const response = await fetch(`${this.serverUrl}/api/grid-wars/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: this.gameId,
+          username: this.username,
+          action: 'reinforce',
+          x,
+          y
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reinforce');
+      }
+
+      const result = await response.json();
+
+      // Update local state
+      const territory = this.territories.get(`${x},${y}`);
+      if (territory) {
+        territory.contested_by = null;
+        territory.contested_since = null;
+        territory.strength = GRID_WARS_CONFIG.maxCellStrength;
+      }
+
+      this._updatePlayerPoints(-GRID_WARS_CONFIG.reinforceCost);
+      this._emitStateChange();
+
+      return result;
+    } catch (err) {
+      this._handleError('reinforceCell', err);
+      throw err;
+    }
+  }
+
+  /**
    * Handle WebSocket messages for real-time updates
    */
   handleWebSocketMessage(message) {
@@ -492,7 +604,10 @@ export class GridWarsState {
         this.territories.set(`${message.x},${message.y}`, {
           owner: message.username,
           claimed_at: new Date().toISOString(),
-          health: 100
+          strength: GRID_WARS_CONFIG.maxCellStrength,
+          contested_by: null,
+          contested_since: null,
+          node_type: message.nodeType || null
         });
         this._updatePlayerTerritoriesCount(message.username, 1);
         if (this.onTerritoryChanged) {
@@ -505,15 +620,18 @@ export class GridWarsState {
         const player = this.players.get(message.username) || {
           action_points: 0,
           territories_count: 0,
-          health: 100
+          health: 100,
+          active_buffs: {}
         };
         player.action_points = message.total;
+        player.last_answer_at = new Date().toISOString();
         this.players.set(message.username, player);
         if (message.username === this.username && this.onPointsEarned) {
           this.onPointsEarned({
             points: message.points,
             total: message.total,
-            starType: message.starType
+            starType: message.starType,
+            amplifierBonus: message.amplifierBonus
           });
         }
         this._emitStateChange();
@@ -527,7 +645,10 @@ export class GridWarsState {
             this.territories.set(`${t.x},${t.y}`, {
               owner: t.owner,
               claimed_at: t.claimed_at || new Date().toISOString(),
-              health: t.health || 100
+              strength: t.strength || GRID_WARS_CONFIG.maxCellStrength,
+              contested_by: t.contested_by || null,
+              contested_since: t.contested_since || null,
+              node_type: t.node_type || null
             });
           }
 
@@ -539,7 +660,9 @@ export class GridWarsState {
               health: p.health || 100,
               position_x: p.position_x,
               position_y: p.position_y,
-              avatar_format: p.avatar_format
+              avatar_format: p.avatar_format,
+              active_buffs: p.active_buffs || {},
+              last_answer_at: p.last_answer_at || null
             });
           }
 
@@ -563,10 +686,12 @@ export class GridWarsState {
 
       case 'class_goal_updated':
         // Update class goal progress
-        this.classGoal = {
-          current: message.current,
-          target: message.target
-        };
+        if (message.current !== undefined) {
+          this.classGoal.current = message.current;
+        }
+        if (message.target !== undefined) {
+          this.classGoal.target = message.target;
+        }
         this._emitStateChange();
         break;
 
@@ -584,6 +709,101 @@ export class GridWarsState {
         }
         this._emitStateChange();
         break;
+
+      case 'contestation_started':
+        // Update territory with contestation info
+        const contestedTerritory = this.territories.get(`${message.x},${message.y}`);
+        if (contestedTerritory) {
+          contestedTerritory.contested_by = message.contester;
+          contestedTerritory.contested_since = new Date().toISOString();
+          if (contestedTerritory.owner === this.username && this.onContestationAlert) {
+            this.onContestationAlert({ x: message.x, y: message.y, contester: message.contester });
+          }
+        }
+        this._emitStateChange();
+        break;
+
+      case 'contestation_cleared':
+        // Clear contestation from territory
+        const clearedTerritory = this.territories.get(`${message.x},${message.y}`);
+        if (clearedTerritory) {
+          clearedTerritory.contested_by = null;
+          clearedTerritory.contested_since = null;
+        }
+        this._emitStateChange();
+        break;
+
+      case 'territory_reinforced':
+        // Territory was reinforced, clear contestation
+        const reinforcedTerritory = this.territories.get(`${message.x},${message.y}`);
+        if (reinforcedTerritory) {
+          reinforcedTerritory.contested_by = null;
+          reinforcedTerritory.contested_since = null;
+          reinforcedTerritory.strength = GRID_WARS_CONFIG.maxCellStrength;
+        }
+        this._emitStateChange();
+        break;
+
+      case 'cell_flipped_neutral':
+      case 'cell_decayed':
+        // Remove territory
+        this.territories.delete(`${message.x},${message.y}`);
+        if (message.previousOwner) {
+          this._updatePlayerTerritoriesCount(message.previousOwner, -1);
+        }
+        if (this.onTerritoryChanged) {
+          this.onTerritoryChanged({ x: message.x, y: message.y, owner: null, action: 'lost' });
+        }
+        this._emitStateChange();
+        break;
+
+      case 'cell_strength_changed':
+        // Update cell strength
+        const decayingTerritory = this.territories.get(`${message.x},${message.y}`);
+        if (decayingTerritory) {
+          decayingTerritory.strength = message.strength;
+        }
+        this._emitStateChange();
+        break;
+
+      case 'buff_acquired':
+        // Update player buffs
+        if (message.username === this.username) {
+          const myPlayer = this.players.get(this.username);
+          if (myPlayer && message.buff) {
+            myPlayer.active_buffs = myPlayer.active_buffs || {};
+            if (message.buff.type === 'amplifier') {
+              myPlayer.active_buffs.amplifier = { remaining: message.buff.charges };
+            } else if (message.buff.type === 'beacon') {
+              myPlayer.active_buffs.beacon = { expires: new Date(Date.now() + message.buff.duration * 1000).toISOString() };
+            } else if (message.buff.type === 'anchor') {
+              myPlayer.active_buffs.anchor = { expires: new Date(Date.now() + message.buff.duration * 1000).toISOString() };
+            }
+          }
+          if (this.onBuffAcquired) {
+            this.onBuffAcquired(message.buff);
+          }
+        }
+        this._emitStateChange();
+        break;
+
+      case 'surge_activated':
+        this.surge = {
+          x: message.x,
+          y: message.y,
+          expiresIn: message.expiresIn
+        };
+        if (this.onSurgeActivated) {
+          this.onSurgeActivated(this.surge);
+        }
+        this._emitStateChange();
+        break;
+
+      case 'surge_expired':
+      case 'surge_claimed':
+        this.surge = null;
+        this._emitStateChange();
+        break;
     }
   }
 
@@ -595,7 +815,14 @@ export class GridWarsState {
     const territories = [];
     for (const [key, data] of this.territories) {
       const [x, y] = key.split(',').map(Number);
-      territories.push({ x, y, owner: data.owner, health: data.health });
+      territories.push({
+        x,
+        y,
+        owner: data.owner,
+        strength: data.strength,
+        contested_by: data.contested_by,
+        node_type: data.node_type
+      });
     }
 
     const players = [];
@@ -611,7 +838,11 @@ export class GridWarsState {
       }
     }
 
-    return { territories, players };
+    return {
+      territories,
+      players,
+      surge: this.surge
+    };
   }
 
   // ============================================
@@ -622,7 +853,10 @@ export class GridWarsState {
     this.territories.set(`${x},${y}`, {
       owner: this.username,
       claimed_at: new Date().toISOString(),
-      health: 100
+      strength: GRID_WARS_CONFIG.maxCellStrength,
+      contested_by: null,
+      contested_since: null,
+      node_type: null
     });
     this._updatePlayerPoints(-cost);
     this._updatePlayerTerritoriesCount(this.username, 1);

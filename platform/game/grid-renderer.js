@@ -1,7 +1,7 @@
 /**
  * Grid Wars - Canvas-based Grid Renderer
  * Spectre/Battlezone aesthetic (early 90s wireframe)
- * Now with avatar display!
+ * With contestation, decay, resource nodes, and surge effects!
  */
 
 export class GridRenderer {
@@ -24,6 +24,10 @@ export class GridRenderer {
       amber: '#ffbf00',
       white: '#ffffff',
       red: '#ff3333',
+      surge: '#ffffff',
+      nodeAmplifier: '#ff00ff',  // Magenta
+      nodeBeacon: '#00ffff',     // Cyan
+      nodeAnchor: '#ffbf00',     // Amber
       // Territory colors (neon, semi-transparent)
       territories: [
         '#00ffff80', // cyan
@@ -38,8 +42,11 @@ export class GridRenderer {
     };
 
     // Game state
-    this.territories = {}; // { "x,y": { owner: "username", color: 0 } }
+    this.territories = {}; // { "x,y": { owner, strength, contested_by, node_type } }
     this.avatars = [];     // [{ username, x, y, health, emoji, text }]
+    this.resourceNodes = []; // [{ x, y, type, owner }]
+    this.surgeCell = null;   // { x, y, expiresIn }
+    this.contestedCells = []; // [{ x, y, contested_by }]
 
     // Player color assignments
     this.playerColors = {}; // { "username": colorIndex }
@@ -106,13 +113,30 @@ export class GridRenderer {
   }
 
   /**
-   * Set territory ownership
+   * Set territory ownership with extended data
    */
-  setTerritory(x, y, owner) {
-    if (owner) {
-      this.territories[`${x},${y}`] = { owner, color: this.getPlayerColor(owner) };
+  setTerritory(x, y, owner, data = {}) {
+    if (owner || data.node_type) {
+      this.territories[`${x},${y}`] = {
+        owner,
+        color: owner ? this.getPlayerColor(owner) : null,
+        strength: data.strength || 3,
+        contested_by: data.contested_by || null,
+        node_type: data.node_type || null
+      };
     } else {
       delete this.territories[`${x},${y}`];
+    }
+  }
+
+  /**
+   * Set surge cell location
+   */
+  setSurgeCell(x, y, expiresIn) {
+    if (x !== null && y !== null) {
+      this.surgeCell = { x, y, expiresIn };
+    } else {
+      this.surgeCell = null;
     }
   }
 
@@ -174,7 +198,13 @@ export class GridRenderer {
     ctx.fillRect(0, 0, this.displaySize, this.displaySize);
 
     // Draw territories (background layer)
-    this.drawTerritories(ctx);
+    this.drawTerritories(ctx, now);
+
+    // Draw resource nodes (unclaimed)
+    this.drawResourceNodes(ctx, now);
+
+    // Draw surge cell
+    this.drawSurgeCell(ctx, now);
 
     // Draw grid lines
     this.drawGrid(ctx);
@@ -229,19 +259,179 @@ export class GridRenderer {
   }
 
   /**
-   * Draw territories (filled cells)
+   * Draw territories (filled cells) with strength-based dimming and contestation effects
    */
-  drawTerritories(ctx) {
+  drawTerritories(ctx, now) {
     for (const [key, territory] of Object.entries(this.territories)) {
       const [x, y] = key.split(',').map(Number);
-      ctx.fillStyle = territory.color;
+
+      // Skip unclaimed resource nodes (drawn separately)
+      if (territory.node_type && !territory.owner) continue;
+
+      // Calculate opacity based on strength (3 = full, 1 = dim)
+      const strengthOpacity = territory.strength ? territory.strength / 3 : 1;
+
+      // Handle contested cells with flicker effect
+      if (territory.contested_by) {
+        // Alternate between owner color and white static
+        const flicker = Math.sin(now / 100) > 0;
+        if (flicker) {
+          ctx.fillStyle = territory.color;
+          ctx.globalAlpha = 0.5 * strengthOpacity;
+        } else {
+          // White static noise effect
+          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = 0.3;
+        }
+      } else {
+        ctx.fillStyle = territory.color;
+        ctx.globalAlpha = strengthOpacity * 0.5; // Base territory opacity
+      }
+
       ctx.fillRect(
         x * this.cellSize + 1,
         y * this.cellSize + 1,
         this.cellSize - 2,
         this.cellSize - 2
       );
+
+      ctx.globalAlpha = 1;
+
+      // Draw contestation warning border
+      if (territory.contested_by) {
+        const pulse = Math.sin(now / 200) * 0.5 + 0.5;
+        ctx.strokeStyle = '#ff3333';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = pulse;
+        ctx.strokeRect(
+          x * this.cellSize + 2,
+          y * this.cellSize + 2,
+          this.cellSize - 4,
+          this.cellSize - 4
+        );
+        ctx.globalAlpha = 1;
+      }
+
+      // Draw node indicator if claimed
+      if (territory.node_type && territory.owner) {
+        this.drawNodeIndicator(ctx, x, y, territory.node_type, now);
+      }
     }
+  }
+
+  /**
+   * Draw unclaimed resource nodes
+   */
+  drawResourceNodes(ctx, now) {
+    for (const [key, territory] of Object.entries(this.territories)) {
+      if (!territory.node_type || territory.owner) continue;
+
+      const [x, y] = key.split(',').map(Number);
+      const cx = x * this.cellSize + this.cellSize / 2;
+      const cy = y * this.cellSize + this.cellSize / 2;
+
+      // Get node color
+      const nodeColor = this.colors[`node${territory.node_type.charAt(0).toUpperCase() + territory.node_type.slice(1)}`] || this.colors.cyan;
+
+      // Pulsing effect
+      const pulse = Math.sin(now / 500) * 0.3 + 0.7;
+      const size = this.cellSize * 0.3;
+
+      // Draw diamond shape
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.PI / 4);
+
+      // Outer glow
+      ctx.strokeStyle = nodeColor;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = pulse;
+      ctx.strokeRect(-size, -size, size * 2, size * 2);
+
+      // Inner fill
+      ctx.fillStyle = nodeColor;
+      ctx.globalAlpha = pulse * 0.3;
+      ctx.fillRect(-size * 0.7, -size * 0.7, size * 1.4, size * 1.4);
+
+      ctx.restore();
+
+      // Draw expanding ring
+      const ringPhase = (now % 2000) / 2000;
+      const ringSize = size + ringPhase * this.cellSize * 0.4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringSize, 0, Math.PI * 2);
+      ctx.strokeStyle = nodeColor;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = (1 - ringPhase) * 0.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /**
+   * Draw node indicator on claimed territory
+   */
+  drawNodeIndicator(ctx, x, y, nodeType, now) {
+    const cx = x * this.cellSize + this.cellSize / 2;
+    const cy = y * this.cellSize + this.cellSize / 2;
+    const nodeColor = this.colors[`node${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}`] || this.colors.cyan;
+
+    // Small diamond icon
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.PI / 4);
+    ctx.strokeStyle = nodeColor;
+    ctx.lineWidth = 1;
+    const size = this.cellSize * 0.15;
+    ctx.strokeRect(-size, -size, size * 2, size * 2);
+    ctx.restore();
+  }
+
+  /**
+   * Draw surge cell with bright glow effect
+   */
+  drawSurgeCell(ctx, now) {
+    if (!this.surgeCell) return;
+
+    const { x, y } = this.surgeCell;
+    const cx = x * this.cellSize + this.cellSize / 2;
+    const cy = y * this.cellSize + this.cellSize / 2;
+
+    // Bright white glow
+    const pulse = Math.sin(now / 150) * 0.3 + 0.7;
+
+    // Background glow
+    ctx.fillStyle = this.colors.surge;
+    ctx.globalAlpha = pulse * 0.4;
+    ctx.fillRect(
+      x * this.cellSize + 1,
+      y * this.cellSize + 1,
+      this.cellSize - 2,
+      this.cellSize - 2
+    );
+
+    // Expanding/contracting ring
+    const ringPhase = (now % 1000) / 1000;
+    const ringSize = this.cellSize * 0.2 + Math.sin(ringPhase * Math.PI * 2) * this.cellSize * 0.15;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringSize, 0, Math.PI * 2);
+    ctx.strokeStyle = this.colors.surge;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = pulse;
+    ctx.stroke();
+
+    // Outer expanding ring
+    const outerRingPhase = (now % 1500) / 1500;
+    const outerRingSize = this.cellSize * 0.3 + outerRingPhase * this.cellSize * 0.3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerRingSize, 0, Math.PI * 2);
+    ctx.strokeStyle = this.colors.surge;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = (1 - outerRingPhase) * 0.6;
+    ctx.stroke();
+
+    ctx.globalAlpha = 1;
   }
 
   /**
@@ -387,11 +577,20 @@ export class GridRenderer {
     if (state.territories) {
       this.territories = {};
       for (const t of state.territories) {
-        this.setTerritory(t.x, t.y, t.owner);
+        this.setTerritory(t.x, t.y, t.owner, {
+          strength: t.strength,
+          contested_by: t.contested_by,
+          node_type: t.node_type
+        });
       }
     }
     if (state.players) {
       this.avatars = state.players;
+    }
+    if (state.surge) {
+      this.setSurgeCell(state.surge.x, state.surge.y, state.surge.expiresIn);
+    } else {
+      this.surgeCell = null;
     }
   }
 }

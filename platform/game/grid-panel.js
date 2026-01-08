@@ -147,6 +147,20 @@ export class GridPanel {
             </div>
           </div>
 
+          <!-- Buffs Display -->
+          <div id="gw-buffs" style="display:none;padding:8px 12px;background:#1e1e2e;border-top:1px solid #374151;">
+            <div style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Active Buffs</div>
+            <div id="gw-buffs-list" style="font-size:0.7rem;color:#00ff41;"></div>
+          </div>
+
+          <!-- Contested Cells Alert -->
+          <div id="gw-contested" style="display:none;padding:8px 12px;background:#2d1f1f;border-top:1px solid #ff333380;">
+            <div style="display:flex;align-items:center;gap:4px;font-size:0.7rem;color:#ff6666;">
+              <span style="animation:pulse 1s infinite;">!</span>
+              <span id="gw-contested-text">0 cells under attack</span>
+            </div>
+          </div>
+
           <!-- Status -->
           <div style="padding:8px 12px;font-size:0.75rem;color:#6b7280;border-top:1px solid #374151;">
             <span id="gw-status">Click a cell to claim territory</span>
@@ -428,14 +442,25 @@ export class GridPanel {
 
     const renderState = this.state.getRenderState();
 
-    // Clear and reload territories
+    // Clear and reload territories with all data
     this.renderer.territories = {};
     for (const t of renderState.territories) {
-      this.renderer.setTerritory(t.x, t.y, t.owner);
+      this.renderer.setTerritory(t.x, t.y, t.owner, {
+        strength: t.strength,
+        contested_by: t.contested_by,
+        node_type: t.node_type
+      });
     }
 
     // Update avatars
     this.renderer.setAvatars(renderState.players || []);
+
+    // Update surge cell
+    if (renderState.surge) {
+      this.renderer.setSurgeCell(renderState.surge.x, renderState.surge.y, renderState.surge.expiresIn);
+    } else {
+      this.renderer.setSurgeCell(null, null, null);
+    }
   }
 
   /**
@@ -511,6 +536,63 @@ export class GridPanel {
     this.updatePointsDisplay();
     this.updateClusterDisplay();
     this.updateClassGoalDisplay();
+    this.updateBuffsDisplay();
+    this.updateContestedDisplay();
+  }
+
+  /**
+   * Update active buffs display
+   */
+  updateBuffsDisplay() {
+    const buffsContainer = this.container.querySelector('#gw-buffs');
+    const buffsList = this.container.querySelector('#gw-buffs-list');
+    if (!buffsContainer || !buffsList || !this.state) return;
+
+    const buffs = this.state.getActiveBuffs();
+    const buffItems = [];
+
+    if (buffs.amplifier && buffs.amplifier.remaining > 0) {
+      buffItems.push(`<span style="color:#ff00ff;">AMPLIFIER: +3 pts (${buffs.amplifier.remaining} left)</span>`);
+    }
+
+    if (buffs.beacon && new Date(buffs.beacon.expires) > new Date()) {
+      const remaining = Math.max(0, Math.floor((new Date(buffs.beacon.expires) - new Date()) / 1000));
+      const mins = Math.floor(remaining / 60);
+      const secs = remaining % 60;
+      buffItems.push(`<span style="color:#00ffff;">BEACON: +2 regen range (${mins}:${secs.toString().padStart(2, '0')})</span>`);
+    }
+
+    if (buffs.anchor && new Date(buffs.anchor.expires) > new Date()) {
+      const remaining = Math.max(0, Math.floor((new Date(buffs.anchor.expires) - new Date()) / 1000));
+      const mins = Math.floor(remaining / 60);
+      const secs = remaining % 60;
+      buffItems.push(`<span style="color:#ffbf00;">ANCHOR: Immune to contest (${mins}:${secs.toString().padStart(2, '0')})</span>`);
+    }
+
+    if (buffItems.length > 0) {
+      buffsContainer.style.display = 'block';
+      buffsList.innerHTML = buffItems.join('<br>');
+    } else {
+      buffsContainer.style.display = 'none';
+    }
+  }
+
+  /**
+   * Update contested cells warning display
+   */
+  updateContestedDisplay() {
+    const contestedContainer = this.container.querySelector('#gw-contested');
+    const contestedText = this.container.querySelector('#gw-contested-text');
+    if (!contestedContainer || !contestedText || !this.state) return;
+
+    const contested = this.state.getMyContestedCells();
+
+    if (contested.length > 0) {
+      contestedContainer.style.display = 'block';
+      contestedText.textContent = `${contested.length} cell${contested.length > 1 ? 's' : ''} under attack!`;
+    } else {
+      contestedContainer.style.display = 'none';
+    }
   }
 
   /**
