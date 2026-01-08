@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GRID WARS - Test</title>
+  <link rel="stylesheet" href="./game/grid-wars.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0a;
+      min-height: 100vh;
+    }
+
+    .game-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .controls-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .demo-info {
+      background: #121212;
+      border: 1px solid #1a4a2a;
+      padding: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      color: #00ff41;
+    }
+
+    .demo-info h3 {
+      color: #00ffff;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .demo-info p {
+      margin: 0.25rem 0;
+      opacity: 0.8;
+    }
+
+    .coord-display {
+      color: #ffbf00;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-wars-container game-container">
+    <!-- Header -->
+    <header class="gw-header">
+      <h1 class="gw-title">Grid Wars</h1>
+      <p class="gw-subtitle">Territory Control System v0.1</p>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="main-grid">
+      <!-- Grid Area -->
+      <div>
+        <div class="gw-grid-wrapper">
+          <div class="gw-grid-frame">
+            <canvas id="game-grid" class="gw-grid-canvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="gw-status-bar">
+          <div class="gw-status-item">
+            <span class="gw-status-label">Territories</span>
+            <span class="gw-status-value" id="territory-count">0</span>
+          </div>
+          <div class="gw-status-item">
+            <span class="gw-status-label">Structures</span>
+            <span class="gw-status-value" id="structure-count">0</span>
+          </div>
+          <div class="gw-status-item">
+            <span class="gw-status-label">Hover</span>
+            <span class="gw-status-value coord-display" id="hover-coords">--</span>
+          </div>
+        </div>
+
+        <!-- Wave Indicator -->
+        <div class="gw-wave-indicator">
+          <span class="gw-wave-icon">👾</span>
+          <span class="gw-wave-text">Wave 3 Incoming</span>
+          <span class="gw-wave-timer" id="wave-timer">2:30</span>
+        </div>
+      </div>
+
+      <!-- Side Panel -->
+      <div class="controls-panel">
+        <!-- Action Points -->
+        <div class="gw-action-points">
+          <span class="gw-action-points-icon">⚡</span>
+          <span class="gw-action-points-value" id="action-points">12</span>
+          <span class="gw-action-points-label">Action Points</span>
+        </div>
+
+        <!-- Actions -->
+        <div class="gw-action-panel">
+          <h3 class="gw-action-title">Build Actions</h3>
+          <div class="gw-action-grid">
+            <button class="gw-btn" data-action="claim">
+              □ Claim<span class="gw-btn-cost">1 pt</span>
+            </button>
+            <button class="gw-btn" data-action="tower">
+              ▲ Tower<span class="gw-btn-cost">3 pts</span>
+            </button>
+            <button class="gw-btn" data-action="wall">
+              ■ Wall<span class="gw-btn-cost">2 pts</span>
+            </button>
+            <button class="gw-btn gw-btn--cyan" data-action="farm">
+              ◇ Farm<span class="gw-btn-cost">4 pts</span>
+            </button>
+            <button class="gw-btn gw-btn--amber" data-action="castle">
+              ★ Castle<span class="gw-btn-cost">10 pts</span>
+            </button>
+            <button class="gw-btn gw-btn--magenta" data-action="enemy">
+              ✖ Spawn Enemy
+            </button>
+          </div>
+        </div>
+
+        <!-- Demo Controls -->
+        <div class="gw-action-panel">
+          <h3 class="gw-action-title">Demo Controls</h3>
+          <div class="gw-action-grid">
+            <button class="gw-btn" id="btn-demo-state">Load Demo</button>
+            <button class="gw-btn" id="btn-clear">Clear All</button>
+            <button class="gw-btn" id="btn-random-enemies">Random Enemies</button>
+            <button class="gw-btn" id="btn-pulse-center">Pulse Center</button>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="gw-legend">
+          <div class="gw-legend-item">
+            <div class="gw-legend-color" style="background: #ffbf00;"></div>
+            <span class="gw-legend-name">Center Castle</span>
+          </div>
+          <div class="gw-legend-item">
+            <div class="gw-legend-color" style="background: #00ffff80;"></div>
+            <span class="gw-legend-name">Player 1</span>
+          </div>
+          <div class="gw-legend-item">
+            <div class="gw-legend-color" style="background: #ff00ff80;"></div>
+            <span class="gw-legend-name">Player 2</span>
+          </div>
+          <div class="gw-legend-item">
+            <div class="gw-legend-color" style="background: #ff00ff;"></div>
+            <span class="gw-legend-name">Enemies</span>
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div class="demo-info">
+          <h3>How to Test</h3>
+          <p>1. Click "Load Demo" for sample state</p>
+          <p>2. Hover over grid to see coords</p>
+          <p>3. Click a cell, then an action button</p>
+          <p>4. Try "Random Enemies" for threats</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRT Overlay (optional) -->
+  <div class="gw-crt-overlay"></div>
+
+  <script type="module">
+    import { GridRenderer } from './game/grid-renderer.js';
+
+    // Initialize grid
+    const canvas = document.getElementById('game-grid');
+    const container = canvas.parentElement;
+
+    // Set initial size
+    const size = Math.min(600, window.innerWidth - 320);
+    container.style.width = `${size}px`;
+    container.style.height = `${size}px`;
+
+    const grid = new GridRenderer(canvas, {
+      gridSize: 20,
+      cellSize: size / 20
+    });
+
+    // Current selected cell
+    let selectedCell = null;
+    let currentPlayer = 'Player1';
+
+    // UI Elements
+    const hoverCoords = document.getElementById('hover-coords');
+    const territoryCount = document.getElementById('territory-count');
+    const structureCount = document.getElementById('structure-count');
+    const actionPoints = document.getElementById('action-points');
+    const waveTimer = document.getElementById('wave-timer');
+
+    // Mouse events
+    canvas.addEventListener('mousemove', (e) => {
+      const cell = grid.mouseToGrid(e.clientX, e.clientY);
+      if (cell) {
+        grid.setHoveredCell(cell.x, cell.y);
+        hoverCoords.textContent = `${cell.x}, ${cell.y}`;
+      } else {
+        grid.setHoveredCell(null, null);
+        hoverCoords.textContent = '--';
+      }
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      grid.setHoveredCell(null, null);
+      hoverCoords.textContent = '--';
+    });
+
+    canvas.addEventListener('click', (e) => {
+      const cell = grid.mouseToGrid(e.clientX, e.clientY);
+      if (cell) {
+        selectedCell = cell;
+        grid.pulseCell(cell.x, cell.y, '#ffffff', 300);
+        console.log(`Selected cell: ${cell.x}, ${cell.y}`);
+      }
+    });
+
+    // Action buttons
+    document.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!selectedCell) {
+          alert('Click a cell on the grid first!');
+          return;
+        }
+
+        const action = btn.dataset.action;
+        const { x, y } = selectedCell;
+
+        switch (action) {
+          case 'claim':
+            grid.setTerritory(x, y, currentPlayer);
+            grid.pulseCell(x, y, '#00ffff', 500);
+            break;
+          case 'tower':
+            grid.setTerritory(x, y, currentPlayer);
+            grid.setStructure(x, y, 'tower', currentPlayer);
+            grid.pulseCell(x, y, '#00ff41', 500);
+            break;
+          case 'wall':
+            grid.setTerritory(x, y, currentPlayer);
+            grid.setStructure(x, y, 'wall', currentPlayer);
+            break;
+          case 'farm':
+            grid.setTerritory(x, y, currentPlayer);
+            grid.setStructure(x, y, 'farm', currentPlayer);
+            grid.pulseCell(x, y, '#00ffff', 500);
+            break;
+          case 'castle':
+            grid.setTerritory(x, y, currentPlayer);
+            grid.setStructure(x, y, 'castle', currentPlayer);
+            grid.pulseCell(x, y, '#ffbf00', 800);
+            break;
+          case 'enemy':
+            grid.enemies.push({ x, y, hp: 3 });
+            grid.pulseCell(x, y, '#ff00ff', 500);
+            break;
+        }
+
+        updateCounts();
+        // Toggle player for demo
+        currentPlayer = currentPlayer === 'Player1' ? 'Player2' : 'Player1';
+      });
+    });
+
+    // Demo state button
+    document.getElementById('btn-demo-state').addEventListener('click', () => {
+      // Load demo state
+      const demoState = {
+        territories: [
+          // Player 1 territory (top-left area)
+          { x: 2, y: 2, owner: 'Alex' },
+          { x: 3, y: 2, owner: 'Alex' },
+          { x: 4, y: 2, owner: 'Alex' },
+          { x: 2, y: 3, owner: 'Alex' },
+          { x: 3, y: 3, owner: 'Alex' },
+          { x: 2, y: 4, owner: 'Alex' },
+
+          // Player 2 territory (bottom-right area)
+          { x: 15, y: 15, owner: 'Sam' },
+          { x: 16, y: 15, owner: 'Sam' },
+          { x: 17, y: 15, owner: 'Sam' },
+          { x: 15, y: 16, owner: 'Sam' },
+          { x: 16, y: 16, owner: 'Sam' },
+          { x: 17, y: 16, owner: 'Sam' },
+          { x: 15, y: 17, owner: 'Sam' },
+
+          // Player 3 territory (top-right)
+          { x: 16, y: 3, owner: 'Jordan' },
+          { x: 17, y: 3, owner: 'Jordan' },
+          { x: 16, y: 4, owner: 'Jordan' },
+          { x: 17, y: 4, owner: 'Jordan' },
+        ],
+        structures: [
+          { x: 3, y: 3, type: 'castle', owner: 'Alex' },
+          { x: 4, y: 2, type: 'tower', owner: 'Alex' },
+          { x: 2, y: 4, type: 'farm', owner: 'Alex' },
+
+          { x: 16, y: 16, type: 'castle', owner: 'Sam' },
+          { x: 17, y: 15, type: 'tower', owner: 'Sam' },
+          { x: 15, y: 17, type: 'wall', owner: 'Sam' },
+
+          { x: 17, y: 3, type: 'tower', owner: 'Jordan' },
+        ],
+        enemies: [
+          { x: 0, y: 10, hp: 3 },
+          { x: 1, y: 9, hp: 3 },
+          { x: 1, y: 11, hp: 3 },
+          { x: 19, y: 10, hp: 3 },
+          { x: 18, y: 9, hp: 3 },
+        ]
+      };
+
+      grid.loadState(demoState);
+      updateCounts();
+
+      // Pulse all structures
+      demoState.structures.forEach(s => {
+        setTimeout(() => grid.pulseCell(s.x, s.y, '#00ff41', 400), Math.random() * 500);
+      });
+    });
+
+    // Clear button
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      grid.territories = {};
+      grid.structures = {};
+      grid.enemies = [];
+      grid.playerColors = {};
+      grid.nextColorIndex = 0;
+      updateCounts();
+    });
+
+    // Random enemies button
+    document.getElementById('btn-random-enemies').addEventListener('click', () => {
+      const edges = [];
+      for (let i = 0; i < 20; i++) {
+        edges.push({ x: 0, y: i });
+        edges.push({ x: 19, y: i });
+        edges.push({ x: i, y: 0 });
+        edges.push({ x: i, y: 19 });
+      }
+
+      const numEnemies = Math.floor(Math.random() * 5) + 3;
+      const newEnemies = [];
+
+      for (let i = 0; i < numEnemies; i++) {
+        const edge = edges[Math.floor(Math.random() * edges.length)];
+        newEnemies.push({ x: edge.x, y: edge.y, hp: 3 });
+        grid.pulseCell(edge.x, edge.y, '#ff00ff', 600);
+      }
+
+      grid.enemies = [...grid.enemies, ...newEnemies];
+    });
+
+    // Pulse center button
+    document.getElementById('btn-pulse-center').addEventListener('click', () => {
+      grid.pulseCell(10, 10, '#ffbf00', 1000);
+    });
+
+    // Update counts display
+    function updateCounts() {
+      territoryCount.textContent = Object.keys(grid.territories).length;
+      structureCount.textContent = Object.keys(grid.structures).length;
+    }
+
+    // Wave timer countdown (demo)
+    let waveSeconds = 150;
+    setInterval(() => {
+      waveSeconds--;
+      if (waveSeconds < 0) waveSeconds = 150;
+      const mins = Math.floor(waveSeconds / 60);
+      const secs = waveSeconds % 60;
+      waveTimer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+      if (waveSeconds < 30) {
+        waveTimer.classList.add('warning');
+      } else {
+        waveTimer.classList.remove('warning');
+      }
+    }, 1000);
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+      const newSize = Math.min(600, window.innerWidth - 320);
+      container.style.width = `${newSize}px`;
+      container.style.height = `${newSize}px`;
+      grid.resize();
+    });
+
+    console.log('🎮 GRID WARS initialized');
+    console.log('Click cells and use action buttons to build!');
+  </script>
+</body>
+</html>
