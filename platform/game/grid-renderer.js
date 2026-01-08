@@ -65,7 +65,14 @@ export class GridRenderer {
    */
   resize() {
     const container = this.canvas.parentElement;
-    const size = Math.min(container.clientWidth, container.clientHeight, this.gridSize * this.cellSize + 2);
+    if (!container) return;
+
+    // Get container size, ensuring minimum of 50px to avoid negative/zero calculations
+    const containerSize = Math.max(50, Math.min(container.clientWidth, container.clientHeight));
+    const size = Math.min(containerSize, this.gridSize * this.cellSize + 2);
+
+    // Skip if container is hidden (size would be 0)
+    if (size < 10) return;
 
     // Set canvas size (accounting for device pixel ratio for sharpness)
     const dpr = window.devicePixelRatio || 1;
@@ -75,8 +82,8 @@ export class GridRenderer {
     this.canvas.style.height = `${size}px`;
     this.ctx.scale(dpr, dpr);
 
-    // Recalculate cell size
-    this.cellSize = (size - 2) / this.gridSize;
+    // Recalculate cell size (ensure positive)
+    this.cellSize = Math.max(1, (size - 2) / this.gridSize);
     this.displaySize = size;
   }
 
@@ -165,6 +172,11 @@ export class GridRenderer {
    * Main render function
    */
   render() {
+    // Skip rendering if canvas is too small (hidden panel)
+    if (this.cellSize < 1 || this.displaySize < 10) {
+      return;
+    }
+
     const ctx = this.ctx;
     const now = performance.now();
     this.animationFrame++;
