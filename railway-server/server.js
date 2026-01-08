@@ -197,9 +197,8 @@ app.post('/api/auth/teacher', async (req, res) => {
   try {
     const { password } = req.body;
 
-    // Check against known teacher passwords
-    const validPasswords = ['stats123', 'teacher123'];
-    if (!validPasswords.includes(password)) {
+    // Check against environment variable (with fallback)
+    if (password !== TEACHER_PASSWORD) {
       return res.json({ valid: false, error: 'Invalid teacher password' });
     }
 
