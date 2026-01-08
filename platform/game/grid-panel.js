@@ -72,35 +72,35 @@ export class GridPanel {
     if (!this.container) return;
 
     this.container.innerHTML = `
-      <div class="grid-wars-panel bg-gray-900 text-green-400 font-mono rounded-lg overflow-hidden border border-green-800 shadow-lg">
+      <div class="grid-wars-panel" style="background:#111827;color:#00ff41;font-family:monospace;border-radius:8px;overflow:hidden;border:1px solid #166534;box-shadow:0 4px 6px rgba(0,0,0,0.3);">
         <!-- Header (always visible) -->
-        <div class="grid-wars-header flex items-center justify-between px-3 py-2 bg-gray-800 cursor-pointer hover:bg-gray-750" id="gw-toggle">
-          <div class="flex items-center gap-2">
-            <span class="text-lg">🎮</span>
-            <span class="font-bold text-green-400">GRID WARS</span>
+        <div id="gw-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#1f2937;cursor:pointer;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.1rem;">🎮</span>
+            <span style="font-weight:bold;color:#00ff41;">GRID WARS</span>
           </div>
-          <div class="flex items-center gap-3">
-            <div class="flex items-center gap-1">
-              <span class="text-cyan-400">⚡</span>
-              <span id="gw-points-display" class="font-bold text-cyan-300">0</span>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span style="color:#22d3ee;">⚡</span>
+              <span id="gw-points-display" style="font-weight:bold;color:#67e8f9;">0</span>
             </div>
-            <span id="gw-expand-icon" class="text-gray-400">▼</span>
+            <span id="gw-expand-icon" style="color:#9ca3af;">▼</span>
           </div>
         </div>
 
         <!-- Expandable content -->
-        <div id="gw-content" class="hidden">
+        <div id="gw-content" style="display:none;">
           <!-- Mini Grid -->
-          <div class="p-2 bg-gray-950">
-            <div class="aspect-square max-w-full mx-auto bg-black border border-green-900 rounded overflow-hidden">
-              <canvas id="gw-canvas" class="w-full h-full"></canvas>
+          <div style="padding:8px;background:#030712;">
+            <div style="aspect-ratio:1;max-width:100%;margin:0 auto;background:#000;border:1px solid #14532d;border-radius:4px;overflow:hidden;">
+              <canvas id="gw-canvas" style="width:100%;height:100%;"></canvas>
             </div>
           </div>
 
           <!-- Action buttons -->
-          <div class="px-3 py-2 bg-gray-800 space-y-2">
-            <div class="text-xs text-gray-400 uppercase tracking-wide">Build Actions</div>
-            <div class="grid grid-cols-3 gap-1">
+          <div style="padding:8px 12px;background:#1f2937;">
+            <div style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Build Actions</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
               <button class="gw-action-btn" data-action="claim" data-cost="1">
                 □ Claim<span class="gw-cost">1⚡</span>
               </button>
@@ -120,7 +120,7 @@ export class GridPanel {
           </div>
 
           <!-- Status -->
-          <div class="px-3 py-2 text-xs text-gray-500 border-t border-gray-700">
+          <div style="padding:8px 12px;font-size:0.75rem;color:#6b7280;border-top:1px solid #374151;">
             <span id="gw-status">Click grid to select, then click action</span>
           </div>
         </div>
@@ -233,12 +233,14 @@ export class GridPanel {
     const icon = this.container.querySelector('#gw-expand-icon');
 
     if (this.isExpanded) {
-      content.classList.remove('hidden');
+      content.style.display = 'block';
       icon.textContent = '▲';
       // Refresh state when expanding
       this.state.refreshState().catch(() => {});
+      // Re-init canvas after showing
+      this.initCanvas();
     } else {
-      content.classList.add('hidden');
+      content.style.display = 'none';
       icon.textContent = '▼';
     }
   }
