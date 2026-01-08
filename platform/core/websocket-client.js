@@ -208,12 +208,9 @@ export class WebSocketClient {
 
       // Grid Wars real-time messages
       case 'territory_claimed':
-      case 'structure_built':
-      case 'structure_destroyed':
       case 'points_earned':
       case 'grid_full_state':
-      case 'wave_started':
-      case 'enemy_moved':
+      case 'avatar_moved':
         this.onGridMessage(message);
         break;
     }

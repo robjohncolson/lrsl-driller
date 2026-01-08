@@ -1,6 +1,7 @@
 /**
  * Grid Wars - Canvas-based Grid Renderer
  * Spectre/Battlezone aesthetic (early 90s wireframe)
+ * Now with avatar display!
  */
 
 export class GridRenderer {
@@ -38,9 +39,7 @@ export class GridRenderer {
 
     // Game state
     this.territories = {}; // { "x,y": { owner: "username", color: 0 } }
-    this.structures = {};  // { "x,y": { type: "tower"|"farm"|"wall"|"castle", owner: "username" } }
-    this.enemies = [];     // [{ x, y, hp }]
-    this.centerCastle = { x: 10, y: 10 }; // Center of 20x20
+    this.avatars = [];     // [{ username, x, y, health, emoji, text }]
 
     // Player color assignments
     this.playerColors = {}; // { "username": colorIndex }
@@ -118,21 +117,10 @@ export class GridRenderer {
   }
 
   /**
-   * Set structure at position
+   * Set avatar positions
    */
-  setStructure(x, y, type, owner) {
-    if (type) {
-      this.structures[`${x},${y}`] = { type, owner };
-    } else {
-      delete this.structures[`${x},${y}`];
-    }
-  }
-
-  /**
-   * Set enemy positions
-   */
-  setEnemies(enemies) {
-    this.enemies = enemies;
+  setAvatars(avatars) {
+    this.avatars = avatars || [];
   }
 
   /**
@@ -191,14 +179,8 @@ export class GridRenderer {
     // Draw grid lines
     this.drawGrid(ctx);
 
-    // Draw center castle
-    this.drawCenterCastle(ctx, now);
-
-    // Draw structures
-    this.drawStructures(ctx, now);
-
-    // Draw enemies
-    this.drawEnemies(ctx, now);
+    // Draw avatars
+    this.drawAvatars(ctx, now);
 
     // Draw pulse animations
     this.drawPulses(ctx, now);
@@ -263,202 +245,61 @@ export class GridRenderer {
   }
 
   /**
-   * Draw the center castle (objective)
+   * Draw player avatars
    */
-  drawCenterCastle(ctx, now) {
-    const x = this.centerCastle.x;
-    const y = this.centerCastle.y;
-    const centerX = x * this.cellSize + this.cellSize / 2;
-    const centerY = y * this.cellSize + this.cellSize / 2;
+  drawAvatars(ctx, now) {
+    for (const avatar of this.avatars) {
+      const cx = avatar.x * this.cellSize + this.cellSize / 2;
+      const cy = avatar.y * this.cellSize + this.cellSize / 2;
+      const color = this.getPlayerSolidColor(avatar.username);
 
-    // Pulsing glow
-    const pulse = Math.sin(now / 500) * 0.3 + 0.7;
+      // Pulsing effect based on health
+      const healthRatio = (avatar.health || 100) / 100;
+      const pulse = Math.sin(now / 400) * 0.15 + 0.85;
 
-    // Outer glow
-    ctx.fillStyle = `rgba(255, 191, 0, ${0.2 * pulse})`;
-    ctx.fillRect(
-      (x - 1) * this.cellSize,
-      (y - 1) * this.cellSize,
-      this.cellSize * 3,
-      this.cellSize * 3
-    );
+      // Draw avatar circle
+      const radius = this.cellSize * 0.35;
 
-    // Castle symbol (wireframe)
-    ctx.strokeStyle = this.colors.amber;
-    ctx.lineWidth = 2;
-
-    const size = this.cellSize * 0.6;
-
-    // Castle base
-    ctx.beginPath();
-    ctx.rect(centerX - size/2, centerY - size/2, size, size);
-    ctx.stroke();
-
-    // Castle towers (corners)
-    const towerSize = size * 0.3;
-    ctx.fillStyle = this.colors.amber;
-    ctx.fillRect(centerX - size/2 - towerSize/4, centerY - size/2 - towerSize/4, towerSize, towerSize);
-    ctx.fillRect(centerX + size/2 - towerSize + towerSize/4, centerY - size/2 - towerSize/4, towerSize, towerSize);
-    ctx.fillRect(centerX - size/2 - towerSize/4, centerY + size/2 - towerSize + towerSize/4, towerSize, towerSize);
-    ctx.fillRect(centerX + size/2 - towerSize + towerSize/4, centerY + size/2 - towerSize + towerSize/4, towerSize, towerSize);
-  }
-
-  /**
-   * Draw structures (towers, farms, walls, castles)
-   */
-  drawStructures(ctx, now) {
-    for (const [key, structure] of Object.entries(this.structures)) {
-      const [x, y] = key.split(',').map(Number);
-      const centerX = x * this.cellSize + this.cellSize / 2;
-      const centerY = y * this.cellSize + this.cellSize / 2;
-      const color = this.getPlayerSolidColor(structure.owner);
-
-      switch (structure.type) {
-        case 'tower':
-          this.drawTower(ctx, centerX, centerY, color, now);
-          break;
-        case 'farm':
-          this.drawFarm(ctx, centerX, centerY, color);
-          break;
-        case 'wall':
-          this.drawWall(ctx, x, y, color);
-          break;
-        case 'castle':
-          this.drawPlayerCastle(ctx, centerX, centerY, color, now);
-          break;
-      }
-    }
-  }
-
-  /**
-   * Draw a tower (triangle/pyramid shape)
-   */
-  drawTower(ctx, cx, cy, color, now) {
-    const size = this.cellSize * 0.35;
-    const pulse = Math.sin(now / 300) * 0.15 + 0.85;
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-
-    // Triangle pointing up
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - size);
-    ctx.lineTo(cx - size, cy + size * 0.7);
-    ctx.lineTo(cx + size, cy + size * 0.7);
-    ctx.closePath();
-    ctx.stroke();
-
-    // Glowing center dot
-    ctx.fillStyle = color;
-    ctx.globalAlpha = pulse;
-    ctx.beginPath();
-    ctx.arc(cx, cy, size * 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-  }
-
-  /**
-   * Draw a farm (diamond shape)
-   */
-  drawFarm(ctx, cx, cy, color) {
-    const size = this.cellSize * 0.3;
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-
-    // Diamond
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - size);
-    ctx.lineTo(cx + size, cy);
-    ctx.lineTo(cx, cy + size);
-    ctx.lineTo(cx - size, cy);
-    ctx.closePath();
-    ctx.stroke();
-
-    // Inner dot
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(cx, cy, size * 0.2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  /**
-   * Draw a wall segment
-   */
-  drawWall(ctx, x, y, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(
-      x * this.cellSize + this.cellSize * 0.2,
-      y * this.cellSize + this.cellSize * 0.2,
-      this.cellSize * 0.6,
-      this.cellSize * 0.6
-    );
-
-    // Border
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(
-      x * this.cellSize + this.cellSize * 0.15,
-      y * this.cellSize + this.cellSize * 0.15,
-      this.cellSize * 0.7,
-      this.cellSize * 0.7
-    );
-  }
-
-  /**
-   * Draw a player's castle (larger structure)
-   */
-  drawPlayerCastle(ctx, cx, cy, color, now) {
-    const size = this.cellSize * 0.4;
-    const pulse = Math.sin(now / 400) * 0.2 + 0.8;
-
-    // Outer square
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(cx - size, cy - size, size * 2, size * 2);
-
-    // Inner square
-    ctx.strokeRect(cx - size * 0.5, cy - size * 0.5, size, size);
-
-    // Corner dots
-    ctx.fillStyle = color;
-    ctx.globalAlpha = pulse;
-    const dotSize = size * 0.2;
-    ctx.fillRect(cx - size - dotSize/2, cy - size - dotSize/2, dotSize, dotSize);
-    ctx.fillRect(cx + size - dotSize/2, cy - size - dotSize/2, dotSize, dotSize);
-    ctx.fillRect(cx - size - dotSize/2, cy + size - dotSize/2, dotSize, dotSize);
-    ctx.fillRect(cx + size - dotSize/2, cy + size - dotSize/2, dotSize, dotSize);
-    ctx.globalAlpha = 1;
-  }
-
-  /**
-   * Draw enemies
-   */
-  drawEnemies(ctx, now) {
-    for (const enemy of this.enemies) {
-      const cx = enemy.x * this.cellSize + this.cellSize / 2;
-      const cy = enemy.y * this.cellSize + this.cellSize / 2;
-      const size = this.cellSize * 0.35;
-
-      // Pulsing effect
-      const pulse = Math.sin(now / 200 + enemy.x + enemy.y) * 0.2 + 0.8;
-
-      ctx.strokeStyle = this.colors.magenta;
-      ctx.fillStyle = `rgba(255, 0, 255, ${0.3 * pulse})`;
+      // Outer glow (health indicator)
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
+      ctx.strokeStyle = healthRatio > 0.5 ? color : this.colors.red;
       ctx.lineWidth = 2;
-
-      // X shape for enemy
-      ctx.beginPath();
-      ctx.moveTo(cx - size, cy - size);
-      ctx.lineTo(cx + size, cy + size);
-      ctx.moveTo(cx + size, cy - size);
-      ctx.lineTo(cx - size, cy + size);
+      ctx.globalAlpha = pulse;
       ctx.stroke();
+      ctx.globalAlpha = 1;
 
-      // Center glow
+      // Inner circle
       ctx.beginPath();
-      ctx.arc(cx, cy, size * 0.4, 0, Math.PI * 2);
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.7;
       ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // Draw emoji if available
+      if (avatar.emoji) {
+        ctx.font = `${this.cellSize * 0.5}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(avatar.emoji, cx, cy);
+      }
+
+      // Health bar below avatar
+      if (healthRatio < 1) {
+        const barWidth = this.cellSize * 0.7;
+        const barHeight = 3;
+        const barX = cx - barWidth / 2;
+        const barY = cy + radius + 4;
+
+        // Background
+        ctx.fillStyle = '#333';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // Health fill
+        ctx.fillStyle = healthRatio > 0.5 ? '#00ff41' : healthRatio > 0.25 ? '#ffbf00' : '#ff3333';
+        ctx.fillRect(barX, barY, barWidth * healthRatio, barHeight);
+      }
     }
   }
 
@@ -549,14 +390,8 @@ export class GridRenderer {
         this.setTerritory(t.x, t.y, t.owner);
       }
     }
-    if (state.structures) {
-      this.structures = {};
-      for (const s of state.structures) {
-        this.setStructure(s.x, s.y, s.type, s.owner);
-      }
-    }
-    if (state.enemies) {
-      this.enemies = state.enemies;
+    if (state.players) {
+      this.avatars = state.players;
     }
   }
 }

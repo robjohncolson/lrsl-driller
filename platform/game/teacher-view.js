@@ -17,10 +17,8 @@ export class TeacherView {
     this.gameId = null;
     this.game = null;
     this.territories = [];
-    this.structures = [];
     this.players = [];
     this.onlineUsers = [];
-    this.waveNumber = 0;
 
     // WebSocket
     this.ws = null;
@@ -74,7 +72,6 @@ export class TeacherView {
     }
     this.game = await response.json();
     this.gameId = this.game.game_id;
-    this.waveNumber = this.game.wave_number || 0;
   }
 
   /**
@@ -111,20 +108,12 @@ export class TeacherView {
    */
   applyState(state) {
     this.territories = state.territories || [];
-    this.structures = state.structures || [];
-    this.waveNumber = state.wave_number || 0;
 
     // Update renderer
     if (this.renderer) {
       this.renderer.loadState({
         territories: this.territories,
-        structures: this.structures.map(s => ({
-          x: s.x,
-          y: s.y,
-          type: s.structure_type,
-          owner: s.owner
-        })),
-        enemies: state.enemies || []
+        players: state.players || []
       });
     }
   }
@@ -231,18 +220,6 @@ export class TeacherView {
         }
         break;
 
-      case 'structure_built':
-        if (message.gameId === this.gameId) {
-          this.handleStructureBuilt(message);
-        }
-        break;
-
-      case 'structure_destroyed':
-        if (message.gameId === this.gameId) {
-          this.handleStructureDestroyed(message);
-        }
-        break;
-
       case 'points_earned':
         if (message.gameId === this.gameId) {
           this.handlePointsEarned(message);
@@ -256,19 +233,20 @@ export class TeacherView {
         }
         break;
 
-      case 'wave_started':
+      case 'avatar_moved':
         if (message.gameId === this.gameId) {
-          this.waveNumber = message.waveNumber;
-          if (this.renderer && message.enemies) {
-            this.renderer.setEnemies(message.enemies);
+          // Update player position
+          const player = this.players.find(p => p.username === message.username);
+          if (player) {
+            player.position_x = message.x;
+            player.position_y = message.y;
+            player.health = message.health;
+          }
+          // Re-render avatars
+          if (this.renderer) {
+            this.renderer.setAvatars(this.players.filter(p => p.position_x !== undefined));
           }
           this.emitStateChange();
-        }
-        break;
-
-      case 'enemy_moved':
-        if (message.gameId === this.gameId && this.renderer) {
-          this.renderer.setEnemies(message.enemies || []);
         }
         break;
     }
@@ -295,51 +273,6 @@ export class TeacherView {
   }
 
   /**
-   * Handle structure built
-   */
-  handleStructureBuilt(message) {
-    const existing = this.structures.find(s => s.x === message.x && s.y === message.y);
-    if (existing) {
-      existing.structure_type = message.structureType;
-      existing.owner = message.username;
-    } else {
-      this.structures.push({
-        x: message.x,
-        y: message.y,
-        structure_type: message.structureType,
-        owner: message.username
-      });
-    }
-
-    if (this.renderer) {
-      this.renderer.setStructure(message.x, message.y, message.structureType, message.username);
-      this.renderer.pulseCell(message.x, message.y, '#00ffff', 500);
-    }
-
-    this.updatePlayerStructureCount(message.username, 1);
-    this.emitStateChange();
-  }
-
-  /**
-   * Handle structure destroyed
-   */
-  handleStructureDestroyed(message) {
-    const index = this.structures.findIndex(s => s.x === message.x && s.y === message.y);
-    if (index !== -1) {
-      const structure = this.structures[index];
-      this.updatePlayerStructureCount(structure.owner, -1);
-      this.structures.splice(index, 1);
-    }
-
-    if (this.renderer) {
-      this.renderer.setStructure(message.x, message.y, null);
-      this.renderer.pulseCell(message.x, message.y, '#ff3333', 500);
-    }
-
-    this.emitStateChange();
-  }
-
-  /**
    * Handle points earned
    */
   handlePointsEarned(message) {
@@ -350,8 +283,7 @@ export class TeacherView {
       this.players.push({
         username: message.username,
         action_points: message.total,
-        territories_count: 0,
-        structures_count: 0
+        territories_count: 0
       });
     }
     this.emitPlayersChange();
@@ -369,22 +301,10 @@ export class TeacherView {
       this.players.push({
         username,
         action_points: 0,
-        territories_count: Math.max(0, delta),
-        structures_count: 0
+        territories_count: Math.max(0, delta)
       });
     }
     this.emitPlayersChange();
-  }
-
-  /**
-   * Update player structure count
-   */
-  updatePlayerStructureCount(username, delta) {
-    const player = this.players.find(p => p.username === username);
-    if (player) {
-      player.structures_count = (player.structures_count || 0) + delta;
-      this.emitPlayersChange();
-    }
   }
 
   /**
@@ -425,9 +345,7 @@ export class TeacherView {
 
     this.onStateChange({
       territoriesCount: this.territories.length,
-      structuresCount: this.structures.length,
-      totalPoints,
-      waveNumber: this.waveNumber
+      totalPoints
     });
   }
 
@@ -447,11 +365,9 @@ export class TeacherView {
 
     return {
       territoriesCount: this.territories.length,
-      structuresCount: this.structures.length,
       playersCount: this.players.length,
       onlineCount,
-      totalPoints,
-      waveNumber: this.waveNumber
+      totalPoints
     };
   }
 

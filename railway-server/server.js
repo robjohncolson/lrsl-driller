@@ -3,7 +3,6 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const { WebSocketServer } = require('ws');
 const http = require('http');
-const { getWaveManager, AI_CONFIG } = require('./grid-wars-ai.js');
 const {
   parseUsername,
   generateAvatarDisplay,
@@ -1934,15 +1933,9 @@ app.get('/api/time-tracking/class-summary', async (req, res) => {
 // GRID WARS ENDPOINTS
 // ============================================
 
-// Structure costs and star points
+// Game config - simplified for territory exploration
 const GRID_WARS_CONFIG = {
-  structureCosts: {
-    claim: 1,
-    wall: 2,
-    tower: 3,
-    farm: 4,
-    castle: 10
-  },
+  claimCost: 10,
   starPoints: {
     gold: 4,
     silver: 3,
@@ -2087,7 +2080,7 @@ app.post('/api/grid-wars/action', async (req, res) => {
     let cost = 0;
 
     if (action === 'claim') {
-      cost = GRID_WARS_CONFIG.structureCosts.claim;
+      cost = GRID_WARS_CONFIG.claimCost;
 
       // Check if already owned
       const { data: existingTerritory } = await supabase
@@ -2114,67 +2107,15 @@ app.post('/api/grid-wars/action', async (req, res) => {
       if (claimError) throw claimError;
 
       // Update player stats
-      await upsertGridWarsPlayer(gameId, username, -cost, 1, 0);
+      await upsertGridWarsPlayer(gameId, username, -cost, 1);
 
       // Broadcast
       broadcast({ type: 'territory_claimed', gameId, username, x, y });
 
       res.json({ success: true, action: 'claim', x, y, cost, newPoints: currentPoints - cost });
 
-    } else if (action === 'build') {
-      if (!structureType || !GRID_WARS_CONFIG.structureCosts[structureType]) {
-        return res.status(400).json({ error: 'Invalid structure type' });
-      }
-
-      cost = GRID_WARS_CONFIG.structureCosts[structureType];
-
-      // Check if player owns the territory
-      const { data: territory } = await supabase
-        .from('grid_wars_territories')
-        .select('owner')
-        .eq('game_id', gameId)
-        .eq('x', x)
-        .eq('y', y)
-        .single();
-
-      if (!territory || territory.owner !== username) {
-        return res.status(400).json({ error: 'You must own the territory to build' });
-      }
-
-      // Check if structure already exists
-      const { data: existingStructure } = await supabase
-        .from('grid_wars_structures')
-        .select('structure_type')
-        .eq('game_id', gameId)
-        .eq('x', x)
-        .eq('y', y)
-        .single();
-
-      if (existingStructure) {
-        return res.status(400).json({ error: 'Structure already exists at this location' });
-      }
-
-      if (currentPoints < cost) {
-        return res.status(400).json({ error: `Insufficient points. Need ${cost}, have ${currentPoints}` });
-      }
-
-      // Build structure
-      const { error: buildError } = await supabase
-        .from('grid_wars_structures')
-        .insert({ game_id: gameId, x, y, structure_type: structureType, owner: username });
-
-      if (buildError) throw buildError;
-
-      // Update player stats
-      await upsertGridWarsPlayer(gameId, username, -cost, 0, 1);
-
-      // Broadcast
-      broadcast({ type: 'structure_built', gameId, username, x, y, structureType });
-
-      res.json({ success: true, action: 'build', structureType, x, y, cost, newPoints: currentPoints - cost });
-
     } else {
-      return res.status(400).json({ error: 'Invalid action. Use "claim" or "build"' });
+      return res.status(400).json({ error: 'Invalid action. Use "claim"' });
     }
   } catch (err) {
     console.error('POST /api/grid-wars/action error:', err);
@@ -2183,11 +2124,11 @@ app.post('/api/grid-wars/action', async (req, res) => {
 });
 
 // Helper: Upsert player and update stats
-async function upsertGridWarsPlayer(gameId, username, pointsDelta, territoriesDelta, structuresDelta) {
+async function upsertGridWarsPlayer(gameId, username, pointsDelta, territoriesDelta = 0) {
   // First try to get existing player
   const { data: existing } = await supabase
     .from('grid_wars_players')
-    .select('action_points, territories_count, structures_count')
+    .select('action_points, territories_count')
     .eq('game_id', gameId)
     .eq('username', username)
     .single();
@@ -2198,8 +2139,7 @@ async function upsertGridWarsPlayer(gameId, username, pointsDelta, territoriesDe
       .from('grid_wars_players')
       .update({
         action_points: Math.max(0, existing.action_points + pointsDelta),
-        territories_count: Math.max(0, existing.territories_count + territoriesDelta),
-        structures_count: Math.max(0, existing.structures_count + structuresDelta)
+        territories_count: Math.max(0, existing.territories_count + territoriesDelta)
       })
       .eq('game_id', gameId)
       .eq('username', username);
@@ -2214,8 +2154,7 @@ async function upsertGridWarsPlayer(gameId, username, pointsDelta, territoriesDe
         game_id: gameId,
         username,
         action_points: Math.max(0, pointsDelta),
-        territories_count: Math.max(0, territoriesDelta),
-        structures_count: Math.max(0, structuresDelta)
+        territories_count: Math.max(0, territoriesDelta)
       });
 
     if (error) throw error;
@@ -2280,7 +2219,7 @@ app.post('/api/grid-wars/points/add', async (req, res) => {
     }
 
     // Upsert player with points
-    const newTotal = await upsertGridWarsPlayer(gameId, username, pointsToAdd, 0, 0);
+    const newTotal = await upsertGridWarsPlayer(gameId, username, pointsToAdd, 0);
 
     // Broadcast points earned
     broadcast({
@@ -2345,172 +2284,6 @@ app.get('/api/grid-wars/leaderboard', async (req, res) => {
     res.json(leaderboard);
   } catch (err) {
     console.error('GET /api/grid-wars/leaderboard error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ============================================
-// GRID WARS - WAVE ENDPOINTS
-// ============================================
-
-// Get wave status
-app.get('/api/grid-wars/waves/status', async (req, res) => {
-  try {
-    const { gameId } = req.query;
-
-    if (!gameId) {
-      return res.status(400).json({ error: 'gameId query parameter required' });
-    }
-
-    const waveManager = getWaveManager(gameId, { supabase, broadcast });
-    const state = waveManager.getState();
-
-    // Also get center HP from database
-    const { data: game } = await supabase
-      .from('grid_wars_games')
-      .select('center_hp, wave_number')
-      .eq('game_id', gameId)
-      .single();
-
-    res.json({
-      ...state,
-      centerHp: game?.center_hp || 100,
-      savedWaveNumber: game?.wave_number || 0
-    });
-  } catch (err) {
-    console.error('GET /api/grid-wars/waves/status error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Start a new wave (teacher only)
-app.post('/api/grid-wars/waves/start', async (req, res) => {
-  try {
-    const { gameId, password } = req.body;
-
-    if (!gameId) {
-      return res.status(400).json({ error: 'gameId required' });
-    }
-
-    // Verify teacher password
-    if (password !== TEACHER_PASSWORD) {
-      return res.status(403).json({ error: 'Invalid teacher password' });
-    }
-
-    const waveManager = getWaveManager(gameId, {
-      supabase,
-      broadcast,
-      onCenterDamaged: async (damage) => {
-        // Update center HP in database
-        const { data: game } = await supabase
-          .from('grid_wars_games')
-          .select('center_hp')
-          .eq('game_id', gameId)
-          .single();
-
-        const newHp = Math.max(0, (game?.center_hp || 100) - damage);
-
-        await supabase
-          .from('grid_wars_games')
-          .update({ center_hp: newHp })
-          .eq('game_id', gameId);
-
-        // Broadcast center damage
-        broadcast({
-          type: 'center_damaged',
-          gameId,
-          damage,
-          newHp
-        });
-
-        if (newHp <= 0) {
-          broadcast({
-            type: 'game_over',
-            gameId,
-            reason: 'center_destroyed'
-          });
-        }
-      }
-    });
-
-    const result = await waveManager.startWave();
-
-    // Update wave number in database
-    await supabase
-      .from('grid_wars_games')
-      .update({ wave_number: result.waveNumber })
-      .eq('game_id', gameId);
-
-    res.json({
-      success: true,
-      waveNumber: result.waveNumber,
-      enemyCount: result.enemies.length
-    });
-  } catch (err) {
-    console.error('POST /api/grid-wars/waves/start error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Stop current wave (teacher only)
-app.post('/api/grid-wars/waves/stop', async (req, res) => {
-  try {
-    const { gameId, password } = req.body;
-
-    if (!gameId) {
-      return res.status(400).json({ error: 'gameId required' });
-    }
-
-    // Verify teacher password
-    if (password !== TEACHER_PASSWORD) {
-      return res.status(403).json({ error: 'Invalid teacher password' });
-    }
-
-    const waveManager = getWaveManager(gameId, { supabase, broadcast });
-    waveManager.stopWave();
-
-    broadcast({
-      type: 'wave_stopped',
-      gameId
-    });
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error('POST /api/grid-wars/waves/stop error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Reset center HP (teacher only)
-app.post('/api/grid-wars/center/reset', async (req, res) => {
-  try {
-    const { gameId, password, hp } = req.body;
-
-    if (!gameId) {
-      return res.status(400).json({ error: 'gameId required' });
-    }
-
-    // Verify teacher password
-    if (password !== TEACHER_PASSWORD) {
-      return res.status(403).json({ error: 'Invalid teacher password' });
-    }
-
-    const newHp = hp || 100;
-
-    await supabase
-      .from('grid_wars_games')
-      .update({ center_hp: newHp })
-      .eq('game_id', gameId);
-
-    broadcast({
-      type: 'center_reset',
-      gameId,
-      hp: newHp
-    });
-
-    res.json({ success: true, hp: newHp });
-  } catch (err) {
-    console.error('POST /api/grid-wars/center/reset error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2742,15 +2515,15 @@ app.get('/api/grid-wars/avatars', async (req, res) => {
   }
 });
 
-// Get AI config (for client display)
+// Get game config (for client)
 app.get('/api/grid-wars/config', (req, res) => {
   res.json({
-    mapSize: AI_CONFIG.mapSize,
-    centerX: AI_CONFIG.centerX,
-    centerY: AI_CONFIG.centerY,
-    towerRange: AI_CONFIG.towerRange,
-    towerDamage: AI_CONFIG.towerDamage,
-    tickInterval: AI_CONFIG.tickInterval
+    mapSize: 20,
+    claimCost: 10,
+    healthMax: 100,
+    healthDrainNeutral: 2,   // HP/sec on unclaimed land
+    healthDrainEnemy: 5,     // HP/sec on enemy territory
+    healthRegenHome: 5       // HP/sec on own territory
   });
 });
 

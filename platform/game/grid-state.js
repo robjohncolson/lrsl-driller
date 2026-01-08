@@ -7,15 +7,9 @@
 // Default server URL (Railway production)
 const DEFAULT_SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 
-// Structure costs and star points (must match server)
+// Game config (must match server)
 export const GRID_WARS_CONFIG = {
-  structureCosts: {
-    claim: 10,
-    wall: 20,
-    tower: 30,
-    farm: 40,
-    castle: 100
-  },
+  claimCost: 10,
   starPoints: {
     gold: 4,
     silver: 3,
@@ -37,16 +31,14 @@ export class GridWarsState {
 
     // Local state cache
     this.game = null;
-    this.territories = new Map(); // "x,y" -> { owner, claimed_at }
-    this.structures = new Map();  // "x,y" -> { structure_type, owner, health }
-    this.players = new Map();     // username -> { action_points, territories_count, structures_count }
+    this.territories = new Map(); // "x,y" -> { owner, claimed_at, health }
+    this.players = new Map();     // username -> { action_points, territories_count, health, position_x, position_y }
 
     // Event callbacks
     this.onStateChange = options.onStateChange || null;
     this.onError = options.onError || null;
     this.onPointsEarned = options.onPointsEarned || null;
     this.onTerritoryChanged = options.onTerritoryChanged || null;
-    this.onStructureBuilt = options.onStructureBuilt || null;
 
     // Pending state for optimistic updates
     this._pendingActions = [];
@@ -110,17 +102,8 @@ export class GridWarsState {
       for (const t of state.territories) {
         this.territories.set(`${t.x},${t.y}`, {
           owner: t.owner,
-          claimed_at: t.claimed_at
-        });
-      }
-
-      this.structures.clear();
-      for (const s of state.structures) {
-        this.structures.set(`${s.x},${s.y}`, {
-          structure_type: s.structure_type,
-          owner: s.owner,
-          health: s.health,
-          built_at: s.built_at
+          claimed_at: t.claimed_at,
+          health: t.health || 100
         });
       }
 
@@ -129,7 +112,10 @@ export class GridWarsState {
         this.players.set(p.username, {
           action_points: p.action_points,
           territories_count: p.territories_count,
-          structures_count: p.structures_count,
+          health: p.health || 100,
+          position_x: p.position_x,
+          position_y: p.position_y,
+          avatar_format: p.avatar_format,
           updated_at: p.updated_at
         });
       }
@@ -156,10 +142,10 @@ export class GridWarsState {
    */
   getPlayerStats() {
     if (!this.username) {
-      return { action_points: 0, territories_count: 0, structures_count: 0 };
+      return { action_points: 0, territories_count: 0, health: 100 };
     }
     const player = this.players.get(this.username);
-    return player || { action_points: 0, territories_count: 0, structures_count: 0 };
+    return player || { action_points: 0, territories_count: 0, health: 100 };
   }
 
   /**
@@ -178,41 +164,17 @@ export class GridWarsState {
   }
 
   /**
-   * Get structure at a cell
+   * Check if player can afford to claim
    */
-  getStructure(x, y) {
-    return this.structures.get(`${x},${y}`) || null;
+  canAffordClaim() {
+    return this.getActionPoints() >= GRID_WARS_CONFIG.claimCost;
   }
 
   /**
-   * Check if an action is affordable
+   * Get cost to claim territory
    */
-  canAfford(action, structureType = null) {
-    const points = this.getActionPoints();
-
-    if (action === 'claim') {
-      return points >= GRID_WARS_CONFIG.structureCosts.claim;
-    }
-
-    if (action === 'build' && structureType) {
-      const cost = GRID_WARS_CONFIG.structureCosts[structureType];
-      return cost !== undefined && points >= cost;
-    }
-
-    return false;
-  }
-
-  /**
-   * Get cost of an action
-   */
-  getActionCost(action, structureType = null) {
-    if (action === 'claim') {
-      return GRID_WARS_CONFIG.structureCosts.claim;
-    }
-    if (action === 'build' && structureType) {
-      return GRID_WARS_CONFIG.structureCosts[structureType] || 0;
-    }
-    return 0;
+  getClaimCost() {
+    return GRID_WARS_CONFIG.claimCost;
   }
 
   /**
@@ -228,12 +190,12 @@ export class GridWarsState {
       throw new Error('Territory already claimed');
     }
 
-    if (!this.canAfford('claim')) {
+    if (!this.canAffordClaim()) {
       throw new Error('Insufficient action points');
     }
 
     // Optimistic update
-    const cost = GRID_WARS_CONFIG.structureCosts.claim;
+    const cost = GRID_WARS_CONFIG.claimCost;
     this._applyOptimisticClaim(x, y, cost);
 
     try {
@@ -267,67 +229,6 @@ export class GridWarsState {
       return result;
     } catch (err) {
       this._handleError('claimTerritory', err);
-      throw err;
-    }
-  }
-
-  /**
-   * Build a structure
-   */
-  async buildStructure(x, y, structureType) {
-    if (!this.gameId || !this.username) {
-      throw new Error('Not initialized or no user set');
-    }
-
-    // Validate locally first
-    if (!this.isOwnedByMe(x, y)) {
-      throw new Error('You must own the territory to build');
-    }
-
-    if (this.getStructure(x, y)) {
-      throw new Error('Structure already exists at this location');
-    }
-
-    if (!this.canAfford('build', structureType)) {
-      throw new Error('Insufficient action points');
-    }
-
-    // Optimistic update
-    const cost = GRID_WARS_CONFIG.structureCosts[structureType];
-    this._applyOptimisticBuild(x, y, structureType, cost);
-
-    try {
-      const response = await fetch(`${this.serverUrl}/api/grid-wars/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gameId: this.gameId,
-          username: this.username,
-          action: 'build',
-          x,
-          y,
-          structureType
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        // Rollback optimistic update
-        this._rollbackOptimisticBuild(x, y, structureType, cost);
-        throw new Error(error.error || 'Failed to build structure');
-      }
-
-      const result = await response.json();
-
-      // Notify
-      if (this.onStructureBuilt) {
-        this.onStructureBuilt({ x, y, structureType, owner: this.username });
-      }
-
-      this._emitStateChange();
-      return result;
-    } catch (err) {
-      this._handleError('buildStructure', err);
       throw err;
     }
   }
@@ -431,7 +332,8 @@ export class GridWarsState {
       case 'territory_claimed':
         this.territories.set(`${message.x},${message.y}`, {
           owner: message.username,
-          claimed_at: new Date().toISOString()
+          claimed_at: new Date().toISOString(),
+          health: 100
         });
         this._updatePlayerTerritoriesCount(message.username, 1);
         if (this.onTerritoryChanged) {
@@ -440,25 +342,11 @@ export class GridWarsState {
         this._emitStateChange();
         break;
 
-      case 'structure_built':
-        this.structures.set(`${message.x},${message.y}`, {
-          structure_type: message.structureType,
-          owner: message.username,
-          health: 100,
-          built_at: new Date().toISOString()
-        });
-        this._updatePlayerStructuresCount(message.username, 1);
-        if (this.onStructureBuilt) {
-          this.onStructureBuilt(message);
-        }
-        this._emitStateChange();
-        break;
-
       case 'points_earned':
         const player = this.players.get(message.username) || {
           action_points: 0,
           territories_count: 0,
-          structures_count: 0
+          health: 100
         };
         player.action_points = message.total;
         this.players.set(message.username, player);
@@ -472,30 +360,15 @@ export class GridWarsState {
         this._emitStateChange();
         break;
 
-      case 'structure_destroyed':
-        this.structures.delete(`${message.x},${message.y}`);
-        this._emitStateChange();
-        break;
-
       case 'grid_full_state':
         // Full state sync from server (e.g., after reconnection)
-        if (message.territories && message.structures && message.players) {
-          // Apply state directly from message
+        if (message.territories && message.players) {
           this.territories.clear();
           for (const t of message.territories) {
             this.territories.set(`${t.x},${t.y}`, {
               owner: t.owner,
-              claimed_at: t.claimed_at || new Date().toISOString()
-            });
-          }
-
-          this.structures.clear();
-          for (const s of message.structures) {
-            this.structures.set(`${s.x},${s.y}`, {
-              structure_type: s.structure_type,
-              owner: s.owner,
-              health: s.health || 100,
-              built_at: s.built_at || new Date().toISOString()
+              claimed_at: t.claimed_at || new Date().toISOString(),
+              health: t.health || 100
             });
           }
 
@@ -504,7 +377,10 @@ export class GridWarsState {
             this.players.set(p.username, {
               action_points: p.action_points || 0,
               territories_count: p.territories_count || 0,
-              structures_count: p.structures_count || 0
+              health: p.health || 100,
+              position_x: p.position_x,
+              position_y: p.position_y,
+              avatar_format: p.avatar_format
             });
           }
 
@@ -515,18 +391,14 @@ export class GridWarsState {
         }
         break;
 
-      // Wave messages (Phase 6)
-      case 'wave_started':
-        // Store wave state for future use
-        if (this.onWaveStarted) {
-          this.onWaveStarted(message);
-        }
-        break;
-
-      case 'enemy_moved':
-        // Update enemy positions for future use
-        if (this.onEnemyMoved) {
-          this.onEnemyMoved(message);
+      case 'avatar_moved':
+        // Update player position
+        const movedPlayer = this.players.get(message.username);
+        if (movedPlayer) {
+          movedPlayer.position_x = message.x;
+          movedPlayer.position_y = message.y;
+          movedPlayer.health = message.health;
+          this._emitStateChange();
         }
         break;
     }
@@ -540,16 +412,23 @@ export class GridWarsState {
     const territories = [];
     for (const [key, data] of this.territories) {
       const [x, y] = key.split(',').map(Number);
-      territories.push({ x, y, owner: data.owner });
+      territories.push({ x, y, owner: data.owner, health: data.health });
     }
 
-    const structures = [];
-    for (const [key, data] of this.structures) {
-      const [x, y] = key.split(',').map(Number);
-      structures.push({ x, y, type: data.structure_type, owner: data.owner });
+    const players = [];
+    for (const [username, data] of this.players) {
+      if (data.position_x !== undefined && data.position_y !== undefined) {
+        players.push({
+          username,
+          x: data.position_x,
+          y: data.position_y,
+          health: data.health,
+          avatar_format: data.avatar_format
+        });
+      }
     }
 
-    return { territories, structures };
+    return { territories, players };
   }
 
   // ============================================
@@ -559,7 +438,8 @@ export class GridWarsState {
   _applyOptimisticClaim(x, y, cost) {
     this.territories.set(`${x},${y}`, {
       owner: this.username,
-      claimed_at: new Date().toISOString()
+      claimed_at: new Date().toISOString(),
+      health: 100
     });
     this._updatePlayerPoints(-cost);
     this._updatePlayerTerritoriesCount(this.username, 1);
@@ -576,34 +456,12 @@ export class GridWarsState {
     this._emitStateChange();
   }
 
-  _applyOptimisticBuild(x, y, structureType, cost) {
-    this.structures.set(`${x},${y}`, {
-      structure_type: structureType,
-      owner: this.username,
-      health: 100,
-      built_at: new Date().toISOString()
-    });
-    this._updatePlayerPoints(-cost);
-    this._updatePlayerStructuresCount(this.username, 1);
-    this._pendingActions.push({ type: 'build', x, y, structureType, cost });
-  }
-
-  _rollbackOptimisticBuild(x, y, structureType, cost) {
-    this.structures.delete(`${x},${y}`);
-    this._updatePlayerPoints(cost);
-    this._updatePlayerStructuresCount(this.username, -1);
-    this._pendingActions = this._pendingActions.filter(
-      a => !(a.type === 'build' && a.x === x && a.y === y)
-    );
-    this._emitStateChange();
-  }
-
   _updatePlayerPoints(delta) {
     if (!this.username) return;
     const player = this.players.get(this.username) || {
       action_points: 0,
       territories_count: 0,
-      structures_count: 0
+      health: 100
     };
     player.action_points = Math.max(0, player.action_points + delta);
     this.players.set(this.username, player);
@@ -613,19 +471,9 @@ export class GridWarsState {
     const player = this.players.get(username) || {
       action_points: 0,
       territories_count: 0,
-      structures_count: 0
+      health: 100
     };
     player.territories_count = Math.max(0, player.territories_count + delta);
-    this.players.set(username, player);
-  }
-
-  _updatePlayerStructuresCount(username, delta) {
-    const player = this.players.get(username) || {
-      action_points: 0,
-      territories_count: 0,
-      structures_count: 0
-    };
-    player.structures_count = Math.max(0, player.structures_count + delta);
     this.players.set(username, player);
   }
 

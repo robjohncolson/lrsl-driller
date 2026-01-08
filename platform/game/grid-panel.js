@@ -1,6 +1,6 @@
 /**
  * Grid Wars Panel UI
- * Provides a collapsible panel for viewing action points and building
+ * Provides a collapsible panel for territory claiming and avatar display
  */
 
 import { GridWarsState, GRID_WARS_CONFIG } from './grid-state.js';
@@ -18,7 +18,6 @@ export class GridPanel {
     this.renderer = null;
     this.isExpanded = false;
     this.selectedCell = null;
-    this.selectedAction = null;
 
     // Callbacks
     this.onPointsChange = options.onPointsChange || null;
@@ -102,22 +101,15 @@ export class GridPanel {
           </div>
 
           <div style="color:#94a3b8;margin-bottom:8px;">
-            <span style="color:#22d3ee;">2.</span> <strong style="color:#e2e8f0;">Claim Territory</strong> - Click a grid cell, then click "Claim" (1⚡)
+            <span style="color:#22d3ee;">2.</span> <strong style="color:#e2e8f0;">Claim Territory</strong> - Click a grid cell to claim it (10⚡)
           </div>
 
           <div style="color:#94a3b8;margin-bottom:8px;">
-            <span style="color:#22d3ee;">3.</span> <strong style="color:#e2e8f0;">Build Structures</strong> - On your territory, build:
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:8px 0;padding:8px;background:#0f172a;border-radius:4px;">
-            <div style="color:#00ff41;"><span style="opacity:0.7;">■</span> Wall (2⚡) - Defense</div>
-            <div style="color:#00ff41;"><span style="opacity:0.7;">▲</span> Tower (3⚡) - Attack</div>
-            <div style="color:#00ffff;"><span style="opacity:0.7;">◇</span> Farm (4⚡) - +Points</div>
-            <div style="color:#ffbf00;"><span style="opacity:0.7;">★</span> Castle (10⚡) - HQ</div>
+            <span style="color:#22d3ee;">3.</span> <strong style="color:#e2e8f0;">Explore!</strong> - Move around the map. Stay near your territory to stay healthy!
           </div>
 
           <div style="color:#94a3b8;">
-            <span style="color:#22d3ee;">4.</span> <strong style="color:#e2e8f0;">Compete!</strong> - Build the biggest empire with your class!
+            <span style="color:#22d3ee;">4.</span> <strong style="color:#e2e8f0;">Compete!</strong> - Build the biggest territory with your class!
           </div>
         </div>
 
@@ -136,47 +128,19 @@ export class GridPanel {
             </div>
           </div>
 
-          <!-- Action buttons -->
+          <!-- Action button -->
           <div style="padding:8px 12px;background:#1f2937;">
-            <div style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Build Actions</div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
-              <button class="gw-action-btn" data-action="claim" data-cost="10">
-                □ Claim<span class="gw-cost">10⚡</span>
-              </button>
-              <button class="gw-action-btn" data-action="wall" data-cost="20">
-                ■ Wall<span class="gw-cost">20⚡</span>
-              </button>
-              <button class="gw-action-btn" data-action="tower" data-cost="30">
-                ▲ Tower<span class="gw-cost">30⚡</span>
-              </button>
-              <button class="gw-action-btn gw-btn-cyan" data-action="farm" data-cost="40">
-                ◇ Farm<span class="gw-cost">40⚡</span>
-              </button>
-              <button class="gw-action-btn gw-btn-amber" data-action="castle" data-cost="100">
-                ★ Castle<span class="gw-cost">100⚡</span>
+            <div style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Actions</div>
+            <div style="display:flex;gap:8px;">
+              <button class="gw-action-btn" data-action="claim" data-cost="10" style="flex:1;">
+                □ Claim Territory<span class="gw-cost">10⚡</span>
               </button>
             </div>
           </div>
 
           <!-- Status -->
           <div style="padding:8px 12px;font-size:0.75rem;color:#6b7280;border-top:1px solid #374151;">
-            <span id="gw-status">Click grid to select, then click action</span>
-          </div>
-
-          <!-- Teacher Wave Controls (hidden until teacher mode) -->
-          <div id="gw-teacher-controls" style="display:none;padding:8px 12px;background:#451a03;border-top:1px solid #78350f;">
-            <div style="font-size:0.65rem;color:#fbbf24;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">⚔️ Wave Controls (Teacher)</div>
-            <div style="display:flex;gap:8px;">
-              <button id="gw-start-wave" class="gw-action-btn gw-btn-wave" style="flex:1;">
-                ▶ Start Wave
-              </button>
-              <button id="gw-stop-wave" class="gw-action-btn gw-btn-wave" style="flex:1;" disabled>
-                ⏹ Stop Wave
-              </button>
-            </div>
-            <div id="gw-wave-status" style="margin-top:6px;font-size:0.7rem;color:#fcd34d;">
-              Wave: Idle
-            </div>
+            <span id="gw-status">Click a cell to claim territory</span>
           </div>
         </div>
       </div>
@@ -210,14 +174,6 @@ export class GridPanel {
           border-color: #00ffff;
           background: rgba(0, 255, 255, 0.2);
         }
-        .gw-btn-cyan {
-          border-color: #00ffff40;
-          color: #00ffff;
-        }
-        .gw-btn-amber {
-          border-color: #ffbf0040;
-          color: #ffbf00;
-        }
         .gw-cost {
           font-size: 0.5rem;
           opacity: 0.7;
@@ -229,15 +185,6 @@ export class GridPanel {
         #gw-help-btn:hover {
           border-color: #00ff41;
           color: #00ff41;
-        }
-        .gw-btn-wave {
-          border-color: #f59e0b40;
-          color: #fbbf24;
-        }
-        .gw-btn-wave:hover:not(:disabled) {
-          border-color: #f59e0b;
-          background: rgba(245, 158, 11, 0.2);
-          box-shadow: 0 0 10px #f59e0b40;
         }
       </style>
     `;
@@ -263,24 +210,13 @@ export class GridPanel {
       helpBtn.addEventListener('click', () => this.toggleHelp());
     }
 
-    // Action buttons (only those with data-action, not wave buttons)
+    // Action buttons
     this.container.querySelectorAll('.gw-action-btn[data-action]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const action = btn.dataset.action;
-        this.selectAction(action);
+        // For now, just enable "claim" mode
+        this.updateStatus('Click a cell on the map to claim it');
       });
     });
-
-    // Wave control buttons (teacher only)
-    const startWaveBtn = this.container.querySelector('#gw-start-wave');
-    const stopWaveBtn = this.container.querySelector('#gw-stop-wave');
-
-    if (startWaveBtn) {
-      startWaveBtn.addEventListener('click', () => this.startWave());
-    }
-    if (stopWaveBtn) {
-      stopWaveBtn.addEventListener('click', () => this.stopWave());
-    }
   }
 
   /**
@@ -347,21 +283,7 @@ export class GridPanel {
   }
 
   /**
-   * Select an action
-   */
-  selectAction(action) {
-    this.selectedAction = action;
-
-    // Update button states
-    this.container.querySelectorAll('.gw-action-btn').forEach(btn => {
-      btn.classList.toggle('selected', btn.dataset.action === action);
-    });
-
-    this.updateStatus(`Selected: ${action.toUpperCase()}. Click a cell to build.`);
-  }
-
-  /**
-   * Handle canvas click
+   * Handle canvas click - claim territory
    */
   async onCanvasClick(e) {
     const cell = this.renderer.mouseToGrid(e.clientX, e.clientY);
@@ -370,24 +292,10 @@ export class GridPanel {
     this.selectedCell = cell;
     this.renderer.pulseCell(cell.x, cell.y, '#ffffff', 300);
 
-    if (!this.selectedAction) {
-      this.updateStatus(`Selected (${cell.x}, ${cell.y}). Choose an action.`);
-      return;
-    }
-
-    // Execute action
+    // Try to claim the territory
     try {
-      if (this.selectedAction === 'claim') {
-        await this.state.claimTerritory(cell.x, cell.y);
-        this.updateStatus(`Claimed (${cell.x}, ${cell.y})!`);
-      } else {
-        // First claim if not owned, then build
-        if (!this.state.isOwnedByMe(cell.x, cell.y)) {
-          await this.state.claimTerritory(cell.x, cell.y);
-        }
-        await this.state.buildStructure(cell.x, cell.y, this.selectedAction);
-        this.updateStatus(`Built ${this.selectedAction} at (${cell.x}, ${cell.y})!`);
-      }
+      await this.state.claimTerritory(cell.x, cell.y);
+      this.updateStatus(`Claimed (${cell.x}, ${cell.y})!`);
 
       this.syncRendererState();
       this.updateButtonStates();
@@ -415,17 +323,14 @@ export class GridPanel {
 
     const renderState = this.state.getRenderState();
 
-    // Clear and reload
+    // Clear and reload territories
     this.renderer.territories = {};
-    this.renderer.structures = {};
-
     for (const t of renderState.territories) {
       this.renderer.setTerritory(t.x, t.y, t.owner);
     }
 
-    for (const s of renderState.structures) {
-      this.renderer.setStructure(s.x, s.y, s.type, s.owner);
-    }
+    // Update avatars
+    this.renderer.setAvatars(renderState.players || []);
   }
 
   /**
@@ -498,130 +403,8 @@ export class GridPanel {
     if (this.state) {
       this.state.handleWebSocketMessage(message);
     }
-
-    // Handle wave messages directly for enemy rendering
-    if (message.type === 'wave_started' || message.type === 'enemy_moved') {
-      this.updateEnemies(message.enemies || []);
-      this.updateWaveStatus(message);
-    } else if (message.type === 'wave_ended') {
-      this.updateEnemies([]);
-      this.updateWaveStatus(message);
-    }
   }
 
-  /**
-   * Enable teacher controls (called when teacher logs in)
-   */
-  enableTeacherControls() {
-    const controls = this.container.querySelector('#gw-teacher-controls');
-    if (controls) {
-      controls.style.display = 'block';
-    }
-  }
-
-  /**
-   * Start a new wave (teacher only)
-   */
-  async startWave() {
-    if (!this.state?.gameId) {
-      this.updateWaveStatus({ error: 'No active game' });
-      return;
-    }
-
-    try {
-      const startBtn = this.container.querySelector('#gw-start-wave');
-      const stopBtn = this.container.querySelector('#gw-stop-wave');
-      if (startBtn) startBtn.disabled = true;
-
-      const response = await fetch(`${this.state.serverUrl}/api/grid-wars/waves/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId: this.state.gameId })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to start wave');
-      }
-
-      if (stopBtn) stopBtn.disabled = false;
-      this.updateWaveStatus({ waveNumber: data.waveNumber, waveActive: true });
-      this.updateEnemies(data.enemies || []);
-
-    } catch (err) {
-      console.error('Failed to start wave:', err);
-      this.updateWaveStatus({ error: err.message });
-      const startBtn = this.container.querySelector('#gw-start-wave');
-      if (startBtn) startBtn.disabled = false;
-    }
-  }
-
-  /**
-   * Stop the current wave (teacher only)
-   */
-  async stopWave() {
-    if (!this.state?.gameId) return;
-
-    try {
-      const response = await fetch(`${this.state.serverUrl}/api/grid-wars/waves/stop`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId: this.state.gameId })
-      });
-
-      const data = await response.json();
-
-      const startBtn = this.container.querySelector('#gw-start-wave');
-      const stopBtn = this.container.querySelector('#gw-stop-wave');
-      if (startBtn) startBtn.disabled = false;
-      if (stopBtn) stopBtn.disabled = true;
-
-      this.updateEnemies([]);
-      this.updateWaveStatus({ waveActive: false });
-
-    } catch (err) {
-      console.error('Failed to stop wave:', err);
-    }
-  }
-
-  /**
-   * Update enemy positions on renderer
-   */
-  updateEnemies(enemies) {
-    if (this.renderer) {
-      this.renderer.setEnemies(enemies);
-    }
-  }
-
-  /**
-   * Update wave status display
-   */
-  updateWaveStatus(data) {
-    const statusEl = this.container.querySelector('#gw-wave-status');
-    if (!statusEl) return;
-
-    if (data.error) {
-      statusEl.textContent = `Error: ${data.error}`;
-      statusEl.style.color = '#f87171';
-    } else if (data.waveActive || data.type === 'wave_started') {
-      const waveNum = data.waveNumber || '?';
-      const enemyCount = data.enemies?.length || data.enemyCount || 0;
-      statusEl.textContent = `Wave ${waveNum} - ${enemyCount} enemies`;
-      statusEl.style.color = '#f59e0b';
-    } else if (data.type === 'wave_ended') {
-      statusEl.textContent = `Wave ${data.waveNumber} complete!`;
-      statusEl.style.color = '#34d399';
-      // Reset buttons
-      const startBtn = this.container.querySelector('#gw-start-wave');
-      const stopBtn = this.container.querySelector('#gw-stop-wave');
-      if (startBtn) startBtn.disabled = false;
-      if (stopBtn) stopBtn.disabled = true;
-    } else {
-      statusEl.textContent = 'Wave: Idle';
-      statusEl.style.color = '#fcd34d';
-    }
-  }
 }
 
 // Singleton instance
