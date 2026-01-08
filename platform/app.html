@@ -958,6 +958,11 @@
           if (currentPoints === 0) {
             await bootstrapGridWarsPoints(username);
           }
+
+          // If already in teacher mode, enable wave controls
+          if (isTeacher) {
+            gridPanel.enableTeacherControls();
+          }
         } else {
           console.warn('[GridWars] Failed to initialize - tables may not exist yet');
         }
