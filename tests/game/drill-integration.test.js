@@ -54,99 +54,108 @@ describe('Drill Integration', () => {
     });
   });
 
-  describe('Point Spending Scenarios', () => {
-    const costs = GRID_WARS_CONFIG.structureCosts;
+  describe('Claim Cost Economy', () => {
+    const claimCost = GRID_WARS_CONFIG.claimCost;
 
-    it('can afford 1 claim after 1 tin star', () => {
-      const points = GRID_WARS_CONFIG.starPoints.tin; // 1
-      expect(points >= costs.claim).toBe(true);
+    it('claim costs 10 points', () => {
+      expect(claimCost).toBe(10);
     });
 
-    it('can afford 1 wall after 1 bronze star', () => {
-      const points = GRID_WARS_CONFIG.starPoints.bronze; // 2
-      expect(points >= costs.wall).toBe(true);
-    });
-
-    it('can afford 1 tower after 1 gold star', () => {
+    it('cannot afford claim after single gold star (4 pts)', () => {
       const points = GRID_WARS_CONFIG.starPoints.gold; // 4
-      expect(points >= costs.tower).toBe(true);
+      expect(points >= claimCost).toBe(false);
     });
 
-    it('can afford 1 farm after 1 gold star', () => {
-      const points = GRID_WARS_CONFIG.starPoints.gold; // 4
-      expect(points >= costs.farm).toBe(true);
-    });
-
-    it('cannot afford castle after single gold star', () => {
-      const points = GRID_WARS_CONFIG.starPoints.gold; // 4
-      expect(points >= costs.castle).toBe(false);
-    });
-
-    it('can afford castle after 3 gold stars', () => {
-      const points = GRID_WARS_CONFIG.starPoints.gold * 3; // 12
-      expect(points >= costs.castle).toBe(true);
-    });
-
-    it('realistic session can afford tower and 2 claims', () => {
-      // After 2 gold stars (8 points), can afford tower (3) + 2 claims (2) = 5 points spent
+    it('cannot afford claim after 2 gold stars (8 pts)', () => {
       const points = GRID_WARS_CONFIG.starPoints.gold * 2; // 8
-      const spending = costs.tower + costs.claim * 2; // 3 + 2 = 5
-      expect(points >= spending).toBe(true);
-      expect(points - spending).toBe(3); // 3 points remaining
+      expect(points >= claimCost).toBe(false);
+    });
+
+    it('can afford claim after 3 gold stars (12 pts)', () => {
+      const points = GRID_WARS_CONFIG.starPoints.gold * 3; // 12
+      expect(points >= claimCost).toBe(true);
+    });
+
+    it('can afford claim after 4 silver stars (12 pts)', () => {
+      const points = GRID_WARS_CONFIG.starPoints.silver * 4; // 12
+      expect(points >= claimCost).toBe(true);
+    });
+
+    it('can afford claim after 5 bronze stars (10 pts)', () => {
+      const points = GRID_WARS_CONFIG.starPoints.bronze * 5; // 10
+      expect(points >= claimCost).toBe(true);
+    });
+
+    it('can afford claim after 10 tin stars (10 pts)', () => {
+      const points = GRID_WARS_CONFIG.starPoints.tin * 10; // 10
+      expect(points >= claimCost).toBe(true);
+    });
+
+    it('realistic session with 3 gold + 2 silver can afford 1 claim', () => {
+      // 3 gold (12) + 2 silver (6) = 18 points, claim costs 10, leaves 8
+      const points = GRID_WARS_CONFIG.starPoints.gold * 3 + GRID_WARS_CONFIG.starPoints.silver * 2;
+      expect(points).toBe(18);
+      expect(points >= claimCost).toBe(true);
+      expect(points - claimCost).toBe(8); // 8 points remaining
+    });
+
+    it('realistic session with mixed stars can afford claim', () => {
+      // 2 gold (8) + 1 silver (3) + 2 bronze (4) = 15 points
+      const points =
+        GRID_WARS_CONFIG.starPoints.gold * 2 +
+        GRID_WARS_CONFIG.starPoints.silver * 1 +
+        GRID_WARS_CONFIG.starPoints.bronze * 2;
+      expect(points).toBe(15);
+      expect(points >= claimCost).toBe(true);
     });
   });
 
   describe('Point Economy Balance', () => {
-    it('gold star equals tower cost + claim', () => {
-      expect(GRID_WARS_CONFIG.starPoints.gold).toBe(
-        GRID_WARS_CONFIG.structureCosts.tower + GRID_WARS_CONFIG.structureCosts.claim
-      );
+    it('3 gold stars can buy 1 claim with change', () => {
+      const goldPoints = GRID_WARS_CONFIG.starPoints.gold * 3; // 12
+      const claimCost = GRID_WARS_CONFIG.claimCost; // 10
+      expect(goldPoints - claimCost).toBe(2);
     });
 
-    it('silver star equals tower cost', () => {
-      expect(GRID_WARS_CONFIG.starPoints.silver).toBe(
-        GRID_WARS_CONFIG.structureCosts.tower
-      );
+    it('10 tin stars exactly pay for 1 claim', () => {
+      const tinPoints = GRID_WARS_CONFIG.starPoints.tin * 10; // 10
+      const claimCost = GRID_WARS_CONFIG.claimCost; // 10
+      expect(tinPoints - claimCost).toBe(0);
     });
 
-    it('bronze star equals wall cost', () => {
-      expect(GRID_WARS_CONFIG.starPoints.bronze).toBe(
-        GRID_WARS_CONFIG.structureCosts.wall
-      );
+    it('all star types exist', () => {
+      expect(GRID_WARS_CONFIG.starPoints.gold).toBeDefined();
+      expect(GRID_WARS_CONFIG.starPoints.silver).toBeDefined();
+      expect(GRID_WARS_CONFIG.starPoints.bronze).toBeDefined();
+      expect(GRID_WARS_CONFIG.starPoints.tin).toBeDefined();
     });
 
-    it('tin star equals claim cost', () => {
-      expect(GRID_WARS_CONFIG.starPoints.tin).toBe(
-        GRID_WARS_CONFIG.structureCosts.claim
-      );
+    it('star points are in correct order: gold > silver > bronze > tin', () => {
+      expect(GRID_WARS_CONFIG.starPoints.gold).toBeGreaterThan(GRID_WARS_CONFIG.starPoints.silver);
+      expect(GRID_WARS_CONFIG.starPoints.silver).toBeGreaterThan(GRID_WARS_CONFIG.starPoints.bronze);
+      expect(GRID_WARS_CONFIG.starPoints.bronze).toBeGreaterThan(GRID_WARS_CONFIG.starPoints.tin);
     });
   });
 });
 
-describe('Structure Costs Validation', () => {
-  const costs = GRID_WARS_CONFIG.structureCosts;
-
-  it('claim is the cheapest action', () => {
-    const values = Object.values(costs);
-    expect(costs.claim).toBe(Math.min(...values));
+describe('Config Validation', () => {
+  it('claim cost is positive integer', () => {
+    expect(GRID_WARS_CONFIG.claimCost).toBeGreaterThan(0);
+    expect(Number.isInteger(GRID_WARS_CONFIG.claimCost)).toBe(true);
   });
 
-  it('castle is the most expensive action', () => {
-    const values = Object.values(costs);
-    expect(costs.castle).toBe(Math.max(...values));
-  });
-
-  it('costs are in ascending order: claim < wall < tower < farm < castle', () => {
-    expect(costs.claim).toBeLessThan(costs.wall);
-    expect(costs.wall).toBeLessThan(costs.tower);
-    expect(costs.tower).toBeLessThan(costs.farm);
-    expect(costs.farm).toBeLessThan(costs.castle);
-  });
-
-  it('all costs are positive integers', () => {
-    for (const [name, cost] of Object.entries(costs)) {
-      expect(cost).toBeGreaterThan(0);
-      expect(Number.isInteger(cost)).toBe(true);
+  it('all star points are positive integers', () => {
+    for (const [name, points] of Object.entries(GRID_WARS_CONFIG.starPoints)) {
+      expect(points).toBeGreaterThan(0);
+      expect(Number.isInteger(points)).toBe(true);
     }
+  });
+
+  it('map size is defined', () => {
+    expect(GRID_WARS_CONFIG.mapSize).toBe(20);
+  });
+
+  it('no structure costs exist (simplified game)', () => {
+    expect(GRID_WARS_CONFIG.structureCosts).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
 /**
  * Grid Wars API Tests
- * Tests for the Grid Wars game endpoints
+ * Tests for the simplified Grid Wars territory game endpoints
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -32,9 +32,7 @@ describe('Grid Wars API', () => {
         id: 1,
         game_id: 'game-123',
         status: 'active',
-        map_size: 20,
-        wave_number: 0,
-        center_hp: 100
+        map_size: 20
       };
 
       mockFetch.mockResolvedValueOnce(mockResponse(mockGame));
@@ -53,9 +51,7 @@ describe('Grid Wars API', () => {
         id: 1,
         game_id: 'game-new-456',
         status: 'active',
-        map_size: 20,
-        wave_number: 0,
-        center_hp: 100
+        map_size: 20
       };
 
       mockFetch.mockResolvedValueOnce(mockResponse(newGame));
@@ -88,11 +84,8 @@ describe('Grid Wars API', () => {
           { x: 5, y: 5, owner: 'alice' },
           { x: 6, y: 5, owner: 'alice' }
         ],
-        structures: [
-          { x: 5, y: 5, structure_type: 'tower', owner: 'alice' }
-        ],
         players: [
-          { username: 'alice', action_points: 10, territories_count: 2, structures_count: 1 }
+          { username: 'alice', action_points: 10, territories_count: 2, position_x: 5, position_y: 5, health: 100 }
         ]
       };
 
@@ -104,8 +97,8 @@ describe('Grid Wars API', () => {
       expect(response.ok).toBe(true);
       expect(data.game.game_id).toBe('game-123');
       expect(data.territories).toHaveLength(2);
-      expect(data.structures).toHaveLength(1);
       expect(data.players).toHaveLength(1);
+      expect(data.players[0].position_x).toBe(5);
     });
 
     it('returns 404 for non-existent game', async () => {
@@ -121,14 +114,14 @@ describe('Grid Wars API', () => {
 
   describe('POST /api/grid-wars/action', () => {
     describe('claim action', () => {
-      it('claims empty territory', async () => {
+      it('claims empty territory (costs 10 points)', async () => {
         const successResponse = {
           success: true,
           action: 'claim',
           x: 5,
           y: 5,
-          cost: 1,
-          newPoints: 9
+          cost: 10,
+          newPoints: 0
         };
 
         mockFetch.mockResolvedValueOnce(mockResponse(successResponse));
@@ -149,7 +142,7 @@ describe('Grid Wars API', () => {
         expect(response.ok).toBe(true);
         expect(data.success).toBe(true);
         expect(data.action).toBe('claim');
-        expect(data.cost).toBe(1);
+        expect(data.cost).toBe(10);
       });
 
       it('rejects claim on owned territory', async () => {
@@ -177,7 +170,7 @@ describe('Grid Wars API', () => {
 
       it('rejects if insufficient points', async () => {
         mockFetch.mockResolvedValueOnce(mockResponse(
-          { error: 'Insufficient points. Need 1, have 0' },
+          { error: 'Insufficient points. Need 10, have 0' },
           400
         ));
 
@@ -222,113 +215,6 @@ describe('Grid Wars API', () => {
       });
     });
 
-    describe('build action', () => {
-      it('builds structure on owned territory', async () => {
-        const successResponse = {
-          success: true,
-          action: 'build',
-          structureType: 'tower',
-          x: 5,
-          y: 5,
-          cost: 3,
-          newPoints: 7
-        };
-
-        mockFetch.mockResolvedValueOnce(mockResponse(successResponse));
-
-        const response = await fetch(`${API_BASE}/api/grid-wars/action`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            gameId: 'game-123',
-            username: 'alice',
-            action: 'build',
-            x: 5,
-            y: 5,
-            structureType: 'tower'
-          })
-        });
-        const data = await response.json();
-
-        expect(response.ok).toBe(true);
-        expect(data.success).toBe(true);
-        expect(data.structureType).toBe('tower');
-        expect(data.cost).toBe(3);
-      });
-
-      it('rejects build on unowned territory', async () => {
-        mockFetch.mockResolvedValueOnce(mockResponse(
-          { error: 'You must own the territory to build' },
-          400
-        ));
-
-        const response = await fetch(`${API_BASE}/api/grid-wars/action`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            gameId: 'game-123',
-            username: 'bob',
-            action: 'build',
-            x: 5,
-            y: 5,
-            structureType: 'tower'
-          })
-        });
-        const data = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(data.error).toContain('must own the territory');
-      });
-
-      it('rejects invalid structure type', async () => {
-        mockFetch.mockResolvedValueOnce(mockResponse(
-          { error: 'Invalid structure type' },
-          400
-        ));
-
-        const response = await fetch(`${API_BASE}/api/grid-wars/action`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            gameId: 'game-123',
-            username: 'alice',
-            action: 'build',
-            x: 5,
-            y: 5,
-            structureType: 'spaceship'
-          })
-        });
-        const data = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(data.error).toBe('Invalid structure type');
-      });
-
-      it('rejects build where structure exists', async () => {
-        mockFetch.mockResolvedValueOnce(mockResponse(
-          { error: 'Structure already exists at this location' },
-          400
-        ));
-
-        const response = await fetch(`${API_BASE}/api/grid-wars/action`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            gameId: 'game-123',
-            username: 'alice',
-            action: 'build',
-            x: 5,
-            y: 5,
-            structureType: 'wall'
-          })
-        });
-        const data = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(data.error).toContain('Structure already exists');
-      });
-    });
-
     it('rejects missing required fields', async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(
         { error: 'Missing required fields: gameId, username, action, x, y' },
@@ -349,9 +235,9 @@ describe('Grid Wars API', () => {
       expect(data.error).toContain('Missing required fields');
     });
 
-    it('rejects invalid action type', async () => {
+    it('rejects invalid action type (only claim is valid)', async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(
-        { error: 'Invalid action. Use "claim" or "build"' },
+        { error: 'Invalid action. Only "claim" is supported' },
         400
       ));
 
@@ -361,7 +247,7 @@ describe('Grid Wars API', () => {
         body: JSON.stringify({
           gameId: 'game-123',
           username: 'alice',
-          action: 'attack',
+          action: 'build',
           x: 5,
           y: 5
         })
@@ -369,7 +255,7 @@ describe('Grid Wars API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toBe('Invalid action. Use "claim" or "build"');
+      expect(data.error).toBe('Invalid action. Only "claim" is supported');
     });
   });
 
@@ -549,13 +435,16 @@ describe('Grid Wars API', () => {
   });
 
   describe('GET /api/grid-wars/players/:username', () => {
-    it('returns player stats', async () => {
+    it('returns player stats with position data', async () => {
       const mockPlayer = {
         username: 'alice',
         game_id: 'game-123',
         action_points: 10,
         territories_count: 5,
-        structures_count: 2
+        position_x: 7,
+        position_y: 8,
+        health: 100,
+        avatar_format: 'explorer'
       };
 
       mockFetch.mockResolvedValueOnce(mockResponse(mockPlayer));
@@ -567,6 +456,9 @@ describe('Grid Wars API', () => {
       expect(data.username).toBe('alice');
       expect(data.action_points).toBe(10);
       expect(data.territories_count).toBe(5);
+      expect(data.position_x).toBe(7);
+      expect(data.position_y).toBe(8);
+      expect(data.health).toBe(100);
     });
 
     it('returns defaults for new player', async () => {
@@ -575,7 +467,9 @@ describe('Grid Wars API', () => {
         game_id: 'game-123',
         action_points: 0,
         territories_count: 0,
-        structures_count: 0
+        position_x: null,
+        position_y: null,
+        health: 100
       };
 
       mockFetch.mockResolvedValueOnce(mockResponse(defaultPlayer));
@@ -585,6 +479,7 @@ describe('Grid Wars API', () => {
 
       expect(response.ok).toBe(true);
       expect(data.action_points).toBe(0);
+      expect(data.health).toBe(100);
     });
 
     it('requires gameId parameter', async () => {
@@ -602,10 +497,10 @@ describe('Grid Wars API', () => {
   });
 
   describe('GET /api/grid-wars/leaderboard', () => {
-    it('returns sorted leaderboard', async () => {
+    it('returns sorted leaderboard by territory count', async () => {
       const mockLeaderboard = [
-        { username: 'alice', real_name: 'Alice', action_points: 10, territories_count: 5, structures_count: 2 },
-        { username: 'bob', real_name: 'Bob', action_points: 8, territories_count: 3, structures_count: 1 }
+        { username: 'alice', real_name: 'Alice', action_points: 10, territories_count: 5 },
+        { username: 'bob', real_name: 'Bob', action_points: 8, territories_count: 3 }
       ];
 
       mockFetch.mockResolvedValueOnce(mockResponse(mockLeaderboard));
@@ -631,32 +526,92 @@ describe('Grid Wars API', () => {
       expect(data.error).toContain('gameId query parameter required');
     });
   });
+
+  describe('POST /api/grid-wars/avatar/move', () => {
+    it('moves avatar to new position', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({
+        success: true,
+        x: 10,
+        y: 12,
+        health: 95
+      }));
+
+      const response = await fetch(`${API_BASE}/api/grid-wars/avatar/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: 'game-123',
+          username: 'alice',
+          x: 10,
+          y: 12
+        })
+      });
+      const data = await response.json();
+
+      expect(response.ok).toBe(true);
+      expect(data.success).toBe(true);
+      expect(data.x).toBe(10);
+      expect(data.y).toBe(12);
+    });
+
+    it('health decreases when far from owned territory', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({
+        success: true,
+        x: 15,
+        y: 15,
+        health: 80,
+        healthChange: -5
+      }));
+
+      const response = await fetch(`${API_BASE}/api/grid-wars/avatar/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: 'game-123',
+          username: 'alice',
+          x: 15,
+          y: 15
+        })
+      });
+      const data = await response.json();
+
+      expect(response.ok).toBe(true);
+      expect(data.health).toBeLessThan(100);
+    });
+
+    it('rejects move out of bounds', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(
+        { error: 'Coordinates out of bounds' },
+        400
+      ));
+
+      const response = await fetch(`${API_BASE}/api/grid-wars/avatar/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: 'game-123',
+          username: 'alice',
+          x: 25,
+          y: 5
+        })
+      });
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Coordinates out of bounds');
+    });
+  });
 });
 
-describe('Grid Wars Structure Costs', () => {
-  it('claim costs 1 point', () => {
-    const costs = { claim: 1, wall: 2, tower: 3, farm: 4, castle: 10 };
-    expect(costs.claim).toBe(1);
+describe('Grid Wars Simplified Config', () => {
+  it('claim costs 10 points', () => {
+    const config = { claimCost: 10 };
+    expect(config.claimCost).toBe(10);
   });
 
-  it('wall costs 2 points', () => {
-    const costs = { claim: 1, wall: 2, tower: 3, farm: 4, castle: 10 };
-    expect(costs.wall).toBe(2);
-  });
-
-  it('tower costs 3 points', () => {
-    const costs = { claim: 1, wall: 2, tower: 3, farm: 4, castle: 10 };
-    expect(costs.tower).toBe(3);
-  });
-
-  it('farm costs 4 points', () => {
-    const costs = { claim: 1, wall: 2, tower: 3, farm: 4, castle: 10 };
-    expect(costs.farm).toBe(4);
-  });
-
-  it('castle costs 10 points', () => {
-    const costs = { claim: 1, wall: 2, tower: 3, farm: 4, castle: 10 };
-    expect(costs.castle).toBe(10);
+  it('no structure costs exist (simplified)', () => {
+    const config = { claimCost: 10 };
+    expect(config.structureCosts).toBeUndefined();
   });
 });
 

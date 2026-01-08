@@ -1,6 +1,6 @@
 /**
  * Real-time Sync Tests
- * Tests for WebSocket-based real-time updates in Grid Wars
+ * Tests for WebSocket-based real-time updates in Grid Wars (simplified territory exploration)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -18,7 +18,7 @@ describe('Real-time Sync', () => {
   const setupInitMocks = () => {
     // First call: /api/grid-wars/games/active
     mockFetch.mockResolvedValueOnce(mockResponse({
-      game_id: 'test-game',  // Note: API returns game_id not gameId
+      game_id: 'test-game',
       status: 'active'
     }));
     // Second call: /api/grid-wars/games/test-game/state (from refreshState)
@@ -26,7 +26,6 @@ describe('Real-time Sync', () => {
       game_id: 'test-game',
       status: 'active',
       territories: [],
-      structures: [],
       players: []
     }));
   };
@@ -59,58 +58,6 @@ describe('Real-time Sync', () => {
       expect(state.getTerritoryOwner(5, 5)).toBe('bob');
     });
 
-    it('updates state on structure_built message', () => {
-      // First claim territory
-      state.handleWebSocketMessage({
-        type: 'territory_claimed',
-        gameId: 'test-game',
-        username: 'bob',
-        x: 3,
-        y: 3
-      });
-
-      // Then build structure
-      state.handleWebSocketMessage({
-        type: 'structure_built',
-        gameId: 'test-game',
-        username: 'bob',
-        x: 3,
-        y: 3,
-        structureType: 'tower'
-      });
-
-      expect(state.getStructure(3, 3)).toEqual(
-        expect.objectContaining({
-          structure_type: 'tower',
-          owner: 'bob'
-        })
-      );
-    });
-
-    it('updates state on structure_destroyed message', () => {
-      // Setup structure
-      state.handleWebSocketMessage({
-        type: 'structure_built',
-        gameId: 'test-game',
-        username: 'alice',
-        x: 7,
-        y: 7,
-        structureType: 'wall'
-      });
-
-      expect(state.getStructure(7, 7)).toBeTruthy();
-
-      // Destroy it
-      state.handleWebSocketMessage({
-        type: 'structure_destroyed',
-        gameId: 'test-game',
-        x: 7,
-        y: 7
-      });
-
-      expect(state.getStructure(7, 7)).toBeNull();
-    });
-
     it('updates player points on points_earned message', () => {
       state.handleWebSocketMessage({
         type: 'points_earned',
@@ -125,6 +72,34 @@ describe('Real-time Sync', () => {
       const player = state.players.get('bob');
       expect(player).toBeTruthy();
       expect(player.action_points).toBe(10);
+    });
+
+    it('updates player position on avatar_moved message', () => {
+      // First create the player via points_earned
+      state.handleWebSocketMessage({
+        type: 'points_earned',
+        gameId: 'test-game',
+        username: 'bob',
+        points: 4,
+        total: 4,
+        starType: 'gold'
+      });
+
+      // Now test avatar_moved
+      state.handleWebSocketMessage({
+        type: 'avatar_moved',
+        gameId: 'test-game',
+        username: 'bob',
+        x: 10,
+        y: 12,
+        health: 85
+      });
+
+      const player = state.players.get('bob');
+      expect(player).toBeTruthy();
+      expect(player.position_x).toBe(10);
+      expect(player.position_y).toBe(12);
+      expect(player.health).toBe(85);
     });
 
     it('ignores messages for different game', () => {
@@ -156,8 +131,7 @@ describe('Real-time Sync', () => {
 
     beforeEach(async () => {
       callbacks = {
-        onTerritoryChanged: vi.fn(),  // Note: callback is onTerritoryChanged not onTerritoryClaimed
-        onStructureBuilt: vi.fn(),
+        onTerritoryChanged: vi.fn(),
         onPointsEarned: vi.fn(),
         onStateChange: vi.fn()
       };
@@ -184,21 +158,6 @@ describe('Real-time Sync', () => {
       state.handleWebSocketMessage(message);
 
       expect(callbacks.onTerritoryChanged).toHaveBeenCalledWith(message);
-    });
-
-    it('calls onStructureBuilt callback', () => {
-      const message = {
-        type: 'structure_built',
-        gameId: 'test-game',
-        username: 'bob',
-        x: 4,
-        y: 5,
-        structureType: 'farm'
-      };
-
-      state.handleWebSocketMessage(message);
-
-      expect(callbacks.onStructureBuilt).toHaveBeenCalledWith(message);
     });
 
     it('calls onPointsEarned callback for current user only', () => {
@@ -280,23 +239,14 @@ describe('Real-time Sync', () => {
       expect(state.getTerritoryOwner(1, 1)).toBe('bob');
     });
 
-    it('handles mixed message types', () => {
-      // Claim, build, points, build sequence
+    it('handles mixed message types (territory and points)', () => {
+      // Claim, points, claim sequence
       state.handleWebSocketMessage({
         type: 'territory_claimed',
         gameId: 'test-game',
         username: 'alice',
         x: 10,
         y: 10
-      });
-
-      state.handleWebSocketMessage({
-        type: 'structure_built',
-        gameId: 'test-game',
-        username: 'alice',
-        x: 10,
-        y: 10,
-        structureType: 'tower'
       });
 
       state.handleWebSocketMessage({
@@ -316,7 +266,6 @@ describe('Real-time Sync', () => {
       });
 
       expect(state.getTerritoryOwner(10, 10)).toBe('alice');
-      expect(state.getStructure(10, 10)?.structure_type).toBe('tower');
       expect(state.players.get('alice')?.action_points).toBe(8);
       expect(state.getTerritoryOwner(11, 10)).toBe('alice');
     });
@@ -343,37 +292,58 @@ describe('Real-time Sync', () => {
       expect(state.players.get('bob')?.territories_count).toBe(2);
     });
 
-    it('tracks structure counts correctly', () => {
-      // Setup: Build 2 structures for alice, 1 for bob
+    it('handles avatar movement updates', () => {
+      // First create the players via points_earned
       state.handleWebSocketMessage({
-        type: 'structure_built',
+        type: 'points_earned',
         gameId: 'test-game',
         username: 'alice',
-        x: 0,
-        y: 0,
-        structureType: 'tower'
+        points: 4,
+        total: 4,
+        starType: 'gold'
       });
-
       state.handleWebSocketMessage({
-        type: 'structure_built',
+        type: 'points_earned',
         gameId: 'test-game',
         username: 'bob',
+        points: 3,
+        total: 3,
+        starType: 'silver'
+      });
+
+      // Now test multiple players moving
+      state.handleWebSocketMessage({
+        type: 'avatar_moved',
+        gameId: 'test-game',
+        username: 'alice',
         x: 5,
         y: 5,
-        structureType: 'wall'
+        health: 100
       });
 
       state.handleWebSocketMessage({
-        type: 'structure_built',
+        type: 'avatar_moved',
         gameId: 'test-game',
-        username: 'alice',
-        x: 1,
-        y: 0,
-        structureType: 'farm'
+        username: 'bob',
+        x: 8,
+        y: 8,
+        health: 90
       });
 
-      expect(state.players.get('alice')?.structures_count).toBe(2);
-      expect(state.players.get('bob')?.structures_count).toBe(1);
+      state.handleWebSocketMessage({
+        type: 'avatar_moved',
+        gameId: 'test-game',
+        username: 'alice',
+        x: 6,
+        y: 5,
+        health: 95
+      });
+
+      expect(state.players.get('alice')?.position_x).toBe(6);
+      expect(state.players.get('alice')?.position_y).toBe(5);
+      expect(state.players.get('alice')?.health).toBe(95);
+      expect(state.players.get('bob')?.position_x).toBe(8);
+      expect(state.players.get('bob')?.health).toBe(90);
     });
   });
 
@@ -392,23 +362,43 @@ describe('Real-time Sync', () => {
         y: 8
       });
 
-      state.handleWebSocketMessage({
-        type: 'structure_built',
-        gameId: 'test-game',
-        username: 'bob',
-        x: 8,
-        y: 8,
-        structureType: 'castle'
-      });
-
       const renderState = state.getRenderState();
 
       expect(renderState.territories).toContainEqual(
         expect.objectContaining({ x: 8, y: 8, owner: 'bob' })
       );
+    });
 
-      expect(renderState.structures).toContainEqual(
-        expect.objectContaining({ x: 8, y: 8, type: 'castle', owner: 'bob' })
+    it('includes player positions in render state', () => {
+      // First create the player via points_earned
+      state.handleWebSocketMessage({
+        type: 'points_earned',
+        gameId: 'test-game',
+        username: 'bob',
+        points: 4,
+        total: 4,
+        starType: 'gold'
+      });
+
+      // Then move the avatar
+      state.handleWebSocketMessage({
+        type: 'avatar_moved',
+        gameId: 'test-game',
+        username: 'bob',
+        x: 5,
+        y: 7,
+        health: 80
+      });
+
+      const renderState = state.getRenderState();
+
+      expect(renderState.players).toContainEqual(
+        expect.objectContaining({
+          username: 'bob',
+          x: 5,
+          y: 7,
+          health: 80
+        })
       );
     });
   });
@@ -437,12 +427,9 @@ describe('Real-time Sync', () => {
           { x: 5, y: 5, owner: 'bob' },
           { x: 6, y: 6, owner: 'charlie' }
         ],
-        structures: [
-          { x: 5, y: 5, structure_type: 'tower', owner: 'bob', health: 100 }
-        ],
         players: [
-          { username: 'bob', action_points: 10, territories_count: 1, structures_count: 1 },
-          { username: 'charlie', action_points: 5, territories_count: 1, structures_count: 0 }
+          { username: 'bob', action_points: 10, territories_count: 1, position_x: 5, position_y: 5, health: 100 },
+          { username: 'charlie', action_points: 5, territories_count: 1, position_x: 6, position_y: 6, health: 95 }
         ]
       });
 
@@ -452,67 +439,28 @@ describe('Real-time Sync', () => {
       // New state should be present
       expect(state.getTerritoryOwner(5, 5)).toBe('bob');
       expect(state.getTerritoryOwner(6, 6)).toBe('charlie');
-      expect(state.getStructure(5, 5)?.structure_type).toBe('tower');
       expect(state.players.get('bob')?.action_points).toBe(10);
       expect(state.players.get('charlie')?.action_points).toBe(5);
-    });
-  });
-
-  describe('Wave Messages (Future)', () => {
-    beforeEach(async () => {
-      setupInitMocks();
-      await state.init();
-    });
-
-    it('handles wave_started message', () => {
-      // For now, just verify it doesn't crash
-      expect(() => {
-        state.handleWebSocketMessage({
-          type: 'wave_started',
-          gameId: 'test-game',
-          waveNumber: 1,
-          enemies: [
-            { x: 0, y: 10, hp: 100 },
-            { x: 19, y: 10, hp: 100 }
-          ]
-        });
-      }).not.toThrow();
-    });
-
-    it('handles enemy_moved message', () => {
-      // For now, just verify it doesn't crash
-      expect(() => {
-        state.handleWebSocketMessage({
-          type: 'enemy_moved',
-          gameId: 'test-game',
-          enemies: [
-            { x: 1, y: 10, hp: 90 },
-            { x: 18, y: 10, hp: 100 }
-          ]
-        });
-      }).not.toThrow();
+      expect(state.players.get('bob')?.position_x).toBe(5);
+      expect(state.players.get('charlie')?.health).toBe(95);
     });
   });
 });
 
 describe('WebSocket Client Grid Integration', () => {
   // Note: These tests verify the message routing in websocket-client.js
-  // We test via a mock WebSocketClient to avoid importing the full module
+  // We test via a mock WebSocketClient to replicate the message routing logic
 
   it('routes grid messages to onGridMessage callback', () => {
-    // Create a minimal WebSocketClient mock that replicates the message routing logic
     const onGridMessage = vi.fn();
 
-    // Replicate the handleMessage switch statement for grid messages
+    // Replicate the handleMessage switch statement for grid messages (simplified version)
     const handleMessage = (message) => {
       switch (message.type) {
         case 'territory_claimed':
-        case 'structure_built':
-        case 'structure_destroyed':
         case 'points_earned':
         case 'grid_full_state':
-        case 'wave_started':
-        case 'enemy_moved':
+        case 'avatar_moved':
           onGridMessage(message);
           break;
       }
@@ -521,37 +469,32 @@ describe('WebSocket Client Grid Integration', () => {
     // Simulate receiving messages
     const messages = [
       { type: 'territory_claimed', gameId: 'g1', username: 'alice', x: 1, y: 1 },
-      { type: 'structure_built', gameId: 'g1', username: 'alice', x: 1, y: 1, structureType: 'tower' },
       { type: 'points_earned', gameId: 'g1', username: 'alice', points: 4, total: 10 },
-      { type: 'structure_destroyed', gameId: 'g1', x: 1, y: 1 },
-      { type: 'grid_full_state', gameId: 'g1', territories: [], structures: [], players: [] }
+      { type: 'grid_full_state', gameId: 'g1', territories: [], players: [] },
+      { type: 'avatar_moved', gameId: 'g1', username: 'alice', x: 5, y: 5, health: 100 }
     ];
 
     for (const msg of messages) {
       handleMessage(msg);
     }
 
-    expect(onGridMessage).toHaveBeenCalledTimes(5);
+    expect(onGridMessage).toHaveBeenCalledTimes(4);
     expect(onGridMessage).toHaveBeenCalledWith(messages[0]);
     expect(onGridMessage).toHaveBeenCalledWith(messages[1]);
     expect(onGridMessage).toHaveBeenCalledWith(messages[2]);
     expect(onGridMessage).toHaveBeenCalledWith(messages[3]);
-    expect(onGridMessage).toHaveBeenCalledWith(messages[4]);
   });
 
   it('does not route non-grid messages to onGridMessage', () => {
     const onGridMessage = vi.fn();
 
-    // Replicate the handleMessage logic
+    // Replicate the handleMessage logic (simplified)
     const handleMessage = (message) => {
       switch (message.type) {
         case 'territory_claimed':
-        case 'structure_built':
-        case 'structure_destroyed':
         case 'points_earned':
         case 'grid_full_state':
-        case 'wave_started':
-        case 'enemy_moved':
+        case 'avatar_moved':
           onGridMessage(message);
           break;
         // Other message types don't call onGridMessage
@@ -566,26 +509,25 @@ describe('WebSocket Client Grid Integration', () => {
     expect(onGridMessage).not.toHaveBeenCalled();
   });
 
-  it('routes wave messages correctly', () => {
+  it('routes avatar_moved message correctly', () => {
     const onGridMessage = vi.fn();
 
     const handleMessage = (message) => {
       switch (message.type) {
         case 'territory_claimed':
-        case 'structure_built':
-        case 'structure_destroyed':
         case 'points_earned':
         case 'grid_full_state':
-        case 'wave_started':
-        case 'enemy_moved':
+        case 'avatar_moved':
           onGridMessage(message);
           break;
       }
     };
 
-    handleMessage({ type: 'wave_started', gameId: 'g1', waveNumber: 1, enemies: [] });
-    handleMessage({ type: 'enemy_moved', gameId: 'g1', enemies: [{ x: 1, y: 1, hp: 100 }] });
+    handleMessage({ type: 'avatar_moved', gameId: 'g1', username: 'bob', x: 10, y: 10, health: 75 });
 
-    expect(onGridMessage).toHaveBeenCalledTimes(2);
+    expect(onGridMessage).toHaveBeenCalledTimes(1);
+    expect(onGridMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'avatar_moved', username: 'bob', health: 75 })
+    );
   });
 });

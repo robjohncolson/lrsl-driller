@@ -269,7 +269,19 @@ function getUniqueAvatar(username, existingAvatars = []) {
   return generateAvatarDisplay(username, format);
 }
 
-// Export for Node.js (CommonJS)
+// ES module exports (for Vite/Vitest)
+export {
+  FRUIT_EMOJIS,
+  ANIMAL_EMOJIS,
+  parseUsername,
+  getFruitEmoji,
+  getAnimalEmoji,
+  generateAvatarDisplay,
+  assignAvatarFormat,
+  getUniqueAvatar
+};
+
+// Export for Node.js (CommonJS) - used when loaded with require()
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     FRUIT_EMOJIS,
@@ -283,7 +295,7 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-// For browser ES modules, use window global
+// For browser global script loading (no module system)
 if (typeof window !== 'undefined') {
   window.AvatarUtils = {
     FRUIT_EMOJIS,

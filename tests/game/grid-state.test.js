@@ -1,6 +1,7 @@
 /**
  * Grid State Tests
  * Tests for the client-side Grid Wars state management
+ * Updated for simplified territory-only gameplay (no structures)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -34,7 +35,6 @@ describe('GridWarsState', () => {
       expect(s.username).toBeNull();
       expect(s.gameId).toBeNull();
       expect(s.territories.size).toBe(0);
-      expect(s.structures.size).toBe(0);
       expect(s.players.size).toBe(0);
     });
 
@@ -59,7 +59,7 @@ describe('GridWarsState', () => {
   describe('init', () => {
     it('fetches active game and sets gameId', async () => {
       const mockGame = { game_id: 'game-123', status: 'active', map_size: 20 };
-      const mockState = { game: mockGame, territories: [], structures: [], players: [] };
+      const mockState = { game: mockGame, territories: [], players: [] };
 
       mockFetch
         .mockResolvedValueOnce(mockResponse(mockGame))
@@ -85,7 +85,6 @@ describe('GridWarsState', () => {
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: mockGame,
         territories: [],
-        structures: [],
         players: []
       }));
       await state.init();
@@ -96,10 +95,9 @@ describe('GridWarsState', () => {
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [
-          { x: 5, y: 5, owner: 'alice' },
-          { x: 6, y: 5, owner: 'bob' }
+          { x: 5, y: 5, owner: 'alice', health: 100 },
+          { x: 6, y: 5, owner: 'bob', health: 80 }
         ],
-        structures: [],
         players: []
       }));
 
@@ -110,38 +108,31 @@ describe('GridWarsState', () => {
       expect(state.getTerritoryOwner(6, 5)).toBe('bob');
     });
 
-    it('updates structures from server', async () => {
+    it('updates players from server with position data', async () => {
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        structures: [
-          { x: 5, y: 5, structure_type: 'tower', owner: 'alice', health: 100 }
-        ],
-        players: []
-      }));
-
-      await state.refreshState();
-
-      expect(state.structures.size).toBe(1);
-      const structure = state.getStructure(5, 5);
-      expect(structure.structure_type).toBe('tower');
-      expect(structure.owner).toBe('alice');
-    });
-
-    it('updates players from server', async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse({
-        game: { game_id: 'game-123' },
-        territories: [],
-        structures: [],
         players: [
-          { username: 'alice', action_points: 10, territories_count: 5, structures_count: 2 }
+          {
+            username: 'alice',
+            action_points: 10,
+            territories_count: 5,
+            health: 90,
+            position_x: 5,
+            position_y: 5,
+            avatar_format: 'A'
+          }
         ]
       }));
 
       await state.refreshState();
 
       expect(state.players.size).toBe(1);
-      expect(state.players.get('alice').action_points).toBe(10);
+      const player = state.players.get('alice');
+      expect(player.action_points).toBe(10);
+      expect(player.health).toBe(90);
+      expect(player.position_x).toBe(5);
+      expect(player.position_y).toBe(5);
     });
 
     it('throws if game not initialized', async () => {
@@ -156,8 +147,7 @@ describe('GridWarsState', () => {
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        structures: [],
-        players: [{ username: 'alice', action_points: 15, territories_count: 0, structures_count: 0 }]
+        players: [{ username: 'alice', action_points: 15, territories_count: 0, health: 100 }]
       }));
       state.setUser('alice');
       await state.init();
@@ -184,8 +174,7 @@ describe('GridWarsState', () => {
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        structures: [],
-        players: [{ username: 'alice', action_points: 10, territories_count: 5, structures_count: 2 }]
+        players: [{ username: 'alice', action_points: 10, territories_count: 5, health: 100 }]
       }));
       state.setUser('alice');
       await state.init();
@@ -195,7 +184,6 @@ describe('GridWarsState', () => {
       const stats = state.getPlayerStats();
       expect(stats.action_points).toBe(10);
       expect(stats.territories_count).toBe(5);
-      expect(stats.structures_count).toBe(2);
     });
 
     it('returns defaults for no user', () => {
@@ -203,6 +191,7 @@ describe('GridWarsState', () => {
       const stats = state.getPlayerStats();
       expect(stats.action_points).toBe(0);
       expect(stats.territories_count).toBe(0);
+      expect(stats.health).toBe(100);
     });
   });
 
@@ -212,7 +201,6 @@ describe('GridWarsState', () => {
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [{ x: 5, y: 5, owner: 'alice' }],
-        structures: [],
         players: []
       }));
       state.setUser('alice');
@@ -233,58 +221,31 @@ describe('GridWarsState', () => {
     });
   });
 
-  describe('canAfford', () => {
+  describe('canAffordClaim', () => {
     beforeEach(async () => {
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        structures: [],
-        players: [{ username: 'alice', action_points: 5, territories_count: 0, structures_count: 0 }]
+        players: [{ username: 'alice', action_points: 15, territories_count: 0, health: 100 }]
       }));
       state.setUser('alice');
       await state.init();
     });
 
-    it('returns true if can afford claim (1 point)', () => {
-      expect(state.canAfford('claim')).toBe(true);
+    it('returns true if can afford claim (10 points)', () => {
+      expect(state.canAffordClaim()).toBe(true);
     });
 
-    it('returns true if can afford wall (2 points)', () => {
-      expect(state.canAfford('build', 'wall')).toBe(true);
-    });
-
-    it('returns true if can afford tower (3 points)', () => {
-      expect(state.canAfford('build', 'tower')).toBe(true);
-    });
-
-    it('returns true if can afford farm (4 points)', () => {
-      expect(state.canAfford('build', 'farm')).toBe(true);
-    });
-
-    it('returns false if cannot afford castle (10 points)', () => {
-      expect(state.canAfford('build', 'castle')).toBe(false);
-    });
-
-    it('returns false for invalid structure type', () => {
-      expect(state.canAfford('build', 'spaceship')).toBe(false);
+    it('returns false if cannot afford claim', () => {
+      state.players.set('alice', { action_points: 5, territories_count: 0, health: 100 });
+      expect(state.canAffordClaim()).toBe(false);
     });
   });
 
-  describe('getActionCost', () => {
-    it('returns 1 for claim', () => {
-      expect(state.getActionCost('claim')).toBe(1);
-    });
-
-    it('returns correct costs for structures', () => {
-      expect(state.getActionCost('build', 'wall')).toBe(2);
-      expect(state.getActionCost('build', 'tower')).toBe(3);
-      expect(state.getActionCost('build', 'farm')).toBe(4);
-      expect(state.getActionCost('build', 'castle')).toBe(10);
-    });
-
-    it('returns 0 for invalid action', () => {
-      expect(state.getActionCost('attack')).toBe(0);
+  describe('getClaimCost', () => {
+    it('returns 10 for claim', () => {
+      expect(state.getClaimCost()).toBe(10);
     });
   });
 
@@ -294,8 +255,7 @@ describe('GridWarsState', () => {
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        structures: [],
-        players: [{ username: 'alice', action_points: 10, territories_count: 0, structures_count: 0 }]
+        players: [{ username: 'alice', action_points: 20, territories_count: 0, health: 100 }]
       }));
       state.setUser('alice');
       await state.init();
@@ -308,8 +268,8 @@ describe('GridWarsState', () => {
         action: 'claim',
         x: 5,
         y: 5,
-        cost: 1,
-        newPoints: 9
+        cost: 10,
+        newPoints: 10
       }));
 
       const result = await state.claimTerritory(5, 5);
@@ -319,10 +279,8 @@ describe('GridWarsState', () => {
     });
 
     it('applies optimistic update', async () => {
-      // Set up the mock before starting the async operation
       mockFetch.mockResolvedValueOnce(mockResponse({ success: true }));
 
-      // Start the claim but don't await yet
       const claimPromise = state.claimTerritory(5, 5);
 
       // Check optimistic update was applied immediately
@@ -347,7 +305,7 @@ describe('GridWarsState', () => {
     });
 
     it('throws if insufficient points', async () => {
-      state.players.set('alice', { action_points: 0, territories_count: 0, structures_count: 0 });
+      state.players.set('alice', { action_points: 5, territories_count: 0, health: 100 });
 
       await expect(state.claimTerritory(5, 5)).rejects.toThrow('Insufficient action points');
     });
@@ -360,62 +318,13 @@ describe('GridWarsState', () => {
     });
   });
 
-  describe('buildStructure', () => {
-    beforeEach(async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
-      mockFetch.mockResolvedValueOnce(mockResponse({
-        game: { game_id: 'game-123' },
-        territories: [{ x: 5, y: 5, owner: 'alice' }],
-        structures: [],
-        players: [{ username: 'alice', action_points: 10, territories_count: 1, structures_count: 0 }]
-      }));
-      state.setUser('alice');
-      await state.init();
-      mockFetch.mockClear();
-    });
-
-    it('builds structure successfully', async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse({
-        success: true,
-        action: 'build',
-        structureType: 'tower',
-        x: 5,
-        y: 5,
-        cost: 3,
-        newPoints: 7
-      }));
-
-      const result = await state.buildStructure(5, 5, 'tower');
-
-      expect(result.success).toBe(true);
-      expect(state.getStructure(5, 5).structure_type).toBe('tower');
-    });
-
-    it('throws if not owned by user', async () => {
-      await expect(state.buildStructure(0, 0, 'tower')).rejects.toThrow('must own the territory');
-    });
-
-    it('throws if structure already exists', async () => {
-      state.structures.set('5,5', { structure_type: 'wall', owner: 'alice' });
-
-      await expect(state.buildStructure(5, 5, 'tower')).rejects.toThrow('Structure already exists');
-    });
-
-    it('throws if insufficient points', async () => {
-      state.players.set('alice', { action_points: 2, territories_count: 1, structures_count: 0 });
-
-      await expect(state.buildStructure(5, 5, 'tower')).rejects.toThrow('Insufficient');
-    });
-  });
-
   describe('addPoints', () => {
     beforeEach(async () => {
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        structures: [],
-        players: [{ username: 'alice', action_points: 10, territories_count: 0, structures_count: 0 }]
+        players: [{ username: 'alice', action_points: 10, territories_count: 0, health: 100 }]
       }));
       state.setUser('alice');
       await state.init();
@@ -478,7 +387,6 @@ describe('GridWarsState', () => {
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        structures: [],
         players: []
       }));
       state.setUser('alice');
@@ -512,19 +420,6 @@ describe('GridWarsState', () => {
       expect(state.getTerritoryOwner(5, 5)).toBe('bob');
     });
 
-    it('handles structure_built', () => {
-      state.handleWebSocketMessage({
-        type: 'structure_built',
-        gameId: 'game-123',
-        x: 5,
-        y: 5,
-        structureType: 'tower',
-        username: 'bob'
-      });
-
-      expect(state.getStructure(5, 5).structure_type).toBe('tower');
-    });
-
     it('handles points_earned', () => {
       state.handleWebSocketMessage({
         type: 'points_earned',
@@ -538,33 +433,62 @@ describe('GridWarsState', () => {
       expect(state.getActionPoints()).toBe(14);
     });
 
-    it('handles structure_destroyed', () => {
-      state.structures.set('5,5', { structure_type: 'wall', owner: 'alice' });
-
-      state.handleWebSocketMessage({
-        type: 'structure_destroyed',
-        gameId: 'game-123',
-        x: 5,
-        y: 5
+    it('handles avatar_moved', () => {
+      // Add a player first
+      state.players.set('bob', {
+        action_points: 10,
+        territories_count: 0,
+        health: 100,
+        position_x: 5,
+        position_y: 5
       });
 
-      expect(state.getStructure(5, 5)).toBeNull();
+      state.handleWebSocketMessage({
+        type: 'avatar_moved',
+        gameId: 'game-123',
+        username: 'bob',
+        x: 6,
+        y: 7,
+        health: 95
+      });
+
+      const player = state.players.get('bob');
+      expect(player.position_x).toBe(6);
+      expect(player.position_y).toBe(7);
+      expect(player.health).toBe(95);
+    });
+
+    it('handles grid_full_state', () => {
+      state.handleWebSocketMessage({
+        type: 'grid_full_state',
+        gameId: 'game-123',
+        territories: [{ x: 1, y: 1, owner: 'charlie', health: 100 }],
+        players: [{
+          username: 'charlie',
+          action_points: 20,
+          territories_count: 1,
+          health: 100,
+          position_x: 1,
+          position_y: 1,
+          avatar_format: 'B'
+        }]
+      });
+
+      expect(state.territories.size).toBe(1);
+      expect(state.getTerritoryOwner(1, 1)).toBe('charlie');
+      expect(state.players.get('charlie').avatar_format).toBe('B');
     });
   });
 
   describe('getRenderState', () => {
-    it('returns territories in render format', async () => {
-      // Set up fresh mocks for this test
+    it('returns territories with health in render format', async () => {
       mockFetch.mockClear();
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [
-          { x: 5, y: 5, owner: 'alice' },
-          { x: 6, y: 5, owner: 'bob' }
-        ],
-        structures: [
-          { x: 5, y: 5, structure_type: 'tower', owner: 'alice' }
+          { x: 5, y: 5, owner: 'alice', health: 100 },
+          { x: 6, y: 5, owner: 'bob', health: 80 }
         ],
         players: []
       }));
@@ -577,42 +501,62 @@ describe('GridWarsState', () => {
       expect(renderState.territories[0]).toHaveProperty('x');
       expect(renderState.territories[0]).toHaveProperty('y');
       expect(renderState.territories[0]).toHaveProperty('owner');
+      expect(renderState.territories[0]).toHaveProperty('health');
     });
 
-    it('returns structures in render format', async () => {
-      // Set up fresh mocks for this test
+    it('returns players with position in render format', async () => {
       mockFetch.mockClear();
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
-        territories: [{ x: 5, y: 5, owner: 'alice' }],
-        structures: [
-          { x: 5, y: 5, structure_type: 'tower', owner: 'alice' }
-        ],
-        players: []
+        territories: [],
+        players: [
+          {
+            username: 'alice',
+            action_points: 10,
+            territories_count: 1,
+            health: 90,
+            position_x: 5,
+            position_y: 5,
+            avatar_format: 'A'
+          }
+        ]
       }));
 
       await state.init();
 
       const renderState = state.getRenderState();
 
-      expect(renderState.structures).toHaveLength(1);
-      expect(renderState.structures[0]).toHaveProperty('x');
-      expect(renderState.structures[0]).toHaveProperty('y');
-      expect(renderState.structures[0]).toHaveProperty('type');
-      expect(renderState.structures[0]).toHaveProperty('owner');
+      expect(renderState.players).toHaveLength(1);
+      expect(renderState.players[0]).toHaveProperty('username');
+      expect(renderState.players[0]).toHaveProperty('x');
+      expect(renderState.players[0]).toHaveProperty('y');
+      expect(renderState.players[0]).toHaveProperty('health');
+    });
+
+    it('excludes players without position', async () => {
+      mockFetch.mockClear();
+      mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
+      mockFetch.mockResolvedValueOnce(mockResponse({
+        game: { game_id: 'game-123' },
+        territories: [],
+        players: [
+          { username: 'alice', action_points: 10, territories_count: 0, health: 100 }
+          // No position_x/position_y
+        ]
+      }));
+
+      await state.init();
+
+      const renderState = state.getRenderState();
+      expect(renderState.players).toHaveLength(0);
     });
   });
 });
 
 describe('GRID_WARS_CONFIG', () => {
-  it('exports structure costs', () => {
-    expect(GRID_WARS_CONFIG.structureCosts).toBeDefined();
-    expect(GRID_WARS_CONFIG.structureCosts.claim).toBe(1);
-    expect(GRID_WARS_CONFIG.structureCosts.wall).toBe(2);
-    expect(GRID_WARS_CONFIG.structureCosts.tower).toBe(3);
-    expect(GRID_WARS_CONFIG.structureCosts.farm).toBe(4);
-    expect(GRID_WARS_CONFIG.structureCosts.castle).toBe(10);
+  it('exports claim cost as 10', () => {
+    expect(GRID_WARS_CONFIG.claimCost).toBe(10);
   });
 
   it('exports star points', () => {
@@ -625,5 +569,9 @@ describe('GRID_WARS_CONFIG', () => {
 
   it('exports map size', () => {
     expect(GRID_WARS_CONFIG.mapSize).toBe(20);
+  });
+
+  it('does not export structure costs (removed)', () => {
+    expect(GRID_WARS_CONFIG.structureCosts).toBeUndefined();
   });
 });
