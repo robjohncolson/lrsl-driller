@@ -90,6 +90,12 @@
           </div>
         </div>
 
+        <!-- Grid Wars Toggle -->
+        <button id="grid-wars-btn" class="p-1.5 hover:bg-green-100 text-green-600 rounded-lg transition-colors relative" title="Grid Wars">
+          <span class="text-base">🎮</span>
+          <span id="gw-points-badge" class="absolute -top-1 -right-1 bg-cyan-500 text-white text-xs font-bold min-w-4 h-4 px-0.5 rounded-full flex items-center justify-center hidden">0</span>
+        </button>
+
         <!-- Leaderboard (icon only) -->
         <button id="leaderboard-btn" class="p-1.5 hover:bg-yellow-100 text-yellow-600 rounded-lg transition-colors" title="Leaderboard">
           <span class="text-base">🏆</span>
@@ -223,6 +229,12 @@
       </div>
     </div>
   </div>
+
+  <!-- Grid Wars Sidebar Panel -->
+  <div id="grid-wars-sidebar" class="fixed right-0 top-12 bottom-0 w-80 bg-gray-900 shadow-2xl z-30 transform translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto">
+    <div id="grid-wars-container" class="p-2"></div>
+  </div>
+  <div id="grid-wars-backdrop" class="fixed inset-0 bg-black/30 z-20 hidden"></div>
 
   <!-- Main Content - Split Pane Layout -->
   <main id="main-content" class="max-w-6xl mx-auto px-4 min-h-[calc(100vh-48px)] flex flex-col lg:flex-row gap-4 py-4">
@@ -750,6 +762,7 @@
     import { ClassTime } from './core/class-time.js';
     import { TimeTracker } from './core/time-tracker.js';
     import { CartridgeLoader } from './core/cartridge-loader.js';
+    import { GridPanel } from './game/grid-panel.js';
 
     // ==================== CONFIGURATION ====================
     const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
@@ -855,6 +868,8 @@
     let platform = null;
     let currentCartridgeId = localStorage.getItem('lastCartridgeId') || 'lsrl-interpretation';
     let pendingTeacherReview = null; // Store results for teacher review
+    let gridPanel = null; // Grid Wars panel instance
+    let gridWarsEnabled = true; // Feature flag for Grid Wars
 
     /**
      * Sync local star counts with server to fix any discrepancies
@@ -883,6 +898,78 @@
         console.warn('[Sync] Failed to sync stars:', err);
       }
     }
+
+    // ==================== GRID WARS INTEGRATION ====================
+
+    /**
+     * Initialize Grid Wars panel for a user
+     */
+    async function initGridWars(username) {
+      if (!gridWarsEnabled) return;
+
+      try {
+        gridPanel = new GridPanel({
+          serverUrl: SERVER_URL,
+          onError: (err) => console.warn('[GridWars]', err),
+          onPointsChange: (data) => {
+            updateGridWarsPointsBadge(data.total);
+          }
+        });
+
+        gridPanel.setContainer('#grid-wars-container');
+        const success = await gridPanel.init(username);
+
+        if (success) {
+          console.log('[GridWars] Initialized for', username);
+          updateGridWarsPointsBadge(gridPanel.getActionPoints());
+        } else {
+          console.warn('[GridWars] Failed to initialize - tables may not exist yet');
+        }
+      } catch (err) {
+        console.warn('[GridWars] Init error:', err.message);
+        // Grid Wars is optional - don't break the app
+      }
+    }
+
+    /**
+     * Update the points badge in the header
+     */
+    function updateGridWarsPointsBadge(points) {
+      const badge = document.getElementById('gw-points-badge');
+      if (!badge) return;
+
+      if (points > 0) {
+        badge.textContent = points > 99 ? '99+' : points;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    /**
+     * Toggle the Grid Wars sidebar
+     */
+    function toggleGridWarsSidebar() {
+      const sidebar = document.getElementById('grid-wars-sidebar');
+      const backdrop = document.getElementById('grid-wars-backdrop');
+      const btn = document.getElementById('grid-wars-btn');
+
+      const isOpen = !sidebar.classList.contains('translate-x-full');
+
+      if (isOpen) {
+        sidebar.classList.add('translate-x-full');
+        backdrop.classList.add('hidden');
+        btn.classList.remove('bg-green-200');
+      } else {
+        sidebar.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+        btn.classList.add('bg-green-200');
+      }
+    }
+
+    // Grid Wars sidebar toggle event listeners
+    document.getElementById('grid-wars-btn').addEventListener('click', toggleGridWarsSidebar);
+    document.getElementById('grid-wars-backdrop').addEventListener('click', toggleGridWarsSidebar);
 
     // Helper to get best available topic name for notifications/logging
     function getCurrentTopicName() {
@@ -2789,11 +2876,22 @@
     const GOLD_TO_MASTER = 10;
 
     document.addEventListener('platform:starEarned', async (e) => {
+      const { starType, modeId } = e.detail || {};
+
+      // Add Grid Wars points for the star earned
+      if (gridPanel && starType) {
+        try {
+          await gridPanel.addPointsFromStar(starType);
+          console.log(`[GridWars] Added points for ${starType} star`);
+        } catch (err) {
+          console.warn('[GridWars] Failed to add points:', err.message);
+        }
+      }
+
       // Re-render mode tabs to check for newly unlocked modes
       renderModeTabs();
 
       // Check if student has mastered current level (10 gold stars)
-      const { starType, modeId } = e.detail || {};
       if (starType === 'gold' && modeId) {
         const gameState = platform.gameEngine.getState();
         const modeGold = gameState.starsPerMode?.[modeId]?.gold || 0;
@@ -3360,6 +3458,9 @@
 
         // Sync local stars with server on return visit
         syncStarsWithServer(userSystem.currentUser.username);
+
+        // Initialize Grid Wars (non-blocking)
+        initGridWars(userSystem.currentUser.username);
       } else {
         usernameModal.show(true); // First visit - cannot close modal
       }
