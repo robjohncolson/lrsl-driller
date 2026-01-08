@@ -8,7 +8,7 @@ const {
   generateAvatarDisplay,
   assignAvatarFormat,
   getUniqueAvatar
-} = require('../shared/avatar-utils.js');
+} = require('./avatar-utils.js');
 
 // ============================================
 // CONFIGURATION
