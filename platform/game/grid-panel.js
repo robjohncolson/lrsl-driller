@@ -140,20 +140,20 @@ export class GridPanel {
           <div style="padding:8px 12px;background:#1f2937;">
             <div style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Build Actions</div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
-              <button class="gw-action-btn" data-action="claim" data-cost="1">
-                □ Claim<span class="gw-cost">1⚡</span>
+              <button class="gw-action-btn" data-action="claim" data-cost="10">
+                □ Claim<span class="gw-cost">10⚡</span>
               </button>
-              <button class="gw-action-btn" data-action="wall" data-cost="2">
-                ■ Wall<span class="gw-cost">2⚡</span>
+              <button class="gw-action-btn" data-action="wall" data-cost="20">
+                ■ Wall<span class="gw-cost">20⚡</span>
               </button>
-              <button class="gw-action-btn" data-action="tower" data-cost="3">
-                ▲ Tower<span class="gw-cost">3⚡</span>
+              <button class="gw-action-btn" data-action="tower" data-cost="30">
+                ▲ Tower<span class="gw-cost">30⚡</span>
               </button>
-              <button class="gw-action-btn gw-btn-cyan" data-action="farm" data-cost="4">
-                ◇ Farm<span class="gw-cost">4⚡</span>
+              <button class="gw-action-btn gw-btn-cyan" data-action="farm" data-cost="40">
+                ◇ Farm<span class="gw-cost">40⚡</span>
               </button>
-              <button class="gw-action-btn gw-btn-amber" data-action="castle" data-cost="10">
-                ★ Castle<span class="gw-cost">10⚡</span>
+              <button class="gw-action-btn gw-btn-amber" data-action="castle" data-cost="100">
+                ★ Castle<span class="gw-cost">100⚡</span>
               </button>
             </div>
           </div>
@@ -161,6 +161,22 @@ export class GridPanel {
           <!-- Status -->
           <div style="padding:8px 12px;font-size:0.75rem;color:#6b7280;border-top:1px solid #374151;">
             <span id="gw-status">Click grid to select, then click action</span>
+          </div>
+
+          <!-- Teacher Wave Controls (hidden until teacher mode) -->
+          <div id="gw-teacher-controls" style="display:none;padding:8px 12px;background:#451a03;border-top:1px solid #78350f;">
+            <div style="font-size:0.65rem;color:#fbbf24;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">⚔️ Wave Controls (Teacher)</div>
+            <div style="display:flex;gap:8px;">
+              <button id="gw-start-wave" class="gw-action-btn gw-btn-wave" style="flex:1;">
+                ▶ Start Wave
+              </button>
+              <button id="gw-stop-wave" class="gw-action-btn gw-btn-wave" style="flex:1;" disabled>
+                ⏹ Stop Wave
+              </button>
+            </div>
+            <div id="gw-wave-status" style="margin-top:6px;font-size:0.7rem;color:#fcd34d;">
+              Wave: Idle
+            </div>
           </div>
         </div>
       </div>
@@ -214,6 +230,15 @@ export class GridPanel {
           border-color: #00ff41;
           color: #00ff41;
         }
+        .gw-btn-wave {
+          border-color: #f59e0b40;
+          color: #fbbf24;
+        }
+        .gw-btn-wave:hover:not(:disabled) {
+          border-color: #f59e0b;
+          background: rgba(245, 158, 11, 0.2);
+          box-shadow: 0 0 10px #f59e0b40;
+        }
       </style>
     `;
 
@@ -238,13 +263,24 @@ export class GridPanel {
       helpBtn.addEventListener('click', () => this.toggleHelp());
     }
 
-    // Action buttons
-    this.container.querySelectorAll('.gw-action-btn').forEach(btn => {
+    // Action buttons (only those with data-action, not wave buttons)
+    this.container.querySelectorAll('.gw-action-btn[data-action]').forEach(btn => {
       btn.addEventListener('click', () => {
         const action = btn.dataset.action;
         this.selectAction(action);
       });
     });
+
+    // Wave control buttons (teacher only)
+    const startWaveBtn = this.container.querySelector('#gw-start-wave');
+    const stopWaveBtn = this.container.querySelector('#gw-stop-wave');
+
+    if (startWaveBtn) {
+      startWaveBtn.addEventListener('click', () => this.startWave());
+    }
+    if (stopWaveBtn) {
+      stopWaveBtn.addEventListener('click', () => this.stopWave());
+    }
   }
 
   /**
@@ -461,6 +497,129 @@ export class GridPanel {
   handleWebSocketMessage(message) {
     if (this.state) {
       this.state.handleWebSocketMessage(message);
+    }
+
+    // Handle wave messages directly for enemy rendering
+    if (message.type === 'wave_started' || message.type === 'enemy_moved') {
+      this.updateEnemies(message.enemies || []);
+      this.updateWaveStatus(message);
+    } else if (message.type === 'wave_ended') {
+      this.updateEnemies([]);
+      this.updateWaveStatus(message);
+    }
+  }
+
+  /**
+   * Enable teacher controls (called when teacher logs in)
+   */
+  enableTeacherControls() {
+    const controls = this.container.querySelector('#gw-teacher-controls');
+    if (controls) {
+      controls.style.display = 'block';
+    }
+  }
+
+  /**
+   * Start a new wave (teacher only)
+   */
+  async startWave() {
+    if (!this.state?.gameId) {
+      this.updateWaveStatus({ error: 'No active game' });
+      return;
+    }
+
+    try {
+      const startBtn = this.container.querySelector('#gw-start-wave');
+      const stopBtn = this.container.querySelector('#gw-stop-wave');
+      if (startBtn) startBtn.disabled = true;
+
+      const response = await fetch(`${this.state.serverUrl}/api/grid-wars/waves/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId: this.state.gameId })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to start wave');
+      }
+
+      if (stopBtn) stopBtn.disabled = false;
+      this.updateWaveStatus({ waveNumber: data.waveNumber, waveActive: true });
+      this.updateEnemies(data.enemies || []);
+
+    } catch (err) {
+      console.error('Failed to start wave:', err);
+      this.updateWaveStatus({ error: err.message });
+      const startBtn = this.container.querySelector('#gw-start-wave');
+      if (startBtn) startBtn.disabled = false;
+    }
+  }
+
+  /**
+   * Stop the current wave (teacher only)
+   */
+  async stopWave() {
+    if (!this.state?.gameId) return;
+
+    try {
+      const response = await fetch(`${this.state.serverUrl}/api/grid-wars/waves/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId: this.state.gameId })
+      });
+
+      const data = await response.json();
+
+      const startBtn = this.container.querySelector('#gw-start-wave');
+      const stopBtn = this.container.querySelector('#gw-stop-wave');
+      if (startBtn) startBtn.disabled = false;
+      if (stopBtn) stopBtn.disabled = true;
+
+      this.updateEnemies([]);
+      this.updateWaveStatus({ waveActive: false });
+
+    } catch (err) {
+      console.error('Failed to stop wave:', err);
+    }
+  }
+
+  /**
+   * Update enemy positions on renderer
+   */
+  updateEnemies(enemies) {
+    if (this.renderer) {
+      this.renderer.setEnemies(enemies);
+    }
+  }
+
+  /**
+   * Update wave status display
+   */
+  updateWaveStatus(data) {
+    const statusEl = this.container.querySelector('#gw-wave-status');
+    if (!statusEl) return;
+
+    if (data.error) {
+      statusEl.textContent = `Error: ${data.error}`;
+      statusEl.style.color = '#f87171';
+    } else if (data.waveActive || data.type === 'wave_started') {
+      const waveNum = data.waveNumber || '?';
+      const enemyCount = data.enemies?.length || data.enemyCount || 0;
+      statusEl.textContent = `Wave ${waveNum} - ${enemyCount} enemies`;
+      statusEl.style.color = '#f59e0b';
+    } else if (data.type === 'wave_ended') {
+      statusEl.textContent = `Wave ${data.waveNumber} complete!`;
+      statusEl.style.color = '#34d399';
+      // Reset buttons
+      const startBtn = this.container.querySelector('#gw-start-wave');
+      const stopBtn = this.container.querySelector('#gw-stop-wave');
+      if (startBtn) startBtn.disabled = false;
+      if (stopBtn) stopBtn.disabled = true;
+    } else {
+      statusEl.textContent = 'Wave: Idle';
+      statusEl.style.color = '#fcd34d';
     }
   }
 }

@@ -10,11 +10,11 @@ const DEFAULT_SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 // Structure costs and star points (must match server)
 export const GRID_WARS_CONFIG = {
   structureCosts: {
-    claim: 1,
-    wall: 2,
-    tower: 3,
-    farm: 4,
-    castle: 10
+    claim: 10,
+    wall: 20,
+    tower: 30,
+    farm: 40,
+    castle: 100
   },
   starPoints: {
     gold: 4,

@@ -1917,6 +1917,11 @@
       // Show URL shortcuts in cartridge dropdown
       showCartridgeShortcuts();
 
+      // Enable Grid Wars wave controls for teacher
+      if (gridPanel) {
+        gridPanel.enableTeacherControls();
+      }
+
       // Load pending reviews
       loadPendingReviews();
     }
