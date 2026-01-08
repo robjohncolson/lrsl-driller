@@ -954,30 +954,22 @@
 
     /**
      * Bootstrap Grid Wars points from historical stars (one-time sync)
-     * Calculates total points from all stars earned across all cartridges
+     * Uses weighted points (accounts for level difficulty multipliers)
      */
     async function bootstrapGridWarsPoints(username) {
       try {
-        // Fetch user's star history from server
+        // Fetch user's star history and weighted total from server
         const response = await fetch(`${SERVER_URL}/api/users/${username}/stars`);
         if (!response.ok) {
           console.log('[GridWars] No star history found, skipping bootstrap');
           return;
         }
 
-        const { stars } = await response.json();
-        if (!stars) return;
+        const { weightedTotal } = await response.json();
 
-        // Calculate total points: Gold=4, Silver=3, Bronze=2, Tin=1
-        const totalPoints =
-          (stars.gold || 0) * 4 +
-          (stars.silver || 0) * 3 +
-          (stars.bronze || 0) * 2 +
-          (stars.tin || 0) * 1;
-
-        if (totalPoints > 0) {
-          console.log(`[GridWars] Bootstrapping ${totalPoints} points from historical stars`);
-          await gridPanel.state.addPoints(null, totalPoints);
+        if (weightedTotal > 0) {
+          console.log(`[GridWars] Bootstrapping ${weightedTotal} weighted points from historical stars`);
+          await gridPanel.state.addPoints(null, weightedTotal);
           updateGridWarsPointsBadge(gridPanel.getActionPoints());
         }
       } catch (err) {

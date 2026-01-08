@@ -154,7 +154,7 @@ app.post('/api/users/verify', async (req, res) => {
   }
 });
 
-// Get user's total stars (for Grid Wars bootstrap)
+// Get user's total stars and weighted score (for Grid Wars bootstrap)
 app.get('/api/users/:username/stars', async (req, res) => {
   try {
     const { username } = req.params;
@@ -162,21 +162,30 @@ app.get('/api/users/:username/stars', async (req, res) => {
     // Get all progress records for this user
     const { data: progress, error } = await supabase
       .from('lsrl_progress')
-      .select('star_type')
+      .select('star_type, weighted_points')
       .eq('username', username)
       .not('star_type', 'is', null);
 
     if (error) throw error;
 
-    // Count stars by type
+    // Count stars by type and sum weighted points
     const stars = { gold: 0, silver: 0, bronze: 0, tin: 0 };
+    const basePoints = { gold: 4, silver: 3, bronze: 2, tin: 1 };
+    let weightedTotal = 0;
+
     for (const p of progress || []) {
       if (p.star_type && stars[p.star_type] !== undefined) {
         stars[p.star_type]++;
       }
+      // Use weighted_points if available, otherwise calculate from star_type
+      if (p.weighted_points != null) {
+        weightedTotal += p.weighted_points;
+      } else if (p.star_type) {
+        weightedTotal += basePoints[p.star_type] || 0;
+      }
     }
 
-    res.json({ stars });
+    res.json({ stars, weightedTotal: Math.round(weightedTotal) });
   } catch (err) {
     console.error('GET /api/users/:username/stars error:', err);
     res.status(500).json({ error: err.message });
@@ -249,6 +258,12 @@ app.post('/api/progress', async (req, res) => {
       }
     }
 
+    // Calculate weighted points: base_points * level_multiplier
+    const basePoints = { gold: 4, silver: 3, bronze: 2, tin: 1 };
+    const starBasePoints = star_type ? (basePoints[star_type] || 0) : 0;
+    const multiplier = level_multiplier || 1.0;
+    const weightedPoints = starBasePoints * multiplier;
+
     const { data, error } = await supabase
       .from('lsrl_progress')
       .insert({
@@ -261,8 +276,9 @@ app.post('/api/progress', async (req, res) => {
         star_type: star_type || null,
         all_correct: all_correct || false,
         grading_mode,
-        ai_provider
-        // Note: level_index, level_multiplier, weighted_points columns not yet in DB
+        ai_provider,
+        level_multiplier: multiplier,
+        weighted_points: weightedPoints
       })
       .select()
       .single();
@@ -445,10 +461,10 @@ app.get('/api/leaderboard', async (req, res) => {
 
     // Build query with optional time filter
     // Note: weighted_points and level_multiplier columns may not exist yet in DB
-    // The aggregation logic below handles this gracefully with fallback
+    // Include weighted_points for proper scoring
     let query = supabase
       .from('lsrl_progress')
-      .select('username, star_type, completed_at')
+      .select('username, star_type, completed_at, weighted_points')
       .not('star_type', 'is', null);
 
     // Add time filter for hourly leaderboard
@@ -472,9 +488,10 @@ app.get('/api/leaderboard', async (req, res) => {
         userStats[p.username][p.star_type]++;
       }
 
-      // Calculate weighted score from star type
-      // Future: when weighted_points column exists, use it instead
-      if (p.star_type) {
+      // Use weighted_points if available, otherwise fall back to base calculation
+      if (p.weighted_points != null) {
+        userStats[p.username].weighted_score += p.weighted_points;
+      } else if (p.star_type) {
         userStats[p.username].weighted_score += basePoints[p.star_type] || 0;
       }
     }
