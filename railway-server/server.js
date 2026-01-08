@@ -1942,8 +1942,147 @@ const GRID_WARS_CONFIG = {
     bronze: 2,
     tin: 1
   },
-  mapSize: 20
+  mapSize: 20,
+  classGoalTarget: 200,
+  classGoalBonus: 10,
+  maxContiguityBonus: 3
 };
+
+// ============================================
+// GRID WARS HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Flood-fill to find connected cells (recursive)
+ */
+function floodFill(x, y, ownedSet, visited) {
+  const key = `${x},${y}`;
+  if (visited.has(key)) return 0;
+  if (!ownedSet.has(key)) return 0;
+
+  visited.add(key);
+  return 1
+    + floodFill(x + 1, y, ownedSet, visited)
+    + floodFill(x - 1, y, ownedSet, visited)
+    + floodFill(x, y + 1, ownedSet, visited)
+    + floodFill(x, y - 1, ownedSet, visited);
+}
+
+/**
+ * Calculate the largest connected cluster for a player
+ */
+async function calculateLargestCluster(gameId, username) {
+  const { data: territories } = await supabase
+    .from('grid_wars_territories')
+    .select('x, y')
+    .eq('game_id', gameId)
+    .eq('owner', username);
+
+  if (!territories || territories.length === 0) return 0;
+
+  // Build set of owned cells
+  const ownedSet = new Set(territories.map(t => `${t.x},${t.y}`));
+  const visited = new Set();
+  let maxSize = 0;
+
+  for (const cell of territories) {
+    const key = `${cell.x},${cell.y}`;
+    if (visited.has(key)) continue;
+    const size = floodFill(cell.x, cell.y, ownedSet, visited);
+    maxSize = Math.max(maxSize, size);
+  }
+
+  return maxSize;
+}
+
+/**
+ * Update player's largest_cluster in database
+ */
+async function updatePlayerCluster(gameId, username) {
+  const cluster = await calculateLargestCluster(gameId, username);
+
+  await supabase
+    .from('grid_wars_players')
+    .update({ largest_cluster: cluster })
+    .eq('game_id', gameId)
+    .eq('username', username);
+
+  return cluster;
+}
+
+/**
+ * Get class goal progress
+ */
+async function getClassGoalProgress(gameId) {
+  const { data: game } = await supabase
+    .from('grid_wars_games')
+    .select('class_goal_target, class_goal_current')
+    .eq('game_id', gameId)
+    .single();
+
+  return {
+    current: game?.class_goal_current || 0,
+    target: game?.class_goal_target || GRID_WARS_CONFIG.classGoalTarget
+  };
+}
+
+/**
+ * Increment class goal and check if reached
+ */
+async function incrementClassGoal(gameId) {
+  // Get current progress
+  const { data: game } = await supabase
+    .from('grid_wars_games')
+    .select('class_goal_target, class_goal_current')
+    .eq('game_id', gameId)
+    .single();
+
+  if (!game) return { reached: false };
+
+  const newCurrent = (game.class_goal_current || 0) + 1;
+  const target = game.class_goal_target || GRID_WARS_CONFIG.classGoalTarget;
+
+  // Update counter
+  await supabase
+    .from('grid_wars_games')
+    .update({ class_goal_current: newCurrent })
+    .eq('game_id', gameId);
+
+  // Broadcast progress
+  broadcast({
+    type: 'class_goal_updated',
+    gameId,
+    current: newCurrent,
+    target
+  });
+
+  // Check if goal just reached
+  if (newCurrent === target) {
+    // Award bonus to ALL players in this game
+    const { data: players } = await supabase
+      .from('grid_wars_players')
+      .select('username')
+      .eq('game_id', gameId);
+
+    for (const player of players || []) {
+      await upsertGridWarsPlayer(gameId, player.username, GRID_WARS_CONFIG.classGoalBonus, 0);
+    }
+
+    // Broadcast achievement
+    broadcast({
+      type: 'class_goal_reached',
+      gameId,
+      bonusPoints: GRID_WARS_CONFIG.classGoalBonus,
+      playersRewarded: (players || []).length
+    });
+
+    console.log(`Grid Wars: Class goal reached! ${(players || []).length} players awarded ${GRID_WARS_CONFIG.classGoalBonus} points`);
+
+    return { reached: true, bonusPoints: GRID_WARS_CONFIG.classGoalBonus };
+  }
+
+  return { reached: false, current: newCurrent, target };
+}
 
 // Generate a unique game ID
 function generateGameId() {
@@ -2033,20 +2172,27 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
 
     if (structError) throw structError;
 
-    // Get players
+    // Get players (include largest_cluster)
     const { data: players, error: playersError } = await supabase
       .from('grid_wars_players')
-      .select('username, action_points, territories_count, structures_count, updated_at')
+      .select('username, action_points, territories_count, structures_count, largest_cluster, updated_at')
       .eq('game_id', gameId)
       .order('action_points', { ascending: false });
 
     if (playersError) throw playersError;
 
+    // Get class goal progress
+    const classGoal = {
+      current: game.class_goal_current || 0,
+      target: game.class_goal_target || GRID_WARS_CONFIG.classGoalTarget
+    };
+
     res.json({
       game,
       territories: territories || [],
       structures: structures || [],
-      players: players || []
+      players: players || [],
+      classGoal
     });
   } catch (err) {
     console.error('GET /api/grid-wars/games/:gameId/state error:', err);
@@ -2109,10 +2255,24 @@ app.post('/api/grid-wars/action', async (req, res) => {
       // Update player stats
       await upsertGridWarsPlayer(gameId, username, -cost, 1);
 
-      // Broadcast
-      broadcast({ type: 'territory_claimed', gameId, username, x, y });
+      // Update player's largest cluster
+      const newCluster = await updatePlayerCluster(gameId, username);
 
-      res.json({ success: true, action: 'claim', x, y, cost, newPoints: currentPoints - cost });
+      // Increment class goal and check if reached
+      const goalResult = await incrementClassGoal(gameId);
+
+      // Broadcast
+      broadcast({ type: 'territory_claimed', gameId, username, x, y, cluster: newCluster });
+
+      res.json({
+        success: true,
+        action: 'claim',
+        x, y,
+        cost,
+        newPoints: currentPoints - cost,
+        cluster: newCluster,
+        classGoal: goalResult
+      });
 
     } else {
       return res.status(400).json({ error: 'Invalid action. Use "claim"' });
@@ -2209,30 +2369,51 @@ app.post('/api/grid-wars/points/add', async (req, res) => {
       return res.status(400).json({ error: 'gameId and username required' });
     }
 
-    // Determine points to add
-    let pointsToAdd = points;
-    if (pointsToAdd === undefined && starType) {
-      pointsToAdd = GRID_WARS_CONFIG.starPoints[starType] || 0;
+    // Determine base points to add
+    let basePoints = points;
+    if (basePoints === undefined && starType) {
+      basePoints = GRID_WARS_CONFIG.starPoints[starType] || 0;
     }
-    if (!pointsToAdd || pointsToAdd <= 0) {
+    if (!basePoints || basePoints <= 0) {
       return res.status(400).json({ error: 'points or valid starType required' });
     }
 
-    // Upsert player with points
-    const newTotal = await upsertGridWarsPlayer(gameId, username, pointsToAdd, 0);
+    // Calculate contiguity bonus based on largest cluster
+    const cluster = await calculateLargestCluster(gameId, username);
+    const contiguityBonus = Math.min(
+      GRID_WARS_CONFIG.maxContiguityBonus,
+      Math.floor(cluster / 5)
+    );
+
+    const totalPoints = basePoints + contiguityBonus;
+
+    // Upsert player with total points
+    const newTotal = await upsertGridWarsPlayer(gameId, username, totalPoints, 0);
 
     // Broadcast points earned
     broadcast({
       type: 'points_earned',
       gameId,
       username,
-      points: pointsToAdd,
+      points: totalPoints,
+      basePoints,
+      contiguityBonus,
+      cluster,
       total: newTotal,
       starType: starType || null
     });
 
-    console.log(`Grid Wars: ${username} earned ${pointsToAdd} points (${starType || 'manual'})`);
-    res.json({ success: true, pointsAdded: pointsToAdd, newTotal });
+    console.log(`Grid Wars: ${username} earned ${totalPoints} points (base: ${basePoints}, cluster bonus: +${contiguityBonus} from ${cluster} cells)`);
+    res.json({
+      success: true,
+      pointsAdded: totalPoints,
+      breakdown: {
+        base: basePoints,
+        contiguityBonus,
+        cluster
+      },
+      newTotal
+    });
   } catch (err) {
     console.error('POST /api/grid-wars/points/add error:', err);
     res.status(500).json({ error: err.message });

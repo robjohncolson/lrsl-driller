@@ -82,10 +82,14 @@ export class GridPanel {
             <span style="font-size:1.2rem;">🎮</span>
             <span style="font-weight:bold;color:#00ff41;font-size:1.1rem;">GRID WARS</span>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
             <div style="display:flex;align-items:center;gap:4px;background:#1e293b;padding:4px 8px;border-radius:4px;">
               <span style="color:#22d3ee;">⚡</span>
-              <span id="gw-points-display" style="font-weight:bold;color:#67e8f9;font-size:1.1rem;">0</span>
+              <span id="gw-points-display" style="font-weight:bold;color:#67e8f9;font-size:1rem;">0</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;background:#1e293b;padding:4px 8px;border-radius:4px;" title="Cluster size (+1 bonus per 5 cells)">
+              <span style="color:#a855f7;">◆</span>
+              <span id="gw-cluster-display" style="font-weight:bold;color:#c084fc;font-size:1rem;">0</span>
             </div>
             <button id="gw-help-btn" style="background:transparent;border:1px solid #374151;color:#9ca3af;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:0.75rem;" title="How to Play">?</button>
           </div>
@@ -97,7 +101,8 @@ export class GridPanel {
 
           <div style="color:#94a3b8;margin-bottom:8px;">
             <span style="color:#22d3ee;">1.</span> <strong style="color:#e2e8f0;">Earn Points</strong> - Answer drill questions correctly!<br>
-            <span style="font-size:0.65rem;color:#64748b;margin-left:12px;">Gold = 4pts | Silver = 3pts | Bronze = 2pts | Tin = 1pt</span>
+            <span style="font-size:0.65rem;color:#64748b;margin-left:12px;">Gold = 4pts | Silver = 3pts | Bronze = 2pts | Tin = 1pt</span><br>
+            <span style="font-size:0.65rem;color:#a855f7;margin-left:12px;">Cluster bonus: +1 pt per 5 connected cells (max +3)</span>
           </div>
 
           <div style="color:#94a3b8;margin-bottom:8px;">
@@ -145,6 +150,17 @@ export class GridPanel {
           <!-- Status -->
           <div style="padding:8px 12px;font-size:0.75rem;color:#6b7280;border-top:1px solid #374151;">
             <span id="gw-status">Click a cell to claim territory</span>
+          </div>
+
+          <!-- Class Goal Progress -->
+          <div style="padding:8px 12px;background:#0f172a;border-top:1px solid #374151;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Class Goal</span>
+              <span id="gw-goal-text" style="font-size:0.7rem;color:#67e8f9;">0 / 200</span>
+            </div>
+            <div style="height:6px;background:#1e293b;border-radius:3px;overflow:hidden;">
+              <div id="gw-goal-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#00ff41,#22d3ee);transition:width 0.3s;"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -445,6 +461,38 @@ export class GridPanel {
   }
 
   /**
+   * Update cluster size display
+   */
+  updateClusterDisplay() {
+    const clusterEl = this.container.querySelector('#gw-cluster-display');
+    if (clusterEl) {
+      clusterEl.textContent = this.state?.getLargestCluster() || 0;
+    }
+  }
+
+  /**
+   * Update class goal progress display
+   */
+  updateClassGoalDisplay() {
+    const textEl = this.container.querySelector('#gw-goal-text');
+    const barEl = this.container.querySelector('#gw-goal-bar');
+
+    if (!this.state) return;
+
+    const goal = this.state.getClassGoal();
+    const current = goal.current || 0;
+    const target = goal.target || 200;
+    const percent = Math.min(100, (current / target) * 100);
+
+    if (textEl) {
+      textEl.textContent = `${current} / ${target}`;
+    }
+    if (barEl) {
+      barEl.style.width = `${percent}%`;
+    }
+  }
+
+  /**
    * Update status message
    */
   updateStatus(message) {
@@ -461,6 +509,8 @@ export class GridPanel {
     this.syncRendererState();
     this.updateButtonStates();
     this.updatePointsDisplay();
+    this.updateClusterDisplay();
+    this.updateClassGoalDisplay();
   }
 
   /**

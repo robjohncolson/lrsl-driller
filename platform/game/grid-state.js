@@ -16,7 +16,10 @@ export const GRID_WARS_CONFIG = {
     bronze: 2,
     tin: 1
   },
-  mapSize: 20
+  mapSize: 20,
+  classGoalTarget: 200,
+  classGoalBonus: 10,
+  maxContiguityBonus: 3
 };
 
 /**
@@ -32,13 +35,15 @@ export class GridWarsState {
     // Local state cache
     this.game = null;
     this.territories = new Map(); // "x,y" -> { owner, claimed_at, health }
-    this.players = new Map();     // username -> { action_points, territories_count, health, position_x, position_y }
+    this.players = new Map();     // username -> { action_points, territories_count, largest_cluster, health, position_x, position_y }
+    this.classGoal = { current: 0, target: GRID_WARS_CONFIG.classGoalTarget };
 
     // Event callbacks
     this.onStateChange = options.onStateChange || null;
     this.onError = options.onError || null;
     this.onPointsEarned = options.onPointsEarned || null;
     this.onTerritoryChanged = options.onTerritoryChanged || null;
+    this.onClassGoalReached = options.onClassGoalReached || null;
 
     // Pending state for optimistic updates
     this._pendingActions = [];
@@ -112,12 +117,18 @@ export class GridWarsState {
         this.players.set(p.username, {
           action_points: p.action_points,
           territories_count: p.territories_count,
+          largest_cluster: p.largest_cluster || 0,
           health: p.health || 100,
           position_x: p.position_x,
           position_y: p.position_y,
           avatar_format: p.avatar_format,
           updated_at: p.updated_at
         });
+      }
+
+      // Update class goal
+      if (state.classGoal) {
+        this.classGoal = state.classGoal;
       }
 
       this._emitStateChange();
@@ -142,10 +153,26 @@ export class GridWarsState {
    */
   getPlayerStats() {
     if (!this.username) {
-      return { action_points: 0, territories_count: 0, health: 100 };
+      return { action_points: 0, territories_count: 0, largest_cluster: 0, health: 100 };
     }
     const player = this.players.get(this.username);
-    return player || { action_points: 0, territories_count: 0, health: 100 };
+    return player || { action_points: 0, territories_count: 0, largest_cluster: 0, health: 100 };
+  }
+
+  /**
+   * Get current player's largest cluster size
+   */
+  getLargestCluster() {
+    if (!this.username) return 0;
+    const player = this.players.get(this.username);
+    return player?.largest_cluster || 0;
+  }
+
+  /**
+   * Get class goal progress
+   */
+  getClassGoal() {
+    return this.classGoal;
   }
 
   /**
@@ -532,6 +559,30 @@ export class GridWarsState {
           movedPlayer.health = message.health;
           this._emitStateChange();
         }
+        break;
+
+      case 'class_goal_updated':
+        // Update class goal progress
+        this.classGoal = {
+          current: message.current,
+          target: message.target
+        };
+        this._emitStateChange();
+        break;
+
+      case 'class_goal_reached':
+        // Class goal achieved - all players rewarded
+        this.classGoal = {
+          current: message.current || this.classGoal.target,
+          target: this.classGoal.target
+        };
+        if (this.onClassGoalReached) {
+          this.onClassGoalReached({
+            bonusPoints: message.bonusPoints,
+            playersRewarded: message.playersRewarded
+          });
+        }
+        this._emitStateChange();
         break;
     }
   }
