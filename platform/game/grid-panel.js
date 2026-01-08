@@ -60,8 +60,10 @@ export class GridPanel {
   setContainer(container) {
     if (typeof container === 'string') {
       this.container = document.querySelector(container);
+      console.log('[GridPanel] setContainer:', container, '-> found:', this.container);
     } else {
       this.container = container;
+      console.log('[GridPanel] setContainer (element):', this.container);
     }
   }
 
@@ -69,7 +71,11 @@ export class GridPanel {
    * Create the panel UI
    */
   createUI() {
-    if (!this.container) return;
+    console.log('[GridPanel] createUI called, container:', this.container);
+    if (!this.container) {
+      console.warn('[GridPanel] No container - UI not created');
+      return;
+    }
 
     this.container.innerHTML = `
       <div class="grid-wars-panel bg-gray-900 text-green-400 font-mono rounded-lg overflow-hidden border border-green-800 shadow-lg">
