@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grid Wars - Teacher Map</title>
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/google/material-design-icons/refs/heads/master/png/maps/grid_on/materialicons/24dp/2x/baseline_grid_on_black_24dp.png">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0a;
+      color: #00ff41;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Main layout */
+    .teacher-view {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* Grid container (left side) */
+    .grid-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #050505;
+    }
+
+    .grid-wrapper {
+      position: relative;
+      max-width: 90vh;
+      max-height: 90vh;
+      width: 100%;
+      aspect-ratio: 1;
+    }
+
+    #teacher-grid {
+      width: 100%;
+      height: 100%;
+      border: 2px solid #1a4a2a;
+      box-shadow: 0 0 30px rgba(0, 255, 65, 0.2);
+    }
+
+    /* Sidebar (right side) */
+    .sidebar {
+      width: 320px;
+      background: #0d1117;
+      border-left: 2px solid #1a4a2a;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    /* Header section */
+    .header {
+      padding: 16px;
+      background: linear-gradient(180deg, #1a4a2a 0%, #0d2818 100%);
+      border-bottom: 1px solid #1a4a2a;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header h1 span {
+      color: #00ffff;
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff3333;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.connected {
+      background: #00ff41;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Stats section */
+    .stats-section {
+      padding: 16px;
+      border-bottom: 1px solid #1a4a2a;
+    }
+
+    .stats-section h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 12px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: #0a0a0a;
+      border: 1px solid #1a4a2a;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #00ffff;
+    }
+
+    .stat-label {
+      font-size: 0.625rem;
+      text-transform: uppercase;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    /* Wave section */
+    .wave-section {
+      padding: 16px;
+      border-bottom: 1px solid #1a4a2a;
+      background: #0d1a14;
+    }
+
+    .wave-section h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 12px;
+    }
+
+    .wave-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .wave-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #ff00ff;
+    }
+
+    .wave-timer {
+      text-align: right;
+    }
+
+    .timer-label {
+      font-size: 0.625rem;
+      color: #888;
+      text-transform: uppercase;
+    }
+
+    .timer-value {
+      font-size: 1.25rem;
+      color: #ffbf00;
+    }
+
+    /* Player legend */
+    .player-section {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .player-section h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .player-count {
+      color: #00ff41;
+    }
+
+    .player-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .player-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: #0a0a0a;
+      border: 1px solid #1a4a2a;
+      transition: all 0.2s;
+    }
+
+    .player-card:hover {
+      border-color: #00ff41;
+      background: #0d1a14;
+    }
+
+    .player-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .player-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .player-name {
+      font-size: 0.875rem;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-stats {
+      font-size: 0.625rem;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .player-points {
+      font-size: 0.875rem;
+      color: #00ffff;
+      font-weight: bold;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 12px 16px;
+      background: #050505;
+      border-top: 1px solid #1a4a2a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.625rem;
+      color: #666;
+    }
+
+    .footer button {
+      background: #1a4a2a;
+      border: 1px solid #00ff41;
+      color: #00ff41;
+      padding: 8px 16px;
+      font-family: inherit;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .footer button:hover {
+      background: #00ff41;
+      color: #0a0a0a;
+    }
+
+    /* Loading state */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 16px;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #1a4a2a;
+      border-top-color: #00ff41;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+
+    .empty-state .icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .teacher-view {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        max-height: 50vh;
+        border-left: none;
+        border-top: 2px solid #1a4a2a;
+      }
+
+      .grid-container {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="teacher-view">
+    <!-- Grid Display -->
+    <div class="grid-container">
+      <div class="grid-wrapper">
+        <canvas id="teacher-grid"></canvas>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Header -->
+      <div class="header">
+        <h1><span>GRID</span> WARS</h1>
+        <div class="connection-status">
+          <div class="status-dot" id="connection-dot"></div>
+          <span id="connection-text">Connecting...</span>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-section">
+        <h2>Class Stats</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="total-territories">0</div>
+            <div class="stat-label">Territories</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="total-structures">0</div>
+            <div class="stat-label">Structures</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="online-players">0</div>
+            <div class="stat-label">Online</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="total-points">0</div>
+            <div class="stat-label">Total Points</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wave Info -->
+      <div class="wave-section">
+        <h2>Wave Status</h2>
+        <div class="wave-info">
+          <div>
+            <div style="font-size: 0.625rem; color: #888; text-transform: uppercase;">Current Wave</div>
+            <div class="wave-number" id="wave-number">0</div>
+          </div>
+          <div class="wave-timer">
+            <div class="timer-label">Next Wave</div>
+            <div class="timer-value" id="wave-timer">--:--</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Player Legend -->
+      <div class="player-section">
+        <h2>
+          Players
+          <span class="player-count" id="player-count">0</span>
+        </h2>
+        <div class="player-list" id="player-list">
+          <div class="empty-state">
+            <div class="icon">👥</div>
+            <div>No players yet</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <span id="last-updated">Last updated: --</span>
+        <button id="refresh-btn">Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { GridRenderer } from './game/grid-renderer.js';
+    import { TeacherView } from './game/teacher-view.js';
+
+    // Configuration
+    const SERVER_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'http://localhost:3001'
+      : 'https://lsrl-driller-railway-production.up.railway.app';
+
+    // Initialize
+    const canvas = document.getElementById('teacher-grid');
+    const renderer = new GridRenderer(canvas, { gridSize: 20 });
+
+    const teacherView = new TeacherView({
+      serverUrl: SERVER_URL,
+      renderer: renderer,
+      onStateChange: updateUI,
+      onConnectionChange: updateConnectionStatus,
+      onPlayersChange: updatePlayerList
+    });
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+      renderer.resize();
+    });
+
+    // Refresh button
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+      teacherView.refresh();
+    });
+
+    // Initialize the view
+    teacherView.init();
+
+    // UI Update functions
+    function updateUI(state) {
+      // Update stats
+      document.getElementById('total-territories').textContent = state.territoriesCount || 0;
+      document.getElementById('total-structures').textContent = state.structuresCount || 0;
+      document.getElementById('total-points').textContent = state.totalPoints || 0;
+      document.getElementById('wave-number').textContent = state.waveNumber || 0;
+      document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    }
+
+    function updateConnectionStatus(connected) {
+      const dot = document.getElementById('connection-dot');
+      const text = document.getElementById('connection-text');
+
+      if (connected) {
+        dot.classList.add('connected');
+        text.textContent = 'Connected';
+      } else {
+        dot.classList.remove('connected');
+        text.textContent = 'Disconnected';
+      }
+    }
+
+    function updatePlayerList(players) {
+      const listEl = document.getElementById('player-list');
+      const countEl = document.getElementById('player-count');
+      const onlineEl = document.getElementById('online-players');
+
+      countEl.textContent = players.length;
+      onlineEl.textContent = players.filter(p => p.online).length;
+
+      if (players.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">👥</div>
+            <div>No players yet</div>
+          </div>
+        `;
+        return;
+      }
+
+      // Sort by territories_count descending
+      const sorted = [...players].sort((a, b) => (b.territories_count || 0) - (a.territories_count || 0));
+
+      listEl.innerHTML = sorted.map(player => {
+        const color = renderer.getPlayerColor(player.username);
+        return `
+          <div class="player-card">
+            <div class="player-color" style="background: ${color}"></div>
+            <div class="player-info">
+              <div class="player-name">${player.real_name || player.username}</div>
+              <div class="player-stats">
+                ${player.territories_count || 0} territories, ${player.structures_count || 0} structures
+              </div>
+            </div>
+            <div class="player-points">${player.action_points || 0}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  </script>
+</body>
+</html>
