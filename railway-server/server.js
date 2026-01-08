@@ -4,6 +4,12 @@ const { createClient } = require('@supabase/supabase-js');
 const { WebSocketServer } = require('ws');
 const http = require('http');
 const { getWaveManager, AI_CONFIG } = require('./grid-wars-ai.js');
+const {
+  parseUsername,
+  generateAvatarDisplay,
+  assignAvatarFormat,
+  getUniqueAvatar
+} = require('../shared/avatar-utils.js');
 
 // ============================================
 // CONFIGURATION
@@ -2505,6 +2511,233 @@ app.post('/api/grid-wars/center/reset', async (req, res) => {
     res.json({ success: true, hp: newHp });
   } catch (err) {
     console.error('POST /api/grid-wars/center/reset error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// AVATAR SYSTEM ENDPOINTS
+// ============================================
+
+// Get player's avatar and position
+app.get('/api/grid-wars/avatar/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const gameId = req.query.gameId || 'default';
+
+    // Get player data
+    const { data: player, error } = await supabase
+      .from('grid_wars_players')
+      .select('avatar_format, position_x, position_y, health')
+      .eq('game_id', gameId)
+      .eq('username', username)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    if (!player) {
+      // Player doesn't exist yet, return defaults
+      return res.json({
+        username,
+        avatar: generateAvatarDisplay(username, 'A'),
+        position: null,
+        health: 100,
+        needsInit: true
+      });
+    }
+
+    const avatar = generateAvatarDisplay(username, player.avatar_format || 'A');
+
+    res.json({
+      username,
+      avatar,
+      position: { x: player.position_x, y: player.position_y },
+      health: player.health || 100,
+      needsInit: false
+    });
+
+  } catch (err) {
+    console.error('GET /api/grid-wars/avatar/:username error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Initialize player with avatar and spawn position
+app.post('/api/grid-wars/avatar/init', async (req, res) => {
+  try {
+    const { username, gameId = 'default' } = req.body;
+
+    if (!username) {
+      return res.status(400).json({ error: 'Username required' });
+    }
+
+    // Get all existing players for avatar format collision check
+    const { data: existingPlayers } = await supabase
+      .from('grid_wars_players')
+      .select('username, avatar_format, position_x, position_y')
+      .eq('game_id', gameId);
+
+    // Determine avatar format (avoid collisions)
+    const existingAvatars = (existingPlayers || []).map(p => ({
+      username: p.username,
+      format: p.avatar_format || 'A'
+    }));
+    const avatar = getUniqueAvatar(username, existingAvatars);
+
+    // Calculate spawn position (far from others, away from edges)
+    const mapSize = 20;
+    const margin = 3;
+    let spawnX = Math.floor(mapSize / 2);
+    let spawnY = Math.floor(mapSize / 2);
+
+    if (existingPlayers && existingPlayers.length > 0) {
+      // Find position farthest from all existing players
+      let bestDistance = 0;
+
+      for (let x = margin; x < mapSize - margin; x++) {
+        for (let y = margin; y < mapSize - margin; y++) {
+          let minDist = Infinity;
+
+          for (const p of existingPlayers) {
+            if (p.position_x !== null && p.position_y !== null) {
+              const dist = Math.sqrt(
+                Math.pow(x - p.position_x, 2) + Math.pow(y - p.position_y, 2)
+              );
+              if (dist < minDist) minDist = dist;
+            }
+          }
+
+          // If no players have positions, minDist stays Infinity
+          if (minDist === Infinity) minDist = 999;
+
+          if (minDist > bestDistance) {
+            bestDistance = minDist;
+            spawnX = x;
+            spawnY = y;
+          }
+        }
+      }
+    }
+
+    // Upsert player with avatar and position
+    const { data: player, error } = await supabase
+      .from('grid_wars_players')
+      .upsert({
+        game_id: gameId,
+        username,
+        avatar_format: avatar.format,
+        position_x: spawnX,
+        position_y: spawnY,
+        health: 100,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'game_id,username'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Broadcast new player joined
+    broadcast({
+      type: 'player_spawned',
+      gameId,
+      username,
+      avatar,
+      position: { x: spawnX, y: spawnY },
+      health: 100
+    });
+
+    res.json({
+      success: true,
+      username,
+      avatar,
+      position: { x: spawnX, y: spawnY },
+      health: 100
+    });
+
+  } catch (err) {
+    console.error('POST /api/grid-wars/avatar/init error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Move player avatar
+app.post('/api/grid-wars/avatar/move', async (req, res) => {
+  try {
+    const { username, gameId = 'default', x, y } = req.body;
+
+    if (!username || x === undefined || y === undefined) {
+      return res.status(400).json({ error: 'Username and position required' });
+    }
+
+    // Validate position is within map
+    const mapSize = 20;
+    if (x < 0 || x >= mapSize || y < 0 || y >= mapSize) {
+      return res.status(400).json({ error: 'Position out of bounds' });
+    }
+
+    // Update player position
+    const { data: player, error } = await supabase
+      .from('grid_wars_players')
+      .update({
+        position_x: x,
+        position_y: y,
+        updated_at: new Date().toISOString()
+      })
+      .eq('game_id', gameId)
+      .eq('username', username)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Broadcast movement
+    broadcast({
+      type: 'player_moved',
+      gameId,
+      username,
+      position: { x, y }
+    });
+
+    res.json({
+      success: true,
+      position: { x, y }
+    });
+
+  } catch (err) {
+    console.error('POST /api/grid-wars/avatar/move error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all players' avatars and positions for a game
+app.get('/api/grid-wars/avatars', async (req, res) => {
+  try {
+    const gameId = req.query.gameId || 'default';
+
+    const { data: players, error } = await supabase
+      .from('grid_wars_players')
+      .select('username, avatar_format, position_x, position_y, health, action_points')
+      .eq('game_id', gameId);
+
+    if (error) throw error;
+
+    // Generate avatar displays for all players
+    const avatars = (players || []).map(p => ({
+      username: p.username,
+      avatar: generateAvatarDisplay(p.username, p.avatar_format || 'A'),
+      position: p.position_x !== null ? { x: p.position_x, y: p.position_y } : null,
+      health: p.health || 100,
+      points: p.action_points || 0
+    }));
+
+    res.json({ avatars });
+
+  } catch (err) {
+    console.error('GET /api/grid-wars/avatars error:', err);
     res.status(500).json({ error: err.message });
   }
 });
