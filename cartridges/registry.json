@@ -50,6 +50,13 @@
       "shortCode": "DAT"
     },
     {
+      "id": "apstats-u3l5-experimental-design",
+      "name": "Experimental Design (3.5)",
+      "subject": "AP Statistics",
+      "description": "Experiments, principles, completely randomized, block, matched pairs, blinding",
+      "shortCode": "EXP"
+    },
+    {
       "id": "mit-6-0001-lec1",
       "name": "MIT 6.0001 Lecture 1",
       "subject": "Computer Science / Python",

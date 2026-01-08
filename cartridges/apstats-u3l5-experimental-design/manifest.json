@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "id": "apstats-u3l5-experimental-design",
+    "name": "AP Statistics Unit 3 Lesson 5 - Intro to Experimental Design",
+    "subject": "AP Statistics",
+    "description": "Identify components of experiments, principles of well-designed experiments (comparison, random assignment, replication, control), and compare designs (completely randomized, randomized block, matched pairs, blinding/placebo)."
+  },
+  "modes": [
+    {
+      "id": "L01",
+      "name": "Level 1 - Basics",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "answer",
+            "type": "text",
+            "label": "Answer",
+            "placeholder": "Type a short answer or a letter (A-E) if asked..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "L02",
+      "name": "Level 2 - Scenario Check",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "decision",
+            "type": "select",
+            "label": "Decision",
+            "options": [
+              "Yes",
+              "No"
+            ]
+          },
+          {
+            "id": "justification",
+            "type": "textarea",
+            "label": "Justification (1\u20133 sentences)",
+            "placeholder": "Use experiment vocabulary (random assignment, comparison/control, replication, confounding, etc.)",
+            "rows": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "L03",
+      "name": "Level 3 - Free Response",
+      "unlockedBy": {
+        "gold": 6
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "response",
+            "type": "textarea",
+            "label": "Free response",
+            "placeholder": "Write a clear, AP-style response. Use correct terms and explain your reasoning.",
+            "rows": 5
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt"
+  },
+  "hints": {
+    "perField": {
+      "answer": "Focus on Topic 3.5 vocabulary: experimental units, explanatory (factor) vs response variable, treatments, confounding. For MCQ-style prompts, type the letter A\u2013E.",
+      "decision": "Choose **Yes** only if the design supports the claim being asked (e.g., causation requires random assignment + comparison). Otherwise choose **No**.",
+      "justification": "Support your decision with a specific design principle: comparison/control group, random assignment, replication, and/or control of confounding variables. Use the words *random assignment* (not random selection) when talking about causation.",
+      "response": "Include key elements of experimental design: treatments, experimental units, random assignment, what response is measured, and how confounding is controlled. If asked about random selection vs assignment: selection \u2192 generalize; assignment \u2192 causation."
+    }
+  },
+  "progression": {
+    "streakFields": [
+      "answer",
+      "decision",
+      "justification",
+      "response"
+    ],
+    "tiers": [
+      {
+        "id": "L01",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "L02",
+        "unlockedBy": {
+          "gold": 3
+        }
+      },
+      {
+        "id": "L03",
+        "unlockedBy": {
+          "gold": 6
+        }
+      }
+    ]
+  }
+}
