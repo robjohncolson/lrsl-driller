@@ -478,8 +478,56 @@ export class GridWarsState {
         break;
 
       case 'grid_full_state':
-        // Full state sync from server
-        this.refreshState();
+        // Full state sync from server (e.g., after reconnection)
+        if (message.territories && message.structures && message.players) {
+          // Apply state directly from message
+          this.territories.clear();
+          for (const t of message.territories) {
+            this.territories.set(`${t.x},${t.y}`, {
+              owner: t.owner,
+              claimed_at: t.claimed_at || new Date().toISOString()
+            });
+          }
+
+          this.structures.clear();
+          for (const s of message.structures) {
+            this.structures.set(`${s.x},${s.y}`, {
+              structure_type: s.structure_type,
+              owner: s.owner,
+              health: s.health || 100,
+              built_at: s.built_at || new Date().toISOString()
+            });
+          }
+
+          this.players.clear();
+          for (const p of message.players) {
+            this.players.set(p.username, {
+              action_points: p.action_points || 0,
+              territories_count: p.territories_count || 0,
+              structures_count: p.structures_count || 0
+            });
+          }
+
+          this._emitStateChange();
+        } else {
+          // No embedded data, refresh from server
+          this.refreshState();
+        }
+        break;
+
+      // Wave messages (Phase 6)
+      case 'wave_started':
+        // Store wave state for future use
+        if (this.onWaveStarted) {
+          this.onWaveStarted(message);
+        }
+        break;
+
+      case 'enemy_moved':
+        // Update enemy positions for future use
+        if (this.onEnemyMoved) {
+          this.onEnemyMoved(message);
+        }
         break;
     }
   }

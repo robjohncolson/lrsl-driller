@@ -862,6 +862,12 @@
       onTeacherReviewCompleted: (message) => {
         // Apply teacher's grades when review is completed for this student
         applyTeacherGrades(message);
+      },
+      onGridMessage: (message) => {
+        // Forward Grid Wars messages to the panel
+        if (gridPanel) {
+          gridPanel.handleWebSocketMessage(message);
+        }
       }
     });
 

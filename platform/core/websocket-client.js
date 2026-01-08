@@ -26,6 +26,9 @@ export class WebSocketClient {
     this.onTeacherReviewSubmitted = config.onTeacherReviewSubmitted || (() => {});
     this.onTeacherReviewCompleted = config.onTeacherReviewCompleted || (() => {});
 
+    // Grid Wars callbacks
+    this.onGridMessage = config.onGridMessage || (() => {});
+
     this.currentUsername = null;
   }
 
@@ -201,6 +204,17 @@ export class WebSocketClient {
           soundEngine.notification();
         }
         this.onTeacherReviewCompleted(message);
+        break;
+
+      // Grid Wars real-time messages
+      case 'territory_claimed':
+      case 'structure_built':
+      case 'structure_destroyed':
+      case 'points_earned':
+      case 'grid_full_state':
+      case 'wave_started':
+      case 'enemy_moved':
+        this.onGridMessage(message);
         break;
     }
   }
