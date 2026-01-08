@@ -296,6 +296,138 @@ export class GridWarsState {
   }
 
   /**
+   * Initialize player avatar on the map
+   * Auto-spawns at a calculated position based on username
+   */
+  async initAvatar() {
+    if (!this.gameId || !this.username) {
+      throw new Error('Not initialized or no user set');
+    }
+
+    try {
+      const response = await fetch(`${this.serverUrl}/api/grid-wars/avatar/init`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: this.gameId,
+          username: this.username
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to initialize avatar');
+      }
+
+      const result = await response.json();
+
+      // Update local player state
+      const player = this.players.get(this.username) || {
+        action_points: 0,
+        territories_count: 0,
+        health: 100
+      };
+      player.position_x = result.x;
+      player.position_y = result.y;
+      player.health = result.health || 100;
+      this.players.set(this.username, player);
+
+      this._emitStateChange();
+      return result;
+    } catch (err) {
+      this._handleError('initAvatar', err);
+      throw err;
+    }
+  }
+
+  /**
+   * Move player avatar in a direction
+   * @param {'up'|'down'|'left'|'right'} direction
+   */
+  async moveAvatar(direction) {
+    if (!this.gameId || !this.username) {
+      throw new Error('Not initialized or no user set');
+    }
+
+    const player = this.players.get(this.username);
+
+    // If no position, initialize first
+    if (player?.position_x === undefined || player?.position_y === undefined) {
+      await this.initAvatar();
+      return; // First move just initializes
+    }
+
+    // Calculate new position
+    let newX = player.position_x;
+    let newY = player.position_y;
+
+    switch (direction) {
+      case 'up':    newY = Math.max(0, newY - 1); break;
+      case 'down':  newY = Math.min(GRID_WARS_CONFIG.mapSize - 1, newY + 1); break;
+      case 'left':  newX = Math.max(0, newX - 1); break;
+      case 'right': newX = Math.min(GRID_WARS_CONFIG.mapSize - 1, newX + 1); break;
+    }
+
+    // Skip if no movement
+    if (newX === player.position_x && newY === player.position_y) {
+      return;
+    }
+
+    // Optimistic update
+    player.position_x = newX;
+    player.position_y = newY;
+    this._emitStateChange();
+
+    try {
+      const response = await fetch(`${this.serverUrl}/api/grid-wars/avatar/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: this.gameId,
+          username: this.username,
+          x: newX,
+          y: newY
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to move avatar');
+      }
+
+      const result = await response.json();
+
+      // Update health from server
+      player.health = result.health;
+      this._emitStateChange();
+
+      return result;
+    } catch (err) {
+      this._handleError('moveAvatar', err);
+      // Don't throw - movement is optimistic
+    }
+  }
+
+  /**
+   * Get current player's position
+   */
+  getPlayerPosition() {
+    if (!this.username) return null;
+    const player = this.players.get(this.username);
+    if (player?.position_x !== undefined && player?.position_y !== undefined) {
+      return { x: player.position_x, y: player.position_y };
+    }
+    return null;
+  }
+
+  /**
+   * Check if player has avatar on map
+   */
+  hasAvatar() {
+    return this.getPlayerPosition() !== null;
+  }
+
+  /**
    * Get leaderboard
    */
   async getLeaderboard() {

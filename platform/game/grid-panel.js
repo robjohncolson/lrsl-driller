@@ -97,19 +97,23 @@ export class GridPanel {
 
           <div style="color:#94a3b8;margin-bottom:8px;">
             <span style="color:#22d3ee;">1.</span> <strong style="color:#e2e8f0;">Earn Points</strong> - Answer drill questions correctly!<br>
-            <span style="font-size:0.65rem;color:#64748b;margin-left:12px;">Gold ⭐ = 4pts | Silver = 3pts | Bronze = 2pts | Tin = 1pt</span>
+            <span style="font-size:0.65rem;color:#64748b;margin-left:12px;">Gold = 4pts | Silver = 3pts | Bronze = 2pts | Tin = 1pt</span>
           </div>
 
           <div style="color:#94a3b8;margin-bottom:8px;">
-            <span style="color:#22d3ee;">2.</span> <strong style="color:#e2e8f0;">Claim Territory</strong> - Click a grid cell to claim it (10⚡)
+            <span style="color:#22d3ee;">2.</span> <strong style="color:#e2e8f0;">Move</strong> - Use arrow keys to move your dot around the map
           </div>
 
           <div style="color:#94a3b8;margin-bottom:8px;">
-            <span style="color:#22d3ee;">3.</span> <strong style="color:#e2e8f0;">Explore!</strong> - Move around the map. Stay near your territory to stay healthy!
+            <span style="color:#22d3ee;">3.</span> <strong style="color:#e2e8f0;">Claim</strong> - Press SPACEBAR to claim territory (10 pts)
           </div>
 
           <div style="color:#94a3b8;">
-            <span style="color:#22d3ee;">4.</span> <strong style="color:#e2e8f0;">Compete!</strong> - Build the biggest territory with your class!
+            <span style="color:#22d3ee;">4.</span> <strong style="color:#e2e8f0;">Health</strong> - Stay near your territory to stay healthy!
+          </div>
+
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid #374151;color:#64748b;font-size:0.65rem;">
+            Controls: Arrow keys = Move | Spacebar = Claim | Click = Claim cell
           </div>
         </div>
 
@@ -217,6 +221,91 @@ export class GridPanel {
         this.updateStatus('Click a cell on the map to claim it');
       });
     });
+
+    // Keyboard controls
+    this.setupKeyboardControls();
+  }
+
+  /**
+   * Setup keyboard controls for avatar movement
+   * Arrow keys: move avatar
+   * Spacebar: claim territory at current position
+   */
+  setupKeyboardControls() {
+    // Store bound handler for potential cleanup
+    this._keydownHandler = (e) => this.handleKeydown(e);
+    document.addEventListener('keydown', this._keydownHandler);
+  }
+
+  /**
+   * Handle keydown events for avatar movement
+   */
+  async handleKeydown(e) {
+    // Only handle when panel is expanded
+    if (!this.isExpanded) return;
+
+    // Ignore if user is typing in an input field
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    const keyToDirection = {
+      'ArrowUp': 'up',
+      'ArrowDown': 'down',
+      'ArrowLeft': 'left',
+      'ArrowRight': 'right'
+    };
+
+    const direction = keyToDirection[e.key];
+
+    if (direction) {
+      e.preventDefault();
+      await this.handleMovement(direction);
+    } else if (e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      await this.handleClaimAtPosition();
+    }
+  }
+
+  /**
+   * Handle avatar movement
+   */
+  async handleMovement(direction) {
+    if (!this.state) return;
+
+    try {
+      await this.state.moveAvatar(direction);
+      this.syncRendererState();
+
+      // Show position in status
+      const pos = this.state.getPlayerPosition();
+      if (pos) {
+        this.updateStatus(`Position: (${pos.x}, ${pos.y})`);
+      }
+    } catch (err) {
+      this.updateStatus(`Move failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Claim territory at current avatar position
+   */
+  async handleClaimAtPosition() {
+    if (!this.state) return;
+
+    const pos = this.state.getPlayerPosition();
+    if (!pos) {
+      this.updateStatus('Move first to spawn on the map!');
+      return;
+    }
+
+    try {
+      await this.state.claimTerritory(pos.x, pos.y);
+      this.updateStatus(`Claimed (${pos.x}, ${pos.y})!`);
+      this.syncRendererState();
+      this.updateButtonStates();
+      this.updatePointsDisplay();
+    } catch (err) {
+      this.updateStatus(`Claim failed: ${err.message}`);
+    }
   }
 
   /**
