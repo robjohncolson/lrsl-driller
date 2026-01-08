@@ -5,7 +5,7 @@
  */
 
 // Default server URL (Railway production)
-const DEFAULT_SERVER_URL = 'https://lrsl-trainer-production.up.railway.app';
+const DEFAULT_SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 
 // Structure costs and star points (must match server)
 export const GRID_WARS_CONFIG = {

@@ -755,6 +755,7 @@
   </div>
 
   <script type="module">
+    console.log('[APP] Module script starting...');
     import { Platform } from './platform.js';
     import { soundEngine } from './core/sound-engine.js';
     import { celebration } from './core/celebration.js';
@@ -765,6 +766,7 @@
     import { TimeTracker } from './core/time-tracker.js';
     import { CartridgeLoader } from './core/cartridge-loader.js';
     import { GridPanel } from './game/grid-panel.js';
+    console.log('[APP] All imports successful, GridPanel:', typeof GridPanel);
 
     // ==================== CONFIGURATION ====================
     const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
@@ -3473,7 +3475,12 @@
         syncStarsWithServer(userSystem.currentUser.username);
 
         // Initialize Grid Wars (non-blocking)
-        initGridWars(userSystem.currentUser.username);
+        console.log('[APP] About to call initGridWars for:', userSystem.currentUser.username);
+        initGridWars(userSystem.currentUser.username).then(() => {
+          console.log('[APP] initGridWars promise resolved');
+        }).catch(err => {
+          console.error('[APP] initGridWars promise rejected:', err);
+        });
       } else {
         usernameModal.show(true); // First visit - cannot close modal
       }
