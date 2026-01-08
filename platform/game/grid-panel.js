@@ -28,6 +28,7 @@ export class GridPanel {
    * Initialize the Grid Wars panel
    */
   async init(username) {
+    console.log('[GridPanel] init called for', username);
     this.username = username;
 
     // Create state manager
@@ -44,8 +45,11 @@ export class GridPanel {
     });
 
     try {
+      console.log('[GridPanel] Calling state.init()...');
       await this.state.init();
+      console.log('[GridPanel] state.init() success, calling createUI()...');
       this.createUI();
+      console.log('[GridPanel] createUI() done, container innerHTML length:', this.container?.innerHTML?.length);
       return true;
     } catch (err) {
       console.error('GridPanel init error:', err);

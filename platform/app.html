@@ -913,9 +913,11 @@
      * Initialize Grid Wars panel for a user
      */
     async function initGridWars(username) {
+      console.log('[GridWars] initGridWars called for', username, 'enabled:', gridWarsEnabled);
       if (!gridWarsEnabled) return;
 
       try {
+        console.log('[GridWars] Creating GridPanel...');
         gridPanel = new GridPanel({
           serverUrl: SERVER_URL,
           onError: (err) => console.warn('[GridWars]', err),
@@ -924,8 +926,11 @@
           }
         });
 
+        console.log('[GridWars] Setting container...');
         gridPanel.setContainer('#grid-wars-container');
+        console.log('[GridWars] Container set, calling init...');
         const success = await gridPanel.init(username);
+        console.log('[GridWars] init returned:', success);
 
         if (success) {
           console.log('[GridWars] Initialized for', username);
@@ -934,7 +939,7 @@
           console.warn('[GridWars] Failed to initialize - tables may not exist yet');
         }
       } catch (err) {
-        console.warn('[GridWars] Init error:', err.message);
+        console.warn('[GridWars] Init error:', err.message, err);
         // Grid Wars is optional - don't break the app
       }
     }
