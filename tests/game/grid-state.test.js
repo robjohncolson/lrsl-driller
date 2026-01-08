@@ -59,9 +59,10 @@ describe('GridWarsState', () => {
   describe('init', () => {
     it('fetches active game and sets gameId', async () => {
       const mockGame = { game_id: 'game-123', status: 'active', map_size: 20 };
-      const mockState = { game: mockGame, territories: [], players: [] };
+      const mockState = { game: mockGame, territories: [], players: [], classGoal: { current: 0, target: 200 } };
 
       mockFetch
+        .mockResolvedValueOnce(mockResponse({ claimCost: 10 })) // config
         .mockResolvedValueOnce(mockResponse(mockGame))
         .mockResolvedValueOnce(mockResponse(mockState));
 
@@ -72,7 +73,9 @@ describe('GridWarsState', () => {
     });
 
     it('throws error on failed init', async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse({ error: 'Server error' }, 500));
+      mockFetch
+        .mockResolvedValueOnce(mockResponse({ claimCost: 10 })) // config
+        .mockResolvedValueOnce(mockResponse({ error: 'Server error' }, 500));
 
       await expect(state.init()).rejects.toThrow('Server error');
     });
@@ -81,11 +84,13 @@ describe('GridWarsState', () => {
   describe('refreshState', () => {
     beforeEach(async () => {
       const mockGame = { game_id: 'game-123', status: 'active' };
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse(mockGame));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: mockGame,
         territories: [],
-        players: []
+        players: [],
+        classGoal: { current: 0, target: 200 }
       }));
       await state.init();
       mockFetch.mockClear();
@@ -143,11 +148,13 @@ describe('GridWarsState', () => {
 
   describe('getActionPoints', () => {
     beforeEach(async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        players: [{ username: 'alice', action_points: 15, territories_count: 0, health: 100 }]
+        players: [{ username: 'alice', action_points: 15, territories_count: 0, health: 100 }],
+        classGoal: { current: 0, target: 200 }
       }));
       state.setUser('alice');
       await state.init();
@@ -170,11 +177,13 @@ describe('GridWarsState', () => {
 
   describe('getPlayerStats', () => {
     beforeEach(async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        players: [{ username: 'alice', action_points: 10, territories_count: 5, health: 100 }]
+        players: [{ username: 'alice', action_points: 10, territories_count: 5, health: 100 }],
+        classGoal: { current: 0, target: 200 }
       }));
       state.setUser('alice');
       await state.init();
@@ -197,11 +206,13 @@ describe('GridWarsState', () => {
 
   describe('isOwnedByMe', () => {
     beforeEach(async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [{ x: 5, y: 5, owner: 'alice' }],
-        players: []
+        players: [],
+        classGoal: { current: 0, target: 200 }
       }));
       state.setUser('alice');
       await state.init();
@@ -223,11 +234,13 @@ describe('GridWarsState', () => {
 
   describe('canAffordClaim', () => {
     beforeEach(async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        players: [{ username: 'alice', action_points: 15, territories_count: 0, health: 100 }]
+        players: [{ username: 'alice', action_points: 15, territories_count: 0, health: 100 }],
+        classGoal: { current: 0, target: 200 }
       }));
       state.setUser('alice');
       await state.init();
@@ -251,11 +264,13 @@ describe('GridWarsState', () => {
 
   describe('claimTerritory', () => {
     beforeEach(async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        players: [{ username: 'alice', action_points: 20, territories_count: 0, health: 100 }]
+        players: [{ username: 'alice', action_points: 20, territories_count: 0, health: 100 }],
+        classGoal: { current: 0, target: 200 }
       }));
       state.setUser('alice');
       await state.init();
@@ -320,11 +335,13 @@ describe('GridWarsState', () => {
 
   describe('addPoints', () => {
     beforeEach(async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        players: [{ username: 'alice', action_points: 10, territories_count: 0, health: 100 }]
+        players: [{ username: 'alice', action_points: 10, territories_count: 0, health: 100 }],
+        classGoal: { current: 0, target: 200 }
       }));
       state.setUser('alice');
       await state.init();
@@ -383,11 +400,13 @@ describe('GridWarsState', () => {
 
   describe('handleWebSocketMessage', () => {
     beforeEach(async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [],
-        players: []
+        players: [],
+        classGoal: { current: 0, target: 200 }
       }));
       state.setUser('alice');
       await state.init();
@@ -481,16 +500,18 @@ describe('GridWarsState', () => {
   });
 
   describe('getRenderState', () => {
-    it('returns territories with health in render format', async () => {
+    it('returns territories with strength in render format', async () => {
       mockFetch.mockClear();
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
         territories: [
-          { x: 5, y: 5, owner: 'alice', health: 100 },
-          { x: 6, y: 5, owner: 'bob', health: 80 }
+          { x: 5, y: 5, owner: 'alice', strength: 3 },
+          { x: 6, y: 5, owner: 'bob', strength: 2 }
         ],
-        players: []
+        players: [],
+        classGoal: { current: 0, target: 200 }
       }));
 
       await state.init();
@@ -501,11 +522,12 @@ describe('GridWarsState', () => {
       expect(renderState.territories[0]).toHaveProperty('x');
       expect(renderState.territories[0]).toHaveProperty('y');
       expect(renderState.territories[0]).toHaveProperty('owner');
-      expect(renderState.territories[0]).toHaveProperty('health');
+      expect(renderState.territories[0]).toHaveProperty('strength');
     });
 
     it('returns players with position in render format', async () => {
       mockFetch.mockClear();
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
@@ -520,7 +542,8 @@ describe('GridWarsState', () => {
             position_y: 5,
             avatar_format: 'A'
           }
-        ]
+        ],
+        classGoal: { current: 0, target: 200 }
       }));
 
       await state.init();
@@ -536,6 +559,7 @@ describe('GridWarsState', () => {
 
     it('excludes players without position', async () => {
       mockFetch.mockClear();
+      mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 })); // config
       mockFetch.mockResolvedValueOnce(mockResponse({ game_id: 'game-123' }));
       mockFetch.mockResolvedValueOnce(mockResponse({
         game: { game_id: 'game-123' },
@@ -543,7 +567,8 @@ describe('GridWarsState', () => {
         players: [
           { username: 'alice', action_points: 10, territories_count: 0, health: 100 }
           // No position_x/position_y
-        ]
+        ],
+        classGoal: { current: 0, target: 200 }
       }));
 
       await state.init();

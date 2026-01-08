@@ -16,17 +16,20 @@ describe('Real-time Sync', () => {
 
   // Setup mocks for init() which calls refreshState()
   const setupInitMocks = () => {
-    // First call: /api/grid-wars/games/active
+    // First call: /api/grid-wars/config
+    mockFetch.mockResolvedValueOnce(mockResponse({ claimCost: 10 }));
+    // Second call: /api/grid-wars/games/active
     mockFetch.mockResolvedValueOnce(mockResponse({
       game_id: 'test-game',
       status: 'active'
     }));
-    // Second call: /api/grid-wars/games/test-game/state (from refreshState)
+    // Third call: /api/grid-wars/games/test-game/state (from refreshState)
     mockFetch.mockResolvedValueOnce(mockResponse({
       game_id: 'test-game',
       status: 'active',
       territories: [],
-      players: []
+      players: [],
+      classGoal: { current: 0, target: 200 }
     }));
   };
 
