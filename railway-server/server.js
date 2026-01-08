@@ -3,6 +3,7 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const { WebSocketServer } = require('ws');
 const http = require('http');
+const { getWaveManager, AI_CONFIG } = require('./grid-wars-ai.js');
 
 // ============================================
 // CONFIGURATION
@@ -2290,6 +2291,184 @@ app.get('/api/grid-wars/leaderboard', async (req, res) => {
     console.error('GET /api/grid-wars/leaderboard error:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ============================================
+// GRID WARS - WAVE ENDPOINTS
+// ============================================
+
+// Get wave status
+app.get('/api/grid-wars/waves/status', async (req, res) => {
+  try {
+    const { gameId } = req.query;
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId query parameter required' });
+    }
+
+    const waveManager = getWaveManager(gameId, { supabase, broadcast });
+    const state = waveManager.getState();
+
+    // Also get center HP from database
+    const { data: game } = await supabase
+      .from('grid_wars_games')
+      .select('center_hp, wave_number')
+      .eq('game_id', gameId)
+      .single();
+
+    res.json({
+      ...state,
+      centerHp: game?.center_hp || 100,
+      savedWaveNumber: game?.wave_number || 0
+    });
+  } catch (err) {
+    console.error('GET /api/grid-wars/waves/status error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Start a new wave (teacher only)
+app.post('/api/grid-wars/waves/start', async (req, res) => {
+  try {
+    const { gameId, password } = req.body;
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId required' });
+    }
+
+    // Verify teacher password
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(403).json({ error: 'Invalid teacher password' });
+    }
+
+    const waveManager = getWaveManager(gameId, {
+      supabase,
+      broadcast,
+      onCenterDamaged: async (damage) => {
+        // Update center HP in database
+        const { data: game } = await supabase
+          .from('grid_wars_games')
+          .select('center_hp')
+          .eq('game_id', gameId)
+          .single();
+
+        const newHp = Math.max(0, (game?.center_hp || 100) - damage);
+
+        await supabase
+          .from('grid_wars_games')
+          .update({ center_hp: newHp })
+          .eq('game_id', gameId);
+
+        // Broadcast center damage
+        broadcast({
+          type: 'center_damaged',
+          gameId,
+          damage,
+          newHp
+        });
+
+        if (newHp <= 0) {
+          broadcast({
+            type: 'game_over',
+            gameId,
+            reason: 'center_destroyed'
+          });
+        }
+      }
+    });
+
+    const result = await waveManager.startWave();
+
+    // Update wave number in database
+    await supabase
+      .from('grid_wars_games')
+      .update({ wave_number: result.waveNumber })
+      .eq('game_id', gameId);
+
+    res.json({
+      success: true,
+      waveNumber: result.waveNumber,
+      enemyCount: result.enemies.length
+    });
+  } catch (err) {
+    console.error('POST /api/grid-wars/waves/start error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Stop current wave (teacher only)
+app.post('/api/grid-wars/waves/stop', async (req, res) => {
+  try {
+    const { gameId, password } = req.body;
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId required' });
+    }
+
+    // Verify teacher password
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(403).json({ error: 'Invalid teacher password' });
+    }
+
+    const waveManager = getWaveManager(gameId, { supabase, broadcast });
+    waveManager.stopWave();
+
+    broadcast({
+      type: 'wave_stopped',
+      gameId
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/grid-wars/waves/stop error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reset center HP (teacher only)
+app.post('/api/grid-wars/center/reset', async (req, res) => {
+  try {
+    const { gameId, password, hp } = req.body;
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId required' });
+    }
+
+    // Verify teacher password
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(403).json({ error: 'Invalid teacher password' });
+    }
+
+    const newHp = hp || 100;
+
+    await supabase
+      .from('grid_wars_games')
+      .update({ center_hp: newHp })
+      .eq('game_id', gameId);
+
+    broadcast({
+      type: 'center_reset',
+      gameId,
+      hp: newHp
+    });
+
+    res.json({ success: true, hp: newHp });
+  } catch (err) {
+    console.error('POST /api/grid-wars/center/reset error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get AI config (for client display)
+app.get('/api/grid-wars/config', (req, res) => {
+  res.json({
+    mapSize: AI_CONFIG.mapSize,
+    centerX: AI_CONFIG.centerX,
+    centerY: AI_CONFIG.centerY,
+    towerRange: AI_CONFIG.towerRange,
+    towerDamage: AI_CONFIG.towerDamage,
+    tickInterval: AI_CONFIG.tickInterval
+  });
 });
 
 // ============================================
