@@ -4483,13 +4483,14 @@ app.get('/api/grid-wars/leaderboard/multi', async (req, res) => {
     }
 
     // Scholar: Sort by lifetime_earned (total points earned)
+    // Falls back to action_points if lifetime_earned not yet migrated
     const scholarRanked = [...players]
-      .sort((a, b) => (b.lifetime_earned || 0) - (a.lifetime_earned || 0))
+      .sort((a, b) => (b.lifetime_earned || b.action_points || 0) - (a.lifetime_earned || a.action_points || 0))
       .map((p, i) => ({
         rank: i + 1,
         username: p.username,
         real_name: usersMap[p.username] || null,
-        value: p.lifetime_earned || 0,
+        value: p.lifetime_earned || p.action_points || 0,
         label: 'lifetime_earned'
       }));
 
@@ -4588,8 +4589,9 @@ app.get('/api/grid-wars/scouting-report', async (req, res) => {
     };
 
     // Calculate status for each player
+    // Falls back to action_points if lifetime_earned not yet migrated
     const playersWithStatus = allPlayers.map(p => {
-      const lifetime = p.lifetime_earned || 0;
+      const lifetime = p.lifetime_earned || p.action_points || 0;
       const cells = p.territories_count || 0;
 
       let status;
@@ -4611,14 +4613,14 @@ app.get('/api/grid-wars/scouting-report', async (req, res) => {
         username: p.username,
         real_name: usersMap[p.username] || null,
         action_points: p.action_points || 0,
-        lifetime_earned: lifetime,
+        lifetime_earned: lifetime,  // Already uses fallback
         territories_count: cells,
         online: isOnline,
         status
       };
     });
 
-    // Sort by lifetime_earned descending
+    // Sort by lifetime_earned descending (which includes fallback)
     playersWithStatus.sort((a, b) => b.lifetime_earned - a.lifetime_earned);
 
     res.json({
