@@ -62,6 +62,13 @@
       "subject": "Computer Science / Python",
       "description": "Computation, knowledge types, algorithms, language aspects, Python basics",
       "shortCode": "MIT1"
+    },
+    {
+      "id": "apstats-u3-l6-7-design-inference",
+      "name": "Design Choices + Inference (3.6-3.7)",
+      "subject": "AP Statistics",
+      "description": "Experimental designs (CRD, block, matched pairs), significance, causation, generalization",
+      "shortCode": "INF"
     }
   ]
 }
