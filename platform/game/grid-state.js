@@ -10,6 +10,7 @@ const DEFAULT_SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 // Game config (must match server - will be fetched from server on init)
 export let GRID_WARS_CONFIG = {
   claimCost: 10,
+  takeoverCost: 20,
   nodeClaimCost: 15,
   surgeCost: 5,
   reinforceCost: 5,
@@ -241,7 +242,30 @@ export class GridWarsState {
   }
 
   /**
-   * Claim a territory
+   * Get cost to claim/takeover a territory at position
+   */
+  getClaimCostAt(x, y) {
+    const owner = this.getTerritoryOwner(x, y);
+    if (!owner) {
+      return GRID_WARS_CONFIG.claimCost; // Neutral = 10
+    } else if (owner === this.username) {
+      return null; // Own territory - can't reclaim
+    } else {
+      return GRID_WARS_CONFIG.takeoverCost; // Enemy = 20
+    }
+  }
+
+  /**
+   * Check if player can afford to claim/takeover at position
+   */
+  canAffordClaimAt(x, y) {
+    const cost = this.getClaimCostAt(x, y);
+    if (cost === null) return false; // Own territory
+    return this.getActionPoints() >= cost;
+  }
+
+  /**
+   * Claim or takeover a territory
    */
   async claimTerritory(x, y) {
     if (!this.gameId || !this.username) {
@@ -249,17 +273,18 @@ export class GridWarsState {
     }
 
     // Validate locally first
-    if (this.getTerritoryOwner(x, y)) {
-      throw new Error('Territory already claimed');
+    const currentOwner = this.getTerritoryOwner(x, y);
+    if (currentOwner === this.username) {
+      throw new Error('You already own this territory');
     }
 
-    if (!this.canAffordClaim()) {
+    const cost = this.getClaimCostAt(x, y);
+    if (this.getActionPoints() < cost) {
       throw new Error('Insufficient action points');
     }
 
     // Optimistic update
-    const cost = GRID_WARS_CONFIG.claimCost;
-    this._applyOptimisticClaim(x, y, cost);
+    this._applyOptimisticClaim(x, y, cost, currentOwner);
 
     try {
       const response = await fetch(`${this.serverUrl}/api/grid-wars/action`, {
@@ -804,6 +829,32 @@ export class GridWarsState {
         this.surge = null;
         this._emitStateChange();
         break;
+
+      case 'territory_lost':
+        // Our territory was taken over by someone else
+        if (message.username === this.username) {
+          // Update local territory (it now belongs to the attacker)
+          const lostTerritory = this.territories.get(`${message.x},${message.y}`);
+          if (lostTerritory) {
+            lostTerritory.owner = message.takenBy;
+            lostTerritory.claimed_at = new Date().toISOString();
+            lostTerritory.contested_by = null;
+            lostTerritory.contested_since = null;
+          }
+          this._updatePlayerTerritoriesCount(this.username, -1);
+
+          if (this.onTerritoryChanged) {
+            this.onTerritoryChanged({
+              x: message.x,
+              y: message.y,
+              owner: message.takenBy,
+              action: 'taken',
+              previousOwner: this.username
+            });
+          }
+        }
+        this._emitStateChange();
+        break;
     }
   }
 
@@ -849,24 +900,49 @@ export class GridWarsState {
   // Private methods
   // ============================================
 
-  _applyOptimisticClaim(x, y, cost) {
+  _applyOptimisticClaim(x, y, cost, previousOwner = null) {
+    // Store old territory data for potential rollback
+    const oldTerritory = this.territories.get(`${x},${y}`);
+
     this.territories.set(`${x},${y}`, {
       owner: this.username,
       claimed_at: new Date().toISOString(),
       strength: GRID_WARS_CONFIG.maxCellStrength,
       contested_by: null,
       contested_since: null,
-      node_type: null
+      node_type: oldTerritory?.node_type || null
     });
     this._updatePlayerPoints(-cost);
     this._updatePlayerTerritoriesCount(this.username, 1);
-    this._pendingActions.push({ type: 'claim', x, y, cost });
+
+    // If takeover, decrement previous owner's count
+    if (previousOwner) {
+      this._updatePlayerTerritoriesCount(previousOwner, -1);
+    }
+
+    this._pendingActions.push({ type: 'claim', x, y, cost, previousOwner, oldTerritory });
   }
 
   _rollbackOptimisticClaim(x, y, cost) {
-    this.territories.delete(`${x},${y}`);
+    const pendingAction = this._pendingActions.find(
+      a => a.type === 'claim' && a.x === x && a.y === y
+    );
+
+    // Restore previous territory or delete
+    if (pendingAction?.oldTerritory) {
+      this.territories.set(`${x},${y}`, pendingAction.oldTerritory);
+    } else {
+      this.territories.delete(`${x},${y}`);
+    }
+
     this._updatePlayerPoints(cost);
     this._updatePlayerTerritoriesCount(this.username, -1);
+
+    // Restore previous owner's count if was takeover
+    if (pendingAction?.previousOwner) {
+      this._updatePlayerTerritoriesCount(pendingAction.previousOwner, 1);
+    }
+
     this._pendingActions = this._pendingActions.filter(
       a => !(a.type === 'claim' && a.x === x && a.y === y)
     );

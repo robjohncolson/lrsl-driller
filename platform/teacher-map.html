@@ -424,7 +424,30 @@
       <!-- Footer -->
       <div class="footer">
         <span id="last-updated">Last updated: --</span>
-        <button id="refresh-btn">Refresh</button>
+        <div style="display:flex;gap:8px;">
+          <button id="refresh-btn">Refresh</button>
+          <button id="end-session-btn" style="background:#ff3333;border-color:#ff6666;color:#fff;">End Session</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Victory Overlay (hidden by default) -->
+  <div id="victory-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;font-family:'Courier New',monospace;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;">
+      <div style="background:#0f172a;border:3px solid #00ff41;padding:48px 64px;max-width:600px;width:100%;text-align:center;box-shadow:0 0 60px rgba(0,255,65,0.4);">
+        <div style="font-size:2rem;color:#00ff41;margin-bottom:32px;text-shadow:0 0 20px #00ff4180;">
+          SESSION COMPLETE
+        </div>
+
+        <div id="rankings-display" style="text-align:left;margin-bottom:32px;">
+          <!-- Rankings will be inserted here -->
+        </div>
+
+        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+          <button id="close-overlay-btn" style="background:transparent;border:2px solid #00ff41;color:#00ff41;padding:12px 24px;font-family:inherit;font-size:0.875rem;cursor:pointer;text-transform:uppercase;">Close</button>
+          <button id="reset-game-btn" style="background:#ff3333;border:2px solid #ff6666;color:#fff;padding:12px 24px;font-family:inherit;font-size:0.875rem;cursor:pointer;text-transform:uppercase;">Reset Grid</button>
+        </div>
       </div>
     </div>
   </div>
@@ -459,6 +482,87 @@
     document.getElementById('refresh-btn').addEventListener('click', () => {
       teacherView.refresh();
     });
+
+    // End Session button
+    document.getElementById('end-session-btn').addEventListener('click', async () => {
+      if (!confirm('End the current session and show rankings?')) return;
+
+      try {
+        const rankings = await teacherView.endSession();
+        showVictoryOverlay(rankings);
+      } catch (err) {
+        console.error('End session error:', err);
+        alert('Failed to end session: ' + err.message);
+      }
+    });
+
+    // Close overlay button
+    document.getElementById('close-overlay-btn').addEventListener('click', () => {
+      document.getElementById('victory-overlay').style.display = 'none';
+    });
+
+    // Reset game button
+    document.getElementById('reset-game-btn').addEventListener('click', async () => {
+      if (!confirm('This will reset the entire grid. Are you sure?')) return;
+
+      const success = await teacherView.resetGame();
+      if (success) {
+        document.getElementById('victory-overlay').style.display = 'none';
+        alert('Grid has been reset!');
+      } else {
+        alert('Failed to reset grid. This feature may require server implementation.');
+      }
+    });
+
+    // Victory overlay display function
+    function showVictoryOverlay(rankings) {
+      const overlay = document.getElementById('victory-overlay');
+      const display = document.getElementById('rankings-display');
+
+      if (!rankings) {
+        display.innerHTML = `
+          <div style="text-align:center;color:#888;padding:20px;">
+            No players participated in this session.
+          </div>
+        `;
+      } else {
+        display.innerHTML = `
+          <div style="margin-bottom:24px;padding:16px;background:#0a0a0a;border:1px solid #1a4a2a;">
+            <div style="color:#888;font-size:0.75rem;text-transform:uppercase;margin-bottom:8px;">TERRITORY LEADER</div>
+            <div style="color:#00ffff;font-size:1.25rem;font-weight:bold;">${rankings.territoryLeader?.name || 'N/A'}</div>
+            <div style="color:#00ff41;font-size:0.875rem;">${rankings.territoryLeader?.score || 0} connected cells</div>
+          </div>
+
+          <div style="margin-bottom:24px;padding:16px;background:#0a0a0a;border:1px solid #1a4a2a;">
+            <div style="color:#888;font-size:0.75rem;text-transform:uppercase;margin-bottom:8px;">TOP SCHOLAR</div>
+            <div style="color:#ff00ff;font-size:1.25rem;font-weight:bold;">${rankings.topScholar?.name || 'N/A'}</div>
+            <div style="color:#00ff41;font-size:0.875rem;">${rankings.topScholar?.score || 0} points earned</div>
+          </div>
+
+          <div style="margin-bottom:24px;padding:16px;background:#0a0a0a;border:1px solid #1a4a2a;">
+            <div style="color:#888;font-size:0.75rem;text-transform:uppercase;margin-bottom:8px;">CONQUEROR</div>
+            <div style="color:#ffbf00;font-size:1.25rem;font-weight:bold;">${rankings.topClaimer?.name || 'N/A'}</div>
+            <div style="color:#00ff41;font-size:0.875rem;">${rankings.topClaimer?.score || 0} territories claimed</div>
+          </div>
+
+          ${rankings.onlineChampion ? `
+          <div style="padding:16px;background:#0a0a0a;border:1px solid #1a4a2a;">
+            <div style="color:#888;font-size:0.75rem;text-transform:uppercase;margin-bottom:8px;">ONLINE CHAMPION</div>
+            <div style="color:#00ff41;font-size:1.25rem;font-weight:bold;">${rankings.onlineChampion.name}</div>
+            <div style="color:#00ff41;font-size:0.875rem;">${rankings.onlineChampion.score} points</div>
+          </div>
+          ` : ''}
+
+          <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1a4a2a;display:flex;justify-content:space-around;color:#888;font-size:0.75rem;">
+            <span>${rankings.totalPlayers} Players</span>
+            <span>${rankings.totalTerritories} Territories</span>
+            <span>${rankings.totalPoints} Total Points</span>
+          </div>
+        `;
+      }
+
+      overlay.style.display = 'block';
+    }
 
     // Initialize the view
     teacherView.init();

@@ -25,9 +25,9 @@ export class GridRenderer {
       white: '#ffffff',
       red: '#ff3333',
       surge: '#ffffff',
-      nodeAmplifier: '#ff00ff',  // Magenta
-      nodeBeacon: '#00ffff',     // Cyan
-      nodeAnchor: '#ffbf00',     // Amber
+      nodeAmplifier: '#ff00ff',  // Magenta (all nodes are now power nodes)
+      nodeBeacon: '#ff00ff',     // Same as amplifier (unified power nodes)
+      nodeAnchor: '#ff00ff',     // Same as amplifier (unified power nodes)
       // Territory colors (neon, semi-transparent)
       territories: [
         '#00ffff80', // cyan
@@ -58,6 +58,11 @@ export class GridRenderer {
 
     // Hover state
     this.hoveredCell = null;
+
+    // Avatar wake trails: { username -> [{ x, y, timestamp }] }
+    this.avatarWakes = {};
+    // Last known avatar positions for direction tracking
+    this.lastAvatarPositions = {};
 
     // Resize handling
     this.resize();
@@ -141,10 +146,55 @@ export class GridRenderer {
   }
 
   /**
-   * Set avatar positions
+   * Set avatar positions with wake tracking
    */
   setAvatars(avatars) {
-    this.avatars = avatars || [];
+    const now = performance.now();
+    const newAvatars = avatars || [];
+
+    // Track movement for wake trails
+    for (const avatar of newAvatars) {
+      const key = avatar.username;
+      const lastPos = this.lastAvatarPositions[key];
+
+      if (lastPos && (lastPos.x !== avatar.x || lastPos.y !== avatar.y)) {
+        // Avatar moved - add previous position to wake trail
+        if (!this.avatarWakes[key]) {
+          this.avatarWakes[key] = [];
+        }
+        this.avatarWakes[key].unshift({ x: lastPos.x, y: lastPos.y, timestamp: now });
+        // Keep only last 3 wake positions
+        this.avatarWakes[key] = this.avatarWakes[key].slice(0, 3);
+
+        // Store direction of movement
+        avatar.direction = this.getDirection(lastPos.x, lastPos.y, avatar.x, avatar.y);
+      } else if (lastPos) {
+        // Keep previous direction
+        avatar.direction = lastPos.direction;
+      }
+
+      // Update last known position
+      this.lastAvatarPositions[key] = {
+        x: avatar.x,
+        y: avatar.y,
+        direction: avatar.direction || 'right'
+      };
+    }
+
+    this.avatars = newAvatars;
+  }
+
+  /**
+   * Get direction of movement
+   */
+  getDirection(fromX, fromY, toX, toY) {
+    const dx = toX - fromX;
+    const dy = toY - fromY;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return dx > 0 ? 'right' : 'left';
+    } else {
+      return dy > 0 ? 'down' : 'up';
+    }
   }
 
   /**
@@ -208,6 +258,9 @@ export class GridRenderer {
 
     // Draw grid lines
     this.drawGrid(ctx);
+
+    // Draw avatar wake trails (before avatars)
+    this.drawAvatarWakes(ctx, now);
 
     // Draw avatars
     this.drawAvatars(ctx, now);
@@ -435,60 +488,141 @@ export class GridRenderer {
   }
 
   /**
-   * Draw player avatars
+   * Draw avatar wake trails (fading trail behind movement)
+   */
+  drawAvatarWakes(ctx, now) {
+    const wakeDuration = 2000; // 2 seconds fade
+
+    for (const [username, wake] of Object.entries(this.avatarWakes)) {
+      const color = this.getPlayerSolidColor(username);
+
+      wake.forEach((pos, i) => {
+        const age = now - pos.timestamp;
+        if (age > wakeDuration) return; // Skip expired wake positions
+
+        // Calculate opacity based on position in trail and age
+        // Position: 0 = most recent = brightest
+        const positionOpacity = [0.6, 0.4, 0.2][i] || 0.1;
+        const ageOpacity = 1 - (age / wakeDuration);
+        const finalOpacity = positionOpacity * ageOpacity;
+
+        if (finalOpacity <= 0) return;
+
+        ctx.globalAlpha = finalOpacity;
+        ctx.fillStyle = color;
+        ctx.fillRect(
+          pos.x * this.cellSize + 2,
+          pos.y * this.cellSize + 2,
+          this.cellSize - 4,
+          this.cellSize - 4
+        );
+      });
+    }
+
+    ctx.globalAlpha = 1;
+
+    // Clean up old wake entries
+    for (const username of Object.keys(this.avatarWakes)) {
+      this.avatarWakes[username] = this.avatarWakes[username].filter(
+        pos => (now - pos.timestamp) < wakeDuration
+      );
+      if (this.avatarWakes[username].length === 0) {
+        delete this.avatarWakes[username];
+      }
+    }
+  }
+
+  /**
+   * Draw player avatars with diamond cursor style
    */
   drawAvatars(ctx, now) {
     for (const avatar of this.avatars) {
       const cx = avatar.x * this.cellSize + this.cellSize / 2;
       const cy = avatar.y * this.cellSize + this.cellSize / 2;
       const color = this.getPlayerSolidColor(avatar.username);
-
-      // Pulsing effect based on health
       const healthRatio = (avatar.health || 100) / 100;
-      const pulse = Math.sin(now / 400) * 0.15 + 0.85;
 
-      // Draw avatar circle
-      const radius = this.cellSize * 0.35;
+      // Blink effect (800ms cycle, opacity 60% to 100%)
+      const blink = 0.6 + 0.4 * Math.abs(Math.sin(now / 400));
 
-      // Outer glow (health indicator)
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
-      ctx.strokeStyle = healthRatio > 0.5 ? color : this.colors.red;
+      // Diamond size (1.5x cell size, so 0.7 radius from center)
+      const size = this.cellSize * 0.7;
+
+      ctx.save();
+
+      // White diamond outline
+      ctx.globalAlpha = blink;
+      ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 2;
-      ctx.globalAlpha = pulse;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-
-      // Inner circle
       ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.moveTo(cx, cy - size);           // Top
+      ctx.lineTo(cx + size, cy);           // Right
+      ctx.lineTo(cx, cy + size);           // Bottom
+      ctx.lineTo(cx - size, cy);           // Left
+      ctx.closePath();
+      ctx.stroke();
+
+      // Inner glow in player color
+      ctx.globalAlpha = blink * 0.3;
       ctx.fillStyle = color;
-      ctx.globalAlpha = 0.7;
       ctx.fill();
-      ctx.globalAlpha = 1;
 
-      // Draw emoji if available
-      if (avatar.emoji) {
-        ctx.font = `${this.cellSize * 0.5}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(avatar.emoji, cx, cy);
+      // Direction indicator (chevron inside diamond)
+      ctx.globalAlpha = blink * 0.8;
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1.5;
+      const chevronSize = size * 0.3;
+      const direction = avatar.direction || 'right';
+
+      ctx.beginPath();
+      switch (direction) {
+        case 'up':
+          ctx.moveTo(cx - chevronSize, cy + chevronSize * 0.3);
+          ctx.lineTo(cx, cy - chevronSize * 0.5);
+          ctx.lineTo(cx + chevronSize, cy + chevronSize * 0.3);
+          break;
+        case 'down':
+          ctx.moveTo(cx - chevronSize, cy - chevronSize * 0.3);
+          ctx.lineTo(cx, cy + chevronSize * 0.5);
+          ctx.lineTo(cx + chevronSize, cy - chevronSize * 0.3);
+          break;
+        case 'left':
+          ctx.moveTo(cx + chevronSize * 0.3, cy - chevronSize);
+          ctx.lineTo(cx - chevronSize * 0.5, cy);
+          ctx.lineTo(cx + chevronSize * 0.3, cy + chevronSize);
+          break;
+        case 'right':
+        default:
+          ctx.moveTo(cx - chevronSize * 0.3, cy - chevronSize);
+          ctx.lineTo(cx + chevronSize * 0.5, cy);
+          ctx.lineTo(cx - chevronSize * 0.3, cy + chevronSize);
+          break;
       }
+      ctx.stroke();
 
-      // Health bar below avatar
+      ctx.restore();
+
+      // Health indicator - ring around diamond (only if damaged)
       if (healthRatio < 1) {
-        const barWidth = this.cellSize * 0.7;
-        const barHeight = 3;
-        const barX = cx - barWidth / 2;
-        const barY = cy + radius + 4;
+        const ringRadius = size + 4;
+        const healthAngle = healthRatio * Math.PI * 2;
 
-        // Background
-        ctx.fillStyle = '#333';
-        ctx.fillRect(barX, barY, barWidth, barHeight);
+        // Background ring (dark)
+        ctx.beginPath();
+        ctx.arc(cx, cy, ringRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = '#333333';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.5;
+        ctx.stroke();
 
-        // Health fill
-        ctx.fillStyle = healthRatio > 0.5 ? '#00ff41' : healthRatio > 0.25 ? '#ffbf00' : '#ff3333';
-        ctx.fillRect(barX, barY, barWidth * healthRatio, barHeight);
+        // Health arc (colored by health level)
+        ctx.beginPath();
+        ctx.arc(cx, cy, ringRadius, -Math.PI / 2, -Math.PI / 2 + healthAngle);
+        ctx.strokeStyle = healthRatio > 0.5 ? '#00ff41' : healthRatio > 0.25 ? '#ffbf00' : '#ff3333';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = blink;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
       }
     }
   }

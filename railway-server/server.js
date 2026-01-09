@@ -1933,9 +1933,10 @@ app.get('/api/time-tracking/class-summary', async (req, res) => {
 // GRID WARS ENDPOINTS
 // ============================================
 
-// Game config - territory exploration with contestation and nodes
+// Game config - territory exploration with direct takeover
 const GRID_WARS_CONFIG = {
   claimCost: 10,
+  takeoverCost: 20,            // Cost to claim enemy territory (instant takeover)
   nodeClaimCost: 15,           // Resource nodes cost more
   surgeCost: 5,                // Surge cells cost less
   reinforceCost: 5,            // Cost to remotely reinforce a contested cell
@@ -1976,11 +1977,11 @@ const GRID_WARS_CONFIG = {
   // Surge settings
   surgeDuration: 90,            // Seconds surge cell lasts
 
-  // Resource node positions
+  // Resource node positions (all nodes are now Amplifier type for simplicity)
   nodePositions: [
     { x: 10, y: 10, type: 'amplifier' },  // Center
-    { x: 4, y: 4, type: 'beacon' },       // Top-left quadrant
-    { x: 15, y: 15, type: 'anchor' }      // Bottom-right quadrant
+    { x: 4, y: 4, type: 'amplifier' },    // Top-left quadrant (was beacon)
+    { x: 15, y: 15, type: 'amplifier' }   // Bottom-right quadrant (was anchor)
   ],
 
   // Server tick interval
@@ -2678,6 +2679,7 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
       surge,
       config: {
         claimCost: GRID_WARS_CONFIG.claimCost,
+        takeoverCost: GRID_WARS_CONFIG.takeoverCost,
         nodeClaimCost: GRID_WARS_CONFIG.nodeClaimCost,
         surgeCost: GRID_WARS_CONFIG.surgeCost,
         reinforceCost: GRID_WARS_CONFIG.reinforceCost
@@ -2736,14 +2738,20 @@ app.post('/api/grid-wars/action', async (req, res) => {
       // Resource nodes exist as unclaimed territories with node_type set
       const isResourceNode = existingTerritory?.node_type && !existingTerritory?.owner;
       const isAlreadyOwned = existingTerritory?.owner;
+      const previousOwner = existingTerritory?.owner || null;
+      const isEnemyTakeover = isAlreadyOwned && existingTerritory.owner !== username;
+      const isOwnTerritory = isAlreadyOwned && existingTerritory.owner === username;
 
-      if (isAlreadyOwned) {
-        return res.status(400).json({ error: 'Territory already claimed' });
+      // Can't reclaim your own territory
+      if (isOwnTerritory) {
+        return res.status(400).json({ error: 'You already own this territory' });
       }
 
-      // Determine cost
+      // Determine cost: enemy takeover = 20, node = 15, surge = 5, neutral = 10
       let cost = GRID_WARS_CONFIG.claimCost;
-      if (isResourceNode) {
+      if (isEnemyTakeover) {
+        cost = GRID_WARS_CONFIG.takeoverCost;
+      } else if (isResourceNode) {
         cost = GRID_WARS_CONFIG.nodeClaimCost;
       } else if (isSurgeCell) {
         cost = GRID_WARS_CONFIG.surgeCost;
@@ -2753,19 +2761,40 @@ app.post('/api/grid-wars/action', async (req, res) => {
         return res.status(400).json({ error: `Insufficient points. Need ${cost}, have ${currentPoints}` });
       }
 
-      // Claim or update territory
+      // Claim or update territory (works for neutral, resource nodes, AND enemy territories)
       if (existingTerritory) {
-        // Update existing (resource node)
+        // Update existing (resource node or enemy takeover)
         await supabase
           .from('grid_wars_territories')
           .update({
             owner: username,
             claimed_at: new Date().toISOString(),
-            strength: GRID_WARS_CONFIG.maxCellStrength
+            strength: GRID_WARS_CONFIG.maxCellStrength,
+            contested_by: null,         // Clear any contestation
+            contested_since: null
           })
           .eq('game_id', gameId)
           .eq('x', x)
           .eq('y', y);
+
+        // Decrement previous owner's territory count if takeover
+        if (isEnemyTakeover) {
+          await supabase.rpc('increment_territories_count', {
+            p_game_id: gameId,
+            p_username: previousOwner,
+            p_delta: -1
+          });
+
+          // Notify the defender they lost territory
+          broadcast({
+            type: 'territory_lost',
+            gameId,
+            username: previousOwner,
+            x,
+            y,
+            takenBy: username
+          });
+        }
       } else {
         // Insert new territory
         await supabase
@@ -2851,7 +2880,9 @@ app.post('/api/grid-wars/action', async (req, res) => {
         y,
         cluster: newCluster,
         isNode: isResourceNode,
-        nodeType: existingTerritory?.node_type
+        nodeType: existingTerritory?.node_type,
+        isTakeover: isEnemyTakeover,
+        previousOwner: isEnemyTakeover ? previousOwner : null
       });
 
       res.json({
@@ -2864,7 +2895,9 @@ app.post('/api/grid-wars/action', async (req, res) => {
         cluster: newCluster,
         classGoal: goalResult,
         buffApplied,
-        wasSurge: isSurgeCell
+        wasSurge: isSurgeCell,
+        isTakeover: isEnemyTakeover,
+        previousOwner: isEnemyTakeover ? previousOwner : null
       });
 
     } else if (action === 'reinforce') {
@@ -3531,6 +3564,7 @@ app.get('/api/grid-wars/config', (req, res) => {
   res.json({
     mapSize: GRID_WARS_CONFIG.mapSize,
     claimCost: GRID_WARS_CONFIG.claimCost,
+    takeoverCost: GRID_WARS_CONFIG.takeoverCost,
     nodeClaimCost: GRID_WARS_CONFIG.nodeClaimCost,
     surgeCost: GRID_WARS_CONFIG.surgeCost,
     reinforceCost: GRID_WARS_CONFIG.reinforceCost,

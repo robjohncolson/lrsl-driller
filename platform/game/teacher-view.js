@@ -372,6 +372,112 @@ export class TeacherView {
   }
 
   /**
+   * End the current session and calculate rankings
+   * Returns ranking data for display
+   */
+  async endSession() {
+    if (!this.gameId) {
+      throw new Error('No active game');
+    }
+
+    // Calculate rankings from current data
+    const rankings = this.calculateRankings();
+
+    // Broadcast session end to all players
+    this.send({
+      type: 'session_ended',
+      gameId: this.gameId,
+      rankings
+    });
+
+    return rankings;
+  }
+
+  /**
+   * Calculate rankings for end-of-session ceremony
+   */
+  calculateRankings() {
+    const playersWithData = this.players.filter(p => p.territories_count > 0 || p.action_points > 0);
+
+    if (playersWithData.length === 0) {
+      return null;
+    }
+
+    // Territory Leader: Largest cluster or most territories
+    const territoryLeader = [...playersWithData].sort((a, b) => {
+      const aCluster = a.largest_cluster || a.territories_count || 0;
+      const bCluster = b.largest_cluster || b.territories_count || 0;
+      return bCluster - aCluster;
+    })[0];
+
+    // Top Scholar: Most points earned
+    const topScholar = [...playersWithData].sort((a, b) => {
+      return (b.action_points || 0) - (a.action_points || 0);
+    })[0];
+
+    // Top Claimer: Most territories
+    const topClaimer = [...playersWithData].sort((a, b) => {
+      return (b.territories_count || 0) - (a.territories_count || 0);
+    })[0];
+
+    // Online Champion: Highest points among online players
+    const onlinePlayers = playersWithData.filter(p => p.online);
+    const onlineChampion = onlinePlayers.length > 0
+      ? [...onlinePlayers].sort((a, b) => (b.action_points || 0) - (a.action_points || 0))[0]
+      : null;
+
+    return {
+      territoryLeader: territoryLeader ? {
+        username: territoryLeader.username,
+        name: territoryLeader.real_name || territoryLeader.username,
+        score: territoryLeader.largest_cluster || territoryLeader.territories_count || 0
+      } : null,
+      topScholar: topScholar ? {
+        username: topScholar.username,
+        name: topScholar.real_name || topScholar.username,
+        score: topScholar.action_points || 0
+      } : null,
+      topClaimer: topClaimer ? {
+        username: topClaimer.username,
+        name: topClaimer.real_name || topClaimer.username,
+        score: topClaimer.territories_count || 0
+      } : null,
+      onlineChampion: onlineChampion ? {
+        username: onlineChampion.username,
+        name: onlineChampion.real_name || onlineChampion.username,
+        score: onlineChampion.action_points || 0
+      } : null,
+      totalPlayers: playersWithData.length,
+      totalTerritories: this.territories.length,
+      totalPoints: playersWithData.reduce((sum, p) => sum + (p.action_points || 0), 0)
+    };
+  }
+
+  /**
+   * Reset the game (start new session)
+   */
+  async resetGame() {
+    try {
+      const response = await fetch(`${this.serverUrl}/api/grid-wars/games/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId: this.gameId })
+      });
+
+      if (response.ok) {
+        // Refresh to get new game state
+        await this.fetchActiveGame();
+        await this.refresh();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Reset game error:', err);
+      return false;
+    }
+  }
+
+  /**
    * Disconnect and cleanup
    */
   disconnect() {

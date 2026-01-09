@@ -5,6 +5,7 @@
 
 import { GridWarsState, GRID_WARS_CONFIG } from './grid-state.js';
 import { GridRenderer } from './grid-renderer.js';
+import { sounds, initAudio } from './audio.js';
 
 export class GridPanel {
   constructor(options = {}) {
@@ -37,8 +38,15 @@ export class GridPanel {
       onStateChange: () => this.render(),
       onError: this.onError,
       onPointsEarned: (data) => {
+        sounds.points();
         if (this.onPointsChange) {
           this.onPointsChange(data);
+        }
+      },
+      onTerritoryChanged: (data) => {
+        // Play alert sound when our territory is taken
+        if (data.action === 'taken' && data.previousOwner === this.username) {
+          sounds.alert();
         }
       }
     });
@@ -110,7 +118,7 @@ export class GridPanel {
           </div>
 
           <div style="color:#94a3b8;margin-bottom:8px;">
-            <span style="color:#22d3ee;">3.</span> <strong style="color:#e2e8f0;">Claim</strong> - Press SPACEBAR to claim territory (10 pts)
+            <span style="color:#22d3ee;">3.</span> <strong style="color:#e2e8f0;">Claim</strong> - Press SPACEBAR to claim (10 pts) or takeover (20 pts)
           </div>
 
           <div style="color:#94a3b8;">
@@ -226,12 +234,100 @@ export class GridPanel {
     this.setupEventListeners();
     this.initCanvas();
     this.updateButtonStates();
+
+    // Show onboarding overlay for first-time users
+    this.showOnboardingIfNeeded();
+  }
+
+  /**
+   * Show onboarding overlay for first-time users
+   */
+  showOnboardingIfNeeded() {
+    if (localStorage.getItem('gridwars_onboarded')) {
+      return; // Already onboarded
+    }
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'gw-onboarding';
+    overlay.innerHTML = `
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:monospace;">
+        <div style="background:#0f172a;border:2px solid #00ff41;padding:32px 40px;max-width:400px;text-align:center;box-shadow:0 0 40px rgba(0,255,65,0.3);">
+          <div style="font-size:1.5rem;color:#00ff41;margin-bottom:24px;text-shadow:0 0 10px #00ff4180;">
+            ⚡ GRID WARS ⚡
+          </div>
+
+          <div style="text-align:left;color:#e2e8f0;font-size:0.9rem;line-height:1.8;">
+            <div style="margin-bottom:8px;">
+              <span style="color:#22d3ee;">📝</span> Answer questions → Earn points
+            </div>
+            <div style="margin-bottom:8px;">
+              <span style="color:#22d3ee;">🎯</span> Press SPACE → Claim territory
+            </div>
+            <div style="margin-bottom:8px;">
+              <span style="color:#22d3ee;">🔗</span> Connect cells → Earn bonus points
+            </div>
+            <div style="margin-bottom:16px;">
+              <span style="color:#22d3ee;">🏆</span> Biggest connected empire wins!
+            </div>
+          </div>
+
+          <button id="gw-onboarding-dismiss" style="
+            background:transparent;
+            border:2px solid #00ff41;
+            color:#00ff41;
+            padding:12px 32px;
+            font-family:inherit;
+            font-size:1rem;
+            cursor:pointer;
+            text-transform:uppercase;
+            transition:all 0.2s;
+          ">START PLAYING</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Dismiss on button click
+    const dismissBtn = document.getElementById('gw-onboarding-dismiss');
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', () => {
+        overlay.remove();
+        localStorage.setItem('gridwars_onboarded', 'true');
+      });
+
+      // Hover effect
+      dismissBtn.addEventListener('mouseenter', () => {
+        dismissBtn.style.background = 'rgba(0,255,65,0.2)';
+        dismissBtn.style.boxShadow = '0 0 20px rgba(0,255,65,0.4)';
+      });
+      dismissBtn.addEventListener('mouseleave', () => {
+        dismissBtn.style.background = 'transparent';
+        dismissBtn.style.boxShadow = 'none';
+      });
+    }
+
+    // Also dismiss on overlay click (outside the modal)
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay.firstElementChild) return; // Don't dismiss if clicking the modal
+      if (e.target.closest('[style*="background:#0f172a"]')) return;
+      overlay.remove();
+      localStorage.setItem('gridwars_onboarded', 'true');
+    });
   }
 
   /**
    * Setup event listeners
    */
   setupEventListeners() {
+    // Initialize audio on first interaction
+    const initAudioOnce = () => {
+      initAudio();
+      this.container.removeEventListener('click', initAudioOnce);
+    };
+    this.container.addEventListener('click', initAudioOnce);
+
     // Toggle expand/collapse
     const toggle = this.container.querySelector('#gw-toggle');
     if (toggle) {
@@ -303,15 +399,46 @@ export class GridPanel {
 
     try {
       await this.state.moveAvatar(direction);
+      sounds.move();
       this.syncRendererState();
 
-      // Show position in status
-      const pos = this.state.getPlayerPosition();
-      if (pos) {
-        this.updateStatus(`Position: (${pos.x}, ${pos.y})`);
-      }
+      // Show action affordance based on current position
+      this.updateActionAffordance();
     } catch (err) {
       this.updateStatus(`Move failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Update status to show what action is available at current position
+   */
+  updateActionAffordance() {
+    const pos = this.state.getPlayerPosition();
+    if (!pos) {
+      this.updateStatus('Use arrow keys to move');
+      return;
+    }
+
+    const owner = this.state.getTerritoryOwner(pos.x, pos.y);
+    const points = this.state.getActionPoints();
+
+    if (!owner) {
+      // Neutral cell
+      if (points >= GRID_WARS_CONFIG.claimCost) {
+        this.updateStatus(`[SPACE] CLAIM (${GRID_WARS_CONFIG.claimCost} pts)`);
+      } else {
+        this.updateStatus(`NEED ${GRID_WARS_CONFIG.claimCost} pts (have ${points})`);
+      }
+    } else if (owner === this.state.username) {
+      // Own territory
+      this.updateStatus('YOUR TERRITORY');
+    } else {
+      // Enemy territory
+      if (points >= GRID_WARS_CONFIG.takeoverCost) {
+        this.updateStatus(`[SPACE] TAKEOVER (${GRID_WARS_CONFIG.takeoverCost} pts)`);
+      } else {
+        this.updateStatus(`NEED ${GRID_WARS_CONFIG.takeoverCost} pts (have ${points})`);
+      }
     }
   }
 
@@ -327,14 +454,34 @@ export class GridPanel {
       return;
     }
 
+    const owner = this.state.getTerritoryOwner(pos.x, pos.y);
+
+    // Can't claim own territory
+    if (owner === this.state.username) {
+      this.updateStatus('You already own this territory');
+      return;
+    }
+
+    const isTakeover = !!owner;
+
     try {
       await this.state.claimTerritory(pos.x, pos.y);
-      this.updateStatus(`Claimed (${pos.x}, ${pos.y})!`);
+      if (isTakeover) {
+        sounds.takeover();
+        this.updateStatus(`Took over (${pos.x}, ${pos.y})!`);
+      } else {
+        sounds.claim();
+        this.updateStatus(`Claimed (${pos.x}, ${pos.y})!`);
+      }
       this.syncRendererState();
       this.updateButtonStates();
       this.updatePointsDisplay();
+
+      // Update action affordance after claim
+      setTimeout(() => this.updateActionAffordance(), 100);
     } catch (err) {
-      this.updateStatus(`Claim failed: ${err.message}`);
+      sounds.error();
+      this.updateStatus(`${isTakeover ? 'Takeover' : 'Claim'} failed: ${err.message}`);
     }
   }
 
@@ -402,7 +549,7 @@ export class GridPanel {
   }
 
   /**
-   * Handle canvas click - claim territory
+   * Handle canvas click - claim/takeover territory
    */
   async onCanvasClick(e) {
     const cell = this.renderer.mouseToGrid(e.clientX, e.clientY);
@@ -411,15 +558,32 @@ export class GridPanel {
     this.selectedCell = cell;
     this.renderer.pulseCell(cell.x, cell.y, '#ffffff', 300);
 
-    // Try to claim the territory
+    const owner = this.state.getTerritoryOwner(cell.x, cell.y);
+
+    // Can't claim own territory
+    if (owner === this.state.username) {
+      this.updateStatus('You already own this territory');
+      return;
+    }
+
+    const isTakeover = !!owner;
+
+    // Try to claim/takeover the territory
     try {
       await this.state.claimTerritory(cell.x, cell.y);
-      this.updateStatus(`Claimed (${cell.x}, ${cell.y})!`);
+      if (isTakeover) {
+        sounds.takeover();
+        this.updateStatus(`Took over (${cell.x}, ${cell.y})!`);
+      } else {
+        sounds.claim();
+        this.updateStatus(`Claimed (${cell.x}, ${cell.y})!`);
+      }
 
       this.syncRendererState();
       this.updateButtonStates();
       this.updatePointsDisplay();
     } catch (err) {
+      sounds.error();
       this.updateStatus(`Error: ${err.message}`);
     }
   }
@@ -538,10 +702,11 @@ export class GridPanel {
     this.updateClassGoalDisplay();
     this.updateBuffsDisplay();
     this.updateContestedDisplay();
+    this.updateActionAffordance();
   }
 
   /**
-   * Update active buffs display
+   * Update active buffs display (simplified - all nodes are now Amplifier/Power Nodes)
    */
   updateBuffsDisplay() {
     const buffsContainer = this.container.querySelector('#gw-buffs');
@@ -551,22 +716,9 @@ export class GridPanel {
     const buffs = this.state.getActiveBuffs();
     const buffItems = [];
 
+    // All nodes are now Amplifier type (Power Nodes)
     if (buffs.amplifier && buffs.amplifier.remaining > 0) {
-      buffItems.push(`<span style="color:#ff00ff;">AMPLIFIER: +3 pts (${buffs.amplifier.remaining} left)</span>`);
-    }
-
-    if (buffs.beacon && new Date(buffs.beacon.expires) > new Date()) {
-      const remaining = Math.max(0, Math.floor((new Date(buffs.beacon.expires) - new Date()) / 1000));
-      const mins = Math.floor(remaining / 60);
-      const secs = remaining % 60;
-      buffItems.push(`<span style="color:#00ffff;">BEACON: +2 regen range (${mins}:${secs.toString().padStart(2, '0')})</span>`);
-    }
-
-    if (buffs.anchor && new Date(buffs.anchor.expires) > new Date()) {
-      const remaining = Math.max(0, Math.floor((new Date(buffs.anchor.expires) - new Date()) / 1000));
-      const mins = Math.floor(remaining / 60);
-      const secs = remaining % 60;
-      buffItems.push(`<span style="color:#ffbf00;">ANCHOR: Immune to contest (${mins}:${secs.toString().padStart(2, '0')})</span>`);
+      buffItems.push(`<span style="color:#ff00ff;">POWER NODE: +${GRID_WARS_CONFIG.amplifierBonus} pts/answer (${buffs.amplifier.remaining} left)</span>`);
     }
 
     if (buffItems.length > 0) {
