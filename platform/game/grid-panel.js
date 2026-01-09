@@ -399,6 +399,9 @@ export class GridPanel {
     this.initCanvas();
     this.updateButtonStates();
 
+    // v1.4: Load leaderboard data on initial render
+    this.refreshMultiLeaderboard();
+
     // Show onboarding overlay for first-time users
     this.showOnboardingIfNeeded();
   }
