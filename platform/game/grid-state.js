@@ -83,10 +83,14 @@ export class GridWarsState {
     this.onSurgeActivated = options.onSurgeActivated || null;
     this.onBootBonus = options.onBootBonus || null;         // v1.2.1
     this.onResyncRequest = options.onResyncRequest || null; // v1.2.1
+    this.onClaimStatusChange = options.onClaimStatusChange || null; // v1.2.1
 
     // v1.2.1: Sequence tracking for gap detection
     this._expectedSeq = null;
     this._lastSeq = 0;
+
+    // v1.2.1: Claim ID counter for tracking pending claims
+    this._claimIdCounter = 0;
 
     // Pending state for optimistic updates
     this._pendingActions = [];
@@ -301,6 +305,7 @@ export class GridWarsState {
   /**
    * Claim or takeover a territory
    * v1.2: Cost determined server-side for enemy takeover (activity-based pricing)
+   * v1.2.1: Enhanced with claim status tracking (pending/confirmed/rejected)
    */
   async claimTerritory(x, y) {
     if (!this.gameId || !this.username) {
@@ -320,8 +325,11 @@ export class GridWarsState {
       throw new Error('Insufficient action points');
     }
 
+    // v1.2.1: Generate unique claim ID for tracking
+    const claimId = ++this._claimIdCounter;
+
     // Optimistic update (may be adjusted when server responds)
-    this._applyOptimisticClaim(x, y, estimatedCost, currentOwner);
+    this._applyOptimisticClaim(x, y, estimatedCost, currentOwner, claimId);
 
     try {
       const response = await fetch(`${this.serverUrl}/api/grid-wars/action`, {
@@ -339,11 +347,14 @@ export class GridWarsState {
       if (!response.ok) {
         const error = await response.json();
         // Rollback optimistic update
-        this._rollbackOptimisticClaim(x, y, estimatedCost);
+        this._rollbackOptimisticClaim(x, y, estimatedCost, claimId);
         throw new Error(error.error || 'Failed to claim territory');
       }
 
       const result = await response.json();
+
+      // v1.2.1: Confirm the claim
+      this._confirmClaim(x, y, claimId);
 
       // Notify
       if (this.onTerritoryChanged) {
@@ -849,6 +860,7 @@ export class GridWarsState {
    * Get state for rendering
    * Returns data in format expected by GridRenderer
    * v1.2: Removed contested_by (contestation system removed)
+   * v1.2.1: Added pending flag for claim status visualization
    */
   getRenderState() {
     const territories = [];
@@ -862,7 +874,8 @@ export class GridWarsState {
         owner: data.owner,
         strength: data.strength,
         node_type: data.node_type,
-        ownerLastAnswer: ownerData?.last_answer_at || null
+        ownerLastAnswer: ownerData?.last_answer_at || null,
+        pending: data.pending || false // v1.2.1: Include pending status
       });
     }
 
@@ -890,7 +903,7 @@ export class GridWarsState {
   // Private methods
   // ============================================
 
-  _applyOptimisticClaim(x, y, cost, previousOwner = null) {
+  _applyOptimisticClaim(x, y, cost, previousOwner = null, claimId = null) {
     // Store old territory data for potential rollback
     const oldTerritory = this.territories.get(`${x},${y}`);
 
@@ -898,7 +911,8 @@ export class GridWarsState {
       owner: this.username,
       claimed_at: new Date().toISOString(),
       strength: GRID_WARS_CONFIG.maxCellStrength,
-      node_type: oldTerritory?.node_type || null
+      node_type: oldTerritory?.node_type || null,
+      pending: true // v1.2.1: Mark as pending
     });
     this._updatePlayerPoints(-cost);
     this._updatePlayerTerritoriesCount(this.username, 1);
@@ -908,12 +922,44 @@ export class GridWarsState {
       this._updatePlayerTerritoriesCount(previousOwner, -1);
     }
 
-    this._pendingActions.push({ type: 'claim', x, y, cost, previousOwner, oldTerritory });
+    this._pendingActions.push({ type: 'claim', x, y, cost, previousOwner, oldTerritory, claimId });
+
+    // v1.2.1: Emit pending status
+    if (this.onClaimStatusChange) {
+      this.onClaimStatusChange({ x, y, status: 'pending', claimId });
+    }
   }
 
-  _rollbackOptimisticClaim(x, y, cost) {
+  /**
+   * v1.2.1: Confirm a successful claim
+   */
+  _confirmClaim(x, y, claimId) {
     const pendingAction = this._pendingActions.find(
-      a => a.type === 'claim' && a.x === x && a.y === y
+      a => a.type === 'claim' && a.claimId === claimId
+    );
+
+    if (pendingAction) {
+      // Remove pending flag from territory
+      const territory = this.territories.get(`${x},${y}`);
+      if (territory) {
+        delete territory.pending;
+      }
+
+      // Remove from pending actions
+      this._pendingActions = this._pendingActions.filter(
+        a => a.claimId !== claimId
+      );
+
+      // Emit confirmed status
+      if (this.onClaimStatusChange) {
+        this.onClaimStatusChange({ x, y, status: 'confirmed', claimId });
+      }
+    }
+  }
+
+  _rollbackOptimisticClaim(x, y, cost, claimId = null) {
+    const pendingAction = this._pendingActions.find(
+      a => a.type === 'claim' && (claimId ? a.claimId === claimId : (a.x === x && a.y === y))
     );
 
     // Restore previous territory or delete
@@ -932,8 +978,14 @@ export class GridWarsState {
     }
 
     this._pendingActions = this._pendingActions.filter(
-      a => !(a.type === 'claim' && a.x === x && a.y === y)
+      a => !(claimId ? a.claimId === claimId : (a.type === 'claim' && a.x === x && a.y === y))
     );
+
+    // v1.2.1: Emit rejected status
+    if (this.onClaimStatusChange) {
+      this.onClaimStatusChange({ x, y, status: 'rejected', claimId });
+    }
+
     this._emitStateChange();
   }
 

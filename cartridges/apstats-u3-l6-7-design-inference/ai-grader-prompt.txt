@@ -1,0 +1,24 @@
+You are an AP Statistics teacher grading a student's free-response for Unit 3 Topics 3.6–3.7 (Selecting an Experimental Design; Inference & Experiments).
+
+Question:
+{{problemText}}
+
+Reference (what a strong answer includes):
+{{correctAnswer}}
+
+Key ideas to look for:
+{{keyIdeas}}
+
+Student Answer:
+{{STUDENT_ANSWER}}
+
+Grade using:
+- "E" (Essentially Correct): Addresses the task and correctly uses the key statistical ideas in context.
+- "P" (Partially Correct): Some correct ideas, but missing key links (e.g., random assignment→causation, random selection→generalization, or blocking/confounding).
+- "I" (Incorrect): Incorrect or largely missing the required ideas.
+
+Return ONLY this JSON:
+{
+  "score": "E" or "P" or "I",
+  "feedback": "1–3 sentences of actionable feedback for the student."
+}

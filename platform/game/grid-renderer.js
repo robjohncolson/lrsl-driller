@@ -2,12 +2,19 @@
  * Grid Wars - Canvas-based Grid Renderer
  * Spectre/Battlezone aesthetic (early 90s wireframe)
  * v1.2: Removed contestation effects, enhanced direction chevron
+ * v1.2.1: 3-layer canvas system for performance optimization
  */
 
 export class GridRenderer {
   constructor(canvas, options = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+
+    // v1.2.1: Create layered canvas system
+    // Layer 1 (Static): Grid lines, territories - redraw on change only
+    // Layer 2 (Dynamic): Avatars, wakes, pulses - redraw every frame
+    // Layer 3 (UI): Hover highlight - redraw every frame
+    this._createLayeredCanvases(canvas);
 
     // Grid dimensions
     this.gridSize = options.gridSize || 20;
@@ -64,6 +71,9 @@ export class GridRenderer {
     // Last known avatar positions for direction tracking
     this.lastAvatarPositions = {};
 
+    // v1.2.1: Static layer dirty flag - redraw static layer when true
+    this._staticDirty = true;
+
     // Resize handling
     this.resize();
 
@@ -72,7 +82,53 @@ export class GridRenderer {
   }
 
   /**
+   * v1.2.1: Create layered canvas system for performance
+   * Static layer only redraws on territory changes
+   */
+  _createLayeredCanvases(mainCanvas) {
+    const parent = mainCanvas.parentElement;
+    if (!parent) return;
+
+    // Skip in test environment (no document.createElement with style support)
+    if (typeof document === 'undefined' || !document.createElement) return;
+
+    try {
+      // Ensure parent has relative positioning for absolute canvas stacking
+      if (typeof getComputedStyle !== 'undefined' && getComputedStyle(parent).position === 'static') {
+        parent.style.position = 'relative';
+      }
+
+      // Create static layer (z-index: 1) - grid lines and territories
+      this._staticCanvas = document.createElement('canvas');
+      this._staticCanvas.style.cssText = 'position:absolute;top:0;left:0;z-index:1;pointer-events:none;';
+      this._staticCtx = this._staticCanvas.getContext('2d');
+
+      // Create dynamic layer (z-index: 2) - avatars, wakes, pulses
+      this._dynamicCanvas = document.createElement('canvas');
+      this._dynamicCanvas.style.cssText = 'position:absolute;top:0;left:0;z-index:2;pointer-events:none;';
+      this._dynamicCtx = this._dynamicCanvas.getContext('2d');
+
+      // Create UI layer (z-index: 3) - hover, pending claims
+      this._uiCanvas = document.createElement('canvas');
+      this._uiCanvas.style.cssText = 'position:absolute;top:0;left:0;z-index:3;pointer-events:none;';
+      this._uiCtx = this._uiCanvas.getContext('2d');
+
+      // Main canvas becomes the base (z-index: 0) - just background
+      mainCanvas.style.cssText = 'position:absolute;top:0;left:0;z-index:0;';
+
+      // Insert canvases
+      parent.appendChild(this._staticCanvas);
+      parent.appendChild(this._dynamicCanvas);
+      parent.appendChild(this._uiCanvas);
+    } catch (e) {
+      // Silently fall back to single canvas in test environment
+      console.warn('Layer canvas creation skipped:', e.message);
+    }
+  }
+
+  /**
    * Resize canvas to fit container
+   * v1.2.1: Also resizes all layer canvases
    */
   resize() {
     const container = this.canvas.parentElement;
@@ -87,15 +143,31 @@ export class GridRenderer {
 
     // Set canvas size (accounting for device pixel ratio for sharpness)
     const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = size * dpr;
-    this.canvas.height = size * dpr;
-    this.canvas.style.width = `${size}px`;
-    this.canvas.style.height = `${size}px`;
-    this.ctx.scale(dpr, dpr);
+
+    // Helper to resize a canvas
+    const resizeCanvas = (canvas, ctx) => {
+      if (!canvas) return;
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
+      canvas.style.width = `${size}px`;
+      canvas.style.height = `${size}px`;
+      ctx.scale(dpr, dpr);
+    };
+
+    // Resize main canvas
+    resizeCanvas(this.canvas, this.ctx);
+
+    // v1.2.1: Resize layer canvases
+    resizeCanvas(this._staticCanvas, this._staticCtx);
+    resizeCanvas(this._dynamicCanvas, this._dynamicCtx);
+    resizeCanvas(this._uiCanvas, this._uiCtx);
 
     // Recalculate cell size (ensure positive)
     this.cellSize = Math.max(1, (size - 2) / this.gridSize);
     this.displaySize = size;
+
+    // v1.2.1: Mark static layer as dirty after resize
+    this._staticDirty = true;
   }
 
   /**
@@ -120,7 +192,8 @@ export class GridRenderer {
   /**
    * Set territory ownership with extended data
    * v1.2: Removed contested_by (contestation system removed)
-   * v1.2.1: Added ownerLastAnswer for visual dimming
+   * v1.2.1: Added ownerLastAnswer for visual dimming, pending for claim status
+   * v1.2.1: Sets static dirty flag for layer optimization
    */
   setTerritory(x, y, owner, data = {}) {
     if (owner || data.node_type) {
@@ -129,11 +202,14 @@ export class GridRenderer {
         color: owner ? this.getPlayerColor(owner) : null,
         strength: data.strength || 3,
         node_type: data.node_type || null,
-        ownerLastAnswer: data.ownerLastAnswer || null  // v1.2.1
+        ownerLastAnswer: data.ownerLastAnswer || null,  // v1.2.1
+        pending: data.pending || false  // v1.2.1: Claim status
       };
     } else {
       delete this.territories[`${x},${y}`];
     }
+    // v1.2.1: Mark static layer as dirty
+    this._staticDirty = true;
   }
 
   /**
@@ -234,6 +310,10 @@ export class GridRenderer {
 
   /**
    * Main render function
+   * v1.2.1: Uses 3-layer canvas system for performance
+   * - Static layer: Grid, territories (redraw only when dirty)
+   * - Dynamic layer: Avatars, wakes, pulses (redraw every frame)
+   * - UI layer: Hover (redraw every frame)
    */
   render() {
     // Skip rendering if canvas is too small (hidden panel)
@@ -245,36 +325,183 @@ export class GridRenderer {
     const now = performance.now();
     this.animationFrame++;
 
-    // Clear with void color
-    ctx.fillStyle = this.colors.void;
-    ctx.fillRect(0, 0, this.displaySize, this.displaySize);
+    // v1.2.1: Check if we have layer canvases (may not exist if parent wasn't ready)
+    const hasLayers = this._staticCtx && this._dynamicCtx && this._uiCtx;
 
-    // Draw territories (background layer)
-    this.drawTerritories(ctx, now);
+    if (hasLayers) {
+      // === LAYERED RENDERING ===
 
-    // Draw resource nodes (unclaimed)
-    this.drawResourceNodes(ctx, now);
+      // Base layer: just background
+      ctx.fillStyle = this.colors.void;
+      ctx.fillRect(0, 0, this.displaySize, this.displaySize);
 
-    // Draw surge cell
-    this.drawSurgeCell(ctx, now);
+      // Static layer: Only redraw when dirty (territories changed)
+      if (this._staticDirty) {
+        const staticCtx = this._staticCtx;
+        staticCtx.clearRect(0, 0, this.displaySize, this.displaySize);
 
-    // Draw grid lines
-    this.drawGrid(ctx);
+        // Draw grid lines
+        this.drawGrid(staticCtx);
 
-    // Draw avatar wake trails (before avatars)
-    this.drawAvatarWakes(ctx, now);
+        // Draw territories (without pending - those go on dynamic layer)
+        this.drawTerritoriesStatic(staticCtx, now);
 
-    // Draw avatars
-    this.drawAvatars(ctx, now);
+        // Draw resource nodes (unclaimed)
+        this.drawResourceNodes(staticCtx, now);
 
-    // Draw pulse animations
-    this.drawPulses(ctx, now);
+        // Draw surge cell
+        this.drawSurgeCell(staticCtx, now);
 
-    // Draw hover highlight
-    this.drawHover(ctx, now);
+        this._staticDirty = false;
+      }
 
-    // Draw scanlines for retro effect
-    this.drawScanlines(ctx);
+      // Dynamic layer: Redraw every frame
+      const dynamicCtx = this._dynamicCtx;
+      dynamicCtx.clearRect(0, 0, this.displaySize, this.displaySize);
+
+      // Draw pending territories (animated)
+      this.drawTerritoriesPending(dynamicCtx, now);
+
+      // Draw avatar wake trails
+      this.drawAvatarWakes(dynamicCtx, now);
+
+      // Draw avatars
+      this.drawAvatars(dynamicCtx, now);
+
+      // Draw pulse animations
+      this.drawPulses(dynamicCtx, now);
+
+      // UI layer: Redraw every frame
+      const uiCtx = this._uiCtx;
+      uiCtx.clearRect(0, 0, this.displaySize, this.displaySize);
+
+      // Draw hover highlight
+      this.drawHover(uiCtx, now);
+
+      // Scanlines on base layer
+      this.drawScanlines(ctx);
+
+    } else {
+      // === FALLBACK: Single canvas rendering ===
+
+      // Clear with void color
+      ctx.fillStyle = this.colors.void;
+      ctx.fillRect(0, 0, this.displaySize, this.displaySize);
+
+      // Draw territories (background layer)
+      this.drawTerritories(ctx, now);
+
+      // Draw resource nodes (unclaimed)
+      this.drawResourceNodes(ctx, now);
+
+      // Draw surge cell
+      this.drawSurgeCell(ctx, now);
+
+      // Draw grid lines
+      this.drawGrid(ctx);
+
+      // Draw avatar wake trails (before avatars)
+      this.drawAvatarWakes(ctx, now);
+
+      // Draw avatars
+      this.drawAvatars(ctx, now);
+
+      // Draw pulse animations
+      this.drawPulses(ctx, now);
+
+      // Draw hover highlight
+      this.drawHover(ctx, now);
+
+      // Draw scanlines for retro effect
+      this.drawScanlines(ctx);
+    }
+  }
+
+  /**
+   * v1.2.1: Draw non-pending territories (for static layer)
+   */
+  drawTerritoriesStatic(ctx, now) {
+    for (const [key, territory] of Object.entries(this.territories)) {
+      // Skip pending territories (drawn on dynamic layer)
+      if (territory.pending) continue;
+
+      const [x, y] = key.split(',').map(Number);
+
+      // Skip unclaimed resource nodes (drawn separately)
+      if (territory.node_type && !territory.owner) continue;
+
+      // Calculate opacity based on strength (3 = full, 1 = dim)
+      const strengthOpacity = territory.strength ? territory.strength / 3 : 1;
+
+      // Calculate activity-based dimming
+      let activityOpacity = 1;
+      if (territory.ownerLastAnswer) {
+        const minutesSinceAnswer = (Date.now() - new Date(territory.ownerLastAnswer).getTime()) / 60000;
+        const fadeMinutes = 15;
+        const minOpacity = 0.3;
+        activityOpacity = Math.max(minOpacity, 1 - (minutesSinceAnswer / fadeMinutes) * (1 - minOpacity));
+      }
+
+      ctx.fillStyle = territory.color;
+      ctx.globalAlpha = strengthOpacity * activityOpacity * 0.5;
+
+      ctx.fillRect(
+        x * this.cellSize + 1,
+        y * this.cellSize + 1,
+        this.cellSize - 2,
+        this.cellSize - 2
+      );
+
+      ctx.globalAlpha = 1;
+
+      // Draw node indicator if claimed
+      if (territory.node_type && territory.owner) {
+        this.drawNodeIndicator(ctx, x, y, territory.node_type, now);
+      }
+    }
+  }
+
+  /**
+   * v1.2.1: Draw pending territories with animation (for dynamic layer)
+   */
+  drawTerritoriesPending(ctx, now) {
+    for (const [key, territory] of Object.entries(this.territories)) {
+      // Only draw pending territories
+      if (!territory.pending) continue;
+
+      const [x, y] = key.split(',').map(Number);
+
+      // Calculate opacity based on strength
+      const strengthOpacity = territory.strength ? territory.strength / 3 : 1;
+
+      // Fast pulse between 0.4 and 1.0 for pending claims
+      const pendingOpacity = 0.7 + 0.3 * Math.sin(now / 100);
+
+      ctx.fillStyle = territory.color;
+      ctx.globalAlpha = strengthOpacity * pendingOpacity * 0.5;
+
+      ctx.fillRect(
+        x * this.cellSize + 1,
+        y * this.cellSize + 1,
+        this.cellSize - 2,
+        this.cellSize - 2
+      );
+
+      // Draw pending indicator border
+      ctx.strokeStyle = territory.color;
+      ctx.globalAlpha = 0.8 + 0.2 * Math.sin(now / 100);
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 2]);
+      ctx.strokeRect(
+        x * this.cellSize + 2,
+        y * this.cellSize + 2,
+        this.cellSize - 4,
+        this.cellSize - 4
+      );
+      ctx.setLineDash([]);
+
+      ctx.globalAlpha = 1;
+    }
   }
 
   /**
@@ -317,6 +544,7 @@ export class GridRenderer {
    * Draw territories (filled cells) with strength-based and activity-based dimming
    * v1.2: Removed contestation flicker and warning border effects
    * v1.2.1: Added activity-based dimming (territories fade as owner becomes inactive)
+   * v1.2.1: Added pending claim pulsing effect
    */
   drawTerritories(ctx, now) {
     for (const [key, territory] of Object.entries(this.territories)) {
@@ -338,8 +566,15 @@ export class GridRenderer {
         activityOpacity = Math.max(minOpacity, 1 - (minutesSinceAnswer / fadeMinutes) * (1 - minOpacity));
       }
 
+      // v1.2.1: Pending claim pulsing effect
+      let pendingOpacity = 1;
+      if (territory.pending) {
+        // Fast pulse between 0.4 and 1.0 for pending claims
+        pendingOpacity = 0.7 + 0.3 * Math.sin(now / 100);
+      }
+
       ctx.fillStyle = territory.color;
-      ctx.globalAlpha = strengthOpacity * activityOpacity * 0.5; // Combined opacity
+      ctx.globalAlpha = strengthOpacity * activityOpacity * pendingOpacity * 0.5; // Combined opacity
 
       ctx.fillRect(
         x * this.cellSize + 1,
@@ -347,6 +582,21 @@ export class GridRenderer {
         this.cellSize - 2,
         this.cellSize - 2
       );
+
+      // v1.2.1: Draw pending indicator border
+      if (territory.pending) {
+        ctx.strokeStyle = territory.color;
+        ctx.globalAlpha = 0.8 + 0.2 * Math.sin(now / 100);
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 2]);
+        ctx.strokeRect(
+          x * this.cellSize + 2,
+          y * this.cellSize + 2,
+          this.cellSize - 4,
+          this.cellSize - 4
+        );
+        ctx.setLineDash([]);
+      }
 
       ctx.globalAlpha = 1;
 
@@ -694,7 +944,7 @@ export class GridRenderer {
   /**
    * Load full game state
    * v1.2: Removed contested_by (contestation system removed)
-   * v1.2.1: Added ownerLastAnswer for visual dimming
+   * v1.2.1: Added ownerLastAnswer for visual dimming, pending for claim status
    */
   loadState(state) {
     if (state.territories) {
@@ -703,7 +953,8 @@ export class GridRenderer {
         this.setTerritory(t.x, t.y, t.owner, {
           strength: t.strength,
           node_type: t.node_type,
-          ownerLastAnswer: t.ownerLastAnswer  // v1.2.1
+          ownerLastAnswer: t.ownerLastAnswer,  // v1.2.1
+          pending: t.pending  // v1.2.1
         });
       }
     }

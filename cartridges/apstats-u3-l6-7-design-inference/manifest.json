@@ -1,0 +1,150 @@
+{
+  "meta": {
+    "id": "apstats-u3-l6-7-design-inference",
+    "name": "AP Stats Unit 3 Lessons 6\u20137: Design Choices + Inference",
+    "subject": "AP Statistics",
+    "description": "Practice selecting experimental designs (CRD, randomized block, matched pairs) and making valid inference (statistical significance, causation, generalization). Quiz questions are not included."
+  },
+  "modes": [
+    {
+      "id": "L01-vocab",
+      "name": "Level 1: Blocking & Blinding Vocabulary",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "term",
+            "type": "text",
+            "label": "Enter the missing term:",
+            "placeholder": "e.g., randomized block design"
+          }
+        ]
+      }
+    },
+    {
+      "id": "L02-design",
+      "name": "Level 2: Choose the Best Design",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "design",
+            "type": "select",
+            "label": "Best design:",
+            "options": [
+              "Completely randomized design",
+              "Randomized block design",
+              "Matched pairs design"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "L03-inference",
+      "name": "Level 3: Significance \u2192 Causation \u2192 Generalization",
+      "unlockedBy": {
+        "gold": 6
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "sig",
+            "type": "select",
+            "label": "Is the result statistically significant?",
+            "options": [
+              "Yes",
+              "No"
+            ]
+          },
+          {
+            "id": "cause",
+            "type": "select",
+            "label": "Is there evidence the treatment caused a difference?",
+            "options": [
+              "Yes",
+              "No"
+            ]
+          },
+          {
+            "id": "gen",
+            "type": "select",
+            "label": "Can the results be generalized to the population of interest?",
+            "options": [
+              "Yes",
+              "No"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "L04-frq",
+      "name": "Level 4: AP-Style Explain Your Reasoning",
+      "unlockedBy": {
+        "gold": 9
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "response",
+            "type": "textarea",
+            "label": "Write your response (use AP language: random assignment, random selection, blocking, confounding, statistically significant):",
+            "placeholder": "Write 3\u20136 sentences. If the prompt asks yes/no, say yes or no explicitly, then justify.",
+            "rows": 7
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt"
+  },
+  "hints": {
+    "perField": {
+      "term": "Think Unit 3.6\u20133.7 terms from the videos: blocking, randomized block design, matched pairs, replication, control, (double) blinding, confounding, statistically significant.",
+      "design": "If a known variable affects the response, BLOCK on it (randomize within blocks). If each unit can get BOTH treatments (or units can be paired), use MATCHED PAIRS. Otherwise, use a COMPLETELY RANDOMIZED design.",
+      "sig": "Compare the p-value to the stated significance level \u03b1 (if none is given, use \u03b1 = 0.05).",
+      "cause": "Random ASSIGNMENT + statistically significant difference \u21d2 evidence the treatment CAUSED the effect (for these experimental units).",
+      "gen": "Random SELECTION / representative experimental units \u21d2 results can be generalized to the population of interest.",
+      "response": "For full credit: answer the task first (yes/no when asked), then justify using the correct links: random assignment \u2192 causation; random selection \u2192 generalization; blocking reduces variability; statistically significant \u2192 unlikely due to chance."
+    }
+  },
+  "progression": {
+    "streakFields": [
+      "term",
+      "design",
+      "sig",
+      "cause",
+      "gen",
+      "response"
+    ],
+    "tiers": [
+      {
+        "id": "L01-vocab",
+        "unlockedBy": "default"
+      },
+      {
+        "id": "L02-design",
+        "unlockedBy": {
+          "gold": 3
+        }
+      },
+      {
+        "id": "L03-inference",
+        "unlockedBy": {
+          "gold": 6
+        }
+      },
+      {
+        "id": "L04-frq",
+        "unlockedBy": {
+          "gold": 9
+        }
+      }
+    ]
+  }
+}
