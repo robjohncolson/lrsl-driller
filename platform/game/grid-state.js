@@ -662,8 +662,8 @@ export class GridWarsState {
         // v1.2: Delta compression - apply batched updates
         if (message.updates && Array.isArray(message.updates)) {
           for (const update of message.updates) {
-            // Process each update based on its type
-            this.handleWebSocketMessage(update);
+            // Process each update based on its type, adding gameId
+            this.handleWebSocketMessage({ ...update, gameId: message.gameId });
           }
         }
         break;
