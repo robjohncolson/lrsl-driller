@@ -535,6 +535,59 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
+// v1.3.2: Unified leaderboard - reads from Grid Wars action_points
+// This ensures spending points in Grid Wars affects leaderboard rank
+app.get('/api/leaderboard/unified', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const gameId = req.query.gameId || 'default';
+
+    // Get players from Grid Wars with current action_points (balance = earned - spent)
+    const { data: players, error: playersError } = await supabase
+      .from('grid_wars_players')
+      .select('username, action_points, territories_count, largest_cluster')
+      .eq('game_id', gameId)
+      .order('action_points', { ascending: false })
+      .limit(limit);
+
+    if (playersError) throw playersError;
+
+    // Get real names
+    const usernames = (players || []).map(p => p.username);
+    let usersMap = {};
+    if (usernames.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('username, real_name')
+        .in('username', usernames);
+
+      for (const u of users || []) {
+        usersMap[u.username] = u.real_name;
+      }
+    }
+
+    // Format response to match existing leaderboard structure
+    // Note: unified points don't track individual star types
+    const leaderboard = (players || []).map(p => ({
+      username: p.username,
+      real_name: usersMap[p.username] || null,
+      weighted_score: p.action_points || 0,
+      territories: p.territories_count || 0,
+      cluster: p.largest_cluster || 0,
+      // Set star counts to 0 since unified view doesn't track them
+      gold: 0,
+      silver: 0,
+      bronze: 0,
+      tin: 0
+    }));
+
+    res.json(leaderboard);
+  } catch (err) {
+    console.error('GET /api/leaderboard/unified error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ============================================
 // SETTINGS ENDPOINTS (API key backup)
 // ============================================
@@ -2156,6 +2209,9 @@ let lastAutoSurgeCheck = 0;
 // v1.3.1: Underdog tracking - `${gameId}:${username}` -> last use timestamp
 const lastUnderdogUse = new Map();
 
+// v1.3.2: Session state - gameId -> { frozen, endedAt, summary }
+const frozenGames = new Map();
+
 /**
  * Increment a telemetry counter
  */
@@ -3280,6 +3336,195 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
   }
 });
 
+// v1.3.2: Reset game map - clears all territories and resets player points
+app.post('/api/grid-wars/games/reset', async (req, res) => {
+  try {
+    const { gameId, password } = req.body;
+
+    // Require teacher password
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher password required' });
+    }
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId required' });
+    }
+
+    console.log(`[Grid Wars] Resetting game: ${gameId}`);
+
+    // Clear all territories
+    const { error: terrError } = await supabase
+      .from('grid_wars_territories')
+      .delete()
+      .eq('game_id', gameId);
+
+    if (terrError) throw terrError;
+
+    // Reset all player stats (keep players, zero their stats)
+    const { error: playerError } = await supabase
+      .from('grid_wars_players')
+      .update({
+        action_points: GRID_WARS_CONFIG.bootBonus || 15,
+        territories_count: 0,
+        largest_cluster: 0,
+        active_buffs: {}
+      })
+      .eq('game_id', gameId);
+
+    if (playerError) throw playerError;
+
+    // Reset game state
+    const { error: gameError } = await supabase
+      .from('grid_wars_games')
+      .update({
+        class_goal_current: 0,
+        surge_cell_x: null,
+        surge_cell_y: null,
+        surge_expires: null
+      })
+      .eq('game_id', gameId);
+
+    if (gameError) throw gameError;
+
+    // Broadcast reset to all clients
+    broadcast({
+      type: 'game_reset',
+      gameId
+    });
+
+    console.log(`[Grid Wars] Game ${gameId} reset complete`);
+    res.json({ success: true, message: 'Map reset complete' });
+  } catch (err) {
+    console.error('POST /api/grid-wars/games/reset error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// v1.3.2: End session - freeze Grid Wars, calculate summary, broadcast rankings
+app.post('/api/grid-wars/session/end', async (req, res) => {
+  try {
+    const { gameId, password } = req.body;
+
+    // Require teacher password
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher password required' });
+    }
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId required' });
+    }
+
+    console.log(`[Grid Wars] Ending session for game: ${gameId}`);
+
+    // Get all players
+    const { data: players, error: playersError } = await supabase
+      .from('grid_wars_players')
+      .select('username, action_points, territories_count, largest_cluster')
+      .eq('game_id', gameId);
+
+    if (playersError) throw playersError;
+
+    // Get all territories
+    const { data: territories, error: terrError } = await supabase
+      .from('grid_wars_territories')
+      .select('x, y, owner')
+      .eq('game_id', gameId);
+
+    if (terrError) throw terrError;
+
+    // Calculate summary
+    const mapSize = GRID_WARS_CONFIG.mapSize || 20;
+    const totalCells = mapSize * mapSize;
+    const summary = {
+      endedAt: new Date().toISOString(),
+      playerCount: players?.length || 0,
+      totalTerritories: territories?.length || 0,
+      mapFillPercent: Math.round(((territories?.length || 0) / totalCells) * 100),
+      avgPoints: players?.length > 0
+        ? Math.round(players.reduce((sum, p) => sum + (p.action_points || 0), 0) / players.length)
+        : 0,
+      topPlayers: (players || [])
+        .sort((a, b) => (b.territories_count || 0) - (a.territories_count || 0))
+        .slice(0, 5)
+        .map(p => ({
+          username: p.username,
+          territories: p.territories_count || 0,
+          points: p.action_points || 0,
+          cluster: p.largest_cluster || 0
+        }))
+    };
+
+    // Mark game as frozen
+    frozenGames.set(gameId, { frozen: true, ...summary });
+
+    // Log telemetry
+    telemetryLog('session_ended', {
+      gameId,
+      ...summary,
+      avg_points_at_session_end: summary.avgPoints
+    });
+
+    // Broadcast to all clients
+    broadcast({
+      type: 'session_ended',
+      gameId,
+      summary,
+      rankings: summary.topPlayers
+    });
+
+    console.log(`[Grid Wars] Session ended for game ${gameId}`);
+    res.json({ success: true, summary });
+  } catch (err) {
+    console.error('POST /api/grid-wars/session/end error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// v1.3.2: Get session status (check if game is frozen)
+app.get('/api/grid-wars/session/status', async (req, res) => {
+  try {
+    const gameId = req.query.gameId || 'default';
+    const status = frozenGames.get(gameId);
+    res.json({
+      frozen: status?.frozen || false,
+      summary: status || null
+    });
+  } catch (err) {
+    console.error('GET /api/grid-wars/session/status error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// v1.3.2: Resume session (unfreeze game)
+app.post('/api/grid-wars/session/resume', async (req, res) => {
+  try {
+    const { gameId, password } = req.body;
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher password required' });
+    }
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId required' });
+    }
+
+    // Unfreeze game
+    frozenGames.delete(gameId);
+
+    // Broadcast resume to all clients
+    broadcast({
+      type: 'session_resumed',
+      gameId
+    });
+
+    console.log(`[Grid Wars] Session resumed for game ${gameId}`);
+    res.json({ success: true, message: 'Session resumed' });
+  } catch (err) {
+    console.error('POST /api/grid-wars/session/resume error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Perform an action (claim territory, reinforce)
 app.post('/api/grid-wars/action', async (req, res) => {
   try {
@@ -3287,6 +3532,11 @@ app.post('/api/grid-wars/action', async (req, res) => {
 
     if (!gameId || !username || !action || x === undefined || y === undefined) {
       return res.status(400).json({ error: 'Missing required fields: gameId, username, action, x, y' });
+    }
+
+    // v1.3.2: Check if session is frozen (Grid Wars paused but drills still work)
+    if (frozenGames.get(gameId)?.frozen) {
+      return res.status(403).json({ error: 'Session has ended. Grid Wars is frozen.' });
     }
 
     // Validate coordinates

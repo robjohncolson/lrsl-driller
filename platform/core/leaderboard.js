@@ -95,12 +95,15 @@ export class Leaderboard {
 
   /**
    * Fetch leaderboard data from server
+   * v1.3.2: Uses unified endpoint that reads from Grid Wars action_points
+   * This ensures spending points in Grid Wars affects leaderboard rank
    */
   async fetchData(period = 'all', limit = 20) {
     if (!this.serverUrl) return null;
 
     try {
-      const response = await fetch(`${this.serverUrl}/api/leaderboard?period=${period}&limit=${limit}`);
+      // v1.3.2: Use unified endpoint for consistent point display with Grid Wars
+      const response = await fetch(`${this.serverUrl}/api/leaderboard/unified?limit=${limit}`);
       return await response.json();
     } catch (err) {
       console.warn('Failed to fetch leaderboard:', err);
@@ -182,10 +185,8 @@ export class Leaderboard {
           <div class="text-right">
             <div class="text-lg font-bold text-yellow-600">${entry.weighted_score || 0} pts</div>
             <div class="text-xs text-gray-500 flex gap-1 justify-end">
-              ${entry.gold > 0 ? `<span>⭐${entry.gold}</span>` : ''}
-              ${entry.silver > 0 ? `<span>🥈${entry.silver}</span>` : ''}
-              ${entry.bronze > 0 ? `<span>🥉${entry.bronze}</span>` : ''}
-              ${entry.tin > 0 ? `<span>○${entry.tin}</span>` : ''}
+              ${entry.territories > 0 ? `<span class="text-green-600">◼${entry.territories}</span>` : ''}
+              ${entry.cluster > 0 ? `<span class="text-purple-600">◆${entry.cluster}</span>` : ''}
             </div>
           </div>
         </div>
@@ -250,10 +251,9 @@ export class Leaderboard {
           <!-- Legend -->
           <div class="px-6 py-3 bg-gray-50 border-t text-xs text-gray-500">
             <div class="flex items-center gap-4 justify-center">
-              <span title="Gold (4 pts)">⭐ = 4pts</span>
-              <span title="Silver (3 pts)">🥈 = 3pts</span>
-              <span title="Bronze (2 pts)">🥉 = 2pts</span>
-              <span title="Tin (1 pt)">○ = 1pt</span>
+              <span title="Points balance (earn - spend)">⚡ = Points</span>
+              <span title="Territories owned" class="text-green-600">◼ = Cells</span>
+              <span title="Largest cluster" class="text-purple-600">◆ = Cluster</span>
             </div>
           </div>
         </div>

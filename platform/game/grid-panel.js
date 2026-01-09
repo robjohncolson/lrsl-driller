@@ -67,17 +67,33 @@ export class GridPanel {
           this._hideCooldownOverlay();
         }
       },
-      // v1.3: Resync request - fetch fresh state and replay queued actions
+      // v1.3.2: Resync request - delayed indicator, panel-local
       onResyncRequest: async (data) => {
         console.log('[GridPanel] Resync requested, fetching fresh state...');
-        this.showToast('RESYNCING...');
+
+        // Clear any existing delay timer
+        if (this._resyncDelayTimer) {
+          clearTimeout(this._resyncDelayTimer);
+        }
+
+        // Wait 2 seconds before showing indicator (in case resync is fast)
+        this._resyncDelayTimer = setTimeout(() => {
+          this._showResyncIndicator();
+        }, 2000);
+
         try {
           await this.state.refreshState();
           await this.state.completeResync();
-          this.showToast('RESYNC COMPLETE');
+
+          // Clear timer and hide indicator - silent completion
+          clearTimeout(this._resyncDelayTimer);
+          this._hideResyncIndicator();
         } catch (err) {
           console.error('[GridPanel] Resync failed:', err);
-          this.showToast('RESYNC FAILED - REFRESH PAGE');
+          clearTimeout(this._resyncDelayTimer);
+          this._hideResyncIndicator();
+          // Only show error toast
+          this.showToast('SYNC FAILED - REFRESH PAGE');
         }
       },
       // v1.3.1: System events (auto-surge, etc.)
@@ -86,6 +102,24 @@ export class GridPanel {
           sounds.alert();
           this.showToast(data.message || 'UPLINK DETECTED — New sectors available');
         }
+      },
+      // v1.3.2: Session ended - show rankings overlay
+      onSessionEnded: (data) => {
+        sounds.alert();
+        this._showSessionEndOverlay(data.summary, data.rankings);
+      },
+      // v1.3.2: Session resumed - close overlay if open
+      onSessionResumed: () => {
+        const overlay = document.getElementById('gw-session-end-overlay');
+        if (overlay) overlay.remove();
+        this.showToast('SESSION RESUMED');
+      },
+      // v1.3.2: Game reset - refresh display
+      onGameReset: () => {
+        const overlay = document.getElementById('gw-session-end-overlay');
+        if (overlay) overlay.remove();
+        this.showToast('MAP RESET — Starting fresh!');
+        this.render();
       }
     });
 
@@ -138,6 +172,40 @@ export class GridPanel {
               <span id="gw-cluster-display" style="font-weight:bold;color:#c084fc;font-size:1rem;">0</span>
             </div>
             <button id="gw-help-btn" style="background:transparent;border:1px solid #374151;color:#9ca3af;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:0.75rem;" title="How to Play">?</button>
+          </div>
+        </div>
+
+        <!-- v1.3.2: Objective Section (always visible) -->
+        <div id="gw-objective" style="padding:8px 12px;background:#0a0a0a;border-bottom:1px solid #166534;">
+          <div style="color:#ffbf00;font-size:0.65rem;margin-bottom:4px;display:flex;align-items:center;gap:4px;">
+            <span>🎯</span>
+            <span style="text-transform:uppercase;letter-spacing:0.05em;font-weight:bold;">OBJECTIVE</span>
+          </div>
+          <div style="color:#9ca3af;font-size:0.6rem;line-height:1.3;margin-bottom:6px;">
+            Claim territory • Earn points • Dominate the map
+          </div>
+          <div style="display:flex;gap:12px;font-size:0.7rem;">
+            <div style="color:#00ff41;">
+              <span style="color:#6b7280;">Cells:</span> <span id="gw-my-cells" style="font-weight:bold;">0</span>
+            </div>
+            <div style="color:#22d3ee;">
+              <span style="color:#6b7280;">Pts:</span> <span id="gw-my-points" style="font-weight:bold;">0</span>
+            </div>
+            <div id="gw-leader-info" style="color:#a855f7;font-size:0.65rem;">--</div>
+          </div>
+        </div>
+
+        <!-- v1.3.2: Underdog Banner (shows when eligible) -->
+        <div id="gw-underdog-banner" style="display:none;background:linear-gradient(90deg,#4c1d95,#7c3aed);padding:8px 12px;border-bottom:1px solid #166534;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:1rem;">🔥</span>
+              <span style="color:#fff;font-weight:bold;font-size:0.7rem;text-transform:uppercase;">COMEBACK BONUS</span>
+            </div>
+            <div style="color:#c4b5fd;font-size:0.7rem;">
+              <span id="gw-underdog-original" style="text-decoration:line-through;opacity:0.7;">10</span>
+              <span style="color:#00ff41;font-weight:bold;margin-left:4px;"><span id="gw-underdog-discounted">5</span>⚡</span>
+            </div>
           </div>
         </div>
 
@@ -887,6 +955,8 @@ export class GridPanel {
     this.updateClassGoalDisplay();
     this.updateBuffsDisplay();
     this.updateActionAffordance();
+    this.updateObjectiveDisplay();   // v1.3.2
+    this.updateUnderdogDisplay();    // v1.3.2
   }
 
   /**
@@ -944,6 +1014,187 @@ export class GridPanel {
     if (this.state) {
       this.state.handleWebSocketMessage(message);
     }
+  }
+
+  /**
+   * v1.3.2: Update objective display (cells, points, leader info)
+   */
+  updateObjectiveDisplay() {
+    const cellsEl = this.container?.querySelector('#gw-my-cells');
+    const pointsEl = this.container?.querySelector('#gw-my-points');
+    const leaderEl = this.container?.querySelector('#gw-leader-info');
+
+    if (!this.state) return;
+
+    const myStats = this.state.getPlayerStats();
+
+    if (cellsEl) cellsEl.textContent = myStats.territories_count || 0;
+    if (pointsEl) pointsEl.textContent = myStats.action_points || 0;
+
+    // Find territory leader
+    if (leaderEl) {
+      const players = Array.from(this.state.players.values());
+      const playersWithNames = players.map((p, i) => ({
+        ...p,
+        username: Array.from(this.state.players.keys())[i]
+      }));
+      const sortedByTerritory = playersWithNames
+        .filter(p => (p.territories_count || 0) > 0)
+        .sort((a, b) => (b.territories_count || 0) - (a.territories_count || 0));
+
+      const leader = sortedByTerritory[0];
+
+      if (leader && leader.username !== this.username && (leader.territories_count || 0) > 0) {
+        leaderEl.textContent = `Leader: ${leader.username} (${leader.territories_count})`;
+        leaderEl.style.color = '#a855f7';
+      } else if (leader && leader.username === this.username) {
+        leaderEl.textContent = "👑 You're leading!";
+        leaderEl.style.color = '#00ff41';
+      } else {
+        leaderEl.textContent = 'No territories claimed yet';
+        leaderEl.style.color = '#6b7280';
+      }
+    }
+  }
+
+  /**
+   * v1.3.2: Update underdog banner visibility
+   * Shows when player has 0 territories and answered recently
+   */
+  updateUnderdogDisplay() {
+    const banner = this.container?.querySelector('#gw-underdog-banner');
+    if (!banner || !this.state) return;
+
+    const myStats = this.state.getPlayerStats();
+    const hasNoTerritory = (myStats.territories_count || 0) === 0;
+
+    // Check if answered recently (within underdog activity window)
+    const lastAnswer = myStats.last_answer_at;
+    const answeredRecently = lastAnswer &&
+      (Date.now() - new Date(lastAnswer).getTime()) < (GRID_WARS_CONFIG.underdogActivityWindowMs || 180000);
+
+    const showBanner = hasNoTerritory && answeredRecently && GRID_WARS_CONFIG.underdogEnabled;
+
+    if (showBanner) {
+      banner.style.display = 'block';
+      // Update prices
+      const originalEl = this.container.querySelector('#gw-underdog-original');
+      const discountedEl = this.container.querySelector('#gw-underdog-discounted');
+      const baseCost = GRID_WARS_CONFIG.claimCost || 10;
+      const discount = GRID_WARS_CONFIG.underdogDiscount || 0.5;
+      const minCost = GRID_WARS_CONFIG.underdogMinCost || 5;
+      const discountedCost = Math.max(minCost, Math.floor(baseCost * discount));
+
+      if (originalEl) originalEl.textContent = baseCost;
+      if (discountedEl) discountedEl.textContent = discountedCost;
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  /**
+   * v1.3.2: Show resync indicator (panel-local, not global toast)
+   */
+  _showResyncIndicator() {
+    let indicator = this.container?.querySelector('#gw-resync-indicator');
+    if (!indicator && this.container) {
+      indicator = document.createElement('div');
+      indicator.id = 'gw-resync-indicator';
+      indicator.style.cssText = `
+        position: absolute;
+        top: 8px;
+        right: 48px;
+        background: #1e293b;
+        color: #fbbf24;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        display: none;
+        align-items: center;
+        gap: 4px;
+        z-index: 10;
+      `;
+      indicator.innerHTML = '<span style="animation:spin 1s linear infinite;">⟳</span> SYNCING';
+      const header = this.container.querySelector('#gw-header');
+      if (header) {
+        header.style.position = 'relative';
+        header.appendChild(indicator);
+      }
+    }
+    if (indicator) {
+      indicator.style.display = 'flex';
+    }
+  }
+
+  /**
+   * v1.3.2: Hide resync indicator
+   */
+  _hideResyncIndicator() {
+    const indicator = this.container?.querySelector('#gw-resync-indicator');
+    if (indicator) {
+      indicator.style.display = 'none';
+    }
+  }
+
+  /**
+   * v1.3.2: Show session end overlay with rankings
+   */
+  _showSessionEndOverlay(summary, rankings) {
+    // Remove existing overlay if present
+    const existing = document.getElementById('gw-session-end-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'gw-session-end-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: monospace;
+    `;
+
+    const rankingsHtml = (rankings || []).map((r, i) => `
+      <div style="padding:8px 12px;display:flex;justify-content:space-between;align-items:center;${i === 0 ? 'color:#ffbf00;font-weight:bold;font-size:1rem;' : 'color:#e2e8f0;'}">
+        <span>${i === 0 ? '👑' : `#${i + 1}`} ${r.username}</span>
+        <span>${r.territories} cells</span>
+      </div>
+    `).join('');
+
+    overlay.innerHTML = `
+      <div style="background:#0f172a;border:2px solid #00ff41;border-radius:8px;padding:24px 32px;max-width:400px;text-align:center;">
+        <div style="font-size:1.5rem;color:#00ff41;margin-bottom:8px;">🏆 SESSION COMPLETE</div>
+        <div style="color:#9ca3af;font-size:0.85rem;margin-bottom:20px;">
+          ${summary?.mapFillPercent || 0}% map claimed • ${summary?.playerCount || 0} players
+        </div>
+        <div style="text-align:left;border:1px solid #374151;border-radius:4px;overflow:hidden;margin-bottom:16px;">
+          ${rankingsHtml || '<div style="padding:12px;color:#6b7280;text-align:center;">No rankings available</div>'}
+        </div>
+        <div style="color:#64748b;font-size:0.75rem;margin-bottom:16px;">
+          Drills still work • Grid Wars paused
+        </div>
+        <button id="gw-session-end-close" style="
+          background: #374151;
+          color: #e2e8f0;
+          border: none;
+          padding: 8px 24px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-family: monospace;
+          font-size: 0.85rem;
+        ">Close</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Close button handler
+    document.getElementById('gw-session-end-close')?.addEventListener('click', () => {
+      overlay.remove();
+    });
   }
 
 }

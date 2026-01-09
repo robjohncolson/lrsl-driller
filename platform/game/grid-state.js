@@ -101,6 +101,13 @@ export class GridWarsState {
     this.onClaimStatusChange = options.onClaimStatusChange || null; // v1.2.1
     this.onCooldownChange = options.onCooldownChange || null; // v1.3
     this.onSystemEvent = options.onSystemEvent || null;     // v1.3.1
+    this.onSessionEnded = options.onSessionEnded || null;   // v1.3.2
+    this.onSessionResumed = options.onSessionResumed || null; // v1.3.2
+    this.onGameReset = options.onGameReset || null;         // v1.3.2
+
+    // v1.3.2: Session state
+    this._sessionFrozen = false;
+    this._sessionSummary = null;
 
     // v1.2.1: Sequence tracking for gap detection
     this._expectedSeq = null;
@@ -254,6 +261,20 @@ export class GridWarsState {
     if (!this.username) return 0;
     const player = this.players.get(this.username);
     return player?.largest_cluster || 0;
+  }
+
+  /**
+   * v1.3.2: Check if session is frozen
+   */
+  isSessionFrozen() {
+    return this._sessionFrozen;
+  }
+
+  /**
+   * v1.3.2: Get session summary (if session has ended)
+   */
+  getSessionSummary() {
+    return this._sessionSummary;
   }
 
   /**
@@ -1060,6 +1081,44 @@ export class GridWarsState {
           });
         }
         this._emitStateChange();
+        break;
+
+      // v1.3.2: Session ended (Grid Wars frozen, drills still work)
+      case 'session_ended':
+        this._sessionFrozen = true;
+        this._sessionSummary = message.summary;
+        if (this.onSessionEnded) {
+          this.onSessionEnded({
+            summary: message.summary,
+            rankings: message.rankings
+          });
+        }
+        this._emitStateChange();
+        break;
+
+      // v1.3.2: Session resumed (Grid Wars unfrozen)
+      case 'session_resumed':
+        this._sessionFrozen = false;
+        this._sessionSummary = null;
+        if (this.onSessionResumed) {
+          this.onSessionResumed();
+        }
+        this._emitStateChange();
+        break;
+
+      // v1.3.2: Game reset (all territories and points cleared)
+      case 'game_reset':
+        this.territories.clear();
+        this.players.clear();
+        this.classGoal = { current: 0, target: GRID_WARS_CONFIG.classGoalTarget };
+        this.surge = null;
+        this._sessionFrozen = false;
+        this._sessionSummary = null;
+        if (this.onGameReset) {
+          this.onGameReset();
+        }
+        // Refresh state from server to get updated player data (boot bonus)
+        this.refreshState();
         break;
     }
   }

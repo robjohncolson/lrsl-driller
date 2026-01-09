@@ -6,9 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A subject-agnostic drill/quiz platform for teachers ("Driller Platform"). Think of it like a game console: the platform is the console, lessons are cartridges.
 
-Current cartridges are listed in `cartridges/registry.json` and span AP Statistics, Algebra 2, and Computer Science topics.
+Current cartridges (10 total) are listed in `cartridges/registry.json` and span AP Statistics, Algebra 2, and Computer Science topics.
 
 **Deployment**: Vercel (frontend) + Railway (backend server for AI grading, WebSocket, time tracking, Grid Wars)
+
+**Two Entry Points**:
+- `platform/app.html` - Main modular platform (requires dev server)
+- `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
 ## Development Commands
 
@@ -29,7 +33,7 @@ npm install
 node server.js        # Requires SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY env vars
 ```
 
-The legacy `index.html` works standalone (file:// protocol) but the modular platform requires the dev server.
+The `index.html` legacy app works standalone (file:// protocol) but the modular `platform/app.html` requires the dev server.
 
 ## Architecture
 
@@ -45,11 +49,17 @@ The legacy `index.html` works standalone (file:// protocol) but the modular plat
 - `core/shuffle-bag.js` - Fair problem distribution (no near-repeats)
 - `core/celebration.js` - Star/unlock animations
 - `core/leaderboard.js` - Class leaderboard display
+- `core/user-system.js` - User registration, login, persistence
+- `core/websocket-client.js` - Real-time server communication
+- `core/time-tracker.js` - Session and problem timing
+- `core/class-time.js` - Class period management
+- `core/sound-engine.js` - Audio feedback
 - `game/grid-state.js` - Grid Wars client state management
 - `game/grid-renderer.js` - Grid Wars canvas rendering
 - `game/grid-panel.js` - Grid Wars UI panel component
 - `game/teacher-view.js` - Teacher dashboard components
 - `game/audio.js` - Sound effects
+- `core/radical-*.js` - Algebra 2 radicals: visualizer, game, prime game, complex game
 
 **Cartridges (Lessons)** - `cartridges/{id}/` - content-specific, fully self-contained:
 - `manifest.json` - Config: modes, inputs, hints, progression, grading settings
@@ -139,7 +149,14 @@ Star tiers based on hints used: Gold (0), Silver (1), Bronze (2), Tin (3+)
 
 A territory control game where students earn points from drill stars to claim cells on a shared map. Located in `platform/game/` with server endpoints at `/api/grid-wars/*`.
 
-Key mechanics: claim cost (weighted points), contestation (opposing claims on same cell), cell strength (1-3), resource nodes (factories, beacons, anchors), surge mode, class goal bonuses.
+Key mechanics: claim cost (weighted points), cell strength (1-3), resource nodes (amplifiers), surge mode, class goal bonuses, activity-based takeover pricing.
+
+**v1.3.2 Features:**
+- **Unified economy**: Leaderboard shows same points as Grid Wars (`/api/leaderboard/unified`)
+- **Session management**: Teacher can end/resume sessions, freeze claims while drills continue
+- **Goal clarity UI**: Objective section shows cells, points, and leader info
+- **Underdog assist**: Visual banner when comeback bonus is available
+- **RESYNC UX**: Delayed indicator (2s), panel-local, not global toast
 
 ## Environment Variables (Railway Server)
 
@@ -158,10 +175,10 @@ npx vitest run tests/grading/sampling.test.js    # Single test file
 
 Test organization:
 - `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version)
-- `tests/grading/` - Cartridge grading rule tests
-- `tests/generators/` - Problem generator tests
-- `tests/server/` - Railway server API tests (including grid-wars-api)
-- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific tests)
+- `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
+- `tests/generators/` - Problem generator tests (sampling, experimental-design)
+- `tests/server/` - Railway server API tests (api, grid-wars-api)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1, v1.2, v1.2.1, v1.3, v1.3.1, v1.3.2, v3)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
