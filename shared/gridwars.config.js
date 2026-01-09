@@ -188,6 +188,65 @@ const GRID_WARS_CONFIG = {
   underdogMinCost: 5,                  // Floor for discounted claim
   underdogActivityWindowMs: 3 * 60 * 1000, // Must have answered in last 3 min
   underdogCooldownMs: 5 * 60 * 1000,   // Can only trigger once per 5 min
+
+  // ============================================
+  // v1.4: ACTIVITY REQUIREMENT FOR CLAIMS
+  // ============================================
+
+  // Players must have answered a drill question within this window to claim
+  uplinkRequiredSeconds: 600,          // 10 minutes
+
+  // ============================================
+  // v1.4: DIMINISHING RETURNS
+  // ============================================
+
+  // Scale earning efficiency inversely with empire size
+  diminishingReturnsEnabled: true,
+  diminishingReturnsThreshold: 25,     // Cells before penalty starts
+  diminishingReturnsMinMultiplier: 0.5, // Floor at 50% earning rate
+  diminishingReturnsFactor: 0.005,     // Reduction per excess cell
+  // Formula: multiplier = max(0.5, 1 - (excess * 0.005))
+  // 25 cells = 1.0x, 50 cells = 0.875x, 75 cells = 0.75x, 125+ cells = 0.5x
+
+  // ============================================
+  // v1.4: ROUND SYSTEM
+  // ============================================
+
+  rounds: {
+    enabled: false,                    // Toggle round system
+    warningMinutes: 2,                 // Show ENDING status this many mins before end
+  },
+
+  victoryConditions: {
+    domination: {
+      threshold: 80,                   // First to X cells wins
+      enabled: true,
+    },
+    timed: {
+      durationMinutes: 45,             // Round duration
+      enabled: false,
+    },
+    collaborative: {
+      target: 300,                     // Class collectively owns X cells
+      enabled: false,
+    },
+  },
+
+  legacyBonus: {
+    winner: 5,                         // Points for 1st place in next round
+    top3: 3,                           // Points for 2nd-3rd place
+  },
+
+  // ============================================
+  // v1.4: SCOUTING REPORT THRESHOLDS
+  // ============================================
+
+  scoutingThresholds: {
+    highLifetime: 100,                 // Above this = high earner
+    lowLifetime: 30,                   // Below this = low earner
+    highCells: 15,                     // Above this = high territory
+    lowCells: 3,                       // Below this = low territory
+  },
 };
 
 // ES Module export (for client/Vite)

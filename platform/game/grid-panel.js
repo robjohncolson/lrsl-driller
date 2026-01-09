@@ -171,6 +171,11 @@ export class GridPanel {
               <span style="color:#a855f7;">◆</span>
               <span id="gw-cluster-display" style="font-weight:bold;color:#c084fc;font-size:1rem;">0</span>
             </div>
+            <!-- v1.4: Uplink status indicator -->
+            <div id="gw-uplink-status" style="display:flex;align-items:center;gap:4px;background:#1e293b;padding:4px 8px;border-radius:4px;" title="Uplink status - must answer drills to claim">
+              <span id="gw-uplink-icon" style="color:#00ff41;">📡</span>
+              <span id="gw-uplink-text" style="font-weight:bold;color:#67e8f9;font-size:0.7rem;">--:--</span>
+            </div>
             <button id="gw-help-btn" style="background:transparent;border:1px solid #374151;color:#9ca3af;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:0.75rem;" title="How to Play">?</button>
           </div>
         </div>
@@ -206,6 +211,14 @@ export class GridPanel {
               <span id="gw-underdog-original" style="text-decoration:line-through;opacity:0.7;">10</span>
               <span style="color:#00ff41;font-weight:bold;margin-left:4px;"><span id="gw-underdog-discounted">5</span>⚡</span>
             </div>
+          </div>
+        </div>
+
+        <!-- v1.4: Diminishing Returns Banner (shows when multiplier < 1.0) -->
+        <div id="gw-diminishing-banner" style="display:none;background:#1e293b;padding:6px 12px;border-bottom:1px solid #374151;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:0.9rem;">📉</span>
+            <span style="color:#fbbf24;font-size:0.7rem;">EMPIRE OVERHEAD: Earning at <span id="gw-earning-rate" style="font-weight:bold;">100</span>%</span>
           </div>
         </div>
 
@@ -284,6 +297,27 @@ export class GridPanel {
               <div id="gw-goal-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#00ff41,#22d3ee);transition:width 0.3s;"></div>
             </div>
           </div>
+
+          <!-- v1.4: Multi-Dimensional Leaderboard -->
+          <div id="gw-leaderboard-section" style="border-top:1px solid #374151;">
+            <div style="display:flex;background:#0a0a0a;">
+              <button class="gw-lb-tab gw-lb-tab-active" data-tab="scholar" style="flex:1;padding:6px 4px;background:transparent;border:none;color:#fbbf24;font-size:0.6rem;cursor:pointer;border-bottom:2px solid #fbbf24;font-family:inherit;">
+                🎓 Scholar
+              </button>
+              <button class="gw-lb-tab" data-tab="banker" style="flex:1;padding:6px 4px;background:transparent;border:none;color:#6b7280;font-size:0.6rem;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;">
+                💰 Banker
+              </button>
+              <button class="gw-lb-tab" data-tab="general" style="flex:1;padding:6px 4px;background:transparent;border:none;color:#6b7280;font-size:0.6rem;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;">
+                ⚔️ General
+              </button>
+            </div>
+            <div id="gw-leaderboard-content" style="padding:8px;background:#0f172a;max-height:120px;overflow-y:auto;font-size:0.65rem;">
+              <div style="color:#6b7280;text-align:center;">Loading...</div>
+            </div>
+            <div id="gw-my-ranks" style="padding:6px 8px;background:#0a0a0a;font-size:0.6rem;color:#6b7280;text-align:center;border-top:1px solid #1e293b;">
+              Your rank: <span id="gw-rank-scholar">--</span> · <span id="gw-rank-banker">--</span> · <span id="gw-rank-general">--</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -327,6 +361,36 @@ export class GridPanel {
         #gw-help-btn:hover {
           border-color: #00ff41;
           color: #00ff41;
+        }
+        /* v1.4: Leaderboard tab styles */
+        .gw-lb-tab:hover {
+          color: #9ca3af;
+        }
+        .gw-lb-tab-active {
+          color: #fbbf24 !important;
+          border-bottom-color: #fbbf24 !important;
+        }
+        .gw-lb-tab[data-tab="banker"].gw-lb-tab-active {
+          color: #22d3ee !important;
+          border-bottom-color: #22d3ee !important;
+        }
+        .gw-lb-tab[data-tab="general"].gw-lb-tab-active {
+          color: #a855f7 !important;
+          border-bottom-color: #a855f7 !important;
+        }
+        .gw-lb-entry {
+          display: flex;
+          justify-content: space-between;
+          padding: 3px 0;
+          border-bottom: 1px solid #1e293b;
+        }
+        .gw-lb-entry:last-child {
+          border-bottom: none;
+        }
+        .gw-lb-entry.my-entry {
+          background: rgba(0, 255, 65, 0.1);
+          margin: 0 -8px;
+          padding: 3px 8px;
         }
       </style>
     `;
@@ -450,6 +514,18 @@ export class GridPanel {
 
     // Keyboard controls
     this.setupKeyboardControls();
+
+    // v1.4: Leaderboard tab switching
+    this.container.querySelectorAll('.gw-lb-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.getAttribute('data-tab');
+        this.switchLeaderboardTab(tabName);
+      });
+    });
+
+    // v1.4: Current leaderboard tab
+    this._currentLeaderboardTab = 'scholar';
+    this._leaderboardData = null;
   }
 
   /**
@@ -684,6 +760,8 @@ export class GridPanel {
       this.state.refreshState().catch(() => {});
       // Re-init canvas after showing
       this.initCanvas();
+      // v1.4: Refresh multi-leaderboard
+      this.refreshMultiLeaderboard();
     } else {
       content.style.display = 'none';
       icon.textContent = '▼';
@@ -726,7 +804,13 @@ export class GridPanel {
       this.updatePointsDisplay();
     } catch (err) {
       sounds.error();
-      this.updateStatus(`Error: ${err.message}`);
+      // v1.4: Handle UPLINK OFFLINE error specifically
+      if (err.message.includes('UPLINK OFFLINE')) {
+        this.updateStatus('UPLINK OFFLINE - Answer a drill to claim!');
+        this.showToast('Answer a drill question to restore your uplink');
+      } else {
+        this.updateStatus(`Error: ${err.message}`);
+      }
     }
   }
 
@@ -957,6 +1041,8 @@ export class GridPanel {
     this.updateActionAffordance();
     this.updateObjectiveDisplay();   // v1.3.2
     this.updateUnderdogDisplay();    // v1.3.2
+    this.updateUplinkStatus();       // v1.4
+    this.updateDiminishingDisplay(); // v1.4
   }
 
   /**
@@ -1089,6 +1175,141 @@ export class GridPanel {
       if (discountedEl) discountedEl.textContent = discountedCost;
     } else {
       banner.style.display = 'none';
+    }
+  }
+
+  /**
+   * v1.4: Update uplink status indicator
+   */
+  updateUplinkStatus() {
+    const iconEl = this.container?.querySelector('#gw-uplink-icon');
+    const textEl = this.container?.querySelector('#gw-uplink-text');
+    if (!iconEl || !textEl || !this.state) return;
+
+    if (this.state.isUplinkActive()) {
+      const remaining = this.state.getUplinkTimeRemaining();
+      const minutes = Math.floor(remaining / 60);
+      const seconds = remaining % 60;
+      iconEl.textContent = '📡';
+      iconEl.style.color = '#00ff41';
+      textEl.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
+      textEl.style.color = '#67e8f9';
+    } else {
+      iconEl.textContent = '📡';
+      iconEl.style.color = '#ef4444';
+      textEl.textContent = 'OFF';
+      textEl.style.color = '#ef4444';
+    }
+  }
+
+  /**
+   * v1.4: Update diminishing returns banner
+   */
+  updateDiminishingDisplay() {
+    const banner = this.container?.querySelector('#gw-diminishing-banner');
+    const rateEl = this.container?.querySelector('#gw-earning-rate');
+    if (!banner || !this.state) return;
+
+    const multiplier = this.state.getEarningMultiplier();
+
+    if (multiplier < 1.0) {
+      banner.style.display = 'block';
+      if (rateEl) rateEl.textContent = Math.round(multiplier * 100);
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  /**
+   * v1.4: Switch leaderboard tab
+   */
+  switchLeaderboardTab(tabName) {
+    this._currentLeaderboardTab = tabName;
+
+    // Update tab styles
+    this.container.querySelectorAll('.gw-lb-tab').forEach(tab => {
+      const isActive = tab.getAttribute('data-tab') === tabName;
+      tab.classList.toggle('gw-lb-tab-active', isActive);
+    });
+
+    // Re-render with current data
+    this.renderLeaderboardContent();
+  }
+
+  /**
+   * v1.4: Fetch and update multi-leaderboard
+   */
+  async refreshMultiLeaderboard() {
+    if (!this.state) return;
+
+    try {
+      this._leaderboardData = await this.state.getMultiLeaderboard(5);
+      this.renderLeaderboardContent();
+      this.updateMyRanks();
+    } catch (err) {
+      console.error('Failed to fetch multi-leaderboard:', err);
+    }
+  }
+
+  /**
+   * v1.4: Render leaderboard content for current tab
+   */
+  renderLeaderboardContent() {
+    const contentEl = this.container?.querySelector('#gw-leaderboard-content');
+    if (!contentEl || !this._leaderboardData) return;
+
+    const tab = this._currentLeaderboardTab;
+    const entries = this._leaderboardData[tab] || [];
+
+    if (entries.length === 0) {
+      contentEl.innerHTML = '<div style="color:#6b7280;text-align:center;">No data yet</div>';
+      return;
+    }
+
+    const colors = {
+      scholar: '#fbbf24',
+      banker: '#22d3ee',
+      general: '#a855f7'
+    };
+    const color = colors[tab] || '#9ca3af';
+
+    const html = entries.map((entry, i) => {
+      const isMe = entry.username === this.state?.username;
+      const name = entry.real_name || entry.username || 'Unknown';
+      const displayName = name.length > 12 ? name.slice(0, 10) + '...' : name;
+      return `
+        <div class="gw-lb-entry${isMe ? ' my-entry' : ''}">
+          <span style="color:${isMe ? '#00ff41' : '#e2e8f0'};">${i + 1}. ${displayName}</span>
+          <span style="color:${color};font-weight:bold;">${entry.value}</span>
+        </div>
+      `;
+    }).join('');
+
+    contentEl.innerHTML = html;
+  }
+
+  /**
+   * v1.4: Update my ranks display
+   */
+  updateMyRanks() {
+    const data = this._leaderboardData;
+    if (!data?.playerRanks) return;
+
+    const scholarEl = this.container?.querySelector('#gw-rank-scholar');
+    const bankerEl = this.container?.querySelector('#gw-rank-banker');
+    const generalEl = this.container?.querySelector('#gw-rank-general');
+
+    if (scholarEl && data.playerRanks.scholar) {
+      scholarEl.textContent = `#${data.playerRanks.scholar.rank}`;
+      scholarEl.style.color = '#fbbf24';
+    }
+    if (bankerEl && data.playerRanks.banker) {
+      bankerEl.textContent = `#${data.playerRanks.banker.rank}`;
+      bankerEl.style.color = '#22d3ee';
+    }
+    if (generalEl && data.playerRanks.general) {
+      generalEl.textContent = `#${data.playerRanks.general.rank}`;
+      generalEl.style.color = '#a855f7';
     }
   }
 

@@ -784,6 +784,81 @@ export class GridWarsState {
   }
 
   /**
+   * v1.4: Get multi-dimensional leaderboard (Scholar, Banker, General)
+   */
+  async getMultiLeaderboard(limit = 5) {
+    if (!this.gameId) {
+      throw new Error('Game not initialized');
+    }
+
+    try {
+      const url = new URL(`${this.serverUrl}/api/grid-wars/leaderboard/multi`);
+      url.searchParams.set('gameId', this.gameId);
+      url.searchParams.set('limit', limit);
+      if (this.username) {
+        url.searchParams.set('username', this.username);
+      }
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch multi-leaderboard');
+      }
+
+      return await response.json();
+    } catch (err) {
+      this._handleError('getMultiLeaderboard', err);
+      throw err;
+    }
+  }
+
+  /**
+   * v1.4: Check if uplink is active (answered within uplinkRequiredSeconds)
+   */
+  isUplinkActive() {
+    if (!this.username) return false;
+    const player = this.players.get(this.username);
+    if (!player?.last_answer_at) return false;
+
+    const timeout = (GRID_WARS_CONFIG.uplinkRequiredSeconds || 600) * 1000;
+    const elapsed = Date.now() - new Date(player.last_answer_at).getTime();
+    return elapsed < timeout;
+  }
+
+  /**
+   * v1.4: Get uplink time remaining in seconds
+   */
+  getUplinkTimeRemaining() {
+    if (!this.username) return 0;
+    const player = this.players.get(this.username);
+    if (!player?.last_answer_at) return 0;
+
+    const timeout = (GRID_WARS_CONFIG.uplinkRequiredSeconds || 600) * 1000;
+    const elapsed = Date.now() - new Date(player.last_answer_at).getTime();
+    return Math.max(0, Math.floor((timeout - elapsed) / 1000));
+  }
+
+  /**
+   * v1.4: Get current earning multiplier based on empire size
+   */
+  getEarningMultiplier() {
+    if (!GRID_WARS_CONFIG.diminishingReturnsEnabled) return 1.0;
+
+    const stats = this.getPlayerStats();
+    const territoriesCount = stats.territories || 0;
+    const threshold = GRID_WARS_CONFIG.diminishingReturnsThreshold || 25;
+    const minMultiplier = GRID_WARS_CONFIG.diminishingReturnsMinMultiplier || 0.5;
+    const factor = GRID_WARS_CONFIG.diminishingReturnsFactor || 0.005;
+
+    if (territoriesCount > threshold) {
+      const excess = territoriesCount - threshold;
+      return Math.max(minMultiplier, 1 - (excess * factor));
+    }
+    return 1.0;
+  }
+
+  /**
    * Get current player's active buffs
    */
   getActiveBuffs() {

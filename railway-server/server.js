@@ -3525,6 +3525,334 @@ app.post('/api/grid-wars/session/resume', async (req, res) => {
   }
 });
 
+// ============================================
+// v1.4: ROUND SYSTEM ENDPOINTS
+// ============================================
+
+// In-memory round state (cleared on server restart)
+const activeRounds = new Map(); // gameId -> { roundNumber, startedAt, endsAt, victoryConfig, status }
+
+/**
+ * v1.4: Start a new round
+ */
+app.post('/api/grid-wars/round/start', async (req, res) => {
+  try {
+    const { gameId, password, victoryConfig } = req.body;
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId required' });
+    }
+
+    // Check teacher password
+    if (password !== process.env.TEACHER_PASSWORD) {
+      return res.status(403).json({ error: 'Invalid teacher password' });
+    }
+
+    // Get current game state
+    const { data: game, error: gameError } = await supabase
+      .from('grid_wars_games')
+      .select('round_number, rounds_enabled, victory_config')
+      .eq('game_id', gameId)
+      .single();
+
+    if (gameError && gameError.code !== 'PGRST116') throw gameError;
+
+    const roundNumber = (game?.round_number || 0) + 1;
+    const config = victoryConfig || game?.victory_config || { type: 'manual' };
+
+    // Calculate end time for timed rounds
+    let endsAt = null;
+    if (config.type === 'timed' && GRID_WARS_CONFIG.victoryConditions?.timed?.durationMinutes) {
+      endsAt = new Date(Date.now() + GRID_WARS_CONFIG.victoryConditions.timed.durationMinutes * 60 * 1000).toISOString();
+    }
+
+    // Update game record
+    await supabase
+      .from('grid_wars_games')
+      .update({
+        round_number: roundNumber,
+        rounds_enabled: true,
+        round_started_at: new Date().toISOString(),
+        round_ends_at: endsAt,
+        round_status: 'active',
+        victory_config: config
+      })
+      .eq('game_id', gameId);
+
+    // Clear territories for new round
+    await supabase
+      .from('grid_wars_territories')
+      .delete()
+      .eq('game_id', gameId);
+
+    // Reset player territories_count but apply legacy bonuses
+    const { data: players } = await supabase
+      .from('grid_wars_players')
+      .select('username, pending_legacy_bonus')
+      .eq('game_id', gameId);
+
+    for (const player of players || []) {
+      const bonus = player.pending_legacy_bonus || 0;
+      await supabase
+        .from('grid_wars_players')
+        .update({
+          territories_count: 0,
+          largest_cluster: 0,
+          action_points: GRID_WARS_CONFIG.bootBonus + bonus,
+          pending_legacy_bonus: 0
+        })
+        .eq('game_id', gameId)
+        .eq('username', player.username);
+    }
+
+    // Clear frozen state
+    frozenGames.delete(gameId);
+
+    // Store round state
+    activeRounds.set(gameId, {
+      roundNumber,
+      startedAt: new Date().toISOString(),
+      endsAt,
+      victoryConfig: config,
+      status: 'active'
+    });
+
+    // Broadcast round start
+    broadcast({
+      type: 'round_started',
+      gameId,
+      roundNumber,
+      victoryConfig: config,
+      endsAt,
+      startedAt: new Date().toISOString()
+    });
+
+    console.log(`[Grid Wars] Round ${roundNumber} started for game ${gameId}`);
+    res.json({ success: true, roundNumber, endsAt, victoryConfig: config });
+  } catch (err) {
+    console.error('POST /api/grid-wars/round/start error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * v1.4: End current round manually
+ */
+app.post('/api/grid-wars/round/end', async (req, res) => {
+  try {
+    const { gameId, password } = req.body;
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId required' });
+    }
+
+    if (password !== process.env.TEACHER_PASSWORD) {
+      return res.status(403).json({ error: 'Invalid teacher password' });
+    }
+
+    // Get final standings
+    const { data: players } = await supabase
+      .from('grid_wars_players')
+      .select('username, action_points, territories_count, lifetime_earned')
+      .eq('game_id', gameId)
+      .order('territories_count', { ascending: false });
+
+    const rankings = players || [];
+    const winner = rankings[0] || null;
+
+    // Get real names for top 3
+    const top3Usernames = rankings.slice(0, 3).map(p => p.username);
+    const { data: users } = await supabase
+      .from('users')
+      .select('username, real_name')
+      .in('username', top3Usernames);
+
+    const nameMap = {};
+    for (const u of users || []) {
+      nameMap[u.username] = u.real_name;
+    }
+
+    // Get round info
+    const roundState = activeRounds.get(gameId);
+    const { data: game } = await supabase
+      .from('grid_wars_games')
+      .select('round_number, victory_config, round_started_at')
+      .eq('game_id', gameId)
+      .single();
+
+    const roundNumber = game?.round_number || 1;
+
+    // Record to hall of fame
+    await supabase
+      .from('round_history')
+      .insert({
+        game_id: gameId,
+        round_number: roundNumber,
+        started_at: game?.round_started_at || roundState?.startedAt,
+        victory_condition: 'manual',
+        winner_id: winner?.username,
+        winner_name: nameMap[winner?.username] || winner?.username,
+        winner_score: winner?.territories_count,
+        runner_up_id: rankings[1]?.username,
+        runner_up_name: nameMap[rankings[1]?.username] || rankings[1]?.username,
+        runner_up_score: rankings[1]?.territories_count,
+        third_place_id: rankings[2]?.username,
+        third_place_name: nameMap[rankings[2]?.username] || rankings[2]?.username,
+        third_place_score: rankings[2]?.territories_count,
+        total_players: rankings.length,
+        metadata: { rankings: rankings.slice(0, 10) }
+      });
+
+    // Award legacy bonuses
+    const legacyBonuses = GRID_WARS_CONFIG.legacyBonus || { winner: 5, top3: 3 };
+    if (winner) {
+      await supabase
+        .from('grid_wars_players')
+        .update({ pending_legacy_bonus: legacyBonuses.winner })
+        .eq('game_id', gameId)
+        .eq('username', winner.username);
+    }
+    for (const p of rankings.slice(1, 3)) {
+      await supabase
+        .from('grid_wars_players')
+        .update({ pending_legacy_bonus: legacyBonuses.top3 })
+        .eq('game_id', gameId)
+        .eq('username', p.username);
+    }
+
+    // Update game status
+    await supabase
+      .from('grid_wars_games')
+      .update({ round_status: 'ended' })
+      .eq('game_id', gameId);
+
+    // Freeze claims
+    frozenGames.set(gameId, { frozen: true, roundEnded: true });
+
+    // Clear round state
+    if (activeRounds.has(gameId)) {
+      activeRounds.get(gameId).status = 'ended';
+    }
+
+    // Broadcast round ended
+    broadcast({
+      type: 'round_ended',
+      gameId,
+      roundNumber,
+      victoryCondition: 'manual',
+      winner: winner ? {
+        username: winner.username,
+        name: nameMap[winner.username] || winner.username,
+        score: winner.territories_count
+      } : null,
+      rankings: rankings.slice(0, 10).map(p => ({
+        username: p.username,
+        name: nameMap[p.username] || p.username,
+        territories: p.territories_count,
+        points: p.action_points
+      }))
+    });
+
+    console.log(`[Grid Wars] Round ${roundNumber} ended for game ${gameId}`);
+    res.json({ success: true, winner, rankings: rankings.slice(0, 10) });
+  } catch (err) {
+    console.error('POST /api/grid-wars/round/end error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * v1.4: Get current round status
+ */
+app.get('/api/grid-wars/round/status', async (req, res) => {
+  try {
+    const { gameId } = req.query;
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId required' });
+    }
+
+    const { data: game } = await supabase
+      .from('grid_wars_games')
+      .select('round_number, rounds_enabled, round_started_at, round_ends_at, round_status, victory_config')
+      .eq('game_id', gameId)
+      .single();
+
+    if (!game) {
+      return res.json({ roundsEnabled: false });
+    }
+
+    // Get leader for progress
+    const { data: leader } = await supabase
+      .from('grid_wars_players')
+      .select('username, territories_count')
+      .eq('game_id', gameId)
+      .order('territories_count', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Get real name
+    let leaderName = leader?.username;
+    if (leader) {
+      const { data: user } = await supabase
+        .from('users')
+        .select('real_name')
+        .eq('username', leader.username)
+        .single();
+      leaderName = user?.real_name || leader.username;
+    }
+
+    res.json({
+      roundsEnabled: game.rounds_enabled,
+      roundNumber: game.round_number,
+      status: game.round_status,
+      startedAt: game.round_started_at,
+      endsAt: game.round_ends_at,
+      victoryConfig: game.victory_config,
+      progress: leader ? {
+        leader: leaderName,
+        leaderScore: leader.territories_count
+      } : null
+    });
+  } catch (err) {
+    console.error('GET /api/grid-wars/round/status error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * v1.4: Get hall of fame (past round winners)
+ */
+app.get('/api/grid-wars/hall-of-fame', async (req, res) => {
+  try {
+    const { gameId, limit = 10 } = req.query;
+
+    const query = supabase
+      .from('round_history')
+      .select('*')
+      .order('ended_at', { ascending: false })
+      .limit(parseInt(limit));
+
+    if (gameId) {
+      query.eq('game_id', gameId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (error.code === '42P01') {
+        return res.json([]);
+      }
+      throw error;
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    console.error('GET /api/grid-wars/hall-of-fame error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Perform an action (claim territory, reinforce)
 app.post('/api/grid-wars/action', async (req, res) => {
   try {
@@ -3547,10 +3875,25 @@ app.post('/api/grid-wars/action', async (req, res) => {
     // Get player's current state
     const { data: player } = await supabase
       .from('grid_wars_players')
-      .select('action_points, territories_count, active_buffs')
+      .select('action_points, territories_count, active_buffs, last_answer_at')
       .eq('game_id', gameId)
       .eq('username', username)
       .single();
+
+    // v1.4: Activity requirement for claims (uplink check)
+    const uplinkTimeout = (GRID_WARS_CONFIG.uplinkRequiredSeconds || 600) * 1000;
+    const timeSinceLastAnswer = player?.last_answer_at
+      ? Date.now() - new Date(player.last_answer_at).getTime()
+      : Infinity;
+
+    if (timeSinceLastAnswer > uplinkTimeout) {
+      return res.status(403).json({
+        error: 'UPLINK OFFLINE',
+        message: 'Answer a drill question to restore your uplink',
+        uplinkStatus: 'offline',
+        timeSinceAnswer: Math.floor(timeSinceLastAnswer / 1000)
+      });
+    }
 
     const currentPoints = player?.action_points || 0;
 
@@ -3959,16 +4302,35 @@ app.post('/api/grid-wars/points/add', async (req, res) => {
     // Update player with points, last_answer_at, and buffs
     const { data: existingPlayer } = await supabase
       .from('grid_wars_players')
-      .select('action_points')
+      .select('action_points, territories_count, lifetime_earned')
       .eq('game_id', gameId)
       .eq('username', username)
       .single();
+
+    // v1.4: Calculate diminishing returns multiplier based on empire size
+    let earningMultiplier = 1.0;
+    if (GRID_WARS_CONFIG.diminishingReturnsEnabled) {
+      const territoriesCount = existingPlayer?.territories_count || 0;
+      const threshold = GRID_WARS_CONFIG.diminishingReturnsThreshold || 25;
+      const minMultiplier = GRID_WARS_CONFIG.diminishingReturnsMinMultiplier || 0.5;
+      const factor = GRID_WARS_CONFIG.diminishingReturnsFactor || 0.005;
+
+      if (territoriesCount > threshold) {
+        const excess = territoriesCount - threshold;
+        earningMultiplier = Math.max(minMultiplier, 1 - (excess * factor));
+      }
+    }
+
+    // Apply diminishing returns to get adjusted points
+    const adjustedPoints = Math.ceil(totalPoints * earningMultiplier);
 
     if (existingPlayer) {
       await supabase
         .from('grid_wars_players')
         .update({
-          action_points: existingPlayer.action_points + totalPoints,
+          action_points: existingPlayer.action_points + adjustedPoints,
+          // v1.4: Track lifetime_earned separately (never decreases)
+          lifetime_earned: (existingPlayer.lifetime_earned || 0) + adjustedPoints,
           last_answer_at: new Date().toISOString(),
           active_buffs: updatedBuffs
         })
@@ -3980,37 +4342,47 @@ app.post('/api/grid-wars/points/add', async (req, res) => {
         .insert({
           game_id: gameId,
           username,
-          action_points: totalPoints,
+          action_points: adjustedPoints,
+          // v1.4: Track lifetime_earned separately (never decreases)
+          lifetime_earned: adjustedPoints,
           last_answer_at: new Date().toISOString(),
           active_buffs: updatedBuffs
         });
     }
 
-    const newTotal = (existingPlayer?.action_points || 0) + totalPoints;
+    const newTotal = (existingPlayer?.action_points || 0) + adjustedPoints;
 
     // Broadcast points earned
     broadcast({
       type: 'points_earned',
       gameId,
       username,
-      points: totalPoints,
+      points: adjustedPoints,
       basePoints,
       contiguityBonus,
       amplifierBonus,
       cluster,
+      // v1.4: Include diminishing returns info
+      earningMultiplier,
+      preDiminishing: totalPoints,
       total: newTotal,
       starType: starType || null
     });
 
-    console.log(`Grid Wars: ${username} earned ${totalPoints} points (base: ${basePoints}, cluster: +${contiguityBonus}, amplifier: +${amplifierBonus})`);
+    // v1.4: Log with multiplier info
+    const multiplierInfo = earningMultiplier < 1.0 ? ` [${Math.round(earningMultiplier * 100)}% due to empire size]` : '';
+    console.log(`Grid Wars: ${username} earned ${adjustedPoints} points (base: ${basePoints}, cluster: +${contiguityBonus}, amplifier: +${amplifierBonus})${multiplierInfo}`);
     res.json({
       success: true,
-      pointsAdded: totalPoints,
+      pointsAdded: adjustedPoints,
       breakdown: {
         base: basePoints,
         contiguityBonus,
         amplifierBonus,
-        cluster
+        cluster,
+        // v1.4: Include diminishing returns info
+        earningMultiplier,
+        preDiminishing: totalPoints
       },
       newTotal
     });
@@ -4065,6 +4437,196 @@ app.get('/api/grid-wars/leaderboard', async (req, res) => {
     res.json(leaderboard);
   } catch (err) {
     console.error('GET /api/grid-wars/leaderboard error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// v1.4: Multi-dimensional leaderboard (Scholar, Banker, General)
+app.get('/api/grid-wars/leaderboard/multi', async (req, res) => {
+  try {
+    const { gameId, username, limit = 5 } = req.query;
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId query parameter required' });
+    }
+
+    const parsedLimit = Math.min(parseInt(limit) || 5, 20);
+
+    // Get all players for the game with relevant stats
+    const { data: allPlayers, error } = await supabase
+      .from('grid_wars_players')
+      .select('username, action_points, territories_count, lifetime_earned')
+      .eq('game_id', gameId)
+      .gt('action_points', 0); // Only include active players
+
+    if (error) {
+      if (error.code === '42P01') {
+        return res.json({ scholar: [], banker: [], general: [], playerRanks: null });
+      }
+      throw error;
+    }
+
+    const players = allPlayers || [];
+
+    // Get real names
+    const usernames = players.map(p => p.username);
+    let usersMap = {};
+    if (usernames.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('username, real_name')
+        .in('username', usernames);
+
+      for (const u of users || []) {
+        usersMap[u.username] = u.real_name;
+      }
+    }
+
+    // Scholar: Sort by lifetime_earned (total points earned)
+    const scholarRanked = [...players]
+      .sort((a, b) => (b.lifetime_earned || 0) - (a.lifetime_earned || 0))
+      .map((p, i) => ({
+        rank: i + 1,
+        username: p.username,
+        real_name: usersMap[p.username] || null,
+        value: p.lifetime_earned || 0,
+        label: 'lifetime_earned'
+      }));
+
+    // Banker: Sort by action_points (current balance)
+    const bankerRanked = [...players]
+      .sort((a, b) => (b.action_points || 0) - (a.action_points || 0))
+      .map((p, i) => ({
+        rank: i + 1,
+        username: p.username,
+        real_name: usersMap[p.username] || null,
+        value: p.action_points || 0,
+        label: 'action_points'
+      }));
+
+    // General: Sort by territories_count (cells owned)
+    const generalRanked = [...players]
+      .sort((a, b) => (b.territories_count || 0) - (a.territories_count || 0))
+      .map((p, i) => ({
+        rank: i + 1,
+        username: p.username,
+        real_name: usersMap[p.username] || null,
+        value: p.territories_count || 0,
+        label: 'territories_count'
+      }));
+
+    // Calculate player's own ranks if username provided
+    let playerRanks = null;
+    if (username) {
+      const scholarRank = scholarRanked.find(p => p.username === username);
+      const bankerRank = bankerRanked.find(p => p.username === username);
+      const generalRank = generalRanked.find(p => p.username === username);
+
+      playerRanks = {
+        scholar: scholarRank ? { rank: scholarRank.rank, value: scholarRank.value } : null,
+        banker: bankerRank ? { rank: bankerRank.rank, value: bankerRank.value } : null,
+        general: generalRank ? { rank: generalRank.rank, value: generalRank.value } : null
+      };
+    }
+
+    res.json({
+      scholar: scholarRanked.slice(0, parsedLimit),
+      banker: bankerRanked.slice(0, parsedLimit),
+      general: generalRanked.slice(0, parsedLimit),
+      playerRanks
+    });
+  } catch (err) {
+    console.error('GET /api/grid-wars/leaderboard/multi error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// v1.4: Teacher scouting report
+app.get('/api/grid-wars/scouting-report', async (req, res) => {
+  try {
+    const { gameId } = req.query;
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'gameId query parameter required' });
+    }
+
+    // Get all players with stats
+    const { data: players, error } = await supabase
+      .from('grid_wars_players')
+      .select('username, action_points, territories_count, lifetime_earned, last_answer_at')
+      .eq('game_id', gameId);
+
+    if (error) {
+      if (error.code === '42P01') {
+        return res.json({ players: [], thresholds: GRID_WARS_CONFIG.scoutingThresholds });
+      }
+      throw error;
+    }
+
+    const allPlayers = players || [];
+
+    // Get real names
+    const usernames = allPlayers.map(p => p.username);
+    let usersMap = {};
+    if (usernames.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('username, real_name')
+        .in('username', usernames);
+
+      for (const u of users || []) {
+        usersMap[u.username] = u.real_name;
+      }
+    }
+
+    // Get thresholds from config
+    const thresholds = GRID_WARS_CONFIG.scoutingThresholds || {
+      highLifetime: 100,
+      lowLifetime: 30,
+      highCells: 15,
+      lowCells: 3
+    };
+
+    // Calculate status for each player
+    const playersWithStatus = allPlayers.map(p => {
+      const lifetime = p.lifetime_earned || 0;
+      const cells = p.territories_count || 0;
+
+      let status;
+      if (lifetime >= thresholds.highLifetime && cells >= thresholds.highCells) {
+        status = { code: 'leader', emoji: '👑', color: '#fbbf24' };
+      } else if (lifetime >= thresholds.highLifetime && cells < thresholds.lowCells) {
+        status = { code: 'aggressive', emoji: '🎯', color: '#f97316' };
+      } else if (lifetime < thresholds.lowLifetime && cells < thresholds.lowCells) {
+        status = { code: 'needs_help', emoji: '⚠️', color: '#ef4444' };
+      } else {
+        status = { code: 'active', emoji: '✓', color: '#22c55e' };
+      }
+
+      // Check if online (answered within last 10 minutes)
+      const isOnline = p.last_answer_at &&
+        (Date.now() - new Date(p.last_answer_at).getTime()) < 10 * 60 * 1000;
+
+      return {
+        username: p.username,
+        real_name: usersMap[p.username] || null,
+        action_points: p.action_points || 0,
+        lifetime_earned: lifetime,
+        territories_count: cells,
+        online: isOnline,
+        status
+      };
+    });
+
+    // Sort by lifetime_earned descending
+    playersWithStatus.sort((a, b) => b.lifetime_earned - a.lifetime_earned);
+
+    res.json({
+      players: playersWithStatus,
+      thresholds
+    });
+  } catch (err) {
+    console.error('GET /api/grid-wars/scouting-report error:', err);
     res.status(500).json({ error: err.message });
   }
 });
