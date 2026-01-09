@@ -48,6 +48,11 @@ export class GridPanel {
         if (data.action === 'taken' && data.previousOwner === this.username) {
           sounds.alert();
         }
+      },
+      // v1.2.1: Boot bonus notification
+      onBootBonus: (data) => {
+        sounds.points();
+        this.showToast(`BOOT BONUS: +${data.points} pts — Claim your first territory!`);
       }
     });
 
@@ -405,6 +410,7 @@ export class GridPanel {
 
   /**
    * Update status to show what action is available at current position
+   * v1.2.1: Shows activity tier (ACTIVE/COLD) for enemy territories
    */
   updateActionAffordance() {
     const pos = this.state.getPlayerPosition();
@@ -421,18 +427,59 @@ export class GridPanel {
       if (points >= GRID_WARS_CONFIG.claimCost) {
         this.updateStatus(`[SPACE] CLAIM (${GRID_WARS_CONFIG.claimCost} pts)`);
       } else {
-        this.updateStatus(`NEED ${GRID_WARS_CONFIG.claimCost} pts (have ${points})`);
+        this.updateStatus(`NEED ${GRID_WARS_CONFIG.claimCost - points} MORE POINTS`);
       }
     } else if (owner === this.state.username) {
       // Own territory
       this.updateStatus('YOUR TERRITORY');
     } else {
-      // Enemy territory
-      if (points >= GRID_WARS_CONFIG.takeoverCost) {
-        this.updateStatus(`[SPACE] TAKEOVER (${GRID_WARS_CONFIG.takeoverCost} pts)`);
+      // Enemy territory - v1.2.1: Show activity tier
+      const defenderData = this.state.players.get(owner);
+      const { cost, tier } = this._getActivityTierCost(defenderData);
+
+      if (points >= cost) {
+        this.updateStatus(`[HOLD] OVERWRITE (${cost} pts) — ${tier}`);
       } else {
-        this.updateStatus(`NEED ${GRID_WARS_CONFIG.takeoverCost} pts (have ${points})`);
+        this.updateStatus(`NEED ${cost - points} MORE POINTS`);
       }
+    }
+  }
+
+  /**
+   * v1.2.1: Calculate activity tier and cost for enemy territory
+   * Returns binary tier (ACTIVE/COLD) for display, but uses 3-tier pricing
+   */
+  _getActivityTierCost(defenderData) {
+    if (!defenderData?.last_answer_at) {
+      // No activity data = COLD
+      return {
+        cost: GRID_WARS_CONFIG.takeoverCostCold || GRID_WARS_CONFIG.takeoverCostBase || 15,
+        tier: 'COLD'
+      };
+    }
+
+    const timeSinceAnswer = (Date.now() - new Date(defenderData.last_answer_at).getTime()) / 1000;
+    const activeWindow = GRID_WARS_CONFIG.activeWindowSeconds || 120;
+    const warmWindow = GRID_WARS_CONFIG.warmWindowSeconds || 600;
+
+    if (timeSinceAnswer < activeWindow) {
+      // <2min = ACTIVE
+      return {
+        cost: GRID_WARS_CONFIG.takeoverCostActive || 25,
+        tier: 'ACTIVE'
+      };
+    } else if (timeSinceAnswer < warmWindow) {
+      // 2-10min = WARM (display as COLD for binary display)
+      return {
+        cost: GRID_WARS_CONFIG.takeoverCostWarm || 20,
+        tier: 'COLD'  // Binary display: show as COLD
+      };
+    } else {
+      // >10min = COLD
+      return {
+        cost: GRID_WARS_CONFIG.takeoverCostCold || GRID_WARS_CONFIG.takeoverCostBase || 15,
+        tier: 'COLD'
+      };
     }
   }
 
@@ -683,6 +730,45 @@ export class GridPanel {
     if (statusEl) {
       statusEl.textContent = message;
     }
+  }
+
+  /**
+   * v1.2.1: Show a toast notification that auto-dismisses
+   */
+  showToast(message, duration = 3000) {
+    // Create toast element if it doesn't exist
+    let toast = this.container.querySelector('#gw-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'gw-toast';
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #00ff41 0%, #00cc33 100%);
+        color: #000;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 14px;
+        box-shadow: 0 4px 20px rgba(0, 255, 65, 0.4);
+        z-index: 10000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        text-align: center;
+      `;
+      document.body.appendChild(toast);
+    }
+
+    toast.textContent = message;
+    toast.style.opacity = '1';
+
+    // Auto-dismiss
+    clearTimeout(this._toastTimeout);
+    this._toastTimeout = setTimeout(() => {
+      toast.style.opacity = '0';
+    }, duration);
   }
 
   /**

@@ -120,6 +120,7 @@ export class GridRenderer {
   /**
    * Set territory ownership with extended data
    * v1.2: Removed contested_by (contestation system removed)
+   * v1.2.1: Added ownerLastAnswer for visual dimming
    */
   setTerritory(x, y, owner, data = {}) {
     if (owner || data.node_type) {
@@ -127,7 +128,8 @@ export class GridRenderer {
         owner,
         color: owner ? this.getPlayerColor(owner) : null,
         strength: data.strength || 3,
-        node_type: data.node_type || null
+        node_type: data.node_type || null,
+        ownerLastAnswer: data.ownerLastAnswer || null  // v1.2.1
       };
     } else {
       delete this.territories[`${x},${y}`];
@@ -312,8 +314,9 @@ export class GridRenderer {
   }
 
   /**
-   * Draw territories (filled cells) with strength-based dimming
+   * Draw territories (filled cells) with strength-based and activity-based dimming
    * v1.2: Removed contestation flicker and warning border effects
+   * v1.2.1: Added activity-based dimming (territories fade as owner becomes inactive)
    */
   drawTerritories(ctx, now) {
     for (const [key, territory] of Object.entries(this.territories)) {
@@ -325,8 +328,18 @@ export class GridRenderer {
       // Calculate opacity based on strength (3 = full, 1 = dim)
       const strengthOpacity = territory.strength ? territory.strength / 3 : 1;
 
+      // v1.2.1: Calculate activity-based dimming
+      let activityOpacity = 1;
+      if (territory.ownerLastAnswer) {
+        const minutesSinceAnswer = (Date.now() - new Date(territory.ownerLastAnswer).getTime()) / 60000;
+        // Linear fade: 100% at 0min -> 30% at 15min
+        const fadeMinutes = 15;
+        const minOpacity = 0.3;
+        activityOpacity = Math.max(minOpacity, 1 - (minutesSinceAnswer / fadeMinutes) * (1 - minOpacity));
+      }
+
       ctx.fillStyle = territory.color;
-      ctx.globalAlpha = strengthOpacity * 0.5; // Base territory opacity
+      ctx.globalAlpha = strengthOpacity * activityOpacity * 0.5; // Combined opacity
 
       ctx.fillRect(
         x * this.cellSize + 1,
@@ -681,6 +694,7 @@ export class GridRenderer {
   /**
    * Load full game state
    * v1.2: Removed contested_by (contestation system removed)
+   * v1.2.1: Added ownerLastAnswer for visual dimming
    */
   loadState(state) {
     if (state.territories) {
@@ -688,7 +702,8 @@ export class GridRenderer {
       for (const t of state.territories) {
         this.setTerritory(t.x, t.y, t.owner, {
           strength: t.strength,
-          node_type: t.node_type
+          node_type: t.node_type,
+          ownerLastAnswer: t.ownerLastAnswer  // v1.2.1
         });
       }
     }

@@ -8,11 +8,18 @@
 const DEFAULT_SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 
 // Game config (must match server - will be fetched from server on init)
-// v1.2: Updated pricing, removed contestation
+// v1.2.1: Added 3-tier activity pricing, boot bonus, visual dimming
 export let GRID_WARS_CONFIG = {
   claimCost: 10,
-  takeoverCostBase: 15,      // v1.2: Inactive defender cost
-  takeoverCostActive: 25,    // v1.2: Active defender cost
+
+  // v1.2.1: 3-tier activity-based pricing
+  takeoverCostCold: 15,      // >10min since defender's last answer
+  takeoverCostWarm: 20,      // 2-10min since defender's last answer
+  takeoverCostActive: 25,    // <2min since defender's last answer
+
+  // Legacy alias
+  takeoverCostBase: 15,
+
   nodeClaimCost: 15,
   surgeCost: 5,
   starPoints: {
@@ -24,9 +31,22 @@ export let GRID_WARS_CONFIG = {
   mapSize: 20,
   classGoalTarget: 200,
   classGoalBonus: 10,
-  maxContiguityBonus: 5,     // v1.2: Increased from 3
+  maxContiguityBonus: 5,
+
+  // v1.2.1: Boot bonus
+  bootBonus: 15,
+
   maxCellStrength: 3,
-  activeDrillingWindow: 60,
+
+  // v1.2.1: Activity windows (seconds)
+  activeWindowSeconds: 120,   // <2min = ACTIVE
+  warmWindowSeconds: 600,     // 2-10min = WARM
+  activeDrillingWindow: 120,  // Legacy alias
+
+  // v1.2.1: Visual dimming
+  dimmingMinOpacity: 0.3,
+  dimmingFadeMinutes: 15,
+
   beaconDuration: 300,
   anchorDuration: 180,
   amplifierCharges: 5,
@@ -61,6 +81,12 @@ export class GridWarsState {
     this.onClassGoalReached = options.onClassGoalReached || null;
     this.onBuffAcquired = options.onBuffAcquired || null;
     this.onSurgeActivated = options.onSurgeActivated || null;
+    this.onBootBonus = options.onBootBonus || null;         // v1.2.1
+    this.onResyncRequest = options.onResyncRequest || null; // v1.2.1
+
+    // v1.2.1: Sequence tracking for gap detection
+    this._expectedSeq = null;
+    this._lastSeq = 0;
 
     // Pending state for optimistic updates
     this._pendingActions = [];
@@ -426,9 +452,18 @@ export class GridWarsState {
         territories_count: 0,
         health: 100
       };
-      player.position_x = result.x;
-      player.position_y = result.y;
+      player.position_x = result.position?.x ?? result.x;
+      player.position_y = result.position?.y ?? result.y;
       player.health = result.health || 100;
+
+      // v1.2.1: Handle boot bonus
+      if (result.bootBonus && result.bootBonus > 0) {
+        player.action_points = result.actionPoints || result.bootBonus;
+        if (this.onBootBonus) {
+          this.onBootBonus({ points: result.bootBonus });
+        }
+      }
+
       this.players.set(this.username, player);
 
       this._emitStateChange();
@@ -577,6 +612,22 @@ export class GridWarsState {
   handleWebSocketMessage(message) {
     if (!message.gameId || message.gameId !== this.gameId) {
       return; // Not for this game
+    }
+
+    // v1.2.1: Sequence gap detection
+    if (message.seq !== undefined) {
+      if (message.type === 'state_snapshot') {
+        // State snapshots reset our expected sequence
+        this._expectedSeq = message.seq;
+        this._lastSeq = message.seq;
+      } else if (this._expectedSeq !== null && message.seq !== this._expectedSeq) {
+        // Gap detected - request resync
+        console.warn(`[GridWarsState] Sequence gap: expected ${this._expectedSeq}, got ${message.seq}`);
+        this._requestResync(this._lastSeq, this._expectedSeq);
+        return; // Don't process this message, wait for resync
+      }
+      this._lastSeq = message.seq;
+      this._expectedSeq = message.seq + 1;
     }
 
     switch (message.type) {
@@ -803,12 +854,15 @@ export class GridWarsState {
     const territories = [];
     for (const [key, data] of this.territories) {
       const [x, y] = key.split(',').map(Number);
+      // v1.2.1: Include owner's last_answer_at for visual dimming
+      const ownerData = data.owner ? this.players.get(data.owner) : null;
       territories.push({
         x,
         y,
         owner: data.owner,
         strength: data.strength,
-        node_type: data.node_type
+        node_type: data.node_type,
+        ownerLastAnswer: ownerData?.last_answer_at || null
       });
     }
 
@@ -914,6 +968,21 @@ export class GridWarsState {
     console.error(`GridWarsState.${operation} error:`, error);
     if (this.onError) {
       this.onError({ operation, error: error.message || error });
+    }
+  }
+
+  /**
+   * v1.2.1: Request state resync when sequence gap detected
+   */
+  _requestResync(lastSeq, expectedSeq) {
+    console.log(`[GridWarsState] Requesting resync (last=${lastSeq}, expected=${expectedSeq})`);
+    if (this.onResyncRequest) {
+      this.onResyncRequest({
+        type: 'resync_request',
+        gameId: this.gameId,
+        lastSeq,
+        expectedSeq
+      });
     }
   }
 }

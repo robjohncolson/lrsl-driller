@@ -1934,10 +1934,18 @@ app.get('/api/time-tracking/class-summary', async (req, res) => {
 // ============================================
 
 // Game config - territory exploration with direct takeover
+// v1.2.1: Added 3-tier activity pricing, boot bonus
 const GRID_WARS_CONFIG = {
   claimCost: 10,
-  takeoverCostBase: 15,        // Base cost to claim enemy territory (v1.2: reduced from 20)
-  takeoverCostActive: 25,      // Cost if defender answered recently (v1.2: activity-based)
+
+  // v1.2.1: 3-tier activity-based pricing for enemy territory
+  takeoverCostCold: 15,        // >10min since defender's last answer
+  takeoverCostWarm: 20,        // 2-10min since defender's last answer
+  takeoverCostActive: 25,      // <2min since defender's last answer
+
+  // Legacy alias for backward compatibility
+  takeoverCostBase: 15,
+
   nodeClaimCost: 15,           // Resource nodes cost more
   surgeCost: 5,                // Surge cells cost less
   starPoints: {
@@ -1951,12 +1959,20 @@ const GRID_WARS_CONFIG = {
   classGoalBonus: 10,
   maxContiguityBonus: 5,       // v1.2: increased from 3 to reward big empires
 
+  // v1.2.1: Boot bonus for new players
+  bootBonus: 15,
+
   // Decay settings
   decayIntervalMs: 60000,       // Isolated cells lose 1 strength per minute
   maxCellStrength: 3,           // Initial and max strength
 
-  // Active drilling window (seconds) - defender is "active" if answered within this window
-  activeDrillingWindow: 60,     // Seconds - affects takeover cost
+  // v1.2.1: Activity windows (seconds) - 3-tier system
+  activeWindowSeconds: 120,     // <2min = ACTIVE (highest protection)
+  warmWindowSeconds: 600,       // 2-10min = WARM (medium protection)
+  // >10min = COLD (no protection)
+
+  // Legacy alias
+  activeDrillingWindow: 120,
 
   // Health settings
   healthMax: 100,
@@ -2191,6 +2207,42 @@ async function getConnectedCellsInLargestCluster(gameId, username) {
 }
 
 // v1.2: Contestation system removed - using direct takeover instead
+
+/**
+ * Flip a cell back to neutral (used when cells decay to 0 strength)
+ * v1.2.1: Added missing function implementation
+ */
+async function flipCellToNeutral(gameId, x, y, previousOwner) {
+  // Delete the territory record
+  await supabase
+    .from('grid_wars_territories')
+    .delete()
+    .eq('game_id', gameId)
+    .eq('x', x)
+    .eq('y', y);
+
+  // Update player's territory count
+  if (previousOwner) {
+    // Decrement territory count
+    const { data: player } = await supabase
+      .from('grid_wars_players')
+      .select('territories_count')
+      .eq('game_id', gameId)
+      .eq('username', previousOwner)
+      .single();
+
+    if (player) {
+      await supabase
+        .from('grid_wars_players')
+        .update({ territories_count: Math.max(0, (player.territories_count || 1) - 1) })
+        .eq('game_id', gameId)
+        .eq('username', previousOwner);
+    }
+
+    // Recalculate largest cluster for affected player
+    await updatePlayerCluster(gameId, previousOwner);
+  }
+}
 
 // ============================================
 // GRID WARS: DECAY HELPER FUNCTIONS
@@ -2577,12 +2629,25 @@ app.post('/api/grid-wars/action', async (req, res) => {
         const timeSinceAnswer = defender?.last_answer_at
           ? (Date.now() - new Date(defender.last_answer_at).getTime()) / 1000
           : Infinity;
-        defenderIsActive = timeSinceAnswer < GRID_WARS_CONFIG.activeDrillingWindow;
 
-        // Active defender: 25 pts, Inactive defender: 15 pts
-        cost = defenderIsActive
-          ? GRID_WARS_CONFIG.takeoverCostActive
-          : GRID_WARS_CONFIG.takeoverCostBase;
+        // v1.2.1: 3-tier activity-based pricing
+        let activityTier;
+        if (timeSinceAnswer < GRID_WARS_CONFIG.activeWindowSeconds) {
+          // <2 min = ACTIVE (highest protection)
+          cost = GRID_WARS_CONFIG.takeoverCostActive;
+          activityTier = 'ACTIVE';
+          defenderIsActive = true;
+        } else if (timeSinceAnswer < GRID_WARS_CONFIG.warmWindowSeconds) {
+          // 2-10 min = WARM (medium protection)
+          cost = GRID_WARS_CONFIG.takeoverCostWarm;
+          activityTier = 'WARM';
+          defenderIsActive = false;
+        } else {
+          // >10 min = COLD (no protection)
+          cost = GRID_WARS_CONFIG.takeoverCostCold;
+          activityTier = 'COLD';
+          defenderIsActive = false;
+        }
       } else if (isResourceNode) {
         cost = GRID_WARS_CONFIG.nodeClaimCost;
       } else if (isSurgeCell) {
@@ -2712,7 +2777,8 @@ app.post('/api/grid-wars/action', async (req, res) => {
         isNode: isResourceNode,
         nodeType: existingTerritory?.node_type,
         isTakeover: isEnemyTakeover,
-        previousOwner: isEnemyTakeover ? previousOwner : null
+        previousOwner: isEnemyTakeover ? previousOwner : null,
+        activityTier: isEnemyTakeover ? activityTier : null  // v1.2.1: For display
       });
 
       res.json({
@@ -2728,7 +2794,8 @@ app.post('/api/grid-wars/action', async (req, res) => {
         wasSurge: isSurgeCell,
         isTakeover: isEnemyTakeover,
         previousOwner: isEnemyTakeover ? previousOwner : null,
-        defenderWasActive: defenderIsActive  // v1.2: Activity-based pricing feedback
+        defenderWasActive: defenderIsActive,
+        activityTier: isEnemyTakeover ? activityTier : null  // v1.2.1: 3-tier pricing feedback
       });
 
     } else {
@@ -3084,6 +3151,10 @@ app.post('/api/grid-wars/avatar/init', async (req, res) => {
       }
     }
 
+    // v1.2.1: Check if player is new (for boot bonus)
+    const existingPlayer = (existingPlayers || []).find(p => p.username === username);
+    const isNewPlayer = !existingPlayer;
+
     // Upsert player with avatar and position
     const { data: player, error } = await supabase
       .from('grid_wars_players')
@@ -3103,6 +3174,19 @@ app.post('/api/grid-wars/avatar/init', async (req, res) => {
 
     if (error) throw error;
 
+    // v1.2.1: Award boot bonus to new players
+    let bootBonusAwarded = 0;
+    if (isNewPlayer) {
+      const bootBonus = GRID_WARS_CONFIG.bootBonus;
+      await supabase
+        .from('grid_wars_players')
+        .update({ action_points: bootBonus })
+        .eq('game_id', gameId)
+        .eq('username', username);
+      bootBonusAwarded = bootBonus;
+      console.log(`Grid Wars: Boot bonus ${bootBonus} pts awarded to new player ${username}`);
+    }
+
     // Broadcast new player joined
     broadcast({
       type: 'player_spawned',
@@ -3110,7 +3194,8 @@ app.post('/api/grid-wars/avatar/init', async (req, res) => {
       username,
       avatar,
       position: { x: spawnX, y: spawnY },
-      health: 100
+      health: 100,
+      bootBonus: bootBonusAwarded  // v1.2.1: For toast notification
     });
 
     res.json({
@@ -3118,7 +3203,9 @@ app.post('/api/grid-wars/avatar/init', async (req, res) => {
       username,
       avatar,
       position: { x: spawnX, y: spawnY },
-      health: 100
+      health: 100,
+      bootBonus: bootBonusAwarded,  // v1.2.1: For toast notification
+      actionPoints: isNewPlayer ? bootBonusAwarded : (player?.action_points || 0)
     });
 
   } catch (err) {
@@ -3364,7 +3451,22 @@ app.get('/api/grid-wars/config', (req, res) => {
 // HTTP SERVER + WEBSOCKET
 // ============================================
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+
+// v1.2.1: Enable per-message deflate compression for messages >1KB
+const wss = new WebSocketServer({
+  server,
+  perMessageDeflate: {
+    zlibDeflateOptions: {
+      chunkSize: 1024,
+      memLevel: 7,
+      level: 3  // Balanced compression
+    },
+    zlibInflateOptions: {
+      chunkSize: 10 * 1024
+    },
+    threshold: 1024  // Only compress messages > 1KB
+  }
+});
 
 // Track connected clients
 const clients = new Map(); // ws -> { username, lastHeartbeat, gameId }
@@ -3374,8 +3476,13 @@ let lastGridBroadcast = 0;
 const GRID_BROADCAST_INTERVAL = 500; // Max 2 broadcasts per second
 let pendingGridUpdates = []; // Buffer for delta updates
 
+// v1.2.1: Sequence numbers for gap detection
+let broadcastSequence = 0;
+
 function broadcast(message) {
-  const payload = JSON.stringify(message);
+  broadcastSequence++;
+  const messageWithSeq = { ...message, seq: broadcastSequence };
+  const payload = JSON.stringify(messageWithSeq);
   for (const [ws] of clients) {
     if (ws.readyState === 1) { // OPEN
       ws.send(payload);
@@ -3440,6 +3547,7 @@ async function sendStateSnapshot(ws, gameId) {
     const snapshot = {
       type: 'state_snapshot',
       gameId,
+      seq: broadcastSequence,  // v1.2.1: Include current seq for client sync
       territories: territories || [],
       players: players || [],
       surge: game?.surge_cell_x !== null ? {
@@ -3513,6 +3621,15 @@ wss.on('connection', (ws) => {
           const reqClient = clients.get(ws);
           if (message.gameId) {
             reqClient.gameId = message.gameId;
+            sendStateSnapshot(ws, message.gameId);
+          }
+          break;
+
+        case 'resync_request':
+          // v1.2.1: Client detected sequence gap, send full state with current seq
+          const rsClient = clients.get(ws);
+          if (message.gameId) {
+            console.log(`Grid Wars: Resync requested by ${rsClient?.username} (seq gap: ${message.lastSeq} → ${message.expectedSeq})`);
             sendStateSnapshot(ws, message.gameId);
           }
           break;

@@ -42,7 +42,7 @@ describe('Grid Wars v1.2 Features', () => {
     it('has correct activity-based config values', () => {
       expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(15);
       expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(25);
-      expect(GRID_WARS_CONFIG.activeDrillingWindow).toBe(60); // 60 seconds
+      expect(GRID_WARS_CONFIG.activeDrillingWindow).toBe(120); // v1.2.1: extended to 2 minutes
     });
 
     it('getClaimCostAt returns cost info object for neutral cell', () => {

@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A subject-agnostic drill/quiz platform for teachers ("Driller Platform"). Think of it like a game console: the platform is the console, lessons are cartridges. Currently includes cartridges for AP Statistics (LSRL, residuals, z-scores, leverage points, sampling, experimental design) and Algebra 2 (radicals, polynomials).
+A subject-agnostic drill/quiz platform for teachers ("Driller Platform"). Think of it like a game console: the platform is the console, lessons are cartridges.
+
+Current cartridges (see `cartridges/registry.json`):
+- **AP Statistics**: LSRL interpretation, LSRL/z-score calculations, residuals, leverage points, sampling (3.1-3.3), experimental design (3.5)
+- **Algebra 2**: simplify radicals, graphing polynomials
+- **Computer Science**: MIT 6.0001 Lecture 1 (Python basics)
 
 **Deployment**: Vercel (frontend) + Railway (backend server for AI grading, WebSocket, time tracking, Grid Wars)
 
@@ -150,3 +155,5 @@ Test organization:
 - `tests/game/` - Grid Wars tests
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
+
+See `KNOWN_ISSUES.md` for documented bugs and debugging context.
