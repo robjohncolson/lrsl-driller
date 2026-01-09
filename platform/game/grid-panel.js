@@ -407,8 +407,15 @@ export class GridPanel {
    * Show onboarding overlay for first-time users
    */
   showOnboardingIfNeeded() {
-    if (localStorage.getItem('gridwars_onboarded')) {
-      return; // Already onboarded
+    // Safe localStorage check with tracking prevention fallback
+    try {
+      if (localStorage.getItem('gridwars_onboarded')) {
+        return; // Already onboarded
+      }
+    } catch (e) {
+      // localStorage blocked (Safari tracking prevention) - skip onboarding
+      console.warn('[GridWars] localStorage blocked, skipping onboarding check');
+      return;
     }
 
     // Create overlay
@@ -458,7 +465,7 @@ export class GridPanel {
     if (dismissBtn) {
       dismissBtn.addEventListener('click', () => {
         overlay.remove();
-        localStorage.setItem('gridwars_onboarded', 'true');
+        try { localStorage.setItem('gridwars_onboarded', 'true'); } catch (e) { /* ignore */ }
       });
 
       // Hover effect
@@ -477,7 +484,7 @@ export class GridPanel {
       if (e.target === overlay.firstElementChild) return; // Don't dismiss if clicking the modal
       if (e.target.closest('[style*="background:#0f172a"]')) return;
       overlay.remove();
-      localStorage.setItem('gridwars_onboarded', 'true');
+      try { localStorage.setItem('gridwars_onboarded', 'true'); } catch (e) { /* ignore */ }
     });
   }
 
@@ -717,6 +724,17 @@ export class GridPanel {
       btn.style.borderColor = isVisible ? '#374151' : '#00ff41';
       btn.style.color = isVisible ? '#9ca3af' : '#00ff41';
     }
+  }
+
+  /**
+   * Enable teacher-specific controls (wave management, etc.)
+   * Called when user is authenticated as teacher
+   */
+  enableTeacherControls() {
+    this._isTeacher = true;
+    console.log('[GridWars] Teacher controls enabled');
+    // Teacher controls are handled through the separate teacher-view.js
+    // This method exists to prevent init errors when called from app.html
   }
 
   /**
