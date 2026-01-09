@@ -1936,10 +1936,10 @@ app.get('/api/time-tracking/class-summary', async (req, res) => {
 // Game config - territory exploration with direct takeover
 const GRID_WARS_CONFIG = {
   claimCost: 10,
-  takeoverCost: 20,            // Cost to claim enemy territory (instant takeover)
+  takeoverCostBase: 15,        // Base cost to claim enemy territory (v1.2: reduced from 20)
+  takeoverCostActive: 25,      // Cost if defender answered recently (v1.2: activity-based)
   nodeClaimCost: 15,           // Resource nodes cost more
   surgeCost: 5,                // Surge cells cost less
-  reinforceCost: 5,            // Cost to remotely reinforce a contested cell
   starPoints: {
     gold: 4,
     silver: 3,
@@ -1949,18 +1949,14 @@ const GRID_WARS_CONFIG = {
   mapSize: 20,
   classGoalTarget: 200,
   classGoalBonus: 10,
-  maxContiguityBonus: 3,
-
-  // Contestation settings
-  contestationStartTime: 30,    // Seconds adjacent before contestation starts
-  contestationFlipTime: 90,     // Total seconds to flip (30 start + 60 contested)
+  maxContiguityBonus: 5,       // v1.2: increased from 3 to reward big empires
 
   // Decay settings
   decayIntervalMs: 60000,       // Isolated cells lose 1 strength per minute
   maxCellStrength: 3,           // Initial and max strength
 
-  // Active drilling bonus
-  activeDrillingWindow: 60,     // Seconds - if answered within this window, drain halved
+  // Active drilling window (seconds) - defender is "active" if answered within this window
+  activeDrillingWindow: 60,     // Seconds - affects takeover cost
 
   // Health settings
   healthMax: 100,
@@ -2194,186 +2190,7 @@ async function getConnectedCellsInLargestCluster(gameId, username) {
   return largestCluster;
 }
 
-/**
- * Start contestation on a cell
- */
-async function startContestation(gameId, x, y, contesterUsername) {
-  await supabase
-    .from('grid_wars_territories')
-    .update({
-      contested_by: contesterUsername,
-      contested_since: new Date().toISOString()
-    })
-    .eq('game_id', gameId)
-    .eq('x', x)
-    .eq('y', y);
-
-  broadcast({
-    type: 'contestation_started',
-    gameId,
-    x,
-    y,
-    contester: contesterUsername
-  });
-
-  console.log(`Grid Wars: Contestation started at (${x}, ${y}) by ${contesterUsername}`);
-}
-
-/**
- * Clear contestation on a cell
- */
-async function clearContestation(gameId, x, y) {
-  await supabase
-    .from('grid_wars_territories')
-    .update({
-      contested_by: null,
-      contested_since: null
-    })
-    .eq('game_id', gameId)
-    .eq('x', x)
-    .eq('y', y);
-
-  broadcast({
-    type: 'contestation_cleared',
-    gameId,
-    x,
-    y
-  });
-}
-
-/**
- * Flip a contested cell to neutral
- */
-async function flipCellToNeutral(gameId, x, y, previousOwner) {
-  await supabase
-    .from('grid_wars_territories')
-    .delete()
-    .eq('game_id', gameId)
-    .eq('x', x)
-    .eq('y', y);
-
-  // Update previous owner's territory count and cluster
-  if (previousOwner) {
-    const { data: player } = await supabase
-      .from('grid_wars_players')
-      .select('territories_count')
-      .eq('game_id', gameId)
-      .eq('username', previousOwner)
-      .single();
-
-    if (player) {
-      await supabase
-        .from('grid_wars_players')
-        .update({ territories_count: Math.max(0, player.territories_count - 1) })
-        .eq('game_id', gameId)
-        .eq('username', previousOwner);
-
-      await updatePlayerCluster(gameId, previousOwner);
-    }
-
-    // Decrement class goal
-    const { data: game } = await supabase
-      .from('grid_wars_games')
-      .select('class_goal_current')
-      .eq('game_id', gameId)
-      .single();
-
-    if (game) {
-      await supabase
-        .from('grid_wars_games')
-        .update({ class_goal_current: Math.max(0, game.class_goal_current - 1) })
-        .eq('game_id', gameId);
-    }
-  }
-
-  broadcast({
-    type: 'cell_flipped_neutral',
-    gameId,
-    x,
-    y,
-    previousOwner
-  });
-
-  console.log(`Grid Wars: Cell (${x}, ${y}) flipped to neutral`);
-}
-
-/**
- * Check and update contestation status for all active games
- */
-async function processContestations() {
-  const { data: games } = await supabase
-    .from('grid_wars_games')
-    .select('game_id')
-    .eq('status', 'active');
-
-  for (const game of games || []) {
-    await processGameContestations(game.game_id);
-  }
-}
-
-/**
- * Process contestations for a single game
- */
-async function processGameContestations(gameId) {
-  const now = new Date();
-
-  // Get all players with positions
-  const { data: players } = await supabase
-    .from('grid_wars_players')
-    .select('username, position_x, position_y, health')
-    .eq('game_id', gameId)
-    .not('position_x', 'is', null);
-
-  // Get all territories with owners
-  const { data: territories } = await supabase
-    .from('grid_wars_territories')
-    .select('x, y, owner, contested_by, contested_since, strength')
-    .eq('game_id', gameId)
-    .not('owner', 'is', null);
-
-  if (!players || !territories) return;
-
-  const playerMap = new Map(players.map(p => [p.username, p]));
-
-  for (const territory of territories) {
-    const owner = playerMap.get(territory.owner);
-    if (!owner) continue;
-
-    // Check if any player is contesting this cell
-    let validContester = null;
-
-    for (const player of players) {
-      if (player.username === territory.owner) continue;
-
-      // Check if player is adjacent and has more health
-      if (isAdjacentTo(player.position_x, player.position_y, territory.x, territory.y)) {
-        if (player.health > owner.health) {
-          validContester = player.username;
-          break;
-        }
-      }
-    }
-
-    if (validContester) {
-      // Start or continue contestation
-      if (!territory.contested_by) {
-        await startContestation(gameId, territory.x, territory.y, validContester);
-      } else if (territory.contested_by === validContester) {
-        // Check if contestation should flip the cell
-        const contestDuration = (now - new Date(territory.contested_since)) / 1000;
-        if (contestDuration >= GRID_WARS_CONFIG.contestationFlipTime) {
-          await flipCellToNeutral(gameId, territory.x, territory.y, territory.owner);
-        }
-      }
-    } else if (territory.contested_by) {
-      // Owner is nearby or contester left - clear contestation
-      const contester = playerMap.get(territory.contested_by);
-      if (!contester || !isAdjacentTo(contester.position_x, contester.position_y, territory.x, territory.y)) {
-        await clearContestation(gameId, territory.x, territory.y);
-      }
-    }
-  }
-}
+// v1.2: Contestation system removed - using direct takeover instead
 
 // ============================================
 // GRID WARS: DECAY HELPER FUNCTIONS
@@ -2509,12 +2326,10 @@ let lastDecayTick = Date.now();
 
 /**
  * Main server tick function - runs every 5 seconds
+ * v1.2: Removed contestation processing (using direct takeover instead)
  */
 async function gridWarsServerTick() {
   try {
-    // Process contestations (every tick)
-    await processContestations();
-
     // Process decay (every minute)
     const now = Date.now();
     if (now - lastDecayTick >= GRID_WARS_CONFIG.decayIntervalMs) {
@@ -2747,10 +2562,27 @@ app.post('/api/grid-wars/action', async (req, res) => {
         return res.status(400).json({ error: 'You already own this territory' });
       }
 
-      // Determine cost: enemy takeover = 20, node = 15, surge = 5, neutral = 10
+      // v1.2: Activity-based dynamic pricing for enemy takeover
       let cost = GRID_WARS_CONFIG.claimCost;
+      let defenderIsActive = false;
       if (isEnemyTakeover) {
-        cost = GRID_WARS_CONFIG.takeoverCost;
+        // Check if defender has been active recently
+        const { data: defender } = await supabase
+          .from('grid_wars_players')
+          .select('last_answer_at')
+          .eq('game_id', gameId)
+          .eq('username', previousOwner)
+          .single();
+
+        const timeSinceAnswer = defender?.last_answer_at
+          ? (Date.now() - new Date(defender.last_answer_at).getTime()) / 1000
+          : Infinity;
+        defenderIsActive = timeSinceAnswer < GRID_WARS_CONFIG.activeDrillingWindow;
+
+        // Active defender: 25 pts, Inactive defender: 15 pts
+        cost = defenderIsActive
+          ? GRID_WARS_CONFIG.takeoverCostActive
+          : GRID_WARS_CONFIG.takeoverCostBase;
       } else if (isResourceNode) {
         cost = GRID_WARS_CONFIG.nodeClaimCost;
       } else if (isSurgeCell) {
@@ -2769,9 +2601,7 @@ app.post('/api/grid-wars/action', async (req, res) => {
           .update({
             owner: username,
             claimed_at: new Date().toISOString(),
-            strength: GRID_WARS_CONFIG.maxCellStrength,
-            contested_by: null,         // Clear any contestation
-            contested_since: null
+            strength: GRID_WARS_CONFIG.maxCellStrength
           })
           .eq('game_id', gameId)
           .eq('x', x)
@@ -2897,68 +2727,13 @@ app.post('/api/grid-wars/action', async (req, res) => {
         buffApplied,
         wasSurge: isSurgeCell,
         isTakeover: isEnemyTakeover,
-        previousOwner: isEnemyTakeover ? previousOwner : null
-      });
-
-    } else if (action === 'reinforce') {
-      // Reinforce a contested cell remotely
-      const cost = GRID_WARS_CONFIG.reinforceCost;
-
-      // Check if cell is owned by player and is contested
-      const { data: territory } = await supabase
-        .from('grid_wars_territories')
-        .select('owner, contested_by')
-        .eq('game_id', gameId)
-        .eq('x', x)
-        .eq('y', y)
-        .single();
-
-      if (!territory || territory.owner !== username) {
-        return res.status(400).json({ error: 'You do not own this territory' });
-      }
-
-      if (!territory.contested_by) {
-        return res.status(400).json({ error: 'This territory is not being contested' });
-      }
-
-      if (currentPoints < cost) {
-        return res.status(400).json({ error: `Insufficient points. Need ${cost}, have ${currentPoints}` });
-      }
-
-      // Clear contestation
-      await supabase
-        .from('grid_wars_territories')
-        .update({
-          contested_by: null,
-          contested_since: null,
-          strength: GRID_WARS_CONFIG.maxCellStrength
-        })
-        .eq('game_id', gameId)
-        .eq('x', x)
-        .eq('y', y);
-
-      // Deduct points
-      await upsertGridWarsPlayer(gameId, username, -cost, 0);
-
-      broadcast({
-        type: 'territory_reinforced',
-        gameId,
-        username,
-        x,
-        y
-      });
-
-      res.json({
-        success: true,
-        action: 'reinforce',
-        x,
-        y,
-        cost,
-        newPoints: currentPoints - cost
+        previousOwner: isEnemyTakeover ? previousOwner : null,
+        defenderWasActive: defenderIsActive  // v1.2: Activity-based pricing feedback
       });
 
     } else {
-      return res.status(400).json({ error: 'Invalid action. Use "claim" or "reinforce"' });
+      // v1.2: Removed reinforce action (contestation system removed)
+      return res.status(400).json({ error: 'Invalid action. Use "claim"' });
     }
   } catch (err) {
     console.error('POST /api/grid-wars/action error:', err);
@@ -3560,21 +3335,21 @@ app.post('/api/grid-wars/class-goal', async (req, res) => {
 });
 
 // Get game config (for client)
+// v1.2: Removed contestation settings, added activity-based pricing
 app.get('/api/grid-wars/config', (req, res) => {
   res.json({
     mapSize: GRID_WARS_CONFIG.mapSize,
     claimCost: GRID_WARS_CONFIG.claimCost,
-    takeoverCost: GRID_WARS_CONFIG.takeoverCost,
+    takeoverCostBase: GRID_WARS_CONFIG.takeoverCostBase,      // v1.2: 15 pts for inactive defender
+    takeoverCostActive: GRID_WARS_CONFIG.takeoverCostActive,  // v1.2: 25 pts for active defender
     nodeClaimCost: GRID_WARS_CONFIG.nodeClaimCost,
     surgeCost: GRID_WARS_CONFIG.surgeCost,
-    reinforceCost: GRID_WARS_CONFIG.reinforceCost,
+    maxContiguityBonus: GRID_WARS_CONFIG.maxContiguityBonus,  // v1.2: 5 (was 3)
     healthMax: GRID_WARS_CONFIG.healthMax,
     healthDrainNeutral: GRID_WARS_CONFIG.healthDrainNeutral,
     healthDrainEnemy: GRID_WARS_CONFIG.healthDrainEnemy,
     healthRegenHome: GRID_WARS_CONFIG.healthRegenHome,
     activeDrillingWindow: GRID_WARS_CONFIG.activeDrillingWindow,
-    contestationStartTime: GRID_WARS_CONFIG.contestationStartTime,
-    contestationFlipTime: GRID_WARS_CONFIG.contestationFlipTime,
     maxCellStrength: GRID_WARS_CONFIG.maxCellStrength,
     beaconDuration: GRID_WARS_CONFIG.beaconDuration,
     anchorDuration: GRID_WARS_CONFIG.anchorDuration,
@@ -3592,7 +3367,12 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 // Track connected clients
-const clients = new Map(); // ws -> { username, lastHeartbeat }
+const clients = new Map(); // ws -> { username, lastHeartbeat, gameId }
+
+// v1.2: Network optimizations - throttling and delta compression
+let lastGridBroadcast = 0;
+const GRID_BROADCAST_INTERVAL = 500; // Max 2 broadcasts per second
+let pendingGridUpdates = []; // Buffer for delta updates
 
 function broadcast(message) {
   const payload = JSON.stringify(message);
@@ -3600,6 +3380,84 @@ function broadcast(message) {
     if (ws.readyState === 1) { // OPEN
       ws.send(payload);
     }
+  }
+}
+
+/**
+ * v1.2: Throttled broadcast for grid updates
+ * Batches updates and sends at most every 500ms
+ */
+function throttledGridBroadcast(message) {
+  const now = Date.now();
+
+  // For territory changes, add to pending deltas
+  if (message.type === 'territory_claimed' || message.type === 'cell_decayed' ||
+      message.type === 'cell_strength_changed') {
+    pendingGridUpdates.push(message);
+  }
+
+  // Throttle: only broadcast if enough time has passed
+  if (now - lastGridBroadcast >= GRID_BROADCAST_INTERVAL) {
+    // Send batched delta if we have pending updates
+    if (pendingGridUpdates.length > 0) {
+      broadcast({
+        type: 'grid_delta',
+        gameId: message.gameId,
+        updates: pendingGridUpdates
+      });
+      pendingGridUpdates = [];
+    }
+    // Also send the original message for immediate feedback
+    broadcast(message);
+    lastGridBroadcast = now;
+  }
+}
+
+/**
+ * v1.2: Send full state snapshot to a specific client (for reconnection)
+ */
+async function sendStateSnapshot(ws, gameId) {
+  try {
+    // Get territories
+    const { data: territories } = await supabase
+      .from('grid_wars_territories')
+      .select('x, y, owner, strength, node_type')
+      .eq('game_id', gameId);
+
+    // Get players with positions
+    const { data: players } = await supabase
+      .from('grid_wars_players')
+      .select('username, action_points, territories_count, health, position_x, position_y, avatar_format, active_buffs, last_answer_at')
+      .eq('game_id', gameId);
+
+    // Get game state (for surge)
+    const { data: game } = await supabase
+      .from('grid_wars_games')
+      .select('surge_cell_x, surge_cell_y, surge_expires, class_goal_current')
+      .eq('game_id', gameId)
+      .single();
+
+    const snapshot = {
+      type: 'state_snapshot',
+      gameId,
+      territories: territories || [],
+      players: players || [],
+      surge: game?.surge_cell_x !== null ? {
+        x: game.surge_cell_x,
+        y: game.surge_cell_y,
+        expiresIn: game.surge_expires ? Math.max(0, (new Date(game.surge_expires) - new Date()) / 1000) : 0
+      } : null,
+      classGoal: {
+        current: game?.class_goal_current || 0,
+        target: GRID_WARS_CONFIG.classGoalTarget
+      }
+    };
+
+    if (ws.readyState === 1) {
+      ws.send(JSON.stringify(snapshot));
+    }
+  } catch (err) {
+    console.error('Error sending state snapshot:', err);
   }
 }
 
@@ -3615,7 +3473,7 @@ function getOnlineUsers() {
 
 wss.on('connection', (ws) => {
   console.log('WebSocket client connected');
-  clients.set(ws, { username: null, lastHeartbeat: Date.now() });
+  clients.set(ws, { username: null, lastHeartbeat: Date.now(), gameId: null });
 
   ws.on('message', (data) => {
     try {
@@ -3623,8 +3481,15 @@ wss.on('connection', (ws) => {
 
       switch (message.type) {
         case 'identify':
-          const oldUsername = clients.get(ws)?.username;
-          clients.set(ws, { username: message.username, lastHeartbeat: Date.now() });
+          const client = clients.get(ws);
+          const oldUsername = client?.username;
+          const isReconnection = oldUsername && oldUsername === message.username;
+
+          clients.set(ws, {
+            username: message.username,
+            lastHeartbeat: Date.now(),
+            gameId: message.gameId || client?.gameId || null
+          });
 
           // Broadcast user online if new
           if (message.username && message.username !== oldUsername) {
@@ -3636,12 +3501,26 @@ wss.on('connection', (ws) => {
             type: 'presence_snapshot',
             users: getOnlineUsers()
           }));
+
+          // v1.2: Send full state snapshot on reconnection or initial connection
+          if (message.gameId) {
+            sendStateSnapshot(ws, message.gameId);
+          }
+          break;
+
+        case 'request_state':
+          // v1.2: Client can explicitly request state snapshot (for reconnection)
+          const reqClient = clients.get(ws);
+          if (message.gameId) {
+            reqClient.gameId = message.gameId;
+            sendStateSnapshot(ws, message.gameId);
+          }
           break;
 
         case 'heartbeat':
-          const client = clients.get(ws);
-          if (client) {
-            client.lastHeartbeat = Date.now();
+          const hbClient = clients.get(ws);
+          if (hbClient) {
+            hbClient.lastHeartbeat = Date.now();
           }
           break;
 

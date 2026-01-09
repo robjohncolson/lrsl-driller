@@ -1,7 +1,7 @@
 /**
  * Grid Wars - Canvas-based Grid Renderer
  * Spectre/Battlezone aesthetic (early 90s wireframe)
- * With contestation, decay, resource nodes, and surge effects!
+ * v1.2: Removed contestation effects, enhanced direction chevron
  */
 
 export class GridRenderer {
@@ -42,11 +42,11 @@ export class GridRenderer {
     };
 
     // Game state
-    this.territories = {}; // { "x,y": { owner, strength, contested_by, node_type } }
+    // v1.2: Removed contested_by from territories (contestation system removed)
+    this.territories = {}; // { "x,y": { owner, strength, node_type } }
     this.avatars = [];     // [{ username, x, y, health, emoji, text }]
     this.resourceNodes = []; // [{ x, y, type, owner }]
     this.surgeCell = null;   // { x, y, expiresIn }
-    this.contestedCells = []; // [{ x, y, contested_by }]
 
     // Player color assignments
     this.playerColors = {}; // { "username": colorIndex }
@@ -119,6 +119,7 @@ export class GridRenderer {
 
   /**
    * Set territory ownership with extended data
+   * v1.2: Removed contested_by (contestation system removed)
    */
   setTerritory(x, y, owner, data = {}) {
     if (owner || data.node_type) {
@@ -126,7 +127,6 @@ export class GridRenderer {
         owner,
         color: owner ? this.getPlayerColor(owner) : null,
         strength: data.strength || 3,
-        contested_by: data.contested_by || null,
         node_type: data.node_type || null
       };
     } else {
@@ -312,7 +312,8 @@ export class GridRenderer {
   }
 
   /**
-   * Draw territories (filled cells) with strength-based dimming and contestation effects
+   * Draw territories (filled cells) with strength-based dimming
+   * v1.2: Removed contestation flicker and warning border effects
    */
   drawTerritories(ctx, now) {
     for (const [key, territory] of Object.entries(this.territories)) {
@@ -324,22 +325,8 @@ export class GridRenderer {
       // Calculate opacity based on strength (3 = full, 1 = dim)
       const strengthOpacity = territory.strength ? territory.strength / 3 : 1;
 
-      // Handle contested cells with flicker effect
-      if (territory.contested_by) {
-        // Alternate between owner color and white static
-        const flicker = Math.sin(now / 100) > 0;
-        if (flicker) {
-          ctx.fillStyle = territory.color;
-          ctx.globalAlpha = 0.5 * strengthOpacity;
-        } else {
-          // White static noise effect
-          ctx.fillStyle = '#ffffff';
-          ctx.globalAlpha = 0.3;
-        }
-      } else {
-        ctx.fillStyle = territory.color;
-        ctx.globalAlpha = strengthOpacity * 0.5; // Base territory opacity
-      }
+      ctx.fillStyle = territory.color;
+      ctx.globalAlpha = strengthOpacity * 0.5; // Base territory opacity
 
       ctx.fillRect(
         x * this.cellSize + 1,
@@ -349,21 +336,6 @@ export class GridRenderer {
       );
 
       ctx.globalAlpha = 1;
-
-      // Draw contestation warning border
-      if (territory.contested_by) {
-        const pulse = Math.sin(now / 200) * 0.5 + 0.5;
-        ctx.strokeStyle = '#ff3333';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = pulse;
-        ctx.strokeRect(
-          x * this.cellSize + 2,
-          y * this.cellSize + 2,
-          this.cellSize - 4,
-          this.cellSize - 4
-        );
-        ctx.globalAlpha = 1;
-      }
 
       // Draw node indicator if claimed
       if (territory.node_type && territory.owner) {
@@ -568,34 +540,36 @@ export class GridRenderer {
       ctx.fill();
 
       // Direction indicator (chevron inside diamond)
-      ctx.globalAlpha = blink * 0.8;
+      // v1.2: Enhanced - larger size and thicker lines for better visibility
+      ctx.globalAlpha = blink;
       ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 1.5;
-      const chevronSize = size * 0.3;
+      ctx.lineWidth = 3;  // v1.2: was 1.5, now thicker
+      ctx.lineCap = 'round';
+      const chevronSize = size * 0.45;  // v1.2: was 0.3, now larger
       const direction = avatar.direction || 'right';
 
       ctx.beginPath();
       switch (direction) {
         case 'up':
-          ctx.moveTo(cx - chevronSize, cy + chevronSize * 0.3);
-          ctx.lineTo(cx, cy - chevronSize * 0.5);
-          ctx.lineTo(cx + chevronSize, cy + chevronSize * 0.3);
+          ctx.moveTo(cx - chevronSize, cy + chevronSize * 0.4);
+          ctx.lineTo(cx, cy - chevronSize * 0.4);
+          ctx.lineTo(cx + chevronSize, cy + chevronSize * 0.4);
           break;
         case 'down':
-          ctx.moveTo(cx - chevronSize, cy - chevronSize * 0.3);
-          ctx.lineTo(cx, cy + chevronSize * 0.5);
-          ctx.lineTo(cx + chevronSize, cy - chevronSize * 0.3);
+          ctx.moveTo(cx - chevronSize, cy - chevronSize * 0.4);
+          ctx.lineTo(cx, cy + chevronSize * 0.4);
+          ctx.lineTo(cx + chevronSize, cy - chevronSize * 0.4);
           break;
         case 'left':
-          ctx.moveTo(cx + chevronSize * 0.3, cy - chevronSize);
-          ctx.lineTo(cx - chevronSize * 0.5, cy);
-          ctx.lineTo(cx + chevronSize * 0.3, cy + chevronSize);
+          ctx.moveTo(cx + chevronSize * 0.4, cy - chevronSize);
+          ctx.lineTo(cx - chevronSize * 0.4, cy);
+          ctx.lineTo(cx + chevronSize * 0.4, cy + chevronSize);
           break;
         case 'right':
         default:
-          ctx.moveTo(cx - chevronSize * 0.3, cy - chevronSize);
-          ctx.lineTo(cx + chevronSize * 0.5, cy);
-          ctx.lineTo(cx - chevronSize * 0.3, cy + chevronSize);
+          ctx.moveTo(cx - chevronSize * 0.4, cy - chevronSize);
+          ctx.lineTo(cx + chevronSize * 0.4, cy);
+          ctx.lineTo(cx - chevronSize * 0.4, cy + chevronSize);
           break;
       }
       ctx.stroke();
@@ -706,6 +680,7 @@ export class GridRenderer {
 
   /**
    * Load full game state
+   * v1.2: Removed contested_by (contestation system removed)
    */
   loadState(state) {
     if (state.territories) {
@@ -713,7 +688,6 @@ export class GridRenderer {
       for (const t of state.territories) {
         this.setTerritory(t.x, t.y, t.owner, {
           strength: t.strength,
-          contested_by: t.contested_by,
           node_type: t.node_type
         });
       }

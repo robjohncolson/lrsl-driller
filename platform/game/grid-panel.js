@@ -161,13 +161,7 @@ export class GridPanel {
             <div id="gw-buffs-list" style="font-size:0.7rem;color:#00ff41;"></div>
           </div>
 
-          <!-- Contested Cells Alert -->
-          <div id="gw-contested" style="display:none;padding:8px 12px;background:#2d1f1f;border-top:1px solid #ff333380;">
-            <div style="display:flex;align-items:center;gap:4px;font-size:0.7rem;color:#ff6666;">
-              <span style="animation:pulse 1s infinite;">!</span>
-              <span id="gw-contested-text">0 cells under attack</span>
-            </div>
-          </div>
+          <!-- v1.2: Removed contested cells alert (contestation system removed) -->
 
           <!-- Status -->
           <div style="padding:8px 12px;font-size:0.75rem;color:#6b7280;border-top:1px solid #374151;">
@@ -600,6 +594,7 @@ export class GridPanel {
 
   /**
    * Sync renderer state from state manager
+   * v1.2: Removed contested_by (contestation system removed)
    */
   syncRendererState() {
     if (!this.renderer || !this.state) return;
@@ -611,7 +606,6 @@ export class GridPanel {
     for (const t of renderState.territories) {
       this.renderer.setTerritory(t.x, t.y, t.owner, {
         strength: t.strength,
-        contested_by: t.contested_by,
         node_type: t.node_type
       });
     }
@@ -693,6 +687,7 @@ export class GridPanel {
 
   /**
    * Render/update the panel
+   * v1.2: Removed updateContestedDisplay (contestation system removed)
    */
   render() {
     this.syncRendererState();
@@ -701,7 +696,6 @@ export class GridPanel {
     this.updateClusterDisplay();
     this.updateClassGoalDisplay();
     this.updateBuffsDisplay();
-    this.updateContestedDisplay();
     this.updateActionAffordance();
   }
 
@@ -729,23 +723,7 @@ export class GridPanel {
     }
   }
 
-  /**
-   * Update contested cells warning display
-   */
-  updateContestedDisplay() {
-    const contestedContainer = this.container.querySelector('#gw-contested');
-    const contestedText = this.container.querySelector('#gw-contested-text');
-    if (!contestedContainer || !contestedText || !this.state) return;
-
-    const contested = this.state.getMyContestedCells();
-
-    if (contested.length > 0) {
-      contestedContainer.style.display = 'block';
-      contestedText.textContent = `${contested.length} cell${contested.length > 1 ? 's' : ''} under attack!`;
-    } else {
-      contestedContainer.style.display = 'none';
-    }
-  }
+  // v1.2: Removed updateContestedDisplay (contestation system removed)
 
   /**
    * Add points (called when star is earned)

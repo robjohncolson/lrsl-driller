@@ -124,19 +124,25 @@ describe('Grid Wars v1.1 Features', () => {
       state.players.set('alice', { action_points: 30, territories_count: 0, health: 100 });
     });
 
-    it('has takeoverCost in config', () => {
-      expect(GRID_WARS_CONFIG.takeoverCost).toBe(20);
+    // v1.2: Updated pricing - activity-based takeover costs
+    it('has activity-based takeover costs in config', () => {
+      expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(15);    // Inactive defender
+      expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(25);  // Active defender
     });
 
+    // v1.2: getClaimCostAt now returns cost info object
     it('returns correct cost for neutral cell', () => {
-      const cost = state.getClaimCostAt(5, 5);
-      expect(cost).toBe(GRID_WARS_CONFIG.claimCost); // 10
+      const costInfo = state.getClaimCostAt(5, 5);
+      expect(costInfo.cost).toBe(GRID_WARS_CONFIG.claimCost); // 10
+      expect(costInfo.isEnemy).toBe(false);
     });
 
-    it('returns correct cost for enemy cell', () => {
+    it('returns base cost and active cost for enemy cell', () => {
       state.territories.set('5,5', { owner: 'bob' });
-      const cost = state.getClaimCostAt(5, 5);
-      expect(cost).toBe(GRID_WARS_CONFIG.takeoverCost); // 20
+      const costInfo = state.getClaimCostAt(5, 5);
+      expect(costInfo.cost).toBe(GRID_WARS_CONFIG.takeoverCostBase); // 15
+      expect(costInfo.activeCost).toBe(GRID_WARS_CONFIG.takeoverCostActive); // 25
+      expect(costInfo.isEnemy).toBe(true);
     });
 
     it('returns null for own cell', () => {
@@ -160,7 +166,8 @@ describe('Grid Wars v1.1 Features', () => {
     });
 
     it('canAffordClaimAt returns false when points insufficient for takeover', () => {
-      state.players.set('alice', { action_points: 15, territories_count: 0, health: 100 });
+      // v1.2: Base takeover cost is now 15 (was 20), so need less than 15 to test
+      state.players.set('alice', { action_points: 14, territories_count: 0, health: 100 });
       state.territories.set('5,5', { owner: 'bob' });
       expect(state.canAffordClaimAt(5, 5)).toBe(false);
     });

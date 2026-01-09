@@ -64,13 +64,14 @@ describe('Grid Wars v3 - Config', () => {
     expect(GRID_WARS_CONFIG.surgeCost).toBe(5);
   });
 
-  it('has reinforce cost (5 pts)', () => {
-    expect(GRID_WARS_CONFIG.reinforceCost).toBe(5);
+  // v1.2: Updated pricing tests (contestation system removed)
+  it('has activity-based takeover costs (v1.2)', () => {
+    expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(15);   // Inactive defender
+    expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(25); // Active defender
   });
 
-  it('has contestation timing settings', () => {
-    expect(GRID_WARS_CONFIG.contestationStartTime).toBe(30);
-    expect(GRID_WARS_CONFIG.contestationFlipTime).toBe(90);
+  it('has max contiguity bonus (5 in v1.2)', () => {
+    expect(GRID_WARS_CONFIG.maxContiguityBonus).toBe(5);
   });
 
   it('has max cell strength (3)', () => {
@@ -156,180 +157,9 @@ describe('Grid Wars v3 - Territory Strength', () => {
   });
 });
 
-describe('Grid Wars v3 - Contestation', () => {
-  let state;
+// v1.2: Removed "Grid Wars v3 - Contestation" tests (contestation system removed)
 
-  beforeEach(async () => {
-    mockFetch.mockClear();
-    state = new GridWarsState({ serverUrl: 'http://test-server' });
-    state.setUser('alice');
-  });
-
-  it('territories have contested_by field in state', async () => {
-    await initStateWithGame(state, {
-      territories: [
-        { x: 5, y: 5, owner: 'alice', strength: 3, contested_by: 'bob' }
-      ]
-    });
-
-    const territory = state.territories.get('5,5');
-    expect(territory.contested_by).toBe('bob');
-  });
-
-  it('handles contestation_started WebSocket message', async () => {
-    const onContestationAlert = vi.fn();
-    await initStateWithGame(state, {
-      territories: [{ x: 5, y: 5, owner: 'alice', strength: 3 }]
-    });
-    state.onContestationAlert = onContestationAlert;
-
-    state.handleWebSocketMessage({
-      type: 'contestation_started',
-      gameId: 'game-123',
-      x: 5,
-      y: 5,
-      contester: 'bob'
-    });
-
-    const territory = state.territories.get('5,5');
-    expect(territory.contested_by).toBe('bob');
-    expect(onContestationAlert).toHaveBeenCalledWith({
-      x: 5,
-      y: 5,
-      contester: 'bob'
-    });
-  });
-
-  it('handles contestation_cleared WebSocket message', async () => {
-    await initStateWithGame(state, {
-      territories: [{ x: 5, y: 5, owner: 'alice', strength: 3, contested_by: 'bob' }]
-    });
-
-    state.handleWebSocketMessage({
-      type: 'contestation_cleared',
-      gameId: 'game-123',
-      x: 5,
-      y: 5
-    });
-
-    const territory = state.territories.get('5,5');
-    expect(territory.contested_by).toBeNull();
-  });
-
-  it('handles cell_flipped_neutral WebSocket message', async () => {
-    await initStateWithGame(state, {
-      territories: [{ x: 5, y: 5, owner: 'alice', strength: 3, contested_by: 'bob' }]
-    });
-
-    state.handleWebSocketMessage({
-      type: 'cell_flipped_neutral',
-      gameId: 'game-123',
-      x: 5,
-      y: 5,
-      previousOwner: 'alice'
-    });
-
-    expect(state.territories.has('5,5')).toBe(false);
-  });
-
-  it('getMyContestedCells returns cells being contested', async () => {
-    await initStateWithGame(state, {
-      territories: [
-        { x: 5, y: 5, owner: 'alice', strength: 3, contested_by: 'bob' },
-        { x: 6, y: 5, owner: 'alice', strength: 3, contested_by: null },
-        { x: 7, y: 5, owner: 'alice', strength: 3, contested_by: 'charlie' }
-      ]
-    });
-
-    const contested = state.getMyContestedCells();
-    expect(contested).toHaveLength(2);
-    expect(contested.some(c => c.x === 5 && c.y === 5)).toBe(true);
-    expect(contested.some(c => c.x === 7 && c.y === 5)).toBe(true);
-  });
-
-  it('getRenderState includes contested_by', async () => {
-    await initStateWithGame(state, {
-      territories: [{ x: 5, y: 5, owner: 'alice', strength: 3, contested_by: 'bob' }]
-    });
-
-    const renderState = state.getRenderState();
-    expect(renderState.territories[0].contested_by).toBe('bob');
-  });
-});
-
-describe('Grid Wars v3 - Reinforce Action', () => {
-  let state;
-
-  beforeEach(async () => {
-    mockFetch.mockClear();
-    state = new GridWarsState({ serverUrl: 'http://test-server' });
-    state.setUser('alice');
-  });
-
-  it('reinforceCell calls API with correct parameters', async () => {
-    await initStateWithGame(state, {
-      territories: [{ x: 5, y: 5, owner: 'alice', strength: 2, contested_by: 'bob' }]
-    });
-
-    mockFetch.mockResolvedValueOnce(mockResponse({
-      success: true,
-      action: 'reinforce',
-      x: 5,
-      y: 5,
-      cost: 5,
-      newPoints: 45
-    }));
-
-    await state.reinforceCell(5, 5);
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      'http://test-server/api/grid-wars/action',
-      expect.objectContaining({
-        method: 'POST',
-        body: expect.stringContaining('"action":"reinforce"')
-      })
-    );
-  });
-
-  it('reinforceCell clears contestation locally', async () => {
-    await initStateWithGame(state, {
-      territories: [{ x: 5, y: 5, owner: 'alice', strength: 2, contested_by: 'bob' }]
-    });
-
-    mockFetch.mockResolvedValueOnce(mockResponse({
-      success: true,
-      action: 'reinforce',
-      x: 5,
-      y: 5,
-      cost: 5,
-      newPoints: 45
-    }));
-
-    await state.reinforceCell(5, 5);
-
-    const territory = state.territories.get('5,5');
-    expect(territory.contested_by).toBeNull();
-    expect(territory.strength).toBe(GRID_WARS_CONFIG.maxCellStrength);
-  });
-
-  it('handles territory_reinforced WebSocket message', async () => {
-    await initStateWithGame(state, {
-      territories: [{ x: 5, y: 5, owner: 'alice', strength: 1, contested_by: 'bob' }]
-    });
-
-    state.handleWebSocketMessage({
-      type: 'territory_reinforced',
-      gameId: 'game-123',
-      username: 'alice',
-      x: 5,
-      y: 5
-    });
-
-    const territory = state.territories.get('5,5');
-    expect(territory.contested_by).toBeNull();
-    expect(territory.strength).toBe(GRID_WARS_CONFIG.maxCellStrength);
-  });
-});
+// v1.2: Removed "Grid Wars v3 - Reinforce Action" tests (contestation system removed)
 
 describe('Grid Wars v3 - Resource Nodes', () => {
   let state;

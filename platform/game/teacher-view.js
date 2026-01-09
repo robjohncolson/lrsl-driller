@@ -374,6 +374,11 @@ export class TeacherView {
   /**
    * End the current session and calculate rankings
    * Returns ranking data for display
+   *
+   * v1.2 Design Note: This is OPTIONAL functionality.
+   * Grid Wars runs continuously without defined sessions.
+   * Teachers can call this anytime to get rankings, but
+   * there's no prompt, auto-end, or required flow.
    */
   async endSession() {
     if (!this.gameId) {

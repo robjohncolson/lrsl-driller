@@ -8,12 +8,13 @@
 const DEFAULT_SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 
 // Game config (must match server - will be fetched from server on init)
+// v1.2: Updated pricing, removed contestation
 export let GRID_WARS_CONFIG = {
   claimCost: 10,
-  takeoverCost: 20,
+  takeoverCostBase: 15,      // v1.2: Inactive defender cost
+  takeoverCostActive: 25,    // v1.2: Active defender cost
   nodeClaimCost: 15,
   surgeCost: 5,
-  reinforceCost: 5,
   starPoints: {
     gold: 4,
     silver: 3,
@@ -23,9 +24,7 @@ export let GRID_WARS_CONFIG = {
   mapSize: 20,
   classGoalTarget: 200,
   classGoalBonus: 10,
-  maxContiguityBonus: 3,
-  contestationStartTime: 30,
-  contestationFlipTime: 90,
+  maxContiguityBonus: 5,     // v1.2: Increased from 3
   maxCellStrength: 3,
   activeDrillingWindow: 60,
   beaconDuration: 300,
@@ -48,18 +47,18 @@ export class GridWarsState {
 
     // Local state cache
     this.game = null;
-    this.territories = new Map(); // "x,y" -> { owner, claimed_at, strength, contested_by, contested_since, node_type }
+    this.territories = new Map(); // "x,y" -> { owner, claimed_at, strength, node_type }
     this.players = new Map();     // username -> { action_points, territories_count, largest_cluster, health, position_x, position_y, active_buffs, last_answer_at }
     this.classGoal = { current: 0, target: GRID_WARS_CONFIG.classGoalTarget };
     this.surge = null;            // { x, y, expiresIn } or null
 
     // Event callbacks
+    // v1.2: Removed onContestationAlert (contestation system removed)
     this.onStateChange = options.onStateChange || null;
     this.onError = options.onError || null;
     this.onPointsEarned = options.onPointsEarned || null;
     this.onTerritoryChanged = options.onTerritoryChanged || null;
     this.onClassGoalReached = options.onClassGoalReached || null;
-    this.onContestationAlert = options.onContestationAlert || null;
     this.onBuffAcquired = options.onBuffAcquired || null;
     this.onSurgeActivated = options.onSurgeActivated || null;
 
@@ -138,8 +137,6 @@ export class GridWarsState {
           owner: t.owner,
           claimed_at: t.claimed_at,
           strength: t.strength || GRID_WARS_CONFIG.maxCellStrength,
-          contested_by: t.contested_by || null,
-          contested_since: t.contested_since || null,
           node_type: t.node_type || null
         });
       }
@@ -243,29 +240,41 @@ export class GridWarsState {
 
   /**
    * Get cost to claim/takeover a territory at position
+   * v1.2: Returns { base, active, isEnemy } for activity-based pricing
+   * - Inactive defender: base cost (15 pts)
+   * - Active defender: active cost (25 pts)
+   * - Client shows base cost; actual cost determined server-side
    */
   getClaimCostAt(x, y) {
     const owner = this.getTerritoryOwner(x, y);
     if (!owner) {
-      return GRID_WARS_CONFIG.claimCost; // Neutral = 10
+      return { cost: GRID_WARS_CONFIG.claimCost, isEnemy: false }; // Neutral = 10
     } else if (owner === this.username) {
       return null; // Own territory - can't reclaim
     } else {
-      return GRID_WARS_CONFIG.takeoverCost; // Enemy = 20
+      // v1.2: Return both costs so UI can show dynamic pricing info
+      return {
+        cost: GRID_WARS_CONFIG.takeoverCostBase,        // Show base cost (15)
+        activeCost: GRID_WARS_CONFIG.takeoverCostActive, // Active defender cost (25)
+        isEnemy: true,
+        defender: owner
+      };
     }
   }
 
   /**
    * Check if player can afford to claim/takeover at position
+   * v1.2: Uses base cost for affordability check (actual cost may be higher for active defenders)
    */
   canAffordClaimAt(x, y) {
-    const cost = this.getClaimCostAt(x, y);
-    if (cost === null) return false; // Own territory
-    return this.getActionPoints() >= cost;
+    const costInfo = this.getClaimCostAt(x, y);
+    if (costInfo === null) return false; // Own territory
+    return this.getActionPoints() >= costInfo.cost;
   }
 
   /**
    * Claim or takeover a territory
+   * v1.2: Cost determined server-side for enemy takeover (activity-based pricing)
    */
   async claimTerritory(x, y) {
     if (!this.gameId || !this.username) {
@@ -278,13 +287,15 @@ export class GridWarsState {
       throw new Error('You already own this territory');
     }
 
-    const cost = this.getClaimCostAt(x, y);
-    if (this.getActionPoints() < cost) {
+    const costInfo = this.getClaimCostAt(x, y);
+    // Use base cost for optimistic update; server determines actual cost
+    const estimatedCost = costInfo.cost;
+    if (this.getActionPoints() < estimatedCost) {
       throw new Error('Insufficient action points');
     }
 
-    // Optimistic update
-    this._applyOptimisticClaim(x, y, cost, currentOwner);
+    // Optimistic update (may be adjusted when server responds)
+    this._applyOptimisticClaim(x, y, estimatedCost, currentOwner);
 
     try {
       const response = await fetch(`${this.serverUrl}/api/grid-wars/action`, {
@@ -302,7 +313,7 @@ export class GridWarsState {
       if (!response.ok) {
         const error = await response.json();
         // Rollback optimistic update
-        this._rollbackOptimisticClaim(x, y, cost);
+        this._rollbackOptimisticClaim(x, y, estimatedCost);
         throw new Error(error.error || 'Failed to claim territory');
       }
 
@@ -549,19 +560,7 @@ export class GridWarsState {
     return player?.active_buffs || {};
   }
 
-  /**
-   * Get contested cells that belong to current player
-   */
-  getMyContestedCells() {
-    const contested = [];
-    for (const [key, data] of this.territories) {
-      if (data.owner === this.username && data.contested_by) {
-        const [x, y] = key.split(',').map(Number);
-        contested.push({ x, y, contested_by: data.contested_by });
-      }
-    }
-    return contested;
-  }
+  // v1.2: Removed getMyContestedCells (contestation system removed)
 
   /**
    * Get surge cell info
@@ -570,51 +569,7 @@ export class GridWarsState {
     return this.surge;
   }
 
-  /**
-   * Reinforce a contested cell remotely
-   */
-  async reinforceCell(x, y) {
-    if (!this.gameId || !this.username) {
-      throw new Error('Not initialized or no user set');
-    }
-
-    try {
-      const response = await fetch(`${this.serverUrl}/api/grid-wars/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gameId: this.gameId,
-          username: this.username,
-          action: 'reinforce',
-          x,
-          y
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to reinforce');
-      }
-
-      const result = await response.json();
-
-      // Update local state
-      const territory = this.territories.get(`${x},${y}`);
-      if (territory) {
-        territory.contested_by = null;
-        territory.contested_since = null;
-        territory.strength = GRID_WARS_CONFIG.maxCellStrength;
-      }
-
-      this._updatePlayerPoints(-GRID_WARS_CONFIG.reinforceCost);
-      this._emitStateChange();
-
-      return result;
-    } catch (err) {
-      this._handleError('reinforceCell', err);
-      throw err;
-    }
-  }
+  // v1.2: Removed reinforceCell (contestation system removed)
 
   /**
    * Handle WebSocket messages for real-time updates
@@ -630,8 +585,6 @@ export class GridWarsState {
           owner: message.username,
           claimed_at: new Date().toISOString(),
           strength: GRID_WARS_CONFIG.maxCellStrength,
-          contested_by: null,
-          contested_since: null,
           node_type: message.nodeType || null
         });
         this._updatePlayerTerritoriesCount(message.username, 1);
@@ -663,7 +616,8 @@ export class GridWarsState {
         break;
 
       case 'grid_full_state':
-        // Full state sync from server (e.g., after reconnection)
+      case 'state_snapshot':
+        // v1.2: Full state sync from server (e.g., after reconnection)
         if (message.territories && message.players) {
           this.territories.clear();
           for (const t of message.territories) {
@@ -671,8 +625,6 @@ export class GridWarsState {
               owner: t.owner,
               claimed_at: t.claimed_at || new Date().toISOString(),
               strength: t.strength || GRID_WARS_CONFIG.maxCellStrength,
-              contested_by: t.contested_by || null,
-              contested_since: t.contested_since || null,
               node_type: t.node_type || null
             });
           }
@@ -691,10 +643,28 @@ export class GridWarsState {
             });
           }
 
+          // v1.2: Also update class goal and surge from snapshot
+          if (message.classGoal) {
+            this.classGoal = message.classGoal;
+          }
+          if (message.surge) {
+            this.surge = message.surge;
+          }
+
           this._emitStateChange();
         } else {
           // No embedded data, refresh from server
           this.refreshState();
+        }
+        break;
+
+      case 'grid_delta':
+        // v1.2: Delta compression - apply batched updates
+        if (message.updates && Array.isArray(message.updates)) {
+          for (const update of message.updates) {
+            // Process each update based on its type
+            this.handleWebSocketMessage(update);
+          }
         }
         break;
 
@@ -735,39 +705,7 @@ export class GridWarsState {
         this._emitStateChange();
         break;
 
-      case 'contestation_started':
-        // Update territory with contestation info
-        const contestedTerritory = this.territories.get(`${message.x},${message.y}`);
-        if (contestedTerritory) {
-          contestedTerritory.contested_by = message.contester;
-          contestedTerritory.contested_since = new Date().toISOString();
-          if (contestedTerritory.owner === this.username && this.onContestationAlert) {
-            this.onContestationAlert({ x: message.x, y: message.y, contester: message.contester });
-          }
-        }
-        this._emitStateChange();
-        break;
-
-      case 'contestation_cleared':
-        // Clear contestation from territory
-        const clearedTerritory = this.territories.get(`${message.x},${message.y}`);
-        if (clearedTerritory) {
-          clearedTerritory.contested_by = null;
-          clearedTerritory.contested_since = null;
-        }
-        this._emitStateChange();
-        break;
-
-      case 'territory_reinforced':
-        // Territory was reinforced, clear contestation
-        const reinforcedTerritory = this.territories.get(`${message.x},${message.y}`);
-        if (reinforcedTerritory) {
-          reinforcedTerritory.contested_by = null;
-          reinforcedTerritory.contested_since = null;
-          reinforcedTerritory.strength = GRID_WARS_CONFIG.maxCellStrength;
-        }
-        this._emitStateChange();
-        break;
+      // v1.2: Removed contestation_started, contestation_cleared, territory_reinforced handlers
 
       case 'cell_flipped_neutral':
       case 'cell_decayed':
@@ -838,8 +776,6 @@ export class GridWarsState {
           if (lostTerritory) {
             lostTerritory.owner = message.takenBy;
             lostTerritory.claimed_at = new Date().toISOString();
-            lostTerritory.contested_by = null;
-            lostTerritory.contested_since = null;
           }
           this._updatePlayerTerritoriesCount(this.username, -1);
 
@@ -861,6 +797,7 @@ export class GridWarsState {
   /**
    * Get state for rendering
    * Returns data in format expected by GridRenderer
+   * v1.2: Removed contested_by (contestation system removed)
    */
   getRenderState() {
     const territories = [];
@@ -871,7 +808,6 @@ export class GridWarsState {
         y,
         owner: data.owner,
         strength: data.strength,
-        contested_by: data.contested_by,
         node_type: data.node_type
       });
     }
@@ -908,8 +844,6 @@ export class GridWarsState {
       owner: this.username,
       claimed_at: new Date().toISOString(),
       strength: GRID_WARS_CONFIG.maxCellStrength,
-      contested_by: null,
-      contested_since: null,
       node_type: oldTerritory?.node_type || null
     });
     this._updatePlayerPoints(-cost);
