@@ -45,17 +45,17 @@ These values control how quickly students accumulate points. Doubling all values
 - Higher `maxContiguityBonus` rewards empire building but creates snowball effect
 - `classGoalBonus` creates excitement spikes; higher = more impactful
 
-## Activity Windows
+## Activity Windows (v1.3 Updated)
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `activeWindowSeconds` | 120 | Time after answering to be considered ACTIVE (2 min) |
-| `warmWindowSeconds` | 600 | Time after answering to be considered WARM (10 min) |
+| `activeWindowSeconds` | 180 | Time after answering to be considered ACTIVE (3 min) |
+| `warmWindowSeconds` | 480 | Time after answering to be considered WARM (8 min) |
 
 Students are:
-- **ACTIVE** if they answered within 2 minutes → territories cost 25 pts to take
-- **WARM** if they answered within 2-10 minutes → territories cost 20 pts to take
-- **COLD** if they haven't answered in 10+ minutes → territories cost 15 pts to take
+- **ACTIVE** if they answered within 3 minutes → territories cost 25 pts to take
+- **WARM** if they answered within 3-8 minutes → territories cost 20 pts to take
+- **COLD** if they haven't answered in 8+ minutes → territories cost 15 pts to take
 
 **Tuning tips:**
 - Increase `activeWindowSeconds` if students complain about being attacked while solving complex problems
@@ -153,3 +153,62 @@ Teachers can spawn surge cells (cheap to claim) to create excitement.
 ### "Game feels too slow"
 - Increase all `starPoints` values by 50%
 - Or decrease all costs by 20%
+
+---
+
+## v1.3 Features
+
+### Spam Prevention
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `spamWindowSeconds` | 60 | Rolling window for wrong answer tracking (1 min) |
+| `spamThreshold` | 3 | Wrong answers in window to trigger cooldown |
+| `spamCooldownSeconds` | 30 | Cooldown duration that blocks drill submissions |
+
+When a student gets 3 wrong answers within 60 seconds, they enter a 30-second cooldown where they cannot submit drill answers. Grid Wars claims still work during cooldown.
+
+**Tuning tips:**
+- Increase `spamThreshold` if students are frustrated by accidental cooldowns
+- Decrease `spamCooldownSeconds` for younger students
+- Increase for students who are clearly spamming random answers
+
+### Soft Point Ceiling
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `pointCeilingEnabled` | true | Enable logarithmic cost scaling |
+| `pointCeilingScaleFactor` | 0.1 | Multiplier for log10(points) |
+| `pointCeilingMinPoints` | 10 | Minimum points before scaling applies |
+
+Claim costs scale logarithmically with player points to prevent runaway accumulation:
+- At 10 pts: costs × 1.1 (10 → 11)
+- At 100 pts: costs × 1.2 (10 → 12)
+- At 1000 pts: costs × 1.3 (10 → 13)
+
+**Tuning tips:**
+- Increase `pointCeilingScaleFactor` if dominant players still snowball
+- Set `pointCeilingEnabled: false` to disable entirely
+
+### AFK Erosion
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `afkThresholdSeconds` | 900 | Inactivity time before erosion (15 min) |
+| `afkErosionIntervalMs` | 60000 | How often to check/erode (1 min) |
+| `afkErosionStrength` | 1 | Strength lost per erosion tick |
+
+Edge cells (cells with fewer than 4 same-owner neighbors) of inactive players erode over time. This prevents students from claiming territory and going AFK.
+
+**Tuning tips:**
+- Increase `afkThresholdSeconds` if students need longer breaks
+- Decrease to encourage more active play
+
+### Telemetry
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `telemetryEnabled` | true | Enable server-side metrics logging |
+| `telemetryFlushIntervalMs` | 300000 | How often to flush metrics (5 min) |
+
+Tracks claims, takeovers by tier, cooldowns triggered, and AFK erosions. Logs JSON to server console every 5 minutes.

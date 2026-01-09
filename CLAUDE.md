@@ -6,10 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A subject-agnostic drill/quiz platform for teachers ("Driller Platform"). Think of it like a game console: the platform is the console, lessons are cartridges.
 
-Current cartridges (see `cartridges/registry.json`):
-- **AP Statistics**: LSRL interpretation, LSRL/z-score calculations, residuals, leverage points, sampling (3.1-3.3), experimental design (3.5)
-- **Algebra 2**: simplify radicals, graphing polynomials
-- **Computer Science**: MIT 6.0001 Lecture 1 (Python basics)
+Current cartridges are listed in `cartridges/registry.json` and span AP Statistics, Algebra 2, and Computer Science topics.
 
 **Deployment**: Vercel (frontend) + Railway (backend server for AI grading, WebSocket, time tracking, Grid Wars)
 
@@ -43,7 +40,9 @@ The legacy `index.html` works standalone (file:// protocol) but the modular plat
 - `core/leaderboard.js` - Class leaderboard display
 - `game/grid-state.js` - Grid Wars client state management
 - `game/grid-renderer.js` - Grid Wars canvas rendering
+- `game/grid-panel.js` - Grid Wars UI panel component
 - `game/teacher-view.js` - Teacher dashboard components
+- `game/audio.js` - Sound effects
 
 **Cartridges (Lessons)** - `cartridges/{id}/` - content-specific, fully self-contained:
 - `manifest.json` - Config: modes, inputs, hints, progression, grading settings
@@ -148,11 +147,11 @@ npx vitest run tests/grading/sampling.test.js    # Single test file
 ```
 
 Test organization:
-- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration)
+- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version)
 - `tests/grading/` - Cartridge grading rule tests
 - `tests/generators/` - Problem generator tests
-- `tests/server/` - Railway server API tests
-- `tests/game/` - Grid Wars tests
+- `tests/server/` - Railway server API tests (including grid-wars-api)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific tests)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 

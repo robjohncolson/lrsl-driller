@@ -1966,10 +1966,14 @@ const GRID_WARS_CONFIG = {
   decayIntervalMs: 60000,       // Isolated cells lose 1 strength per minute
   maxCellStrength: 3,           // Initial and max strength
 
-  // v1.2.1: Activity windows (seconds) - 3-tier system
-  activeWindowSeconds: 120,     // <2min = ACTIVE (highest protection)
-  warmWindowSeconds: 600,       // 2-10min = WARM (medium protection)
-  // >10min = COLD (no protection)
+  // v1.3: Visual dimming settings
+  dimmingMinOpacity: 0.3,       // Minimum opacity at max fade
+  dimmingFadeMinutes: 15,       // Time to reach minimum opacity
+
+  // v1.3: Activity windows (seconds) - 3-tier system
+  activeWindowSeconds: 180,     // <3min = ACTIVE (highest protection)
+  warmWindowSeconds: 480,       // 3-8min = WARM (medium protection)
+  // >8min = COLD (no protection)
 
   // Legacy alias
   activeDrillingWindow: 120,
@@ -1997,8 +2001,228 @@ const GRID_WARS_CONFIG = {
   ],
 
   // Server tick interval
-  tickIntervalMs: 5000          // 5 seconds
+  tickIntervalMs: 5000,          // 5 seconds
+
+  // v1.3: Spam Prevention
+  spamWindowSeconds: 60,         // Rolling window for wrong answer tracking
+  spamThreshold: 3,              // Wrong answers in window to trigger cooldown
+  spamCooldownSeconds: 30,       // Cooldown duration (blocks drill submissions)
+
+  // v1.3: Soft Point Ceiling - logarithmic cost scaling
+  pointCeilingEnabled: true,
+  pointCeilingScaleFactor: 0.1,  // Multiplier for log10(points)
+  pointCeilingMinPoints: 10,     // Minimum points before scaling applies
+
+  // v1.3: AFK Erosion
+  afkThresholdSeconds: 900,      // 15 minutes of inactivity
+  afkErosionIntervalMs: 60000,   // Check/erode every 1 minute
+  afkErosionStrength: 1,         // Strength lost per erosion tick
+
+  // v1.3: Telemetry
+  telemetryEnabled: true,
+  telemetryFlushIntervalMs: 300000,  // 5 minutes
 };
+
+// ============================================
+// v1.3: SPAM PREVENTION (WRONG ANSWER TRACKING)
+// ============================================
+
+// In-memory tracking for wrong answers and cooldowns
+const wrongAnswerTracker = new Map(); // `${gameId}:${username}` -> [timestamp1, timestamp2, ...]
+const userCooldowns = new Map();      // `${gameId}:${username}` -> cooldownEndsAt
+
+/**
+ * Track wrong answer and check for spam cooldown
+ * @returns {object} { inCooldown: boolean, cooldownRemaining: number, triggered: boolean }
+ */
+function trackWrongAnswer(gameId, username) {
+  const key = `${gameId}:${username}`;
+  const now = Date.now();
+  const windowMs = GRID_WARS_CONFIG.spamWindowSeconds * 1000;
+
+  // Check existing cooldown
+  if (userCooldowns.has(key)) {
+    const cooldownEnds = userCooldowns.get(key);
+    if (now < cooldownEnds) {
+      return {
+        inCooldown: true,
+        cooldownRemaining: Math.ceil((cooldownEnds - now) / 1000),
+        triggered: false
+      };
+    }
+    userCooldowns.delete(key);
+  }
+
+  // Track this wrong answer
+  const history = wrongAnswerTracker.get(key) || [];
+  history.push(now);
+
+  // Filter to only include answers within window
+  const recentWrong = history.filter(t => now - t < windowMs);
+  wrongAnswerTracker.set(key, recentWrong);
+
+  // Check if threshold exceeded
+  if (recentWrong.length >= GRID_WARS_CONFIG.spamThreshold) {
+    const cooldownEnds = now + GRID_WARS_CONFIG.spamCooldownSeconds * 1000;
+    userCooldowns.set(key, cooldownEnds);
+    wrongAnswerTracker.set(key, []); // Reset counter
+
+    // v1.3: Telemetry
+    telemetryIncrement('cooldowns_triggered');
+
+    console.log(`Grid Wars: Spam cooldown triggered for ${username} (${recentWrong.length} wrong in ${GRID_WARS_CONFIG.spamWindowSeconds}s)`);
+
+    return {
+      inCooldown: true,
+      cooldownRemaining: GRID_WARS_CONFIG.spamCooldownSeconds,
+      triggered: true  // Just triggered this call
+    };
+  }
+
+  return { inCooldown: false, cooldownRemaining: 0, triggered: false };
+}
+
+/**
+ * Check if user is currently in cooldown
+ */
+function checkCooldown(gameId, username) {
+  const key = `${gameId}:${username}`;
+  const now = Date.now();
+
+  if (userCooldowns.has(key)) {
+    const cooldownEnds = userCooldowns.get(key);
+    if (now < cooldownEnds) {
+      return {
+        inCooldown: true,
+        cooldownRemaining: Math.ceil((cooldownEnds - now) / 1000)
+      };
+    }
+    userCooldowns.delete(key);
+  }
+  return { inCooldown: false, cooldownRemaining: 0 };
+}
+
+// ============================================
+// v1.3: TELEMETRY
+// ============================================
+
+const telemetryCounters = {
+  claims_total: 0,
+  takeovers_total: 0,
+  takeovers_by_tier: { ACTIVE: 0, WARM: 0, COLD: 0 },
+  afk_erosions_total: 0,
+  cooldowns_triggered: 0,
+  surges_activated: 0,
+  class_goals_reached: 0,
+  points_earned_total: 0
+};
+
+let lastTelemetryFlush = Date.now();
+let telemetryFlushInterval = null;
+
+/**
+ * Increment a telemetry counter
+ */
+function telemetryIncrement(counter, amount = 1) {
+  if (!GRID_WARS_CONFIG.telemetryEnabled) return;
+  if (counter in telemetryCounters) {
+    if (typeof telemetryCounters[counter] === 'number') {
+      telemetryCounters[counter] += amount;
+    }
+  }
+}
+
+/**
+ * Increment tier-specific takeover counter
+ */
+function telemetryIncrementTakeoverTier(tier) {
+  if (!GRID_WARS_CONFIG.telemetryEnabled) return;
+  if (tier in telemetryCounters.takeovers_by_tier) {
+    telemetryCounters.takeovers_by_tier[tier]++;
+    telemetryCounters.takeovers_total++;
+  }
+}
+
+/**
+ * Flush telemetry to console (and optionally to database)
+ */
+async function flushTelemetry() {
+  if (!GRID_WARS_CONFIG.telemetryEnabled) return;
+
+  const now = Date.now();
+  const flushData = {
+    timestamp: new Date().toISOString(),
+    interval_ms: now - lastTelemetryFlush,
+    counters: { ...telemetryCounters },
+    counters_by_tier: { ...telemetryCounters.takeovers_by_tier }
+  };
+
+  console.log('[Grid Wars Telemetry]', JSON.stringify(flushData));
+
+  // Reset counters
+  telemetryCounters.claims_total = 0;
+  telemetryCounters.takeovers_total = 0;
+  telemetryCounters.takeovers_by_tier = { ACTIVE: 0, WARM: 0, COLD: 0 };
+  telemetryCounters.afk_erosions_total = 0;
+  telemetryCounters.cooldowns_triggered = 0;
+  telemetryCounters.surges_activated = 0;
+  telemetryCounters.class_goals_reached = 0;
+  telemetryCounters.points_earned_total = 0;
+  lastTelemetryFlush = now;
+}
+
+/**
+ * Start telemetry flush interval
+ */
+function startTelemetryFlush() {
+  if (telemetryFlushInterval) return;
+  if (!GRID_WARS_CONFIG.telemetryEnabled) return;
+
+  telemetryFlushInterval = setInterval(flushTelemetry, GRID_WARS_CONFIG.telemetryFlushIntervalMs);
+  console.log(`Grid Wars: Telemetry flush started (every ${GRID_WARS_CONFIG.telemetryFlushIntervalMs / 1000}s)`);
+}
+
+/**
+ * Stop telemetry flush interval
+ */
+function stopTelemetryFlush() {
+  if (telemetryFlushInterval) {
+    clearInterval(telemetryFlushInterval);
+    telemetryFlushInterval = null;
+  }
+}
+
+// ============================================
+// v1.3: SOFT POINT CEILING (COST SCALING)
+// ============================================
+
+/**
+ * Calculate scaled cost based on player's current points
+ * Uses logarithmic scaling to slow down high-point players
+ *
+ * Formula: effectiveCost = baseCost * (1 + scaleFactor * log10(max(playerPoints, minPoints)))
+ *
+ * Examples at 0.1 scale factor:
+ * - 10 pts:   scale = 1.1x  (10 → 11)
+ * - 100 pts:  scale = 1.2x  (10 → 12)
+ * - 1000 pts: scale = 1.3x  (10 → 13)
+ *
+ * @param {number} baseCost - The base cost before scaling
+ * @param {number} playerPoints - Player's current action points
+ * @returns {number} Scaled cost (rounded up)
+ */
+function calculateScaledCost(baseCost, playerPoints) {
+  if (!GRID_WARS_CONFIG.pointCeilingEnabled) {
+    return baseCost;
+  }
+
+  const minPoints = GRID_WARS_CONFIG.pointCeilingMinPoints;
+  const scaleFactor = GRID_WARS_CONFIG.pointCeilingScaleFactor;
+
+  // Apply logarithmic scaling
+  const scale = 1 + scaleFactor * Math.log10(Math.max(playerPoints, minPoints));
+  return Math.ceil(baseCost * scale);
+}
 
 // ============================================
 // GRID WARS HELPER FUNCTIONS
@@ -2332,6 +2556,135 @@ async function processPlayerDecay(gameId, username) {
 }
 
 // ============================================
+// v1.3: AFK EROSION
+// ============================================
+
+/**
+ * Process AFK erosion for all active games
+ * Edge cells of inactive players (>15 min no activity) erode
+ */
+async function processAfkErosion() {
+  const { data: games } = await supabase
+    .from('grid_wars_games')
+    .select('game_id')
+    .eq('status', 'active');
+
+  for (const game of games || []) {
+    await processGameAfkErosion(game.game_id);
+  }
+}
+
+/**
+ * Process AFK erosion for a single game
+ */
+async function processGameAfkErosion(gameId) {
+  const now = Date.now();
+  const afkThresholdMs = GRID_WARS_CONFIG.afkThresholdSeconds * 1000;
+
+  // Get all players with their last activity
+  const { data: players } = await supabase
+    .from('grid_wars_players')
+    .select('username, last_answer_at, territories_count')
+    .eq('game_id', gameId)
+    .gt('territories_count', 0); // Only check players with territory
+
+  for (const player of players || []) {
+    // Check if player is AFK
+    const lastActivity = player.last_answer_at
+      ? new Date(player.last_answer_at).getTime()
+      : 0; // Never active = always AFK
+
+    const timeSinceActivity = now - lastActivity;
+    if (timeSinceActivity < afkThresholdMs) continue; // Player is active
+
+    // Player is AFK - erode their edge cells
+    await processPlayerAfkErosion(gameId, player.username);
+  }
+}
+
+/**
+ * Find and erode edge cells for an AFK player
+ * Edge cell = cell with < 4 same-owner neighbors
+ */
+async function processPlayerAfkErosion(gameId, username) {
+  // Get all territories for this player
+  const { data: territories } = await supabase
+    .from('grid_wars_territories')
+    .select('x, y, strength, node_type')
+    .eq('game_id', gameId)
+    .eq('owner', username);
+
+  if (!territories || territories.length === 0) return;
+
+  // Build set of owned cells for neighbor checking
+  const ownedSet = new Set(territories.map(t => `${t.x},${t.y}`));
+
+  // Find edge cells (less than 4 same-owner neighbors)
+  const edgeCells = [];
+  for (const t of territories) {
+    const neighbors = [
+      `${t.x + 1},${t.y}`,
+      `${t.x - 1},${t.y}`,
+      `${t.x},${t.y + 1}`,
+      `${t.x},${t.y - 1}`
+    ];
+    const sameOwnerNeighbors = neighbors.filter(n => ownedSet.has(n)).length;
+
+    // Edge cell = has fewer than 4 same-owner neighbors
+    if (sameOwnerNeighbors < 4) {
+      edgeCells.push(t);
+    }
+  }
+
+  // Sort edge cells by neighbor count (fewest neighbors = most vulnerable)
+  // Only erode one cell per tick to prevent rapid loss
+  if (edgeCells.length === 0) return;
+
+  // Pick the most vulnerable edge cell (random among those with fewest neighbors)
+  const targetCell = edgeCells[Math.floor(Math.random() * edgeCells.length)];
+  const newStrength = targetCell.strength - GRID_WARS_CONFIG.afkErosionStrength;
+
+  if (newStrength <= 0) {
+    // Cell dies - flip to neutral
+    await flipCellToNeutral(gameId, targetCell.x, targetCell.y, username);
+
+    broadcast({
+      type: 'afk_erosion',
+      gameId,
+      x: targetCell.x,
+      y: targetCell.y,
+      previousOwner: username,
+      died: true,
+      message: 'SIGNAL DECAY: Sector lost (inactive)'
+    });
+
+    // v1.3: Telemetry
+    telemetryIncrement('afk_erosions_total');
+
+    console.log(`Grid Wars: AFK erosion - cell (${targetCell.x}, ${targetCell.y}) owned by ${username} lost`);
+  } else {
+    // Reduce strength
+    await supabase
+      .from('grid_wars_territories')
+      .update({ strength: newStrength })
+      .eq('game_id', gameId)
+      .eq('x', targetCell.x)
+      .eq('y', targetCell.y);
+
+    broadcast({
+      type: 'afk_erosion',
+      gameId,
+      x: targetCell.x,
+      y: targetCell.y,
+      owner: username,
+      strength: newStrength,
+      died: false,
+      message: 'SIGNAL WEAKENING: Stay active to maintain territory'
+    });
+  }
+}
+
+// ============================================
 // GRID WARS: SURGE HELPER FUNCTIONS
 // ============================================
 
@@ -2375,10 +2728,12 @@ async function processSurgeExpiration() {
 // ============================================
 
 let lastDecayTick = Date.now();
+let lastAfkErosionTick = Date.now();
 
 /**
  * Main server tick function - runs every 5 seconds
  * v1.2: Removed contestation processing (using direct takeover instead)
+ * v1.3: Added AFK erosion processing
  */
 async function gridWarsServerTick() {
   try {
@@ -2387,6 +2742,12 @@ async function gridWarsServerTick() {
     if (now - lastDecayTick >= GRID_WARS_CONFIG.decayIntervalMs) {
       await processDecay();
       lastDecayTick = now;
+    }
+
+    // v1.3: Process AFK erosion (every minute)
+    if (now - lastAfkErosionTick >= GRID_WARS_CONFIG.afkErosionIntervalMs) {
+      await processAfkErosion();
+      lastAfkErosionTick = now;
     }
 
     // Check surge expiration
@@ -2561,7 +2922,7 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
 // Perform an action (claim territory, reinforce)
 app.post('/api/grid-wars/action', async (req, res) => {
   try {
-    const { gameId, username, action, x, y } = req.body;
+    const { gameId, username, action, actionId, x, y } = req.body;
 
     if (!gameId || !username || !action || x === undefined || y === undefined) {
       return res.status(400).json({ error: 'Missing required fields: gameId, username, action, x, y' });
@@ -2630,20 +2991,20 @@ app.post('/api/grid-wars/action', async (req, res) => {
           ? (Date.now() - new Date(defender.last_answer_at).getTime()) / 1000
           : Infinity;
 
-        // v1.2.1: 3-tier activity-based pricing
+        // v1.3: 3-tier activity-based pricing
         let activityTier;
         if (timeSinceAnswer < GRID_WARS_CONFIG.activeWindowSeconds) {
-          // <2 min = ACTIVE (highest protection)
+          // <3 min = ACTIVE (highest protection)
           cost = GRID_WARS_CONFIG.takeoverCostActive;
           activityTier = 'ACTIVE';
           defenderIsActive = true;
         } else if (timeSinceAnswer < GRID_WARS_CONFIG.warmWindowSeconds) {
-          // 2-10 min = WARM (medium protection)
+          // 3-8 min = WARM (medium protection)
           cost = GRID_WARS_CONFIG.takeoverCostWarm;
           activityTier = 'WARM';
           defenderIsActive = false;
         } else {
-          // >10 min = COLD (no protection)
+          // >8 min = COLD (no protection)
           cost = GRID_WARS_CONFIG.takeoverCostCold;
           activityTier = 'COLD';
           defenderIsActive = false;
@@ -2654,8 +3015,16 @@ app.post('/api/grid-wars/action', async (req, res) => {
         cost = GRID_WARS_CONFIG.surgeCost;
       }
 
+      // v1.3: Apply soft point ceiling (logarithmic cost scaling)
+      const baseCost = cost;
+      cost = calculateScaledCost(cost, currentPoints);
+
       if (currentPoints < cost) {
-        return res.status(400).json({ error: `Insufficient points. Need ${cost}, have ${currentPoints}` });
+        return res.status(400).json({
+          error: `Insufficient points. Need ${cost}, have ${currentPoints}`,
+          baseCost,
+          scaledCost: cost
+        });
       }
 
       // Claim or update territory (works for neutral, resource nodes, AND enemy territories)
@@ -2781,12 +3150,31 @@ app.post('/api/grid-wars/action', async (req, res) => {
         activityTier: isEnemyTakeover ? activityTier : null  // v1.2.1: For display
       });
 
+      // v1.3: Build authoritative cell state for client reconciliation
+      const authoritativeCell = {
+        x,
+        y,
+        owner: username,
+        strength: GRID_WARS_CONFIG.maxCellStrength,
+        claimed_at: new Date().toISOString(),
+        node_type: existingTerritory?.node_type || null
+      };
+
+      // v1.3: Telemetry tracking
+      if (isEnemyTakeover) {
+        telemetryIncrementTakeoverTier(activityTier);
+      } else {
+        telemetryIncrement('claims_total');
+      }
+
       res.json({
         success: true,
         action: 'claim',
+        actionId,  // v1.3: Echo actionId for reconciliation
         x,
         y,
         cost,
+        baseCost,  // v1.3: Base cost before scaling (for UI display)
         newPoints: currentPoints - cost,
         cluster: newCluster,
         classGoal: goalResult,
@@ -2795,7 +3183,8 @@ app.post('/api/grid-wars/action', async (req, res) => {
         isTakeover: isEnemyTakeover,
         previousOwner: isEnemyTakeover ? previousOwner : null,
         defenderWasActive: defenderIsActive,
-        activityTier: isEnemyTakeover ? activityTier : null  // v1.2.1: 3-tier pricing feedback
+        activityTier: isEnemyTakeover ? activityTier : null,  // v1.2.1: 3-tier pricing feedback
+        authoritativeCell  // v1.3: Server-authoritative cell state
       });
 
     } else {
@@ -3421,29 +3810,96 @@ app.post('/api/grid-wars/class-goal', async (req, res) => {
   }
 });
 
+// ============================================
+// v1.3: SPAM PREVENTION ENDPOINTS
+// ============================================
+
+// Report wrong answer (called by client after incorrect drill submission)
+app.post('/api/grid-wars/wrong-answer', async (req, res) => {
+  try {
+    const { gameId, username } = req.body;
+
+    if (!gameId || !username) {
+      return res.status(400).json({ error: 'gameId and username required' });
+    }
+
+    const result = trackWrongAnswer(gameId, username);
+
+    if (result.triggered) {
+      // Broadcast cooldown event to notify other clients
+      broadcast({
+        type: 'spam_cooldown_triggered',
+        gameId,
+        username,
+        cooldownSeconds: GRID_WARS_CONFIG.spamCooldownSeconds
+      });
+    }
+
+    res.json({
+      success: true,
+      inCooldown: result.inCooldown,
+      cooldownRemaining: result.cooldownRemaining,
+      message: result.inCooldown ? `SYSTEM RECALIBRATING (${result.cooldownRemaining}s remaining)` : null
+    });
+  } catch (err) {
+    console.error('POST /api/grid-wars/wrong-answer error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Check cooldown status
+app.get('/api/grid-wars/cooldown', async (req, res) => {
+  try {
+    const { gameId, username } = req.query;
+
+    if (!gameId || !username) {
+      return res.status(400).json({ error: 'gameId and username required' });
+    }
+
+    const result = checkCooldown(gameId, username);
+    res.json(result);
+  } catch (err) {
+    console.error('GET /api/grid-wars/cooldown error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get game config (for client)
-// v1.2: Removed contestation settings, added activity-based pricing
+// v1.3: Added spam prevention settings, tier windows
 app.get('/api/grid-wars/config', (req, res) => {
   res.json({
     mapSize: GRID_WARS_CONFIG.mapSize,
     claimCost: GRID_WARS_CONFIG.claimCost,
-    takeoverCostBase: GRID_WARS_CONFIG.takeoverCostBase,      // v1.2: 15 pts for inactive defender
-    takeoverCostActive: GRID_WARS_CONFIG.takeoverCostActive,  // v1.2: 25 pts for active defender
+    takeoverCostBase: GRID_WARS_CONFIG.takeoverCostBase,
+    takeoverCostCold: GRID_WARS_CONFIG.takeoverCostCold,
+    takeoverCostWarm: GRID_WARS_CONFIG.takeoverCostWarm,
+    takeoverCostActive: GRID_WARS_CONFIG.takeoverCostActive,
     nodeClaimCost: GRID_WARS_CONFIG.nodeClaimCost,
     surgeCost: GRID_WARS_CONFIG.surgeCost,
-    maxContiguityBonus: GRID_WARS_CONFIG.maxContiguityBonus,  // v1.2: 5 (was 3)
+    maxContiguityBonus: GRID_WARS_CONFIG.maxContiguityBonus,
     healthMax: GRID_WARS_CONFIG.healthMax,
     healthDrainNeutral: GRID_WARS_CONFIG.healthDrainNeutral,
     healthDrainEnemy: GRID_WARS_CONFIG.healthDrainEnemy,
     healthRegenHome: GRID_WARS_CONFIG.healthRegenHome,
+    // v1.3: Activity windows
+    activeWindowSeconds: GRID_WARS_CONFIG.activeWindowSeconds,
+    warmWindowSeconds: GRID_WARS_CONFIG.warmWindowSeconds,
     activeDrillingWindow: GRID_WARS_CONFIG.activeDrillingWindow,
+    // Strength & buffs
     maxCellStrength: GRID_WARS_CONFIG.maxCellStrength,
     beaconDuration: GRID_WARS_CONFIG.beaconDuration,
     anchorDuration: GRID_WARS_CONFIG.anchorDuration,
     amplifierCharges: GRID_WARS_CONFIG.amplifierCharges,
     amplifierBonus: GRID_WARS_CONFIG.amplifierBonus,
     surgeDuration: GRID_WARS_CONFIG.surgeDuration,
-    nodePositions: GRID_WARS_CONFIG.nodePositions
+    nodePositions: GRID_WARS_CONFIG.nodePositions,
+    // v1.3: Spam prevention
+    spamWindowSeconds: GRID_WARS_CONFIG.spamWindowSeconds,
+    spamThreshold: GRID_WARS_CONFIG.spamThreshold,
+    spamCooldownSeconds: GRID_WARS_CONFIG.spamCooldownSeconds,
+    // v1.3: Visual dimming
+    dimmingMinOpacity: GRID_WARS_CONFIG.dimmingMinOpacity,
+    dimmingFadeMinutes: GRID_WARS_CONFIG.dimmingFadeMinutes
   });
 });
 
@@ -3721,4 +4177,7 @@ server.listen(PORT, () => {
 
   // Start Grid Wars server tick
   startGridWarsTick();
+
+  // v1.3: Start telemetry flush
+  startTelemetryFlush();
 });

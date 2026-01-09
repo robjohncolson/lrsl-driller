@@ -41,8 +41,9 @@ describe('Grid Wars v1.2.1 Features', () => {
     });
 
     it('has correct activity window thresholds', () => {
-      expect(GRID_WARS_CONFIG.activeWindowSeconds).toBe(120);  // 2 minutes
-      expect(GRID_WARS_CONFIG.warmWindowSeconds).toBe(600);    // 10 minutes
+      // v1.3: Updated from 120/600 to 180/480 (3min/8min)
+      expect(GRID_WARS_CONFIG.activeWindowSeconds).toBe(180);  // 3 minutes
+      expect(GRID_WARS_CONFIG.warmWindowSeconds).toBe(480);    // 8 minutes
     });
 
     it('maintains legacy alias for backwards compatibility', () => {
@@ -520,14 +521,17 @@ describe('Grid Wars v1.2.1 Features', () => {
       state.players.set('alice', { action_points: 50, territories_count: 5, health: 100 });
     });
 
+    // v1.3: Updated to check baseCost (cost is now scaled)
     it('getClaimCostAt returns base cost for enemy territory', () => {
       state.territories.set('5,5', { owner: 'bob' });
       state.players.set('bob', { action_points: 30, territories_count: 1, health: 100 });
 
       const costInfo = state.getClaimCostAt(5, 5);
 
-      expect(costInfo.cost).toBe(GRID_WARS_CONFIG.takeoverCostBase); // 15
-      expect(costInfo.activeCost).toBe(GRID_WARS_CONFIG.takeoverCostActive); // 25
+      expect(costInfo.baseCost).toBe(GRID_WARS_CONFIG.takeoverCostBase); // 15
+      expect(costInfo.cost).toBeGreaterThanOrEqual(costInfo.baseCost);   // Scaled
+      expect(costInfo.activeCostBase).toBe(GRID_WARS_CONFIG.takeoverCostActive); // 25
+      expect(costInfo.activeCost).toBeGreaterThanOrEqual(costInfo.activeCostBase); // Scaled
       expect(costInfo.isEnemy).toBe(true);
       expect(costInfo.defender).toBe('bob');
     });

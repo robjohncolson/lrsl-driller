@@ -3,7 +3,10 @@
  * Spectre/Battlezone aesthetic (early 90s wireframe)
  * v1.2: Removed contestation effects, enhanced direction chevron
  * v1.2.1: 3-layer canvas system for performance optimization
+ * v1.3: Use config for dimming parameters
  */
+
+import { GRID_WARS_CONFIG } from '../../shared/gridwars.config.js';
 
 export class GridRenderer {
   constructor(canvas, options = {}) {
@@ -433,12 +436,12 @@ export class GridRenderer {
       // Calculate opacity based on strength (3 = full, 1 = dim)
       const strengthOpacity = territory.strength ? territory.strength / 3 : 1;
 
-      // Calculate activity-based dimming
+      // Calculate activity-based dimming (v1.3: use config values)
       let activityOpacity = 1;
       if (territory.ownerLastAnswer) {
         const minutesSinceAnswer = (Date.now() - new Date(territory.ownerLastAnswer).getTime()) / 60000;
-        const fadeMinutes = 15;
-        const minOpacity = 0.3;
+        const fadeMinutes = GRID_WARS_CONFIG.dimmingFadeMinutes || 15;
+        const minOpacity = GRID_WARS_CONFIG.dimmingMinOpacity || 0.3;
         activityOpacity = Math.max(minOpacity, 1 - (minutesSinceAnswer / fadeMinutes) * (1 - minOpacity));
       }
 

@@ -298,6 +298,13 @@ export class Platform {
       throw new Error('No problem loaded');
     }
 
+    // v1.3: Check Grid Wars cooldown - block drill submission during cooldown
+    if (this.gridPanel?.state?.isInCooldown()) {
+      const remaining = this.gridPanel.state.getCooldownRemaining();
+      console.log(`[Platform] Drill blocked - cooldown active (${remaining}s remaining)`);
+      return { blocked: true, reason: 'cooldown', remaining };
+    }
+
     this.isGrading = true;
     this.inputRenderer?.disable();
 
@@ -480,6 +487,15 @@ export class Platform {
       const delayPromise = this.maybeShowResidualVisualization(context, results);
 
       this.onGradingComplete(results);
+
+      // v1.3: Report wrong answers to Grid Wars for spam prevention
+      // If any field scored 'I', count it as a wrong answer
+      const hasIncorrect = Object.values(results.fields).some(r => r.score === 'I');
+      if (hasIncorrect && this.gridPanel?.state) {
+        this.gridPanel.state.reportWrongAnswer().catch(err => {
+          console.warn('[Platform] Failed to report wrong answer:', err);
+        });
+      }
 
       // Return the delay promise if visualization was shown (for auto-advance handling)
       if (delayPromise) {

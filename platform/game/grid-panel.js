@@ -48,11 +48,37 @@ export class GridPanel {
         if (data.action === 'taken' && data.previousOwner === this.username) {
           sounds.alert();
         }
+        // v1.3: Show toast for AFK erosion
+        if (data.action === 'afk_erosion' && data.message) {
+          sounds.alert();
+          this.showToast(data.message);
+        }
       },
       // v1.2.1: Boot bonus notification
       onBootBonus: (data) => {
         sounds.points();
         this.showToast(`BOOT BONUS: +${data.points} pts — Claim your first territory!`);
+      },
+      // v1.3: Spam prevention cooldown
+      onCooldownChange: (data) => {
+        if (data.inCooldown) {
+          this._showCooldownOverlay(data.remaining);
+        } else {
+          this._hideCooldownOverlay();
+        }
+      },
+      // v1.3: Resync request - fetch fresh state and replay queued actions
+      onResyncRequest: async (data) => {
+        console.log('[GridPanel] Resync requested, fetching fresh state...');
+        this.showToast('RESYNCING...');
+        try {
+          await this.state.refreshState();
+          await this.state.completeResync();
+          this.showToast('RESYNC COMPLETE');
+        } catch (err) {
+          console.error('[GridPanel] Resync failed:', err);
+          this.showToast('RESYNC FAILED - REFRESH PAGE');
+        }
       }
     });
 
@@ -446,8 +472,8 @@ export class GridPanel {
   }
 
   /**
-   * v1.2.1: Calculate activity tier and cost for enemy territory
-   * Returns binary tier (ACTIVE/COLD) for display, but uses 3-tier pricing
+   * v1.3: Calculate activity tier and cost for enemy territory
+   * Shows all 3 tiers: ACTIVE/WARM/COLD matching server pricing
    */
   _getActivityTierCost(defenderData) {
     if (!defenderData?.last_answer_at) {
@@ -459,23 +485,23 @@ export class GridPanel {
     }
 
     const timeSinceAnswer = (Date.now() - new Date(defenderData.last_answer_at).getTime()) / 1000;
-    const activeWindow = GRID_WARS_CONFIG.activeWindowSeconds || 120;
-    const warmWindow = GRID_WARS_CONFIG.warmWindowSeconds || 600;
+    const activeWindow = GRID_WARS_CONFIG.activeWindowSeconds || 180;
+    const warmWindow = GRID_WARS_CONFIG.warmWindowSeconds || 480;
 
     if (timeSinceAnswer < activeWindow) {
-      // <2min = ACTIVE
+      // <3min = ACTIVE
       return {
         cost: GRID_WARS_CONFIG.takeoverCostActive || 25,
         tier: 'ACTIVE'
       };
     } else if (timeSinceAnswer < warmWindow) {
-      // 2-10min = WARM (display as COLD for binary display)
+      // 3-8min = WARM
       return {
         cost: GRID_WARS_CONFIG.takeoverCostWarm || 20,
-        tier: 'COLD'  // Binary display: show as COLD
+        tier: 'WARM'
       };
     } else {
-      // >10min = COLD
+      // >8min = COLD
       return {
         cost: GRID_WARS_CONFIG.takeoverCostCold || GRID_WARS_CONFIG.takeoverCostBase || 15,
         tier: 'COLD'
@@ -769,6 +795,77 @@ export class GridPanel {
     this._toastTimeout = setTimeout(() => {
       toast.style.opacity = '0';
     }, duration);
+  }
+
+  /**
+   * v1.3: Show cooldown overlay when spam prevention triggers
+   * Dims avatar and shows countdown timer
+   */
+  _showCooldownOverlay(seconds) {
+    // Create overlay if it doesn't exist
+    let overlay = document.querySelector('#gw-cooldown-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'gw-cooldown-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #ffbf00;
+        font-family: monospace;
+        z-index: 9999;
+        pointer-events: none;
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML = `
+      <div style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; color: #ff6666;">
+        ⚠ SYSTEM RECALIBRATING
+      </div>
+      <div id="gw-cooldown-timer" style="font-size: 2.5rem; font-weight: bold; color: #ffbf00;">
+        ${seconds}s
+      </div>
+      <div style="font-size: 0.75rem; color: #888; margin-top: 12px;">
+        Too many incorrect answers in quick succession
+      </div>
+    `;
+    overlay.style.display = 'flex';
+
+    // Update countdown every second
+    if (this._cooldownInterval) {
+      clearInterval(this._cooldownInterval);
+    }
+    this._cooldownInterval = setInterval(() => {
+      const remaining = this.state?.getCooldownRemaining() || 0;
+      if (remaining <= 0) {
+        this._hideCooldownOverlay();
+      } else {
+        const timer = overlay.querySelector('#gw-cooldown-timer');
+        if (timer) timer.textContent = `${remaining}s`;
+      }
+    }, 1000);
+  }
+
+  /**
+   * v1.3: Hide cooldown overlay
+   */
+  _hideCooldownOverlay() {
+    const overlay = document.querySelector('#gw-cooldown-overlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+    }
+    if (this._cooldownInterval) {
+      clearInterval(this._cooldownInterval);
+      this._cooldownInterval = null;
+    }
   }
 
   /**

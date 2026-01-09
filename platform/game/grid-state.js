@@ -8,14 +8,14 @@
 const DEFAULT_SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 
 // Game config (must match server - will be fetched from server on init)
-// v1.2.1: Added 3-tier activity pricing, boot bonus, visual dimming
+// v1.3: Updated activity windows, added spam prevention
 export let GRID_WARS_CONFIG = {
   claimCost: 10,
 
-  // v1.2.1: 3-tier activity-based pricing
-  takeoverCostCold: 15,      // >10min since defender's last answer
-  takeoverCostWarm: 20,      // 2-10min since defender's last answer
-  takeoverCostActive: 25,    // <2min since defender's last answer
+  // v1.3: 3-tier activity-based pricing
+  takeoverCostCold: 15,      // >8min since defender's last answer
+  takeoverCostWarm: 20,      // 3-8min since defender's last answer
+  takeoverCostActive: 25,    // <3min since defender's last answer
 
   // Legacy alias
   takeoverCostBase: 15,
@@ -38,9 +38,9 @@ export let GRID_WARS_CONFIG = {
 
   maxCellStrength: 3,
 
-  // v1.2.1: Activity windows (seconds)
-  activeWindowSeconds: 120,   // <2min = ACTIVE
-  warmWindowSeconds: 600,     // 2-10min = WARM
+  // v1.3: Activity windows (seconds)
+  activeWindowSeconds: 180,   // <3min = ACTIVE
+  warmWindowSeconds: 480,     // 3-8min = WARM
   activeDrillingWindow: 120,  // Legacy alias
 
   // v1.2.1: Visual dimming
@@ -52,7 +52,22 @@ export let GRID_WARS_CONFIG = {
   amplifierCharges: 5,
   amplifierBonus: 3,
   surgeDuration: 90,
-  nodePositions: []
+  nodePositions: [],
+
+  // v1.3: Spam prevention
+  spamWindowSeconds: 60,
+  spamThreshold: 3,
+  spamCooldownSeconds: 30,
+
+  // v1.3: Soft point ceiling
+  pointCeilingEnabled: true,
+  pointCeilingScaleFactor: 0.1,
+  pointCeilingMinPoints: 10,
+
+  // v1.3: AFK erosion
+  afkThresholdSeconds: 900,
+  afkErosionIntervalMs: 60000,
+  afkErosionStrength: 1
 };
 
 /**
@@ -84,6 +99,7 @@ export class GridWarsState {
     this.onBootBonus = options.onBootBonus || null;         // v1.2.1
     this.onResyncRequest = options.onResyncRequest || null; // v1.2.1
     this.onClaimStatusChange = options.onClaimStatusChange || null; // v1.2.1
+    this.onCooldownChange = options.onCooldownChange || null; // v1.3
 
     // v1.2.1: Sequence tracking for gap detection
     this._expectedSeq = null;
@@ -94,6 +110,13 @@ export class GridWarsState {
 
     // Pending state for optimistic updates
     this._pendingActions = [];
+
+    // v1.3: Spam prevention cooldown tracking
+    this._cooldownUntil = null;
+
+    // v1.3: Action ID reconciliation - resync handling
+    this._resyncInProgress = false;
+    this._pendingActionsQueue = [];
   }
 
   /**
@@ -269,23 +292,51 @@ export class GridWarsState {
   }
 
   /**
+   * v1.3: Calculate scaled cost based on player's current points
+   * Uses logarithmic scaling to slow down high-point players
+   */
+  _calculateScaledCost(baseCost) {
+    if (!GRID_WARS_CONFIG.pointCeilingEnabled) {
+      return baseCost;
+    }
+
+    const playerPoints = this.getActionPoints();
+    const minPoints = GRID_WARS_CONFIG.pointCeilingMinPoints;
+    const scaleFactor = GRID_WARS_CONFIG.pointCeilingScaleFactor;
+
+    const scale = 1 + scaleFactor * Math.log10(Math.max(playerPoints, minPoints));
+    return Math.ceil(baseCost * scale);
+  }
+
+  /**
    * Get cost to claim/takeover a territory at position
    * v1.2: Returns { base, active, isEnemy } for activity-based pricing
+   * v1.3: Includes effectiveCost (scaled based on player points)
    * - Inactive defender: base cost (15 pts)
    * - Active defender: active cost (25 pts)
-   * - Client shows base cost; actual cost determined server-side
+   * - Client shows effective cost; actual cost determined server-side
    */
   getClaimCostAt(x, y) {
     const owner = this.getTerritoryOwner(x, y);
     if (!owner) {
-      return { cost: GRID_WARS_CONFIG.claimCost, isEnemy: false }; // Neutral = 10
+      const baseCost = GRID_WARS_CONFIG.claimCost;
+      return {
+        cost: this._calculateScaledCost(baseCost),  // v1.3: Show scaled cost
+        baseCost,
+        isEnemy: false
+      };
     } else if (owner === this.username) {
       return null; // Own territory - can't reclaim
     } else {
       // v1.2: Return both costs so UI can show dynamic pricing info
+      // v1.3: Scale costs based on player points
+      const baseCost = GRID_WARS_CONFIG.takeoverCostBase;
+      const activeCostBase = GRID_WARS_CONFIG.takeoverCostActive;
       return {
-        cost: GRID_WARS_CONFIG.takeoverCostBase,        // Show base cost (15)
-        activeCost: GRID_WARS_CONFIG.takeoverCostActive, // Active defender cost (25)
+        cost: this._calculateScaledCost(baseCost),          // Scaled base cost
+        baseCost,
+        activeCost: this._calculateScaledCost(activeCostBase), // Scaled active cost
+        activeCostBase,
         isEnemy: true,
         defender: owner
       };
@@ -294,7 +345,7 @@ export class GridWarsState {
 
   /**
    * Check if player can afford to claim/takeover at position
-   * v1.2: Uses base cost for affordability check (actual cost may be higher for active defenders)
+   * v1.3: Uses scaled cost for affordability check
    */
   canAffordClaimAt(x, y) {
     const costInfo = this.getClaimCostAt(x, y);
@@ -302,14 +353,116 @@ export class GridWarsState {
     return this.getActionPoints() >= costInfo.cost;
   }
 
+  // ============================================
+  // v1.3: SPAM PREVENTION / COOLDOWN
+  // ============================================
+
+  /**
+   * Check if user is currently in cooldown
+   */
+  isInCooldown() {
+    return this._cooldownUntil && Date.now() < this._cooldownUntil;
+  }
+
+  /**
+   * Get remaining cooldown time in seconds
+   */
+  getCooldownRemaining() {
+    if (!this._cooldownUntil) return 0;
+    return Math.max(0, Math.ceil((this._cooldownUntil - Date.now()) / 1000));
+  }
+
+  /**
+   * Report a wrong answer to the server
+   * Called when drill grading returns 'I' (incorrect)
+   * @returns {Promise<object>} { inCooldown, cooldownRemaining, message }
+   */
+  async reportWrongAnswer() {
+    if (!this.gameId || !this.username) {
+      console.warn('[GridWarsState] Cannot report wrong answer: no gameId or username');
+      return { inCooldown: false, cooldownRemaining: 0 };
+    }
+
+    try {
+      const response = await fetch(`${this.serverUrl}/api/grid-wars/wrong-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: this.gameId,
+          username: this.username
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.inCooldown) {
+        this._cooldownUntil = Date.now() + result.cooldownRemaining * 1000;
+        if (this.onCooldownChange) {
+          this.onCooldownChange({
+            inCooldown: true,
+            remaining: result.cooldownRemaining,
+            message: result.message
+          });
+        }
+      }
+
+      return result;
+    } catch (err) {
+      console.error('[GridWarsState] Failed to report wrong answer:', err);
+      return { inCooldown: false, cooldownRemaining: 0 };
+    }
+  }
+
+  /**
+   * Check cooldown status from server
+   * Used on reconnection or page load
+   */
+  async checkCooldownStatus() {
+    if (!this.gameId || !this.username) return { inCooldown: false };
+
+    try {
+      const response = await fetch(
+        `${this.serverUrl}/api/grid-wars/cooldown?gameId=${this.gameId}&username=${this.username}`
+      );
+      const result = await response.json();
+
+      if (result.inCooldown) {
+        this._cooldownUntil = Date.now() + result.cooldownRemaining * 1000;
+        if (this.onCooldownChange) {
+          this.onCooldownChange({
+            inCooldown: true,
+            remaining: result.cooldownRemaining,
+            message: `SYSTEM RECALIBRATING (${result.cooldownRemaining}s remaining)`
+          });
+        }
+      } else {
+        this._cooldownUntil = null;
+      }
+
+      return result;
+    } catch (err) {
+      console.error('[GridWarsState] Failed to check cooldown status:', err);
+      return { inCooldown: false };
+    }
+  }
+
   /**
    * Claim or takeover a territory
    * v1.2: Cost determined server-side for enemy takeover (activity-based pricing)
    * v1.2.1: Enhanced with claim status tracking (pending/confirmed/rejected)
+   * v1.3: Uses UUID actionId for reliable reconciliation
    */
   async claimTerritory(x, y) {
     if (!this.gameId || !this.username) {
       throw new Error('Not initialized or no user set');
+    }
+
+    // v1.3: Check if in resync mode - queue action instead
+    if (this._resyncInProgress) {
+      this._pendingActionsQueue = this._pendingActionsQueue || [];
+      this._pendingActionsQueue.push({ type: 'claim', x, y });
+      console.log('[GridWarsState] Claim queued during resync');
+      return { queued: true };
     }
 
     // Validate locally first
@@ -325,11 +478,11 @@ export class GridWarsState {
       throw new Error('Insufficient action points');
     }
 
-    // v1.2.1: Generate unique claim ID for tracking
-    const claimId = ++this._claimIdCounter;
+    // v1.3: Generate UUID for this action (replaces counter-based claimId)
+    const actionId = crypto.randomUUID();
 
     // Optimistic update (may be adjusted when server responds)
-    this._applyOptimisticClaim(x, y, estimatedCost, currentOwner, claimId);
+    this._applyOptimisticClaim(x, y, estimatedCost, currentOwner, actionId);
 
     try {
       const response = await fetch(`${this.serverUrl}/api/grid-wars/action`, {
@@ -339,6 +492,7 @@ export class GridWarsState {
           gameId: this.gameId,
           username: this.username,
           action: 'claim',
+          actionId,  // v1.3: Include actionId for reconciliation
           x,
           y
         })
@@ -347,14 +501,24 @@ export class GridWarsState {
       if (!response.ok) {
         const error = await response.json();
         // Rollback optimistic update
-        this._rollbackOptimisticClaim(x, y, estimatedCost, claimId);
+        this._rollbackOptimisticClaim(x, y, estimatedCost, actionId);
         throw new Error(error.error || 'Failed to claim territory');
       }
 
       const result = await response.json();
 
-      // v1.2.1: Confirm the claim
-      this._confirmClaim(x, y, claimId);
+      // v1.3: Verify actionId matches
+      if (result.actionId && result.actionId !== actionId) {
+        console.warn(`[GridWarsState] ActionId mismatch: sent ${actionId}, received ${result.actionId}`);
+      }
+
+      // v1.3: Apply authoritative cell state if provided
+      if (result.authoritativeCell) {
+        this._applyAuthoritativeCell(result.authoritativeCell);
+      }
+
+      // Confirm the claim by actionId
+      this._confirmClaim(x, y, actionId);
 
       // Notify
       if (this.onTerritoryChanged) {
@@ -853,6 +1017,37 @@ export class GridWarsState {
         }
         this._emitStateChange();
         break;
+
+      // v1.3: AFK erosion notification
+      case 'afk_erosion':
+        const erosionKey = `${message.x},${message.y}`;
+        if (message.died) {
+          // Cell was neutralized
+          this.territories.delete(erosionKey);
+          if (message.previousOwner) {
+            this._updatePlayerTerritoriesCount(message.previousOwner, -1);
+          }
+        } else {
+          // Cell strength reduced
+          const erodingTerritory = this.territories.get(erosionKey);
+          if (erodingTerritory) {
+            erodingTerritory.strength = message.strength;
+          }
+        }
+
+        // Notify if this affects current user
+        if ((message.previousOwner === this.username || message.owner === this.username)
+            && this.onTerritoryChanged) {
+          this.onTerritoryChanged({
+            x: message.x,
+            y: message.y,
+            owner: message.died ? null : message.owner,
+            action: 'afk_erosion',
+            message: message.message
+          });
+        }
+        this._emitStateChange();
+        break;
     }
   }
 
@@ -989,6 +1184,60 @@ export class GridWarsState {
     this._emitStateChange();
   }
 
+  /**
+   * v1.3: Apply authoritative cell state from server
+   * Ensures client state matches server exactly after claim is confirmed
+   */
+  _applyAuthoritativeCell(cell) {
+    if (!cell || cell.x === undefined || cell.y === undefined) return;
+
+    const key = `${cell.x},${cell.y}`;
+    const currentTerritory = this.territories.get(key);
+
+    // Only update if different from current state
+    if (!currentTerritory ||
+        currentTerritory.owner !== cell.owner ||
+        currentTerritory.strength !== cell.strength) {
+      this.territories.set(key, {
+        owner: cell.owner,
+        claimed_at: cell.claimed_at,
+        strength: cell.strength,
+        node_type: cell.node_type || null
+      });
+      console.log(`[GridWarsState] Applied authoritative cell at ${key}: owner=${cell.owner}`);
+    }
+  }
+
+  /**
+   * v1.3: Enter resync mode - queue new actions until snapshot received
+   */
+  _enterResyncMode() {
+    this._resyncInProgress = true;
+    this._pendingActionsQueue = [];
+    console.log('[GridWarsState] Entering resync mode');
+  }
+
+  /**
+   * v1.3: Exit resync mode and replay queued actions
+   */
+  async _exitResyncMode() {
+    this._resyncInProgress = false;
+    const queuedActions = [...this._pendingActionsQueue];
+    this._pendingActionsQueue = [];
+    console.log(`[GridWarsState] Exiting resync mode, replaying ${queuedActions.length} queued actions`);
+
+    // Replay queued actions
+    for (const action of queuedActions) {
+      if (action.type === 'claim') {
+        try {
+          await this.claimTerritory(action.x, action.y);
+        } catch (err) {
+          console.warn('[GridWarsState] Failed to replay queued claim:', err.message);
+        }
+      }
+    }
+  }
+
   _updatePlayerPoints(delta) {
     if (!this.username) return;
     const player = this.players.get(this.username) || {
@@ -1025,9 +1274,14 @@ export class GridWarsState {
 
   /**
    * v1.2.1: Request state resync when sequence gap detected
+   * v1.3: Enters resync mode to queue incoming actions
    */
   _requestResync(lastSeq, expectedSeq) {
     console.log(`[GridWarsState] Requesting resync (last=${lastSeq}, expected=${expectedSeq})`);
+
+    // v1.3: Enter resync mode to queue new actions
+    this._enterResyncMode();
+
     if (this.onResyncRequest) {
       this.onResyncRequest({
         type: 'resync_request',
@@ -1036,6 +1290,18 @@ export class GridWarsState {
         expectedSeq
       });
     }
+  }
+
+  /**
+   * v1.3: Called after resync snapshot is received and applied
+   * Should be called by grid-panel.js after refreshState() completes
+   */
+  async completeResync() {
+    if (!this._resyncInProgress) {
+      console.log('[GridWarsState] completeResync called but not in resync mode');
+      return;
+    }
+    await this._exitResyncMode();
   }
 }
 

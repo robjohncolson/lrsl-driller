@@ -45,21 +45,23 @@ describe('Grid Wars v1.2 Features', () => {
       expect(GRID_WARS_CONFIG.activeDrillingWindow).toBe(120); // v1.2.1: extended to 2 minutes
     });
 
+    // v1.3: getClaimCostAt now returns baseCost and scaled cost
     it('getClaimCostAt returns cost info object for neutral cell', () => {
       const costInfo = state.getClaimCostAt(5, 5);
 
-      expect(costInfo).toEqual({
-        cost: GRID_WARS_CONFIG.claimCost,
-        isEnemy: false
-      });
+      expect(costInfo.baseCost).toBe(GRID_WARS_CONFIG.claimCost);
+      expect(costInfo.cost).toBeGreaterThanOrEqual(costInfo.baseCost); // Scaled
+      expect(costInfo.isEnemy).toBe(false);
     });
 
     it('getClaimCostAt returns both pricing tiers for enemy cell', () => {
       state.territories.set('5,5', { owner: 'bob' });
       const costInfo = state.getClaimCostAt(5, 5);
 
-      expect(costInfo.cost).toBe(GRID_WARS_CONFIG.takeoverCostBase);
-      expect(costInfo.activeCost).toBe(GRID_WARS_CONFIG.takeoverCostActive);
+      expect(costInfo.baseCost).toBe(GRID_WARS_CONFIG.takeoverCostBase);
+      expect(costInfo.cost).toBeGreaterThanOrEqual(costInfo.baseCost); // Scaled
+      expect(costInfo.activeCostBase).toBe(GRID_WARS_CONFIG.takeoverCostActive);
+      expect(costInfo.activeCost).toBeGreaterThanOrEqual(costInfo.activeCostBase); // Scaled
       expect(costInfo.isEnemy).toBe(true);
       expect(costInfo.defender).toBe('bob');
     });
@@ -71,24 +73,31 @@ describe('Grid Wars v1.2 Features', () => {
       expect(costInfo).toBeNull();
     });
 
-    it('canAffordClaimAt uses base cost for enemy territory check', () => {
-      // With 50 points, can afford base takeover (15)
+    it('canAffordClaimAt uses scaled cost for enemy territory check', () => {
+      // With 50 points, can afford scaled takeover (base 15 * ~1.17 = 18)
       state.territories.set('5,5', { owner: 'bob' });
       expect(state.canAffordClaimAt(5, 5)).toBe(true);
 
-      // With 14 points, cannot afford base takeover (15)
+      // v1.3: At 14 points, scale = 1 + 0.1 * log10(14) ≈ 1.115
+      // Scaled cost = ceil(15 * 1.115) = 17, cannot afford with 14 points
       state.players.set('alice', { action_points: 14, territories_count: 5, health: 100 });
       expect(state.canAffordClaimAt(5, 5)).toBe(false);
     });
 
-    it('canAffordClaimAt checks for neutral territory cost', () => {
-      // With 10 points exactly, can afford neutral claim
+    it('canAffordClaimAt checks for scaled neutral territory cost', () => {
+      // v1.3: At 10 points, scale = 1.1, cost = ceil(10 * 1.1) = 11
+      // With 10 points, cannot afford 11 cost neutral claim
       state.players.set('alice', { action_points: 10, territories_count: 5, health: 100 });
-      expect(state.canAffordClaimAt(5, 5)).toBe(true);
+      expect(state.canAffordClaimAt(5, 5)).toBe(false); // v1.3: 10 < 11 (scaled)
 
-      // With 9 points, cannot afford neutral claim
-      state.players.set('alice', { action_points: 9, territories_count: 5, health: 100 });
-      expect(state.canAffordClaimAt(5, 5)).toBe(false);
+      // At 11 points, scale = 1 + 0.1 * log10(11) ≈ 1.104, cost = ceil(10 * 1.104) = 12
+      // Still cannot afford with 11 points
+      state.players.set('alice', { action_points: 11, territories_count: 5, health: 100 });
+      expect(state.canAffordClaimAt(5, 5)).toBe(false); // v1.3: 11 < 12 (scaled)
+
+      // With 12 points exactly, can afford neutral claim (12 >= 12)
+      state.players.set('alice', { action_points: 12, territories_count: 5, health: 100 });
+      expect(state.canAffordClaimAt(5, 5)).toBe(true);
     });
   });
 

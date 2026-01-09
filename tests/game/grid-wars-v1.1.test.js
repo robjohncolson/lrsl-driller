@@ -131,17 +131,21 @@ describe('Grid Wars v1.1 Features', () => {
     });
 
     // v1.2: getClaimCostAt now returns cost info object
+    // v1.3: cost is now scaled based on player points (30 pts → scale ~1.15)
     it('returns correct cost for neutral cell', () => {
       const costInfo = state.getClaimCostAt(5, 5);
-      expect(costInfo.cost).toBe(GRID_WARS_CONFIG.claimCost); // 10
+      expect(costInfo.baseCost).toBe(GRID_WARS_CONFIG.claimCost); // 10
+      expect(costInfo.cost).toBeGreaterThan(costInfo.baseCost);   // Scaled cost
       expect(costInfo.isEnemy).toBe(false);
     });
 
     it('returns base cost and active cost for enemy cell', () => {
       state.territories.set('5,5', { owner: 'bob' });
       const costInfo = state.getClaimCostAt(5, 5);
-      expect(costInfo.cost).toBe(GRID_WARS_CONFIG.takeoverCostBase); // 15
-      expect(costInfo.activeCost).toBe(GRID_WARS_CONFIG.takeoverCostActive); // 25
+      expect(costInfo.baseCost).toBe(GRID_WARS_CONFIG.takeoverCostBase); // 15
+      expect(costInfo.cost).toBeGreaterThan(costInfo.baseCost);          // Scaled
+      expect(costInfo.activeCostBase).toBe(GRID_WARS_CONFIG.takeoverCostActive); // 25
+      expect(costInfo.activeCost).toBeGreaterThan(costInfo.activeCostBase);       // Scaled
       expect(costInfo.isEnemy).toBe(true);
     });
 

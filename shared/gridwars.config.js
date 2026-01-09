@@ -30,10 +30,10 @@ const GRID_WARS_CONFIG = {
   // ACTIVITY WINDOWS (seconds)
   // ============================================
 
-  // v1.2.1: Expanded from 60s binary to 3-tier system
-  activeWindowSeconds: 120,   // <2min = ACTIVE (highest protection)
-  warmWindowSeconds: 600,     // 2-10min = WARM (medium protection)
-  // >10min = COLD (no protection)
+  // v1.3: Adjusted windows for pedagogical reality
+  activeWindowSeconds: 180,   // <3min = ACTIVE (highest protection)
+  warmWindowSeconds: 480,     // 3-8min = WARM (medium protection)
+  // >8min = COLD (no protection)
 
   // Legacy alias
   activeDrillingWindow: 120,  // Updated from 60 to 120 for v1.2.1
@@ -130,6 +130,43 @@ const GRID_WARS_CONFIG = {
 
   tickIntervalMs: 5000,       // Server tick: 5 seconds
   broadcastThrottleMs: 500,   // Max 2 broadcasts per second for grid updates
+
+  // ============================================
+  // v1.3: SPAM PREVENTION
+  // ============================================
+
+  spamWindowSeconds: 60,      // Rolling window for wrong answer tracking
+  spamThreshold: 3,           // Wrong answers in window to trigger cooldown
+  spamCooldownSeconds: 30,    // Cooldown duration (blocks drill submissions)
+
+  // ============================================
+  // v1.3: SOFT POINT CEILING
+  // ============================================
+
+  // Logarithmic cost scaling to prevent runaway point accumulation
+  pointCeilingEnabled: true,
+  pointCeilingScaleFactor: 0.1,  // Multiplier for log10(points)
+  pointCeilingMinPoints: 10,     // Minimum points before scaling applies
+  // Formula: effectiveCost = baseCost * (1 + 0.1 * log10(max(playerPoints, 10)))
+  // At 10 pts:   scale = 1.1x  (10 → 11)
+  // At 100 pts:  scale = 1.2x  (10 → 12)
+  // At 1000 pts: scale = 1.3x  (10 → 13)
+
+  // ============================================
+  // v1.3: AFK EROSION
+  // ============================================
+
+  // Edge cells of inactive players erode over time
+  afkThresholdSeconds: 900,      // 15 minutes of inactivity
+  afkErosionIntervalMs: 60000,   // Check/erode every 1 minute
+  afkErosionStrength: 1,         // Strength lost per erosion tick
+
+  // ============================================
+  // v1.3: TELEMETRY
+  // ============================================
+
+  telemetryEnabled: true,
+  telemetryFlushIntervalMs: 300000,  // Flush every 5 minutes
 };
 
 // ES Module export (for client/Vite)
