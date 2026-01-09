@@ -22,6 +22,13 @@ npm run test:watch    # Run tests in watch mode
 npx vitest run tests/grading/sampling.test.js  # Run single test file
 ```
 
+**Railway Server (local development)**:
+```bash
+cd railway-server
+npm install
+node server.js        # Requires SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY env vars
+```
+
 The legacy `index.html` works standalone (file:// protocol) but the modular platform requires the dev server.
 
 ## Architecture
@@ -106,7 +113,9 @@ export function gradeField(fieldId, answer, context) {
 
 **ai-grader-prompt.txt** (optional) - Template for AI grading with `{{placeholder}}` substitution.
 
-After creating, add to `cartridges/registry.json` and the dropdown in `platform/app.html`.
+After creating:
+1. Add entry to `cartridges/registry.json`
+2. Add `<option>` to the dropdown in `platform/app.html`
 
 ## E/P/I Scoring System
 
@@ -134,7 +143,8 @@ Key mechanics: claim cost (weighted points), contestation (opposing claims on sa
 
 ## Environment Variables (Railway Server)
 
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY` - Database connection
+- `SUPABASE_URL` - Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` - Service role key (bypasses RLS for server writes); falls back to `SUPABASE_ANON_KEY`
 - `GEMINI_API_KEY`, `GROQ_API_KEY` - AI grading (fallback if pool empty)
 - `TEACHER_PASSWORD` - For teacher review access
 
