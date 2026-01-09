@@ -167,6 +167,27 @@ const GRID_WARS_CONFIG = {
 
   telemetryEnabled: true,
   telemetryFlushIntervalMs: 300000,  // Flush every 5 minutes
+
+  // ============================================
+  // v1.3.1: AUTO-SURGE ON STAGNATION
+  // ============================================
+
+  autoSurgeEnabled: true,
+  autoSurgeFillThreshold: 0.85,        // Map fill % to trigger (85%)
+  autoSurgeChurnThreshold: 5,          // cells_changed_5min below this
+  autoSurgeCellCount: 2,               // Number of surge cells to spawn
+  autoSurgeCooldownMs: 10 * 60 * 1000, // 10 minutes between auto-surges
+  autoSurgeCheckIntervalMs: 60 * 1000, // Check every minute
+
+  // ============================================
+  // v1.3.1: UNDERDOG ASSIST
+  // ============================================
+
+  underdogEnabled: true,
+  underdogDiscount: 0.5,               // 50% off next claim
+  underdogMinCost: 5,                  // Floor for discounted claim
+  underdogActivityWindowMs: 3 * 60 * 1000, // Must have answered in last 3 min
+  underdogCooldownMs: 5 * 60 * 1000,   // Can only trigger once per 5 min
 };
 
 // ES Module export (for client/Vite)

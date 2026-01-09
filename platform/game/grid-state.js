@@ -100,6 +100,7 @@ export class GridWarsState {
     this.onResyncRequest = options.onResyncRequest || null; // v1.2.1
     this.onClaimStatusChange = options.onClaimStatusChange || null; // v1.2.1
     this.onCooldownChange = options.onCooldownChange || null; // v1.3
+    this.onSystemEvent = options.onSystemEvent || null;     // v1.3.1
 
     // v1.2.1: Sequence tracking for gap detection
     this._expectedSeq = null;
@@ -977,6 +978,7 @@ export class GridWarsState {
         break;
 
       case 'surge_activated':
+      case 'auto_surge_activated':  // v1.3.1: Auto-surge uses same UI as manual surge
         this.surge = {
           x: message.x,
           y: message.y,
@@ -985,7 +987,18 @@ export class GridWarsState {
         if (this.onSurgeActivated) {
           this.onSurgeActivated(this.surge);
         }
+        // v1.3.1: Handle auto-surge message for toast
+        if (message.type === 'auto_surge_activated' && this.onSystemEvent) {
+          this.onSystemEvent({ event: 'auto_surge', message: message.message });
+        }
         this._emitStateChange();
+        break;
+
+      // v1.3.1: System events (for toast notifications)
+      case 'system_event':
+        if (this.onSystemEvent) {
+          this.onSystemEvent({ event: message.event, message: message.message });
+        }
         break;
 
       case 'surge_expired':

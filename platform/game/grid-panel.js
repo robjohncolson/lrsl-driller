@@ -79,6 +79,13 @@ export class GridPanel {
           console.error('[GridPanel] Resync failed:', err);
           this.showToast('RESYNC FAILED - REFRESH PAGE');
         }
+      },
+      // v1.3.1: System events (auto-surge, etc.)
+      onSystemEvent: (data) => {
+        if (data.event === 'auto_surge') {
+          sounds.alert();
+          this.showToast(data.message || 'UPLINK DETECTED — New sectors available');
+        }
       }
     });
 

@@ -2021,6 +2021,21 @@ const GRID_WARS_CONFIG = {
   // v1.3: Telemetry
   telemetryEnabled: true,
   telemetryFlushIntervalMs: 300000,  // 5 minutes
+
+  // v1.3.1: Auto-Surge on Stagnation
+  autoSurgeEnabled: true,
+  autoSurgeFillThreshold: 0.85,        // Map fill % to trigger (85%)
+  autoSurgeChurnThreshold: 5,          // cells_changed_5min below this
+  autoSurgeCellCount: 2,               // Number of surge cells to spawn
+  autoSurgeCooldownMs: 10 * 60 * 1000, // 10 minutes between auto-surges
+  autoSurgeCheckIntervalMs: 60 * 1000, // Check every minute
+
+  // v1.3.1: Underdog Assist
+  underdogEnabled: true,
+  underdogDiscount: 0.5,               // 50% off next claim
+  underdogMinCost: 5,                  // Floor for discounted claim
+  underdogActivityWindowMs: 3 * 60 * 1000, // Must have answered in last 3 min
+  underdogCooldownMs: 5 * 60 * 1000,   // Can only trigger once per 5 min
 };
 
 // ============================================
@@ -2104,6 +2119,7 @@ function checkCooldown(gameId, username) {
 
 // ============================================
 // v1.3: TELEMETRY
+// v1.3.1: Added aggregate metrics and session tracking
 // ============================================
 
 const telemetryCounters = {
@@ -2113,12 +2129,32 @@ const telemetryCounters = {
   afk_erosions_total: 0,
   cooldowns_triggered: 0,
   surges_activated: 0,
+  auto_surges_triggered: 0,  // v1.3.1
   class_goals_reached: 0,
-  points_earned_total: 0
+  points_earned_total: 0,
+  underdog_assists: 0        // v1.3.1
 };
 
 let lastTelemetryFlush = Date.now();
 let telemetryFlushInterval = null;
+
+// v1.3.1: Session tracking for aggregate metrics
+// Maps: `${gameId}:${username}` -> { join_time, first_claim_at }
+const playerSessions = new Map();
+
+// v1.3.1: Rolling event buffer for cells_changed_5min
+// Array of { timestamp, type: 'claim'|'takeover'|'erosion' }
+const recentOwnershipChanges = [];
+
+// v1.3.1: Track session end points for avg calculation
+let lastSessionSummary = { avg_points: null, player_count: 0 };
+
+// v1.3.1: Auto-surge state
+let lastAutoSurge = 0;
+let lastAutoSurgeCheck = 0;
+
+// v1.3.1: Underdog tracking - `${gameId}:${username}` -> last use timestamp
+const lastUnderdogUse = new Map();
 
 /**
  * Increment a telemetry counter
@@ -2144,17 +2180,153 @@ function telemetryIncrementTakeoverTier(tier) {
 }
 
 /**
+ * v1.3.1: Track player session start (called on avatar/init or first action)
+ */
+function trackPlayerSessionStart(gameId, username) {
+  const key = `${gameId}:${username}`;
+  if (!playerSessions.has(key)) {
+    playerSessions.set(key, {
+      join_time: Date.now(),
+      first_claim_at: null
+    });
+  }
+}
+
+/**
+ * v1.3.1: Track player's first claim (for onboarding friction metric)
+ */
+function trackFirstClaim(gameId, username) {
+  const key = `${gameId}:${username}`;
+  const session = playerSessions.get(key);
+  if (session && session.first_claim_at === null) {
+    session.first_claim_at = Date.now();
+  }
+}
+
+/**
+ * v1.3.1: Track ownership change event for cells_changed_5min metric
+ */
+function trackOwnershipChange(type) {
+  recentOwnershipChanges.push({
+    timestamp: Date.now(),
+    type
+  });
+  // Trim old events (keep last 10 minutes for safety margin)
+  const cutoff = Date.now() - 10 * 60 * 1000;
+  while (recentOwnershipChanges.length > 0 && recentOwnershipChanges[0].timestamp < cutoff) {
+    recentOwnershipChanges.shift();
+  }
+}
+
+/**
+ * v1.3.1: Get cells changed in last 5 minutes
+ */
+function getCellsChanged5Min() {
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  return recentOwnershipChanges.filter(e => e.timestamp > cutoff).length;
+}
+
+/**
+ * v1.3.1: Calculate map fill percentage (async - queries DB)
+ */
+async function getMapFillPercent() {
+  try {
+    // Get the active game
+    const { data: game } = await supabase
+      .from('grid_wars_games')
+      .select('game_id')
+      .eq('status', 'active')
+      .limit(1)
+      .single();
+
+    if (!game) return 0;
+
+    // Count owned cells
+    const { count } = await supabase
+      .from('grid_wars_territories')
+      .select('*', { count: 'exact', head: true })
+      .eq('game_id', game.game_id)
+      .not('owner', 'is', null);
+
+    const totalCells = GRID_WARS_CONFIG.mapSize * GRID_WARS_CONFIG.mapSize;
+    return Math.round(((count || 0) / totalCells) * 100) / 100;
+  } catch (err) {
+    console.error('getMapFillPercent error:', err);
+    return 0;
+  }
+}
+
+/**
+ * v1.3.1: Get count of active players in last 5 minutes
+ */
+async function getActivePlayers5Min() {
+  try {
+    const { data: game } = await supabase
+      .from('grid_wars_games')
+      .select('game_id')
+      .eq('status', 'active')
+      .limit(1)
+      .single();
+
+    if (!game) return 0;
+
+    const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from('grid_wars_players')
+      .select('*', { count: 'exact', head: true })
+      .eq('game_id', game.game_id)
+      .gt('last_answer_at', cutoff);
+
+    return count || 0;
+  } catch (err) {
+    console.error('getActivePlayers5Min error:', err);
+    return 0;
+  }
+}
+
+/**
+ * v1.3.1: Calculate median time to first claim
+ */
+function getMedianTimeToFirstClaim() {
+  const times = [];
+  for (const [, session] of playerSessions) {
+    if (session.first_claim_at !== null) {
+      times.push(session.first_claim_at - session.join_time);
+    }
+  }
+  if (times.length === 0) return null;
+  times.sort((a, b) => a - b);
+  return times[Math.floor(times.length / 2)];
+}
+
+/**
  * Flush telemetry to console (and optionally to database)
+ * v1.3.1: Added aggregate metrics
  */
 async function flushTelemetry() {
   if (!GRID_WARS_CONFIG.telemetryEnabled) return;
 
   const now = Date.now();
+
+  // v1.3.1: Compute aggregate metrics
+  const mapFillPercent = await getMapFillPercent();
+  const activePlayers5min = await getActivePlayers5Min();
+  const cellsChanged5min = getCellsChanged5Min();
+  const medianTimeToFirstClaim = getMedianTimeToFirstClaim();
+
   const flushData = {
     timestamp: new Date().toISOString(),
     interval_ms: now - lastTelemetryFlush,
     counters: { ...telemetryCounters },
-    counters_by_tier: { ...telemetryCounters.takeovers_by_tier }
+    counters_by_tier: { ...telemetryCounters.takeovers_by_tier },
+    // v1.3.1: Aggregate metrics
+    aggregates: {
+      map_fill_percent: mapFillPercent,
+      active_players_5min: activePlayers5min,
+      cells_changed_5min: cellsChanged5min,
+      median_time_to_first_claim: medianTimeToFirstClaim,
+      avg_points_at_session_end: lastSessionSummary.avg_points
+    }
   };
 
   console.log('[Grid Wars Telemetry]', JSON.stringify(flushData));
@@ -2166,8 +2338,10 @@ async function flushTelemetry() {
   telemetryCounters.afk_erosions_total = 0;
   telemetryCounters.cooldowns_triggered = 0;
   telemetryCounters.surges_activated = 0;
+  telemetryCounters.auto_surges_triggered = 0;
   telemetryCounters.class_goals_reached = 0;
   telemetryCounters.points_earned_total = 0;
+  telemetryCounters.underdog_assists = 0;
   lastTelemetryFlush = now;
 }
 
@@ -2190,6 +2364,189 @@ function stopTelemetryFlush() {
     clearInterval(telemetryFlushInterval);
     telemetryFlushInterval = null;
   }
+}
+
+// ============================================
+// v1.3.1: AUTO-SURGE ON STAGNATION
+// ============================================
+
+/**
+ * Check if auto-surge should trigger and spawn surge cells
+ */
+async function checkAutoSurge() {
+  if (!GRID_WARS_CONFIG.autoSurgeEnabled) return;
+
+  const now = Date.now();
+
+  // Respect check interval
+  if (now - lastAutoSurgeCheck < GRID_WARS_CONFIG.autoSurgeCheckIntervalMs) return;
+  lastAutoSurgeCheck = now;
+
+  // Respect cooldown
+  if (now - lastAutoSurge < GRID_WARS_CONFIG.autoSurgeCooldownMs) return;
+
+  try {
+    const fillPercent = await getMapFillPercent();
+    const recentChurn = getCellsChanged5Min();
+
+    // Check stagnation conditions
+    if (fillPercent > GRID_WARS_CONFIG.autoSurgeFillThreshold &&
+        recentChurn < GRID_WARS_CONFIG.autoSurgeChurnThreshold) {
+
+      console.log(`Grid Wars: Auto-surge triggered (fill=${fillPercent}, churn=${recentChurn})`);
+
+      // Get the active game
+      const { data: game } = await supabase
+        .from('grid_wars_games')
+        .select('game_id')
+        .eq('status', 'active')
+        .limit(1)
+        .single();
+
+      if (!game) return;
+
+      // Find unclaimed cells for surge
+      const { data: territories } = await supabase
+        .from('grid_wars_territories')
+        .select('x, y')
+        .eq('game_id', game.game_id);
+
+      const claimedSet = new Set((territories || []).map(t => `${t.x},${t.y}`));
+      const unclaimedCells = [];
+      for (let x = 0; x < GRID_WARS_CONFIG.mapSize; x++) {
+        for (let y = 0; y < GRID_WARS_CONFIG.mapSize; y++) {
+          if (!claimedSet.has(`${x},${y}`)) {
+            unclaimedCells.push({ x, y });
+          }
+        }
+      }
+
+      if (unclaimedCells.length === 0) {
+        console.log('Grid Wars: Auto-surge - no unclaimed cells available');
+        return;
+      }
+
+      // Spawn surge cells
+      const surgeCells = [];
+      for (let i = 0; i < GRID_WARS_CONFIG.autoSurgeCellCount && unclaimedCells.length > 0; i++) {
+        const idx = Math.floor(Math.random() * unclaimedCells.length);
+        surgeCells.push(unclaimedCells.splice(idx, 1)[0]);
+      }
+
+      // For simplicity, use the first cell as the "main" surge cell (single surge per game)
+      // If multiple surge cells are needed simultaneously, this would need schema changes
+      if (surgeCells.length > 0) {
+        const surgeCell = surgeCells[0];
+        const surgeExpires = new Date(Date.now() + GRID_WARS_CONFIG.surgeDuration * 1000).toISOString();
+
+        await supabase
+          .from('grid_wars_games')
+          .update({
+            surge_cell_x: surgeCell.x,
+            surge_cell_y: surgeCell.y,
+            surge_expires: surgeExpires
+          })
+          .eq('game_id', game.game_id);
+
+        // Broadcast auto-surge event
+        broadcast({
+          type: 'auto_surge_activated',
+          gameId: game.game_id,
+          x: surgeCell.x,
+          y: surgeCell.y,
+          cost: GRID_WARS_CONFIG.surgeCost,
+          expiresIn: GRID_WARS_CONFIG.surgeDuration,
+          message: 'UPLINK DETECTED — New sectors available'
+        });
+
+        // Also send as system_event for toast display
+        broadcast({
+          type: 'system_event',
+          gameId: game.game_id,
+          event: 'auto_surge',
+          message: 'UPLINK DETECTED — New sectors available'
+        });
+
+        lastAutoSurge = now;
+        telemetryIncrement('auto_surges_triggered');
+        console.log(`Grid Wars: Auto-surge spawned at (${surgeCell.x}, ${surgeCell.y})`);
+      }
+    }
+  } catch (err) {
+    console.error('Grid Wars: Auto-surge check error:', err);
+  }
+}
+
+// ============================================
+// v1.3.1: UNDERDOG ASSIST
+// ============================================
+
+/**
+ * Check if player qualifies for underdog discount
+ * @returns {{ eligible: boolean, discount: number, reason?: string }}
+ */
+async function checkUnderdogEligibility(gameId, username) {
+  if (!GRID_WARS_CONFIG.underdogEnabled) {
+    return { eligible: false, discount: 1, reason: 'disabled' };
+  }
+
+  const key = `${gameId}:${username}`;
+  const now = Date.now();
+
+  // Check cooldown
+  const lastUse = lastUnderdogUse.get(key);
+  if (lastUse && (now - lastUse) < GRID_WARS_CONFIG.underdogCooldownMs) {
+    return { eligible: false, discount: 1, reason: 'cooldown' };
+  }
+
+  try {
+    // Get player data
+    const { data: player } = await supabase
+      .from('grid_wars_players')
+      .select('territories_count, last_answer_at')
+      .eq('game_id', gameId)
+      .eq('username', username)
+      .single();
+
+    if (!player) {
+      return { eligible: false, discount: 1, reason: 'no_player' };
+    }
+
+    // Must have 0 cells
+    if ((player.territories_count || 0) > 0) {
+      return { eligible: false, discount: 1, reason: 'has_territory' };
+    }
+
+    // Must have answered recently
+    if (!player.last_answer_at) {
+      return { eligible: false, discount: 1, reason: 'never_answered' };
+    }
+
+    const timeSinceAnswer = now - new Date(player.last_answer_at).getTime();
+    if (timeSinceAnswer > GRID_WARS_CONFIG.underdogActivityWindowMs) {
+      return { eligible: false, discount: 1, reason: 'inactive' };
+    }
+
+    // Eligible!
+    return {
+      eligible: true,
+      discount: GRID_WARS_CONFIG.underdogDiscount,
+      minCost: GRID_WARS_CONFIG.underdogMinCost
+    };
+
+  } catch (err) {
+    console.error('checkUnderdogEligibility error:', err);
+    return { eligible: false, discount: 1, reason: 'error' };
+  }
+}
+
+/**
+ * Mark underdog assist as used
+ */
+function markUnderdogUsed(gameId, username) {
+  const key = `${gameId}:${username}`;
+  lastUnderdogUse.set(key, Date.now());
+  telemetryIncrement('underdog_assists');
 }
 
 // ============================================
@@ -2660,6 +3017,7 @@ async function processPlayerAfkErosion(gameId, username) {
 
     // v1.3: Telemetry
     telemetryIncrement('afk_erosions_total');
+    trackOwnershipChange('erosion');  // v1.3.1: Track for cells_changed_5min
 
     console.log(`Grid Wars: AFK erosion - cell (${targetCell.x}, ${targetCell.y}) owned by ${username} lost`);
   } else {
@@ -2752,6 +3110,9 @@ async function gridWarsServerTick() {
 
     // Check surge expiration
     await processSurgeExpiration();
+
+    // v1.3.1: Check for auto-surge on stagnation
+    await checkAutoSurge();
 
   } catch (err) {
     console.error('Grid Wars server tick error:', err);
@@ -3019,6 +3380,19 @@ app.post('/api/grid-wars/action', async (req, res) => {
       const baseCost = cost;
       cost = calculateScaledCost(cost, currentPoints);
 
+      // v1.3.1: Check for underdog assist (50% discount for players with 0 territory)
+      let underdogApplied = false;
+      const underdogResult = await checkUnderdogEligibility(gameId, username);
+      if (underdogResult.eligible && !isEnemyTakeover) {
+        // Apply discount only for neutral cell claims (not takeovers)
+        const discountedCost = Math.max(
+          underdogResult.minCost,
+          Math.floor(cost * underdogResult.discount)
+        );
+        cost = discountedCost;
+        underdogApplied = true;
+      }
+
       if (currentPoints < cost) {
         return res.status(400).json({
           error: `Insufficient points. Need ${cost}, have ${currentPoints}`,
@@ -3163,8 +3537,18 @@ app.post('/api/grid-wars/action', async (req, res) => {
       // v1.3: Telemetry tracking
       if (isEnemyTakeover) {
         telemetryIncrementTakeoverTier(activityTier);
+        trackOwnershipChange('takeover');
       } else {
         telemetryIncrement('claims_total');
+        trackOwnershipChange('claim');
+      }
+
+      // v1.3.1: Track first claim for onboarding friction metric
+      trackFirstClaim(gameId, username);
+
+      // v1.3.1: Mark underdog assist as used if applied
+      if (underdogApplied) {
+        markUnderdogUsed(gameId, username);
       }
 
       res.json({
@@ -3184,7 +3568,8 @@ app.post('/api/grid-wars/action', async (req, res) => {
         previousOwner: isEnemyTakeover ? previousOwner : null,
         defenderWasActive: defenderIsActive,
         activityTier: isEnemyTakeover ? activityTier : null,  // v1.2.1: 3-tier pricing feedback
-        authoritativeCell  // v1.3: Server-authoritative cell state
+        authoritativeCell,  // v1.3: Server-authoritative cell state
+        underdogApplied  // v1.3.1: Whether underdog discount was applied
       });
 
     } else {
@@ -3562,6 +3947,9 @@ app.post('/api/grid-wars/avatar/init', async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    // v1.3.1: Track session start for telemetry
+    trackPlayerSessionStart(gameId, username);
 
     // v1.2.1: Award boot bonus to new players
     let bootBonusAwarded = 0;
