@@ -112,6 +112,7 @@ export class GridWarsState {
     this.onBountyClaimed = options.onBountyClaimed || null; // v1.5
     this.onAfkDecay = options.onAfkDecay || null;           // v1.5
     this.onScarcityChange = options.onScarcityChange || null; // v1.5
+    this.onLeaderboardUpdate = options.onLeaderboardUpdate || null; // v1.6
 
     // v1.3.2: Session state
     this._sessionFrozen = false;
@@ -1329,6 +1330,13 @@ export class GridWarsState {
             velocity: message.velocity
           };
           this._emitStateChange();
+        }
+        break;
+
+      // v1.6: Leaderboard update (real-time sync)
+      case 'leaderboard_update':
+        if (this.onLeaderboardUpdate) {
+          this.onLeaderboardUpdate(message.leaderboard);
         }
         break;
     }

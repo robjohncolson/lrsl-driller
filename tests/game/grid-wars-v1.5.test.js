@@ -10,12 +10,18 @@
  * - Overextension penalty (isolated cell discount)
  * - Auto-bounty system (target dominant players)
  * - Minimum 1 point floor
+ *
+ * NOTE: v1.6 changed many config values (8x8 map, different costs).
+ * Tests for v1.5-specific values are skipped. See grid-wars-v1.6.test.js
+ * for tests with current configuration values.
  */
 
 import { describe, it, expect } from 'vitest';
 import { GRID_WARS_CONFIG } from '../../shared/gridwars.config.js';
 
-describe('Grid Wars v1.5 Features', () => {
+// Skip entire suite - v1.6 changed all these config values
+// See grid-wars-v1.6.test.js for current tests
+describe.skip('Grid Wars v1.5 Features (superseded by v1.6)', () => {
 
   describe('Economy Recalibration (3x costs)', () => {
     it('claim cost is 30 (was 10)', () => {

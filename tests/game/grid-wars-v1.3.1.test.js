@@ -41,10 +41,11 @@ function mockResponse(data, status = 200) {
 describe('Grid Wars v1.3.1 Features', () => {
   describe('Auto-Surge Config', () => {
     it('has correct auto-surge config values in shared config', () => {
-      expect(SHARED_CONFIG.autoSurgeEnabled).toBe(true);
+      // v1.6: Auto-surge disabled for 8x8 map (too small for surge mechanics)
+      expect(SHARED_CONFIG.autoSurgeEnabled).toBe(false);
       expect(SHARED_CONFIG.autoSurgeFillThreshold).toBe(0.85);
       expect(SHARED_CONFIG.autoSurgeChurnThreshold).toBe(5);
-      expect(SHARED_CONFIG.autoSurgeCellCount).toBe(2);
+      expect(SHARED_CONFIG.autoSurgeCellCount).toBe(1);  // v1.6: was 2, now 1
       expect(SHARED_CONFIG.autoSurgeCooldownMs).toBe(10 * 60 * 1000);  // 10 min
       expect(SHARED_CONFIG.autoSurgeCheckIntervalMs).toBe(60 * 1000);   // 1 min
     });
@@ -54,7 +55,7 @@ describe('Grid Wars v1.3.1 Features', () => {
     it('has correct underdog config values in shared config', () => {
       expect(SHARED_CONFIG.underdogEnabled).toBe(true);
       expect(SHARED_CONFIG.underdogDiscount).toBe(0.5);               // 50%
-      expect(SHARED_CONFIG.underdogMinCost).toBe(15);                 // v1.5: was 5, now 15 (3x)
+      expect(SHARED_CONFIG.underdogMinCost).toBe(20);                 // v1.6: was 15, now 20
       expect(SHARED_CONFIG.underdogActivityWindowMs).toBe(3 * 60 * 1000);  // 3 min
       expect(SHARED_CONFIG.underdogCooldownMs).toBe(5 * 60 * 1000);        // 5 min
     });

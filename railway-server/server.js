@@ -4673,6 +4673,9 @@ app.post('/api/grid-wars/action', async (req, res) => {
         activityTier: isEnemyTakeover ? activityTier : null  // v1.2.1: For display
       });
 
+      // v1.6: Broadcast leaderboard update for real-time UI sync
+      broadcastLeaderboardUpdate(gameId);
+
       // v1.3: Build authoritative cell state for client reconciliation
       const authoritativeCell = {
         x,
@@ -4953,6 +4956,9 @@ app.post('/api/grid-wars/points/add', async (req, res) => {
       starType: starType || null
     });
 
+    // v1.6: Broadcast leaderboard update for real-time UI sync
+    broadcastLeaderboardUpdate(gameId);
+
     // v1.4: Log with multiplier info
     const multiplierInfo = earningMultiplier < 1.0 ? ` [${Math.round(earningMultiplier * 100)}% due to empire size]` : '';
     console.log(`Grid Wars: ${username} earned ${adjustedPoints} points (base: ${basePoints}, cluster: +${contiguityBonus}, amplifier: +${amplifierBonus})${multiplierInfo}`);
@@ -4977,6 +4983,7 @@ app.post('/api/grid-wars/points/add', async (req, res) => {
 });
 
 // Get leaderboard for Grid Wars
+// v1.6: Single leaderboard sorted by lifetime_earned
 app.get('/api/grid-wars/leaderboard', async (req, res) => {
   try {
     const { gameId } = req.query;
@@ -4985,12 +4992,12 @@ app.get('/api/grid-wars/leaderboard', async (req, res) => {
       return res.status(400).json({ error: 'gameId query parameter required' });
     }
 
+    // v1.6: Select lifetime_earned and sort by it (single metric leaderboard)
     const { data: players, error } = await supabase
       .from('grid_wars_players')
-      .select('username, action_points, territories_count, structures_count')
+      .select('username, action_points, territories_count, lifetime_earned')
       .eq('game_id', gameId)
-      .order('territories_count', { ascending: false })
-      .limit(20);
+      .order('lifetime_earned', { ascending: false });
 
     if (error) {
       if (error.code === '42P01') {
@@ -5024,6 +5031,52 @@ app.get('/api/grid-wars/leaderboard', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+/**
+ * v1.6: Broadcast leaderboard update to all connected clients
+ * Called after territory claims or points earned to keep UI in sync
+ */
+async function broadcastLeaderboardUpdate(gameId) {
+  try {
+    const { data: players, error } = await supabase
+      .from('grid_wars_players')
+      .select('username, action_points, territories_count, lifetime_earned')
+      .eq('game_id', gameId)
+      .order('lifetime_earned', { ascending: false });
+
+    if (error) {
+      console.error('broadcastLeaderboardUpdate error:', error);
+      return;
+    }
+
+    // Get real names
+    const usernames = (players || []).map(p => p.username);
+    let usersMap = {};
+    if (usernames.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('username, real_name')
+        .in('username', usernames);
+
+      for (const u of users || []) {
+        usersMap[u.username] = u.real_name;
+      }
+    }
+
+    const leaderboard = (players || []).map(p => ({
+      ...p,
+      real_name: usersMap[p.username] || null
+    }));
+
+    broadcast({
+      type: 'leaderboard_update',
+      gameId,
+      leaderboard
+    });
+  } catch (err) {
+    console.error('broadcastLeaderboardUpdate error:', err);
+  }
+}
 
 // v1.4: Multi-dimensional leaderboard (Scholar, Banker, General)
 app.get('/api/grid-wars/leaderboard/multi', async (req, res) => {
@@ -5961,16 +6014,29 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Clean up stale connections (no heartbeat in 60 seconds)
+// v1.6: Clean up stale connections (no heartbeat in 5 minutes)
+const STALE_THRESHOLD_MS = GRID_WARS_CONFIG.presenceStaleThresholdMs || 300000;
+const PRUNE_INTERVAL_MS = GRID_WARS_CONFIG.presencePruneIntervalMs || 60000;
+
 setInterval(() => {
   const now = Date.now();
+  const pruned = [];
   for (const [ws, data] of clients) {
-    if (now - data.lastHeartbeat > 60000) {
-      console.log('Closing stale connection:', data.username);
+    if (now - data.lastHeartbeat > STALE_THRESHOLD_MS) {
+      pruned.push(data.username);
       ws.terminate();
     }
   }
-}, 30000);
+  if (pruned.length > 0) {
+    console.log('Pruned stale connections:', pruned.join(', '));
+    // Broadcast player_left for each pruned connection
+    pruned.forEach(username => {
+      if (username) {
+        broadcast({ type: 'player_left', username });
+      }
+    });
+  }
+}, PRUNE_INTERVAL_MS);
 
 // ============================================
 // v1.5.1: POINT EVENTS CLEANUP (Daily)

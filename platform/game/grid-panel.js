@@ -120,6 +120,11 @@ export class GridPanel {
         if (overlay) overlay.remove();
         this.showToast('MAP RESET — Starting fresh!');
         this.render();
+      },
+      // v1.6: Real-time leaderboard updates
+      onLeaderboardUpdate: (leaderboard) => {
+        this._leaderboardData = leaderboard;
+        this.renderLeaderboardContent();
       }
     });
 
@@ -308,24 +313,14 @@ export class GridPanel {
             </div>
           </div>
 
-          <!-- v1.4: Multi-Dimensional Leaderboard -->
+          <!-- v1.6: Single Leaderboard (lifetime_earned only) -->
           <div id="gw-leaderboard-section" style="border-top:1px solid #374151;">
-            <div style="display:flex;background:#0a0a0a;">
-              <button class="gw-lb-tab gw-lb-tab-active" data-tab="scholar" style="flex:1;padding:6px 4px;background:transparent;border:none;color:#fbbf24;font-size:0.6rem;cursor:pointer;border-bottom:2px solid #fbbf24;font-family:inherit;">
-                🎓 Scholar
-              </button>
-              <button class="gw-lb-tab" data-tab="banker" style="flex:1;padding:6px 4px;background:transparent;border:none;color:#6b7280;font-size:0.6rem;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;">
-                💰 Banker
-              </button>
-              <button class="gw-lb-tab" data-tab="general" style="flex:1;padding:6px 4px;background:transparent;border:none;color:#6b7280;font-size:0.6rem;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;">
-                ⚔️ General
-              </button>
+            <div style="padding:6px 8px;background:#0a0a0a;display:flex;align-items:center;justify-content:space-between;">
+              <span style="color:#fbbf24;font-size:0.7rem;font-weight:bold;">🏆 LEADERBOARD</span>
+              <span id="gw-my-rank" style="color:#6b7280;font-size:0.6rem;">Rank: --</span>
             </div>
-            <div id="gw-leaderboard-content" style="padding:8px;background:#0f172a;max-height:120px;overflow-y:auto;font-size:0.65rem;">
+            <div id="gw-leaderboard-content" style="padding:8px;background:#0f172a;max-height:150px;overflow-y:auto;font-size:0.65rem;">
               <div style="color:#6b7280;text-align:center;">Loading...</div>
-            </div>
-            <div id="gw-my-ranks" style="padding:6px 8px;background:#0a0a0a;font-size:0.6rem;color:#6b7280;text-align:center;border-top:1px solid #1e293b;">
-              Your rank: <span id="gw-rank-scholar">--</span> · <span id="gw-rank-banker">--</span> · <span id="gw-rank-general">--</span>
             </div>
           </div>
         </div>
@@ -372,21 +367,13 @@ export class GridPanel {
           border-color: #00ff41;
           color: #00ff41;
         }
-        /* v1.4: Leaderboard tab styles */
-        .gw-lb-tab:hover {
-          color: #9ca3af;
+        /* v1.6: Leaderboard styles (single view, no tabs) */
+        #gw-leaderboard-content::-webkit-scrollbar {
+          width: 4px;
         }
-        .gw-lb-tab-active {
-          color: #fbbf24 !important;
-          border-bottom-color: #fbbf24 !important;
-        }
-        .gw-lb-tab[data-tab="banker"].gw-lb-tab-active {
-          color: #22d3ee !important;
-          border-bottom-color: #22d3ee !important;
-        }
-        .gw-lb-tab[data-tab="general"].gw-lb-tab-active {
-          color: #a855f7 !important;
-          border-bottom-color: #a855f7 !important;
+        #gw-leaderboard-content::-webkit-scrollbar-thumb {
+          background: #374151;
+          border-radius: 2px;
         }
         .gw-lb-entry {
           display: flex;
@@ -538,16 +525,7 @@ export class GridPanel {
     // Keyboard controls
     this.setupKeyboardControls();
 
-    // v1.4: Leaderboard tab switching
-    this.container.querySelectorAll('.gw-lb-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const tabName = tab.getAttribute('data-tab');
-        this.switchLeaderboardTab(tabName);
-      });
-    });
-
-    // v1.4: Current leaderboard tab
-    this._currentLeaderboardTab = 'scholar';
+    // v1.6: Single leaderboard (no tabs)
     this._leaderboardData = null;
   }
 
@@ -1345,37 +1323,20 @@ export class GridPanel {
   }
 
   /**
-   * v1.4: Switch leaderboard tab
+   * v1.6: Fetch and update single leaderboard (lifetime_earned only)
    */
-  switchLeaderboardTab(tabName) {
-    this._currentLeaderboardTab = tabName;
-
-    // Update tab styles
-    this.container.querySelectorAll('.gw-lb-tab').forEach(tab => {
-      const isActive = tab.getAttribute('data-tab') === tabName;
-      tab.classList.toggle('gw-lb-tab-active', isActive);
-    });
-
-    // Re-render with current data
-    this.renderLeaderboardContent();
-  }
-
-  /**
-   * v1.4: Fetch and update multi-leaderboard
-   */
-  async refreshMultiLeaderboard() {
+  async refreshLeaderboard() {
     if (!this.state) {
-      console.warn('[GridPanel] refreshMultiLeaderboard: no state');
+      console.warn('[GridPanel] refreshLeaderboard: no state');
       return;
     }
 
     try {
-      this._leaderboardData = await this.state.getMultiLeaderboard(5);
+      // Use the unified leaderboard which returns lifetime_earned
+      this._leaderboardData = await this.state.getLeaderboard(10);
       this.renderLeaderboardContent();
-      this.updateMyRanks();
     } catch (err) {
-      console.error('Failed to fetch multi-leaderboard:', err);
-      // Show error state instead of staying on "Loading..."
+      console.error('Failed to fetch leaderboard:', err);
       const contentEl = this.container?.querySelector('#gw-leaderboard-content');
       if (contentEl) {
         contentEl.innerHTML = '<div style="color:#ef4444;text-align:center;">Failed to load</div>';
@@ -1384,35 +1345,41 @@ export class GridPanel {
   }
 
   /**
-   * v1.4: Render leaderboard content for current tab
+   * v1.6: Render single leaderboard content
    */
   renderLeaderboardContent() {
     const contentEl = this.container?.querySelector('#gw-leaderboard-content');
-    if (!contentEl || !this._leaderboardData) return;
+    if (!contentEl) return;
 
-    const tab = this._currentLeaderboardTab;
-    const entries = this._leaderboardData[tab] || [];
+    const entries = this._leaderboardData || [];
 
     if (entries.length === 0) {
       contentEl.innerHTML = '<div style="color:#6b7280;text-align:center;">No data yet</div>';
       return;
     }
 
-    const colors = {
-      scholar: '#fbbf24',
-      banker: '#22d3ee',
-      general: '#a855f7'
-    };
-    const color = colors[tab] || '#9ca3af';
+    // Find current player's rank
+    const myIndex = entries.findIndex(e => e.username === this.state?.username);
+    const myRankEl = this.container?.querySelector('#gw-my-rank');
+    if (myRankEl) {
+      myRankEl.textContent = myIndex >= 0 ? `Rank: #${myIndex + 1}` : 'Rank: --';
+      myRankEl.style.color = myIndex >= 0 ? '#fbbf24' : '#6b7280';
+    }
 
     const html = entries.map((entry, i) => {
       const isMe = entry.username === this.state?.username;
       const name = entry.real_name || entry.username || 'Unknown';
       const displayName = name.length > 12 ? name.slice(0, 10) + '...' : name;
+      const pts = entry.lifetime_earned || entry.weighted_score || 0;
+      const cells = entry.territories_count || 0;
+
       return `
-        <div class="gw-lb-entry${isMe ? ' my-entry' : ''}">
+        <div class="gw-lb-entry${isMe ? ' my-entry' : ''}" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;${isMe ? 'background:rgba(0,255,65,0.1);margin:0 -4px;padding:4px;border-radius:3px;' : ''}">
           <span style="color:${isMe ? '#00ff41' : '#e2e8f0'};">${i + 1}. ${displayName}</span>
-          <span style="color:${color};font-weight:bold;">${entry.value}</span>
+          <span style="display:flex;gap:8px;align-items:center;">
+            <span style="color:#fbbf24;font-weight:bold;">${pts}</span>
+            <span style="color:#6b7280;font-size:0.55rem;">(${cells})</span>
+          </span>
         </div>
       `;
     }).join('');
@@ -1420,29 +1387,13 @@ export class GridPanel {
     contentEl.innerHTML = html;
   }
 
-  /**
-   * v1.4: Update my ranks display
-   */
+  // v1.6: Aliases for backwards compatibility
+  async refreshMultiLeaderboard() {
+    return this.refreshLeaderboard();
+  }
+
   updateMyRanks() {
-    const data = this._leaderboardData;
-    if (!data?.playerRanks) return;
-
-    const scholarEl = this.container?.querySelector('#gw-rank-scholar');
-    const bankerEl = this.container?.querySelector('#gw-rank-banker');
-    const generalEl = this.container?.querySelector('#gw-rank-general');
-
-    if (scholarEl && data.playerRanks.scholar) {
-      scholarEl.textContent = `#${data.playerRanks.scholar.rank}`;
-      scholarEl.style.color = '#fbbf24';
-    }
-    if (bankerEl && data.playerRanks.banker) {
-      bankerEl.textContent = `#${data.playerRanks.banker.rank}`;
-      bankerEl.style.color = '#22d3ee';
-    }
-    if (generalEl && data.playerRanks.general) {
-      generalEl.textContent = `#${data.playerRanks.general.rank}`;
-      generalEl.style.color = '#a855f7';
-    }
+    // No-op in v1.6 (single leaderboard handles this in renderLeaderboardContent)
   }
 
   /**
