@@ -203,7 +203,6 @@ export class GridWarsState {
       }
 
       this.players.clear();
-      console.log('[GridWarsState] Loading players from state:', state.players?.length, 'players, looking for:', this.username);
       for (const p of state.players) {
         this.players.set(p.username, {
           action_points: p.action_points,
@@ -217,12 +216,6 @@ export class GridWarsState {
           last_answer_at: p.last_answer_at || null,
           updated_at: p.updated_at
         });
-        if (p.username === this.username) {
-          console.log('[GridWarsState] Found my player data:', p.username, 'points:', p.action_points);
-        }
-      }
-      if (!this.players.has(this.username)) {
-        console.warn('[GridWarsState] My username NOT in players list!', this.username, 'Available:', [...this.players.keys()]);
       }
 
       // Update class goal
