@@ -332,11 +332,5 @@ const GRID_WARS_CONFIG = {
 };
 
 
-// ES Module export (for client/Vite)
-export { GRID_WARS_CONFIG };
-export default GRID_WARS_CONFIG;
-
-// CommonJS export (for server/Node.js)
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { GRID_WARS_CONFIG };
-}
+// CommonJS export (for Railway server)
+module.exports = { GRID_WARS_CONFIG };
