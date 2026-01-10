@@ -7,11 +7,14 @@
  * - Final level: 3x multiplier
  * - Intermediate levels: linearly interpolated
  *
- * Star Ratios (relative to gold):
- * - Gold: 1.0
- * - Silver: 0.5 (half of gold)
- * - Bronze: 0.25 (half of silver)
- * - Tin: 0.125 (half of bronze)
+ * Star Base Points (v1.5):
+ * - Gold: 4 pts (1.0 ratio)
+ * - Silver: 3 pts (0.75 ratio)
+ * - Bronze: 2 pts (0.5 ratio)
+ * - Tin: 1 pt (0.25 ratio)
+ *
+ * Minimum Points Floor (v1.5):
+ * - Every answer awards at least 1 point
  *
  * Unlock Rules:
  * - 3 gold stars on a level unlock the next level
@@ -23,12 +26,16 @@ const SCORING_CONFIG = {
   baseGoldPoints: 4,
 
   // Star type ratios (relative to gold)
+  // v1.5: Updated to give effective points of 4/3/2/1
   starRatios: {
-    gold: 1.0,
-    silver: 0.5,
-    bronze: 0.25,
-    tin: 0.125
+    gold: 1.0,      // 4 * 1.0 = 4 pts
+    silver: 0.75,   // 4 * 0.75 = 3 pts (was 0.5)
+    bronze: 0.5,    // 4 * 0.5 = 2 pts (was 0.25)
+    tin: 0.25       // 4 * 0.25 = 1 pt (was 0.125)
   },
+
+  // v1.5: Minimum points per answer (floor)
+  minimumPoints: 1,
 
   // Level multiplier range
   levelMultiplier: {
@@ -45,10 +52,10 @@ const SCORING_CONFIG = {
  * @param {string} starType - 'gold', 'silver', 'bronze', or 'tin'
  * @param {number} levelIndex - 0-based index of current level
  * @param {number} totalLevels - Total number of levels in cartridge
- * @returns {number} Weighted points (rounded to 1 decimal)
+ * @returns {number} Weighted points (rounded to 1 decimal, minimum 1)
  */
 function calculateWeightedPoints(starType, levelIndex, totalLevels) {
-  const { baseGoldPoints, starRatios, levelMultiplier } = SCORING_CONFIG;
+  const { baseGoldPoints, starRatios, levelMultiplier, minimumPoints } = SCORING_CONFIG;
 
   // Get star ratio (default to tin if unknown)
   const starRatio = starRatios[starType] || starRatios.tin;
@@ -67,8 +74,8 @@ function calculateWeightedPoints(starType, levelIndex, totalLevels) {
   // Calculate final weighted points
   const weightedPoints = baseGoldPoints * starRatio * multiplier;
 
-  // Round to 1 decimal place
-  return Math.round(weightedPoints * 10) / 10;
+  // Round to 1 decimal place, apply minimum floor (v1.5)
+  return Math.max(minimumPoints, Math.round(weightedPoints * 10) / 10);
 }
 
 /**

@@ -35,31 +35,20 @@ node server.js        # Requires SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY env var
 
 The `index.html` legacy app works standalone (file:// protocol) but the modular `platform/app.html` requires the dev server.
 
+**Tip**: Run `npm test` before pushing to catch regressions. Tests are fast (~2s).
+
 ## Architecture
 
 ### Console-Cartridge Pattern
 
 **Platform (Console)** - `platform/` - topic-agnostic orchestrator:
 - `platform.js` - Main orchestrator, loads cartridges, coordinates engines
-- `core/game-engine.js` - Streaks, stars (gold/silver/bronze/tin), tier progression
-- `core/grading-engine.js` - Dual grading: keywords (regex) + AI (Gemini/Groq)
-- `core/graph-engine.js` - Canvas-based scatterplots, regression lines, residual plots
-- `core/input-renderer.js` - Dynamic form fields with hint toggles
-- `core/cartridge-loader.js` - Loads manifests, generators, grading rules
-- `core/shuffle-bag.js` - Fair problem distribution (no near-repeats)
-- `core/celebration.js` - Star/unlock animations
-- `core/leaderboard.js` - Class leaderboard display
-- `core/user-system.js` - User registration, login, persistence
-- `core/websocket-client.js` - Real-time server communication
-- `core/time-tracker.js` - Session and problem timing
-- `core/class-time.js` - Class period management
-- `core/sound-engine.js` - Audio feedback
-- `game/grid-state.js` - Grid Wars client state management
-- `game/grid-renderer.js` - Grid Wars canvas rendering
-- `game/grid-panel.js` - Grid Wars UI panel component
-- `game/teacher-view.js` - Teacher dashboard components
-- `game/audio.js` - Sound effects
+- `core/` - Engines: game-engine (streaks/stars), grading-engine (dual grading), graph-engine (canvas plots), input-renderer (dynamic forms), cartridge-loader, shuffle-bag, user-system, websocket-client, time-tracker, celebration, leaderboard, sound-engine
+- `game/` - Grid Wars: grid-state, grid-renderer, grid-panel, teacher-view, audio
 - `core/radical-*.js` - Algebra 2 radicals: visualizer, game, prime game, complex game
+
+**Shared** - `shared/` - Code shared between platform and server:
+- `scoring.config.js` - Level-weighted scoring formula (exports `calculateWeightedPoints`, `getLevelMultiplier`, `getPointsBreakdown`)
 
 **Cartridges (Lessons)** - `cartridges/{id}/` - content-specific, fully self-contained:
 - `manifest.json` - Config: modes, inputs, hints, progression, grading settings
@@ -151,6 +140,13 @@ A territory control game where students earn points from drill stars to claim ce
 
 Key mechanics: claim cost (weighted points), cell strength (1-3), resource nodes (amplifiers), surge mode, class goal bonuses, activity-based takeover pricing.
 
+**v1.4 Features:**
+- **Level-weighted scoring**: Stars worth more at higher levels (0.5x→3.0x multiplier). Uses `shared/scoring.config.js`
+- **Lifetime tracking**: `lifetime_earned` tracks total points earned (never decreases), separate from spendable `action_points`
+- **Multi-dimensional leaderboard**: Scholar (lifetime_earned), Banker (action_points), General (territories)
+- **Progress tracking with cartridge data**: Records `cartridge_id`, `mode_id`, `level_index`, `weighted_points`
+- **ESC dismissal**: Press ESC to collapse expanded Grid Wars panel
+
 **v1.3.2 Features:**
 - **Unified economy**: Leaderboard shows same points as Grid Wars (`/api/leaderboard/unified`)
 - **Session management**: Teacher can end/resume sessions, freeze claims while drills continue
@@ -171,14 +167,16 @@ Key mechanics: claim cost (weighted points), cell strength (1-3), resource nodes
 npm test                                          # All tests
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
+npx vitest run tests/game/grid-wars-v1.4.test.js # Grid Wars v1.4 tests
+npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 ```
 
 Test organization:
-- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version)
+- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config)
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
 - `tests/server/` - Railway server API tests (api, grid-wars-api)
-- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1, v1.2, v1.2.1, v1.3, v1.3.1, v1.3.2, v3)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v1.4)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 

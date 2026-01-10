@@ -2112,31 +2112,32 @@ app.get('/api/time-tracking/class-summary', async (req, res) => {
 // Game config - territory exploration with direct takeover
 // v1.2.1: Added 3-tier activity pricing, boot bonus
 const GRID_WARS_CONFIG = {
-  claimCost: 10,
+  // v1.5: 3x cost inflation for scarcity economy
+  claimCost: 30,                     // was 10
 
-  // v1.2.1: 3-tier activity-based pricing for enemy territory
-  takeoverCostCold: 15,        // >10min since defender's last answer
-  takeoverCostWarm: 20,        // 2-10min since defender's last answer
-  takeoverCostActive: 25,      // <2min since defender's last answer
+  // v1.2.1: 3-tier activity-based pricing for enemy territory (v1.5: 3x)
+  takeoverCostCold: 45,              // was 15, >8min since defender's last answer
+  takeoverCostWarm: 60,              // was 20, 3-8min since defender's last answer
+  takeoverCostActive: 75,            // was 25, <3min since defender's last answer
 
   // Legacy alias for backward compatibility
-  takeoverCostBase: 15,
+  takeoverCostBase: 45,              // was 15
 
-  nodeClaimCost: 15,           // Resource nodes cost more
-  surgeCost: 5,                // Surge cells cost less
+  nodeClaimCost: 45,                 // was 15, resource nodes cost more (3x)
+  surgeCost: 15,                     // was 5, surge cells cost less (3x)
   starPoints: {
     gold: 4,
     silver: 3,
     bronze: 2,
     tin: 1
   },
-  mapSize: 20,
+  mapSize: 25,                       // was 20, v1.5: 625 total cells
   classGoalTarget: 200,
   classGoalBonus: 10,
   maxContiguityBonus: 5,       // v1.2: increased from 3 to reward big empires
 
-  // v1.2.1: Boot bonus for new players
-  bootBonus: 15,
+  // v1.2.1: Boot bonus for new players (v1.5: 3x)
+  bootBonus: 45,
 
   // Decay settings
   decayIntervalMs: 60000,       // Isolated cells lose 1 strength per minute
@@ -2169,11 +2170,13 @@ const GRID_WARS_CONFIG = {
   // Surge settings
   surgeDuration: 90,            // Seconds surge cell lasts
 
-  // Resource node positions (all nodes are now Amplifier type for simplicity)
+  // Resource node positions (v1.5: adjusted for 25x25, 5 nodes)
   nodePositions: [
-    { x: 10, y: 10, type: 'amplifier' },  // Center
-    { x: 4, y: 4, type: 'amplifier' },    // Top-left quadrant (was beacon)
-    { x: 15, y: 15, type: 'amplifier' }   // Bottom-right quadrant (was anchor)
+    { x: 12, y: 12, type: 'amplifier' },  // Center
+    { x: 5, y: 5, type: 'amplifier' },    // Top-left quadrant
+    { x: 19, y: 19, type: 'amplifier' },  // Bottom-right quadrant
+    { x: 5, y: 19, type: 'amplifier' },   // Bottom-left quadrant (NEW)
+    { x: 19, y: 5, type: 'amplifier' }    // Top-right quadrant (NEW)
   ],
 
   // Server tick interval
@@ -2189,10 +2192,13 @@ const GRID_WARS_CONFIG = {
   pointCeilingScaleFactor: 0.1,  // Multiplier for log10(points)
   pointCeilingMinPoints: 10,     // Minimum points before scaling applies
 
-  // v1.3: AFK Erosion
-  afkThresholdSeconds: 900,      // 15 minutes of inactivity
-  afkErosionIntervalMs: 60000,   // Check/erode every 1 minute
-  afkErosionStrength: 1,         // Strength lost per erosion tick
+  // v1.5: AFK Decay (replaces v1.3 erosion)
+  // Old v1.3: 15min threshold, strength-based decay
+  // New v1.5: 24hr grace period, 1 cell/day returns to neutral
+  afkGracePeriodHours: 24,           // No decay for first 24 hours of inactivity
+  afkDecayCellsPerDay: 1,            // Lose 1 edge cell per day after grace period
+  afkDecayCheckIntervalMs: 3600000,  // Check hourly (was 60000)
+  afkDecayTarget: 'neutral',         // Cells return to unclaimed (not strength loss)
 
   // v1.3: Telemetry
   telemetryEnabled: true,
@@ -2206,13 +2212,266 @@ const GRID_WARS_CONFIG = {
   autoSurgeCooldownMs: 10 * 60 * 1000, // 10 minutes between auto-surges
   autoSurgeCheckIntervalMs: 60 * 1000, // Check every minute
 
-  // v1.3.1: Underdog Assist
+  // v1.3.1: Underdog Assist (v1.5: scaled floor)
   underdogEnabled: true,
   underdogDiscount: 0.5,               // 50% off next claim
-  underdogMinCost: 5,                  // Floor for discounted claim
+  underdogMinCost: 15,                 // was 5, floor for discounted claim (3x)
   underdogActivityWindowMs: 3 * 60 * 1000, // Must have answered in last 3 min
   underdogCooldownMs: 5 * 60 * 1000,   // Can only trigger once per 5 min
+
+  // v1.4: Diminishing Returns (v1.5: scaled for 25x25 map)
+  diminishingReturnsEnabled: true,
+  diminishingReturnsThreshold: 75,     // was 25, now ~12% of 625 cells
+  diminishingReturnsMinMultiplier: 0.5, // Floor at 50% earning rate
+  diminishingReturnsFactor: 0.004,     // was 0.005, slightly reduced for larger threshold
+
+  // v1.5: Scarcity Pricing
+  scarcityEnabled: true,
+  scarcityPhases: {
+    EXPANSION:  { maxFill: 0.50, multiplier: 1.0, message: '🌱 Land Rush' },
+    TENSION:    { maxFill: 0.80, multiplier: 1.6, message: '⚡ Territory Tightening' },
+    SCARCITY:   { maxFill: 0.95, multiplier: 2.2, message: '🔥 Prime Real Estate Gone' },
+    SATURATION: { maxFill: 1.00, multiplier: 3.0, message: '💎 Last Parcels' },
+  },
+  scarcityFullMessage: '⚔️ ALL TERRITORY CLAIMED — Only Conquest Remains',
+
+  // v1.5: Minimum points floor
+  minimumPointsPerAnswer: 1,
+
+  // v1.5: Velocity Strike (points/min attack bonus)
+  velocityEnabled: true,
+  velocityWindowMinutes: 10,
+  velocityTiers: {
+    BLAZING: { min: 2.0, discount: 0.40, message: '🔥 BLAZING (40% off)' },
+    FLOWING: { min: 1.0, discount: 0.25, message: '⚡ FLOWING (25% off)' },
+    ACTIVE:  { min: 0.5, discount: 0.10, message: '💧 ACTIVE (10% off)' },
+    IDLE:    { min: 0,   discount: 0,    message: '❄️ IDLE (no bonus)' },
+  },
+
+  // v1.5: Guerrilla Warfare (small vs large bonus)
+  guerrillaEnabled: true,
+  guerrillaTiers: [
+    { attackerMax: 10, defenderMin: 50, discount: 0.50, message: '⚔️ Guerrilla Strike! (50% off)' },
+    { attackerMax: 20, defenderMin: 75, discount: 0.40, message: '⚔️ Guerrilla Raid (40% off)' },
+    { attackerMax: 30, defenderMin: 100, discount: 0.30, message: '⚔️ Guerrilla Ambush (30% off)' },
+  ],
+
+  // v1.5: Overextension Penalty (defense discount on isolated cells)
+  overextensionEnabled: true,
+  overextensionIsolatedDiscount: 0.30,
+  overextensionEdgeDiscount: 0.15,
+  overextensionClusterThreshold: 3,
+
+  // v1.5: Auto-Bounty System
+  bountyEnabled: true,
+  bountyThresholdPercent: 0.20,
+  bountyBonusPoints: 15,
+  bountyCheckIntervalMs: 60000,
 };
+
+// ============================================
+// v1.5: VELOCITY TRACKING (in-memory point events)
+// ============================================
+
+// Track recent point earnings for velocity calculation
+// Map: `${gameId}:${username}` -> [{ timestamp, delta }]
+const pointEvents = new Map();
+
+/**
+ * Record a point earning event for velocity tracking
+ */
+function recordPointEvent(gameId, username, delta) {
+  if (!GRID_WARS_CONFIG.velocityEnabled) return;
+
+  const key = `${gameId}:${username}`;
+  const now = Date.now();
+  const windowMs = GRID_WARS_CONFIG.velocityWindowMinutes * 60 * 1000;
+
+  // Get or create history
+  let history = pointEvents.get(key) || [];
+
+  // Add new event
+  history.push({ timestamp: now, delta });
+
+  // Prune old events outside window
+  history = history.filter(e => now - e.timestamp < windowMs);
+
+  pointEvents.set(key, history);
+}
+
+/**
+ * Calculate player's velocity (points per minute over window)
+ * @returns {number} Points per minute
+ */
+function getPlayerVelocity(gameId, username) {
+  if (!GRID_WARS_CONFIG.velocityEnabled) return 0;
+
+  const key = `${gameId}:${username}`;
+  const history = pointEvents.get(key) || [];
+  const windowMinutes = GRID_WARS_CONFIG.velocityWindowMinutes;
+
+  // Sum all points in window
+  const totalPoints = history.reduce((sum, e) => sum + e.delta, 0);
+
+  return totalPoints / windowMinutes;
+}
+
+/**
+ * Get velocity tier and discount for a player
+ * @returns {object} { tier, discount, message }
+ */
+function getVelocityTier(velocity) {
+  if (!GRID_WARS_CONFIG.velocityEnabled) {
+    return { tier: 'DISABLED', discount: 0, message: null };
+  }
+
+  const tiers = GRID_WARS_CONFIG.velocityTiers;
+
+  if (velocity >= tiers.BLAZING.min) {
+    return { tier: 'BLAZING', ...tiers.BLAZING };
+  } else if (velocity >= tiers.FLOWING.min) {
+    return { tier: 'FLOWING', ...tiers.FLOWING };
+  } else if (velocity >= tiers.ACTIVE.min) {
+    return { tier: 'ACTIVE', ...tiers.ACTIVE };
+  }
+
+  return { tier: 'IDLE', ...tiers.IDLE };
+}
+
+// ============================================
+// v1.5: GUERRILLA WARFARE
+// ============================================
+
+/**
+ * Get guerrilla discount based on attacker vs defender territory size
+ * @param {number} attackerCells - Attacker's territory count
+ * @param {number} defenderCells - Defender's territory count
+ * @returns {object} { discount, message } or { discount: 0, message: null }
+ */
+function getGuerrillaDiscount(attackerCells, defenderCells) {
+  if (!GRID_WARS_CONFIG.guerrillaEnabled) {
+    return { discount: 0, message: null };
+  }
+
+  const tiers = GRID_WARS_CONFIG.guerrillaTiers;
+
+  // Check tiers in order (most restrictive first for best discount)
+  for (const tier of tiers) {
+    if (attackerCells <= tier.attackerMax && defenderCells >= tier.defenderMin) {
+      return { discount: tier.discount, message: tier.message };
+    }
+  }
+
+  return { discount: 0, message: null };
+}
+
+// ============================================
+// v1.5: OVEREXTENSION PENALTY
+// ============================================
+
+/**
+ * Calculate defense penalty for a cell based on its isolation
+ * @param {string} gameId
+ * @param {number} x
+ * @param {number} y
+ * @param {string} owner
+ * @returns {Promise<object>} { discount, reason }
+ */
+async function getOverextensionDiscount(gameId, x, y, owner) {
+  if (!GRID_WARS_CONFIG.overextensionEnabled) {
+    return { discount: 0, reason: null };
+  }
+
+  // Get owner's territories
+  const { data: territories } = await supabase
+    .from('grid_wars_territories')
+    .select('x, y')
+    .eq('game_id', gameId)
+    .eq('owner', owner);
+
+  if (!territories || territories.length <= 1) {
+    return { discount: 0, reason: null };
+  }
+
+  const ownedSet = new Set(territories.map(t => `${t.x},${t.y}`));
+
+  // Count connected neighbors for target cell
+  const neighbors = [
+    `${x + 1},${y}`,
+    `${x - 1},${y}`,
+    `${x},${y + 1}`,
+    `${x},${y - 1}`
+  ];
+  const connectedNeighbors = neighbors.filter(n => ownedSet.has(n)).length;
+
+  // Check if cell is part of an isolated cluster
+  const clusterSize = floodFillSync(x, y, ownedSet, new Set());
+
+  if (clusterSize <= GRID_WARS_CONFIG.overextensionClusterThreshold) {
+    return {
+      discount: GRID_WARS_CONFIG.overextensionIsolatedDiscount,
+      reason: 'isolated cluster'
+    };
+  }
+
+  // Check if cell is on the edge (< 4 connected neighbors)
+  if (connectedNeighbors < 4) {
+    return {
+      discount: GRID_WARS_CONFIG.overextensionEdgeDiscount,
+      reason: 'edge cell'
+    };
+  }
+
+  return { discount: 0, reason: null };
+}
+
+/**
+ * Synchronous flood fill for cluster size calculation
+ */
+function floodFillSync(x, y, ownedSet, visited) {
+  const key = `${x},${y}`;
+  if (visited.has(key)) return 0;
+  if (!ownedSet.has(key)) return 0;
+
+  visited.add(key);
+  return 1
+    + floodFillSync(x + 1, y, ownedSet, visited)
+    + floodFillSync(x - 1, y, ownedSet, visited)
+    + floodFillSync(x, y + 1, ownedSet, visited)
+    + floodFillSync(x, y - 1, ownedSet, visited);
+}
+
+// ============================================
+// v1.5: AUTO-BOUNTY SYSTEM
+// ============================================
+
+/**
+ * Get list of players who are bounty targets (own >20% of map)
+ * @param {string} gameId
+ * @returns {Promise<string[]>} Array of usernames
+ */
+async function getBountyTargets(gameId) {
+  if (!GRID_WARS_CONFIG.bountyEnabled) return [];
+
+  const totalCells = GRID_WARS_CONFIG.mapSize * GRID_WARS_CONFIG.mapSize;
+  const threshold = Math.floor(totalCells * GRID_WARS_CONFIG.bountyThresholdPercent);
+
+  const { data: players } = await supabase
+    .from('grid_wars_players')
+    .select('username, territories_count')
+    .eq('game_id', gameId)
+    .gte('territories_count', threshold);
+
+  return (players || []).map(p => p.username);
+}
+
+/**
+ * Check if a player is a bounty target
+ */
+async function isBountyTarget(gameId, username) {
+  const targets = await getBountyTargets(gameId);
+  return targets.includes(username);
+}
 
 // ============================================
 // v1.3: SPAM PREVENTION (WRONG ANSWER TRACKING)
@@ -2761,6 +3020,90 @@ function calculateScaledCost(baseCost, playerPoints) {
 }
 
 // ============================================
+// v1.5: SCARCITY PRICING
+// ============================================
+
+/**
+ * Get the current map fill percentage for a game
+ * @param {string} gameId - The game ID
+ * @returns {Promise<number>} Fill percentage (0.0 to 1.0)
+ */
+async function getMapFillPercent(gameId) {
+  const totalCells = GRID_WARS_CONFIG.mapSize * GRID_WARS_CONFIG.mapSize;
+
+  const { count } = await supabase
+    .from('grid_wars_territories')
+    .select('*', { count: 'exact', head: true })
+    .eq('game_id', gameId)
+    .not('owner', 'is', null);
+
+  return (count || 0) / totalCells;
+}
+
+/**
+ * Get the scarcity phase and multiplier for a given fill percentage
+ * @param {number} fillPercent - Current map fill (0.0 to 1.0)
+ * @returns {object} { phase, multiplier, message }
+ */
+function getScarcityPhase(fillPercent) {
+  if (!GRID_WARS_CONFIG.scarcityEnabled) {
+    return { phase: 'DISABLED', multiplier: 1.0, message: null };
+  }
+
+  const phases = GRID_WARS_CONFIG.scarcityPhases;
+
+  // Find the current phase based on fill percentage
+  if (fillPercent < phases.EXPANSION.maxFill) {
+    return { phase: 'EXPANSION', ...phases.EXPANSION };
+  } else if (fillPercent < phases.TENSION.maxFill) {
+    return { phase: 'TENSION', ...phases.TENSION };
+  } else if (fillPercent < phases.SCARCITY.maxFill) {
+    return { phase: 'SCARCITY', ...phases.SCARCITY };
+  } else {
+    return { phase: 'SATURATION', ...phases.SATURATION };
+  }
+}
+
+/**
+ * Get the scarcity price multiplier for neutral cell claims
+ * Interpolates between phase thresholds for smooth progression
+ * @param {number} fillPercent - Current map fill (0.0 to 1.0)
+ * @returns {number} Multiplier (1.0 to 3.0)
+ */
+function getScarcityMultiplier(fillPercent) {
+  if (!GRID_WARS_CONFIG.scarcityEnabled) {
+    return 1.0;
+  }
+
+  const phases = GRID_WARS_CONFIG.scarcityPhases;
+
+  // Interpolate between phases for smooth cost increase
+  if (fillPercent < phases.EXPANSION.maxFill) {
+    return phases.EXPANSION.multiplier;
+  } else if (fillPercent < phases.TENSION.maxFill) {
+    // Interpolate between EXPANSION and TENSION
+    const progress = (fillPercent - phases.EXPANSION.maxFill) /
+                     (phases.TENSION.maxFill - phases.EXPANSION.maxFill);
+    return phases.EXPANSION.multiplier +
+           progress * (phases.TENSION.multiplier - phases.EXPANSION.multiplier);
+  } else if (fillPercent < phases.SCARCITY.maxFill) {
+    // Interpolate between TENSION and SCARCITY
+    const progress = (fillPercent - phases.TENSION.maxFill) /
+                     (phases.SCARCITY.maxFill - phases.TENSION.maxFill);
+    return phases.TENSION.multiplier +
+           progress * (phases.SCARCITY.multiplier - phases.TENSION.multiplier);
+  } else if (fillPercent < phases.SATURATION.maxFill) {
+    // Interpolate between SCARCITY and SATURATION
+    const progress = (fillPercent - phases.SCARCITY.maxFill) /
+                     (phases.SATURATION.maxFill - phases.SCARCITY.maxFill);
+    return phases.SCARCITY.multiplier +
+           progress * (phases.SATURATION.multiplier - phases.SCARCITY.multiplier);
+  }
+
+  return phases.SATURATION.multiplier;
+}
+
+// ============================================
 // GRID WARS HELPER FUNCTIONS
 // ============================================
 
@@ -3092,12 +3435,14 @@ async function processPlayerDecay(gameId, username) {
 }
 
 // ============================================
-// v1.3: AFK EROSION
+// v1.5: AFK DECAY (replaces v1.3 erosion)
 // ============================================
+// Old v1.3: 15min threshold, strength-based erosion every minute
+// New v1.5: 24hr grace period, 1 edge cell returns to neutral per day
 
 /**
- * Process AFK erosion for all active games
- * Edge cells of inactive players (>15 min no activity) erode
+ * Process AFK decay for all active games
+ * Players inactive >24hr lose 1 edge cell per day
  */
 async function processAfkErosion() {
   const { data: games } = await supabase
@@ -3106,43 +3451,60 @@ async function processAfkErosion() {
     .eq('status', 'active');
 
   for (const game of games || []) {
-    await processGameAfkErosion(game.game_id);
+    await processGameAfkDecay(game.game_id);
   }
 }
 
 /**
- * Process AFK erosion for a single game
+ * Process AFK decay for a single game (v1.5 model)
  */
-async function processGameAfkErosion(gameId) {
+async function processGameAfkDecay(gameId) {
   const now = Date.now();
-  const afkThresholdMs = GRID_WARS_CONFIG.afkThresholdSeconds * 1000;
+  const gracePeriodMs = GRID_WARS_CONFIG.afkGracePeriodHours * 60 * 60 * 1000;
+  const decayIntervalMs = 24 * 60 * 60 * 1000; // 24 hours between decays
 
-  // Get all players with their last activity
+  // Get all players with their last activity and decay timestamp
   const { data: players } = await supabase
     .from('grid_wars_players')
-    .select('username, last_answer_at, territories_count')
+    .select('username, last_answer_at, last_decay_at, territories_count')
     .eq('game_id', gameId)
     .gt('territories_count', 0); // Only check players with territory
 
   for (const player of players || []) {
-    // Check if player is AFK
+    // Check if player is past grace period
     const lastActivity = player.last_answer_at
       ? new Date(player.last_answer_at).getTime()
       : 0; // Never active = always AFK
 
     const timeSinceActivity = now - lastActivity;
-    if (timeSinceActivity < afkThresholdMs) continue; // Player is active
+    if (timeSinceActivity < gracePeriodMs) continue; // Still within 24hr grace
 
-    // Player is AFK - erode their edge cells
-    await processPlayerAfkErosion(gameId, player.username);
+    // Check if enough time has passed since last decay (1 decay per day)
+    const lastDecay = player.last_decay_at
+      ? new Date(player.last_decay_at).getTime()
+      : 0;
+
+    const timeSinceDecay = now - lastDecay;
+    if (lastDecay > 0 && timeSinceDecay < decayIntervalMs) continue; // Already decayed today
+
+    // Player is AFK past grace period and due for decay
+    await processPlayerAfkDecay(gameId, player.username);
   }
 }
 
 /**
- * Find and erode edge cells for an AFK player
- * Edge cell = cell with < 4 same-owner neighbors
+ * Alias for backward compatibility
  */
-async function processPlayerAfkErosion(gameId, username) {
+async function processGameAfkErosion(gameId) {
+  return processGameAfkDecay(gameId);
+}
+
+/**
+ * Find and remove one edge cell for an AFK player (v1.5 model)
+ * Edge cell = cell with < 4 same-owner neighbors
+ * Cell returns directly to neutral (no strength reduction)
+ */
+async function processPlayerAfkDecay(gameId, username) {
   // Get all territories for this player
   const { data: territories } = await supabase
     .from('grid_wars_territories')
@@ -3168,57 +3530,51 @@ async function processPlayerAfkErosion(gameId, username) {
 
     // Edge cell = has fewer than 4 same-owner neighbors
     if (sameOwnerNeighbors < 4) {
-      edgeCells.push(t);
+      edgeCells.push({ ...t, neighborCount: sameOwnerNeighbors });
     }
   }
 
-  // Sort edge cells by neighbor count (fewest neighbors = most vulnerable)
-  // Only erode one cell per tick to prevent rapid loss
   if (edgeCells.length === 0) return;
 
-  // Pick the most vulnerable edge cell (random among those with fewest neighbors)
-  const targetCell = edgeCells[Math.floor(Math.random() * edgeCells.length)];
-  const newStrength = targetCell.strength - GRID_WARS_CONFIG.afkErosionStrength;
+  // Sort by neighbor count (most vulnerable first - fewest neighbors)
+  edgeCells.sort((a, b) => a.neighborCount - b.neighborCount);
 
-  if (newStrength <= 0) {
-    // Cell dies - flip to neutral
-    await flipCellToNeutral(gameId, targetCell.x, targetCell.y, username);
+  // Pick from the most vulnerable (random among those tied for fewest neighbors)
+  const minNeighbors = edgeCells[0].neighborCount;
+  const mostVulnerable = edgeCells.filter(c => c.neighborCount === minNeighbors);
+  const targetCell = mostVulnerable[Math.floor(Math.random() * mostVulnerable.length)];
 
-    broadcast({
-      type: 'afk_erosion',
-      gameId,
-      x: targetCell.x,
-      y: targetCell.y,
-      previousOwner: username,
-      died: true,
-      message: 'SIGNAL DECAY: Sector lost (inactive)'
-    });
+  // v1.5: Cell returns directly to neutral (no strength reduction phase)
+  await flipCellToNeutral(gameId, targetCell.x, targetCell.y, username);
 
-    // v1.3: Telemetry
-    telemetryIncrement('afk_erosions_total');
-    trackOwnershipChange('erosion');  // v1.3.1: Track for cells_changed_5min
+  // Update player's last_decay_at timestamp
+  await supabase
+    .from('grid_wars_players')
+    .update({ last_decay_at: new Date().toISOString() })
+    .eq('game_id', gameId)
+    .eq('username', username);
 
-    console.log(`Grid Wars: AFK erosion - cell (${targetCell.x}, ${targetCell.y}) owned by ${username} lost`);
-  } else {
-    // Reduce strength
-    await supabase
-      .from('grid_wars_territories')
-      .update({ strength: newStrength })
-      .eq('game_id', gameId)
-      .eq('x', targetCell.x)
-      .eq('y', targetCell.y);
+  broadcast({
+    type: 'afk_decay',
+    gameId,
+    x: targetCell.x,
+    y: targetCell.y,
+    previousOwner: username,
+    message: 'SIGNAL DECAY: Territory lost (inactive >24hr)'
+  });
 
-    broadcast({
-      type: 'afk_erosion',
-      gameId,
-      x: targetCell.x,
-      y: targetCell.y,
-      owner: username,
-      strength: newStrength,
-      died: false,
-      message: 'SIGNAL WEAKENING: Stay active to maintain territory'
-    });
-  }
+  // Telemetry
+  telemetryIncrement('afk_decays_total');
+  trackOwnershipChange('decay');
+
+  console.log(`Grid Wars v1.5: AFK decay - cell (${targetCell.x}, ${targetCell.y}) owned by ${username} returned to neutral`);
+}
+
+/**
+ * Alias for backward compatibility
+ */
+async function processPlayerAfkErosion(gameId, username) {
+  return processPlayerAfkDecay(gameId, username);
 }
 
 // ============================================
@@ -4086,10 +4442,48 @@ app.post('/api/grid-wars/action', async (req, res) => {
           activityTier = 'COLD';
           defenderIsActive = false;
         }
+
+        // v1.5: Apply velocity discount for attackers who are earning fast
+        const velocity = getPlayerVelocity(gameId, username);
+        const velocityTier = getVelocityTier(velocity);
+        if (velocityTier.discount > 0) {
+          cost = Math.ceil(cost * (1 - velocityTier.discount));
+        }
+
+        // v1.5: Apply guerrilla discount (small vs large)
+        const attackerCells = player?.territories_count || 0;
+        const { data: defenderData } = await supabase
+          .from('grid_wars_players')
+          .select('territories_count')
+          .eq('game_id', gameId)
+          .eq('username', previousOwner)
+          .single();
+        const defenderCells = defenderData?.territories_count || 0;
+        const guerrilla = getGuerrillaDiscount(attackerCells, defenderCells);
+        if (guerrilla.discount > 0) {
+          cost = Math.ceil(cost * (1 - guerrilla.discount));
+        }
+
+        // v1.5: Apply overextension discount (isolated/edge cells easier to take)
+        const overextension = await getOverextensionDiscount(gameId, x, y, previousOwner);
+        if (overextension.discount > 0) {
+          cost = Math.ceil(cost * (1 - overextension.discount));
+        }
       } else if (isResourceNode) {
         cost = GRID_WARS_CONFIG.nodeClaimCost;
       } else if (isSurgeCell) {
         cost = GRID_WARS_CONFIG.surgeCost;
+      }
+
+      // v1.5: Apply scarcity pricing for neutral cell claims
+      // (not enemy takeovers, not surge cells - those are meant to be cheap opportunities)
+      let scarcityMultiplier = 1.0;
+      let scarcityPhase = null;
+      if (!isEnemyTakeover && !isSurgeCell) {
+        const fillPercent = await getMapFillPercent(gameId);
+        scarcityMultiplier = getScarcityMultiplier(fillPercent);
+        scarcityPhase = getScarcityPhase(fillPercent);
+        cost = Math.ceil(cost * scarcityMultiplier);
       }
 
       // v1.3: Apply soft point ceiling (logarithmic cost scaling)
@@ -4148,6 +4542,31 @@ app.post('/api/grid-wars/action', async (req, res) => {
             y,
             takenBy: username
           });
+
+          // v1.5: Award bounty bonus if defender was a bounty target
+          if (await isBountyTarget(gameId, previousOwner)) {
+            const bountyBonus = GRID_WARS_CONFIG.bountyBonusPoints;
+            await supabase
+              .from('grid_wars_players')
+              .update({
+                action_points: (player?.action_points || 0) - cost + bountyBonus
+              })
+              .eq('game_id', gameId)
+              .eq('username', username);
+
+            broadcast({
+              type: 'bounty_claimed',
+              gameId,
+              attacker: username,
+              defender: previousOwner,
+              bonus: bountyBonus,
+              x,
+              y,
+              message: `🎯 BOUNTY CLAIMED! +${bountyBonus} pts for striking ${previousOwner}`
+            });
+
+            console.log(`Grid Wars v1.5: ${username} claimed bounty on ${previousOwner} (+${bountyBonus} pts)`);
+          }
         }
       } else {
         // Insert new territory
@@ -4487,6 +4906,9 @@ app.post('/api/grid-wars/points/add', async (req, res) => {
     }
 
     const newTotal = (existingPlayer?.action_points || 0) + adjustedPoints;
+
+    // v1.5: Record point event for velocity tracking
+    recordPointEvent(gameId, username, adjustedPoints);
 
     // Broadcast points earned
     broadcast({

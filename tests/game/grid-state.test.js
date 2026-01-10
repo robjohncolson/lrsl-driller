@@ -385,7 +385,7 @@ describe('GridWarsState', () => {
     });
 
     it('throws if neither starType nor points provided', async () => {
-      await expect(state.addPoints()).rejects.toThrow('Either starType or pointsAmount required');
+      await expect(state.addPoints()).rejects.toThrow('Either starType or weightedPoints required');
     });
 
     it('calls onPointsEarned callback', async () => {

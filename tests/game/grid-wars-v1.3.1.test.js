@@ -54,7 +54,7 @@ describe('Grid Wars v1.3.1 Features', () => {
     it('has correct underdog config values in shared config', () => {
       expect(SHARED_CONFIG.underdogEnabled).toBe(true);
       expect(SHARED_CONFIG.underdogDiscount).toBe(0.5);               // 50%
-      expect(SHARED_CONFIG.underdogMinCost).toBe(5);
+      expect(SHARED_CONFIG.underdogMinCost).toBe(15);                 // v1.5: was 5, now 15 (3x)
       expect(SHARED_CONFIG.underdogActivityWindowMs).toBe(3 * 60 * 1000);  // 3 min
       expect(SHARED_CONFIG.underdogCooldownMs).toBe(5 * 60 * 1000);        // 5 min
     });
@@ -207,7 +207,7 @@ describe('Grid Wars v1.3.1 Features', () => {
     it('underdog minimum cost prevents abuse', () => {
       const minCost = SHARED_CONFIG.underdogMinCost;
       expect(minCost).toBeGreaterThanOrEqual(3);
-      expect(minCost).toBeLessThanOrEqual(10);
+      expect(minCost).toBeLessThanOrEqual(20);  // v1.5: upper bound raised for 3x economy
     });
 
     it('underdog activity window is reasonable', () => {
