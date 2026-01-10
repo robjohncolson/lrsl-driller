@@ -87,6 +87,10 @@ export class GridWarsState {
     this.classGoal = { current: 0, target: GRID_WARS_CONFIG.classGoalTarget };
     this.surge = null;            // { x, y, expiresIn } or null
 
+    // v1.5: Scarcity and combat state
+    this.scarcityPhase = null;    // { phase, multiplier, message } or null
+    this.bountyTargets = [];      // Array of usernames with bounties
+
     // Event callbacks
     // v1.2: Removed onContestationAlert (contestation system removed)
     this.onStateChange = options.onStateChange || null;
@@ -104,6 +108,9 @@ export class GridWarsState {
     this.onSessionEnded = options.onSessionEnded || null;   // v1.3.2
     this.onSessionResumed = options.onSessionResumed || null; // v1.3.2
     this.onGameReset = options.onGameReset || null;         // v1.3.2
+    this.onBountyClaimed = options.onBountyClaimed || null; // v1.5
+    this.onAfkDecay = options.onAfkDecay || null;           // v1.5
+    this.onScarcityChange = options.onScarcityChange || null; // v1.5
 
     // v1.3.2: Session state
     this._sessionFrozen = false;
@@ -880,6 +887,31 @@ export class GridWarsState {
     return this.surge;
   }
 
+  /**
+   * v1.5: Get current scarcity phase info
+   * @returns {object|null} { phase, multiplier, message, fillPercent }
+   */
+  getScarcityPhase() {
+    return this.scarcityPhase;
+  }
+
+  /**
+   * v1.5: Get list of bounty target usernames
+   * @returns {string[]} Array of usernames with bounties
+   */
+  getBountyTargets() {
+    return this.bountyTargets;
+  }
+
+  /**
+   * v1.5: Check if a player is a bounty target
+   * @param {string} username
+   * @returns {boolean}
+   */
+  isBountyTarget(username) {
+    return this.bountyTargets.includes(username);
+  }
+
   // v1.2: Removed reinforceCell (contestation system removed)
 
   /**
@@ -1193,11 +1225,90 @@ export class GridWarsState {
         this.surge = null;
         this._sessionFrozen = false;
         this._sessionSummary = null;
+        this.scarcityPhase = null;  // v1.5
+        this.bountyTargets = [];    // v1.5
         if (this.onGameReset) {
           this.onGameReset();
         }
         // Refresh state from server to get updated player data (boot bonus)
         this.refreshState();
+        break;
+
+      // v1.5: AFK decay (24hr grace, cell returns to neutral)
+      case 'afk_decay':
+        const decayKey = `${message.x},${message.y}`;
+        this.territories.delete(decayKey);
+        if (message.previousOwner) {
+          this._updatePlayerTerritoriesCount(message.previousOwner, -1);
+        }
+
+        // Notify if this affects current user
+        if (message.previousOwner === this.username && this.onAfkDecay) {
+          this.onAfkDecay({
+            x: message.x,
+            y: message.y,
+            message: message.message
+          });
+        }
+
+        if (this.onTerritoryChanged) {
+          this.onTerritoryChanged({
+            x: message.x,
+            y: message.y,
+            owner: null,
+            action: 'afk_decay',
+            message: message.message
+          });
+        }
+        this._emitStateChange();
+        break;
+
+      // v1.5: Bounty claimed notification
+      case 'bounty_claimed':
+        // Notify if attacker or defender is current user
+        if ((message.attacker === this.username || message.defender === this.username)
+            && this.onBountyClaimed) {
+          this.onBountyClaimed({
+            attacker: message.attacker,
+            defender: message.defender,
+            bonus: message.bonus,
+            x: message.x,
+            y: message.y,
+            message: message.message,
+            isAttacker: message.attacker === this.username
+          });
+        }
+
+        // Show system event for everyone
+        if (this.onSystemEvent) {
+          this.onSystemEvent({
+            event: 'bounty_claimed',
+            message: message.message
+          });
+        }
+        break;
+
+      // v1.5: Scarcity phase update
+      case 'scarcity_update':
+        const oldPhase = this.scarcityPhase?.phase;
+        this.scarcityPhase = {
+          phase: message.phase,
+          multiplier: message.multiplier,
+          message: message.message,
+          fillPercent: message.fillPercent
+        };
+
+        // Notify if phase changed
+        if (oldPhase !== message.phase && this.onScarcityChange) {
+          this.onScarcityChange(this.scarcityPhase);
+        }
+        this._emitStateChange();
+        break;
+
+      // v1.5: Bounty targets update
+      case 'bounty_targets_update':
+        this.bountyTargets = message.targets || [];
+        this._emitStateChange();
         break;
     }
   }
@@ -1221,7 +1332,8 @@ export class GridWarsState {
         strength: data.strength,
         node_type: data.node_type,
         ownerLastAnswer: ownerData?.last_answer_at || null,
-        pending: data.pending || false // v1.2.1: Include pending status
+        pending: data.pending || false, // v1.2.1: Include pending status
+        isBountyTarget: data.owner ? this.bountyTargets.includes(data.owner) : false // v1.5
       });
     }
 
@@ -1241,7 +1353,9 @@ export class GridWarsState {
     return {
       territories,
       players,
-      surge: this.surge
+      surge: this.surge,
+      scarcityPhase: this.scarcityPhase,   // v1.5
+      bountyTargets: this.bountyTargets    // v1.5
     };
   }
 

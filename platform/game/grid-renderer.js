@@ -455,6 +455,19 @@ export class GridRenderer {
         this.cellSize - 2
       );
 
+      // v1.5: Draw bounty target glow (golden border, static version)
+      if (territory.isBountyTarget) {
+        ctx.strokeStyle = '#FFD700'; // Gold
+        ctx.globalAlpha = 0.6;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+          x * this.cellSize,
+          y * this.cellSize,
+          this.cellSize,
+          this.cellSize
+        );
+      }
+
       ctx.globalAlpha = 1;
 
       // Draw node indicator if claimed
@@ -599,6 +612,20 @@ export class GridRenderer {
           this.cellSize - 4
         );
         ctx.setLineDash([]);
+      }
+
+      // v1.5: Draw bounty target glow (golden pulsing border)
+      if (territory.isBountyTarget) {
+        const glowIntensity = 0.5 + 0.3 * Math.sin(now / 300); // Slow pulse
+        ctx.strokeStyle = '#FFD700'; // Gold
+        ctx.globalAlpha = glowIntensity;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(
+          x * this.cellSize,
+          y * this.cellSize,
+          this.cellSize,
+          this.cellSize
+        );
       }
 
       ctx.globalAlpha = 1;
