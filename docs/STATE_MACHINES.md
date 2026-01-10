@@ -1,6 +1,6 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v1.5.1.
+Complete state machine documentation for all components as of v1.6.
 
 ---
 
@@ -29,10 +29,11 @@ Complete state machine documentation for all components as of v1.5.1.
               ┌───────────────────────┐                           ┌───────────────────────┐
               │   CALCULATE STAR      │                           │   STREAK RESET TO 0   │
               │   BASED ON PENALTIES  │                           │   NO STAR AWARDED     │
-              └───────────┬───────────┘                           └───────────────────────┘
-                          │
-    ┌─────────────────────┼─────────────────────┬─────────────────────┐
-    │                     │                     │                     │
+              └───────────┬───────────┘                           │                       │
+                          │                                       │   Report wrong answer │
+                          │                                       │   to Grid Wars (spam  │
+    ┌─────────────────────┼─────────────────────┬─────────────────│   prevention v1.3)    │
+    │                     │                     │                 └───────────────────────┘
     ▼                     ▼                     ▼                     ▼
 ┌─────────┐         ┌─────────┐         ┌─────────┐         ┌─────────┐
 │  GOLD   │         │ SILVER  │         │ BRONZE  │         │   TIN   │
@@ -58,6 +59,7 @@ Complete state machine documentation for all components as of v1.5.1.
                     │   STAR_COUNTS[type]++         │
                     │   → Check tier unlocks        │
                     │   → Send to Grid Wars         │
+                    │   → Broadcast leaderboard     │
                     └───────────────────────────────┘
 ```
 
@@ -145,11 +147,12 @@ AI Fallback Chain:
 
 ---
 
-## 3. GRID WARS — Territory Claim Flow
+## 3. GRID WARS — Territory Claim Flow (v1.6)
 
 ```
                           ┌─────────────────────────────────────┐
                           │         PLAYER CLICKS CELL          │
+                          │      (or spacebar at avatar)        │
                           └─────────────────┬───────────────────┘
                                             │
                                             ▼
@@ -158,6 +161,7 @@ AI Fallback Chain:
                           │  • Has uplink? (answered in 10min)  │
                           │  • Session not frozen?              │
                           │  • Not in cooldown?                 │
+                          │  • In bounds? (0-7 on 8×8 map)      │
                           └─────────────────┬───────────────────┘
                                             │
                     ┌───────────────────────┴───────────────────────┐
@@ -169,38 +173,41 @@ AI Fallback Chain:
                    │                                      └─────────────────┘
                    ▼
           ┌─────────────────────────────────────────────────────────────────┐
-          │                     CALCULATE COST                              │
+          │                     CALCULATE COST (v1.6)                       │
           │                                                                 │
           │  1. BASE COST (by cell type & defender activity)                │
-          │     ├─ Neutral: 30 pts                                          │
-          │     ├─ Enemy COLD (>8min): 45 pts                               │
-          │     ├─ Enemy WARM (3-8min): 60 pts                              │
-          │     └─ Enemy ACTIVE (<3min): 75 pts                             │
+          │     ├─ Neutral: 40 pts (v1.6)                                   │
+          │     ├─ Enemy COLD (>8min): 60 pts                               │
+          │     ├─ Enemy WARM (3-8min): 80 pts                              │
+          │     └─ Enemy ACTIVE (<3min): 100 pts                            │
           │                                                                 │
-          │  2. SCARCITY MULTIPLIER (by map fill %)                         │
-          │     ├─ EXPANSION (0-50%): 1.0x                                  │
-          │     ├─ TENSION (50-80%): 1.6x                                   │
-          │     ├─ SCARCITY (80-95%): 2.2x                                  │
-          │     └─ SATURATION (95-100%): 3.0x                               │
+          │  2. SCARCITY MULTIPLIER (by map fill %) — v1.6 thresholds       │
+          │     ├─ EXPANSION (0-30%): 1.0x  🌱                              │
+          │     ├─ TENSION (30-60%): 1.5x   ⚡                              │
+          │     ├─ SCARCITY (60-85%): 2.0x  🔥                              │
+          │     └─ SATURATION (85-100%): 3.0x 💎                            │
           │                                                                 │
-          │  3. VELOCITY DISCOUNT (attacker's pts/min)                      │
-          │     ├─ BLAZING (≥2.0): -40%                                     │
-          │     ├─ FLOWING (≥1.0): -25%                                     │
-          │     ├─ ACTIVE (≥0.5): -10%                                      │
-          │     └─ IDLE (<0.5): 0%                                          │
+          │  3. VELOCITY DISCOUNT (attacker's pts/min over 10min)           │
+          │     ├─ BLAZING (≥2.0): -40%  🔥                                 │
+          │     ├─ FLOWING (≥1.0): -25%  ⚡                                 │
+          │     ├─ ACTIVE (≥0.5): -10%   💧                                 │
+          │     └─ IDLE (<0.5): 0%       ❄️                                 │
           │                                                                 │
-          │  4. GUERRILLA DISCOUNT (small vs large)                         │
-          │     ├─ ≤10 cells vs ≥50: -50%                                   │
-          │     ├─ ≤20 cells vs ≥75: -40%                                   │
-          │     ├─ ≤30 cells vs ≥100: -30%                                  │
+          │  4. GUERRILLA DISCOUNT (v1.6 scaled for 64 cells)               │
+          │     ├─ ≤2 cells vs ≥10: -50%                                    │
+          │     ├─ ≤4 cells vs ≥15: -40%                                    │
+          │     ├─ ≤6 cells vs ≥20: -30%                                    │
           │     └─ Otherwise: 0%                                            │
           │                                                                 │
           │  5. OVEREXTENSION DISCOUNT (target cell isolation)              │
-          │     ├─ Isolated (0-2 neighbors): -30%                           │
-          │     ├─ Edge (3-5 neighbors): -15%                               │
-          │     └─ Core (6+ neighbors): 0%                                  │
+          │     ├─ Isolated (≤3 cluster): -30%                              │
+          │     ├─ Edge (<4 neighbors): -15%                                │
+          │     └─ Core (4+ neighbors): 0%                                  │
           │                                                                 │
-          │  FINAL = max(10, round(BASE × SCARCITY × (1-VEL) × (1-GUE) × (1-OVE))) │
+          │  6. UNDERDOG DISCOUNT (v1.6)                                    │
+          │     └─ 0 territories + active: -50% (min cost: 20)              │
+          │                                                                 │
+          │  FINAL = max(10, ceil(BASE × SCARCITY × (1-VEL) × (1-GUE) × (1-OVE))) │
           └─────────────────────────────────┬───────────────────────────────┘
                                             │
                                             ▼
@@ -216,12 +223,14 @@ AI Fallback Chain:
           │   CAN AFFORD    │                             │  CANNOT AFFORD  │
           │ → Optimistic    │                             │  (show message) │
           │   update UI     │                             └─────────────────┘
+          │ → Mark pending  │
           └────────┬────────┘
                    │
                    ▼
           ┌─────────────────────────────────────────────────────────────────┐
           │                    SEND TO SERVER                               │
           │              POST /api/grid-wars/action                         │
+          │              {gameId, username, action:'claim', x, y, actionId} │
           └─────────────────────────────────┬───────────────────────────────┘
                                             │
                     ┌───────────────────────┴───────────────────────┐
@@ -230,22 +239,26 @@ AI Fallback Chain:
           ┌─────────────────┐                             ┌─────────────────┐
           │ SERVER CONFIRMS │                             │ SERVER REJECTS  │
           │ → Keep changes  │                             │ → Rollback UI   │
-          │ → Broadcast to  │                             │ → Restore pts   │
-          │   all clients   │                             │ → Show error    │
-          └────────┬────────┘                             └─────────────────┘
+          │ → Broadcast:    │                             │ → Restore pts   │
+          │   territory_    │                             │ → Show error    │
+          │   claimed       │                             └─────────────────┘
+          │ → Broadcast:    │
+          │   leaderboard_  │
+          │   update (v1.6) │
+          └────────┬────────┘
                    │
                    ▼
           ┌─────────────────────────────────────────────────────────────────┐
-          │                    IF BOUNTY TARGET                             │
-          │         (defender owns ≥20% of map = 125 cells)                 │
-          │         → Award +15 bonus points to attacker                    │
+          │                    IF BOUNTY TARGET (v1.6)                      │
+          │         (defender owns ≥20% of map = 12 cells on 8×8)           │
+          │         → Award +10 bonus points to attacker                    │
           │         → Broadcast 'bounty_claimed' event                      │
           └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. VELOCITY TIER STATE MACHINE
+## 4. VELOCITY TIER STATE MACHINE (v1.5)
 
 ```
                     Points earned in last 10 minutes
@@ -274,6 +287,7 @@ AI Fallback Chain:
 
 Transitions happen automatically based on rolling 10-minute window.
 Velocity decays naturally as old events fall outside window.
+Point events stored in Supabase (v1.5.1) — survives server restart.
 
 Example Timeline:
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -289,28 +303,28 @@ Example Timeline:
 
 ---
 
-## 5. SCARCITY PHASE STATE MACHINE
+## 5. SCARCITY PHASE STATE MACHINE (v1.6)
 
 ```
-                         Map Fill Percentage
+                         Map Fill Percentage (64 cells total)
                                │
       0%                       ▼                            100%
        ├───────────────────────┼───────────────────────────────┤
        │                       │                               │
-       │◀────── EXPANSION ────▶│◀─── TENSION ──▶│◀─ SCARCITY ─▶│◀─SAT─▶│
-       │       (0-50%)         │    (50-80%)    │   (80-95%)   │(95%+) │
-       │                       │                │              │       │
-       └───────────────────────┴────────────────┴──────────────┴───────┘
+       │◀── EXPANSION ──▶│◀─── TENSION ───▶│◀── SCARCITY ──▶│◀─SAT─▶│
+       │     (0-30%)     │     (30-60%)     │    (60-85%)    │(85%+) │
+       │   0-19 cells    │    20-38 cells   │   39-54 cells  │ 55-64 │
+       └─────────────────┴──────────────────┴────────────────┴───────┘
 
 ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
 │   EXPANSION     │      │    TENSION      │      │   SCARCITY      │      │  SATURATION     │
 │   🌱 Land Rush  │      │ ⚡ Tightening   │      │ 🔥 Prime Gone   │      │ 💎 Last Parcels │
 ├─────────────────┤      ├─────────────────┤      ├─────────────────┤      ├─────────────────┤
-│ Multiplier: 1.0 │      │ Multiplier: 1.6 │      │ Multiplier: 2.2 │      │ Multiplier: 3.0 │
-│ Claim: 30 pts   │─────▶│ Claim: 48 pts   │─────▶│ Claim: 66 pts   │─────▶│ Claim: 90 pts   │
+│ Multiplier: 1.0 │      │ Multiplier: 1.5 │      │ Multiplier: 2.0 │      │ Multiplier: 3.0 │
+│ Claim: 40 pts   │─────▶│ Claim: 60 pts   │─────▶│ Claim: 80 pts   │─────▶│ Claim: 120 pts  │
 │ UI: Hidden      │      │ UI: Yellow      │      │ UI: Red         │      │ UI: Purple      │
 └─────────────────┘      └─────────────────┘      └─────────────────┘      └─────────────────┘
-       fill≤50%                50%<fill≤80%           80%<fill≤95%            fill>95%
+      fill≤30%               30%<fill≤60%            60%<fill≤85%            fill>85%
 
                                  ┌─────────────────────────────────────┐
                                  │           100% FULL                 │
@@ -324,13 +338,14 @@ Transitions are BIDIRECTIONAL — scarcity can decrease if cells decay back to n
 
 ---
 
-## 6. BOUNTY SYSTEM STATE MACHINE
+## 6. BOUNTY SYSTEM STATE MACHINE (v1.6)
 
 ```
                     ┌────────────────────────────────────────┐
                     │      CHECK BOUNTIES (every 60s)        │
                     │  For each player with territory:       │
-                    │  cells_owned / 625 > 20%?              │
+                    │  cells_owned / 64 ≥ 20%?               │
+                    │  (threshold: 12 cells on 8×8 map)      │
                     └────────────────────┬───────────────────┘
                                          │
               ┌──────────────────────────┴──────────────────────────┐
@@ -338,7 +353,7 @@ Transitions are BIDIRECTIONAL — scarcity can decrease if cells decay back to n
               ▼                                                     ▼
     ┌─────────────────────┐                           ┌─────────────────────┐
     │  BELOW THRESHOLD    │                           │  ABOVE THRESHOLD    │
-    │  (< 125 cells)      │                           │  (≥ 125 cells)      │
+    │  (< 12 cells)       │                           │  (≥ 12 cells)       │
     │  No bounty          │                           │  BOUNTY ACTIVE      │
     └─────────────────────┘                           └──────────┬──────────┘
                                                                  │
@@ -347,7 +362,7 @@ Transitions are BIDIRECTIONAL — scarcity can decrease if cells decay back to n
                                               │         BOUNTY TARGET           │
                                               │  • Cells glow gold              │
                                               │  • Name in bounty list          │
-                                              │  • +15 pts for attackers        │
+                                              │  • +10 pts for attackers (v1.6) │
                                               └──────────────┬──────────────────┘
                                                              │
                                           ┌──────────────────┴──────────────────┐
@@ -361,7 +376,7 @@ Transitions are BIDIRECTIONAL — scarcity can decrease if cells decay back to n
                                          ▼                                   │
                               ┌─────────────────────┐                        │
                               │   BOUNTY CLAIMED    │                        │
-                              │  • +15 bonus pts    │                        │
+                              │  • +10 bonus pts    │                        │
                               │  • Broadcast event  │                        │
                               │  • Attacker rewarded│                        │
                               └──────────┬──────────┘                        │
@@ -378,7 +393,53 @@ Transitions are BIDIRECTIONAL — scarcity can decrease if cells decay back to n
 
 ---
 
-## 7. AFK DECAY STATE MACHINE
+## 7. DIMINISHING RETURNS STATE MACHINE (v1.6)
+
+```
+                    ┌────────────────────────────────────────┐
+                    │     PLAYER EARNS POINTS FROM STAR      │
+                    │         (base: 4/3/2/1 pts)            │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │      CHECK TERRITORY COUNT             │
+                    │      territories_count = N             │
+                    └────────────────────┬───────────────────┘
+                                         │
+              ┌──────────────────────────┴──────────────────────────┐
+              │                                                     │
+              ▼                                                     ▼
+    ┌─────────────────────┐                           ┌─────────────────────┐
+    │   N ≤ 8 (threshold) │                           │   N > 8 (threshold) │
+    │   No penalty        │                           │   Apply penalty     │
+    │   multiplier = 1.0  │                           │   (empire overhead) │
+    └─────────────────────┘                           └──────────┬──────────┘
+                                                                 │
+                                                                 ▼
+                                              ┌─────────────────────────────────┐
+                                              │   CALCULATE MULTIPLIER          │
+                                              │   excess = N - 8                │
+                                              │   mult = max(0.5, 1 - excess×0.05)│
+                                              └──────────────────┬──────────────┘
+                                                                 │
+        ┌────────────────────────────────────────────────────────┼────────────────┐
+        │                              │                         │                │
+        ▼                              ▼                         ▼                ▼
+┌───────────────┐           ┌───────────────┐         ┌───────────────┐  ┌───────────────┐
+│  8 cells      │           │  12 cells     │         │  16 cells     │  │  18+ cells    │
+│  excess = 0   │           │  excess = 4   │         │  excess = 8   │  │  excess ≥ 10  │
+│  mult = 1.0x  │           │  mult = 0.8x  │         │  mult = 0.6x  │  │  mult = 0.5x  │
+│  (no penalty) │           │  (20% penalty)│         │  (40% penalty)│  │  (50% floor)  │
+└───────────────┘           └───────────────┘         └───────────────┘  └───────────────┘
+
+Example: Gold star (4 pts) at 16 cells = 4 × 0.6 = 2.4 → rounds to 2 pts
+         (before contiguity bonus)
+```
+
+---
+
+## 8. AFK DECAY STATE MACHINE (v1.5)
 
 ```
                     ┌────────────────────────────────────────┐
@@ -425,6 +486,7 @@ Transitions are BIDIRECTIONAL — scarcity can decrease if cells decay back to n
                                                    │   • Cell owner = null           │
                                                    │   • Broadcast 'afk_decay'       │
                                                    │   • Player territories_count--  │
+                                                   │   • Scarcity phase may change   │
                                                    └──────────────┬──────────────────┘
                                                                   │
                                                                   ▼
@@ -445,7 +507,7 @@ Transitions are BIDIRECTIONAL — scarcity can decrease if cells decay back to n
 
 ---
 
-## 8. SESSION LIFECYCLE STATE MACHINE
+## 9. SESSION LIFECYCLE STATE MACHINE
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -460,6 +522,7 @@ Transitions are BIDIRECTIONAL — scarcity can decrease if cells decay back to n
                               │  • Drills count     │
                               │  • Points earned    │
                               │  • Territory changes│
+                              │  • Leaderboard live │
                               └──────────┬──────────┘
                                          │
               ┌──────────────────────────┴──────────────────────────┐
@@ -479,10 +542,12 @@ Transitions are BIDIRECTIONAL — scarcity can decrease if cells decay back to n
     │  ✗ Territory changes blocked         ✓ Stars awarded                    │
     │  ✗ Points spending blocked           ✓ Points earned (saved)            │
     │                                                                         │
-    │  Summary calculated:                                                    │
-    │  • Top territories holder                                               │
+    │  Summary calculated:                 Leaderboard:                       │
+    │  • Top territories holder            ✓ Still updates (v1.6)             │
     │  • Most points earned                                                   │
     │  • Rankings for session                                                 │
+    │                                                                         │
+    │  ⚠️ NOTE: frozenGames is in-memory — lost on server restart            │
     └────────────────────────────────┬────────────────────────────────────────┘
                                      │
               ┌──────────────────────┴──────────────────────────┐
@@ -498,16 +563,161 @@ Transitions are BIDIRECTIONAL — scarcity can decrease if cells decay back to n
     │   SESSION ACTIVE    │                       │    FRESH START      │
     │   (Resume from      │                       │  • All territory    │
     │    frozen state)    │                       │    cleared          │
-    │                     │                       │  • Points reset     │
-    │  • Same territory   │                       │  • New game begins  │
-    │  • Same points      │                       │                     │
-    │  • Game continues   │                       │  (v1.5: NOT used)   │
+    │                     │                       │  • Points → boot    │
+    │  • Same territory   │                       │    bonus (30 pts)   │
+    │  • Same points      │                       │  • New game begins  │
+    │  • Game continues   │                       │                     │
     └─────────────────────┘                       └─────────────────────┘
 ```
 
 ---
 
-## 9. WEBSOCKET MESSAGE FLOW
+## 10. PRESENCE & CONNECTION STATE MACHINE (v1.6)
+
+```
+                    ┌────────────────────────────────────────┐
+                    │       CLIENT CONNECTS (WebSocket)      │
+                    │       ws.send({type: 'identify'})      │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │      SERVER REGISTERS CLIENT           │
+                    │  clients.set(ws, {                     │
+                    │    username,                           │
+                    │    lastHeartbeat: Date.now(),         │
+                    │    gameId                              │
+                    │  })                                    │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │      BROADCAST 'user_online'           │
+                    │      → Chevron appears on map          │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+              ┌─────────────────────────────────────────────────────────────────┐
+              │                     ACTIVE CONNECTION                           │
+              │                                                                 │
+              │  Client sends heartbeat every 30s (presenceHeartbeatMs)        │
+              │  Server updates lastHeartbeat timestamp                        │
+              │                                                                 │
+              └────────────────────────────────┬────────────────────────────────┘
+                                               │
+              ┌────────────────────────────────┴────────────────────────────────┐
+              │                                │                                │
+              ▼                                ▼                                ▼
+    ┌─────────────────────┐      ┌─────────────────────┐      ┌─────────────────────┐
+    │   CLEAN DISCONNECT  │      │   HEARTBEAT TIMEOUT │      │   NETWORK ERROR     │
+    │   ws.close()        │      │   (no ping in 5min) │      │   (connection lost) │
+    └──────────┬──────────┘      └──────────┬──────────┘      └──────────┬──────────┘
+               │                            │                            │
+               │                            ▼                            │
+               │              ┌─────────────────────────────┐            │
+               │              │  STALE CONNECTION PRUNE     │            │
+               │              │  (every 60s interval)       │            │
+               │              │  if (now - lastHeartbeat    │            │
+               │              │      > 300000ms) {          │            │
+               │              │    ws.terminate();          │            │
+               │              │  }                          │            │
+               │              └──────────────┬──────────────┘            │
+               │                             │                           │
+               └─────────────────────────────┼───────────────────────────┘
+                                             │
+                                             ▼
+                              ┌─────────────────────────────────┐
+                              │    BROADCAST 'player_left'      │
+                              │    → Chevron removed from map   │
+                              │    → clients.delete(ws)         │
+                              └─────────────────────────────────┘
+
+Presence Tracking Config (v1.6):
+  presenceHeartbeatMs: 30000      (client pings every 30s)
+  presenceStaleThresholdMs: 300000 (5 minutes to mark stale)
+  presencePruneIntervalMs: 60000   (check every 1 minute)
+```
+
+---
+
+## 11. LEADERBOARD STATE MACHINE (v1.6)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    v1.6 SINGLE LEADERBOARD (lifetime_earned)                    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌────────────────────────────────────────┐
+                    │         LEADERBOARD TRIGGERS           │
+                    └────────────────────┬───────────────────┘
+                                         │
+              ┌──────────────────────────┼──────────────────────────┐
+              │                          │                          │
+              ▼                          ▼                          ▼
+    ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
+    │  TERRITORY CLAIMED  │    │   POINTS EARNED     │    │   CLIENT CONNECTS   │
+    │  (or lost)          │    │   (from star)       │    │   (initial load)    │
+    └──────────┬──────────┘    └──────────┬──────────┘    └──────────┬──────────┘
+               │                          │                          │
+               └──────────────────────────┼──────────────────────────┘
+                                          │
+                                          ▼
+                           ┌─────────────────────────────────┐
+                           │  broadcastLeaderboardUpdate()   │
+                           │                                 │
+                           │  1. Query grid_wars_players     │
+                           │     ORDER BY lifetime_earned    │
+                           │     DESC                        │
+                           │                                 │
+                           │  2. Join with users table       │
+                           │     for real_name               │
+                           │                                 │
+                           │  3. Broadcast to all clients:   │
+                           │     {type: 'leaderboard_update',│
+                           │      leaderboard: [...]}        │
+                           └──────────────┬──────────────────┘
+                                          │
+                                          ▼
+                           ┌─────────────────────────────────┐
+                           │     CLIENT RECEIVES UPDATE      │
+                           │                                 │
+                           │  handleWebSocketMessage():      │
+                           │  case 'leaderboard_update':     │
+                           │    onLeaderboardUpdate(data)    │
+                           └──────────────┬──────────────────┘
+                                          │
+                                          ▼
+                           ┌─────────────────────────────────┐
+                           │     GRID PANEL UPDATES UI       │
+                           │                                 │
+                           │  _leaderboardData = leaderboard │
+                           │  renderLeaderboardContent()     │
+                           │                                 │
+                           │  Display:                       │
+                           │  ┌─────────────────────────┐    │
+                           │  │ 🏆 LEADERBOARD          │    │
+                           │  │ Rank: #3                │    │
+                           │  ├─────────────────────────┤    │
+                           │  │ 1. Alice    150 pts (5) │    │
+                           │  │ 2. Bob      120 pts (3) │    │
+                           │  │ 3. You       80 pts (2) │    │
+                           │  │ 4. Carol     60 pts (1) │    │
+                           │  └─────────────────────────┘    │
+                           │                                 │
+                           │  (pts) = territories_count      │
+                           └─────────────────────────────────┘
+
+v1.6 Changes from v1.5:
+  - Removed 3-tab system (Scholar/Banker/General)
+  - Single metric: lifetime_earned
+  - Real-time WebSocket updates (was polling)
+  - Shows territories as secondary info
+  - No limit on display (shows all players)
+```
+
+---
+
+## 12. WEBSOCKET MESSAGE FLOW (Complete)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -519,11 +729,15 @@ CLIENT → SERVER (HTTP POST)                SERVER → CLIENT (WebSocket Broadc
 
 /api/grid-wars/action ─────────────────────▶ territory_claimed
   { action: 'claim', x, y }                   { owner, x, y, strength, cost }
+                                           ▶ leaderboard_update (v1.6)
+                                              { leaderboard: [...] }
 
 /api/grid-wars/points/add ─────────────────▶ points_earned
   { gameId, username, starType }              { username, points, total, starType }
-                                            ▶ velocity_update
+                                           ▶ velocity_update
                                               { username, tier, discount, velocity }
+                                           ▶ leaderboard_update (v1.6)
+                                              { leaderboard: [...] }
 
 /api/grid-wars/session/end ────────────────▶ session_ended
   { password }                                { summary, rankings }
@@ -548,6 +762,9 @@ CLIENT → SERVER (HTTP POST)                SERVER → CLIENT (WebSocket Broadc
 
 (Bounty Taken) ────────────────────────────▶ bounty_claimed
                                               { attacker, defender, bonus }
+
+(Stale Prune v1.6) ────────────────────────▶ player_left
+                                              { username }
 
 
 MESSAGE SEQUENCE TRACKING
@@ -578,7 +795,49 @@ State Snapshot (full resync):
 
 ---
 
-## 10. COMPLETE SYSTEM FLOW
+## 13. CONTIGUITY BONUS CALCULATION
+
+```
+                    ┌────────────────────────────────────────┐
+                    │     PLAYER EARNS POINTS FROM STAR      │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │   CALCULATE LARGEST CONNECTED CLUSTER  │
+                    │   (BFS from each owned cell)           │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │   bonus = min(5, floor(cluster / 5))   │
+                    │   maxContiguityBonus = 5               │
+                    └────────────────────┬───────────────────┘
+                                         │
+        ┌────────────────────────────────┼────────────────────────────────┐
+        │                                │                                │
+        ▼                                ▼                                ▼
+┌───────────────┐             ┌───────────────┐             ┌───────────────┐
+│ cluster 1-4   │             │ cluster 5-9   │             │ cluster 10-14 │
+│ bonus = +0    │             │ bonus = +1    │             │ bonus = +2    │
+└───────────────┘             └───────────────┘             └───────────────┘
+        │                                │                                │
+        ▼                                ▼                                ▼
+┌───────────────┐             ┌───────────────┐             ┌───────────────┐
+│ cluster 15-19 │             │ cluster 20-24 │             │ cluster 25+   │
+│ bonus = +3    │             │ bonus = +4    │             │ bonus = +5    │
+└───────────────┘             └───────────────┘             │ (max on 8×8)  │
+                                                           └───────────────┘
+
+Example on 8×8 map:
+  - Player owns 12 connected cells → bonus = floor(12/5) = +2 pts
+  - Gold star (4 pts) + contiguity (+2) = 6 pts per answer
+  - Max possible: 64 cells connected → +5 bonus (capped)
+```
+
+---
+
+## 14. COMPLETE SYSTEM FLOW (v1.6)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -597,38 +856,46 @@ State Snapshot (full resync):
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                            POINTS AWARDED                                        │
 │                                                                                 │
-│   points = starBase × levelMultiplier × (1 - diminishingPenalty)               │
+│   points = starBase × levelMultiplier × (1 - diminishingPenalty) + contiguity   │
 │                                                                                 │
-│   Range: 1 point (tin L1) → 12 points (gold final level)                       │
+│   Range: 1 point (tin L1) → 12+ points (gold final level + max cluster)         │
 │                                                                                 │
 │   Side effects:                                                                 │
-│   • recordPointEvent() → Supabase (velocity tracking)                          │
+│   • recordPointEvent() → Supabase (velocity tracking, survives restart)         │
 │   • velocity recalculated → tier may change                                    │
 │   • broadcast velocity_update to client                                         │
+│   • broadcast leaderboard_update (v1.6)                                         │
 │   • contiguity bonus if on own territory                                       │
-│   • amplifier bonus if on node                                                  │
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          │
                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                          GRID WARS INTERACTION                                   │
+│                          GRID WARS INTERACTION (v1.6)                           │
 │                                                                                 │
 │   Player opens Grid Wars panel (▼ toggle)                                       │
 │                                                                                 │
 │   ┌───────────────────────────────────────────────────────────────────────────┐ │
-│   │                          25 × 25 MAP                                      │ │
+│   │                          8 × 8 MAP (64 cells)                             │ │
 │   │                                                                           │ │
 │   │    ○ Neutral cells (gray)     ● Your cells (your color)                  │ │
-│   │    ● Enemy cells (their color) ★ Resource nodes (amplifiers)             │ │
-│   │    ✦ Bounty target (gold glow) ⚡ Surge cells (temporary)                 │ │
+│   │    ● Enemy cells (their color) ✦ Bounty target (gold glow)               │ │
 │   │                                                                           │ │
-│   │   Scarcity: ⚡ TENSION │ 65% Claimed │ Velocity: 🔥 BLAZING              │ │
+│   │   Scarcity: 🔥 SCARCITY │ 72% Claimed │ Velocity: ⚡ FLOWING              │ │
+│   │                                                                           │ │
+│   │   🏆 LEADERBOARD (real-time, sorted by lifetime_earned)                   │ │
 │   └───────────────────────────────────────────────────────────────────────────┘ │
 │                                                                                 │
 │   Actions:                                                                      │
-│   • Click neutral → CLAIM (30 pts × scarcity multiplier)                       │
-│   • Click enemy → TAKEOVER (45-75 pts × discounts)                             │
+│   • Click neutral → CLAIM (40 pts × scarcity multiplier)                       │
+│   • Click enemy → TAKEOVER (60-100 pts × discounts)                            │
 │   • Hover → See cost breakdown                                                  │
+│                                                                                 │
+│   v1.6 Changes:                                                                 │
+│   • 8×8 map (was 25×25) — extreme scarcity                                     │
+│   • No resource nodes — pure territory control                                 │
+│   • Single leaderboard — lifetime_earned only                                  │
+│   • Real-time leaderboard updates via WebSocket                                │
+│   • Stale presence cleanup — chevrons disappear after 5 min inactive           │
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          │
                                          ▼
@@ -640,6 +907,8 @@ State Snapshot (full resync):
 │      ▼                                                               │          │
 │   CLAIM TERRITORY ─────▶ CONTIGUITY BONUS ─────▶ MORE POINTS/STAR ──┘          │
 │      │                                                                          │
+│      │   ⚠️ Empire overhead: >8 cells = diminishing returns                    │
+│      │      (8→100%, 12→80%, 16→60%, 18+→50% floor)                            │
 │      │                                                                          │
 │      ▼                                                                          │
 │   DEFEND TERRITORY ◀──── OTHER PLAYERS ATTACK                                  │
@@ -648,45 +917,175 @@ State Snapshot (full resync):
 │      ▼                                                                          │
 │   AFK DECAY ─────▶ CELLS RETURN TO NEUTRAL ─────▶ OPPORTUNITY FOR OTHERS       │
 │                                                                                 │
+│   STRATEGIC CONSIDERATIONS (v1.6):                                              │
+│   • 64 cells total, 41 students — not everyone can own territory               │
+│   • Bounty on players with ≥12 cells (20%) — paint a target                    │
+│   • Guerrilla discounts reward underdogs attacking empires                     │
+│   • Velocity rewards consistent drilling                                        │
+│                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## IDENTIFIED ISSUES / VERIFICATION NOTES
+## 15. IDENTIFIED ISSUES / VERIFICATION NOTES
 
-### Potential Race Conditions
-1. **Optimistic claim + server rejection**: UI shows claim, then rolls back. Could flash confusingly.
-2. **Velocity update after point event**: Small delay between recordPointEvent() and getPlayerVelocity() could miss the just-added event.
-3. **Bounty calculation timing**: Player could drop below threshold between check and claim processing.
+### Critical Race Conditions
 
-### Missing State Transitions
-1. **No explicit "game over" state** — game is permanent (by design in v1.5).
-2. **No surrender mechanic** — player with 0 cells still exists in system.
-3. **No alliance system** — players are always solo.
-
-### Guard Validation Gaps
-1. **Uplink validation** happens client-side AND server-side (good).
-2. **Session freeze check** in server but optimistic update might not check first.
-3. **Cooldown** enforced server-side, UI shows overlay reactively.
+| Issue | Risk | Mitigation | Status |
+|-------|------|------------|--------|
+| Double-claim same cell | Two clients claim simultaneously | Server grants to first; authoritativeCell response | ✅ Handled |
+| Sequence gap during resync | Messages lost while resyncing | _resyncInProgress flag blocks processing | ✅ Handled |
+| Uplink timeout edge case | last_answer_at vs claim timing | 10-minute window, server timestamp | ⚠️ Edge case exists |
+| Amplifier charge race | Two stars deplete 1 charge twice | Atomic decrement needed | ⚠️ Potential issue |
+| Session freeze during claim | 403 after optimistic update | Client rollback on 403 | ✅ Handled |
+| Resync message loss | state_snapshot never arrives | 30s timeout + manual retry | ⚠️ No timeout implemented |
 
 ### Persistence Points
-| State | Persisted To | Restored On |
-|-------|--------------|-------------|
-| Star counts | localStorage | Page reload |
-| Tier unlocks | localStorage | Page reload |
-| Territory | Supabase | Full state sync |
-| Points | Supabase | Full state sync |
-| Velocity events | Supabase | Server restart |
-| Session frozen | In-memory Set | ❌ Lost on restart |
-| Bounty targets | Recalculated | Server restart |
 
-### Recommendation: Session Frozen Persistence
-Currently `frozenGames` is a `Set` in memory. If server restarts during frozen session, it resumes unfrozen. Consider adding to Supabase:
+| State | Persisted To | Restored On | Notes |
+|-------|--------------|-------------|-------|
+| Star counts | localStorage | Page reload | Client-side only |
+| Tier unlocks | localStorage | Page reload | Client-side only |
+| Territory | Supabase | Full state sync | Crash-safe |
+| Points | Supabase | Full state sync | Crash-safe |
+| Velocity events | Supabase | Server restart | v1.5.1 fix |
+| Session frozen | In-memory Set | ❌ Lost on restart | **ISSUE** |
+| Bounty targets | Recalculated | Server restart | OK |
+| Cooldowns | In-memory Map | ❌ Lost on restart | Minor |
+
+### Recommended Fixes
+
+#### 1. Session Frozen Persistence (High Priority)
 ```sql
 ALTER TABLE grid_wars_games ADD COLUMN is_frozen BOOLEAN DEFAULT false;
+ALTER TABLE grid_wars_games ADD COLUMN frozen_summary JSONB;
+```
+
+#### 2. Cooldown Cleanup (Low Priority)
+```javascript
+// Add to server interval:
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, data] of cooldowns) {
+    if (now > data.until) cooldowns.delete(key);
+  }
+}, 60000);
+```
+
+#### 3. Leaderboard Throttling (Medium Priority)
+```javascript
+// Throttle to max 2 broadcasts/sec
+let lastLeaderboardBroadcast = 0;
+async function broadcastLeaderboardUpdate(gameId) {
+  const now = Date.now();
+  if (now - lastLeaderboardBroadcast < 500) return;
+  lastLeaderboardBroadcast = now;
+  // ... existing code
+}
+```
+
+#### 4. Resync Timeout (Medium Priority)
+```javascript
+// In client GridWarsState:
+_requestResync() {
+  this._resyncTimeout = setTimeout(() => {
+    console.error('Resync timeout - manual refresh required');
+    this._exitResyncMode();
+    this.onError?.({ operation: 'resync', error: 'timeout' });
+  }, 30000);
+}
 ```
 
 ---
 
-*Generated by Claude Code analysis of LRSL Driller v1.5.1*
+## 16. STATE VARIABLE INVENTORY
+
+### Server-Side (railway-server/server.js)
+
+| Variable | Type | Purpose | Persistence |
+|----------|------|---------|-------------|
+| `clients` | Map<WS, Object> | Connected WebSocket clients | Memory |
+| `frozenGames` | Map<gameId, Object> | Session freeze state | Memory ⚠️ |
+| `activeRounds` | Map<gameId, Object> | Round tracking | Memory |
+| `cooldowns` | Map<key, Object> | Spam prevention | Memory |
+| `pendingGridUpdates` | Array | Throttled broadcast buffer | Memory |
+| `broadcastSequence` | Number | Message ordering | Memory |
+
+### Client-Side (platform/game/grid-state.js)
+
+| Variable | Type | Purpose |
+|----------|------|---------|
+| `gameId` | String | Active game ID |
+| `username` | String | Current player |
+| `territories` | Map<"x,y", Object> | Cell cache |
+| `players` | Map<username, Object> | Player cache |
+| `classGoal` | Object | Class progress |
+| `surge` | Object | Current surge cell |
+| `scarcityPhase` | Object | v1.5 land scarcity |
+| `bountyTargets` | Array | v1.5 bounty usernames |
+| `velocityTier` | Object | v1.5 earning speed |
+| `_sessionFrozen` | Boolean | v1.3.2 freeze state |
+| `_expectedSeq` | Number | v1.2.1 sequence tracking |
+| `_pendingActions` | Array | v1.2.1 pending claims |
+| `_resyncInProgress` | Boolean | v1.3 resync mode |
+| `_cooldownUntil` | Number | v1.3 cooldown timestamp |
+
+### UI-Side (platform/game/grid-panel.js)
+
+| Variable | Type | Purpose |
+|----------|------|---------|
+| `isExpanded` | Boolean | Panel collapsed/expanded |
+| `selectedCell` | Object | Hover/click selection |
+| `_leaderboardData` | Array | v1.6 cached leaderboard |
+| `_resyncDelayTimer` | Number | v1.3.2 resync indicator |
+| `_cooldownInterval` | Number | v1.3 countdown timer |
+
+---
+
+## 17. API ENDPOINT INVENTORY
+
+| Method | Endpoint | Purpose | Broadcasts |
+|--------|----------|---------|------------|
+| GET | /api/grid-wars/games/active | Get/create game | - |
+| GET | /api/grid-wars/games/:id/state | Full state fetch | - |
+| POST | /api/grid-wars/action | Claim/takeover | territory_claimed, leaderboard_update |
+| POST | /api/grid-wars/points/add | Add points | points_earned, velocity_update, leaderboard_update |
+| POST | /api/grid-wars/avatar/init | Spawn avatar | boot_bonus |
+| POST | /api/grid-wars/avatar/move | Move avatar | avatar_moved |
+| GET | /api/grid-wars/leaderboard | Get leaderboard | - |
+| POST | /api/grid-wars/wrong-answer | Report wrong | - |
+| GET | /api/grid-wars/cooldown | Check cooldown | - |
+| POST | /api/grid-wars/surge | Manual surge | surge_activated |
+| POST | /api/grid-wars/session/end | End session | session_ended |
+| POST | /api/grid-wars/session/resume | Resume session | session_resumed |
+| POST | /api/grid-wars/games/reset | Reset map | game_reset |
+
+---
+
+## 18. INTERVAL/TIMER INVENTORY
+
+### Server-Side
+
+| Interval | Duration | Purpose | Broadcasts |
+|----------|----------|---------|------------|
+| AFK Erosion | 60s | Strength decay | cell_strength_changed |
+| AFK Decay (24hr) | Hourly check | Cell return to neutral | afk_decay |
+| Auto-Surge | 5min | Stagnation surge | auto_surge_activated |
+| Scarcity Update | 60s | Phase calculation | scarcity_update |
+| Bounty Rotation | 60s | Identify top players | bounty_targets_update |
+| Grid Throttle | 500ms | Batch broadcasts | grid_delta |
+| Stale Prune | 60s | Disconnect idle | player_left |
+| Point Cleanup | Daily | Delete old events | - |
+
+### Client-Side
+
+| Timer | Duration | Purpose |
+|-------|----------|---------|
+| Cooldown Countdown | 1000ms | UI countdown |
+| Resync Delay | 2000ms | Show indicator |
+| Toast Dismiss | 3000ms | Auto-hide |
+
+---
+
+*Generated by Claude Code analysis of LRSL Driller v1.6*
