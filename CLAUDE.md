@@ -35,8 +35,6 @@ node server.js        # Requires SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY env var
 
 The `index.html` legacy app works standalone (file:// protocol) but the modular `platform/app.html` requires the dev server.
 
-**Tip**: Run `npm test` before pushing to catch regressions. Tests are fast (~2s).
-
 ## Architecture
 
 ### Console-Cartridge Pattern
@@ -138,32 +136,33 @@ Star tiers based on hints used: Gold (0), Silver (1), Bronze (2), Tin (3+)
 
 A territory control game where students earn points from drill stars to claim cells on a shared map. Located in `platform/game/` with server endpoints at `/api/grid-wars/*`.
 
-**Philosophy (v1.5)**: Permanent, scarce economy with no resets. Territory is finite (625 cells on 25×25 map). Opportunity emerges through natural mechanics (decay, velocity, guerrilla warfare), not artificial intervention.
+**Philosophy (v1.6)**: Extreme scarcity on 8×8 map (64 cells for 41 students). Single leaderboard sorted by `lifetime_earned`. No resource nodes — pure territory control.
 
 ### Cost Calculation (Stacked Multipliers)
 ```
 FINAL_COST = BASE × SCARCITY × (1-VELOCITY) × (1-GUERRILLA) × (1-OVEREXTENSION)
 ```
-- **Base**: Neutral=30, Enemy COLD=45, WARM=60, ACTIVE=75
-- **Scarcity** (map fill): 1.0x→3.0x as map fills
+- **Base**: Neutral=40, Enemy COLD=60, WARM=80, ACTIVE=100
+- **Scarcity** (map fill): 1.0x→3.0x (phases at 30%/60%/85%/100%)
 - **Velocity** (pts/min): -10% to -40% for active players
-- **Guerrilla** (size ratio): -30% to -50% for small vs large
+- **Guerrilla** (size ratio): -30% to -50% for small vs large (scaled for 64 cells)
 - **Overextension** (isolation): -15% to -30% for edge/isolated cells
 
-### Key v1.5.1 Features
-- **Velocity persistence**: Point events stored in Supabase (survives restarts). See `railway-server/migrations/001_point_events.sql`
-- **Scarcity pricing**: Dynamic neutral claim costs (EXPANSION→TENSION→SCARCITY→SATURATION phases)
-- **AFK decay**: 24hr grace, then 1 cell/day returns to neutral
-- **Auto-bounty**: Players with >20% of map (125 cells) become targets (+15 pts for attackers)
-- **UI indicators**: Scarcity phase and velocity tier in panel header, golden glow on bounty targets
+### v1.6 Key Features
+- **8×8 map**: 64 cells total, extreme scarcity (boot bonus 30, can't claim immediately)
+- **Single leaderboard**: Sorted by `lifetime_earned`, real-time WebSocket updates
+- **No resource nodes**: `nodesEnabled: false`, pure territory control
+- **Scarcity phases**: EXPANSION (0-30%), TENSION (30-60%), SCARCITY (60-85%), SATURATION (85-100%)
+- **Bounty system**: Players with >20% of map (13 cells) become targets (+10 pts for attackers)
+- **Presence tracking**: 30s heartbeat, 5min stale threshold for connection cleanup
 
 ### State Machine Documentation
 See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions.
 
-### Earlier Features (v1.3-v1.4)
+### Earlier Features (v1.3-v1.5)
 - **Level-weighted scoring**: Stars worth more at higher levels (0.5x→3.0x). Uses `shared/scoring.config.js`
 - **Session management**: Teacher can end/resume sessions, freeze claims while drills continue
-- **Multi-dimensional leaderboard**: Scholar (lifetime), Banker (spendable), General (territory)
+- **Velocity persistence**: Point events stored in Supabase (survives restarts)
 
 ## Environment Variables (Railway Server)
 
@@ -178,7 +177,7 @@ See `docs/STATE_MACHINES.md` for complete diagrams of all component state transi
 npm test                                          # All tests
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
-npx vitest run tests/game/grid-wars-v1.4.test.js # Grid Wars v1.4 tests
+npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests (current)
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 ```
 
@@ -187,7 +186,7 @@ Test organization:
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
 - `tests/server/` - Railway server API tests (api, grid-wars-api)
-- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v1.5)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v1.6)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
