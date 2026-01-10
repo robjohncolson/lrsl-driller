@@ -398,6 +398,9 @@ export class GridPanel {
     this.setupEventListeners();
     this.initCanvas();
     this.updateButtonStates();
+    this.updatePointsDisplay();
+    this.updateClusterDisplay();
+    this.updateClassGoalDisplay();
 
     // v1.4: Load leaderboard data on initial render
     this.refreshMultiLeaderboard();
