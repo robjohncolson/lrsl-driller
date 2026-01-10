@@ -535,11 +535,10 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
-// v1.3.2: Unified leaderboard - reads from Grid Wars action_points
-// This ensures spending points in Grid Wars affects leaderboard rank
+// v1.3.2: Unified leaderboard - merges Grid Wars + lsrl_progress data
+// Shows ALL players who have ever earned points, no limit for all-time
 app.get('/api/leaderboard/unified', async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Default 50, max 100
     const period = req.query.period; // 'hour', '1h', etc.
     let gameId = req.query.gameId;
 
@@ -555,52 +554,114 @@ app.get('/api/leaderboard/unified', async (req, res) => {
       gameId = activeGame?.game_id || 'default';
     }
 
-    // Build query for Grid Wars players
-    let query = supabase
-      .from('grid_wars_players')
-      .select('username, action_points, territories_count, largest_cluster, last_answer_at')
-      .eq('game_id', gameId);
-
-    // For hourly filter, only show players active in last hour
+    // For hourly: only show recently active players from Grid Wars
     if (period === 'hour' || period === '1h') {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      query = query.gte('last_answer_at', oneHourAgo);
+      const { data: players, error } = await supabase
+        .from('grid_wars_players')
+        .select('username, action_points, territories_count, largest_cluster')
+        .eq('game_id', gameId)
+        .gte('last_answer_at', oneHourAgo)
+        .order('action_points', { ascending: false });
+
+      if (error) throw error;
+
+      // Get real names
+      const usernames = (players || []).map(p => p.username);
+      let usersMap = {};
+      if (usernames.length > 0) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('username, real_name')
+          .in('username', usernames);
+        for (const u of users || []) {
+          usersMap[u.username] = u.real_name;
+        }
+      }
+
+      return res.json((players || []).map(p => ({
+        username: p.username,
+        real_name: usersMap[p.username] || null,
+        weighted_score: p.action_points || 0,
+        territories: p.territories_count || 0,
+        cluster: p.largest_cluster || 0,
+        gold: 0, silver: 0, bronze: 0, tin: 0
+      })));
     }
 
-    const { data: players, error: playersError } = await query
-      .order('action_points', { ascending: false })
-      .limit(limit);
+    // For all-time: merge Grid Wars players + lsrl_progress (for legacy users)
+    const playerMap = new Map(); // username -> { points, territories, cluster }
 
-    if (playersError) throw playersError;
+    // 1. Get all Grid Wars players (no limit)
+    const { data: gwPlayers, error: gwError } = await supabase
+      .from('grid_wars_players')
+      .select('username, action_points, territories_count, largest_cluster')
+      .eq('game_id', gameId);
 
-    // Get real names
-    const usernames = (players || []).map(p => p.username);
-    let usersMap = {};
-    if (usernames.length > 0) {
-      const { data: users } = await supabase
-        .from('users')
-        .select('username, real_name')
-        .in('username', usernames);
+    if (gwError && gwError.code !== '42P01') throw gwError;
 
-      for (const u of users || []) {
-        usersMap[u.username] = u.real_name;
+    for (const p of gwPlayers || []) {
+      playerMap.set(p.username, {
+        points: p.action_points || 0,
+        territories: p.territories_count || 0,
+        cluster: p.largest_cluster || 0
+      });
+    }
+
+    // 2. Get all star earners from lsrl_progress (for users not in Grid Wars)
+    const { data: progress, error: progressError } = await supabase
+      .from('lsrl_progress')
+      .select('username, star_type, weighted_points')
+      .not('star_type', 'is', null);
+
+    if (progressError && progressError.code !== '42P01') throw progressError;
+
+    const basePoints = { gold: 4, silver: 3, bronze: 2, tin: 1 };
+    const legacyScores = {};
+
+    for (const p of progress || []) {
+      if (!legacyScores[p.username]) {
+        legacyScores[p.username] = 0;
+      }
+      legacyScores[p.username] += p.weighted_points ?? basePoints[p.star_type] ?? 0;
+    }
+
+    // Add legacy users who aren't in Grid Wars
+    for (const [username, score] of Object.entries(legacyScores)) {
+      if (!playerMap.has(username)) {
+        playerMap.set(username, { points: score, territories: 0, cluster: 0 });
       }
     }
 
-    // Format response to match existing leaderboard structure
-    // Note: unified points don't track individual star types
-    const leaderboard = (players || []).map(p => ({
-      username: p.username,
-      real_name: usersMap[p.username] || null,
-      weighted_score: p.action_points || 0,
-      territories: p.territories_count || 0,
-      cluster: p.largest_cluster || 0,
-      // Set star counts to 0 since unified view doesn't track them
-      gold: 0,
-      silver: 0,
-      bronze: 0,
-      tin: 0
-    }));
+    // 3. Get all real names
+    const usernames = [...playerMap.keys()];
+    let usersMap = {};
+    if (usernames.length > 0) {
+      // Supabase has a limit on IN queries, batch if needed
+      const batchSize = 100;
+      for (let i = 0; i < usernames.length; i += batchSize) {
+        const batch = usernames.slice(i, i + batchSize);
+        const { data: users } = await supabase
+          .from('users')
+          .select('username, real_name')
+          .in('username', batch);
+        for (const u of users || []) {
+          usersMap[u.username] = u.real_name;
+        }
+      }
+    }
+
+    // 4. Build and sort leaderboard
+    const leaderboard = [...playerMap.entries()]
+      .map(([username, data]) => ({
+        username,
+        real_name: usersMap[username] || null,
+        weighted_score: data.points,
+        territories: data.territories,
+        cluster: data.cluster,
+        gold: 0, silver: 0, bronze: 0, tin: 0
+      }))
+      .sort((a, b) => b.weighted_score - a.weighted_score);
 
     res.json(leaderboard);
   } catch (err) {
