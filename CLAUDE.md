@@ -138,21 +138,32 @@ Star tiers based on hints used: Gold (0), Silver (1), Bronze (2), Tin (3+)
 
 A territory control game where students earn points from drill stars to claim cells on a shared map. Located in `platform/game/` with server endpoints at `/api/grid-wars/*`.
 
-Key mechanics: claim cost (weighted points), cell strength (1-3), resource nodes (amplifiers), surge mode, class goal bonuses, activity-based takeover pricing.
+**Philosophy (v1.5)**: Permanent, scarce economy with no resets. Territory is finite (625 cells on 25×25 map). Opportunity emerges through natural mechanics (decay, velocity, guerrilla warfare), not artificial intervention.
 
-**v1.4 Features:**
-- **Level-weighted scoring**: Stars worth more at higher levels (0.5x→3.0x multiplier). Uses `shared/scoring.config.js`
-- **Lifetime tracking**: `lifetime_earned` tracks total points earned (never decreases), separate from spendable `action_points`
-- **Multi-dimensional leaderboard**: Scholar (lifetime_earned), Banker (action_points), General (territories)
-- **Progress tracking with cartridge data**: Records `cartridge_id`, `mode_id`, `level_index`, `weighted_points`
-- **ESC dismissal**: Press ESC to collapse expanded Grid Wars panel
+### Cost Calculation (Stacked Multipliers)
+```
+FINAL_COST = BASE × SCARCITY × (1-VELOCITY) × (1-GUERRILLA) × (1-OVEREXTENSION)
+```
+- **Base**: Neutral=30, Enemy COLD=45, WARM=60, ACTIVE=75
+- **Scarcity** (map fill): 1.0x→3.0x as map fills
+- **Velocity** (pts/min): -10% to -40% for active players
+- **Guerrilla** (size ratio): -30% to -50% for small vs large
+- **Overextension** (isolation): -15% to -30% for edge/isolated cells
 
-**v1.3.2 Features:**
-- **Unified economy**: Leaderboard shows same points as Grid Wars (`/api/leaderboard/unified`)
+### Key v1.5.1 Features
+- **Velocity persistence**: Point events stored in Supabase (survives restarts). See `railway-server/migrations/001_point_events.sql`
+- **Scarcity pricing**: Dynamic neutral claim costs (EXPANSION→TENSION→SCARCITY→SATURATION phases)
+- **AFK decay**: 24hr grace, then 1 cell/day returns to neutral
+- **Auto-bounty**: Players with >20% of map (125 cells) become targets (+15 pts for attackers)
+- **UI indicators**: Scarcity phase and velocity tier in panel header, golden glow on bounty targets
+
+### State Machine Documentation
+See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions.
+
+### Earlier Features (v1.3-v1.4)
+- **Level-weighted scoring**: Stars worth more at higher levels (0.5x→3.0x). Uses `shared/scoring.config.js`
 - **Session management**: Teacher can end/resume sessions, freeze claims while drills continue
-- **Goal clarity UI**: Objective section shows cells, points, and leader info
-- **Underdog assist**: Visual banner when comeback bonus is available
-- **RESYNC UX**: Delayed indicator (2s), panel-local, not global toast
+- **Multi-dimensional leaderboard**: Scholar (lifetime), Banker (spendable), General (territory)
 
 ## Environment Variables (Railway Server)
 
@@ -176,8 +187,23 @@ Test organization:
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
 - `tests/server/` - Railway server API tests (api, grid-wars-api)
-- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v1.4)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v1.5)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
+
+## Database Migrations
+
+SQL migrations for Supabase are in `railway-server/migrations/`. Run these in Supabase SQL Editor before deploying new server versions:
+
+```bash
+# Current migrations:
+railway-server/migrations/001_point_events.sql  # v1.5.1: Velocity tracking
+```
+
+## Configuration Files
+
+- `shared/gridwars.config.js` - All Grid Wars constants (costs, thresholds, map size, velocity tiers, scarcity phases)
+- `shared/scoring.config.js` - Level-weighted scoring formula
+- `cartridges/registry.json` - Available cartridge listing
 
 See `KNOWN_ISSUES.md` for documented bugs and debugging context.
