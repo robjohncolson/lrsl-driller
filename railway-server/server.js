@@ -4458,11 +4458,11 @@ app.get('/api/grid-wars/leaderboard/multi', async (req, res) => {
     let error = null;
 
     // First try with lifetime_earned column
+    // Include all players (removed action_points > 0 filter that excluded spenders)
     const result1 = await supabase
       .from('grid_wars_players')
       .select('username, action_points, territories_count, lifetime_earned')
-      .eq('game_id', gameId)
-      .gt('action_points', 0);
+      .eq('game_id', gameId);
 
     if (result1.error && result1.error.message?.includes('lifetime_earned')) {
       // Column doesn't exist, try without it
@@ -4470,8 +4470,7 @@ app.get('/api/grid-wars/leaderboard/multi', async (req, res) => {
       const result2 = await supabase
         .from('grid_wars_players')
         .select('username, action_points, territories_count')
-        .eq('game_id', gameId)
-        .gt('action_points', 0);
+        .eq('game_id', gameId);
       allPlayers = result2.data;
       error = result2.error;
     } else {
