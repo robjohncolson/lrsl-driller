@@ -1093,6 +1093,27 @@
       return index >= 0 ? index : 0;
     }
 
+    /**
+     * Get total number of levels in current cartridge
+     */
+    function getTotalLevels() {
+      return platform?.currentCartridge?.manifest?.modes?.length || 1;
+    }
+
+    /**
+     * Get current cartridge ID
+     */
+    function getCurrentCartridgeId() {
+      return platform?.currentCartridge?.manifest?.meta?.id || currentCartridgeId || null;
+    }
+
+    /**
+     * Get current mode ID
+     */
+    function getCurrentModeId() {
+      return platform?.currentMode || null;
+    }
+
     // Map frontend grading levels to database-compatible values
     function getDbGradingMode(level) {
       // Database constraint only allows: 'keywords', 'ai', 'teacher'
@@ -1326,7 +1347,9 @@
         // Persist to database for leaderboard
         if (userSystem.currentUser) {
           const problem = platform.currentProblem;
-          const multiplier = getLevelMultiplier();
+          const levelIndex = getCurrentLevelIndex();
+          const totalLevels = getTotalLevels();
+          const weightedPoints = calculateWeightedPoints(starType, levelIndex, totalLevels);
           fetch(`${SERVER_URL}/api/progress`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1337,14 +1360,18 @@
               all_correct: true,
               hints_used: hintsUsed,
               grading_mode: 'teacher',
-              level_index: getCurrentLevelIndex(),
-              level_multiplier: multiplier
+              level_index: levelIndex,
+              // v1.4: Track cartridge/mode for future recomputation
+              cartridge_id: getCurrentCartridgeId(),
+              mode_id: getCurrentModeId(),
+              total_levels: totalLevels,
+              weighted_points: weightedPoints
             })
           })
           .then(r => r.json().then(data => ({ ok: r.ok, data })))
           .then(({ ok, data }) => {
             if (!ok) console.error('Server rejected progress:', data.error);
-            else console.log(`Progress saved (${multiplier.toFixed(1)}x multiplier)`);
+            else console.log(`Progress saved: ${starType} star = ${weightedPoints} pts (level ${levelIndex + 1}/${totalLevels})`);
           })
           .catch(err => console.warn('Failed to save progress:', err));
         }
@@ -3152,7 +3179,9 @@
               // Persist to database for leaderboard
               if (userSystem.currentUser) {
                 const problem = platform.currentProblem;
-                const multiplier = getLevelMultiplier();
+                const levelIndex = getCurrentLevelIndex();
+                const totalLevels = getTotalLevels();
+                const weightedPoints = calculateWeightedPoints(starType, levelIndex, totalLevels);
                 fetch(`${SERVER_URL}/api/progress`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -3163,14 +3192,18 @@
                     all_correct: true,
                     hints_used: state.game.hintsUsed || 0,
                     grading_mode: getDbGradingMode(currentGradingLevel),
-                    level_index: getCurrentLevelIndex(),
-                    level_multiplier: multiplier
+                    level_index: levelIndex,
+                    // v1.4: Track cartridge/mode for future recomputation
+                    cartridge_id: getCurrentCartridgeId(),
+                    mode_id: getCurrentModeId(),
+                    total_levels: totalLevels,
+                    weighted_points: weightedPoints
                   })
                 })
                 .then(r => r.json().then(data => ({ ok: r.ok, data })))
                 .then(({ ok, data }) => {
                   if (!ok) console.error('Server rejected progress:', data.error);
-                  else console.log(`Progress saved (${multiplier.toFixed(1)}x multiplier)`);
+                  else console.log(`Progress saved: ${starType} star = ${weightedPoints} pts (level ${levelIndex + 1}/${totalLevels})`);
                 })
                 .catch(err => console.warn('Failed to save progress:', err));
               }

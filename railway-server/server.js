@@ -233,7 +233,12 @@ app.post('/api/progress', async (req, res) => {
       grading_mode,
       ai_provider,
       level_index,
-      level_multiplier
+      level_multiplier,
+      // v1.4: Track cartridge/mode for future score recomputation
+      cartridge_id,
+      mode_id,
+      total_levels,
+      weighted_points: clientWeightedPoints  // Client can pre-calculate
     } = req.body;
 
     if (!username || !scenario_topic) {
@@ -262,11 +267,42 @@ app.post('/api/progress', async (req, res) => {
       }
     }
 
-    // Calculate weighted points: base_points * level_multiplier
-    const basePoints = { gold: 4, silver: 3, bronze: 2, tin: 1 };
-    const starBasePoints = star_type ? (basePoints[star_type] || 0) : 0;
-    const multiplier = level_multiplier || 1.0;
-    const weightedPoints = starBasePoints * multiplier;
+    // v1.4: Use new scoring config
+    // Star ratios: gold=1, silver=0.5, bronze=0.25, tin=0.125
+    // Level multiplier: 0.5 (first) to 3.0 (last), interpolated
+    const SCORING_CONFIG = {
+      baseGoldPoints: 4,
+      starRatios: { gold: 1.0, silver: 0.5, bronze: 0.25, tin: 0.125 },
+      levelMultiplier: { first: 0.5, last: 3.0 }
+    };
+
+    let weightedPoints = 0;
+    let multiplier = 1.0;
+
+    if (star_type) {
+      // Use client-provided weighted points if available (already calculated with full context)
+      if (clientWeightedPoints != null && clientWeightedPoints > 0) {
+        weightedPoints = clientWeightedPoints;
+        // Back-calculate multiplier for storage
+        const starRatio = SCORING_CONFIG.starRatios[star_type] || SCORING_CONFIG.starRatios.tin;
+        multiplier = weightedPoints / (SCORING_CONFIG.baseGoldPoints * starRatio);
+      } else {
+        // Calculate on server if not provided (fallback for older clients)
+        const starRatio = SCORING_CONFIG.starRatios[star_type] || SCORING_CONFIG.starRatios.tin;
+        const lvlIdx = level_index || 0;
+        const totalLvls = total_levels || 1;
+
+        if (totalLvls <= 1) {
+          multiplier = (SCORING_CONFIG.levelMultiplier.first + SCORING_CONFIG.levelMultiplier.last) / 2;
+        } else {
+          const progress = lvlIdx / (totalLvls - 1);
+          multiplier = SCORING_CONFIG.levelMultiplier.first +
+            progress * (SCORING_CONFIG.levelMultiplier.last - SCORING_CONFIG.levelMultiplier.first);
+        }
+
+        weightedPoints = Math.round(SCORING_CONFIG.baseGoldPoints * starRatio * multiplier * 10) / 10;
+      }
+    }
 
     const { data, error } = await supabase
       .from('lsrl_progress')
@@ -282,7 +318,12 @@ app.post('/api/progress', async (req, res) => {
         grading_mode,
         ai_provider,
         level_multiplier: multiplier,
-        weighted_points: weightedPoints
+        weighted_points: weightedPoints,
+        // v1.4: Track cartridge/mode for future recomputation
+        cartridge_id: cartridge_id || null,
+        mode_id: mode_id || null,
+        level_index: level_index != null ? level_index : null,
+        total_levels: total_levels || null
       })
       .select()
       .single();
@@ -4258,23 +4299,34 @@ app.post('/api/grid-wars/action', async (req, res) => {
 });
 
 // Helper: Upsert player and update stats
+// v1.4: Also updates lifetime_earned when points are ADDED (positive delta)
 async function upsertGridWarsPlayer(gameId, username, pointsDelta, territoriesDelta = 0) {
   // First try to get existing player
   const { data: existing } = await supabase
     .from('grid_wars_players')
-    .select('action_points, territories_count')
+    .select('action_points, territories_count, lifetime_earned')
     .eq('game_id', gameId)
     .eq('username', username)
     .single();
 
+  // v1.4: Only add to lifetime_earned when earning (positive delta)
+  const isEarning = pointsDelta > 0;
+
   if (existing) {
     // Update existing
+    const updateData = {
+      action_points: Math.max(0, existing.action_points + pointsDelta),
+      territories_count: Math.max(0, existing.territories_count + territoriesDelta)
+    };
+
+    // v1.4: Track lifetime_earned for earnings only (not spending)
+    if (isEarning) {
+      updateData.lifetime_earned = (existing.lifetime_earned || 0) + pointsDelta;
+    }
+
     const { error } = await supabase
       .from('grid_wars_players')
-      .update({
-        action_points: Math.max(0, existing.action_points + pointsDelta),
-        territories_count: Math.max(0, existing.territories_count + territoriesDelta)
-      })
+      .update(updateData)
       .eq('game_id', gameId)
       .eq('username', username);
 
@@ -4288,7 +4340,9 @@ async function upsertGridWarsPlayer(gameId, username, pointsDelta, territoriesDe
         game_id: gameId,
         username,
         action_points: Math.max(0, pointsDelta),
-        territories_count: Math.max(0, territoriesDelta)
+        territories_count: Math.max(0, territoriesDelta),
+        // v1.4: Initialize lifetime_earned (only if earning)
+        lifetime_earned: isEarning ? pointsDelta : 0
       });
 
     if (error) throw error;

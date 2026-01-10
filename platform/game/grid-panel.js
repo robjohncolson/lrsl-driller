@@ -556,11 +556,18 @@ export class GridPanel {
    * Handle keydown events for avatar movement
    */
   async handleKeydown(e) {
-    // Only handle when panel is expanded
-    if (!this.isExpanded) return;
-
     // Ignore if user is typing in an input field
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    // ESC key collapses panel (works even when collapsed, no-op)
+    if (e.key === 'Escape' && this.isExpanded) {
+      e.preventDefault();
+      this.toggleExpand();
+      return;
+    }
+
+    // Only handle movement when panel is expanded
+    if (!this.isExpanded) return;
 
     const keyToDirection = {
       'ArrowUp': 'up',
