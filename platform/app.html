@@ -782,6 +782,7 @@
     import { TimeTracker } from './core/time-tracker.js';
     import { CartridgeLoader } from './core/cartridge-loader.js';
     import { GridPanel } from './game/grid-panel.js';
+    import { calculateWeightedPoints, getPointsBreakdown } from '../shared/scoring.config.js';
     console.log('[APP] All imports successful, GridPanel:', typeof GridPanel);
 
     // ==================== CONFIGURATION ====================
@@ -2979,11 +2980,23 @@
     document.addEventListener('platform:starEarned', async (e) => {
       const { starType, modeId } = e.detail || {};
 
-      // Add Grid Wars points for the star earned
+      // Add Grid Wars points for the star earned (with level-weighted scoring)
       if (gridPanel && starType) {
         try {
-          await gridPanel.addPointsFromStar(starType);
-          console.log(`[GridWars] Added points for ${starType} star`);
+          // Get current level position for weighted scoring
+          const gameState = platform.gameEngine.getState();
+          const modeOrder = gameState.modeOrder || [];
+          const levelIndex = modeId ? modeOrder.indexOf(modeId) : 0;
+          const totalLevels = modeOrder.length || 1;
+
+          // Calculate weighted points based on star type and level position
+          const weightedPoints = calculateWeightedPoints(starType, Math.max(0, levelIndex), totalLevels);
+
+          // Log breakdown for debugging
+          const breakdown = getPointsBreakdown(starType, Math.max(0, levelIndex), totalLevels);
+          console.log(`[Scoring] ${starType} star at ${breakdown.levelLabel}: ${weightedPoints} pts (${breakdown.levelMultiplier}x multiplier)`);
+
+          await gridPanel.addPointsFromStar(starType, weightedPoints);
         } catch (err) {
           console.warn('[GridWars] Failed to add points:', err.message);
         }

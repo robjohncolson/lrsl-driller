@@ -1097,12 +1097,14 @@ export class GridPanel {
 
   /**
    * Add points (called when star is earned)
+   * @param {string} starType - 'gold', 'silver', 'bronze', 'tin'
+   * @param {number} weightedPoints - Pre-calculated weighted points (optional)
    */
-  async addPointsFromStar(starType) {
+  async addPointsFromStar(starType, weightedPoints = null) {
     if (!this.state) return;
 
     try {
-      await this.state.addPoints(starType);
+      await this.state.addPoints(starType, weightedPoints);
       this.updatePointsDisplay();
       this.updateButtonStates();
     } catch (err) {

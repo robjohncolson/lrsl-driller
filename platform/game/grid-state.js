@@ -557,9 +557,10 @@ export class GridWarsState {
 
   /**
    * Add points (called when star is earned)
-   * Can be called with starType or direct points amount
+   * Can be called with starType, direct points amount, or both
+   * If both provided, uses pre-calculated weightedPoints (level-adjusted scoring)
    */
-  async addPoints(starType = null, pointsAmount = null) {
+  async addPoints(starType = null, weightedPoints = null) {
     if (!this.gameId || !this.username) {
       throw new Error('Not initialized or no user set');
     }
@@ -569,12 +570,15 @@ export class GridWarsState {
       username: this.username
     };
 
-    if (starType) {
+    // If weightedPoints provided (level-adjusted), use that
+    // Otherwise fall back to starType for server to calculate
+    if (weightedPoints != null && weightedPoints > 0) {
+      body.points = weightedPoints;
+      if (starType) body.starType = starType; // Include for logging/tracking
+    } else if (starType) {
       body.starType = starType;
-    } else if (pointsAmount) {
-      body.points = pointsAmount;
     } else {
-      throw new Error('Either starType or pointsAmount required');
+      throw new Error('Either starType or weightedPoints required');
     }
 
     try {

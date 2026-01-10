@@ -4,6 +4,8 @@
  * Topic-agnostic: works with any cartridge
  */
 
+import { SCORING_CONFIG } from '../../shared/scoring.config.js';
+
 export class GameEngine {
   constructor(config = {}) {
     this.cartridgeId = null;
@@ -36,8 +38,8 @@ export class GameEngine {
       3: 'tin'
     };
 
-    // Required gold stars to unlock next level
-    this.goldToUnlock = config.goldToUnlock || 3;
+    // Required gold stars to unlock next level (from global scoring config)
+    this.goldToUnlock = config.goldToUnlock || SCORING_CONFIG.goldToUnlock || 3;
   }
 
   /**
