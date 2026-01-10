@@ -9,6 +9,7 @@ const {
   assignAvatarFormat,
   getUniqueAvatar
 } = require('./avatar-utils.js');
+const { GRID_WARS_CONFIG } = require('../shared/gridwars.config.js');
 
 // ============================================
 // CONFIGURATION
@@ -37,6 +38,14 @@ console.log('AI Providers configured:', {
   gemini: !!GEMINI_API_KEY,
   groq: !!GROQ_API_KEY
 });
+
+// Grid Wars v1.6 config verification
+console.log('=== GRID WARS CONFIG ===');
+console.log('mapSize:', GRID_WARS_CONFIG.mapSize);
+console.log('nodesEnabled:', GRID_WARS_CONFIG.nodesEnabled);
+console.log('claimCost:', GRID_WARS_CONFIG.claimCost);
+console.log('bootBonus:', GRID_WARS_CONFIG.bootBonus);
+console.log('========================');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -2108,166 +2117,7 @@ app.get('/api/time-tracking/class-summary', async (req, res) => {
 // ============================================
 // GRID WARS ENDPOINTS
 // ============================================
-
-// Game config - territory exploration with direct takeover
-// v1.2.1: Added 3-tier activity pricing, boot bonus
-const GRID_WARS_CONFIG = {
-  // v1.5: 3x cost inflation for scarcity economy
-  claimCost: 30,                     // was 10
-
-  // v1.2.1: 3-tier activity-based pricing for enemy territory (v1.5: 3x)
-  takeoverCostCold: 45,              // was 15, >8min since defender's last answer
-  takeoverCostWarm: 60,              // was 20, 3-8min since defender's last answer
-  takeoverCostActive: 75,            // was 25, <3min since defender's last answer
-
-  // Legacy alias for backward compatibility
-  takeoverCostBase: 45,              // was 15
-
-  nodeClaimCost: 45,                 // was 15, resource nodes cost more (3x)
-  surgeCost: 15,                     // was 5, surge cells cost less (3x)
-  starPoints: {
-    gold: 4,
-    silver: 3,
-    bronze: 2,
-    tin: 1
-  },
-  mapSize: 25,                       // was 20, v1.5: 625 total cells
-  classGoalTarget: 200,
-  classGoalBonus: 10,
-  maxContiguityBonus: 5,       // v1.2: increased from 3 to reward big empires
-
-  // v1.2.1: Boot bonus for new players (v1.5: 3x)
-  bootBonus: 45,
-
-  // Decay settings
-  decayIntervalMs: 60000,       // Isolated cells lose 1 strength per minute
-  maxCellStrength: 3,           // Initial and max strength
-
-  // v1.3: Visual dimming settings
-  dimmingMinOpacity: 0.3,       // Minimum opacity at max fade
-  dimmingFadeMinutes: 15,       // Time to reach minimum opacity
-
-  // v1.3: Activity windows (seconds) - 3-tier system
-  activeWindowSeconds: 180,     // <3min = ACTIVE (highest protection)
-  warmWindowSeconds: 480,       // 3-8min = WARM (medium protection)
-  // >8min = COLD (no protection)
-
-  // Legacy alias
-  activeDrillingWindow: 120,
-
-  // Health settings
-  healthMax: 100,
-  healthDrainNeutral: 2,        // HP/sec on unclaimed land
-  healthDrainEnemy: 5,          // HP/sec on enemy territory
-  healthRegenHome: 5,           // HP/sec on own territory
-
-  // Buff durations (in seconds)
-  beaconDuration: 300,          // 5 minutes
-  anchorDuration: 180,          // 3 minutes
-  amplifierCharges: 5,          // Number of bonus answers
-  amplifierBonus: 3,            // Bonus points per answer
-
-  // Surge settings
-  surgeDuration: 90,            // Seconds surge cell lasts
-
-  // Resource node positions (v1.5: adjusted for 25x25, 5 nodes)
-  nodePositions: [
-    { x: 12, y: 12, type: 'amplifier' },  // Center
-    { x: 5, y: 5, type: 'amplifier' },    // Top-left quadrant
-    { x: 19, y: 19, type: 'amplifier' },  // Bottom-right quadrant
-    { x: 5, y: 19, type: 'amplifier' },   // Bottom-left quadrant (NEW)
-    { x: 19, y: 5, type: 'amplifier' }    // Top-right quadrant (NEW)
-  ],
-
-  // Server tick interval
-  tickIntervalMs: 5000,          // 5 seconds
-
-  // v1.3: Spam Prevention
-  spamWindowSeconds: 60,         // Rolling window for wrong answer tracking
-  spamThreshold: 3,              // Wrong answers in window to trigger cooldown
-  spamCooldownSeconds: 30,       // Cooldown duration (blocks drill submissions)
-
-  // v1.3: Soft Point Ceiling - logarithmic cost scaling
-  pointCeilingEnabled: true,
-  pointCeilingScaleFactor: 0.1,  // Multiplier for log10(points)
-  pointCeilingMinPoints: 10,     // Minimum points before scaling applies
-
-  // v1.5: AFK Decay (replaces v1.3 erosion)
-  // Old v1.3: 15min threshold, strength-based decay
-  // New v1.5: 24hr grace period, 1 cell/day returns to neutral
-  afkGracePeriodHours: 24,           // No decay for first 24 hours of inactivity
-  afkDecayCellsPerDay: 1,            // Lose 1 edge cell per day after grace period
-  afkDecayCheckIntervalMs: 3600000,  // Check hourly (was 60000)
-  afkDecayTarget: 'neutral',         // Cells return to unclaimed (not strength loss)
-
-  // v1.3: Telemetry
-  telemetryEnabled: true,
-  telemetryFlushIntervalMs: 300000,  // 5 minutes
-
-  // v1.3.1: Auto-Surge on Stagnation
-  autoSurgeEnabled: true,
-  autoSurgeFillThreshold: 0.85,        // Map fill % to trigger (85%)
-  autoSurgeChurnThreshold: 5,          // cells_changed_5min below this
-  autoSurgeCellCount: 2,               // Number of surge cells to spawn
-  autoSurgeCooldownMs: 10 * 60 * 1000, // 10 minutes between auto-surges
-  autoSurgeCheckIntervalMs: 60 * 1000, // Check every minute
-
-  // v1.3.1: Underdog Assist (v1.5: scaled floor)
-  underdogEnabled: true,
-  underdogDiscount: 0.5,               // 50% off next claim
-  underdogMinCost: 15,                 // was 5, floor for discounted claim (3x)
-  underdogActivityWindowMs: 3 * 60 * 1000, // Must have answered in last 3 min
-  underdogCooldownMs: 5 * 60 * 1000,   // Can only trigger once per 5 min
-
-  // v1.4: Diminishing Returns (v1.5: scaled for 25x25 map)
-  diminishingReturnsEnabled: true,
-  diminishingReturnsThreshold: 75,     // was 25, now ~12% of 625 cells
-  diminishingReturnsMinMultiplier: 0.5, // Floor at 50% earning rate
-  diminishingReturnsFactor: 0.004,     // was 0.005, slightly reduced for larger threshold
-
-  // v1.5: Scarcity Pricing
-  scarcityEnabled: true,
-  scarcityPhases: {
-    EXPANSION:  { maxFill: 0.50, multiplier: 1.0, message: '🌱 Land Rush' },
-    TENSION:    { maxFill: 0.80, multiplier: 1.6, message: '⚡ Territory Tightening' },
-    SCARCITY:   { maxFill: 0.95, multiplier: 2.2, message: '🔥 Prime Real Estate Gone' },
-    SATURATION: { maxFill: 1.00, multiplier: 3.0, message: '💎 Last Parcels' },
-  },
-  scarcityFullMessage: '⚔️ ALL TERRITORY CLAIMED — Only Conquest Remains',
-
-  // v1.5: Minimum points floor
-  minimumPointsPerAnswer: 1,
-
-  // v1.5: Velocity Strike (points/min attack bonus)
-  velocityEnabled: true,
-  velocityWindowMinutes: 10,
-  velocityTiers: {
-    BLAZING: { min: 2.0, discount: 0.40, message: '🔥 BLAZING (40% off)' },
-    FLOWING: { min: 1.0, discount: 0.25, message: '⚡ FLOWING (25% off)' },
-    ACTIVE:  { min: 0.5, discount: 0.10, message: '💧 ACTIVE (10% off)' },
-    IDLE:    { min: 0,   discount: 0,    message: '❄️ IDLE (no bonus)' },
-  },
-
-  // v1.5: Guerrilla Warfare (small vs large bonus)
-  guerrillaEnabled: true,
-  guerrillaTiers: [
-    { attackerMax: 10, defenderMin: 50, discount: 0.50, message: '⚔️ Guerrilla Strike! (50% off)' },
-    { attackerMax: 20, defenderMin: 75, discount: 0.40, message: '⚔️ Guerrilla Raid (40% off)' },
-    { attackerMax: 30, defenderMin: 100, discount: 0.30, message: '⚔️ Guerrilla Ambush (30% off)' },
-  ],
-
-  // v1.5: Overextension Penalty (defense discount on isolated cells)
-  overextensionEnabled: true,
-  overextensionIsolatedDiscount: 0.30,
-  overextensionEdgeDiscount: 0.15,
-  overextensionClusterThreshold: 3,
-
-  // v1.5: Auto-Bounty System
-  bountyEnabled: true,
-  bountyThresholdPercent: 0.20,
-  bountyBonusPoints: 15,
-  bountyCheckIntervalMs: 60000,
-};
+// v1.6.1: Config now imported from shared/gridwars.config.js
 
 // ============================================
 // v1.5.1: VELOCITY PERSISTENCE (Supabase-backed)

@@ -14,6 +14,8 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server)
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
+**Current Version**: v1.6.1 (Grid Wars radical simplification + config fix)
+
 ## Development Commands
 
 ```bash
@@ -136,7 +138,7 @@ Star tiers based on hints used: Gold (0), Silver (1), Bronze (2), Tin (3+)
 
 A territory control game where students earn points from drill stars to claim cells on a shared map. Located in `platform/game/` with server endpoints at `/api/grid-wars/*`.
 
-**Philosophy (v1.6)**: Extreme scarcity on 8×8 map (64 cells for 41 students). Single leaderboard sorted by `lifetime_earned`. No resource nodes — pure territory control.
+**Philosophy (v1.6.1)**: Extreme scarcity on 8×8 map (64 cells for 41 students). Leaderboard sorted by `territories_count` (current holdings). No resource nodes — pure territory control.
 
 ### Cost Calculation (Stacked Multipliers)
 ```
@@ -148,16 +150,17 @@ FINAL_COST = BASE × SCARCITY × (1-VELOCITY) × (1-GUERRILLA) × (1-OVEREXTENSI
 - **Guerrilla** (size ratio): -30% to -50% for small vs large (scaled for 64 cells)
 - **Overextension** (isolation): -15% to -30% for edge/isolated cells
 
-### v1.6 Key Features
+### v1.6.1 Key Features
 - **8×8 map**: 64 cells total, extreme scarcity (boot bonus 30, can't claim immediately)
-- **Single leaderboard**: Sorted by `lifetime_earned`, real-time WebSocket updates
+- **Territory leaderboard**: Header "🏰 TERRITORY HELD", sorted by `territories_count` (not lifetime_earned)
 - **No resource nodes**: `nodesEnabled: false`, pure territory control
 - **Scarcity phases**: EXPANSION (0-30%), TENSION (30-60%), SCARCITY (60-85%), SATURATION (85-100%)
 - **Bounty system**: Players with >20% of map (13 cells) become targets (+10 pts for attackers)
-- **Presence tracking**: 30s heartbeat, 5min stale threshold for connection cleanup
+- **Centralized config**: Server imports from `shared/gridwars.config.js` (single source of truth)
+- **Startup logging**: Server logs config values on startup for deployment verification
 
 ### State Machine Documentation
-See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions.
+See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions (22 sections covering grading, game engine, Grid Wars, WebSocket, etc.).
 
 ### Earlier Features (v1.3-v1.5)
 - **Level-weighted scoring**: Stars worth more at higher levels (0.5x→3.0x). Uses `shared/scoring.config.js`
@@ -201,8 +204,14 @@ railway-server/migrations/001_point_events.sql  # v1.5.1: Velocity tracking
 
 ## Configuration Files
 
-- `shared/gridwars.config.js` - All Grid Wars constants (costs, thresholds, map size, velocity tiers, scarcity phases)
+- `shared/gridwars.config.js` - All Grid Wars constants (costs, thresholds, map size, velocity tiers, scarcity phases). **Single source of truth** — server imports this, do not duplicate values.
 - `shared/scoring.config.js` - Level-weighted scoring formula
 - `cartridges/registry.json` - Available cartridge listing
+
+## Important Notes
+
+**Config sync issue (fixed in v1.6.1)**: The server previously had hardcoded Grid Wars config values that diverged from `shared/gridwars.config.js`. Now the server imports from the shared config. If you modify Grid Wars constants, only edit `shared/gridwars.config.js`.
+
+**Leaderboard persistence gap**: `app.html` saves stars to localStorage only — does NOT call `/api/progress`. Students using the new platform don't appear on the server leaderboard. See `KNOWN_ISSUES.md` for details.
 
 See `KNOWN_ISSUES.md` for documented bugs and debugging context.

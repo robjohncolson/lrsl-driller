@@ -302,21 +302,10 @@ export class GridPanel {
             <span id="gw-status">Click a cell to claim territory</span>
           </div>
 
-          <!-- Class Goal Progress -->
-          <div style="padding:8px 12px;background:#0f172a;border-top:1px solid #374151;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-              <span style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Class Goal</span>
-              <span id="gw-goal-text" style="font-size:0.7rem;color:#67e8f9;">0 / 200</span>
-            </div>
-            <div style="height:6px;background:#1e293b;border-radius:3px;overflow:hidden;">
-              <div id="gw-goal-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#00ff41,#22d3ee);transition:width 0.3s;"></div>
-            </div>
-          </div>
-
-          <!-- v1.6: Single Leaderboard (lifetime_earned only) -->
+          <!-- v1.6.1: Single Leaderboard (territory count only) -->
           <div id="gw-leaderboard-section" style="border-top:1px solid #374151;">
             <div style="padding:6px 8px;background:#0a0a0a;display:flex;align-items:center;justify-content:space-between;">
-              <span style="color:#fbbf24;font-size:0.7rem;font-weight:bold;">🏆 LEADERBOARD</span>
+              <span style="color:#fbbf24;font-size:0.7rem;font-weight:bold;">🏰 TERRITORY HELD</span>
               <span id="gw-my-rank" style="color:#6b7280;font-size:0.6rem;">Rank: --</span>
             </div>
             <div id="gw-leaderboard-content" style="padding:8px;background:#0f172a;max-height:150px;overflow-y:auto;font-size:0.65rem;">
@@ -985,24 +974,10 @@ export class GridPanel {
 
   /**
    * Update class goal progress display
+   * v1.6.1: Class Goal UI removed - this is now a no-op for backwards compatibility
    */
   updateClassGoalDisplay() {
-    const textEl = this.container.querySelector('#gw-goal-text');
-    const barEl = this.container.querySelector('#gw-goal-bar');
-
-    if (!this.state) return;
-
-    const goal = this.state.getClassGoal();
-    const current = goal.current || 0;
-    const target = goal.target || 200;
-    const percent = Math.min(100, (current / target) * 100);
-
-    if (textEl) {
-      textEl.textContent = `${current} / ${target}`;
-    }
-    if (barEl) {
-      barEl.style.width = `${percent}%`;
-    }
+    // No-op: Class Goal UI removed in v1.6.1
   }
 
   /**
@@ -1358,28 +1333,29 @@ export class GridPanel {
       return;
     }
 
-    // Find current player's rank
-    const myIndex = entries.findIndex(e => e.username === this.state?.username);
+    // v1.6.1: Sort by territories_count, show only territory held
+    const sortedEntries = [...entries].sort((a, b) =>
+      (b.territories_count || 0) - (a.territories_count || 0)
+    );
+
+    // Find current player's rank (in sorted order)
+    const myIndex = sortedEntries.findIndex(e => e.username === this.state?.username);
     const myRankEl = this.container?.querySelector('#gw-my-rank');
     if (myRankEl) {
       myRankEl.textContent = myIndex >= 0 ? `Rank: #${myIndex + 1}` : 'Rank: --';
       myRankEl.style.color = myIndex >= 0 ? '#fbbf24' : '#6b7280';
     }
 
-    const html = entries.map((entry, i) => {
+    const html = sortedEntries.map((entry, i) => {
       const isMe = entry.username === this.state?.username;
       const name = entry.real_name || entry.username || 'Unknown';
       const displayName = name.length > 12 ? name.slice(0, 10) + '...' : name;
-      const pts = entry.lifetime_earned || entry.weighted_score || 0;
       const cells = entry.territories_count || 0;
 
       return `
         <div class="gw-lb-entry${isMe ? ' my-entry' : ''}" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;${isMe ? 'background:rgba(0,255,65,0.1);margin:0 -4px;padding:4px;border-radius:3px;' : ''}">
           <span style="color:${isMe ? '#00ff41' : '#e2e8f0'};">${i + 1}. ${displayName}</span>
-          <span style="display:flex;gap:8px;align-items:center;">
-            <span style="color:#fbbf24;font-weight:bold;">${pts}</span>
-            <span style="color:#6b7280;font-size:0.55rem;">(${cells})</span>
-          </span>
+          <span style="color:#fbbf24;font-weight:bold;">${cells} 🏰</span>
         </div>
       `;
     }).join('');
