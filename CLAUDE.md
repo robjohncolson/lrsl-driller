@@ -204,13 +204,16 @@ railway-server/migrations/001_point_events.sql  # v1.5.1: Velocity tracking
 
 ## Configuration Files
 
-- `shared/gridwars.config.js` - All Grid Wars constants (costs, thresholds, map size, velocity tiers, scarcity phases). **Single source of truth** — server imports this, do not duplicate values.
+- `shared/gridwars.config.js` - Grid Wars constants for frontend (Vite build)
+- `railway-server/gridwars.config.js` - **Copy** for Railway deployment (must stay in sync with shared/)
 - `shared/scoring.config.js` - Level-weighted scoring formula
 - `cartridges/registry.json` - Available cartridge listing
 
 ## Important Notes
 
-**Config sync issue (fixed in v1.6.1)**: The server previously had hardcoded Grid Wars config values that diverged from `shared/gridwars.config.js`. Now the server imports from the shared config. If you modify Grid Wars constants, only edit `shared/gridwars.config.js`.
+**Two config copies**: Railway deploys only `railway-server/`, so it has its own copy of `gridwars.config.js`. When changing Grid Wars constants, **update both files**:
+1. `shared/gridwars.config.js` (frontend)
+2. `railway-server/gridwars.config.js` (server)
 
 **Leaderboard persistence gap**: `app.html` saves stars to localStorage only — does NOT call `/api/progress`. Students using the new platform don't appear on the server leaderboard. See `KNOWN_ISSUES.md` for details.
 
