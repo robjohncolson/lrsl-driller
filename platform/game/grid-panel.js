@@ -176,6 +176,11 @@ export class GridPanel {
               <span id="gw-uplink-icon" style="color:#00ff41;">📡</span>
               <span id="gw-uplink-text" style="font-weight:bold;color:#67e8f9;font-size:0.7rem;">--:--</span>
             </div>
+            <!-- v1.5: Scarcity phase indicator -->
+            <div id="gw-scarcity-status" style="display:none;align-items:center;gap:4px;background:#1e293b;padding:4px 8px;border-radius:4px;" title="Land scarcity phase">
+              <span id="gw-scarcity-icon" style="color:#00ff41;">🌱</span>
+              <span id="gw-scarcity-text" style="font-weight:bold;color:#67e8f9;font-size:0.6rem;">LAND RUSH</span>
+            </div>
             <button id="gw-help-btn" style="background:transparent;border:1px solid #374151;color:#9ca3af;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:0.75rem;" title="How to Play">?</button>
           </div>
         </div>
@@ -917,6 +922,45 @@ export class GridPanel {
   }
 
   /**
+   * v1.5: Update scarcity phase display
+   */
+  updateScarcityDisplay() {
+    const container = this.container.querySelector('#gw-scarcity-status');
+    const iconEl = this.container.querySelector('#gw-scarcity-icon');
+    const textEl = this.container.querySelector('#gw-scarcity-text');
+
+    if (!container || !this.state) return;
+
+    const scarcity = this.state.getScarcityPhase();
+
+    if (!scarcity || scarcity.phase === 'EXPANSION') {
+      // Hide during expansion phase (land is plentiful)
+      container.style.display = 'none';
+      return;
+    }
+
+    // Show and update based on phase
+    container.style.display = 'flex';
+
+    // Set icon and text based on phase
+    const phaseStyles = {
+      TENSION: { icon: '⚡', color: '#fbbf24', text: 'TIGHTENING' },
+      SCARCITY: { icon: '🔥', color: '#ef4444', text: 'SCARCE' },
+      SATURATION: { icon: '💎', color: '#a855f7', text: 'FULL' }
+    };
+
+    const style = phaseStyles[scarcity.phase] || phaseStyles.TENSION;
+
+    if (iconEl) iconEl.textContent = style.icon;
+    if (textEl) {
+      textEl.textContent = style.text;
+      textEl.style.color = style.color;
+    }
+
+    container.title = scarcity.message || `Land scarcity: ${scarcity.phase}`;
+  }
+
+  /**
    * Update class goal progress display
    */
   updateClassGoalDisplay() {
@@ -1074,6 +1118,7 @@ export class GridPanel {
     this.updateUnderdogDisplay();    // v1.3.2
     this.updateUplinkStatus();       // v1.4
     this.updateDiminishingDisplay(); // v1.4
+    this.updateScarcityDisplay();    // v1.5
   }
 
   /**
