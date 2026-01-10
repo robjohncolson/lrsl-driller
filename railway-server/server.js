@@ -4910,6 +4910,18 @@ app.post('/api/grid-wars/points/add', async (req, res) => {
     // v1.5: Record point event for velocity tracking
     recordPointEvent(gameId, username, adjustedPoints);
 
+    // v1.5: Calculate and broadcast velocity tier
+    const velocity = getPlayerVelocity(gameId, username);
+    const velocityTier = getVelocityTier(velocity);
+    broadcast({
+      type: 'velocity_update',
+      gameId,
+      username,
+      tier: velocityTier.tier,
+      discount: velocityTier.discount,
+      velocity
+    });
+
     // Broadcast points earned
     broadcast({
       type: 'points_earned',

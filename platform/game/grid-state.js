@@ -90,6 +90,7 @@ export class GridWarsState {
     // v1.5: Scarcity and combat state
     this.scarcityPhase = null;    // { phase, multiplier, message } or null
     this.bountyTargets = [];      // Array of usernames with bounties
+    this.velocityTier = null;     // { tier, discount, velocity } - current player's velocity
 
     // Event callbacks
     // v1.2: Removed onContestationAlert (contestation system removed)
@@ -912,6 +913,14 @@ export class GridWarsState {
     return this.bountyTargets.includes(username);
   }
 
+  /**
+   * v1.5: Get current player's velocity tier
+   * @returns {{ tier: string, discount: number, velocity: number }|null}
+   */
+  getVelocityTier() {
+    return this.velocityTier;
+  }
+
   // v1.2: Removed reinforceCell (contestation system removed)
 
   /**
@@ -1309,6 +1318,18 @@ export class GridWarsState {
       case 'bounty_targets_update':
         this.bountyTargets = message.targets || [];
         this._emitStateChange();
+        break;
+
+      // v1.5: Velocity tier update (sent after point events)
+      case 'velocity_update':
+        if (message.username === this.username) {
+          this.velocityTier = {
+            tier: message.tier,
+            discount: message.discount,
+            velocity: message.velocity
+          };
+          this._emitStateChange();
+        }
         break;
     }
   }

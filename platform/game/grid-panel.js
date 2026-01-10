@@ -181,6 +181,11 @@ export class GridPanel {
               <span id="gw-scarcity-icon" style="color:#00ff41;">🌱</span>
               <span id="gw-scarcity-text" style="font-weight:bold;color:#67e8f9;font-size:0.6rem;">LAND RUSH</span>
             </div>
+            <!-- v1.5: Velocity tier indicator -->
+            <div id="gw-velocity-status" style="display:none;align-items:center;gap:4px;background:#1e293b;padding:4px 8px;border-radius:4px;" title="Earning velocity (pts/min)">
+              <span id="gw-velocity-icon" style="color:#67e8f9;">❄️</span>
+              <span id="gw-velocity-text" style="font-weight:bold;color:#67e8f9;font-size:0.6rem;">IDLE</span>
+            </div>
             <button id="gw-help-btn" style="background:transparent;border:1px solid #374151;color:#9ca3af;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:0.75rem;" title="How to Play">?</button>
           </div>
         </div>
@@ -961,6 +966,46 @@ export class GridPanel {
   }
 
   /**
+   * v1.5: Update velocity tier display
+   */
+  updateVelocityDisplay() {
+    const container = this.container.querySelector('#gw-velocity-status');
+    const iconEl = this.container.querySelector('#gw-velocity-icon');
+    const textEl = this.container.querySelector('#gw-velocity-text');
+
+    if (!container || !this.state) return;
+
+    const velocity = this.state.getVelocityTier ? this.state.getVelocityTier() : null;
+
+    if (!velocity || velocity.tier === 'IDLE') {
+      // Hide when idle (no bonus)
+      container.style.display = 'none';
+      return;
+    }
+
+    // Show and update based on tier
+    container.style.display = 'flex';
+
+    // Set icon and text based on tier
+    const tierStyles = {
+      BLAZING: { icon: '🔥', color: '#ef4444', text: 'BLAZING' },
+      FLOWING: { icon: '⚡', color: '#fbbf24', text: 'FLOWING' },
+      ACTIVE: { icon: '💧', color: '#22d3ee', text: 'ACTIVE' }
+    };
+
+    const style = tierStyles[velocity.tier] || tierStyles.ACTIVE;
+
+    if (iconEl) iconEl.textContent = style.icon;
+    if (textEl) {
+      textEl.textContent = style.text;
+      textEl.style.color = style.color;
+    }
+
+    const discountPct = Math.round((velocity.discount || 0) * 100);
+    container.title = `Velocity: ${velocity.tier} (${discountPct}% off attacks)`;
+  }
+
+  /**
    * Update class goal progress display
    */
   updateClassGoalDisplay() {
@@ -1119,6 +1164,7 @@ export class GridPanel {
     this.updateUplinkStatus();       // v1.4
     this.updateDiminishingDisplay(); // v1.4
     this.updateScarcityDisplay();    // v1.5
+    this.updateVelocityDisplay();    // v1.5
   }
 
   /**
