@@ -540,7 +540,19 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/leaderboard/unified', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
-    const gameId = req.query.gameId || 'default';
+    let gameId = req.query.gameId;
+
+    // Auto-detect active game if no gameId provided
+    if (!gameId) {
+      const { data: activeGame } = await supabase
+        .from('grid_wars_games')
+        .select('game_id')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      gameId = activeGame?.game_id || 'default';
+    }
 
     // Get players from Grid Wars with current action_points (balance = earned - spent)
     const { data: players, error: playersError } = await supabase
