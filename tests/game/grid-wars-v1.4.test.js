@@ -402,4 +402,272 @@ describe('Grid Wars v1.4', () => {
       expect(GRID_WARS_CONFIG.scoutingThresholds.lowCells).toBe(3);
     });
   });
+
+  describe('upsertGridWarsPlayer Behavior', () => {
+    /**
+     * Simulates the upsertGridWarsPlayer function logic
+     * which now correctly tracks lifetime_earned
+     */
+    function simulateUpsert(existing, pointsDelta, territoriesDelta = 0) {
+      const isEarning = pointsDelta > 0;
+
+      if (existing) {
+        const updateData = {
+          action_points: Math.max(0, existing.action_points + pointsDelta),
+          territories_count: Math.max(0, existing.territories_count + territoriesDelta)
+        };
+
+        // v1.4: Track lifetime_earned for earnings only (not spending)
+        if (isEarning) {
+          updateData.lifetime_earned = (existing.lifetime_earned || 0) + pointsDelta;
+        } else {
+          updateData.lifetime_earned = existing.lifetime_earned || 0;
+        }
+
+        return updateData;
+      } else {
+        return {
+          action_points: Math.max(0, pointsDelta),
+          territories_count: Math.max(0, territoriesDelta),
+          lifetime_earned: isEarning ? pointsDelta : 0
+        };
+      }
+    }
+
+    it('should increase both action_points and lifetime_earned when earning', () => {
+      const existing = { action_points: 50, territories_count: 5, lifetime_earned: 50 };
+      const result = simulateUpsert(existing, 10, 0); // Earn 10 points
+
+      expect(result.action_points).toBe(60);
+      expect(result.lifetime_earned).toBe(60);
+    });
+
+    it('should decrease only action_points when spending (not lifetime_earned)', () => {
+      const existing = { action_points: 50, territories_count: 5, lifetime_earned: 50 };
+      const result = simulateUpsert(existing, -10, 1); // Spend 10 points, gain 1 territory
+
+      expect(result.action_points).toBe(40);
+      expect(result.lifetime_earned).toBe(50); // Unchanged!
+      expect(result.territories_count).toBe(6);
+    });
+
+    it('should handle new player earning points', () => {
+      const result = simulateUpsert(null, 15, 0);
+
+      expect(result.action_points).toBe(15);
+      expect(result.lifetime_earned).toBe(15);
+    });
+
+    it('should handle new player with negative points (edge case)', () => {
+      const result = simulateUpsert(null, -5, 0);
+
+      expect(result.action_points).toBe(0); // Floored at 0
+      expect(result.lifetime_earned).toBe(0); // Not earning, so 0
+    });
+
+    it('should not go negative on action_points', () => {
+      const existing = { action_points: 5, territories_count: 1, lifetime_earned: 50 };
+      const result = simulateUpsert(existing, -10, 0);
+
+      expect(result.action_points).toBe(0); // Floored at 0
+      expect(result.lifetime_earned).toBe(50); // Unchanged
+    });
+
+    it('class goal bonus should increase lifetime_earned', () => {
+      const existing = { action_points: 30, territories_count: 3, lifetime_earned: 30 };
+      const bonus = 10; // Class goal bonus
+      const result = simulateUpsert(existing, bonus, 0);
+
+      expect(result.action_points).toBe(40);
+      expect(result.lifetime_earned).toBe(40); // Should increase!
+    });
+
+    it('multiple earn and spend cycles should track correctly', () => {
+      let player = { action_points: 0, territories_count: 0, lifetime_earned: 0 };
+
+      // Earn 20
+      player = simulateUpsert(player, 20, 0);
+      expect(player).toEqual({ action_points: 20, territories_count: 0, lifetime_earned: 20 });
+
+      // Spend 10, gain territory
+      player = simulateUpsert(player, -10, 1);
+      expect(player).toEqual({ action_points: 10, territories_count: 1, lifetime_earned: 20 });
+
+      // Earn 15
+      player = simulateUpsert(player, 15, 0);
+      expect(player).toEqual({ action_points: 25, territories_count: 1, lifetime_earned: 35 });
+
+      // Spend 20, gain territory
+      player = simulateUpsert(player, -20, 1);
+      expect(player).toEqual({ action_points: 5, territories_count: 2, lifetime_earned: 35 });
+
+      // Final: action_points=5, lifetime_earned=35
+      // Player earned 35 total, spent 30, has 5 remaining
+    });
+  });
+
+  describe('ESC Key Dismissal', () => {
+    it('should detect Escape key correctly', () => {
+      const escEvent = { key: 'Escape' };
+      const enterEvent = { key: 'Enter' };
+      const arrowEvent = { key: 'ArrowUp' };
+
+      expect(escEvent.key === 'Escape').toBe(true);
+      expect(enterEvent.key === 'Escape').toBe(false);
+      expect(arrowEvent.key === 'Escape').toBe(false);
+    });
+
+    it('should only dismiss when panel is expanded', () => {
+      let isExpanded = true;
+
+      function handleKeydown(key) {
+        if (key === 'Escape' && isExpanded) {
+          isExpanded = false;
+          return true; // Handled
+        }
+        return false;
+      }
+
+      expect(handleKeydown('Escape')).toBe(true);
+      expect(isExpanded).toBe(false);
+
+      // Second ESC should not do anything (already collapsed)
+      expect(handleKeydown('Escape')).toBe(false);
+    });
+
+    it('should not dismiss when typing in input field', () => {
+      function shouldHandle(key, targetTagName) {
+        if (targetTagName === 'INPUT' || targetTagName === 'TEXTAREA') {
+          return false;
+        }
+        return key === 'Escape';
+      }
+
+      expect(shouldHandle('Escape', 'DIV')).toBe(true);
+      expect(shouldHandle('Escape', 'INPUT')).toBe(false);
+      expect(shouldHandle('Escape', 'TEXTAREA')).toBe(false);
+    });
+  });
+
+  describe('Progress Tracking with Cartridge Data', () => {
+    it('should include cartridge_id in progress record', () => {
+      const progressRecord = {
+        username: 'test_user',
+        star_type: 'gold',
+        cartridge_id: 'lsrl-interpretation',
+        mode_id: 'slope-intro',
+        level_index: 0,
+        total_levels: 5,
+        weighted_points: 2.0
+      };
+
+      expect(progressRecord.cartridge_id).toBe('lsrl-interpretation');
+      expect(progressRecord.mode_id).toBe('slope-intro');
+    });
+
+    it('should calculate weighted_points based on level position', () => {
+      // Mock scoring function
+      function calculateWeightedPoints(starType, levelIndex, totalLevels) {
+        const baseGoldPoints = 4;
+        const starRatios = { gold: 1.0, silver: 0.5, bronze: 0.25, tin: 0.125 };
+        const starRatio = starRatios[starType] || starRatios.tin;
+
+        let multiplier;
+        if (totalLevels <= 1) {
+          multiplier = 1.75; // Middle
+        } else {
+          const progress = levelIndex / (totalLevels - 1);
+          multiplier = 0.5 + progress * 2.5;
+        }
+
+        return Math.round(baseGoldPoints * starRatio * multiplier * 10) / 10;
+      }
+
+      // Level 1 of 5: 0.5x multiplier
+      expect(calculateWeightedPoints('gold', 0, 5)).toBe(2.0);
+
+      // Level 5 of 5: 3.0x multiplier
+      expect(calculateWeightedPoints('gold', 4, 5)).toBe(12.0);
+
+      // Silver at level 5: half of gold
+      expect(calculateWeightedPoints('silver', 4, 5)).toBe(6.0);
+    });
+
+    it('should allow null for legacy records without cartridge data', () => {
+      const legacyRecord = {
+        username: 'old_user',
+        star_type: 'gold',
+        cartridge_id: null,
+        mode_id: null,
+        level_index: null,
+        total_levels: null,
+        weighted_points: 4.0 // Old fixed value
+      };
+
+      expect(legacyRecord.cartridge_id).toBeNull();
+      expect(legacyRecord.weighted_points).toBe(4.0);
+    });
+
+    it('should store level_index as 0-based', () => {
+      // Level 1 displayed to user = index 0 in storage
+      const record = {
+        level_index: 0,
+        total_levels: 5
+      };
+
+      // UI should display: "Level 1/5"
+      const displayLevel = record.level_index + 1;
+      expect(displayLevel).toBe(1);
+    });
+  });
+
+  describe('Helper Functions', () => {
+    it('getTotalLevels should return modes array length', () => {
+      const manifest = {
+        modes: [
+          { id: 'level-1' },
+          { id: 'level-2' },
+          { id: 'level-3' }
+        ]
+      };
+
+      const getTotalLevels = () => manifest.modes?.length || 1;
+      expect(getTotalLevels()).toBe(3);
+    });
+
+    it('getTotalLevels should return 1 for empty modes', () => {
+      const manifest = { modes: [] };
+      const getTotalLevels = () => manifest.modes?.length || 1;
+      expect(getTotalLevels()).toBe(1);
+    });
+
+    it('getCurrentLevelIndex should find mode position', () => {
+      const modes = [
+        { id: 'intro' },
+        { id: 'practice' },
+        { id: 'mastery' }
+      ];
+      const currentModeId = 'practice';
+
+      const getCurrentLevelIndex = () => {
+        const index = modes.findIndex(m => m.id === currentModeId);
+        return index >= 0 ? index : 0;
+      };
+
+      expect(getCurrentLevelIndex()).toBe(1);
+    });
+
+    it('getCurrentCartridgeId should return cartridge id', () => {
+      const currentCartridge = {
+        manifest: {
+          meta: { id: 'lsrl-interpretation' }
+        }
+      };
+
+      const getCurrentCartridgeId = () =>
+        currentCartridge?.manifest?.meta?.id || null;
+
+      expect(getCurrentCartridgeId()).toBe('lsrl-interpretation');
+    });
+  });
 });
