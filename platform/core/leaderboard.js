@@ -56,6 +56,14 @@ export class Leaderboard {
     }
     this.refresh();
     this.onOpen();
+
+    // Add ESC key listener
+    this._escHandler = (e) => {
+      if (e.key === 'Escape') {
+        this.close();
+      }
+    };
+    document.addEventListener('keydown', this._escHandler);
   }
 
   /**
@@ -70,6 +78,12 @@ export class Leaderboard {
       this.backdrop.classList.add('hidden');
     }
     this.onClose();
+
+    // Remove ESC key listener
+    if (this._escHandler) {
+      document.removeEventListener('keydown', this._escHandler);
+      this._escHandler = null;
+    }
   }
 
   /**
@@ -103,7 +117,12 @@ export class Leaderboard {
 
     try {
       // v1.3.2: Use unified endpoint for consistent point display with Grid Wars
-      const response = await fetch(`${this.serverUrl}/api/leaderboard/unified?limit=${limit}`);
+      const url = new URL(`${this.serverUrl}/api/leaderboard/unified`);
+      url.searchParams.set('limit', limit);
+      if (period && period !== 'all') {
+        url.searchParams.set('period', period);
+      }
+      const response = await fetch(url);
       return await response.json();
     } catch (err) {
       console.warn('Failed to fetch leaderboard:', err);

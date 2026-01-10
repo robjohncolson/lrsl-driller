@@ -539,7 +539,8 @@ app.get('/api/leaderboard', async (req, res) => {
 // This ensures spending points in Grid Wars affects leaderboard rank
 app.get('/api/leaderboard/unified', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Default 50, max 100
+    const period = req.query.period; // 'hour', '1h', etc.
     let gameId = req.query.gameId;
 
     // Auto-detect active game if no gameId provided
@@ -554,11 +555,19 @@ app.get('/api/leaderboard/unified', async (req, res) => {
       gameId = activeGame?.game_id || 'default';
     }
 
-    // Get players from Grid Wars with current action_points (balance = earned - spent)
-    const { data: players, error: playersError } = await supabase
+    // Build query for Grid Wars players
+    let query = supabase
       .from('grid_wars_players')
-      .select('username, action_points, territories_count, largest_cluster')
-      .eq('game_id', gameId)
+      .select('username, action_points, territories_count, largest_cluster, last_answer_at')
+      .eq('game_id', gameId);
+
+    // For hourly filter, only show players active in last hour
+    if (period === 'hour' || period === '1h') {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      query = query.gte('last_answer_at', oneHourAgo);
+    }
+
+    const { data: players, error: playersError } = await query
       .order('action_points', { ascending: false })
       .limit(limit);
 
