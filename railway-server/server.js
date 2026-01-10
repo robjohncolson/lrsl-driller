@@ -9,7 +9,7 @@ const {
   assignAvatarFormat,
   getUniqueAvatar
 } = require('./avatar-utils.js');
-const { GRID_WARS_CONFIG } = require('../shared/gridwars.config.js');
+const { GRID_WARS_CONFIG } = require('./gridwars.config.js');
 
 // ============================================
 // CONFIGURATION
