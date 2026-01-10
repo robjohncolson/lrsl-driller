@@ -2270,50 +2270,64 @@ const GRID_WARS_CONFIG = {
 };
 
 // ============================================
-// v1.5: VELOCITY TRACKING (in-memory point events)
+// v1.5.1: VELOCITY PERSISTENCE (Supabase-backed)
+// Replaced in-memory pointEvents Map with Supabase table
 // ============================================
 
-// Track recent point earnings for velocity calculation
-// Map: `${gameId}:${username}` -> [{ timestamp, delta }]
-const pointEvents = new Map();
-
 /**
- * Record a point earning event for velocity tracking
+ * Record a point earning event for velocity tracking (persisted to Supabase)
+ * v1.5.1: Now writes to point_events table instead of in-memory
  */
-function recordPointEvent(gameId, username, delta) {
+async function recordPointEvent(gameId, username, delta, reason = 'star_earned', cartridgeId = null) {
   if (!GRID_WARS_CONFIG.velocityEnabled) return;
 
-  const key = `${gameId}:${username}`;
-  const now = Date.now();
-  const windowMs = GRID_WARS_CONFIG.velocityWindowMinutes * 60 * 1000;
-
-  // Get or create history
-  let history = pointEvents.get(key) || [];
-
-  // Add new event
-  history.push({ timestamp: now, delta });
-
-  // Prune old events outside window
-  history = history.filter(e => now - e.timestamp < windowMs);
-
-  pointEvents.set(key, history);
+  try {
+    await supabase.from('point_events').insert({
+      game_id: gameId,
+      username: username,
+      delta: delta,
+      reason: reason,
+      cartridge_id: cartridgeId,
+      metadata: {}
+    });
+  } catch (err) {
+    console.error('Failed to record point event:', err.message);
+    // Non-fatal: velocity will be slightly off but game continues
+  }
 }
 
 /**
  * Calculate player's velocity (points per minute over window)
- * @returns {number} Points per minute
+ * v1.5.1: Now queries Supabase instead of in-memory
+ * @returns {Promise<number>} Points per minute
  */
-function getPlayerVelocity(gameId, username) {
+async function getPlayerVelocity(gameId, username) {
   if (!GRID_WARS_CONFIG.velocityEnabled) return 0;
 
-  const key = `${gameId}:${username}`;
-  const history = pointEvents.get(key) || [];
-  const windowMinutes = GRID_WARS_CONFIG.velocityWindowMinutes;
+  const windowMinutes = GRID_WARS_CONFIG.velocityWindowMinutes || 10;
+  const windowMs = windowMinutes * 60 * 1000;
+  const cutoffTime = new Date(Date.now() - windowMs).toISOString();
 
-  // Sum all points in window
-  const totalPoints = history.reduce((sum, e) => sum + e.delta, 0);
+  try {
+    const { data, error } = await supabase
+      .from('point_events')
+      .select('delta')
+      .eq('game_id', gameId)
+      .eq('username', username)
+      .gt('created_at', cutoffTime)
+      .gt('delta', 0);
 
-  return totalPoints / windowMinutes;
+    if (error) {
+      console.error('Failed to get velocity:', error.message);
+      return 0;
+    }
+
+    const totalPoints = (data || []).reduce((sum, e) => sum + e.delta, 0);
+    return totalPoints / windowMinutes;
+  } catch (err) {
+    console.error('Velocity calculation error:', err.message);
+    return 0;
+  }
 }
 
 /**
@@ -4444,7 +4458,7 @@ app.post('/api/grid-wars/action', async (req, res) => {
         }
 
         // v1.5: Apply velocity discount for attackers who are earning fast
-        const velocity = getPlayerVelocity(gameId, username);
+        const velocity = await getPlayerVelocity(gameId, username);
         const velocityTier = getVelocityTier(velocity);
         if (velocityTier.discount > 0) {
           cost = Math.ceil(cost * (1 - velocityTier.discount));
@@ -4907,11 +4921,11 @@ app.post('/api/grid-wars/points/add', async (req, res) => {
 
     const newTotal = (existingPlayer?.action_points || 0) + adjustedPoints;
 
-    // v1.5: Record point event for velocity tracking
-    recordPointEvent(gameId, username, adjustedPoints);
+    // v1.5.1: Record point event for velocity tracking (persisted to Supabase)
+    await recordPointEvent(gameId, username, adjustedPoints, 'star_earned');
 
     // v1.5: Calculate and broadcast velocity tier
-    const velocity = getPlayerVelocity(gameId, username);
+    const velocity = await getPlayerVelocity(gameId, username);
     const velocityTier = getVelocityTier(velocity);
     broadcast({
       type: 'velocity_update',
@@ -5957,6 +5971,36 @@ setInterval(() => {
     }
   }
 }, 30000);
+
+// ============================================
+// v1.5.1: POINT EVENTS CLEANUP (Daily)
+// ============================================
+
+/**
+ * Clean up old point events to prevent table bloat
+ * Keeps only last 7 days of events
+ */
+async function cleanOldPointEvents() {
+  try {
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { error, count } = await supabase
+      .from('point_events')
+      .delete()
+      .lt('created_at', oneWeekAgo);
+
+    if (error) {
+      console.error('Failed to clean old point events:', error.message);
+    } else {
+      console.log(`Cleaned ${count || 0} old point events (older than 7 days)`);
+    }
+  } catch (err) {
+    console.error('Point events cleanup error:', err.message);
+  }
+}
+
+// Run cleanup daily (every 24 hours)
+setInterval(cleanOldPointEvents, 24 * 60 * 60 * 1000);
 
 // ============================================
 // START SERVER
