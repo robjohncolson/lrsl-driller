@@ -4453,11 +4453,31 @@ app.get('/api/grid-wars/leaderboard/multi', async (req, res) => {
     const parsedLimit = Math.min(parseInt(limit) || 5, 20);
 
     // Get all players for the game with relevant stats
-    const { data: allPlayers, error } = await supabase
+    // Try with lifetime_earned first, fall back to without if column doesn't exist
+    let allPlayers = null;
+    let error = null;
+
+    // First try with lifetime_earned column
+    const result1 = await supabase
       .from('grid_wars_players')
       .select('username, action_points, territories_count, lifetime_earned')
       .eq('game_id', gameId)
-      .gt('action_points', 0); // Only include active players
+      .gt('action_points', 0);
+
+    if (result1.error && result1.error.message?.includes('lifetime_earned')) {
+      // Column doesn't exist, try without it
+      console.log('[leaderboard/multi] lifetime_earned column not found, using fallback');
+      const result2 = await supabase
+        .from('grid_wars_players')
+        .select('username, action_points, territories_count')
+        .eq('game_id', gameId)
+        .gt('action_points', 0);
+      allPlayers = result2.data;
+      error = result2.error;
+    } else {
+      allPlayers = result1.data;
+      error = result1.error;
+    }
 
     if (error) {
       if (error.code === '42P01') {

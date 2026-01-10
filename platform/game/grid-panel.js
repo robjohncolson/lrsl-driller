@@ -1261,7 +1261,10 @@ export class GridPanel {
    * v1.4: Fetch and update multi-leaderboard
    */
   async refreshMultiLeaderboard() {
-    if (!this.state) return;
+    if (!this.state) {
+      console.warn('[GridPanel] refreshMultiLeaderboard: no state');
+      return;
+    }
 
     try {
       this._leaderboardData = await this.state.getMultiLeaderboard(5);
@@ -1269,6 +1272,11 @@ export class GridPanel {
       this.updateMyRanks();
     } catch (err) {
       console.error('Failed to fetch multi-leaderboard:', err);
+      // Show error state instead of staying on "Loading..."
+      const contentEl = this.container?.querySelector('#gw-leaderboard-content');
+      if (contentEl) {
+        contentEl.innerHTML = '<div style="color:#ef4444;text-align:center;">Failed to load</div>';
+      }
     }
   }
 
