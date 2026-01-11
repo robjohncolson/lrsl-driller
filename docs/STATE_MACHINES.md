@@ -1,6 +1,12 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v1.6.2.
+Complete state machine documentation for all components as of v1.6.3.
+
+**v1.6.3 Changes:**
+- Fixed AI grading prompt: `{{STUDENT_ANSWER}}` (SCREAMING_SNAKE_CASE) now replaced correctly
+- Extracted `buildCartridgePrompt` to `railway-server/prompt-utils.js` for testability
+- Added 27 regression tests for prompt placeholder replacement
+- Both `{{STUDENT_ANSWER}}` and `{{studentAnswer}}` now supported as aliases
 
 **v1.6.2 Changes:**
 - Fixed frontend grid size: Now uses `GRID_WARS_CONFIG.mapSize` instead of hardcoded 20
@@ -2057,7 +2063,190 @@ Use this checklist to verify the system is working correctly:
 
 ---
 
-## 31. SECTION INDEX
+## 31. PROMPT TEMPLATE INTERPOLATION (v1.6.3)
+
+```
+buildCartridgePrompt(template, scenario, answers)
+═══════════════════════════════════════════════════════════════════════════
+
+INPUT:
+├─ template: AI grading prompt from ai-grader-prompt.txt
+├─ scenario: { topic, mode, studentAnswer, gradingPairs, r, slope, ... }
+└─ answers: { fieldId: value, ... }
+
+REPLACEMENT SEQUENCE (ordered priority):
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Step 1: Build problemContext from scenario                              │
+│ ──────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│ contextParts = []                                                        │
+│ if (scenario.topic)      → push "Topic: {topic}"                        │
+│ if (scenario.mode)       → push "Mode: {mode}"                          │
+│ if (scenario.givenValues)→ push "Given values: {givenValues}"           │
+│ if (scenario.r)          → push "r = {r}"                               │
+│ if (scenario.slope)      → push "Slope = {slope}"                       │
+│ if (scenario.intercept)  → push "Intercept = {intercept}"               │
+│                                                                          │
+│ Replace: {{problemContext}} → contextParts.join('\n')                   │
+└──────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Step 2: Build studentResponse from all answers                          │
+│ ──────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│ studentResponse = Object.entries(answers)                               │
+│   .map(([field, value]) => `${field}: ${value}`)                        │
+│   .join('\n')                                                           │
+│                                                                          │
+│ Replace: {{studentResponse}} → formatted string                         │
+└──────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Step 3: Replace expectedAnswer with gradingPairs                        │
+│ ──────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│ expectedAnswer = scenario.gradingPairs || 'See grading pairs in context'│
+│                                                                          │
+│ Replace: {{expectedAnswer}} → expectedAnswer                            │
+└──────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Step 4: Handle STUDENT_ANSWER alias (v1.6.3 FIX)                        │
+│ ──────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│ IF scenario.studentAnswer exists:                                       │
+│   Replace: {{STUDENT_ANSWER}} → String(scenario.studentAnswer)          │
+│                                                                          │
+│ CRITICAL: This fixes templates using SCREAMING_SNAKE_CASE               │
+│ that weren't getting student answers replaced                            │
+└──────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Step 5: Replace ALL scenario variables                                  │
+│ ──────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│ FOR EACH [key, value] IN scenario:                                      │
+│   IF value !== undefined && value !== null:                             │
+│     Replace: {{key}} → String(value)                                    │
+│                                                                          │
+│ Examples:                                                                │
+│   {{topic}}        → "Experimental Design"                              │
+│   {{studentAnswer}}→ "random assignment allows..."                      │
+│   {{correctAnswer}}→ "Random assignment balances confounding"           │
+│   {{keyIdeas}}     → "confounding, causation, random assignment"        │
+│   {{r}}            → "0.85"                                             │
+│   {{slope}}        → "2.3"                                              │
+└──────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Step 6: Replace field-specific answer placeholders                      │
+│ ──────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│ FOR EACH [field, value] IN answers:                                     │
+│   answerKey = `${field}Answer`                                          │
+│   Replace: {{answerKey}} → String(value || '')                          │
+│                                                                          │
+│ Examples:                                                                │
+│   answers = { term: "assignment", predicted: "45.2" }                   │
+│   {{termAnswer}}      → "assignment"                                    │
+│   {{predictedAnswer}} → "45.2"                                          │
+│   {{residualAnswer}}  → "" (if not in answers)                          │
+└──────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Step 7: Handle mode-based conditionals                                  │
+│ ──────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│ modeFlags = {                                                            │
+│   calculateMode: scenario.mode === 'calculate',                         │
+│   interpretMode: scenario.mode === 'interpret',                         │
+│   analyzeMode:   scenario.mode === 'analyze'                            │
+│ }                                                                        │
+│                                                                          │
+│ FOR EACH [flag, isActive]:                                              │
+│   IF isActive:                                                           │
+│     {{#if flag}}...content...{{/if}} → keep content                     │
+│   ELSE:                                                                  │
+│     {{#if flag}}...content...{{/if}} → remove entirely                  │
+└──────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Step 8: Handle residual conditionals                                    │
+│ ──────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│ residualPositive = parseFloat(scenario.residual) > 0                    │
+│                                                                          │
+│ {{#if residualPositive}}A{{else}}B{{/if}}                               │
+│   → IF positive: "A"                                                    │
+│   → IF negative/zero: "B"                                               │
+│                                                                          │
+│ {{moreOrLess}} → "more" (if positive) or "less" (if negative)           │
+└──────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Step 9: Final cleanup                                                   │
+│ ──────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│ Remove all unreplaced {{...}} placeholders                              │
+│   prompt.replace(/\{\{[^}]+\}\}/g, '')                                  │
+│                                                                          │
+│ Trim whitespace                                                          │
+│   prompt.trim()                                                          │
+│                                                                          │
+│ Return final interpolated prompt                                        │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Placeholder Reference Table
+
+| Placeholder | Source | Example Value |
+|-------------|--------|---------------|
+| `{{problemContext}}` | Built from scenario | "Topic: Sampling\nMode: identify" |
+| `{{studentResponse}}` | Built from answers | "term: random\nmethod: stratified" |
+| `{{expectedAnswer}}` | scenario.gradingPairs | "term: expected=assignment" |
+| `{{STUDENT_ANSWER}}` | scenario.studentAnswer | "Random assignment allows..." |
+| `{{studentAnswer}}` | scenario.studentAnswer | "Random assignment allows..." |
+| `{{topic}}` | scenario.topic | "Experimental Design" |
+| `{{problemText}}` | scenario.problemText | "Explain why random..." |
+| `{{correctAnswer}}` | scenario.correctAnswer | "Random assignment balances..." |
+| `{{keyIdeas}}` | scenario.keyIdeas | "confounding, causation" |
+| `{{fieldIdAnswer}}` | answers[fieldId] | "assignment" |
+| `{{moreOrLess}}` | Computed | "more" or "less" |
+| `{{#if mode}}...{{/if}}` | Conditional | Content or empty |
+
+### v1.6.3 Bug Fix Detail
+
+```
+BEFORE v1.6.3:
+──────────────
+Template: "Student Answer:\n{{STUDENT_ANSWER}}"
+scenario.studentAnswer = "random assignment"
+
+Result: "Student Answer:\n{{STUDENT_ANSWER}}"  ← NOT REPLACED!
+        (AI responds: "student answer is missing")
+
+AFTER v1.6.3:
+─────────────
+Added explicit handling for SCREAMING_SNAKE_CASE alias:
+
+if (scenario.studentAnswer) {
+  prompt = prompt.replace(/\{\{STUDENT_ANSWER\}\}/g, String(scenario.studentAnswer));
+}
+
+Result: "Student Answer:\nrandom assignment"   ← CORRECTLY REPLACED
+```
+
+---
+
+## 32. SECTION INDEX
 
 | # | Section | Description |
 |---|---------|-------------|
@@ -2091,10 +2280,11 @@ Use this checklist to verify the system is working correctly:
 | 28 | Velocity Query Fix (v1.6.2) | player_id column fix |
 | 29 | Verification Checklist | System health checks |
 | 30 | State Variable Quick Reference | Variable summary table |
-| 31 | Section Index | This index |
+| 31 | Prompt Template Interpolation (v1.6.3) | {{placeholder}} replacement flow |
+| 32 | Section Index | This index |
 
 ---
 
-*Generated by Claude Code analysis of LRSL Driller v1.6.2*
+*Generated by Claude Code analysis of LRSL Driller v1.6.3*
 *Last updated: January 2026*
-*Total sections: 31*
+*Total sections: 32*

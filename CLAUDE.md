@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server)
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v1.6.2 (Critical bug fixes: grid size, AI parser, velocity query)
+**Current Version**: v1.6.3 (Fixed AI grading prompt placeholder replacement)
 
 ## Development Commands
 
@@ -164,7 +164,7 @@ FINAL_COST = BASE × SCARCITY × (1-VELOCITY) × (1-GUERRILLA) × (1-OVEREXTENSI
 - **Startup logging**: Server logs config values on startup for deployment verification
 
 ### State Machine Documentation
-See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions (31 sections covering grading, game engine, Grid Wars, WebSocket, AI normalization, key pool rotation, etc.).
+See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions (32 sections covering grading, game engine, Grid Wars, WebSocket, AI normalization, key pool rotation, prompt template interpolation, etc.).
 
 ### Earlier Features (v1.3-v1.5)
 - **Level-weighted scoring**: Stars worth more at higher levels (0.5x→3.0x). Uses `shared/scoring.config.js`
@@ -187,13 +187,14 @@ npx vitest run tests/grading/sampling.test.js    # Single test file
 npx vitest run tests/game/grid-wars-v1.6.test.js   # Grid Wars v1.6 tests
 npx vitest run tests/game/grid-wars-v1.6.2.test.js # v1.6.2 regression tests (32 tests)
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
+npx vitest run tests/server/prompt-utils.test.js # v1.6.3 prompt placeholder tests
 ```
 
 Test organization:
 - `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config)
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
-- `tests/server/` - Railway server API tests (api, grid-wars-api)
+- `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils)
 - `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v1.6)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
@@ -214,6 +215,7 @@ railway-server/migrations/001_point_events.sql  # v1.5.1: Velocity tracking (use
 - `shared/gridwars.config.js` - Grid Wars constants for frontend (Vite build)
 - `railway-server/gridwars.config.js` - **Copy** for Railway deployment (must stay in sync with shared/)
 - `shared/scoring.config.js` - Level-weighted scoring formula
+- `railway-server/prompt-utils.js` - Prompt template interpolation (v1.6.3)
 - `cartridges/registry.json` - Available cartridge listing
 
 ## Important Notes
@@ -225,6 +227,14 @@ railway-server/migrations/001_point_events.sql  # v1.5.1: Velocity tracking (use
 **Leaderboard persistence gap**: `app.html` saves stars to localStorage only — does NOT call `/api/progress`. Students using the new platform don't appear on the server leaderboard. See `KNOWN_ISSUES.md` for details.
 
 See `KNOWN_ISSUES.md` for documented bugs and debugging context.
+
+## v1.6.3 Bug Fix
+
+**AI grading prompt placeholder**: Templates using `{{STUDENT_ANSWER}}` (SCREAMING_SNAKE_CASE) were not getting the student answer replaced, causing AI to respond "student answer is missing". Fixed by adding explicit handling for the uppercase alias in `buildCartridgePrompt()`.
+
+- `buildCartridgePrompt` extracted to `railway-server/prompt-utils.js` for testability
+- Both `{{STUDENT_ANSWER}}` and `{{studentAnswer}}` now work as aliases for `scenario.studentAnswer`
+- 27 regression tests added in `tests/server/prompt-utils.test.js`
 
 ## v1.6.2 Bug Fixes
 
