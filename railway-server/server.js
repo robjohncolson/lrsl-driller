@@ -521,6 +521,80 @@ app.post('/api/progress/:username/sync', async (req, res) => {
 });
 
 // ============================================
+// v2.1: GENERIC PROGRESS SYNC ENDPOINT
+// Syncs aggregate star counts per cartridge to new user_progress table
+// ============================================
+
+app.post('/api/progress/cartridge-sync', async (req, res) => {
+  try {
+    const { username, cartridgeId, stars, totalWeightedScore, modeProgress } = req.body;
+
+    if (!username || !cartridgeId) {
+      return res.status(400).json({ error: 'Missing username or cartridgeId' });
+    }
+
+    // Ensure user exists (auto-create if not)
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('username')
+      .eq('username', username)
+      .single();
+
+    if (!existingUser) {
+      const { error: createError } = await supabase
+        .from('users')
+        .insert({
+          username,
+          password: 'auto-created',
+          user_type: 'student'
+        });
+
+      if (createError && !createError.message.includes('duplicate')) {
+        console.warn('Auto-create user warning:', createError);
+      }
+    }
+
+    // Upsert into user_progress table
+    const { data, error } = await supabase
+      .from('user_progress')
+      .upsert({
+        username,
+        cartridge_id: cartridgeId,
+        gold_stars: stars?.gold || 0,
+        silver_stars: stars?.silver || 0,
+        bronze_stars: stars?.bronze || 0,
+        tin_stars: stars?.tin || 0,
+        total_weighted_score: totalWeightedScore || 0,
+        mode_progress: modeProgress || {},
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'username,cartridge_id'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      // Table might not exist yet - log but don't fail
+      if (error.code === '42P01') {
+        console.warn('[Progress Sync] user_progress table does not exist yet. Run migration 004.');
+        return res.json({ success: false, warning: 'Table not found - migration needed' });
+      }
+      throw error;
+    }
+
+    console.log(`[Progress Sync] ${username} synced ${cartridgeId}: ${stars?.gold || 0}G ${stars?.silver || 0}S ${stars?.bronze || 0}B ${stars?.tin || 0}T = ${totalWeightedScore || 0} pts`);
+
+    // Broadcast leaderboard update
+    broadcast({ type: 'leaderboard_update' });
+
+    res.json({ success: true, id: data?.id });
+  } catch (err) {
+    console.error('POST /api/progress/cartridge-sync error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // LEADERBOARD ENDPOINT
 // ============================================
 
@@ -699,7 +773,41 @@ app.get('/api/leaderboard/unified', async (req, res) => {
       }
     }
 
-    // 3. Get all real names
+    // 3. v2.1: Get aggregate progress from user_progress table (for modular platform users)
+    const { data: userProgress, error: userProgressError } = await supabase
+      .from('user_progress')
+      .select('username, total_weighted_score, gold_stars, silver_stars, bronze_stars, tin_stars');
+
+    if (userProgressError && userProgressError.code !== '42P01') {
+      // Log error but don't fail - table might not exist yet
+      console.warn('user_progress table query error:', userProgressError.message);
+    }
+
+    // Merge user_progress scores (add to existing or create new entries)
+    for (const p of userProgress || []) {
+      const existing = playerMap.get(p.username);
+      if (existing) {
+        // Add to existing score
+        existing.points += parseFloat(p.total_weighted_score) || 0;
+        existing.gold = (existing.gold || 0) + (p.gold_stars || 0);
+        existing.silver = (existing.silver || 0) + (p.silver_stars || 0);
+        existing.bronze = (existing.bronze || 0) + (p.bronze_stars || 0);
+        existing.tin = (existing.tin || 0) + (p.tin_stars || 0);
+      } else {
+        // Create new entry
+        playerMap.set(p.username, {
+          points: parseFloat(p.total_weighted_score) || 0,
+          territories: 0,
+          cluster: 0,
+          gold: p.gold_stars || 0,
+          silver: p.silver_stars || 0,
+          bronze: p.bronze_stars || 0,
+          tin: p.tin_stars || 0
+        });
+      }
+    }
+
+    // 4. Get all real names
     const usernames = [...playerMap.keys()];
     let usersMap = {};
     if (usernames.length > 0) {
@@ -717,15 +825,18 @@ app.get('/api/leaderboard/unified', async (req, res) => {
       }
     }
 
-    // 4. Build and sort leaderboard
+    // 5. Build and sort leaderboard
     const leaderboard = [...playerMap.entries()]
       .map(([username, data]) => ({
         username,
         real_name: usersMap[username] || null,
-        weighted_score: data.points,
-        territories: data.territories,
-        cluster: data.cluster,
-        gold: 0, silver: 0, bronze: 0, tin: 0
+        weighted_score: Math.round((data.points || 0) * 10) / 10,
+        territories: data.territories || 0,
+        cluster: data.cluster || 0,
+        gold: data.gold || 0,
+        silver: data.silver || 0,
+        bronze: data.bronze || 0,
+        tin: data.tin || 0
       }))
       .sort((a, b) => b.weighted_score - a.weighted_score);
 

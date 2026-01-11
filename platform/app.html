@@ -1126,6 +1126,60 @@
       return level; // 'ai' and 'teacher' pass through
     }
 
+    /**
+     * v2.1: Sync aggregate cartridge progress to server
+     * This syncs star counts per cartridge to the user_progress table
+     * for the unified leaderboard
+     */
+    async function syncCartridgeProgress() {
+      const username = userSystem?.currentUser?.username;
+      const cartridgeId = getCurrentCartridgeId();
+
+      if (!username || !cartridgeId) {
+        console.log('[Progress Sync] Skipping - no user or cartridge');
+        return;
+      }
+
+      const state = platform?.getState();
+      if (!state?.game) {
+        console.log('[Progress Sync] Skipping - no game state');
+        return;
+      }
+
+      const stars = state.game.starCounts || { gold: 0, silver: 0, bronze: 0, tin: 0 };
+      const modeProgress = state.game.starsPerMode || {};
+
+      // Calculate total weighted score from stars
+      // Using the scoring config: gold=4, silver=2, bronze=1, tin=0.5 base points
+      // For now, use simple calculation; server can recalculate if needed
+      const totalWeightedScore = (stars.gold * 4) + (stars.silver * 2) + (stars.bronze * 1) + (stars.tin * 0.5);
+
+      try {
+        const response = await fetch(`${SERVER_URL}/api/progress/cartridge-sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username,
+            cartridgeId,
+            stars,
+            totalWeightedScore,
+            modeProgress
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          console.log(`[Progress Sync] Synced ${cartridgeId}: ${stars.gold}G ${stars.silver}S ${stars.bronze}B ${stars.tin}T = ${totalWeightedScore} pts`);
+        } else if (data.warning) {
+          console.warn(`[Progress Sync] Warning: ${data.warning}`);
+        } else {
+          console.error('[Progress Sync] Failed:', data.error);
+        }
+      } catch (err) {
+        console.warn('[Progress Sync] Network error:', err.message);
+      }
+    }
+
     // ==================== RESPONSIVE LAYOUT ====================
     function updateMobileLayout() {
       const isMobile = window.innerWidth < 1024; // lg breakpoint
@@ -3106,6 +3160,10 @@
             updateGradingStatus(results);
 
             // v2.0.1: Update AI feedback panel
+            // v2.1: Enhanced logging for AI flow debugging
+            console.log('[AI Panel] Grading method:', results._gradingMethod);
+            console.log('[AI Panel] AI available:', results._aiAvailable, 'AI failed:', results._aiFailed);
+
             if (results._gradingMethod === 'keywords+ai' && !results._aiFailed) {
               // Build AI response object from first field with AI data
               const fieldEntries = Object.entries(results.fields || {});
@@ -3120,18 +3178,28 @@
                     results: { [fieldId]: { score: result._aiScore, feedback: result._aiFeedback } }
                   };
                   keywordScore = result._keywordScore;
+                  console.log('[AI Panel] Found AI result for field:', fieldId, {
+                    provider: result._provider,
+                    model: result._model,
+                    aiScore: result._aiScore,
+                    keywordScore: result._keywordScore
+                  });
                   break;
                 }
               }
 
               if (aiResponse) {
+                console.log('[AI Panel] Showing panel with:', { provider: aiResponse._provider, model: aiResponse._model });
                 updateAIFeedbackPanel(aiFeedbackPanel, aiResponse, keywordScore);
               } else {
+                console.log('[AI Panel] No AI response data found, hiding panel');
                 hideAIFeedbackPanel(aiFeedbackPanel);
               }
             } else if (results._aiFailed && results._aiError) {
+              console.log('[AI Panel] Showing error:', results._aiError);
               showAIFeedbackError(aiFeedbackPanel, results._aiError);
             } else {
+              console.log('[AI Panel] Hiding panel (AI not used or disabled)');
               hideAIFeedbackPanel(aiFeedbackPanel);
             }
 
@@ -3241,6 +3309,9 @@
                   else console.log(`Progress saved: ${starType} star = ${weightedPoints} pts (level ${levelIndex + 1}/${totalLevels})`);
                 })
                 .catch(err => console.warn('Failed to save progress:', err));
+
+                // v2.1: Also sync aggregate cartridge progress for unified leaderboard
+                syncCartridgeProgress();
               }
 
               document.getElementById('btn-grade').classList.add('hidden');

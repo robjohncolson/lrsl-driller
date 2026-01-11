@@ -11,10 +11,21 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 **Deployment**: Vercel (frontend) + Railway (backend server for AI grading, WebSocket, time tracking, Grid Wars)
 
 **Two Entry Points**:
-- `platform/app.html` - Main modular platform (requires dev server)
+- `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.0 (Hierarchical territory subdivision with fractal model)
+**Current Version**: v2.1 (AI Feedback Visibility + Leaderboard Persistence)
+
+## Critical: File Sync Requirements
+
+Railway deploys only `railway-server/`, so certain files must be manually synced:
+
+| Frontend (ES Modules) | Server (CommonJS) | Notes |
+|-----------------------|-------------------|-------|
+| `shared/gridwars.config.js` | `railway-server/gridwars.config.js` | Grid Wars constants |
+| `shared/address-utils.js` | `railway-server/address-utils.js` | Chess notation utils |
+
+**When modifying these files, update BOTH copies or tests/functionality will break.**
 
 ## Development Commands
 
@@ -39,11 +50,21 @@ The `index.html` legacy app works standalone (file:// protocol) but the modular 
 
 ## Architecture
 
+### Main Entry Point: `platform/app.html`
+
+This is a large (~3600 lines) single-file application that orchestrates everything:
+- **Lines 780-900**: Imports and global state initialization
+- **Lines 1100-1200**: Helper functions (getCurrentCartridgeId, syncCartridgeProgress, etc.)
+- **Lines 3080-3310**: `onGradingComplete` callback - handles star awards, AI panel updates, progress sync
+- **Lines 3078-3620**: `loadCartridge()` - Platform initialization and event wiring
+
+When modifying grading behavior, the `onGradingComplete` callback at ~line 3095 is the key integration point.
+
 ### Console-Cartridge Pattern
 
 **Platform (Console)** - `platform/` - topic-agnostic orchestrator:
 - `platform.js` - Main orchestrator, loads cartridges, coordinates engines
-- `core/` - Engines: game-engine (streaks/stars), grading-engine (dual grading), graph-engine (canvas plots), input-renderer (dynamic forms), cartridge-loader, shuffle-bag, user-system, websocket-client, time-tracker, celebration, leaderboard, sound-engine
+- `core/` - Engines: game-engine (streaks/stars), grading-engine (dual grading), graph-engine (canvas plots), input-renderer (dynamic forms), cartridge-loader, shuffle-bag, user-system, websocket-client, time-tracker, celebration, leaderboard, sound-engine, ai-feedback-panel (v2.0.1)
 - `game/` - Grid Wars: grid-state, grid-renderer, grid-panel, teacher-view, audio
 - `core/radical-*.js` - Algebra 2 radicals: visualizer, game, prime game, complex game
 
@@ -68,15 +89,28 @@ The `index.html` legacy app works standalone (file:// protocol) but the modular 
 - `/api/teacher-review` - Queue for teacher manual review
 - `/api/time-tracking/*` - Session and problem timing
 - `/api/users`, `/api/progress`, `/api/leaderboard` - User management
+- `/api/progress/cartridge-sync` - v2.1: Sync aggregate star counts per cartridge to `user_progress` table
 - `/api/grid-wars/*` - Grid Wars game state (territories, claims, contestation)
 - WebSocket broadcasts: star earned, user online/offline, class time events, grid updates
 
 ### Grading Flow
 
-1. **Keywords first** (fast, regex-based) - always runs
-2. **AI grading** (if enabled) - calls server, which tries Groq then Gemini with key rotation
-3. **Best score wins** - AI can override keywords when it recognizes correct answers
-4. **Teacher review** - fallback when AI fails or student appeals
+```
+Student Answer
+      ↓
+Keywords (grading-rules.js) ──→ Score A (fast, regex-based)
+      ↓
+AI (server → Groq/Gemini) ────→ Score B (if enabled)
+      ↓
+Final = max(A, B)  ← AI can upgrade but never downgrade
+      ↓
+If AI fails → Teacher Review Queue
+```
+
+**Key files in grading flow**:
+- `platform/core/grading-engine.js` - Orchestrates keywords + AI
+- `railway-server/server.js` lines 1215-1275 - `gradeWithAI()` with provider fallback
+- `platform/core/ai-feedback-panel.js` - Shows which AI graded work (v2.0.1+)
 
 ## Creating Cartridges
 
@@ -132,13 +166,15 @@ Star tiers based on **total penalties** (hints + retries count equally):
 
 ## Key Patterns
 
-**Dual grading**: Keywords run first (fast), then AI (if enabled). Best score wins. AI can override keyword grading when it recognizes correct answers that regex missed.
+**Dual grading**: Keywords run first (fast), then AI (if enabled). Best score wins. AI can override keyword grading when it recognizes correct answers that regex missed. v2.0.1 adds visible AI Feedback Panel showing students the AI's decision.
 
 **Shuffle bags**: `core/shuffle-bag.js` ensures fair problem distribution without near-repeats (batch of 12, history of 4).
 
-**State persistence**: Game engine uses localStorage with cartridge-prefixed keys (`{cartridgeId}_streaks`, `{cartridgeId}_stars`).
+**State persistence**: Game engine uses localStorage with cartridge-prefixed keys (`{cartridgeId}_streaks`, `{cartridgeId}_stars`). Server sync happens via `/api/progress/cartridge-sync` after each star award.
 
-**Template interpolation**: Use `{{variableName}}` in manifests - replaced with context values at runtime.
+**Template interpolation**: Use `{{variableName}}` in manifests and AI prompts - replaced with context values at runtime. Both `{{studentAnswer}}` and `{{STUDENT_ANSWER}}` work (v1.6.3).
+
+**Metadata fields**: AI grading responses include underscore-prefixed metadata (`_provider`, `_model`, `_aiScore`, `_keywordScore`, `_method`). These flow through the grading pipeline for transparency.
 
 ## Grid Wars (Multiplayer Game)
 
@@ -181,7 +217,7 @@ FINAL_COST = BASE × SCARCITY × (1-VELOCITY) × (1-GUERRILLA) × (1-OVEREXTENSI
 - **Velocity persistence**: Point events stored in Supabase (survives restarts)
 
 ### State Machine Documentation
-See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions (45 sections covering grading, game engine, Grid Wars v2.0 hierarchy, WebSocket, AI normalization, etc.).
+See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions (47 sections covering grading, game engine, Grid Wars v2.0 hierarchy, WebSocket, AI normalization, AI Feedback Panel, etc.).
 
 ## Environment Variables (Railway Server)
 
@@ -193,20 +229,24 @@ See `docs/STATE_MACHINES.md` for complete diagrams of all component state transi
 ## Testing
 
 ```bash
-npm test                                          # All tests (971 tests)
+npm test                                          # All tests (1100 tests)
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
 npx vitest run tests/game/grid-wars-v2.0.test.js # v2.0 hierarchy tests (40 tests)
 npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
+npx vitest run tests/core/ai-feedback-panel.test.js       # v2.0.1 AI panel tests (48 tests)
+npx vitest run tests/server/ai-grading-v2.0.1.test.js     # v2.0.1 server response tests (21 tests)
+npx vitest run tests/core/ai-feedback-panel-v2.1.test.js  # v2.1 debug logging tests (23 tests)
+npx vitest run tests/server/progress-sync-v2.1.test.js    # v2.1 progress sync tests (37 tests)
 ```
 
 Test organization:
-- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config)
+- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1)
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
-- `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils)
+- `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1)
 - `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v1.6)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
@@ -220,32 +260,29 @@ SQL migrations for Supabase are in `railway-server/migrations/`. Run these in Su
 railway-server/migrations/001_point_events.sql       # v1.5.1: Velocity tracking
 railway-server/migrations/002_v1.6_fresh_start.sql   # v1.6: Fresh start schema
 railway-server/migrations/003_v2.0_hierarchical.sql  # v2.0: Hierarchy columns (address, parent_address, is_developed, cell_level)
+railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table for aggregate star counts per cartridge
 ```
 
 **Note**: The `point_events` table uses `player_id` column (not `username`). This was fixed in v1.6.2.
 
 ## Configuration Files
 
-- `shared/gridwars.config.js` - Grid Wars constants for frontend (Vite build)
-- `railway-server/gridwars.config.js` - **Copy** for Railway deployment (must stay in sync with shared/)
-- `shared/address-utils.js` - Chess notation utilities for v2.0 hierarchy
-- `railway-server/address-utils.js` - **CommonJS copy** for Railway (must stay in sync with shared/)
-- `shared/scoring.config.js` - Level-weighted scoring formula
-- `railway-server/prompt-utils.js` - Prompt template interpolation
+- `shared/scoring.config.js` - Level-weighted scoring formula (exports `calculateWeightedPoints`)
+- `railway-server/prompt-utils.js` - Prompt template `{{placeholder}}` interpolation
 - `cartridges/registry.json` - Available cartridge listing
 
-## Important Notes
-
-**Synced file copies**: Railway deploys only `railway-server/`, so it has its own copies. When changing these, **update both files**:
-
-| Shared (frontend) | Railway copy (server) |
-|-------------------|----------------------|
-| `shared/gridwars.config.js` | `railway-server/gridwars.config.js` |
-| `shared/address-utils.js` | `railway-server/address-utils.js` |
-
-**Leaderboard persistence gap**: `app.html` saves stars to localStorage only — does NOT call `/api/progress`. Students using the new platform don't appear on the server leaderboard. See `KNOWN_ISSUES.md` for details.
+See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.1**: AI Feedback Visibility + Leaderboard Persistence
+- Enhanced AI feedback panel with debug logging for grading flow transparency
+- New `/api/progress/cartridge-sync` endpoint for aggregate star counts per cartridge
+- New `user_progress` table (migration 004) stores star counts per user per cartridge
+- Unified leaderboard now includes user_progress data alongside Grid Wars and lsrl_progress
+- Stars now sync to server after each award for proper leaderboard tracking
+
+**v2.0.1**: AI Feedback Panel - students can now see which AI model (Groq Llama-3.3-70B or Gemini 2.0 Flash) graded their work, the AI's score, feedback text, and whether AI agreed with keyword grading. Server now returns `_model` field in AI grading responses.
 
 **v2.0**: Hierarchical subdivision - develop/drill actions, breadcrumb navigation, presence dots replacing avatars
 
