@@ -148,6 +148,10 @@ export class GridWarsState {
     // v2.0: Hierarchy navigation state
     this.currentParent = null;    // null = root level, "d5" = inside d5
     this.currentLevel = 0;
+
+    // v2.2: Player colors and subcell summaries for mini-mosaic rendering
+    this.playerColors = {};       // { username: "#FF3366" }
+    this.subcellSummaries = {};   // { "d5": [[{owner, is_developed}, ...], ...] }
     this.breadcrumb = [];         // ["d5", "c3"] for d5.c3
     this.parentCell = null;       // Parent cell info when zoomed in
 
@@ -286,6 +290,14 @@ export class GridWarsState {
 
       // Update surge
       this.surge = state.surge || null;
+
+      // v2.2: Store player colors and subcell summaries for mini-mosaic rendering
+      if (state.playerColors) {
+        this.playerColors = state.playerColors;
+      }
+      if (state.subcellSummaries) {
+        this.subcellSummaries = state.subcellSummaries;
+      }
 
       this._emitStateChange();
       return state;
@@ -1740,8 +1752,69 @@ export class GridWarsState {
       currentParent: this.currentParent,
       currentLevel: this.currentLevel,
       breadcrumb: this.breadcrumb,
-      parentCell: this.parentCell
+      parentCell: this.parentCell,
+      // v2.2: Player colors and subcell summaries for mini-mosaic
+      playerColors: this.playerColors,
+      subcellSummaries: this.subcellSummaries
     };
+  }
+
+  /**
+   * v2.2: Get player color
+   * @param {string} username
+   * @returns {string|null} Hex color or null
+   */
+  getPlayerColor(username) {
+    return this.playerColors[username] || null;
+  }
+
+  /**
+   * v2.2: Get subcell summary for a developed cell
+   * @param {string} address
+   * @returns {Array|null} 8x8 grid of {owner, is_developed} or null
+   */
+  getSubcellSummary(address) {
+    return this.subcellSummaries[address] || null;
+  }
+
+  /**
+   * v2.2: Gift a cell to another player
+   * @param {string} address - Cell address to gift
+   * @param {string} toUsername - Recipient username
+   * @returns {Promise<Object>} Result from server
+   */
+  async giftCell(address, toUsername) {
+    if (!this.gameId || !this.username) {
+      throw new Error('Game not initialized');
+    }
+
+    try {
+      const response = await fetch(`${this.serverUrl}/api/grid-wars/gift`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: this.gameId,
+          fromUsername: this.username,
+          toUsername,
+          address
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Gift failed');
+      }
+
+      const result = await response.json();
+
+      // Refresh state to get updated territories
+      await this.refreshState();
+
+      return result;
+    } catch (err) {
+      this._handleError('giftCell', err);
+      throw err;
+    }
   }
 
   // ============================================

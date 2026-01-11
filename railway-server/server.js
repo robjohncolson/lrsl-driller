@@ -66,6 +66,59 @@ console.log('========================');
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ============================================
+// v2.2: PLAYER COLORS
+// ============================================
+const VIVID_COLORS = [
+  '#FF3366', '#FF6B35', '#FFD93D', '#6BCB77', '#4D96FF',
+  '#9B59B6', '#00D9FF', '#FF85A1', '#45B7D1', '#F7DC6F',
+  '#BB8FCE', '#58D68D', '#EC7063', '#5DADE2', '#F1948A',
+  '#7DCEA0', '#D7BDE2', '#F8C471', '#85C1E9', '#82E0AA',
+  '#F7B2BD', '#AED6F1', '#48C9B0', '#F39C12', '#1ABC9C',
+  '#E74C3C', '#3498DB', '#2ECC71', '#E67E22', '#34495E',
+  '#16A085', '#8E44AD', '#D35400', '#27AE60', '#2980B9',
+  '#C0392B', '#7F8C8D', '#BDC3C7', '#F39C12', '#9B59B6'
+];
+
+/**
+ * v2.2: Assign a unique color to a player
+ * @param {string} gameId
+ * @param {string} username
+ * @returns {Promise<string>} Color hex code
+ */
+async function assignPlayerColor(gameId, username) {
+  // Check if already has color
+  const { data: player } = await supabase
+    .from('grid_wars_players')
+    .select('color')
+    .eq('game_id', gameId)
+    .eq('username', username)
+    .single();
+
+  if (player?.color) return player.color;
+
+  // Get used colors in this game
+  const { data: players } = await supabase
+    .from('grid_wars_players')
+    .select('color')
+    .eq('game_id', gameId);
+
+  const usedColors = new Set((players || []).map(p => p.color).filter(Boolean));
+
+  // Find first unused color, or generate random if all used
+  const color = VIVID_COLORS.find(c => !usedColors.has(c))
+    || `hsl(${Math.random() * 360}, 80%, 60%)`;
+
+  // Update player with color
+  await supabase
+    .from('grid_wars_players')
+    .update({ color })
+    .eq('game_id', gameId)
+    .eq('username', username);
+
+  return color;
+}
+
+// ============================================
 // EXPRESS APP SETUP
 // ============================================
 const app = express();
@@ -3766,14 +3819,55 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
 
     if (structError) throw structError;
 
-    // Get players with all new fields
+    // Get players with all new fields (v2.2: include color)
     const { data: players, error: playersError } = await supabase
       .from('grid_wars_players')
-      .select('username, action_points, territories_count, structures_count, largest_cluster, health, position_x, position_y, avatar_format, last_answer_at, active_buffs, updated_at')
+      .select('username, action_points, territories_count, structures_count, largest_cluster, health, position_x, position_y, avatar_format, last_answer_at, active_buffs, updated_at, color')
       .eq('game_id', gameId)
       .order('action_points', { ascending: false });
 
     if (playersError) throw playersError;
+
+    // v2.2: Build player colors map (assign colors to any players without one)
+    const playerColors = {};
+    for (const p of players || []) {
+      if (p.color) {
+        playerColors[p.username] = p.color;
+      } else {
+        // Assign color on-demand if missing
+        const color = await assignPlayerColor(gameId, p.username);
+        playerColors[p.username] = color;
+      }
+    }
+
+    // v2.2: Build subcell summaries for developed cells at current level
+    const subcellSummaries = {};
+    const developedCells = (territories || []).filter(t => t.is_developed);
+
+    for (const cell of developedCells) {
+      // Get children of this developed cell
+      const { data: subcells } = await supabase
+        .from('grid_wars_territories')
+        .select('x, y, owner, is_developed')
+        .eq('game_id', gameId)
+        .eq('parent_address', cell.address);
+
+      // Build 8x8 grid with owner AND developed status
+      const grid = Array(8).fill(null).map(() =>
+        Array(8).fill(null).map(() => ({ owner: null, is_developed: false }))
+      );
+
+      for (const sub of subcells || []) {
+        if (sub.x >= 0 && sub.x < 8 && sub.y >= 0 && sub.y < 8) {
+          grid[sub.y][sub.x] = {
+            owner: sub.owner,
+            is_developed: sub.is_developed || false
+          };
+        }
+      }
+
+      subcellSummaries[cell.address] = grid;
+    }
 
     // Get class goal progress
     const classGoal = {
@@ -3807,13 +3901,18 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
         developmentCost: GRID_WARS_CONFIG.developmentCost,
         drillCost: GRID_WARS_CONFIG.drillCost,
         drillSaturationThreshold: GRID_WARS_CONFIG.drillSaturationThreshold,
-        subcellClaimCost: GRID_WARS_CONFIG.subcellClaimCost
+        subcellClaimCost: GRID_WARS_CONFIG.subcellClaimCost,
+        // v2.2: Max subdivision level for fractal depth
+        maxSubdivisionLevel: GRID_WARS_CONFIG.maxSubdivisionLevel
       },
       // v2.0: Hierarchy navigation state
       currentLevel: targetLevel,
       parentAddress: parent || null,
       parentCell,
-      breadcrumb: getBreadcrumb(parent)
+      breadcrumb: getBreadcrumb(parent),
+      // v2.2: Player colors and subcell summaries for mini-mosaic rendering
+      playerColors,
+      subcellSummaries
     });
   } catch (err) {
     console.error('GET /api/grid-wars/games/:gameId/state error:', err);
@@ -5414,6 +5513,103 @@ app.post('/api/grid-wars/drill', async (req, res) => {
 
   } catch (err) {
     console.error('POST /api/grid-wars/drill error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * v2.2: POST /api/grid-wars/gift
+ * Gift a cell to another player (free transfer)
+ */
+app.post('/api/grid-wars/gift', async (req, res) => {
+  try {
+    const { gameId, fromUsername, toUsername, address } = req.body;
+
+    console.log('[Gift]', { from: fromUsername, to: toUsername, address });
+
+    if (!gameId || !fromUsername || !toUsername || !address) {
+      return res.status(400).json({ error: 'gameId, fromUsername, toUsername, and address required' });
+    }
+
+    // Can't gift to yourself
+    if (fromUsername === toUsername) {
+      return res.status(400).json({ error: 'Cannot gift to yourself' });
+    }
+
+    // 1. Verify ownership
+    const { data: cell, error: cellError } = await supabase
+      .from('grid_wars_territories')
+      .select('owner, is_developed, cell_level')
+      .eq('game_id', gameId)
+      .eq('address', address)
+      .single();
+
+    if (cellError || !cell) {
+      return res.status(404).json({ error: 'Cell not found' });
+    }
+
+    if (cell.owner !== fromUsername) {
+      return res.status(403).json({ error: 'You do not own this cell' });
+    }
+
+    // 2. Verify recipient exists in game
+    const { data: recipient } = await supabase
+      .from('grid_wars_players')
+      .select('username')
+      .eq('game_id', gameId)
+      .eq('username', toUsername)
+      .single();
+
+    if (!recipient) {
+      return res.status(404).json({ error: `Player "${toUsername}" not found in this game` });
+    }
+
+    // 3. Transfer ownership
+    await supabase
+      .from('grid_wars_territories')
+      .update({
+        owner: toUsername,
+        claimed_at: new Date().toISOString()
+      })
+      .eq('game_id', gameId)
+      .eq('address', address);
+
+    // 4. Update territory counts for both players
+    await supabase.rpc('increment_territories_count', {
+      p_game_id: gameId,
+      p_username: fromUsername,
+      p_delta: -1
+    });
+    await supabase.rpc('increment_territories_count', {
+      p_game_id: gameId,
+      p_username: toUsername,
+      p_delta: 1
+    });
+
+    // 5. Record the gift
+    await supabase.from('grid_wars_gifts').insert({
+      game_id: gameId,
+      from_username: fromUsername,
+      to_username: toUsername,
+      address: address
+    });
+
+    // 6. Broadcast
+    broadcast({
+      type: 'territory_gifted',
+      gameId,
+      from: fromUsername,
+      to: toUsername,
+      address: address
+    });
+
+    // 7. Update leaderboard
+    broadcastLeaderboardUpdate(gameId);
+
+    console.log('[Gift] Success:', fromUsername, '->', toUsername, address);
+    res.json({ success: true, from: fromUsername, to: toUsername, address });
+  } catch (err) {
+    console.error('POST /api/grid-wars/gift error:', err);
     res.status(500).json({ error: err.message });
   }
 });

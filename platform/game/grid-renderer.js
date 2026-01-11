@@ -78,6 +78,10 @@ export class GridRenderer {
     this._usePresenceDots = false;
     this._onlinePlayers = new Set(); // Set of usernames currently online
 
+    // v2.2: Player colors and subcell summaries for mini-mosaic rendering
+    this._playerColors = {};         // { username: "#FF3366" }
+    this._subcellSummaries = {};     // { "d5": [[{owner, is_developed}, ...], ...] }
+
     // v1.2.1: Static layer dirty flag - redraw static layer when true
     this._staticDirty = true;
 
@@ -499,9 +503,19 @@ export class GridRenderer {
 
   /**
    * v2.0: Draw developed cell indicator (shows cell is subdivided)
-   * Displays a mini-grid pattern and icon to indicate the cell can be zoomed into
+   * v2.2: Updated to show mini-mosaic of subcell ownership instead of just grid lines
    */
   drawDevelopedIndicator(ctx, x, y, now) {
+    const territory = this.territories[`${x},${y}`];
+    const address = territory?.address;
+
+    // v2.2: If we have subcell summaries, draw a mini-mosaic
+    if (address && this._subcellSummaries[address]) {
+      this.drawMiniMosaic(ctx, x, y, address, now);
+      return;
+    }
+
+    // Fallback to legacy indicator if no subcell data
     const centerX = x * this.cellSize + this.cellSize / 2;
     const centerY = y * this.cellSize + this.cellSize / 2;
     const size = this.cellSize - 8;
@@ -540,6 +554,111 @@ export class GridRenderer {
     ctx.lineWidth = 1;
     ctx.textAlign = 'start';
     ctx.textBaseline = 'alphabetic';
+  }
+
+  /**
+   * v2.2: Draw mini-mosaic showing subcell ownership inside a developed cell
+   * Shows an 8x8 grid of colored squares representing subcell ownership
+   */
+  drawMiniMosaic(ctx, cellX, cellY, address, now) {
+    const summary = this._subcellSummaries[address];
+    if (!summary) return;
+
+    const px = cellX * this.cellSize + 1;
+    const py = cellY * this.cellSize + 1;
+    const cellSize = this.cellSize - 2;
+    const miniSize = cellSize / 8;
+
+    // Draw each subcell
+    for (let my = 0; my < 8; my++) {
+      for (let mx = 0; mx < 8; mx++) {
+        const subcell = summary[my]?.[mx];
+        const mpx = px + mx * miniSize;
+        const mpy = py + my * miniSize;
+
+        if (subcell?.is_developed && miniSize > 4) {
+          // RECURSIVE: This subcell is ALSO developed
+          // Draw a simplified pattern to indicate nested subdivision
+          this.drawTinyMosaic(ctx, mpx, mpy, miniSize, subcell.owner);
+        } else if (subcell?.owner) {
+          // Draw colored square for owned subcell
+          const color = this.getServerPlayerColor(subcell.owner);
+          ctx.fillStyle = color;
+          ctx.globalAlpha = 0.8;
+          ctx.fillRect(mpx, mpy, miniSize, miniSize);
+          ctx.globalAlpha = 1;
+        } else {
+          // Neutral subcell - dark background
+          ctx.fillStyle = '#1a1a2e';
+          ctx.fillRect(mpx, mpy, miniSize, miniSize);
+        }
+      }
+    }
+
+    // Draw subtle grid lines between subcells
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 0.5;
+    for (let i = 1; i < 8; i++) {
+      // Vertical lines
+      ctx.beginPath();
+      ctx.moveTo(px + i * miniSize, py);
+      ctx.lineTo(px + i * miniSize, py + cellSize);
+      ctx.stroke();
+
+      // Horizontal lines
+      ctx.beginPath();
+      ctx.moveTo(px, py + i * miniSize);
+      ctx.lineTo(px + cellSize, py + i * miniSize);
+      ctx.stroke();
+    }
+
+    // Draw border around the whole mosaic
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px, py, cellSize, cellSize);
+
+    ctx.lineWidth = 1;
+  }
+
+  /**
+   * v2.2: Draw tiny mosaic pattern for deeply nested developed cells
+   * Shows a simplified checkerboard pattern to indicate further subdivision
+   */
+  drawTinyMosaic(ctx, px, py, size, primaryOwner) {
+    const baseColor = primaryOwner ? this.getServerPlayerColor(primaryOwner) : '#444';
+    const darkColor = this.darkenColor(baseColor, 0.3);
+
+    // Draw 4x4 checkerboard pattern to indicate subdivision
+    const tinySize = size / 4;
+    for (let ty = 0; ty < 4; ty++) {
+      for (let tx = 0; tx < 4; tx++) {
+        const isEven = (tx + ty) % 2 === 0;
+        ctx.fillStyle = isEven ? baseColor : darkColor;
+        ctx.globalAlpha = 0.7;
+        ctx.fillRect(px + tx * tinySize, py + ty * tinySize, tinySize, tinySize);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * v2.2: Darken a hex color by a given amount
+   * @param {string} hex - Hex color (e.g. "#FF3366" or "#F36")
+   * @param {number} amount - Amount to darken (0-1)
+   * @returns {string} Darkened hex color
+   */
+  darkenColor(hex, amount) {
+    // Handle short hex format
+    let color = hex.replace('#', '');
+    if (color.length === 3) {
+      color = color[0] + color[0] + color[1] + color[1] + color[2] + color[2];
+    }
+
+    const num = parseInt(color, 16);
+    const r = Math.max(0, (num >> 16) - Math.floor(255 * amount));
+    const g = Math.max(0, ((num >> 8) & 0x00FF) - Math.floor(255 * amount));
+    const b = Math.max(0, (num & 0x0000FF) - Math.floor(255 * amount));
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
   }
 
   /**
@@ -979,6 +1098,33 @@ export class GridRenderer {
    */
   setOnlinePlayers(players) {
     this._onlinePlayers = new Set(players || []);
+  }
+
+  /**
+   * v2.2: Set player colors from server
+   * @param {Object} colors - { username: "#FF3366" }
+   */
+  setPlayerColors(colors) {
+    this._playerColors = colors || {};
+    this._staticDirty = true;
+  }
+
+  /**
+   * v2.2: Set subcell summaries for mini-mosaic rendering
+   * @param {Object} summaries - { "d5": [[{owner, is_developed}, ...], ...] }
+   */
+  setSubcellSummaries(summaries) {
+    this._subcellSummaries = summaries || {};
+    this._staticDirty = true;
+  }
+
+  /**
+   * v2.2: Get player color from server-assigned colors or fallback
+   * @param {string} username
+   * @returns {string} Hex color
+   */
+  getServerPlayerColor(username) {
+    return this._playerColors[username] || this.getPlayerSolidColor(username);
   }
 
   /**

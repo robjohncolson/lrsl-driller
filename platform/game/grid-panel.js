@@ -323,6 +323,13 @@ export class GridPanel {
               <div id="gw-drill-hint" style="display:none;font-size:10px;color:#64748b;margin-top:4px;text-align:center;">
                 Force-subdivide enemy cell. You get corner (a1), they keep center 4.
               </div>
+              <!-- v2.2: Gift button -->
+              <button id="gw-gift-btn" class="gw-action-btn" style="display:none;width:100%;background:#2d4a2d;border-color:#22c55e;margin-top:6px;">
+                🎁 GIFT<span class="gw-cost">FREE</span>
+              </button>
+              <div id="gw-gift-hint" style="display:none;font-size:10px;color:#64748b;margin-top:4px;text-align:center;">
+                Give this cell to another player (no cost).
+              </div>
             </div>
           </div>
 
@@ -578,6 +585,12 @@ export class GridPanel {
     const drillBtn = this.container.querySelector('#gw-drill-btn');
     if (drillBtn) {
       drillBtn.addEventListener('click', () => this.handleDrill());
+    }
+
+    // v2.2: Gift button
+    const giftBtn = this.container.querySelector('#gw-gift-btn');
+    if (giftBtn) {
+      giftBtn.addEventListener('click', () => this.handleGift());
     }
   }
 
@@ -1026,6 +1039,14 @@ export class GridPanel {
     if (GRID_WARS_CONFIG.hierarchyEnabled && this.renderer.setOnlinePlayers) {
       const onlinePlayers = (renderState.players || []).map(p => p.username);
       this.renderer.setOnlinePlayers(onlinePlayers);
+    }
+
+    // v2.2: Update player colors and subcell summaries for mini-mosaic rendering
+    if (renderState.playerColors && this.renderer.setPlayerColors) {
+      this.renderer.setPlayerColors(renderState.playerColors);
+    }
+    if (renderState.subcellSummaries && this.renderer.setSubcellSummaries) {
+      this.renderer.setSubcellSummaries(renderState.subcellSummaries);
     }
 
     // Update avatars (legacy - only used when presence dots disabled)
@@ -1502,12 +1523,15 @@ export class GridPanel {
   /**
    * v1.6: Render single leaderboard content
    * v2.0: Shows macro + subcell counts when hierarchy is enabled
+   * v2.2: Added player colors for visual identification
    */
   renderLeaderboardContent() {
     const contentEl = this.container?.querySelector('#gw-leaderboard-content');
     if (!contentEl) return;
 
     const entries = this._leaderboardData || [];
+    // v2.2: Get player colors from state
+    const playerColors = this.state?.playerColors || {};
 
     if (entries.length === 0) {
       contentEl.innerHTML = '<div style="color:#6b7280;text-align:center;">No data yet</div>';
@@ -1539,6 +1563,9 @@ export class GridPanel {
       const name = entry.real_name || entry.username || 'Unknown';
       const displayName = name.length > 12 ? name.slice(0, 10) + '...' : name;
 
+      // v2.2: Get player color
+      const playerColor = playerColors[entry.username] || '#888';
+
       // v2.0: Show macro + sub cells if hierarchy data present
       const macro = entry.macro_cells || 0;
       const sub = entry.sub_cells || 0;
@@ -1556,10 +1583,12 @@ export class GridPanel {
         cellDisplay = `${cells} 🏰`;
       }
 
+      // v2.2: Colored leaderboard with player color swatch
       return `
-        <div class="gw-lb-entry${isMe ? ' my-entry' : ''}" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;${isMe ? 'background:rgba(0,255,65,0.1);margin:0 -4px;padding:4px;border-radius:3px;' : ''}">
-          <span style="color:${isMe ? '#00ff41' : '#e2e8f0'};">${i + 1}. ${displayName}</span>
-          <span style="color:#fbbf24;font-weight:bold;">${cellDisplay}</span>
+        <div class="gw-lb-entry${isMe ? ' my-entry' : ''}" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #222;${isMe ? 'background:rgba(0,255,65,0.1);margin:0 -4px;padding:4px;border-radius:3px;' : ''}">
+          <span style="width:14px;height:14px;background:${playerColor};border-radius:3px;box-shadow:0 0 4px ${playerColor}40;flex-shrink:0;"></span>
+          <span style="color:${isMe ? '#00ff41' : playerColor};font-weight:bold;flex:1;text-shadow:0 0 8px ${playerColor}40;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${i + 1}. ${displayName}</span>
+          <span style="color:#aaa;font-size:11px;font-family:monospace;">${cellDisplay}</span>
         </div>
       `;
     }).join('');
@@ -1674,13 +1703,16 @@ export class GridPanel {
 
   /**
    * v2.0: Update develop/drill button visibility based on selected cell
+   * v2.2: Added gift button for owned cells
    */
   updateHierarchyActions(x = null, y = null, owner = null) {
     const container = this.container?.querySelector('#gw-hierarchy-actions');
     const developBtn = this.container?.querySelector('#gw-develop-btn');
     const drillBtn = this.container?.querySelector('#gw-drill-btn');
+    const giftBtn = this.container?.querySelector('#gw-gift-btn');
     const developHint = this.container?.querySelector('#gw-develop-hint');
     const drillHint = this.container?.querySelector('#gw-drill-hint');
+    const giftHint = this.container?.querySelector('#gw-gift-hint');
 
     if (!container || !developBtn || !drillBtn || !this.state) return;
 
@@ -1688,8 +1720,10 @@ export class GridPanel {
     container.style.display = 'none';
     developBtn.style.display = 'none';
     drillBtn.style.display = 'none';
+    if (giftBtn) giftBtn.style.display = 'none';
     if (developHint) developHint.style.display = 'none';
     if (drillHint) drillHint.style.display = 'none';
+    if (giftHint) giftHint.style.display = 'none';
 
     // Check if hierarchy is enabled
     if (!GRID_WARS_CONFIG.hierarchyEnabled) return;
@@ -1704,9 +1738,16 @@ export class GridPanel {
     const address = this.state.getCellAddress(x, y);
     this._selectedForAction = { x, y, address, owner };
 
+    // v2.2: Show gift button for owned cells (even if developed)
+    if (owner === this.state.username && giftBtn) {
+      container.style.display = 'block';
+      giftBtn.style.display = 'block';
+      if (giftHint) giftHint.style.display = 'block';
+    }
+
     // Check if cell is already developed
     if (this.state.isDeveloped?.(x, y)) {
-      return; // Already developed - no actions available
+      return; // Already developed - no develop/drill actions available
     }
 
     const points = this.state.getActionPoints();
@@ -1764,6 +1805,35 @@ export class GridPanel {
     } catch (err) {
       sounds.error();
       this.updateStatus(`Develop failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * v2.2: Handle GIFT button click
+   * Prompts for recipient and transfers cell ownership
+   */
+  async handleGift() {
+    if (!this._selectedForAction || !this.state) return;
+
+    const { address } = this._selectedForAction;
+    if (!address) {
+      this.updateStatus('No cell selected for gifting');
+      return;
+    }
+
+    const recipient = prompt('Gift this cell to whom? (Enter username)');
+    if (!recipient || !recipient.trim()) return;
+
+    try {
+      await this.state.giftCell(address, recipient.trim());
+      sounds.claim();
+      this.showToast(`Gifted ${address.toUpperCase()} to ${recipient}!`);
+      this.syncRendererState();
+      this.updateHierarchyActions();
+      this._selectedForAction = null;
+    } catch (err) {
+      sounds.error();
+      this.updateStatus(`Gift failed: ${err.message}`);
     }
   }
 
