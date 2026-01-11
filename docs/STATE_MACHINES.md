@@ -1,6 +1,16 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v2.1.5.
+Complete state machine documentation for all components as of v2.2.2.
+
+**v2.2.2 Changes (Click-to-Select, No Auto-Claim):**
+- Canvas clicks now SELECT cells instead of auto-claiming
+- New `_selectedForAction` state stores selected cell for action
+- CLAIM button click triggers `handleClaimButtonClick()` to execute claim
+- Cyan pulsing selection highlight (separate from white hover)
+- New `updateClaimButton()` updates button text/state based on selection
+- Added `setSelectedCell()` method to renderer
+- Grid renderer diagnostics: logging + 200px minimum size enforcement
+- Added 32 regression tests in `tests/game/grid-wars-v2.2.2.test.js`
 
 **v2.1.5 Changes (Subcell Claims + Navigation Polish):**
 - Fixed subcell claims: Now sends `parentAddress` and `cellLevel` to server
@@ -4203,6 +4213,307 @@ REGRESSION TESTS:
 
 ---
 
-*Updated to v2.1.5*
+## 55. v2.2.2 CLICK-TO-SELECT (No Auto-Claim)
+
+**v2.2.2 Change:** Canvas clicks now SELECT a cell instead of immediately claiming it. Users must click the CLAIM button to actually claim.
+
+```
+                              ┌─────────────────────────────────────────────────────┐
+                              │              USER CLICKS CELL ON CANVAS              │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │          grid-panel.js: onCanvasClick()             │
+                              │                                                      │
+                              │   // v2.2.2: NO LONGER auto-claims                   │
+                              │   // Now only SELECTS the cell                       │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                          ┌───────────────────────────┴───────────────────────────┐
+                          │                                                       │
+                          ▼                                                       ▼
+              ┌───────────────────────┐                           ┌───────────────────────┐
+              │   Cell is DEVELOPED   │                           │   Cell is NOT developed│
+              │   (is_developed=true) │                           │   (normal cell)        │
+              └───────────┬───────────┘                           └───────────┬───────────┘
+                          │                                                   │
+                          ▼                                                   ▼
+              ┌───────────────────────┐                           ┌───────────────────────┐
+              │   ZOOM IN             │                           │   SELECT CELL         │
+              │   state.zoomIn(addr)  │                           │   (store for action)  │
+              │   → Navigate to       │                           │                       │
+              │     subcell level     │                           │   _selectedForAction  │
+              └───────────────────────┘                           │   = {x, y, address,   │
+                                                                  │      owner}           │
+                                                                  └───────────┬───────────┘
+                                                                              │
+                                                                              ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │             RENDERER: setSelectedCell(x, y)         │
+                              │                                                      │
+                              │   this.selectedCell = {x, y};                        │
+                              │   this._staticDirty = true;  // Force redraw        │
+                              │                                                      │
+                              │   → Cyan pulsing border on selected cell            │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │          UPDATE CLAIM BUTTON STATE                   │
+                              │          grid-panel.js: updateClaimButton()          │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                  ┌───────────────────────────────────┼───────────────────────────────────┐
+                  │                                   │                                   │
+                  ▼                                   ▼                                   ▼
+      ┌───────────────────────┐       ┌───────────────────────┐       ┌───────────────────────┐
+      │   NO SELECTION        │       │   OWN TERRITORY       │       │   NEUTRAL/ENEMY       │
+      │   (null)              │       │   (owner === username)│       │   (claimable)         │
+      └───────────┬───────────┘       └───────────┬───────────┘       └───────────┬───────────┘
+                  │                               │                               │
+                  ▼                               ▼                               ▼
+      ┌───────────────────────┐       ┌───────────────────────┐       ┌───────────────────────┐
+      │  Button: DISABLED     │       │  Button: DISABLED     │       │  Button: ENABLED      │
+      │  Text: "□ Select Cell"│       │  Text: "□ Your        │       │  Text: "🚩 Claim" or  │
+      │  Cost: "--"           │       │         Territory"    │       │        "⚔️ Attack"    │
+      └───────────────────────┘       │  Cost: "--"           │       │  Cost: "{cost}⚡"     │
+                                      └───────────────────────┘       └───────────────────────┘
+```
+
+---
+
+## 56. v2.2.2 CLAIM BUTTON FLOW
+
+```
+                              ┌─────────────────────────────────────────────────────┐
+                              │           USER CLICKS CLAIM BUTTON                   │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │       grid-panel.js: handleClaimButtonClick()       │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                          ┌───────────────────────────┴───────────────────────────┐
+                          │                                                       │
+                          ▼                                                       ▼
+              ┌───────────────────────┐                           ┌───────────────────────┐
+              │  NO CELL SELECTED     │                           │  CELL SELECTED        │
+              │  (_selectedForAction  │                           │  (_selectedForAction  │
+              │   === null)           │                           │   !== null)           │
+              └───────────┬───────────┘                           └───────────┬───────────┘
+                          │                                                   │
+                          ▼                                                   │
+              ┌───────────────────────┐                                       │
+              │  Show status:         │                                       │
+              │  "Select a cell first"│                                       │
+              │  RETURN (no action)   │                                       │
+              └───────────────────────┘                                       │
+                                                                              │
+                                      ┌───────────────────────────────────────┘
+                                      │
+                          ┌───────────┴───────────────────────────┐
+                          │                                       │
+                          ▼                                       ▼
+              ┌───────────────────────┐               ┌───────────────────────┐
+              │  owner === username   │               │  owner !== username   │
+              │  (own territory)      │               │  (neutral or enemy)   │
+              └───────────┬───────────┘               └───────────┬───────────┘
+                          │                                       │
+                          ▼                                       ▼
+              ┌───────────────────────┐               ┌───────────────────────┐
+              │  Show status:         │               │  state.claimTerritory │
+              │  "You already own     │               │  (x, y)               │
+              │   this territory"     │               │                       │
+              │  RETURN (no action)   │               │  → Server API call    │
+              └───────────────────────┘               └───────────┬───────────┘
+                                                                  │
+                                      ┌───────────────────────────┴───────────────────────────┐
+                                      │                                                       │
+                                      ▼                                                       ▼
+                          ┌───────────────────────┐                           ┌───────────────────────┐
+                          │   CLAIM SUCCESS       │                           │   CLAIM FAILED        │
+                          └───────────┬───────────┘                           └───────────┬───────────┘
+                                      │                                                   │
+                                      ▼                                                   ▼
+                          ┌───────────────────────┐                           ┌───────────────────────┐
+                          │  ✓ Play sound         │                           │  ✗ Play error sound   │
+                          │  ✓ Update status      │                           │  ✗ Show error message │
+                          │  ✓ Clear selection    │                           │  ✗ Keep selection     │
+                          │    _selectedForAction │                           │    (can retry)        │
+                          │    = null             │                           │                       │
+                          │  ✓ Clear renderer     │                           │                       │
+                          │    selection          │                           │                       │
+                          │  ✓ Sync state         │                           │                       │
+                          └───────────────────────┘                           └───────────────────────┘
+```
+
+---
+
+## 57. v2.2.2 SELECTION HIGHLIGHT RENDERING
+
+```
+                              ┌─────────────────────────────────────────────────────┐
+                              │         GridRenderer: drawHover(ctx, now)           │
+                              │         (called every animation frame)               │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                          ┌───────────────────────────┴───────────────────────────┐
+                          │                                                       │
+                          ▼                                                       ▼
+              ┌───────────────────────┐                           ┌───────────────────────┐
+              │   this.selectedCell   │                           │   this.hoveredCell    │
+              │   (persistent)        │                           │   (follows mouse)     │
+              └───────────┬───────────┘                           └───────────┬───────────┘
+                          │                                                   │
+                          ▼                                                   │
+              ┌───────────────────────┐                                       │
+              │   DRAW SELECTION      │                                       │
+              │                       │                                       │
+              │   Color: #00ffff      │                                       │
+              │         (cyan)        │                                       │
+              │   Width: 3px          │                                       │
+              │   Pulse: 0.6-1.0      │                                       │
+              │          (slow)       │                                       │
+              └───────────┬───────────┘                                       │
+                          │                                                   │
+                          │                       ┌───────────────────────────┘
+                          │                       │
+                          ▼                       ▼
+              ┌─────────────────────────────────────────────────────┐
+              │   IS HOVER SAME AS SELECTION?                       │
+              │                                                     │
+              │   selectedCell.x === hoveredCell.x &&               │
+              │   selectedCell.y === hoveredCell.y                  │
+              └─────────────────────────┬───────────────────────────┘
+                                        │
+                  ┌─────────────────────┴─────────────────────┐
+                  │                                           │
+                  ▼                                           ▼
+      ┌───────────────────────┐               ┌───────────────────────┐
+      │   YES (same cell)     │               │   NO (different cell) │
+      └───────────┬───────────┘               └───────────┬───────────┘
+                  │                                       │
+                  ▼                                       ▼
+      ┌───────────────────────┐               ┌───────────────────────┐
+      │   SKIP hover drawing  │               │   DRAW HOVER          │
+      │   (selection already  │               │                       │
+      │    visible)           │               │   Color: #ffffff      │
+      │                       │               │         (white)       │
+      │                       │               │   Width: 2px          │
+      │                       │               │   Pulse: 0.4-1.0      │
+      │                       │               │         (fast)        │
+      └───────────────────────┘               └───────────────────────┘
+```
+
+---
+
+## 58. v2.2.2 GRID RENDERER DIAGNOSTICS
+
+**v2.2.2 Addition:** Added diagnostic logging and minimum size enforcement to catch sizing bugs.
+
+```
+                              ┌─────────────────────────────────────────────────────┐
+                              │           GridRenderer constructor()                 │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │   console.log('[GridRenderer] constructor:', {       │
+                              │     gridSize: 8,                                     │
+                              │     cellSize: 30,                                    │
+                              │     canvasWidth: canvas.width,                       │
+                              │     canvasHeight: canvas.height                      │
+                              │   });                                                │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │               resize() method                        │
+                              │                                                      │
+                              │   // Get container dimensions                        │
+                              │   clientW = container.clientWidth                    │
+                              │   clientH = container.clientHeight                   │
+                              │                                                      │
+                              │   // Fallback to 280 if 0 (hidden panel)            │
+                              │   containerSize = (clientW > 0 && clientH > 0)       │
+                              │     ? Math.min(clientW, clientH)                     │
+                              │     : 280;                                           │
+                              │                                                      │
+                              │   // v2.2.2: Enforce minimum 200px                   │
+                              │   size = Math.max(200, containerSize);               │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │   console.log('[GridRenderer] resize:', {            │
+                              │     containerSize,                                   │
+                              │     size,                                            │
+                              │     clientW,                                         │
+                              │     clientH,                                         │
+                              │     gridSize: this.gridSize,                         │
+                              │     calculatedCellSize: (size - 2) / this.gridSize   │
+                              │   });                                                │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │               render() method                        │
+                              │                                                      │
+                              │   // v2.2.2: Sanity check                            │
+                              │   expectedGridPixels = gridSize * cellSize           │
+                              │                                                      │
+                              │   if (expectedGridPixels < displaySize * 0.5) {      │
+                              │     console.warn('[GridRenderer] Grid too small');   │
+                              │   }                                                  │
+                              └─────────────────────────────────────────────────────┘
+```
+
+---
+
+## 59. v2.2.2 VERIFICATION CHECKLIST
+
+```
+CLICK-TO-SELECT BEHAVIOR:
+□ Canvas click does NOT auto-claim territory
+□ Canvas click SELECTS cell (stores in _selectedForAction)
+□ Canvas click updates status message with cell info
+□ Canvas click enables/updates CLAIM button
+
+SELECTION HIGHLIGHT:
+□ Selected cell has cyan (#00ffff) pulsing border
+□ Hover uses white border (different from selection)
+□ Hover is suppressed when same as selection
+□ Selection persists until claim or new selection
+
+CLAIM BUTTON:
+□ Button starts disabled with text "□ Select Cell"
+□ Button shows "--" for cost when no selection
+□ Button shows "🚩 Claim" with cost for neutral cells
+□ Button shows "⚔️ Attack" with cost for enemy cells
+□ Button shows "□ Your Territory" (disabled) for own cells
+□ Button click triggers handleClaimButtonClick()
+
+CLAIM EXECUTION:
+□ claimTerritory() called only on button click
+□ Selection cleared after successful claim
+□ Renderer selection cleared after successful claim
+□ Selection preserved after failed claim (can retry)
+
+GRID SIZING DIAGNOSTICS:
+□ Constructor logs gridSize, cellSize, canvas dimensions
+□ resize() logs container size, calculated cellSize
+□ render() warns if grid appears undersized
+□ Minimum size of 200px enforced
+
+REGRESSION TESTS:
+□ tests/game/grid-wars-v2.2.2.test.js passes (32 tests)
+□ All existing Grid Wars tests still pass
+```
+
+---
+
+*Updated to v2.2.2*
 *Last updated: January 2026*
-*Total sections: 50*
+*Total sections: 59*

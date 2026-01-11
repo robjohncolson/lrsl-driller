@@ -19,9 +19,17 @@ export class GridRenderer {
     // Layer 3 (UI): Hover highlight - redraw every frame
     this._createLayeredCanvases(canvas);
 
-    // Grid dimensions
-    this.gridSize = options.gridSize || 20;
+    // Grid dimensions - v2.2.1: Default to 8 (v1.6+ config) and validate
+    this.gridSize = options.gridSize || 8;
     this.cellSize = options.cellSize || 30;
+
+    // v2.2.1: Log initial dimensions for debugging
+    console.log('[GridRenderer] constructor:', {
+      gridSize: this.gridSize,
+      cellSize: this.cellSize,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height
+    });
 
     // Color palette (Spectre aesthetic)
     this.colors = {
@@ -68,6 +76,9 @@ export class GridRenderer {
 
     // Hover state
     this.hoveredCell = null;
+
+    // v2.2.1: Selected cell (persistent highlight, separate from hover)
+    this.selectedCell = null;
 
     // Avatar wake trails: { username -> [{ x, y, timestamp }] }
     this.avatarWakes = {};
@@ -140,17 +151,37 @@ export class GridRenderer {
   /**
    * Resize canvas to fit container
    * v1.2.1: Also resizes all layer canvases
+   * v2.2.1: Enhanced with minimum size guarantee and logging
    */
   resize() {
     const container = this.canvas.parentElement;
     if (!container) return;
 
-    // Get container size, ensuring minimum of 50px to avoid negative/zero calculations
-    const containerSize = Math.max(50, Math.min(container.clientWidth, container.clientHeight));
-    const size = Math.min(containerSize, this.gridSize * this.cellSize + 2);
+    // v2.2.3: Get container size, with fallback to 280 (explicit HTML dimensions)
+    // Use clientWidth/Height if available, otherwise use 280px as the known container size
+    const clientW = container.clientWidth;
+    const clientH = container.clientHeight;
+    const containerSize = (clientW > 0 && clientH > 0)
+      ? Math.min(clientW, clientH)
+      : 280;
+    // v2.2.1: Ensure minimum size of 200px even if container reports smaller
+    const size = Math.max(200, containerSize);
 
-    // Skip if container is hidden (size would be 0)
-    if (size < 10) return;
+    // v2.2.1: Log resize for debugging
+    console.log('[GridRenderer] resize:', {
+      containerSize,
+      size,
+      clientW,
+      clientH,
+      gridSize: this.gridSize,
+      calculatedCellSize: (size - 2) / this.gridSize
+    });
+
+    // Skip if somehow still too small (shouldn't happen with 200px minimum)
+    if (size < 50) {
+      console.warn('[GridRenderer] resize: size too small, skipping', size);
+      return;
+    }
 
     // Set canvas size (accounting for device pixel ratio for sharpness)
     const dpr = window.devicePixelRatio || 1;
@@ -311,6 +342,15 @@ export class GridRenderer {
   }
 
   /**
+   * v2.2.1: Set selected cell (persistent highlight)
+   */
+  setSelectedCell(x, y) {
+    this.selectedCell = (x !== null && y !== null) ? { x, y } : null;
+    // Force redraw to show selection
+    this._staticDirty = true;
+  }
+
+  /**
    * Convert mouse position to grid coordinates
    */
   mouseToGrid(mouseX, mouseY) {
@@ -330,11 +370,29 @@ export class GridRenderer {
    * - Static layer: Grid, territories (redraw only when dirty)
    * - Dynamic layer: Avatars, wakes, pulses (redraw every frame)
    * - UI layer: Hover (redraw every frame)
+   * v2.2.1: Added diagnostic checks for grid sizing issues
    */
   render() {
-    // Skip rendering if canvas is too small (hidden panel)
+    // v2.2.1: Enhanced skip logic with warning
     if (this.cellSize < 1 || this.displaySize < 10) {
+      // Only warn once per second to avoid console spam
+      if (!this._lastRenderWarning || Date.now() - this._lastRenderWarning > 1000) {
+        console.warn('[GridRenderer] render skipped: cellSize=', this.cellSize, 'displaySize=', this.displaySize);
+        this._lastRenderWarning = Date.now();
+      }
       return;
+    }
+
+    // v2.2.1: Sanity check - if grid seems wrong, log diagnostic
+    const expectedGridPixels = this.gridSize * this.cellSize;
+    if (expectedGridPixels < this.displaySize * 0.5 && !this._hasLoggedSizeWarning) {
+      console.warn('[GridRenderer] Grid appears too small:', {
+        gridSize: this.gridSize,
+        cellSize: this.cellSize,
+        expectedPixels: expectedGridPixels,
+        displaySize: this.displaySize
+      });
+      this._hasLoggedSizeWarning = true;
     }
 
     const ctx = this.ctx;
@@ -1203,24 +1261,49 @@ export class GridRenderer {
   }
 
   /**
-   * Draw hover highlight
+   * Draw hover and selection highlights
+   * v2.2.1: Added persistent selection highlight (cyan) separate from hover (white)
    */
   drawHover(ctx, now) {
-    if (!this.hoveredCell) return;
+    // v2.2.1: Draw selection highlight first (cyan, persistent)
+    if (this.selectedCell) {
+      const { x, y } = this.selectedCell;
+      const pulse = 0.6 + 0.4 * Math.sin(now / 300);
 
-    const { x, y } = this.hoveredCell;
-    const pulse = Math.sin(now / 150) * 0.3 + 0.7;
+      ctx.strokeStyle = '#00ffff'; // Cyan for selection
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = pulse;
+      ctx.strokeRect(
+        x * this.cellSize + 2,
+        y * this.cellSize + 2,
+        this.cellSize - 4,
+        this.cellSize - 4
+      );
+      ctx.globalAlpha = 1;
+    }
 
-    ctx.strokeStyle = this.colors.white;
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = pulse;
-    ctx.strokeRect(
-      x * this.cellSize + 2,
-      y * this.cellSize + 2,
-      this.cellSize - 4,
-      this.cellSize - 4
-    );
-    ctx.globalAlpha = 1;
+    // Draw hover highlight (white, follows mouse)
+    if (this.hoveredCell) {
+      const { x, y } = this.hoveredCell;
+
+      // Don't draw hover if it's the same as selection
+      if (this.selectedCell && this.selectedCell.x === x && this.selectedCell.y === y) {
+        return;
+      }
+
+      const pulse = Math.sin(now / 150) * 0.3 + 0.7;
+
+      ctx.strokeStyle = this.colors.white;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = pulse;
+      ctx.strokeRect(
+        x * this.cellSize + 2,
+        y * this.cellSize + 2,
+        this.cellSize - 4,
+        this.cellSize - 4
+      );
+      ctx.globalAlpha = 1;
+    }
   }
 
   /**

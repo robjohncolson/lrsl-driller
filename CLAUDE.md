@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.2.1 (Colors, Mini-Mosaic, Gift, Subcell Claim Fixes)
+**Current Version**: v2.2.2 (Click-to-Select, No Auto-Claim, Grid Diagnostics)
 
 ## Critical: File Sync Requirements
 
@@ -229,12 +229,13 @@ See `docs/STATE_MACHINES.md` for complete diagrams of all component state transi
 ## Testing
 
 ```bash
-npm test                                          # All tests (1165 tests)
+npm test                                          # All tests (1250 tests)
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
 npx vitest run tests/game/grid-wars-v2.0.test.js   # v2.0 hierarchy tests (40 tests)
 npx vitest run tests/game/grid-wars-v2.1.2.test.js # v2.1.2 rendering fixes (21 tests)
 npx vitest run tests/game/grid-wars-v2.1.5.test.js # v2.1.5 subcell claims (34 tests)
+npx vitest run tests/game/grid-wars-v2.2.2.test.js # v2.2.2 click-to-select (32 tests)
 npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
@@ -249,7 +250,7 @@ Test organization:
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
 - `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1)
-- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.1.5)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.2.2)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
@@ -276,6 +277,18 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.2.2**: Click-to-Select (No Auto-Claim)
+- Canvas clicks now SELECT cells instead of immediately claiming
+- New `_selectedForAction` state stores selected cell coordinates, address, and owner
+- CLAIM button triggers `handleClaimButtonClick()` - only way to claim now
+- Selection highlight: cyan (#00ffff) pulsing border separate from white hover
+- New methods: `updateClaimButton()`, `handleClaimButtonClick()`, `setSelectedCell()`
+- Button states: "□ Select Cell" → "🚩 Claim" / "⚔️ Attack" / "□ Your Territory"
+- Grid renderer diagnostics: logging in constructor, resize(), render()
+- Minimum canvas size enforcement: 200px minimum
+- Sanity check warns if grid appears undersized (expectedPixels < displaySize * 0.5)
+- Added 32 regression tests in `tests/game/grid-wars-v2.2.2.test.js`
 
 **v2.2.1**: Subcell Claim Coordinate Fixes
 - Fixed subcell territory creation: new territories now use correct `address`, `parent_address`, and `cell_level` from request

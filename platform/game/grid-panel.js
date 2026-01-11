@@ -304,8 +304,8 @@ export class GridPanel {
           <div style="padding:8px 12px;background:#1f2937;">
             <div style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Actions</div>
             <div style="display:flex;gap:8px;">
-              <button class="gw-action-btn" data-action="claim" data-cost="${GRID_WARS_CONFIG.claimCost}" style="flex:1;">
-                □ Claim Territory<span class="gw-cost">${GRID_WARS_CONFIG.claimCost}⚡</span>
+              <button class="gw-action-btn" data-action="claim" style="flex:1;" disabled>
+                □ Select Cell<span class="gw-cost">--</span>
               </button>
             </div>
             <!-- v2.0: Develop/Drill buttons (hidden by default) -->
@@ -561,12 +561,9 @@ export class GridPanel {
       helpBtn.addEventListener('click', () => this.toggleHelp());
     }
 
-    // Action buttons
-    this.container.querySelectorAll('.gw-action-btn[data-action]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        // For now, just enable "claim" mode
-        this.updateStatus('Click a cell on the map to claim it');
-      });
+    // v2.2.1: Action button - claim selected cell (not auto-claim on canvas click)
+    this.container.querySelectorAll('.gw-action-btn[data-action="claim"]').forEach(btn => {
+      btn.addEventListener('click', () => this.handleClaimButtonClick());
     });
 
     // Keyboard controls
@@ -794,10 +791,17 @@ export class GridPanel {
   }
 
   /**
-   * Claim territory at current avatar position
+   * Claim territory at current avatar position or selected cell
+   * v2.2.1: Works with selected cell when in hierarchy mode
    */
   async handleClaimAtPosition() {
     if (!this.state) return;
+
+    // v2.2.1: In hierarchy mode, use selected cell instead of avatar position
+    if (GRID_WARS_CONFIG.hierarchyEnabled && this._selectedForAction) {
+      await this.handleClaimButtonClick();
+      return;
+    }
 
     const pos = this.state.getPlayerPosition();
     if (!pos) {
@@ -827,6 +831,7 @@ export class GridPanel {
       this.syncRendererState();
       this.updateButtonStates();
       this.updatePointsDisplay();
+      this.updateClaimButton();
 
       // Update action affordance after claim
       setTimeout(() => this.updateActionAffordance(), 100);
@@ -885,14 +890,21 @@ export class GridPanel {
     }
 
     // First time initialization - set canvas size
-    // v2.2.2: Ensure minimum size of 200px to prevent blank grid when container isn't laid out
+    // v2.2.3: Use explicit container dimensions (280px set in HTML)
+    // The container has fixed width:280px;height:280px, so use that directly
     const container = canvas.parentElement;
-    const containerWidth = container.offsetWidth || 200;  // Default to 200 if not laid out
-    const size = Math.max(200, Math.min(containerWidth, 300));  // Clamp between 200-300
+    const containerWidth = container.offsetWidth;
+    const containerHeight = container.offsetHeight;
+    // Use container dimensions if available, otherwise fall back to 280 (the explicit HTML value)
+    const size = (containerWidth > 0 && containerHeight > 0)
+      ? Math.min(containerWidth, containerHeight, 300)
+      : 280;
     canvas.width = size;
     canvas.height = size;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
 
-    console.log('[GridPanel] Creating renderer with mapSize:', mapSize, 'size:', size);
+    console.log('[GridPanel] Creating renderer with mapSize:', mapSize, 'size:', size, 'containerWidth:', containerWidth);
 
     this.renderer = new GridRenderer(canvas, {
       gridSize: mapSize,
@@ -930,8 +942,11 @@ export class GridPanel {
       icon.textContent = '▲';
       // Refresh state when expanding
       this.state.refreshState().catch(() => {});
-      // Re-init canvas after showing
-      this.initCanvas();
+      // v2.2.3: Delay canvas init until after browser layout recalculation
+      // Using requestAnimationFrame ensures the container has proper dimensions
+      requestAnimationFrame(() => {
+        this.initCanvas();
+      });
       // v1.4: Refresh multi-leaderboard
       this.refreshMultiLeaderboard();
     } else {
@@ -941,8 +956,9 @@ export class GridPanel {
   }
 
   /**
-   * Handle canvas click - claim/takeover territory
-   * v2.0: Click on developed cell zooms in instead of claiming
+   * Handle canvas click - SELECT cell (v2.2.1: no longer auto-claims)
+   * v2.0: Click on developed cell zooms in
+   * v2.2.1: Click = select, CLAIM button = claim (no auto-claim)
    */
   async onCanvasClick(e) {
     const cell = this.renderer.mouseToGrid(e.clientX, e.clientY);
@@ -954,7 +970,7 @@ export class GridPanel {
     // v2.1.5: Update coordinate display
     this.updateCoordsDisplay(cell.x, cell.y);
 
-    // v2.0: Check if cell is developed - zoom in instead of claim
+    // v2.0: Check if cell is developed - zoom in instead of selecting
     if (this.state?.isDeveloped?.(cell.x, cell.y)) {
       const address = this.state.getCellAddress(cell.x, cell.y);
       if (address) {
@@ -972,28 +988,108 @@ export class GridPanel {
     // v2.0: Show develop/drill actions for selected cell
     this.updateHierarchyActions(cell.x, cell.y, owner);
 
-    // Can't claim own territory (but can develop it)
+    // v2.2.1: Store selected cell for action button handlers
+    const localAddress = String.fromCharCode(97 + cell.x) + (cell.y + 1);
+    const fullAddress = this.state?.currentParent
+      ? `${this.state.currentParent}.${localAddress}`
+      : localAddress;
+    this._selectedForAction = {
+      x: cell.x,
+      y: cell.y,
+      address: fullAddress,
+      owner
+    };
+
+    // v2.2.1: Draw persistent selection highlight (cyan border)
+    if (this.renderer) {
+      this.renderer.setSelectedCell(cell.x, cell.y);
+    }
+
+    // v2.2.1: Update status based on cell state (no auto-claim)
     if (owner === this.state.username) {
-      this.updateStatus('Your territory — DEVELOP to subdivide');
+      this.updateStatus('Your territory — Click DEVELOP to subdivide');
+    } else if (owner) {
+      this.updateStatus(`Enemy territory (${owner}) — Click CLAIM to attack`);
+    } else {
+      this.updateStatus(`Neutral cell — Click CLAIM to capture`);
+    }
+
+    // v2.2.1: Update claim button state
+    this.updateClaimButton();
+  }
+
+  /**
+   * v2.2.1: Update claim button text and state based on selected cell
+   */
+  updateClaimButton() {
+    const claimBtn = this.container.querySelector('.gw-action-btn[data-action="claim"]');
+    if (!claimBtn) return;
+
+    const selected = this._selectedForAction;
+    if (!selected) {
+      claimBtn.disabled = true;
+      claimBtn.innerHTML = `□ Select Cell<span class="gw-cost">--</span>`;
+      return;
+    }
+
+    const points = this.state?.getActionPoints() || 0;
+    const costInfo = this.state?.getClaimCostAt(selected.x, selected.y);
+
+    if (costInfo === null) {
+      // Own territory - can't claim
+      claimBtn.disabled = true;
+      claimBtn.innerHTML = `□ Your Territory<span class="gw-cost">--</span>`;
+    } else if (costInfo.isEnemy) {
+      // Enemy territory - show attack
+      claimBtn.disabled = points < costInfo.cost;
+      claimBtn.innerHTML = `⚔️ Attack<span class="gw-cost">${costInfo.cost}⚡</span>`;
+    } else {
+      // Neutral - show claim
+      claimBtn.disabled = points < costInfo.cost;
+      claimBtn.innerHTML = `🚩 Claim<span class="gw-cost">${costInfo.cost}⚡</span>`;
+    }
+  }
+
+  /**
+   * v2.2.1: Handle CLAIM button click (separate from canvas click)
+   */
+  async handleClaimButtonClick() {
+    if (!this._selectedForAction || !this.state) {
+      this.updateStatus('Select a cell first');
+      return;
+    }
+
+    const { x, y, owner } = this._selectedForAction;
+
+    // Can't claim own territory
+    if (owner === this.state.username) {
+      this.updateStatus('You already own this territory');
       return;
     }
 
     const isTakeover = !!owner;
 
-    // Try to claim/takeover the territory
     try {
-      await this.state.claimTerritory(cell.x, cell.y);
+      await this.state.claimTerritory(x, y);
       if (isTakeover) {
         sounds.takeover();
-        this.updateStatus(`Took over (${cell.x}, ${cell.y})!`);
+        this.updateStatus(`Took over (${x}, ${y})!`);
       } else {
         sounds.claim();
-        this.updateStatus(`Claimed (${cell.x}, ${cell.y})!`);
+        this.updateStatus(`Claimed (${x}, ${y})!`);
       }
 
       this.syncRendererState();
       this.updateButtonStates();
       this.updatePointsDisplay();
+      this.updateClaimButton();
+
+      // Clear selection after successful claim
+      this._selectedForAction = null;
+      this.selectedCell = null;
+      if (this.renderer) {
+        this.renderer.setSelectedCell(null, null);
+      }
     } catch (err) {
       sounds.error();
       // v1.4: Handle UPLINK OFFLINE error specifically
