@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.2.2 (Click-to-Select, No Auto-Claim, Grid Diagnostics)
+**Current Version**: v2.2.3 (Color Consistency, Gift Fix, Zoom Behavior, Level Display)
 
 ## Critical: File Sync Requirements
 
@@ -236,6 +236,7 @@ npx vitest run tests/game/grid-wars-v2.0.test.js   # v2.0 hierarchy tests (40 te
 npx vitest run tests/game/grid-wars-v2.1.2.test.js # v2.1.2 rendering fixes (21 tests)
 npx vitest run tests/game/grid-wars-v2.1.5.test.js # v2.1.5 subcell claims (34 tests)
 npx vitest run tests/game/grid-wars-v2.2.2.test.js # v2.2.2 click-to-select (32 tests)
+npx vitest run tests/game/grid-wars-v2.2.3.test.js # v2.2.3 color/gift/zoom/level (40+ tests)
 npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
@@ -277,6 +278,17 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.2.3**: Color Consistency, Gift Fix, Zoom Behavior, Level Display
+- Fixed color mismatch: `setTerritory()` and `drawOwnerPresence()` now use `getServerPlayerColor()` instead of auto-assigned colors
+- Fixed gift dropdown showing "undefined": now uses `players.entries()` to properly extract usernames from Map keys
+- Removed auto-zoom on developed cell click: clicking developed cells now selects them instead of zooming in
+- Added keyboard navigation: ↑ Arrow = zoom into developed cell, ↓ Arrow/ESC = zoom out
+- Fixed level naming: now uses 1-indexed ("LEVEL 1", "LEVEL 2", "LEVEL 3") instead of "MACRO"
+- Added prominent level indicator section with navigation state display
+- Added territory stats display: shows "Your territory: X/64 (Y%) | Map filled: Z%"
+- Level indicator and territory stats update on navigation (zoom in/out), not just cell selection
+- Updated help section with keyboard controls documentation
 
 **v2.2.2**: Click-to-Select (No Auto-Claim)
 - Canvas clicks now SELECT cells instead of immediately claiming

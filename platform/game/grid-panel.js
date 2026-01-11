@@ -262,11 +262,11 @@ export class GridPanel {
           </div>
 
           <div style="color:#94a3b8;">
-            <span style="color:#22d3ee;">5.</span> <strong style="color:#e2e8f0;">Navigate</strong> - Click developed cells to zoom in, ESC to zoom out
+            <span style="color:#22d3ee;">5.</span> <strong style="color:#e2e8f0;">Navigate</strong> - Click to select, ↑ to zoom into developed cells, ↓/ESC to zoom out
           </div>
 
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid #374151;color:#64748b;font-size:0.65rem;">
-            Controls: Click = Select/Claim | ESC = Zoom Out | Developed cells = Click to enter
+            Controls: Click = Select | ↑ Arrow = Zoom In | ↓ Arrow/ESC = Zoom Out | CLAIM button = Claim
           </div>
         </div>
 
@@ -281,6 +281,16 @@ export class GridPanel {
           <!-- v2.0: Breadcrumb Navigation -->
           <div id="gw-breadcrumb" style="display:none;padding:6px 12px;background:#0a0a0a;border-bottom:1px solid #166534;font-size:0.7rem;">
             <span id="gw-breadcrumb-content" style="color:#22d3ee;">MAP</span>
+          </div>
+
+          <!-- v2.2.3: Level Indicator (always visible, prominent) -->
+          <div id="gw-level-indicator" style="padding:8px 12px;background:rgba(0,255,255,0.05);border-bottom:1px solid #166534;text-align:center;">
+            <div id="gw-level-display" style="font-size:16px;font-weight:bold;color:#0ff;text-shadow:0 0 8px #0ff40;">
+              📍 LEVEL 1 — ROOT
+            </div>
+            <div id="gw-territory-stats" style="font-size:11px;color:#6b7280;margin-top:4px;">
+              Your territory: -- | Total claimed: --
+            </div>
           </div>
 
           <!-- Mini Grid -->
@@ -445,6 +455,7 @@ export class GridPanel {
     this.updatePointsDisplay();
     this.updateClusterDisplay();
     this.updateClassGoalDisplay();
+    this.updateLevelIndicator();  // v2.2.3: Initial level display
 
     // v1.4: Load leaderboard data on initial render
     this.refreshMultiLeaderboard();
@@ -617,6 +628,7 @@ export class GridPanel {
         e.preventDefault();
         await this.state.zoomOut();
         this.updateBreadcrumb();
+        this.updateLevelIndicator();  // v2.2.3: Update level on zoom
         this.syncRendererState();
         return;
       }
@@ -642,6 +654,7 @@ export class GridPanel {
           if (cell?.is_developed) {
             await this.state.zoomIn(this._selectedForAction.address);
             this.updateBreadcrumb();
+            this.updateLevelIndicator();  // v2.2.3: Update level on zoom
             this.syncRendererState();
             this.updateHierarchyActions();
             this.updateStatus(`Zoomed into ${this._selectedForAction.address.toUpperCase()}`);
@@ -659,6 +672,7 @@ export class GridPanel {
         if (navState && navState.currentLevel > 0) {
           await this.state.zoomOut();
           this.updateBreadcrumb();
+          this.updateLevelIndicator();  // v2.2.3: Update level on zoom
           this.syncRendererState();
           this.updateHierarchyActions();
           this.updateStatus('Zoomed out');
@@ -970,18 +984,8 @@ export class GridPanel {
     // v2.1.5: Update coordinate display
     this.updateCoordsDisplay(cell.x, cell.y);
 
-    // v2.0: Check if cell is developed - zoom in instead of selecting
-    if (this.state?.isDeveloped?.(cell.x, cell.y)) {
-      const address = this.state.getCellAddress(cell.x, cell.y);
-      if (address) {
-        await this.state.zoomIn(address);
-        this.updateBreadcrumb();
-        this.syncRendererState();
-        this.updateHierarchyActions();
-        this.updateStatus(`Viewing inside ${address.toUpperCase()}`);
-        return;
-      }
-    }
+    // v2.2.3: Removed auto-zoom on developed cell click
+    // Click now just selects the cell; use Up Arrow to zoom into developed cells
 
     const owner = this.state.getTerritoryOwner(cell.x, cell.y);
 
@@ -1005,11 +1009,20 @@ export class GridPanel {
       this.renderer.setSelectedCell(cell.x, cell.y);
     }
 
-    // v2.2.1: Update status based on cell state (no auto-claim)
+    // v2.2.3: Update status based on cell state (no auto-claim, no auto-zoom)
+    const isDeveloped = this.state?.isDeveloped?.(cell.x, cell.y);
     if (owner === this.state.username) {
-      this.updateStatus('Your territory — Click DEVELOP to subdivide');
+      if (isDeveloped) {
+        this.updateStatus('Your developed cell — Press ↑ to zoom in');
+      } else {
+        this.updateStatus('Your territory — Click DEVELOP to subdivide');
+      }
     } else if (owner) {
-      this.updateStatus(`Enemy territory (${owner}) — Click CLAIM to attack`);
+      if (isDeveloped) {
+        this.updateStatus(`${owner}'s developed cell — Press ↑ to zoom in`);
+      } else {
+        this.updateStatus(`Enemy territory (${owner}) — Click CLAIM to attack`);
+      }
     } else {
       this.updateStatus(`Neutral cell — Click CLAIM to capture`);
     }
@@ -1083,6 +1096,7 @@ export class GridPanel {
       this.updateButtonStates();
       this.updatePointsDisplay();
       this.updateClaimButton();
+      this.updateLevelIndicator();  // v2.2.3: Update stats after claim
 
       // Clear selection after successful claim
       this._selectedForAction = null;
@@ -1429,6 +1443,7 @@ export class GridPanel {
     this.updateScarcityDisplay();    // v1.5
     this.updateVelocityDisplay();    // v1.5
     this.updateBreadcrumb();         // v2.0
+    this.updateLevelIndicator();     // v2.2.3
   }
 
   /**
@@ -1931,9 +1946,11 @@ export class GridPanel {
       return;
     }
 
-    // Get list of other players (exclude self)
-    const players = Array.from(this.state.players?.values() || [])
-      .filter(p => p.username !== this.state.username)
+    // v2.2.3: Get list of other players (exclude self)
+    // Fix: Use entries() since username is the Map key, not a property on the value
+    const players = Array.from(this.state.players?.entries() || [])
+      .filter(([username, p]) => username && username !== 'undefined' && username !== this.state.username)
+      .map(([username, p]) => ({ ...p, username }))
       .sort((a, b) => a.username.localeCompare(b.username));
 
     if (players.length === 0) {
@@ -2033,7 +2050,8 @@ export class GridPanel {
     coordsDisplay.innerHTML = `📍 ${fullAddress.toUpperCase()}`;
 
     // Display level and owner info
-    let levelText = level === 0 ? 'MACRO LEVEL' : `LEVEL ${level}`;
+    // v2.2.3: Use 1-indexed level naming (LEVEL 1, 2, 3 instead of MACRO, LEVEL 1, 2)
+    let levelText = `LEVEL ${level + 1}`;
     if (owner) {
       const ownerColor = owner === this.state.username ? '#22c55e' : '#ef4444';
       levelText += ` • <span style="color:${ownerColor};">${owner}</span>`;
@@ -2044,6 +2062,70 @@ export class GridPanel {
       levelText += ' • <span style="color:#22d3ee;">🔲 Developed</span>';
     }
     coordsLevel.innerHTML = levelText;
+  }
+
+  /**
+   * v2.2.3: Update level indicator display
+   * Called after navigation (zoom in/out) and on initial render
+   */
+  updateLevelIndicator() {
+    const levelDisplay = this.container?.querySelector('#gw-level-display');
+    if (!levelDisplay || !this.state) return;
+
+    const navState = this.state.getNavigationState?.() || { currentLevel: 0, currentParent: null };
+    const level = navState.currentLevel;
+
+    // v2.2.3: Level naming is 1-indexed (Level 1, Level 2, Level 3)
+    const displayLevel = level + 1;
+    const levelName = `LEVEL ${displayLevel}`;
+
+    // Show parent address when zoomed in
+    let locationText;
+    if (navState.currentParent) {
+      locationText = `Inside ${navState.currentParent.toUpperCase()}`;
+    } else {
+      locationText = 'ROOT';
+    }
+
+    levelDisplay.innerHTML = `📍 ${levelName} — ${locationText}`;
+
+    // Also update territory stats
+    this.updateTerritoryStats();
+  }
+
+  /**
+   * v2.2.3: Update territory stats display
+   * Shows owned cells / total claimed at current level
+   */
+  updateTerritoryStats() {
+    const statsEl = this.container?.querySelector('#gw-territory-stats');
+    if (!statsEl || !this.state) return;
+
+    const territories = this.state.territories;
+    const username = this.state.username;
+
+    if (!territories || !username) {
+      statsEl.textContent = 'Your territory: -- | Total claimed: --';
+      return;
+    }
+
+    let owned = 0;
+    let total = 0;
+    const totalCells = (GRID_WARS_CONFIG.mapSize || 8) ** 2;
+
+    for (const [key, cell] of territories) {
+      if (cell.owner) {
+        total++;
+        if (cell.owner === username) {
+          owned++;
+        }
+      }
+    }
+
+    const percent = totalCells > 0 ? Math.round((owned / totalCells) * 100) : 0;
+    const fillPercent = totalCells > 0 ? Math.round((total / totalCells) * 100) : 0;
+
+    statsEl.innerHTML = `Your territory: <span style="color:#22c55e;font-weight:bold;">${owned}/${totalCells}</span> (${percent}%) | Map filled: <span style="color:#fbbf24;">${fillPercent}%</span>`;
   }
 
   /**

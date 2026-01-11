@@ -241,7 +241,8 @@ export class GridRenderer {
     if (owner || data.node_type || data.is_developed) {
       this.territories[`${x},${y}`] = {
         owner,
-        color: owner ? this.getPlayerColor(owner) : null,
+        // v2.2.3: Use server-assigned colors (via _playerColors) instead of auto-assigned
+        color: owner ? this.getServerPlayerColor(owner) : null,
         strength: data.strength || 3,
         node_type: data.node_type || null,
         ownerLastAnswer: data.ownerLastAnswer || null,  // v1.2.1
@@ -1204,7 +1205,8 @@ export class GridRenderer {
       // Cell is owned by an online player - show presence dot
       const cx = x * this.cellSize + this.cellSize - dotRadius - 3;
       const cy = y * this.cellSize + this.cellSize - dotRadius - 3;
-      const color = this.getPlayerSolidColor(cell.owner);
+      // v2.2.3: Use server-assigned colors
+      const color = this.getServerPlayerColor(cell.owner);
 
       ctx.save();
       ctx.globalAlpha = blink;

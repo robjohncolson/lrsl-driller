@@ -1,6 +1,19 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v2.2.2.
+Complete state machine documentation for all components as of v2.2.3.
+
+**v2.2.3 Changes (Color Consistency, Gift Fix, Zoom Behavior, Level Display):**
+- Fixed color mismatch: `setTerritory()` and `drawOwnerPresence()` now use `getServerPlayerColor()` instead of auto-assigned colors
+- Fixed gift dropdown showing "undefined": now uses `players.entries()` to properly extract usernames from Map keys
+- Removed auto-zoom on developed cell click: clicking developed cells now selects them instead of zooming in
+- Added keyboard navigation hints in status messages: "Press ↑ to zoom in"
+- Fixed level naming: now uses 1-indexed ("LEVEL 1", "LEVEL 2", "LEVEL 3") instead of "MACRO"
+- Added prominent level indicator section: `#gw-level-indicator` with 16px bold cyan text
+- Added `updateLevelIndicator()` method called after all zoom operations
+- Added `updateTerritoryStats()` method showing "Your territory: X/64 (Y%) | Map filled: Z%"
+- Level indicator and territory stats update on navigation (zoom in/out), not just cell selection
+- Updated help section with keyboard controls documentation
+- Added 40+ regression tests in `tests/game/grid-wars-v2.2.3.test.js`
 
 **v2.2.2 Changes (Click-to-Select, No Auto-Claim):**
 - Canvas clicks now SELECT cells instead of auto-claiming
@@ -4514,6 +4527,321 @@ REGRESSION TESTS:
 
 ---
 
-*Updated to v2.2.2*
+## 60. v2.2.3 COLOR CONSISTENCY
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    COLOR LOOKUP HIERARCHY                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Territory Color Assignment (setTerritory):                      │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ v2.2.2 (BUG):                                           │    │
+│  │   color: owner ? this.getPlayerColor(owner) : null      │    │
+│  │   └── Uses auto-assigned fallback colors (purple, etc.) │    │
+│  │                                                         │    │
+│  │ v2.2.3 (FIX):                                           │    │
+│  │   color: owner ? this.getServerPlayerColor(owner) : null│    │
+│  │   └── Uses server-assigned colors from _playerColors    │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  Presence Dot Color (drawOwnerPresence):                         │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ v2.2.2 (BUG):                                           │    │
+│  │   const color = this.getPlayerSolidColor(cell.owner);   │    │
+│  │                                                         │    │
+│  │ v2.2.3 (FIX):                                           │    │
+│  │   const color = this.getServerPlayerColor(cell.owner);  │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  Color Lookup Priority:                                          │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ getServerPlayerColor(username):                         │    │
+│  │   1. Check _playerColors[username]  (server-assigned)   │    │
+│  │   2. Fallback to '#888888' (gray)                       │    │
+│  │                                                         │    │
+│  │ getPlayerColor(username) - DEPRECATED for rendering:    │    │
+│  │   1. Check playerColors[username]   (auto-assigned)     │    │
+│  │   2. Auto-assign from DEFAULT_PLAYER_COLORS palette     │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 61. v2.2.3 GIFT DROPDOWN FILTERING
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 GIFT RECIPIENT LIST BUILDING                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  v2.2.2 (BUG):                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ const players = Array.from(this.state.players.values()) │    │
+│  │   .filter(p => p.username !== this.state.username)      │    │
+│  │                                                         │    │
+│  │ Problem: Map.values() returns VALUE objects, not keys   │    │
+│  │          username is stored as KEY, not in value object │    │
+│  │          Results in p.username === undefined            │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  v2.2.3 (FIX):                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ const players = Array.from(this.state.players.entries())│    │
+│  │   .filter(([username, p]) =>                            │    │
+│  │     username &&                                         │    │
+│  │     username !== 'undefined' &&                         │    │
+│  │     username !== this.state.username                    │    │
+│  │   )                                                     │    │
+│  │   .map(([username, p]) => ({ ...p, username }))         │    │
+│  │   .sort((a, b) => a.username.localeCompare(b.username));│    │
+│  │                                                         │    │
+│  │ Uses entries() to get [key, value] pairs                │    │
+│  │ Extracts username from key, not from value object       │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  Filter Conditions:                                              │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ 1. username (truthy check - excludes null, '', etc.)   │    │
+│  │ 2. username !== 'undefined' (excludes string literal)   │    │
+│  │ 3. username !== this.state.username (excludes self)     │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 62. v2.2.3 ZOOM BEHAVIOR (No Auto-Zoom)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              CLICK vs ZOOM SEPARATION                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  v2.2.2 (BUG):                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ onCanvasClick(x, y):                                    │    │
+│  │   if (this.state.isDeveloped(x, y)) {                   │    │
+│  │     await this.state.zoomIn(address);  // AUTO-ZOOM!    │    │
+│  │     return;                                             │    │
+│  │   }                                                     │    │
+│  │   // ... selection logic only reached for undeveloped   │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  v2.2.3 (FIX):                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ onCanvasClick(x, y):                                    │    │
+│  │   // v2.2.3: Removed auto-zoom block                    │    │
+│  │   // Click just selects; use ↑ Arrow to zoom            │    │
+│  │   this.selectedCell = { x, y };                         │    │
+│  │   this._selectedForAction = { x, y, address, owner };   │    │
+│  │   this.updateCoordsDisplay(x, y);                       │    │
+│  │   this.updateClaimButton();                             │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  New Keyboard-Based Zoom:                                        │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ ↑ Arrow (ArrowUp):                                      │    │
+│  │   if (selectedCell.is_developed) {                      │    │
+│  │     await this.state.zoomIn(address);                   │    │
+│  │     this.updateLevelIndicator();  // v2.2.3             │    │
+│  │   }                                                     │    │
+│  │                                                         │    │
+│  │ ↓ Arrow (ArrowDown) / ESC:                              │    │
+│  │   if (currentLevel > 0) {                               │    │
+│  │     await this.state.zoomOut();                         │    │
+│  │     this.updateLevelIndicator();  // v2.2.3             │    │
+│  │   }                                                     │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  Status Messages:                                                │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Own developed:    "Your developed cell — Press ↑ to     │    │
+│  │                    zoom in"                             │    │
+│  │ Enemy developed:  "{owner}'s developed cell — Press ↑   │    │
+│  │                    to zoom in"                          │    │
+│  │ Own undeveloped:  "Your territory — Click DEVELOP to    │    │
+│  │                    subdivide"                           │    │
+│  │ Enemy undeveloped: "Enemy territory ({owner}) — Click   │    │
+│  │                     CLAIM to attack"                    │    │
+│  │ Neutral:          "Neutral cell — Click CLAIM to        │    │
+│  │                    capture"                             │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 63. v2.2.3 LEVEL INDICATOR STATE MACHINE
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 LEVEL INDICATOR UPDATES                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Level Naming (1-indexed):                                       │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Internal Level    Display Name                          │    │
+│  │ ─────────────    ────────────────                       │    │
+│  │     0            LEVEL 1 — ROOT                         │    │
+│  │     1            LEVEL 2 — Inside D5                    │    │
+│  │     2            LEVEL 3 — Inside D5.C3                 │    │
+│  │                                                         │    │
+│  │ Formula: displayLevel = level + 1                       │    │
+│  │          (NOT: level === 0 ? 'MACRO' : ...)             │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  updateLevelIndicator() Trigger Points:                          │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                                                         │    │
+│  │    ┌─────────────┐                                      │    │
+│  │    │  createUI() │───────────┐                          │    │
+│  │    └─────────────┘           │                          │    │
+│  │                              ▼                          │    │
+│  │    ┌─────────────┐    ┌──────────────────┐             │    │
+│  │    │   render()  │───▶│updateLevelIndicator()│          │    │
+│  │    └─────────────┘    └──────────────────┘             │    │
+│  │                              ▲                          │    │
+│  │    ┌─────────────┐           │                          │    │
+│  │    │  zoomIn()   │───────────┤                          │    │
+│  │    └─────────────┘           │                          │    │
+│  │                              │                          │    │
+│  │    ┌─────────────┐           │                          │    │
+│  │    │  zoomOut()  │───────────┤                          │    │
+│  │    └─────────────┘           │                          │    │
+│  │                              │                          │    │
+│  │    ┌─────────────┐           │                          │    │
+│  │    │  claimOk()  │───────────┘                          │    │
+│  │    └─────────────┘                                      │    │
+│  │                                                         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  HTML Structure:                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ <div id="gw-level-indicator">                           │    │
+│  │   <div id="gw-level-display">                           │    │
+│  │     📍 LEVEL 1 — ROOT                                   │    │
+│  │   </div>                                                │    │
+│  │   <div id="gw-territory-stats">                         │    │
+│  │     Your territory: 3/64 (5%) | Map filled: 42%         │    │
+│  │   </div>                                                │    │
+│  │ </div>                                                  │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 64. v2.2.3 TERRITORY STATS CALCULATION
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              TERRITORY STATS STATE MACHINE                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  updateTerritoryStats():                                         │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                                                         │    │
+│  │   ┌────────────────────────────────────────────┐        │    │
+│  │   │ Input: territories Map, username, mapSize  │        │    │
+│  │   └─────────────────────┬──────────────────────┘        │    │
+│  │                         ▼                               │    │
+│  │   ┌────────────────────────────────────────────┐        │    │
+│  │   │ totalCells = mapSize² (default 64)         │        │    │
+│  │   └─────────────────────┬──────────────────────┘        │    │
+│  │                         ▼                               │    │
+│  │   ┌────────────────────────────────────────────┐        │    │
+│  │   │ For each territory in Map:                 │        │    │
+│  │   │   if (cell.owner) total++                  │        │    │
+│  │   │   if (cell.owner === username) owned++     │        │    │
+│  │   └─────────────────────┬──────────────────────┘        │    │
+│  │                         ▼                               │    │
+│  │   ┌────────────────────────────────────────────┐        │    │
+│  │   │ ownPercent = round(owned / totalCells * 100)│       │    │
+│  │   │ fillPercent = round(total / totalCells * 100)│      │    │
+│  │   └─────────────────────┬──────────────────────┘        │    │
+│  │                         ▼                               │    │
+│  │   ┌────────────────────────────────────────────┐        │    │
+│  │   │ Display:                                   │        │    │
+│  │   │ "Your territory: {owned}/{totalCells}      │        │    │
+│  │   │  ({ownPercent}%) | Map filled: {fillPercent}%"     │    │
+│  │   └────────────────────────────────────────────┘        │    │
+│  │                                                         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  Example Outputs:                                                │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ No cells:  "Your territory: -- | Total claimed: --"     │    │
+│  │ 3 of 64:   "Your territory: 3/64 (5%) | Map filled: 42%"│   │
+│  │ 10 of 64:  "Your territory: 10/64 (16%) | Map filled: 75%"  │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 65. v2.2.3 VERIFICATION CHECKLIST
+
+```
+COLOR CONSISTENCY:
+□ setTerritory() uses getServerPlayerColor() (not getPlayerColor())
+□ drawOwnerPresence() uses getServerPlayerColor() (not getPlayerSolidColor())
+□ Claimed cells show player's server-assigned color
+□ Mini-mosaic and macro cells use same colors
+□ Missing colors fall back to gray (#888888), not purple
+
+GIFT DROPDOWN:
+□ Uses players.entries() instead of players.values()
+□ Filters out null/empty usernames
+□ Filters out 'undefined' string
+□ Filters out current user (self)
+□ Sorts alphabetically by username
+□ Shows "No other players to gift to" if list empty
+
+ZOOM BEHAVIOR:
+□ Click on developed cell does NOT auto-zoom
+□ Click on developed cell selects it
+□ ↑ Arrow zooms into selected developed cell
+□ ↓ Arrow / ESC zooms out one level
+□ Status message hints "Press ↑ to zoom in" for developed cells
+
+LEVEL INDICATOR:
+□ Uses 1-indexed naming ("LEVEL 1", not "MACRO")
+□ Shows "ROOT" when at level 0
+□ Shows "Inside {ADDRESS}" when zoomed in
+□ Updates after zoomIn()
+□ Updates after zoomOut()
+□ Updates after successful claim
+□ Updates on render()
+□ 16px bold cyan text is readable
+
+TERRITORY STATS:
+□ Shows owned count / total cells (e.g., "3/64")
+□ Shows ownership percentage (e.g., "5%")
+□ Shows map fill percentage
+□ Does not show "--" when user owns cells
+□ Updates after claims and navigation
+
+HELP SECTION:
+□ Documents keyboard controls
+□ Shows "Click = Select" (not "Click = Claim")
+□ Shows "↑ Arrow = Zoom In"
+□ Shows "↓ Arrow/ESC = Zoom Out"
+
+REGRESSION TESTS:
+□ tests/game/grid-wars-v2.2.3.test.js passes (40+ tests)
+□ All existing Grid Wars tests still pass
+□ All 1250+ platform tests pass
+```
+
+---
+
+*Updated to v2.2.3*
 *Last updated: January 2026*
-*Total sections: 59*
+*Total sections: 65*
