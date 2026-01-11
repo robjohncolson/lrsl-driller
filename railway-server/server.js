@@ -1240,6 +1240,8 @@ async function gradeWithAI(prompt, preferredProvider = null) {
         await keyPool.markUsed(keyObj.id);
         result._provider = provider;
         result._keyId = keyObj.id;
+        // v2.0.1: Include model info for AI feedback panel
+        result._model = provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-2.0-flash';
         return result;
 
       } catch (err) {

@@ -377,6 +377,7 @@ export class Platform {
               currentResult._aiScore = aiResult.score;
               currentResult._aiFeedback = aiResult.feedback;
               currentResult._provider = aiResults._provider;
+              currentResult._model = aiResults._model; // v2.0.1: Capture model for AI feedback panel
 
               // Check if AI feedback is actually useful
               const aiFb = aiResult.feedback || '';

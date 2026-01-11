@@ -1,6 +1,16 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v2.0.
+Complete state machine documentation for all components as of v2.0.1.
+
+**v2.0.1 Changes (AI Feedback Transparency):**
+- AI Feedback Panel: Always-visible panel showing AI grading results to students
+- Model info in response: Server returns `_model` field ('llama-3.3-70b-versatile' or 'gemini-2.0-flash')
+- Panel shows: Provider/model, AI score (E/P/I), AI feedback, agreement with keywords
+- Appeal integration: Panel updates with "AI APPEAL REVIEW" title after appeals
+- Panel lifecycle: Hidden on Skip/Next/Try Again, shown after AI grading completes
+- New component: `platform/core/ai-feedback-panel.js`
+- Updated: `platform.js` captures `_model` from AI response
+- Updated: `app.html` integrates panel into grading flow
 
 **v2.0 Changes (Fractal Subdivision):**
 - Hierarchical territory system: Cells can be subdivided into 64 subcells
@@ -177,6 +187,8 @@ AI Fallback Chain:
 │ (fast)  │              │(fallback)│              │ Score Only  │
 └─────────┘              └─────────┘              └─────────────┘
 ```
+
+**v2.0.1 Note:** See Section 46 for AI Feedback Panel State Machine showing how grading results are displayed to students with provider/model info.
 
 ---
 
@@ -2302,6 +2314,20 @@ Result: "Student Answer:\nrandom assignment"   ← CORRECTLY REPLACED
 | 30 | State Variable Quick Reference | Variable summary table |
 | 31 | Prompt Template Interpolation (v1.6.3) | {{placeholder}} replacement flow |
 | 32 | Section Index | This index |
+| 33 | Hierarchical Navigation (v2.0) | Parent/child navigation |
+| 34 | Develop Action (v2.0) | Owner cell subdivision |
+| 35 | Drill Action (v2.0) | Forced subdivision at saturation |
+| 36 | Address Resolution (v2.0) | Chess notation parsing |
+| 37 | Cell Click Router (v2.0) | Click → zoom vs claim |
+| 38 | Presence Dots (v2.0) | Player location indicators |
+| 39 | Leaderboard Hierarchy (v2.0) | Macro + subcell counts |
+| 40 | Developed Cell Indicator (v2.0) | Visual mini-grid |
+| 41 | WebSocket Messages (v2.0) | New broadcast events |
+| 42 | API Endpoint Inventory (v2.0) | New endpoints |
+| 43 | State Variable Inventory (v2.0) | New state vars |
+| 44 | Complete v2.0 Flow Diagram | End-to-end hierarchy |
+| 45 | v2.0 Verification Checklist | System health checks |
+| 46 | AI Feedback Panel (v2.0.1) | Grading transparency UI |
 
 ---
 
@@ -3393,6 +3419,339 @@ CONFIG SYNC:
 
 ---
 
-*Updated to v2.0*
+## 46. AI FEEDBACK PANEL STATE MACHINE (v2.0.1)
+
+Shows AI grading results to students with full transparency about which model was used and how it scored.
+
+### Panel Lifecycle
+
+```
+                           ┌─────────────────────────────────────────────┐
+                           │           AI FEEDBACK PANEL STATE           │
+                           │                                             │
+                           │  state: 'hidden' | 'visible' | 'error'     │
+                           │  provider: 'groq' | 'gemini' | null        │
+                           │  model: string | null                       │
+                           │  aiScore: 'E' | 'P' | 'I' | null           │
+                           │  aiFeedback: string | null                  │
+                           │  keywordScore: 'E' | 'P' | 'I' | null      │
+                           │  isAppeal: boolean                          │
+                           └─────────────────────────────────────────────┘
+
+                                              │
+           ┌──────────────────────────────────┼──────────────────────────────────┐
+           │                                  │                                  │
+           ▼                                  ▼                                  ▼
+┌─────────────────────┐           ┌─────────────────────┐           ┌─────────────────────┐
+│      HIDDEN         │           │      VISIBLE        │           │       ERROR         │
+│                     │           │                     │           │                     │
+│ display: none       │           │ display: block      │           │ display: block      │
+│ On: page load,      │           │ Shows:              │           │ Shows:              │
+│     new problem,    │           │ - Provider icon     │           │ - "❌ AI Unavailable"|
+│     Try Again,      │           │ - Model name        │           │ - Error message     │
+│     Next, Skip      │           │ - AI Score (color)  │           │ - "Using keywords"  │
+└──────────┬──────────┘           │ - Agreement status  │           └──────────┬──────────┘
+           │                      │ - AI feedback text  │                      │
+           │                      └──────────┬──────────┘                      │
+           │                                 │                                 │
+           │    AI grading succeeds          │     AI grading fails            │
+           └────────────────────────────────▶│◀────────────────────────────────┘
+                                             │
+                                             │  Problem changes
+                                             │  (Skip/Next/Try Again)
+                                             ▼
+                                   ┌─────────────────────┐
+                                   │   → HIDDEN          │
+                                   │   hideAIFeedbackPanel()
+                                   └─────────────────────┘
+```
+
+### Integration with Grading Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           GRADING COMPLETE EVENT                                 │
+│                    (onGradingComplete callback in app.html)                     │
+└────────────────────────────────────┬────────────────────────────────────────────┘
+                                     │
+                                     ▼
+                    ┌────────────────────────────────────┐
+                    │    results._gradingMethod ==       │
+                    │         'keywords+ai'?             │
+                    └──────────────┬─────────────────────┘
+                                   │
+              ┌────────────────────┼────────────────────┐
+              │ YES                │ NO                 │
+              ▼                    │                    ▼
+┌──────────────────────┐           │      ┌──────────────────────┐
+│ Check results._aiFailed          │      │   hideAIFeedbackPanel│
+└──────────┬───────────┘           │      │   (keywords only)    │
+           │                       │      └──────────────────────┘
+     ┌─────┴─────┐                 │
+     │ aiFailed? │                 │
+     └─────┬─────┘                 │
+           │                       │
+    ┌──────┴──────┐                │
+    │ YES         │ NO             │
+    ▼             ▼                │
+┌─────────┐  ┌─────────────────────┐
+│ showAI  │  │ Extract from results│
+│ Feedback│  │ - result._aiScore   │
+│ Error() │  │ - result._aiFeedback│
+└─────────┘  │ - result._provider  │
+             │ - result._model     │
+             │ - result._keywordScore
+             └──────────┬──────────┘
+                        │
+                        ▼
+             ┌─────────────────────┐
+             │ updateAIFeedbackPanel│
+             │ (panel, aiResponse,  │
+             │  keywordScore)       │
+             └─────────────────────┘
+```
+
+### Appeal Flow Integration
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           APPEAL SUBMITTED                                       │
+│                    (btn-submit-appeal click handler)                            │
+└────────────────────────────────────┬────────────────────────────────────────────┘
+                                     │
+                                     ▼
+                    ┌────────────────────────────────────┐
+                    │   platform.submitAppeal()          │
+                    │   (sends appealText + previous     │
+                    │    results to server)              │
+                    └──────────────┬─────────────────────┘
+                                   │
+                                   ▼
+                    ┌────────────────────────────────────┐
+                    │      Appeal Result Received        │
+                    └──────────────┬─────────────────────┘
+                                   │
+              ┌────────────────────┼────────────────────┐
+              │ result.success     │ result.error       │
+              │ == true            │                    │
+              ▼                    ▼                    │
+┌──────────────────────┐  ┌──────────────────────┐     │
+│ Extract field results│  │ Show escalation to   │     │
+│ from result.fields   │  │ teacher review       │     │
+└──────────┬───────────┘  └──────────────────────┘     │
+           │                                           │
+           ▼                                           │
+┌──────────────────────────────────────────────────────┐
+│ updateAIFeedbackPanel(panel, aiResponse, null,       │
+│                       { isAppeal: true })            │
+│                                                      │
+│ Panel shows:                                         │
+│ - Title: "🤖 AI APPEAL REVIEW" (magenta)            │
+│ - Provider/model info                               │
+│ - New score after appeal                            │
+│ - New feedback text                                 │
+└──────────────────────────────────────────────────────┘
+```
+
+### Server Response Flow (AI Grading)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      SERVER: /api/ai/grade ENDPOINT                              │
+│                          (railway-server/server.js)                             │
+└────────────────────────────────────┬────────────────────────────────────────────┘
+                                     │
+                                     ▼
+                    ┌────────────────────────────────────┐
+                    │     gradeWithAI(prompt, provider)  │
+                    │     Try providers with key rotation│
+                    └──────────────┬─────────────────────┘
+                                   │
+                    ┌──────────────┼──────────────────────┐
+                    │              │                      │
+                    ▼              ▼                      ▼
+          ┌─────────────┐  ┌─────────────┐    ┌─────────────────┐
+          │ Try Groq    │  │ Try Gemini  │    │ All Failed      │
+          │ Llama-3.3   │  │ 2.0 Flash   │    │ → throw error   │
+          └──────┬──────┘  └──────┬──────┘    └─────────────────┘
+                 │                │
+                 │ success        │ success
+                 ▼                ▼
+       ┌──────────────────────────────────────┐
+       │        Add metadata to result        │
+       │                                      │
+       │  result._provider = 'groq'|'gemini'  │
+       │  result._model = model_name          │ ◀── v2.0.1 addition
+       │  result._keyId = keyObj.id           │
+       └──────────────────┬───────────────────┘
+                          │
+                          ▼
+       ┌──────────────────────────────────────┐
+       │        Return to client              │
+       │                                      │
+       │  {                                   │
+       │    slope: { score, feedback },       │
+       │    intercept: { score, feedback },   │
+       │    correlation: { score, feedback }, │
+       │    _provider: 'groq',                │
+       │    _model: 'llama-3.3-70b-versatile',│
+       │    _gradingMode: 'ai',               │
+       │    _serverGraded: true               │
+       │  }                                   │
+       └──────────────────────────────────────┘
+```
+
+### Panel Visual States
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              VISUAL STATES                                       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+STATE 1: Hidden (default)
+┌─────────────────────────────────────────────────────────────────┐
+│                     (no panel visible)                          │
+└─────────────────────────────────────────────────────────────────┘
+
+STATE 2: Visible - AI Agrees with Keywords
+┌─────────────────────────────────────────────────────────────────┐
+│ 🤖 AI REVIEW                           ⚡ Groq Llama-3.3-70B    │
+├─────────────────────────────────────────────────────────────────┤
+│ AI Score: E (green)                    ✓ Agrees with keywords   │
+├─────────────────────────────────────────────────────────────────┤
+│ Great job! Your answer correctly identifies the key concept of  │
+│ random assignment which eliminates confounding variables...     │
+└─────────────────────────────────────────────────────────────────┘
+
+STATE 3: Visible - AI Disagrees (AI Upgraded Score)
+┌─────────────────────────────────────────────────────────────────┐
+│ 🤖 AI REVIEW                           🔷 Gemini 2.0 Flash      │
+├─────────────────────────────────────────────────────────────────┤
+│ AI Score: E (green)                    ⚡ Keywords said I       │
+├─────────────────────────────────────────────────────────────────┤
+│ While your wording differs from the expected answer, you've     │
+│ correctly captured the essential concept of prediction...       │
+└─────────────────────────────────────────────────────────────────┘
+
+STATE 4: Visible - AI Disagrees (AI Downgraded Score)
+┌─────────────────────────────────────────────────────────────────┐
+│ 🤖 AI REVIEW                           ⚡ Groq Llama-3.3-70B    │
+├─────────────────────────────────────────────────────────────────┤
+│ AI Score: P (yellow)                   ⚡ Keywords said E       │
+├─────────────────────────────────────────────────────────────────┤
+│ Your answer mentions the correct direction but is missing the   │
+│ "on average" or "predicted" language required for full credit...│
+└─────────────────────────────────────────────────────────────────┘
+
+STATE 5: Error - AI Unavailable
+┌─────────────────────────────────────────────────────────────────┐
+│ 🤖 AI REVIEW                           ❌ AI Unavailable        │
+├─────────────────────────────────────────────────────────────────┤
+│ AI Score: -                                                     │
+├─────────────────────────────────────────────────────────────────┤
+│ AI grading failed. Using keyword grading only.                  │
+└─────────────────────────────────────────────────────────────────┘
+
+STATE 6: Appeal Result
+┌─────────────────────────────────────────────────────────────────┐
+│ 🤖 AI APPEAL REVIEW (magenta)          ⚡ Groq Llama-3.3-70B    │
+├─────────────────────────────────────────────────────────────────┤
+│ AI Score: E (green)                                             │
+├─────────────────────────────────────────────────────────────────┤
+│ After reviewing your explanation, I agree that your answer      │
+│ demonstrates understanding of the concept...                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Component API
+
+```javascript
+// platform/core/ai-feedback-panel.js
+
+createAIFeedbackPanel()
+  → Returns: HTMLElement (panel DOM element)
+  → Called: Once during app init
+  → Mounts: #ai-feedback-container
+
+updateAIFeedbackPanel(panel, aiResponse, keywordScore, options)
+  → panel: HTMLElement from createAIFeedbackPanel
+  → aiResponse: {
+      _provider: 'groq' | 'gemini',
+      _model: 'llama-3.3-70b-versatile' | 'gemini-2.0-flash',
+      results: { [fieldId]: { score, feedback } }
+    }
+  → keywordScore: 'E' | 'P' | 'I' | null
+  → options: { isAppeal?: boolean }
+  → Effect: Shows panel with AI grading details
+
+showAIFeedbackError(panel, errorMessage)
+  → panel: HTMLElement
+  → errorMessage: string
+  → Effect: Shows panel in error state
+
+hideAIFeedbackPanel(panel)
+  → panel: HTMLElement
+  → Effect: Hides panel (display: none)
+```
+
+### Trigger Points in app.html
+
+```
+SHOW PANEL:
+1. onGradingComplete → AI grading succeeded → updateAIFeedbackPanel()
+2. onGradingComplete → AI grading failed → showAIFeedbackError()
+3. Appeal success → updateAIFeedbackPanel(..., { isAppeal: true })
+
+HIDE PANEL:
+1. btn-try-again click → hideAIFeedbackPanel()
+2. btn-next click → hideAIFeedbackPanel()
+3. btn-skip click → hideAIFeedbackPanel()
+4. Keyword-only grading → hideAIFeedbackPanel()
+```
+
+---
+
+## 47. v2.0.1 VERIFICATION CHECKLIST
+
+```
+AI FEEDBACK PANEL:
+□ Panel created on app init
+□ Panel mounted to #ai-feedback-container
+□ Panel hidden by default (display: none)
+
+SERVER RESPONSE:
+□ /api/ai/grade returns _model field
+□ Groq responses include 'llama-3.3-70b-versatile'
+□ Gemini responses include 'gemini-2.0-flash'
+□ platform.js captures _model from AI response
+
+PANEL VISIBILITY:
+□ Panel shows after AI grading completes
+□ Panel shows provider icon (⚡ or 🔷)
+□ Panel shows model name
+□ Panel shows AI score with correct color
+□ Panel shows agreement indicator when keywordScore available
+□ Panel shows AI feedback text
+
+ERROR HANDLING:
+□ Panel shows error state when AI fails
+□ Error state shows "❌ AI Unavailable"
+□ Error state explains "Using keyword grading only"
+
+APPEAL INTEGRATION:
+□ Panel updates after appeal completes
+□ Appeal panel shows "AI APPEAL REVIEW" title
+□ Appeal title is magenta colored
+
+HIDE TRIGGERS:
+□ Panel hides on Try Again click
+□ Panel hides on Next click
+□ Panel hides on Skip click
+□ Panel hides when keyword-only grading
+```
+
+---
+
+*Updated to v2.0.1*
 *Last updated: January 2026*
-*Total sections: 45*
+*Total sections: 47*
