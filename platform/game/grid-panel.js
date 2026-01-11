@@ -866,6 +866,7 @@ export class GridPanel {
   /**
    * Initialize the canvas renderer
    * v2.2.1: Fixed to prevent double rendering - reuse existing renderer if present
+   * v2.2.2: Fixed blank grid - ensure minimum canvas size of 200px
    */
   initCanvas() {
     const canvas = this.container.querySelector('#gw-canvas');
@@ -884,12 +885,14 @@ export class GridPanel {
     }
 
     // First time initialization - set canvas size
+    // v2.2.2: Ensure minimum size of 200px to prevent blank grid when container isn't laid out
     const container = canvas.parentElement;
-    const size = Math.min(container.offsetWidth, 300);
+    const containerWidth = container.offsetWidth || 200;  // Default to 200 if not laid out
+    const size = Math.max(200, Math.min(containerWidth, 300));  // Clamp between 200-300
     canvas.width = size;
     canvas.height = size;
 
-    console.log('[GridPanel] Creating renderer with mapSize:', mapSize);
+    console.log('[GridPanel] Creating renderer with mapSize:', mapSize, 'size:', size);
 
     this.renderer = new GridRenderer(canvas, {
       gridSize: mapSize,
