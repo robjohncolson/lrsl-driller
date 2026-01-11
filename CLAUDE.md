@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.2.3 (Color Consistency, Gift Fix, Zoom Behavior, Level Display)
+**Current Version**: v2.2.4 (Territory Stats Fix, Weighted Calculation)
 
 ## Critical: File Sync Requirements
 
@@ -278,6 +278,16 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.2.4**: Territory Stats Fix, Weighted Calculation
+- Removed duplicate "territory" wording: status messages and claim button now use "Owned" instead of "Your territory"
+- Implemented weighted territory calculation across ALL levels (not just current level)
+- Level 0 (macro undeveloped) = 1 unit, Level 1 (subcell) = 1/64 unit, Level 2 (sub-subcell) = 1/4096 unit
+- Developed macro cells count as 0 units (ownership transferred to subcells)
+- New display format: "Your territory: 1.66% (1🏰 + 4📦)" showing breakdown by cell type
+- Server state response now includes `userStats` with weighted territory data
+- Client sends `username` in state request for personalized weighted stats
+- Added 20 regression tests in `tests/game/grid-wars-v2.2.4.test.js`
 
 **v2.2.3**: Color Consistency, Gift Fix, Zoom Behavior, Level Display
 - Fixed color mismatch: `setTerritory()` and `drawOwnerPresence()` now use `getServerPlayerColor()` instead of auto-assigned colors

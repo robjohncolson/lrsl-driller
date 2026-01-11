@@ -216,9 +216,17 @@ export class GridWarsState {
 
     try {
       // v2.0: Include parent in request URL for hierarchy support
+      // v2.2.4: Include username for weighted territory stats
       let url = `${this.serverUrl}/api/grid-wars/games/${this.gameId}/state`;
+      const params = new URLSearchParams();
       if (this.currentParent) {
-        url += `?parent=${encodeURIComponent(this.currentParent)}`;
+        params.set('parent', this.currentParent);
+      }
+      if (this.username) {
+        params.set('username', this.username);
+      }
+      if (params.toString()) {
+        url += `?${params.toString()}`;
       }
 
       const response = await fetch(url);
@@ -297,6 +305,11 @@ export class GridWarsState {
       }
       if (state.subcellSummaries) {
         this.subcellSummaries = state.subcellSummaries;
+      }
+
+      // v2.2.4: Store user's weighted territory stats
+      if (state.userStats) {
+        this.userStats = state.userStats;
       }
 
       this._emitStateChange();

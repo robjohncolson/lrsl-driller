@@ -1,6 +1,25 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v2.2.3.
+Complete state machine documentation for all components as of v2.2.4.
+
+**v2.2.4 Changes (Territory Stats Fix, Weighted Calculation):**
+- Removed duplicate "territory" wording in UI:
+  - Status messages now use "Owned" instead of "Your territory" or "YOUR TERRITORY"
+  - Claim button shows "□ Owned" instead of "□ Your Territory" when own cell selected
+- Implemented weighted territory calculation across ALL levels:
+  - Level 0 (macro undeveloped) = 1 unit (1/64 of map = 1.56%)
+  - Level 0 (macro developed) = 0 units (ownership transferred to subcells)
+  - Level 1 (subcell) = 1/64 unit (1/4096 of map = 0.024%)
+  - Level 2 (sub-subcell) = 1/4096 unit (1/262144 of map = 0.0004%)
+- New `calculateWeightedTerritory()` function in server.js
+- Server state response now includes `userStats: { units, percent, breakdown: { macro, sub1, sub2 } }`
+- Client sends `username` parameter in state request for personalized weighted stats
+- Updated `updateTerritoryStats()` display format: "Your territory: 1.66% (1🏰 + 4📦)"
+  - 🏰 = macro cells (undeveloped)
+  - 📦 = subcells (level 1)
+  - 🔹 = sub-subcells (level 2)
+- Key insight: Developing a cell loses 93.75% of territory value (1 unit → 4/64 = 1/16 unit)
+- Added 20 regression tests in `tests/game/grid-wars-v2.2.4.test.js`
 
 **v2.2.3 Changes (Color Consistency, Gift Fix, Zoom Behavior, Level Display):**
 - Fixed color mismatch: `setTerritory()` and `drawOwnerPresence()` now use `getServerPlayerColor()` instead of auto-assigned colors
@@ -4741,44 +4760,73 @@ REGRESSION TESTS:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│              TERRITORY STATS STATE MACHINE                       │
+│     TERRITORY STATS STATE MACHINE (v2.2.4 Weighted Calculation)  │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  updateTerritoryStats():                                         │
+│  Server: calculateWeightedTerritory(gameId, username):          │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │                                                         │    │
 │  │   ┌────────────────────────────────────────────┐        │    │
-│  │   │ Input: territories Map, username, mapSize  │        │    │
+│  │   │ Query ALL territories for user across      │        │    │
+│  │   │ ALL levels (not just current view)         │        │    │
 │  │   └─────────────────────┬──────────────────────┘        │    │
 │  │                         ▼                               │    │
 │  │   ┌────────────────────────────────────────────┐        │    │
-│  │   │ totalCells = mapSize² (default 64)         │        │    │
+│  │   │ For each territory owned by user:          │        │    │
+│  │   │   Level 0 + undeveloped → +1 unit (🏰)     │        │    │
+│  │   │   Level 0 + developed  → +0 units          │        │    │
+│  │   │   Level 1              → +1/64 unit (📦)   │        │    │
+│  │   │   Level 2              → +1/4096 unit (🔹) │        │    │
 │  │   └─────────────────────┬──────────────────────┘        │    │
 │  │                         ▼                               │    │
 │  │   ┌────────────────────────────────────────────┐        │    │
-│  │   │ For each territory in Map:                 │        │    │
-│  │   │   if (cell.owner) total++                  │        │    │
-│  │   │   if (cell.owner === username) owned++     │        │    │
-│  │   └─────────────────────┬──────────────────────┘        │    │
-│  │                         ▼                               │    │
-│  │   ┌────────────────────────────────────────────┐        │    │
-│  │   │ ownPercent = round(owned / totalCells * 100)│       │    │
-│  │   │ fillPercent = round(total / totalCells * 100)│      │    │
-│  │   └─────────────────────┬──────────────────────┘        │    │
-│  │                         ▼                               │    │
-│  │   ┌────────────────────────────────────────────┐        │    │
-│  │   │ Display:                                   │        │    │
-│  │   │ "Your territory: {owned}/{totalCells}      │        │    │
-│  │   │  ({ownPercent}%) | Map filled: {fillPercent}%"     │    │
+│  │   │ Return:                                    │        │    │
+│  │   │   units: totalUnits                        │        │    │
+│  │   │   percent: (totalUnits / 64 * 100).toFixed(2) │    │    │
+│  │   │   breakdown: { macro, sub1, sub2 }         │        │    │
 │  │   └────────────────────────────────────────────┘        │    │
 │  │                                                         │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
+│  Client: updateTerritoryStats():                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                                                         │    │
+│  │   ┌─────────────────────────┐                           │    │
+│  │   │ userStats from server?  │                           │    │
+│  │   └────────┬────────────────┘                           │    │
+│  │            │                                            │    │
+│  │     ┌──────┴──────┐                                     │    │
+│  │     ▼             ▼                                     │    │
+│  │   [YES]         [NO]                                    │    │
+│  │     │             │                                     │    │
+│  │     ▼             ▼                                     │    │
+│  │   Build emoji   Fallback: count                         │    │
+│  │   breakdown:    at current level                        │    │
+│  │   1🏰 + 4📦     only (less accurate)                    │    │
+│  │     │             │                                     │    │
+│  │     └──────┬──────┘                                     │    │
+│  │            ▼                                            │    │
+│  │   Display with fillPercent from current level           │    │
+│  │                                                         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  Weight Table:                                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ Level │ Type           │ Weight   │ % of Map │ Icon       │ │
+│  │───────┼────────────────┼──────────┼──────────┼────────────│ │
+│  │   0   │ Macro (undev)  │ 1 unit   │ 1.56%    │ 🏰         │ │
+│  │   0   │ Macro (dev)    │ 0 units  │ 0%       │ (skip)     │ │
+│  │   1   │ Subcell        │ 1/64     │ 0.024%   │ 📦         │ │
+│  │   2   │ Sub-subcell    │ 1/4096   │ 0.0004%  │ 🔹         │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                 │
 │  Example Outputs:                                                │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │ No cells:  "Your territory: -- | Total claimed: --"     │    │
-│  │ 3 of 64:   "Your territory: 3/64 (5%) | Map filled: 42%"│   │
-│  │ 10 of 64:  "Your territory: 10/64 (16%) | Map filled: 75%"  │
+│  │ No cells:   "Your territory: 0.00% | Map filled: 0%"    │    │
+│  │ 1 macro:    "Your territory: 1.56% (1🏰) | Map filled: 2%" │  │
+│  │ 1🏰 + 4📦:  "Your territory: 1.66% (1🏰 + 4📦) | ..."   │   │
+│  │ After dev:  "Your territory: 0.10% (4📦) | ..."         │   │
+│  │  (lost 93.75% of value by developing!)                  │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘

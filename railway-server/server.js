@@ -118,6 +118,64 @@ async function assignPlayerColor(gameId, username) {
   return color;
 }
 
+/**
+ * v2.2.4: Calculate weighted territory for a user across ALL levels
+ * Weights: Level 0 (macro) = 1 unit, Level 1 = 1/64 unit, Level 2 = 1/4096 unit
+ * Developed macro cells don't count (ownership moved to subcells)
+ * @param {string} gameId - Game ID
+ * @param {string} username - Username to calculate for
+ * @returns {Promise<{units: number, percent: string, breakdown: {macro: number, sub1: number, sub2: number}}>}
+ */
+async function calculateWeightedTerritory(gameId, username) {
+  // Get ALL territories owned by user at ALL levels
+  const { data: territories, error } = await supabase
+    .from('grid_wars_territories')
+    .select('address, cell_level, is_developed')
+    .eq('game_id', gameId)
+    .eq('owner', username);
+
+  if (error || !territories || territories.length === 0) {
+    return { units: 0, percent: '0.00', breakdown: { macro: 0, sub1: 0, sub2: 0 } };
+  }
+
+  // Weight by level
+  // Level 0 (macro): worth 1 unit each (1/64 of map)
+  // Level 1 (subcell): worth 1/64 unit each (1/4096 of map)
+  // Level 2 (sub-subcell): worth 1/4096 unit each (1/262144 of map)
+  let totalUnits = 0;
+  const breakdown = { macro: 0, sub1: 0, sub2: 0 };
+
+  for (const t of territories) {
+    const level = t.cell_level || 0;
+
+    if (level === 0 && !t.is_developed) {
+      // Undeveloped macro cell = 1 full unit
+      totalUnits += 1;
+      breakdown.macro++;
+    } else if (level === 0 && t.is_developed) {
+      // Developed macro cell = 0 units (ownership moved to subcells)
+      // Don't count it - the subcells are what matters now
+    } else if (level === 1) {
+      // Subcell = 1/64 unit
+      totalUnits += 1 / 64;
+      breakdown.sub1++;
+    } else if (level === 2) {
+      // Sub-subcell = 1/4096 unit
+      totalUnits += 1 / 4096;
+      breakdown.sub2++;
+    }
+  }
+
+  // Total possible units = 64 (if you owned all macro cells undeveloped)
+  const percent = ((totalUnits / 64) * 100).toFixed(2);
+
+  return {
+    units: totalUnits,
+    percent,
+    breakdown
+  };
+}
+
 // ============================================
 // EXPRESS APP SETUP
 // ============================================
@@ -3762,7 +3820,7 @@ app.get('/api/grid-wars/games/active', async (req, res) => {
 app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
   try {
     const { gameId } = req.params;
-    const { parent } = req.query;  // v2.0: Optional parent address for hierarchy navigation
+    const { parent, username } = req.query;  // v2.0: parent for hierarchy, v2.2.4: username for weighted stats
 
     // Get game info
     const { data: game, error: gameError } = await supabase
@@ -3869,6 +3927,12 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
       subcellSummaries[cell.address] = grid;
     }
 
+    // v2.2.4: Calculate weighted territory stats for requesting user
+    let userStats = null;
+    if (username) {
+      userStats = await calculateWeightedTerritory(gameId, username);
+    }
+
     // Get class goal progress
     const classGoal = {
       current: game.class_goal_current || 0,
@@ -3912,7 +3976,9 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
       breadcrumb: getBreadcrumb(parent),
       // v2.2: Player colors and subcell summaries for mini-mosaic rendering
       playerColors,
-      subcellSummaries
+      subcellSummaries,
+      // v2.2.4: Weighted territory stats for requesting user
+      userStats
     });
   } catch (err) {
     console.error('GET /api/grid-wars/games/:gameId/state error:', err);

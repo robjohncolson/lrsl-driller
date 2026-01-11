@@ -751,8 +751,8 @@ export class GridPanel {
         this.updateStatus(`NEED ${GRID_WARS_CONFIG.claimCost - points} MORE POINTS`);
       }
     } else if (owner === this.state.username) {
-      // Own territory
-      this.updateStatus('YOUR TERRITORY');
+      // Own territory - v2.2.4: Changed wording to avoid duplication
+      this.updateStatus('OWNED');
     } else {
       // Enemy territory - v1.2.1: Show activity tier
       const defenderData = this.state.players.get(owner);
@@ -1009,13 +1009,14 @@ export class GridPanel {
       this.renderer.setSelectedCell(cell.x, cell.y);
     }
 
-    // v2.2.3: Update status based on cell state (no auto-claim, no auto-zoom)
+    // v2.2.4: Update status based on cell state (no auto-claim, no auto-zoom)
+    // Changed wording to avoid "territory" duplication with stats display
     const isDeveloped = this.state?.isDeveloped?.(cell.x, cell.y);
     if (owner === this.state.username) {
       if (isDeveloped) {
-        this.updateStatus('Your developed cell — Press ↑ to zoom in');
+        this.updateStatus('Owned (developed) — Press ↑ to zoom in');
       } else {
-        this.updateStatus('Your territory — Click DEVELOP to subdivide');
+        this.updateStatus('Owned — DEVELOP to subdivide');
       }
     } else if (owner) {
       if (isDeveloped) {
@@ -1049,9 +1050,9 @@ export class GridPanel {
     const costInfo = this.state?.getClaimCostAt(selected.x, selected.y);
 
     if (costInfo === null) {
-      // Own territory - can't claim
+      // Own territory - can't claim - v2.2.4: Changed wording
       claimBtn.disabled = true;
-      claimBtn.innerHTML = `□ Your Territory<span class="gw-cost">--</span>`;
+      claimBtn.innerHTML = `□ Owned<span class="gw-cost">--</span>`;
     } else if (costInfo.isEnemy) {
       // Enemy territory - show attack
       claimBtn.disabled = points < costInfo.cost;
@@ -2094,38 +2095,61 @@ export class GridPanel {
   }
 
   /**
-   * v2.2.3: Update territory stats display
-   * Shows owned cells / total claimed at current level
+   * v2.2.4: Update territory stats display with weighted calculation
+   * Uses server-provided userStats that accounts for all levels
+   * Display format: "Your territory: X.XX% (N🏰 + M📦)" where:
+   * - 🏰 = macro cells (undeveloped, level 0)
+   * - 📦 = subcells (level 1)
+   * - 🔹 = sub-subcells (level 2)
    */
   updateTerritoryStats() {
     const statsEl = this.container?.querySelector('#gw-territory-stats');
     if (!statsEl || !this.state) return;
 
+    const userStats = this.state.userStats;
     const territories = this.state.territories;
     const username = this.state.username;
 
-    if (!territories || !username) {
-      statsEl.textContent = 'Your territory: -- | Total claimed: --';
-      return;
-    }
-
-    let owned = 0;
+    // Calculate map fill percent from current level's territories
     let total = 0;
     const totalCells = (GRID_WARS_CONFIG.mapSize || 8) ** 2;
-
-    for (const [key, cell] of territories) {
+    for (const [key, cell] of territories || []) {
       if (cell.owner) {
         total++;
+      }
+    }
+    const fillPercent = totalCells > 0 ? Math.round((total / totalCells) * 100) : 0;
+
+    // Use weighted stats from server if available
+    if (userStats) {
+      const { percent, breakdown } = userStats;
+      const parts = [];
+
+      // Build breakdown string with emoji icons
+      if (breakdown.macro > 0) {
+        parts.push(`${breakdown.macro}🏰`);
+      }
+      if (breakdown.sub1 > 0) {
+        parts.push(`${breakdown.sub1}📦`);
+      }
+      if (breakdown.sub2 > 0) {
+        parts.push(`${breakdown.sub2}🔹`);
+      }
+
+      const breakdownStr = parts.length > 0 ? ` (${parts.join(' + ')})` : '';
+
+      statsEl.innerHTML = `Your territory: <span style="color:#22c55e;font-weight:bold;">${percent}%</span>${breakdownStr} | Map filled: <span style="color:#fbbf24;">${fillPercent}%</span>`;
+    } else {
+      // Fallback: count at current level only (less accurate)
+      let owned = 0;
+      for (const [key, cell] of territories || []) {
         if (cell.owner === username) {
           owned++;
         }
       }
+      const percent = totalCells > 0 ? Math.round((owned / totalCells) * 100) : 0;
+      statsEl.innerHTML = `Your territory: <span style="color:#22c55e;font-weight:bold;">${owned}/${totalCells}</span> (${percent}%) | Map filled: <span style="color:#fbbf24;">${fillPercent}%</span>`;
     }
-
-    const percent = totalCells > 0 ? Math.round((owned / totalCells) * 100) : 0;
-    const fillPercent = totalCells > 0 ? Math.round((total / totalCells) * 100) : 0;
-
-    statsEl.innerHTML = `Your territory: <span style="color:#22c55e;font-weight:bold;">${owned}/${totalCells}</span> (${percent}%) | Map filled: <span style="color:#fbbf24;">${fillPercent}%</span>`;
   }
 
   /**
