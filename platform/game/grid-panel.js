@@ -871,22 +871,23 @@ export class GridPanel {
     const canvas = this.container.querySelector('#gw-canvas');
     if (!canvas) return;
 
-    // Set canvas size
+    // v1.6.2: Use config mapSize instead of hardcoded 20
+    const mapSize = GRID_WARS_CONFIG.mapSize || 8;
+
+    // v2.2.1: Only create renderer if it doesn't exist, otherwise just resize and redraw
+    if (this.renderer) {
+      // Renderer exists - resize (handles canvas size internally) and mark dirty to redraw
+      this.renderer.resize();
+      this.renderer._staticDirty = true;  // Force redraw of static layer
+      this.syncRendererState();
+      return;
+    }
+
+    // First time initialization - set canvas size
     const container = canvas.parentElement;
     const size = Math.min(container.offsetWidth, 300);
     canvas.width = size;
     canvas.height = size;
-
-    // v1.6.2: Use config mapSize instead of hardcoded 20
-    const mapSize = GRID_WARS_CONFIG.mapSize || 8;
-
-    // v2.2.1: Only create renderer if it doesn't exist, otherwise just resize
-    if (this.renderer) {
-      // Renderer exists - just resize and refresh
-      this.renderer.resize();
-      this.syncRendererState();
-      return;
-    }
 
     console.log('[GridPanel] Creating renderer with mapSize:', mapSize);
 
