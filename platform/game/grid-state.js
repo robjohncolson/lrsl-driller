@@ -67,7 +67,16 @@ export let GRID_WARS_CONFIG = {
   // v1.3: AFK erosion
   afkThresholdSeconds: 900,
   afkErosionIntervalMs: 60000,
-  afkErosionStrength: 1
+  afkErosionStrength: 1,
+
+  // v2.0: Hierarchical subdivision defaults
+  hierarchyEnabled: true,
+  maxSubdivisionLevel: 2,
+  developmentCost: 100,
+  drillCost: 75,
+  drillSaturationThreshold: 85,
+  ownerRetentionCells: ['d4', 'd5', 'e4', 'e5'],
+  attackerDrillCell: 'a1'
 };
 
 /**
@@ -215,6 +224,14 @@ export class GridWarsState {
       }
 
       const state = await response.json();
+
+      // v2.1.2: Debug logging for state response
+      console.log('[GridWarsState] refreshState response:', {
+        territoriesCount: state.territories?.length || 0,
+        playersCount: state.players?.length || 0,
+        currentLevel: state.currentLevel,
+        gameId: state.game?.id
+      });
 
       // Update local caches
       this.game = state.game;

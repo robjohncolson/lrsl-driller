@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.1.1 (AI Feedback Panel Fix for Initial Grading)
+**Current Version**: v2.1.2 (Grid Wars Rendering Fixes)
 
 ## Critical: File Sync Requirements
 
@@ -232,7 +232,8 @@ See `docs/STATE_MACHINES.md` for complete diagrams of all component state transi
 npm test                                          # All tests (1110 tests)
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
-npx vitest run tests/game/grid-wars-v2.0.test.js # v2.0 hierarchy tests (40 tests)
+npx vitest run tests/game/grid-wars-v2.0.test.js   # v2.0 hierarchy tests (40 tests)
+npx vitest run tests/game/grid-wars-v2.1.2.test.js # v2.1.2 rendering fixes (21 tests)
 npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
@@ -274,6 +275,12 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.1.2**: Grid Wars Rendering Fixes
+- Fixed `drawOwnerPresence()` - was accessing undefined `cell.x`/`cell.y` properties (x,y are in the key string, not the object)
+- Added `hierarchyEnabled` default to client-side config (was only set after server fetch, causing chevrons to appear)
+- Added debug logging throughout Grid Wars state/panel/renderer for troubleshooting
+- Presence dots now render correctly on owned cells with online players
 
 **v2.1.1**: AI Feedback Panel shows during initial grading
 - Fixed field ID mismatch: server normalized to 'answer' but client expected actual field ID

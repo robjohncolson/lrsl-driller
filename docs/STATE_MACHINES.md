@@ -1,6 +1,33 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v2.0.1.
+Complete state machine documentation for all components as of v2.1.2.
+
+**v2.1.2 Changes (Grid Wars Rendering Fixes):**
+- Fixed `drawOwnerPresence()`: Was accessing undefined `cell.x`/`cell.y` properties
+  - Territory objects are stored as `{ "x,y": { owner, color, ... } }` - coords in key, not object
+  - Fix: Extract coords with `const [x, y] = key.split(',').map(Number)`
+- Added `hierarchyEnabled` default to client-side config
+  - Was only set after server config fetch, causing chevrons to appear on slow loads
+  - Now defaults to `true` so presence dots mode is always enabled for v2.0+
+- Added debug logging throughout Grid Wars state/panel/renderer:
+  - `[GridWarsState] refreshState response:` - territory/player counts from server
+  - `[GridPanel] syncRendererState:` - data passed to renderer
+  - `[GridPanel] hierarchyEnabled:` - confirms which mode is active
+  - `[GridRenderer] setUsePresenceDots:` - confirms presence dots enabled
+- Added 21 regression tests in `tests/game/grid-wars-v2.1.2.test.js`
+
+**v2.1.1 Changes (AI Feedback Panel Fix):**
+- Fixed field ID mismatch: Server normalized to 'answer' but client expected actual field ID
+- Server now remaps 'answer' field to actual field ID from `scenario.fieldId` or `answers` keys
+- Applied to both `/api/ai/grade` and `/api/ai/appeal` endpoints
+- Added 10 tests for field ID remapping logic
+
+**v2.1 Changes (AI Feedback Visibility + Leaderboard Persistence):**
+- Enhanced AI feedback panel with debug logging for grading flow transparency
+- New `/api/progress/cartridge-sync` endpoint for aggregate star counts per cartridge
+- New `user_progress` table (migration 004) stores star counts per user per cartridge
+- Unified leaderboard now includes user_progress data alongside Grid Wars and lsrl_progress
+- Stars now sync to server after each award for proper leaderboard tracking
 
 **v2.0.1 Changes (AI Feedback Transparency):**
 - AI Feedback Panel: Always-visible panel showing AI grading results to students
@@ -3776,6 +3803,204 @@ HIDE TRIGGERS:
 
 ---
 
-*Updated to v2.0.1*
+## 48. GRID WARS — Territory Rendering Data Flow (v2.1.2)
+
+**v2.1.2 Fix:** Territory objects are stored with coordinates in the key, not as properties on the object itself. The `drawOwnerPresence()` function was incorrectly trying to access `cell.x` and `cell.y`.
+
+```
+                    ┌───────────────────────────────────────────────────┐
+                    │              SERVER STATE RESPONSE                 │
+                    │   territories: [{ x: 3, y: 4, owner: 'alice', ... }]│
+                    └─────────────────────┬─────────────────────────────┘
+                                          │
+                                          ▼
+                    ┌───────────────────────────────────────────────────┐
+                    │             GridWarsState.refreshState()           │
+                    │   for (const t of state.territories) {            │
+                    │     this.territories.set(`${t.x},${t.y}`, {       │
+                    │       owner: t.owner,                              │
+                    │       strength: t.strength,                        │
+                    │       // NOTE: x,y NOT stored on object!           │
+                    │     });                                            │
+                    │   }                                                │
+                    └─────────────────────┬─────────────────────────────┘
+                                          │
+                                          ▼
+                    ┌───────────────────────────────────────────────────┐
+                    │            TERRITORIES MAP STRUCTURE               │
+                    │                                                    │
+                    │   Map {                                            │
+                    │     "3,4" => { owner: 'alice', strength: 3, ... }, │
+                    │     "0,0" => { owner: 'bob', strength: 2, ... }    │
+                    │   }                                                │
+                    │                                                    │
+                    │   KEY = "x,y" string (coords in key)               │
+                    │   VALUE = { owner, strength, address, ... }        │
+                    │           (NO x,y properties!)                     │
+                    └─────────────────────┬─────────────────────────────┘
+                                          │
+                    ┌─────────────────────┴─────────────────────┐
+                    │                                           │
+                    ▼                                           ▼
+      ┌─────────────────────────┐             ┌─────────────────────────┐
+      │  getRenderState()       │             │  syncRendererState()    │
+      │  (extracts x,y for UI)  │             │  (passes to renderer)   │
+      │                         │             │                         │
+      │  for ([key, data]) {    │             │  for (const t of        │
+      │    const [x,y] = key    │             │       renderState       │
+      │      .split(',')        │             │       .territories) {   │
+      │      .map(Number);      │             │    renderer.setTerritory│
+      │    territories.push({   │             │    (t.x, t.y, t.owner,  │
+      │      x, y, owner,       │             │     { ... });           │
+      │      ...data            │             │  }                      │
+      │    });                  │             │                         │
+      │  }                      │             └────────────┬────────────┘
+      └─────────────────────────┘                          │
+                                                           ▼
+                    ┌───────────────────────────────────────────────────┐
+                    │           GridRenderer.territories                 │
+                    │                                                    │
+                    │   Object {                                         │
+                    │     "3,4": { owner: 'alice', color: '#ff0000' },   │
+                    │     "0,0": { owner: 'bob', color: '#00ff00' }      │
+                    │   }                                                │
+                    │                                                    │
+                    │   KEY = "x,y" string (coords in key)               │
+                    │   VALUE = { owner, color, strength, ... }          │
+                    │           (NO x,y properties!)                     │
+                    └─────────────────────┬─────────────────────────────┘
+                                          │
+                                          ▼
+                    ┌───────────────────────────────────────────────────┐
+                    │            drawOwnerPresence() - v2.1.2 FIX        │
+                    │                                                    │
+                    │   for (const [key, cell] of                        │
+                    │        Object.entries(this.territories)) {         │
+                    │                                                    │
+                    │     // ❌ OLD (BROKEN): cell.x and cell.y undefined│
+                    │     // const cx = cell.x * this.cellSize + ...     │
+                    │                                                    │
+                    │     // ✅ NEW (FIXED): extract from key            │
+                    │     const [x, y] = key.split(',').map(Number);     │
+                    │     const cx = x * this.cellSize + ...             │
+                    │     const cy = y * this.cellSize + ...             │
+                    │   }                                                │
+                    └───────────────────────────────────────────────────┘
+```
+
+---
+
+## 49. GRID WARS — Config Loading & Presence Dots Mode (v2.1.2)
+
+**v2.1.2 Fix:** The `hierarchyEnabled` config wasn't set as a default, only after server fetch. If server fetch failed or panel initialized early, chevrons would appear.
+
+```
+                    ┌───────────────────────────────────────────────────┐
+                    │           GRID_WARS_CONFIG (grid-state.js)        │
+                    │                                                    │
+                    │   export let GRID_WARS_CONFIG = {                  │
+                    │     claimCost: 40,                                 │
+                    │     bootBonus: 30,                                 │
+                    │     mapSize: 8,                                    │
+                    │     ...                                            │
+                    │                                                    │
+                    │     // v2.1.2 FIX: Added defaults so panel works   │
+                    │     // even if server config fetch fails           │
+                    │     hierarchyEnabled: true,         // ← NEW       │
+                    │     maxSubdivisionLevel: 2,         // ← NEW       │
+                    │     developmentCost: 100,           // ← NEW       │
+                    │     drillCost: 75,                  // ← NEW       │
+                    │     drillSaturationThreshold: 85,   // ← NEW       │
+                    │   };                                               │
+                    └─────────────────────┬─────────────────────────────┘
+                                          │
+                                          ▼
+                    ┌───────────────────────────────────────────────────┐
+                    │               GridWarsState.init()                 │
+                    │                                                    │
+                    │   1. Fetch /api/grid-wars/config                   │
+                    │   2. Object.assign(GRID_WARS_CONFIG, serverConfig) │
+                    │   3. If fetch fails, defaults are used ←──────────┤
+                    │                                                    │
+                    │   // hierarchyEnabled=true BEFORE server response  │
+                    └─────────────────────┬─────────────────────────────┘
+                                          │
+                                          ▼
+                    ┌───────────────────────────────────────────────────┐
+                    │              GridPanel.initCanvas()                │
+                    │                                                    │
+                    │   console.log('[GridPanel] hierarchyEnabled:',     │
+                    │                GRID_WARS_CONFIG.hierarchyEnabled); │
+                    │                                                    │
+                    │   if (GRID_WARS_CONFIG.hierarchyEnabled) {         │
+                    │     this.renderer.setUsePresenceDots(true);        │
+                    │     // Presence dots mode: small dots on cells     │
+                    │   } else {                                         │
+                    │     // Legacy mode: moveable avatar chevrons       │
+                    │   }                                                │
+                    └───────────────────────────────────────────────────┘
+                                          │
+                    ┌─────────────────────┴─────────────────────┐
+                    │                                           │
+                    ▼                                           ▼
+      ┌─────────────────────────┐             ┌─────────────────────────┐
+      │  hierarchyEnabled=true  │             │  hierarchyEnabled=false │
+      │  (v2.0+ default)        │             │  (legacy, pre-v2.0)     │
+      └───────────┬─────────────┘             └───────────┬─────────────┘
+                  │                                       │
+                  ▼                                       ▼
+      ┌─────────────────────────┐             ┌─────────────────────────┐
+      │   PRESENCE DOTS MODE    │             │   AVATAR CHEVRON MODE   │
+      │                         │             │                         │
+      │   render() calls:       │             │   render() calls:       │
+      │   - drawTerritoriesStatic│            │   - drawTerritoriesStatic│
+      │   - drawOwnerPresence() │             │   - drawAvatars() ←─────┤
+      │     ↑ green dots on     │             │     ↑ diamond with      │
+      │       owned cells       │             │       chevron direction │
+      │                         │             │                         │
+      │   No moveable avatars   │             │   Players can move      │
+      │   Click = select cell   │             │   Arrow keys = move     │
+      └─────────────────────────┘             └─────────────────────────┘
+```
+
+---
+
+## 50. v2.1.2 VERIFICATION CHECKLIST
+
+```
+CONFIG DEFAULTS:
+□ GRID_WARS_CONFIG.hierarchyEnabled === true (client-side)
+□ GRID_WARS_CONFIG.maxSubdivisionLevel === 2
+□ GRID_WARS_CONFIG.developmentCost === 100
+□ GRID_WARS_CONFIG.drillCost === 75
+□ GRID_WARS_CONFIG.drillSaturationThreshold === 85
+
+TERRITORY DATA STRUCTURE:
+□ Territories stored as Map/Object with "x,y" string keys
+□ Territory values do NOT have .x or .y properties
+□ getRenderState() extracts x,y from keys correctly
+□ syncRendererState() passes x,y to renderer correctly
+
+PRESENCE DOTS RENDERING:
+□ drawOwnerPresence() extracts coords: key.split(',').map(Number)
+□ Presence dots appear on cells with online owners
+□ No chevron/arrow avatars visible in v2.0+ mode
+□ Console shows "[GridPanel] Presence dots mode ENABLED"
+
+DEBUG LOGGING:
+□ [GridWarsState] refreshState response: shows territory count
+□ [GridPanel] syncRendererState: shows owned territory count
+□ [GridPanel] hierarchyEnabled: shows true
+□ [GridRenderer] setUsePresenceDots: shows true
+□ [GridRenderer] loadState: shows territory count and mode
+
+REGRESSION TESTS:
+□ tests/game/grid-wars-v2.1.2.test.js passes (21 tests)
+□ All existing Grid Wars tests still pass
+```
+
+---
+
+*Updated to v2.1.2*
 *Last updated: January 2026*
-*Total sections: 47*
+*Total sections: 50*

@@ -966,9 +966,11 @@ export class GridRenderer {
   /**
    * v2.0: Enable/disable presence dots mode
    * When enabled, shows small dots on owned cells instead of moveable avatars
+   * v2.1.2: Added logging
    */
   setUsePresenceDots(enabled) {
     this._usePresenceDots = enabled;
+    console.log('[GridRenderer] setUsePresenceDots:', enabled);
   }
 
   /**
@@ -982,6 +984,7 @@ export class GridRenderer {
   /**
    * v2.0: Draw owner presence dots on cells owned by online players
    * Shows small green dot in bottom-right corner of each owned cell
+   * v2.1.2: Fixed - extract x,y from key string instead of undefined cell properties
    */
   drawOwnerPresence(ctx, now) {
     const dotRadius = Math.max(3, this.cellSize * 0.12);
@@ -991,9 +994,12 @@ export class GridRenderer {
       if (!cell.owner) continue;
       if (!this._onlinePlayers.has(cell.owner)) continue;
 
+      // v2.1.2: Extract x,y from key (format: "x,y")
+      const [x, y] = key.split(',').map(Number);
+
       // Cell is owned by an online player - show presence dot
-      const cx = cell.x * this.cellSize + this.cellSize - dotRadius - 3;
-      const cy = cell.y * this.cellSize + this.cellSize - dotRadius - 3;
+      const cx = x * this.cellSize + this.cellSize - dotRadius - 3;
+      const cy = y * this.cellSize + this.cellSize - dotRadius - 3;
       const color = this.getPlayerSolidColor(cell.owner);
 
       ctx.save();
@@ -1106,6 +1112,7 @@ export class GridRenderer {
    * v1.2: Removed contested_by (contestation system removed)
    * v1.2.1: Added ownerLastAnswer for visual dimming, pending for claim status
    * v2.0: Added hierarchy fields (address, is_developed, cell_level)
+   * v2.1.2: Added debug logging
    */
   loadState(state) {
     if (state.territories) {
@@ -1123,6 +1130,13 @@ export class GridRenderer {
           cell_level: t.cell_level
         });
       }
+      // v2.1.2: Debug log
+      const ownedCount = Object.values(this.territories).filter(t => t.owner).length;
+      console.log('[GridRenderer] loadState:', {
+        totalTerritories: Object.keys(this.territories).length,
+        ownedTerritories: ownedCount,
+        usePresenceDots: this._usePresenceDots
+      });
     }
     if (state.players) {
       this.avatars = state.players;

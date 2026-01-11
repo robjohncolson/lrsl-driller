@@ -823,8 +823,13 @@ export class GridPanel {
     });
 
     // v2.0: Enable presence dots mode (replaces moveable avatars)
+    // v2.1.2: Added logging to verify mode is enabled
+    console.log('[GridPanel] hierarchyEnabled:', GRID_WARS_CONFIG.hierarchyEnabled);
     if (GRID_WARS_CONFIG.hierarchyEnabled) {
       this.renderer.setUsePresenceDots(true);
+      console.log('[GridPanel] Presence dots mode ENABLED (chevrons disabled)');
+    } else {
+      console.log('[GridPanel] Legacy avatar mode (chevrons visible)');
     }
 
     // Mouse events on canvas
@@ -935,11 +940,22 @@ export class GridPanel {
    * Sync renderer state from state manager
    * v1.2: Removed contested_by (contestation system removed)
    * v2.0: Added hierarchy data (is_developed, address, cell_level), presence dots
+   * v2.1.2: Added debug logging for territory sync
    */
   syncRendererState() {
     if (!this.renderer || !this.state) return;
 
     const renderState = this.state.getRenderState();
+
+    // v2.1.2: Debug logging
+    const ownedCount = renderState.territories.filter(t => t.owner).length;
+    console.log('[GridPanel] syncRendererState:', {
+      totalTerritories: renderState.territories.length,
+      ownedTerritories: ownedCount,
+      players: renderState.players?.length || 0,
+      currentLevel: renderState.currentLevel,
+      currentParent: renderState.currentParent
+    });
 
     // Clear and reload territories with all data
     this.renderer.territories = {};
