@@ -5102,13 +5102,25 @@ app.post('/api/grid-wars/develop', async (req, res) => {
       }
     }
 
+    // v2.1.4: Enhanced error logging for develop subcell creation
+    console.log(`[Develop] Creating ${subcells.length} subcells for ${address} at level ${newLevel}`);
+    console.log(`[Develop] Sample subcell:`, JSON.stringify(subcells[0], null, 2));
+
     const { error: insertError } = await supabase
       .from('grid_wars_territories')
       .insert(subcells);
 
     if (insertError) {
-      console.error('Failed to create subcells:', insertError);
-      return res.status(500).json({ error: 'Failed to create subcells' });
+      console.error('[Develop] Supabase insert error:', insertError);
+      console.error('[Develop] Error code:', insertError.code);
+      console.error('[Develop] Error message:', insertError.message);
+      console.error('[Develop] Error details:', insertError.details);
+      console.error('[Develop] Failed subcells sample:', JSON.stringify(subcells.slice(0, 2), null, 2));
+      return res.status(500).json({
+        error: 'Failed to create subcells',
+        details: insertError.message,
+        code: insertError.code
+      });
     }
 
     // 6. Broadcast development event
@@ -5297,13 +5309,25 @@ app.post('/api/grid-wars/drill', async (req, res) => {
       }
     }
 
+    // v2.1.4: Enhanced error logging for drill subcell creation
+    console.log(`[Drill] Creating ${subcells.length} subcells for ${targetAddress} at level ${newLevel}`);
+    console.log(`[Drill] Sample subcell:`, JSON.stringify(subcells[0], null, 2));
+
     const { error: insertError } = await supabase
       .from('grid_wars_territories')
       .insert(subcells);
 
     if (insertError) {
-      console.error('Failed to create subcells:', insertError);
-      return res.status(500).json({ error: 'Failed to create subcells' });
+      console.error('[Drill] Supabase insert error:', insertError);
+      console.error('[Drill] Error code:', insertError.code);
+      console.error('[Drill] Error message:', insertError.message);
+      console.error('[Drill] Error details:', insertError.details);
+      console.error('[Drill] Failed subcells sample:', JSON.stringify(subcells.slice(0, 2), null, 2));
+      return res.status(500).json({
+        error: 'Failed to create subcells',
+        details: insertError.message,
+        code: insertError.code
+      });
     }
 
     // 7. Broadcast drill event
