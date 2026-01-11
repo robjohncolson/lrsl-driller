@@ -1513,6 +1513,17 @@ AFTER v1.6.2 (FIXED):
   - Both formats accepted and normalized
   - Uppercase conversion: 'e' → 'E'
   - Default field ID: 'answer'
+
+BEFORE v2.1.1 (BUG):
+  - Normalized field ID was always 'answer'
+  - Client expected actual field ID (e.g., 'slope', 'interpretation')
+  - Field ID mismatch prevented _aiScore from being set
+  - AI Feedback Panel never showed during initial grading
+
+AFTER v2.1.1 (FIXED):
+  - Server remaps 'answer' field to actual field ID from request
+  - Uses scenario.fieldId (preferred) or first key from answers object
+  - Panel now shows correctly for all cartridges
 ```
 
 ---
@@ -3587,10 +3598,23 @@ Shows AI grading results to students with full transparency about which model wa
                           │
                           ▼
        ┌──────────────────────────────────────┐
+       │     Remap field ID (v2.1.1 FIX)      │
+       │                                      │
+       │  actualFieldId = scenario.fieldId    │
+       │                || Object.keys(ans)[0]│
+       │                                      │
+       │  if (result.answer && actualFieldId  │
+       │      && actualFieldId !== 'answer'): │
+       │    result[actualFieldId] = result.answer
+       │    delete result.answer              │
+       └──────────────────┬───────────────────┘
+                          │
+                          ▼
+       ┌──────────────────────────────────────┐
        │        Return to client              │
        │                                      │
        │  {                                   │
-       │    slope: { score, feedback },       │
+       │    slope: { score, feedback },       │ ◀── Correct field ID
        │    intercept: { score, feedback },   │
        │    correlation: { score, feedback }, │
        │    _provider: 'groq',                │

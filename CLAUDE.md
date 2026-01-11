@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.1 (AI Feedback Visibility + Leaderboard Persistence)
+**Current Version**: v2.1.1 (AI Feedback Panel Fix for Initial Grading)
 
 ## Critical: File Sync Requirements
 
@@ -229,7 +229,7 @@ See `docs/STATE_MACHINES.md` for complete diagrams of all component state transi
 ## Testing
 
 ```bash
-npm test                                          # All tests (1100 tests)
+npm test                                          # All tests (1110 tests)
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
 npx vitest run tests/game/grid-wars-v2.0.test.js # v2.0 hierarchy tests (40 tests)
@@ -237,7 +237,7 @@ npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
 npx vitest run tests/core/ai-feedback-panel.test.js       # v2.0.1 AI panel tests (48 tests)
-npx vitest run tests/server/ai-grading-v2.0.1.test.js     # v2.0.1 server response tests (21 tests)
+npx vitest run tests/server/ai-grading-v2.0.1.test.js     # v2.0.1 + v2.1.1 server response tests (31 tests)
 npx vitest run tests/core/ai-feedback-panel-v2.1.test.js  # v2.1 debug logging tests (23 tests)
 npx vitest run tests/server/progress-sync-v2.1.test.js    # v2.1 progress sync tests (37 tests)
 ```
@@ -274,6 +274,12 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.1.1**: AI Feedback Panel shows during initial grading
+- Fixed field ID mismatch: server normalized to 'answer' but client expected actual field ID
+- Server now remaps 'answer' field to actual field ID from `scenario.fieldId` or `answers` keys
+- Applied to both `/api/ai/grade` and `/api/ai/appeal` endpoints
+- Added 10 tests for field ID remapping logic
 
 **v2.1**: AI Feedback Visibility + Leaderboard Persistence
 - Enhanced AI feedback panel with debug logging for grading flow transparency
