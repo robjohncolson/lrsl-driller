@@ -28,8 +28,8 @@ export let GRID_WARS_CONFIG = {
     bronze: 2,
     tin: 1
   },
-  mapSize: 20,
-  classGoalTarget: 200,
+  mapSize: 8,  // v1.6.2: Default to 8x8 (v1.6 config)
+  classGoalTarget: 50,  // v1.6.2: Adjusted for 64 cells (was 200)
   classGoalBonus: 10,
   maxContiguityBonus: 5,
 

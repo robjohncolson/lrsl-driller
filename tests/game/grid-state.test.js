@@ -603,7 +603,7 @@ describe('GRID_WARS_CONFIG', () => {
   });
 
   it('exports map size', () => {
-    expect(GRID_WARS_CONFIG.mapSize).toBe(20);
+    expect(GRID_WARS_CONFIG.mapSize).toBe(8);  // v1.6: 8x8 map
   });
 
   it('does not export structure costs (removed)', () => {

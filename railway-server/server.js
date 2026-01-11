@@ -1091,7 +1091,7 @@ async function callGemini(prompt, apiKey) {
 
   const parsed = extractAndParseJSON(text);
   if (parsed && isValidGradingResponse(parsed)) {
-    return parsed;
+    return normalizeGradingResponse(parsed);  // v1.6.2: Normalize to field-keyed format
   }
   throw new Error('Gemini: Invalid response structure');
 }
@@ -1131,21 +1131,56 @@ async function callGroq(prompt, apiKey) {
 
   const parsed = extractAndParseJSON(text);
   if (parsed && isValidGradingResponse(parsed)) {
-    return parsed;
+    return normalizeGradingResponse(parsed);  // v1.6.2: Normalize to field-keyed format
   }
   throw new Error('Groq: Invalid response structure');
 }
 
 /**
+ * v1.6.2: Normalize grading response to consistent field-keyed format
+ * Handles both direct { score, feedback } and field-keyed { fieldId: { score, feedback } }
+ * @param {object} parsed - The parsed AI response
+ * @param {string} defaultFieldId - Field ID to use for direct format (default: 'answer')
+ * @returns {object} Normalized response in field-keyed format
+ */
+function normalizeGradingResponse(parsed, defaultFieldId = 'answer') {
+  if (!parsed || typeof parsed !== 'object') return parsed;
+
+  const validScores = ['E', 'P', 'I', 'e', 'p', 'i'];
+
+  // Check if it's direct format: { score, feedback }
+  if ('score' in parsed && validScores.includes(parsed.score)) {
+    // Transform to field-keyed format
+    console.log(`[AI] Normalizing direct format to field-keyed (${defaultFieldId})`);
+    return {
+      [defaultFieldId]: {
+        score: parsed.score.toUpperCase(),
+        feedback: parsed.feedback || ''
+      }
+    };
+  }
+
+  // Already in field-keyed format or some other format
+  return parsed;
+}
+
+/**
  * Check if a parsed response is a valid grading response
  * Accepts responses for any cartridge (LSRL, residuals, etc.)
+ * v1.6.2: Also accepts direct { score, feedback } format for single-field questions
  */
 function isValidGradingResponse(parsed) {
   if (!parsed || typeof parsed !== 'object') return false;
 
-  // Check if it has at least one field with a score
   const validScores = ['E', 'P', 'I', 'e', 'p', 'i'];
 
+  // v1.6.2: Check for direct score/feedback format (single-field questions)
+  // Format: { "score": "E", "feedback": "..." }
+  if ('score' in parsed && validScores.includes(parsed.score)) {
+    return true;
+  }
+
+  // Check for field-keyed format: { "fieldId": { "score": "E", "feedback": "..." } }
   for (const [key, value] of Object.entries(parsed)) {
     // Skip metadata fields
     if (key.startsWith('_')) continue;
@@ -2132,9 +2167,10 @@ async function recordPointEvent(gameId, username, delta, reason = 'star_earned',
   if (!GRID_WARS_CONFIG.velocityEnabled) return;
 
   try {
+    // v1.6.2: Use player_id column name (matches actual Supabase schema)
     await supabase.from('point_events').insert({
       game_id: gameId,
-      username: username,
+      player_id: username,
       delta: delta,
       reason: reason,
       cartridge_id: cartridgeId,
@@ -2159,11 +2195,12 @@ async function getPlayerVelocity(gameId, username) {
   const cutoffTime = new Date(Date.now() - windowMs).toISOString();
 
   try {
+    // v1.6.2: Use player_id column name (matches actual Supabase schema)
     const { data, error } = await supabase
       .from('point_events')
       .select('delta')
       .eq('game_id', gameId)
-      .eq('username', username)
+      .eq('player_id', username)
       .gt('created_at', cutoffTime)
       .gt('delta', 0);
 

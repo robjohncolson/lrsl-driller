@@ -740,9 +740,13 @@ export class GridPanel {
     canvas.width = size;
     canvas.height = size;
 
+    // v1.6.2: Use config mapSize instead of hardcoded 20
+    const mapSize = GRID_WARS_CONFIG.mapSize || 8;
+    console.log('[GridPanel] Creating renderer with mapSize:', mapSize);
+
     this.renderer = new GridRenderer(canvas, {
-      gridSize: 20,
-      cellSize: size / 20
+      gridSize: mapSize,
+      cellSize: size / mapSize
     });
 
     // Mouse events on canvas

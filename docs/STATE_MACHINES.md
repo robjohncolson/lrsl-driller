@@ -1,6 +1,14 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v1.6.1.
+Complete state machine documentation for all components as of v1.6.2.
+
+**v1.6.2 Changes:**
+- Fixed frontend grid size: Now uses `GRID_WARS_CONFIG.mapSize` instead of hardcoded 20
+- Fixed AI grading parser: Accepts both direct `{score, feedback}` and field-keyed formats
+- Fixed velocity query: Uses `player_id` column (not `username`)
+- Added `normalizeGradingResponse()` for consistent AI response handling
+- Updated `grid-state.js` defaults: `mapSize: 8`, `classGoalTarget: 50`
+- Added regression tests (32 new tests covering v1.6.2 fixes)
 
 **v1.6.1 Changes:**
 - Removed Class Goal UI (no progress bar)
@@ -1378,33 +1386,715 @@ STUDENT ANSWERS DRILL QUESTION
 
 ---
 
-## 22. VERIFICATION CHECKLIST (v1.6.1)
+## 22. AI GRADING NORMALIZATION (v1.6.2)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                   AI GRADING RESPONSE NORMALIZATION (v1.6.2)                    │
+│                        railway-server/server.js                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌────────────────────────────────────────┐
+                    │      AI PROVIDER RETURNS RESPONSE      │
+                    │     (Groq or Gemini raw JSON text)     │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │         extractAndParseJSON(text)      │
+                    │                                        │
+                    │  1. Try direct JSON.parse()            │
+                    │  2. If fails: repair common issues     │
+                    │     - Smart quotes → regular quotes    │
+                    │     - Trailing commas removed          │
+                    │  3. If fails: regex score extraction   │
+                    │     - Match "score": "E|P|I" patterns  │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │       isValidGradingResponse(parsed)   │
+                    └────────────────────┬───────────────────┘
+                                         │
+              ┌──────────────────────────┴──────────────────────────┐
+              │                                                     │
+              ▼                                                     ▼
+    ┌─────────────────────────────┐                   ┌─────────────────────────────┐
+    │    DIRECT FORMAT (v1.6.2)   │                   │    FIELD-KEYED FORMAT       │
+    │                             │                   │                             │
+    │  {                          │                   │  {                          │
+    │    "score": "E",            │                   │    "slope": {               │
+    │    "feedback": "Great!"     │                   │      "score": "E",          │
+    │  }                          │                   │      "feedback": "..."      │
+    │                             │                   │    },                       │
+    │  Accepted if:               │                   │    "intercept": {...}       │
+    │  - 'score' key present      │                   │  }                          │
+    │  - score ∈ [E,P,I,e,p,i]    │                   │                             │
+    └──────────────┬──────────────┘                   └──────────────┬──────────────┘
+                   │                                                 │
+                   └─────────────────────┬───────────────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │    normalizeGradingResponse(parsed)    │
+                    │              (v1.6.2 FIX)              │
+                    └────────────────────┬───────────────────┘
+                                         │
+              ┌──────────────────────────┴──────────────────────────┐
+              │                                                     │
+              ▼                                                     ▼
+    ┌─────────────────────────────┐                   ┌─────────────────────────────┐
+    │   DIRECT → FIELD-KEYED     │                   │   FIELD-KEYED (pass through)│
+    │                             │                   │                             │
+    │  Input:                     │                   │  Input:                     │
+    │  { score: "e", feedback }   │                   │  { slope: {...}, ... }      │
+    │                             │                   │                             │
+    │  Output:                    │                   │  Output:                    │
+    │  {                          │                   │  (unchanged)                │
+    │    answer: {                │                   │                             │
+    │      score: "E",  // UPPER  │                   │                             │
+    │      feedback: "..."        │                   │                             │
+    │    }                        │                   │                             │
+    │  }                          │                   │                             │
+    └──────────────┬──────────────┘                   └──────────────┬──────────────┘
+                   │                                                 │
+                   └─────────────────────┬───────────────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │        RETURN TO GRADING FLOW          │
+                    │   (consistent field-keyed structure)   │
+                    └────────────────────────────────────────┘
+
+BEFORE v1.6.2 (BUG):
+  - Direct format { score, feedback } was REJECTED
+  - Error: "Invalid response structure"
+  - Single-field cartridges failed AI grading
+
+AFTER v1.6.2 (FIXED):
+  - Both formats accepted and normalized
+  - Uppercase conversion: 'e' → 'E'
+  - Default field ID: 'answer'
+```
+
+---
+
+## 23. WEBSOCKET CLIENT STATE MACHINE
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          WEBSOCKET CLIENT LIFECYCLE                              │
+│                       platform/core/websocket-client.js                          │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌────────────────────────────────────────┐
+                    │            DISCONNECTED                │
+                    │                                        │
+                    │  ws = null                             │
+                    │  connected = false                     │
+                    │  reconnectAttempts = 0                 │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         │ connect(username)
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │            CONNECTING                  │
+                    │                                        │
+                    │  ws = new WebSocket(SERVER_URL)        │
+                    │  Waiting for onopen...                 │
+                    └────────────────────┬───────────────────┘
+                                         │
+              ┌──────────────────────────┴──────────────────────────┐
+              │ onopen                                              │ onerror/onclose
+              ▼                                                     ▼
+    ┌─────────────────────────────┐                   ┌─────────────────────────────┐
+    │         CONNECTED           │                   │      CONNECTION FAILED      │
+    │                             │                   │                             │
+    │  connected = true           │                   │  reconnectAttempts++        │
+    │  reconnectAttempts = 0      │                   │                             │
+    │                             │                   │  if (attempts < 5) {        │
+    │  Actions:                   │                   │    delay = 5000 * attempts  │
+    │  1. identify(username)      │                   │    setTimeout(connect, delay)│
+    │  2. Start heartbeat (30s)   │                   │  }                          │
+    │  3. onConnectionChange(true)│                   │                             │
+    └──────────────┬──────────────┘                   └─────────────────────────────┘
+                   │
+                   │ Normal operation
+                   ▼
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │                           ACTIVE CONNECTION                                  │
+    │                                                                             │
+    │  OUTBOUND (Client → Server):                                                │
+    │  ┌─────────────────────────────────────────────────────────────────────┐   │
+    │  │  identify()         → { type: 'identify', username }                │   │
+    │  │  sendHeartbeat()    → { type: 'heartbeat', username }  (every 30s)  │   │
+    │  │  notifyStarEarned() → { type: 'star_earned', username, starType }   │   │
+    │  │  notifyModeUnlock() → { type: 'mode_unlocked', ... }                │   │
+    │  └─────────────────────────────────────────────────────────────────────┘   │
+    │                                                                             │
+    │  INBOUND (Server → Client):                                                 │
+    │  ┌─────────────────────────────────────────────────────────────────────┐   │
+    │  │  'star_earned'         → onStarEarned(data) [skip if own username]  │   │
+    │  │  'presence_snapshot'   → onlineUsers = data.users                   │   │
+    │  │  'user_online'         → onlineUsers.push(username)                 │   │
+    │  │  'user_offline'        → onlineUsers.filter(!=username)             │   │
+    │  │  'leaderboard_update'  → onLeaderboardUpdate(data)                  │   │
+    │  │  'territory_claimed'   → handleGridWarsMessage()                    │   │
+    │  │  'points_earned'       → handleGridWarsMessage()                    │   │
+    │  │  'velocity_update'     → handleGridWarsMessage()                    │   │
+    │  │  ... (all grid-wars-* messages)                                     │   │
+    │  └─────────────────────────────────────────────────────────────────────┘   │
+    │                                                                             │
+    └────────────────────────────────┬────────────────────────────────────────────┘
+                                     │
+              ┌──────────────────────┴──────────────────────────┐
+              │ onclose                                         │ disconnect()
+              ▼                                                 ▼
+    ┌─────────────────────────────┐                   ┌─────────────────────────────┐
+    │     UNEXPECTED CLOSE        │                   │      CLEAN DISCONNECT       │
+    │                             │                   │                             │
+    │  connected = false          │                   │  ws.close()                 │
+    │  clearInterval(heartbeat)   │                   │  ws = null                  │
+    │  onConnectionChange(false)  │                   │  connected = false          │
+    │                             │                   │  No reconnect attempt       │
+    │  → Auto-reconnect logic     │                   │                             │
+    └──────────────┬──────────────┘                   └─────────────────────────────┘
+                   │
+                   │ if reconnectAttempts < 5
+                   ▼
+    ┌────────────────────────────────────────┐
+    │         RECONNECTING                   │
+    │                                        │
+    │  Exponential backoff:                  │
+    │  - Attempt 1: wait 5s                  │
+    │  - Attempt 2: wait 10s                 │
+    │  - Attempt 3: wait 15s                 │
+    │  - Attempt 4: wait 20s                 │
+    │  - Attempt 5: wait 25s                 │
+    │  - After 5: GIVE UP                    │
+    └────────────────────────────────────────┘
+```
+
+---
+
+## 24. KEY POOL MANAGER STATE MACHINE
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           KEY POOL MANAGER                                       │
+│                     railway-server/server.js (class KeyPoolManager)              │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌────────────────────────────────────────┐
+                    │           INITIAL STATE                │
+                    │                                        │
+                    │  keys = { gemini: [], groq: [] }       │
+                    │  currentIndex = { gemini: 0, groq: 0 } │
+                    │  lastRefresh = 0                       │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         │ getNextKey(provider) called
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │          CHECK CACHE FRESHNESS         │
+                    │                                        │
+                    │  if (now - lastRefresh > 30000) {      │
+                    │    refreshKeys()                       │
+                    │  }                                     │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │           refreshKeys()                │
+                    │                                        │
+                    │  1. Query api_keys_pool table          │
+                    │  2. Filter by provider (gemini/groq)   │
+                    │  3. Populate keys[provider] array      │
+                    │  4. Reset currentIndex[provider] = 0   │
+                    │  5. lastRefresh = Date.now()           │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │                         ROUND-ROBIN KEY SELECTION                            │
+    │                                                                             │
+    │   for (let i = 0; i < keys[provider].length; i++) {                         │
+    │     index = (currentIndex[provider] + i) % keys.length                      │
+    │     key = keys[provider][index]                                             │
+    │                                                                             │
+    │     ┌──────────────────────────────────────────────────────────────────┐   │
+    │     │  IS KEY RATE-LIMITED?                                            │   │
+    │     │                                                                  │   │
+    │     │  if (key.rateLimitedUntil && now < key.rateLimitedUntil) {      │   │
+    │     │    // Skip this key, try next                                   │   │
+    │     │    continue;                                                     │   │
+    │     │  }                                                               │   │
+    │     └─────────────────────────────┬────────────────────────────────────┘   │
+    │                                   │                                         │
+    │     ┌──────────────────────────────────────────────────────────────────┐   │
+    │     │  KEY AVAILABLE                                                   │   │
+    │     │                                                                  │   │
+    │     │  currentIndex[provider] = (index + 1) % length                   │   │
+    │     │  return { key: key.api_key, id: key.id }                         │   │
+    │     └──────────────────────────────────────────────────────────────────┘   │
+    │   }                                                                         │
+    │                                                                             │
+    │   // All keys rate-limited: fallback to env var                             │
+    │   return { key: process.env[`${PROVIDER}_API_KEY`], id: 'env' }             │
+    │                                                                             │
+    └─────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌────────────────────────────────────────┐
+                    │        markRateLimited(keyId)          │
+                    │                                        │
+                    │  When provider returns 429/quota error: │
+                    │                                        │
+                    │  1. Find key by ID in local cache      │
+                    │  2. key.rateLimitedUntil = now + 60s   │
+                    │  3. Update Supabase api_keys_pool      │
+                    │     SET rate_limited_until = now + 60s │
+                    └────────────────────────────────────────┘
+
+                    ┌────────────────────────────────────────┐
+                    │          markUsed(keyId)               │
+                    │                                        │
+                    │  On successful API call:               │
+                    │                                        │
+                    │  1. Update Supabase api_keys_pool      │
+                    │     SET last_used_at = now             │
+                    │     SET usage_count = usage_count + 1  │
+                    └────────────────────────────────────────┘
+
+KEY ROTATION EXAMPLE:
+═══════════════════════════════════════════════════════════════════════════════
+
+Keys: [K1, K2, K3]   currentIndex = 0
+
+Request 1: Use K1 → Success → currentIndex = 1
+Request 2: Use K2 → Rate Limited (429) → Mark K2 limited for 60s → Try K3
+Request 3: Use K3 → Success → currentIndex = 0
+Request 4: Use K1 → Success → currentIndex = 1
+Request 5: K2 still limited → Skip → Use K3 → currentIndex = 0
+...
+After 60s: K2 available again
+```
+
+---
+
+## 25. GRADING QUEUE STATE MACHINE
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              GRADING QUEUE                                       │
+│                   railway-server/server.js (class GradingQueue)                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Rate-limit AI grading requests to avoid provider throttling
+
+                    ┌────────────────────────────────────────┐
+                    │              IDLE STATE                │
+                    │                                        │
+                    │  queue = []                            │
+                    │  processing = false                    │
+                    │  lastRequestTime = 0                   │
+                    │  minDelayMs = 1500  (1.5s between)     │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         │ add(task) called
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │           add(task) → Promise          │
+                    │                                        │
+                    │  1. Create Promise (resolve, reject)   │
+                    │  2. Push { task, resolve, reject }     │
+                    │  3. Call process() if not processing   │
+                    │  4. Return Promise to caller           │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │                         PROCESSING LOOP                                      │
+    │                                                                             │
+    │  async process() {                                                          │
+    │    if (processing) return;  // Already running                              │
+    │    processing = true;                                                       │
+    │                                                                             │
+    │    while (queue.length > 0) {                                               │
+    │      ┌──────────────────────────────────────────────────────────────────┐  │
+    │      │  RATE LIMITING                                                   │  │
+    │      │                                                                  │  │
+    │      │  timeSince = now - lastRequestTime                               │  │
+    │      │  if (timeSince < minDelayMs) {                                   │  │
+    │      │    await sleep(minDelayMs - timeSince)                           │  │
+    │      │  }                                                               │  │
+    │      │  lastRequestTime = now                                           │  │
+    │      └──────────────────────────────────────────────────────────────────┘  │
+    │                                                                             │
+    │      ┌──────────────────────────────────────────────────────────────────┐  │
+    │      │  EXECUTE TASK                                                    │  │
+    │      │                                                                  │  │
+    │      │  { task, resolve, reject } = queue.shift()                       │  │
+    │      │  try {                                                           │  │
+    │      │    result = await task()  // Call gradeWithAI()                  │  │
+    │      │    resolve(result)                                               │  │
+    │      │  } catch (err) {                                                 │  │
+    │      │    reject(err)                                                   │  │
+    │      │  }                                                               │  │
+    │      └──────────────────────────────────────────────────────────────────┘  │
+    │    }                                                                        │
+    │                                                                             │
+    │    processing = false;                                                      │
+    │  }                                                                          │
+    │                                                                             │
+    └─────────────────────────────────────────────────────────────────────────────┘
+
+TIMING EXAMPLE:
+═══════════════════════════════════════════════════════════════════════════════
+
+T=0ms:    Request A arrives → queue = [A] → process() starts
+T=0ms:    A executes immediately (no delay, first request)
+T=800ms:  A completes
+T=800ms:  Request B arrives → queue = [B]
+T=800ms:  Wait 700ms (1500 - 800 = 700ms until allowed)
+T=1500ms: B executes
+T=1600ms: Request C arrives → queue = [C]
+T=2200ms: B completes
+T=2200ms: Wait 800ms (1500 - 700 = 800ms until allowed)
+T=3000ms: C executes
+...
+
+getQueueLength() returns queue.length for logging:
+  "Grading request queued (position 3): topic, cartridge: lsrl, prefer: auto"
+```
+
+---
+
+## 26. STAR PENALTY CALCULATION (Detailed)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          STAR TYPE DETERMINATION                                 │
+│                        platform/core/game-engine.js                              │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌────────────────────────────────────────┐
+                    │        ALL FIELDS CORRECT (E)          │
+                    │          Ready to award star           │
+                    └────────────────────┬───────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │      COUNT TOTAL PENALTIES             │
+                    │                                        │
+                    │  hintsUsed = hintsUsedThisProblem.size │
+                    │  retries = retriesThisProblem          │
+                    │                                        │
+                    │  totalPenalties = hintsUsed + retries  │
+                    │                                        │
+                    │  NOTE: Both count EQUALLY!             │
+                    │  1 hint = 1 retry = 1 penalty          │
+                    └────────────────────┬───────────────────┘
+                                         │
+              ┌──────────────────────────┴──────────────────────────┐
+              │                          │                          │
+    penalties=0              penalties=1 or 2             penalties≥3
+              │                          │                          │
+              ▼                          ▼                          ▼
+    ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
+    │    GOLD ★★★★    │      │   SILVER/BRONZE │      │     TIN ★       │
+    │    4 points     │      │                 │      │    1 point      │
+    └─────────────────┘      │   if (p == 1):  │      └─────────────────┘
+                             │     SILVER ★★★  │
+                             │     3 points    │
+                             │                 │
+                             │   if (p == 2):  │
+                             │     BRONZE ★★   │
+                             │     2 points    │
+                             └─────────────────┘
+
+COMMON SCENARIOS:
+═══════════════════════════════════════════════════════════════════════════════
+
+Scenario 1: Perfect answer on first try
+  hints = 0, retries = 0 → penalties = 0 → GOLD (4 pts)
+
+Scenario 2: Correct after using 1 hint
+  hints = 1, retries = 0 → penalties = 1 → SILVER (3 pts)
+
+Scenario 3: Correct on 2nd try (first answer wrong)
+  hints = 0, retries = 1 → penalties = 1 → SILVER (3 pts)
+
+Scenario 4: Used 1 hint, then got it wrong, then correct
+  hints = 1, retries = 1 → penalties = 2 → BRONZE (2 pts)
+
+Scenario 5: Used all 3 hints, correct on first try
+  hints = 3, retries = 0 → penalties = 3 → TIN (1 pt)
+
+Scenario 6: No hints, correct on 4th try
+  hints = 0, retries = 3 → penalties = 3 → TIN (1 pt)
+
+IMPORTANT: Retries increment ONLY when submitting wrong answer.
+           Hints increment when clicking "Show Hint" button.
+           Both reset on new problem (resetHintsForNewProblem).
+```
+
+---
+
+## 27. CONFIG LOADING STATE MACHINE (v1.6.2 FIX)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                       GRID SIZE CONFIG LOADING (v1.6.2)                          │
+│                                                                                  │
+│   ISSUE: Frontend was using hardcoded gridSize: 20 instead of config value      │
+│   FIX: Now reads from GRID_WARS_CONFIG.mapSize (defaults to 8)                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+BEFORE v1.6.2 (BUG):
+═══════════════════════════════════════════════════════════════════════════════
+
+                shared/gridwars.config.js          grid-panel.js
+                ┌─────────────────────────┐        ┌─────────────────────────┐
+                │ mapSize: 8              │        │ this.renderer = new     │
+                │ (correct)               │   ✗    │   GridRenderer(canvas, {│
+                │                         │ ───────│     gridSize: 20,       │ ← HARDCODED!
+                │ (NOT USED)              │        │     cellSize: size / 20 │
+                └─────────────────────────┘        │   });                   │
+                                                   └─────────────────────────┘
+                                                              │
+                                                              ▼
+                                                   ┌─────────────────────────┐
+                                                   │  RENDERED: 20×20 grid   │
+                                                   │  (400 cells, should be  │
+                                                   │   64 cells on 8×8)      │
+                                                   └─────────────────────────┘
+
+
+AFTER v1.6.2 (FIXED):
+═══════════════════════════════════════════════════════════════════════════════
+
+                    ┌────────────────────────────────────────┐
+                    │   shared/gridwars.config.js            │
+                    │                                        │
+                    │   export const GRID_WARS_CONFIG = {    │
+                    │     mapSize: 8,        ◄───────────── SINGLE SOURCE OF TRUTH
+                    │     claimCost: 40,                     │
+                    │     bootBonus: 30,                     │
+                    │     ...                                │
+                    │   }                                    │
+                    └────────────────────┬───────────────────┘
+                                         │
+                         ┌───────────────┴───────────────┐
+                         │                               │
+                         ▼                               ▼
+          ┌─────────────────────────────┐  ┌─────────────────────────────┐
+          │     grid-state.js           │  │     grid-panel.js           │
+          │                             │  │                             │
+          │  import { GRID_WARS_CONFIG }│  │  import { GRID_WARS_CONFIG }│
+          │    from './grid-state.js'; │  │    from './grid-state.js'; │
+          │                             │  │                             │
+          │  // Module-level config:    │  │  _initCanvas() {            │
+          │  GRID_WARS_CONFIG = {       │  │    const mapSize =          │
+          │    mapSize: 8,  // default  │  │      GRID_WARS_CONFIG.      │
+          │    ...                      │  │      mapSize || 8;          │
+          │  }                          │  │                             │
+          │                             │  │    console.log('[GridPanel]'│
+          │  // Updated by init():      │  │      + ' mapSize:', mapSize)│
+          │  Object.assign(config,      │  │                             │
+          │    serverConfig);           │  │    this.renderer = new      │
+          └─────────────────────────────┘  │      GridRenderer(canvas, { │
+                                           │        gridSize: mapSize,   │
+                                           │        cellSize: size /     │
+                                           │          mapSize            │
+                                           │      });                    │
+                                           │  }                          │
+                                           └──────────────┬──────────────┘
+                                                          │
+                                                          ▼
+                                           ┌─────────────────────────────┐
+                                           │  Console: "[GridPanel]      │
+                                           │   Creating renderer with    │
+                                           │   mapSize: 8"               │
+                                           │                             │
+                                           │  RENDERED: 8×8 grid ✓       │
+                                           │  (64 cells, correct!)       │
+                                           └─────────────────────────────┘
+
+VERIFICATION:
+  Browser console should show: [GridPanel] Creating renderer with mapSize: 8
+  Grid should display 64 cells (8×8), not 400 cells (20×20)
+```
+
+---
+
+## 28. VELOCITY QUERY FIX (v1.6.2)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         VELOCITY QUERY COLUMN NAME FIX                           │
+│                              railway-server/server.js                            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+BEFORE v1.6.2 (BUG):
+═══════════════════════════════════════════════════════════════════════════════
+
+  recordPointEvent():
+    await supabase.from('point_events').insert({
+      game_id: gameId,
+      username: username,    ◄── ERROR: Column doesn't exist!
+      delta: delta,
+      ...
+    });
+
+  getPlayerVelocity():
+    const { data } = await supabase
+      .from('point_events')
+      .select('delta')
+      .eq('game_id', gameId)
+      .eq('username', username)    ◄── ERROR: Column doesn't exist!
+      .gt('created_at', cutoffTime);
+
+  Error: "column point_events.username does not exist"
+
+
+AFTER v1.6.2 (FIXED):
+═══════════════════════════════════════════════════════════════════════════════
+
+  recordPointEvent():
+    await supabase.from('point_events').insert({
+      game_id: gameId,
+      player_id: username,   ◄── FIXED: Matches actual table schema
+      delta: delta,
+      ...
+    });
+
+  getPlayerVelocity():
+    const { data } = await supabase
+      .from('point_events')
+      .select('delta')
+      .eq('game_id', gameId)
+      .eq('player_id', username)   ◄── FIXED: Matches actual table schema
+      .gt('created_at', cutoffTime);
+
+
+MIGRATION FILE UPDATED:
+═══════════════════════════════════════════════════════════════════════════════
+
+  railway-server/migrations/001_point_events.sql:
+
+  CREATE TABLE IF NOT EXISTS point_events (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    game_id TEXT NOT NULL DEFAULT 'lynn-classroom-2026',
+    player_id TEXT NOT NULL,  -- v1.6.2: Renamed from username for consistency
+    delta INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    cartridge_id TEXT,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_point_events_player_time
+  ON point_events(game_id, player_id, created_at DESC);  -- Updated index
+```
+
+---
+
+## 29. VERIFICATION CHECKLIST (v1.6.2)
 
 Use this checklist to verify the system is working correctly:
 
 ### Server Configuration
 - [ ] Railway logs show `=== GRID WARS CONFIG ===` on startup
-- [ ] `mapSize: 8` logged (not 25)
+- [ ] `mapSize: 8` logged (not 20 or 25)
 - [ ] `nodesEnabled: false` logged
 - [ ] `claimCost: 40` logged
 - [ ] `bootBonus: 30` logged
 - [ ] `/api/grid-wars/config` returns correct values
 
-### Grid Wars UI
-- [ ] Map displays 8×8 grid (64 cells, not 625)
+### Grid Wars UI (v1.6.2)
+- [ ] Browser console shows `[GridPanel] Creating renderer with mapSize: 8`
+- [ ] Map displays 8×8 grid (64 cells, not 400 or 625)
 - [ ] No "CLASS GOAL" progress bar visible
 - [ ] Leaderboard header says "🏰 TERRITORY HELD"
 - [ ] Leaderboard shows only territory count with 🏰 emoji
 - [ ] Leaderboard sorted by territory count (most territories first)
 - [ ] Player rank reflects position in territory-sorted list
 
+### AI Grading (v1.6.2)
+- [ ] Single-field questions return valid grades (no "Invalid response structure" error)
+- [ ] Direct format `{score, feedback}` is accepted
+- [ ] Field-keyed format `{fieldId: {score, feedback}}` is accepted
+- [ ] Lowercase scores (`e`, `p`, `i`) are converted to uppercase
+- [ ] Railway logs show normalized response structure
+
+### Velocity Tracking (v1.6.2)
+- [ ] No "column point_events.username does not exist" errors
+- [ ] Point events use `player_id` column
+- [ ] Velocity calculations work correctly
+- [ ] Velocity tier displays update in real-time
+
 ### Game Mechanics
 - [ ] Boot bonus is 30 pts (can't claim immediately on 40pt cells)
 - [ ] No resource nodes on map (nodesEnabled: false)
 - [ ] Scarcity phases trigger at correct thresholds (30%/60%/85%)
 - [ ] Bounty system activates at 20% of map (≈13 cells)
+- [ ] Star penalties: hints + retries both count equally
 
 ---
 
-*Generated by Claude Code analysis of LRSL Driller v1.6.1*
+## 30. STATE VARIABLE QUICK REFERENCE
+
+| Component | File | Key State Variables |
+|-----------|------|---------------------|
+| GameEngine | `platform/core/game-engine.js` | `streaks`, `starCounts`, `starsPerMode`, `unlockedTiers`, `hintsUsedThisProblem`, `retriesThisProblem` |
+| GradingEngine | `platform/core/grading-engine.js` | `serverUrl`, `defaultTolerance` (mostly stateless) |
+| GridWarsState | `platform/game/grid-state.js` | `territories`, `players`, `scarcityPhase`, `bountyTargets`, `velocityTier`, `_pendingActions`, `_resyncInProgress`, `_sessionFrozen`, `_cooldownUntil` |
+| GridPanel | `platform/game/grid-panel.js` | `isExpanded`, `selectedCell`, `_leaderboardData`, `_cooldownInterval`, `_resyncDelayTimer` |
+| WebSocketClient | `platform/core/websocket-client.js` | `ws`, `connected`, `reconnectAttempts`, `heartbeatInterval`, `onlineUsers` |
+| GradingQueue | `railway-server/server.js` | `queue`, `processing`, `lastRequestTime` |
+| KeyPoolManager | `railway-server/server.js` | `keys`, `currentIndex`, `lastRefresh` |
+| Server State | `railway-server/server.js` | `clients`, `frozenGames`, `cooldowns`, `broadcastSequence` |
+
+---
+
+## 31. SECTION INDEX
+
+| # | Section | Description |
+|---|---------|-------------|
+| 1 | Game Engine — Star Earning Flow | Streak/star/unlock logic |
+| 2 | Grading Engine — Dual Grading Pipeline | Keywords → AI → Best Score |
+| 3 | Grid Wars — Territory Claim Flow | Cost calculation, claim process |
+| 4 | Velocity Tier State Machine | Points/min tiers and discounts |
+| 5 | Scarcity Phase State Machine | Map fill % → cost multipliers |
+| 6 | Bounty System State Machine | Target players with >20% map |
+| 7 | Diminishing Returns State Machine | Empire overhead penalty |
+| 8 | AFK Decay State Machine | 24hr grace, then cell loss |
+| 9 | Session Lifecycle State Machine | Teacher end/resume/reset |
+| 10 | Presence & Connection State Machine | WebSocket client tracking |
+| 11 | Leaderboard State Machine | Territory-sorted ranking |
+| 12 | WebSocket Message Flow | Client ↔ Server messages |
+| 13 | Contiguity Bonus Calculation | Connected territory bonus |
+| 14 | Complete System Flow | End-to-end student experience |
+| 15 | Identified Issues / Verification Notes | Race conditions, persistence |
+| 16 | State Variable Inventory | Server-side variables |
+| 17 | API Endpoint Inventory | REST endpoints |
+| 18 | Interval/Timer Inventory | Background tasks |
+| 19 | Configuration Loading (v1.6.1) | Centralized config |
+| 20 | UI Element State Machine | Grid panel UI states |
+| 21 | Complete Data Flow | End-to-end data flow diagram |
+| 22 | AI Grading Normalization (v1.6.2) | Response format handling |
+| 23 | WebSocket Client State Machine | Connection lifecycle |
+| 24 | Key Pool Manager State Machine | API key rotation |
+| 25 | Grading Queue State Machine | Rate-limiting queue |
+| 26 | Star Penalty Calculation | Hints + retries → star type |
+| 27 | Config Loading Fix (v1.6.2) | Grid size config loading |
+| 28 | Velocity Query Fix (v1.6.2) | player_id column fix |
+| 29 | Verification Checklist | System health checks |
+| 30 | State Variable Quick Reference | Variable summary table |
+| 31 | Section Index | This index |
+
+---
+
+*Generated by Claude Code analysis of LRSL Driller v1.6.2*
 *Last updated: January 2026*
+*Total sections: 31*

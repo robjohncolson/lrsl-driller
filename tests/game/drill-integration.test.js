@@ -152,7 +152,7 @@ describe('Config Validation', () => {
   });
 
   it('map size is defined', () => {
-    expect(GRID_WARS_CONFIG.mapSize).toBe(20);
+    expect(GRID_WARS_CONFIG.mapSize).toBe(8);  // v1.6: 8x8 map
   });
 
   it('no structure costs exist (simplified game)', () => {

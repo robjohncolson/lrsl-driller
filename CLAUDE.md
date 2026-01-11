@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server)
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v1.6.1 (Grid Wars radical simplification + config fix)
+**Current Version**: v1.6.2 (Critical bug fixes: grid size, AI parser, velocity query)
 
 ## Development Commands
 
@@ -122,7 +122,11 @@ After creating:
 - **P (Partially Correct)**: Some elements missing
 - **I (Incorrect)**: Major errors or missing mandatory elements
 
-Star tiers based on hints used: Gold (0), Silver (1), Bronze (2), Tin (3+)
+Star tiers based on **total penalties** (hints + retries count equally):
+- **Gold** (0 penalties): 4 points
+- **Silver** (1 penalty): 3 points
+- **Bronze** (2 penalties): 2 points
+- **Tin** (3+ penalties): 1 point
 
 ## Key Patterns
 
@@ -160,7 +164,7 @@ FINAL_COST = BASE × SCARCITY × (1-VELOCITY) × (1-GUERRILLA) × (1-OVEREXTENSI
 - **Startup logging**: Server logs config values on startup for deployment verification
 
 ### State Machine Documentation
-See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions (22 sections covering grading, game engine, Grid Wars, WebSocket, etc.).
+See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions (31 sections covering grading, game engine, Grid Wars, WebSocket, AI normalization, key pool rotation, etc.).
 
 ### Earlier Features (v1.3-v1.5)
 - **Level-weighted scoring**: Stars worth more at higher levels (0.5x→3.0x). Uses `shared/scoring.config.js`
@@ -180,7 +184,8 @@ See `docs/STATE_MACHINES.md` for complete diagrams of all component state transi
 npm test                                          # All tests
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
-npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests (current)
+npx vitest run tests/game/grid-wars-v1.6.test.js   # Grid Wars v1.6 tests
+npx vitest run tests/game/grid-wars-v1.6.2.test.js # v1.6.2 regression tests (32 tests)
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 ```
 
@@ -199,8 +204,10 @@ SQL migrations for Supabase are in `railway-server/migrations/`. Run these in Su
 
 ```bash
 # Current migrations:
-railway-server/migrations/001_point_events.sql  # v1.5.1: Velocity tracking
+railway-server/migrations/001_point_events.sql  # v1.5.1: Velocity tracking (uses player_id column)
 ```
+
+**Note**: The `point_events` table uses `player_id` column (not `username`). This was fixed in v1.6.2.
 
 ## Configuration Files
 
@@ -218,3 +225,13 @@ railway-server/migrations/001_point_events.sql  # v1.5.1: Velocity tracking
 **Leaderboard persistence gap**: `app.html` saves stars to localStorage only — does NOT call `/api/progress`. Students using the new platform don't appear on the server leaderboard. See `KNOWN_ISSUES.md` for details.
 
 See `KNOWN_ISSUES.md` for documented bugs and debugging context.
+
+## v1.6.2 Bug Fixes
+
+These issues were fixed in v1.6.2 — included here for context if similar bugs arise:
+
+1. **Frontend grid size**: `grid-panel.js` had hardcoded `gridSize: 20` instead of using `GRID_WARS_CONFIG.mapSize`. Fixed by reading from config.
+
+2. **AI grading parser**: Server rejected valid JSON responses in direct format `{score, feedback}`. Added `normalizeGradingResponse()` to accept both direct and field-keyed formats.
+
+3. **Velocity query column**: Code used `username` but table has `player_id` column. Fixed in both `recordPointEvent()` and `getPlayerVelocity()`.

@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS point_events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   game_id TEXT NOT NULL DEFAULT 'lynn-classroom-2026',
-  username TEXT NOT NULL,
+  player_id TEXT NOT NULL,  -- v1.6.2: Renamed from username for consistency
   delta INTEGER NOT NULL,
   reason TEXT NOT NULL,
   cartridge_id TEXT,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS point_events (
 
 -- Index for velocity calculation (player + recent time)
 CREATE INDEX IF NOT EXISTS idx_point_events_player_time
-ON point_events(game_id, username, created_at DESC);
+ON point_events(game_id, player_id, created_at DESC);
 
 -- Index for recent events only (partial index for performance)
 CREATE INDEX IF NOT EXISTS idx_point_events_recent
