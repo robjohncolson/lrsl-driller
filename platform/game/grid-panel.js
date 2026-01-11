@@ -285,8 +285,8 @@ export class GridPanel {
 
           <!-- Mini Grid -->
           <div style="padding:8px;background:#030712;">
-            <div style="aspect-ratio:1;max-width:100%;margin:0 auto;background:#000;border:1px solid #14532d;border-radius:4px;overflow:hidden;">
-              <canvas id="gw-canvas" style="width:100%;height:100%;"></canvas>
+            <div id="gw-canvas-container" style="position:relative;width:280px;height:280px;margin:0 auto;background:#000;border:1px solid #14532d;border-radius:4px;overflow:hidden;">
+              <canvas id="gw-canvas"></canvas>
             </div>
           </div>
 
