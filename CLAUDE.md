@@ -229,11 +229,12 @@ See `docs/STATE_MACHINES.md` for complete diagrams of all component state transi
 ## Testing
 
 ```bash
-npm test                                          # All tests (1131 tests)
+npm test                                          # All tests (1165 tests)
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
 npx vitest run tests/game/grid-wars-v2.0.test.js   # v2.0 hierarchy tests (40 tests)
 npx vitest run tests/game/grid-wars-v2.1.2.test.js # v2.1.2 rendering fixes (21 tests)
+npx vitest run tests/game/grid-wars-v2.1.5.test.js # v2.1.5 subcell claims (34 tests)
 npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
@@ -248,7 +249,7 @@ Test organization:
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
 - `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1)
-- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v1.6)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.1.5)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
@@ -283,6 +284,7 @@ See "Critical: File Sync Requirements" at top for files that must be synced betw
 - Added arrow key navigation: Up=zoom into developed cell, Down=zoom out
 - Added develop/drill tooltips explaining mechanics (center 4 retention)
 - Server response includes full address info for client reconciliation
+- Added 34 regression tests in `tests/game/grid-wars-v2.1.5.test.js`
 
 **v2.1.4**: Enhanced Error Logging for Develop/Drill
 - Added detailed Supabase error logging (code, message, details) for subcell creation

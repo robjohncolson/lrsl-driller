@@ -1,6 +1,21 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v2.1.2.
+Complete state machine documentation for all components as of v2.1.5.
+
+**v2.1.5 Changes (Subcell Claims + Navigation Polish):**
+- Fixed subcell claims: Now sends `parentAddress` and `cellLevel` to server
+  - Client: `claimTerritory()` includes `parentAddress: this.currentParent, cellLevel: this.currentLevel`
+  - Server: Builds `targetAddress` from parent context, uses address-based lookup for subcells
+- Added coordinate display: Shows full address like "📍 D5.C3.A1" in UI
+  - New `updateCoordsDisplay(x, y)` method in grid-panel.js
+  - Updates on cell hover via `onCellHover` callback
+- Added arrow key navigation:
+  - Up arrow: Zoom into developed cell (equivalent to double-click)
+  - Down arrow: Zoom out to parent level (equivalent to ESC)
+- Added develop/drill tooltips explaining mechanics:
+  - Develop: "Subdivide into 64 subcells. Keep center 4 (d4,d5,e4,e5). 60 become neutral."
+  - Drill: "Force subdivision. You claim corner a1. Defender keeps center 4."
+- Added 34 regression tests in `tests/game/grid-wars-v2.1.5.test.js`
 
 **v2.1.2 Changes (Grid Wars Rendering Fixes):**
 - Fixed `drawOwnerPresence()`: Was accessing undefined `cell.x`/`cell.y` properties
@@ -4001,6 +4016,193 @@ REGRESSION TESTS:
 
 ---
 
-*Updated to v2.1.2*
+## 51. v2.1.5 SUBCELL CLAIM FLOW
+
+```
+                              ┌─────────────────────────────────────────────────────┐
+                              │           USER CLICKS CELL TO CLAIM                  │
+                              │           (while zoomed into parent cell)            │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │            grid-state.js: claimTerritory()          │
+                              │                                                      │
+                              │   body: {                                            │
+                              │     x, y,              // Local coords (0-7)         │
+                              │     parentAddress: this.currentParent,  // "d5"      │
+                              │     cellLevel: this.currentLevel        // 1         │
+                              │   }                                                  │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │               SERVER: /api/grid-wars/action          │
+                              │                                                      │
+                              │   // Build full address from parent context          │
+                              │   const localAddress = coordsToAddress(x, y); // a1  │
+                              │   const targetAddress = parentAddress                │
+                              │     ? `${parentAddress}.${localAddress}` // "d5.a1"  │
+                              │     : localAddress;                      // "a1"     │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                          ┌───────────────────────────┴───────────────────────────┐
+                          │                                                       │
+                          ▼                                                       ▼
+              ┌───────────────────────┐                           ┌───────────────────────┐
+              │   parentAddress SET   │                           │  parentAddress NULL   │
+              │   (subcell claim)     │                           │  (macro cell claim)   │
+              └───────────┬───────────┘                           └───────────┬───────────┘
+                          │                                                   │
+                          ▼                                                   ▼
+              ┌───────────────────────┐                           ┌───────────────────────┐
+              │  LOOKUP BY ADDRESS    │                           │  LOOKUP BY x,y        │
+              │                       │                           │  (backwards compat)   │
+              │  .eq('address',       │                           │                       │
+              │      targetAddress)   │                           │  .eq('x', x)          │
+              │                       │                           │  .eq('y', y)          │
+              └───────────┬───────────┘                           └───────────┬───────────┘
+                          │                                                   │
+                          └───────────────────────┬───────────────────────────┘
+                                                  │
+                                                  ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │              INSERT/UPDATE TERRITORY                 │
+                              │                                                      │
+                              │   {                                                  │
+                              │     address: targetAddress,    // "d5.a1"            │
+                              │     parent_address: parentAddress, // "d5"           │
+                              │     cell_level: cellLevel,     // 1                  │
+                              │     owner: username,                                 │
+                              │     is_developed: false                              │
+                              │   }                                                  │
+                              └─────────────────────────────────────────────────────┘
+```
+
+---
+
+## 52. v2.1.5 COORDINATE DISPLAY
+
+```
+              ┌─────────────────────────────────────────────────────┐
+              │              MOUSE HOVER OVER CELL                   │
+              └───────────────────────┬─────────────────────────────┘
+                                      │
+                                      ▼
+              ┌─────────────────────────────────────────────────────┐
+              │         grid-panel.js: onCellHover(x, y, cell)      │
+              │                                                      │
+              │   this.updateCoordsDisplay(x, y);                    │
+              └───────────────────────┬─────────────────────────────┘
+                                      │
+                                      ▼
+              ┌─────────────────────────────────────────────────────┐
+              │              updateCoordsDisplay(x, y)               │
+              │                                                      │
+              │   // Build local address from coords                 │
+              │   const localAddress = String.fromCharCode(97 + x)   │
+              │                       + (y + 1);                     │
+              │   // e.g., (0,0) → "a1", (2,2) → "c3"               │
+              │                                                      │
+              │   // Prepend parent if zoomed in                     │
+              │   const currentParent = this.state?.currentParent;   │
+              │   const fullAddress = currentParent                  │
+              │     ? `${currentParent}.${localAddress}`             │
+              │     : localAddress;                                  │
+              └───────────────────────┬─────────────────────────────┘
+                                      │
+                  ┌───────────────────┴───────────────────┐
+                  │                                       │
+                  ▼                                       ▼
+      ┌───────────────────────┐             ┌───────────────────────┐
+      │  currentParent=null   │             │  currentParent="d5"   │
+      │  (macro level)        │             │  (inside subcells)    │
+      └───────────┬───────────┘             └───────────┬───────────┘
+                  │                                     │
+                  ▼                                     ▼
+      ┌───────────────────────┐             ┌───────────────────────┐
+      │  Display: "📍 E5"     │             │  Display: "📍 D5.C3"  │
+      │  levelText: "MACRO    │             │  levelText: "LEVEL 1" │
+      │             LEVEL"    │             │                       │
+      └───────────────────────┘             └───────────────────────┘
+```
+
+---
+
+## 53. v2.1.5 ARROW KEY NAVIGATION
+
+```
+              ┌─────────────────────────────────────────────────────┐
+              │              KEYDOWN EVENT ON CANVAS                 │
+              └───────────────────────┬─────────────────────────────┘
+                                      │
+              ┌───────────────────────┴───────────────────────────┐
+              │                                                   │
+              ▼                                                   ▼
+      ┌───────────────────────┐                   ┌───────────────────────┐
+      │   ArrowUp pressed     │                   │   ArrowDown pressed   │
+      └───────────┬───────────┘                   └───────────┬───────────┘
+                  │                                           │
+                  ▼                                           ▼
+      ┌───────────────────────┐                   ┌───────────────────────┐
+      │  Is cell selected?    │                   │  Can zoom out?        │
+      │  Is cell developed?   │                   │  (currentLevel > 0)   │
+      └───────────┬───────────┘                   └───────────┬───────────┘
+                  │                                           │
+          ┌───────┴───────┐                           ┌───────┴───────┐
+          ▼               ▼                           ▼               ▼
+      ┌───────┐       ┌───────┐                   ┌───────┐       ┌───────┐
+      │  YES  │       │  NO   │                   │  YES  │       │  NO   │
+      └───┬───┘       └───┬───┘                   └───┬───┘       └───┬───┘
+          │               │                           │               │
+          ▼               ▼                           ▼               ▼
+      ┌───────────┐   ┌───────────┐             ┌───────────┐   ┌───────────┐
+      │ zoomIn()  │   │ (nothing) │             │ zoomOut() │   │ (nothing) │
+      │           │   │           │             │           │   │ already   │
+      │ Enter     │   │           │             │ Go back   │   │ at root   │
+      │ subcells  │   │           │             │ to parent │   │           │
+      └───────────┘   └───────────┘             └───────────┘   └───────────┘
+```
+
+---
+
+## 54. v2.1.5 VERIFICATION CHECKLIST
+
+```
+SUBCELL CLAIMS:
+□ claimTerritory() sends parentAddress (null for macro, "d5" for subcell)
+□ claimTerritory() sends cellLevel (0 for macro, 1+ for subcell)
+□ Server builds targetAddress from parent context
+□ Server uses address-based lookup for subcells (not x,y)
+□ Server inserts/updates with address, parent_address, cell_level fields
+□ Claiming in d5 at position (0,0) creates "d5.a1", not overwrites "a1"
+
+COORDINATE DISPLAY:
+□ Coordinate section visible in sidebar
+□ Shows "📍" emoji with address
+□ Shows "MACRO LEVEL" for level 0
+□ Shows "LEVEL 1", "LEVEL 2" for subdivisions
+□ Address updates on cell hover
+□ Address format: "D5" (macro), "D5.C3" (level 1), "D5.C3.A1" (level 2)
+
+ARROW KEY NAVIGATION:
+□ ArrowUp zooms into developed cell (if one is selected)
+□ ArrowDown zooms out to parent level
+□ ArrowDown does nothing when already at root (level 0)
+□ ArrowUp does nothing if no cell selected or cell not developed
+
+DEVELOP/DRILL TOOLTIPS:
+□ Develop button has title explaining mechanic
+□ Drill button has title explaining mechanic
+□ Tooltips appear on hover
+
+REGRESSION TESTS:
+□ tests/game/grid-wars-v2.1.5.test.js passes (34 tests)
+□ All existing Grid Wars tests still pass (1131+ tests total)
+```
+
+---
+
+*Updated to v2.1.5*
 *Last updated: January 2026*
 *Total sections: 50*
