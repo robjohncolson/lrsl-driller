@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.1.5 (Subcell Claims + Navigation + Coordinates)
+**Current Version**: v2.2.1 (Colors, Mini-Mosaic, Gift, Subcell Claim Fixes)
 
 ## Critical: File Sync Requirements
 
@@ -276,6 +276,23 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.2.1**: Subcell Claim Coordinate Fixes
+- Fixed subcell territory creation: new territories now use correct `address`, `parent_address`, and `cell_level` from request
+- Previously, new subcell claims were created with `parent_address: null` and `cell_level: 0` regardless of actual parent context
+- Added explicit coordinate integer parsing to prevent type coercion issues
+- Enhanced error messages include coordinate details for debugging
+- Added client-side debug logging for claim requests (coordinates, types, parent context)
+- Added 4 regression tests in `tests/game/grid-wars-v2.2.test.js`
+
+**v2.2**: Colors, Mini-Mosaic, Gift Mechanic
+- Server assigns unique colors from 40-color VIVID_COLORS palette to each player
+- Mini-mosaic rendering shows 8x8 subcell ownership inside developed cells
+- Recursive tiny-mosaic (4x4 checkerboard) for nested developed cells
+- Gift mechanic: transfer owned cells to other players for free via `/api/grid-wars/gift`
+- Colored leaderboard: player names shown with their assigned colors
+- Added `player_colors` column and `grid_wars_gifts` table (migration 005)
+- Added 23 tests in `tests/game/grid-wars-v2.2.test.js`
 
 **v2.1.5**: Subcell Claims + Navigation + Coordinates
 - Fixed subcell claims: client now sends `parentAddress` and `cellLevel` to server

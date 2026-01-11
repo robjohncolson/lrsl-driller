@@ -580,24 +580,40 @@ export class GridWarsState {
     this._applyOptimisticClaim(x, y, estimatedCost, currentOwner, actionId);
 
     try {
+      // v2.2.1: Enhanced debug logging for claim requests
+      const claimPayload = {
+        gameId: this.gameId,
+        username: this.username,
+        action: 'claim',
+        actionId,  // v1.3: Include actionId for reconciliation
+        x,
+        y,
+        parentAddress: this.currentParent,  // v2.1.5: null for macro, "e5" for subcell
+        cellLevel: this.currentLevel         // v2.1.5: 0 for macro, 1+ for subcell
+      };
+      console.log(`[GridWarsState] claimTerritory request:`, {
+        x,
+        y,
+        xType: typeof x,
+        yType: typeof y,
+        parentAddress: this.currentParent,
+        cellLevel: this.currentLevel
+      });
+
       // v2.1.5: Include parent context for subcell claims
       const response = await fetch(`${this.serverUrl}/api/grid-wars/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gameId: this.gameId,
-          username: this.username,
-          action: 'claim',
-          actionId,  // v1.3: Include actionId for reconciliation
-          x,
-          y,
-          parentAddress: this.currentParent,  // v2.1.5: null for macro, "e5" for subcell
-          cellLevel: this.currentLevel         // v2.1.5: 0 for macro, 1+ for subcell
-        })
+        body: JSON.stringify(claimPayload)
       });
 
       if (!response.ok) {
         const error = await response.json();
+        // v2.2.1: Enhanced error logging with details
+        console.error('[GridWarsState] claimTerritory error:', error);
+        if (error.details) {
+          console.error('[GridWarsState] Error details:', error.details);
+        }
         // Rollback optimistic update
         this._rollbackOptimisticClaim(x, y, estimatedCost, actionId);
         throw new Error(error.error || 'Failed to claim territory');

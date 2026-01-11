@@ -4447,6 +4447,20 @@ app.post('/api/grid-wars/action', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: gameId, username, action, x, y' });
     }
 
+    // v2.2.1: Ensure coordinates are parsed as integers and reassign for use throughout
+    const origX = x, origY = y;  // Keep originals for error reporting
+    x = parseInt(x, 10);
+    y = parseInt(y, 10);
+
+    // v2.2.1: Enhanced coordinate validation with detailed error messages
+    if (isNaN(x) || isNaN(y)) {
+      console.error(`[Action] Invalid coordinate types: x=${origX} (${typeof origX}), y=${origY} (${typeof origY})`);
+      return res.status(400).json({
+        error: 'Invalid coordinates',
+        details: { x: origX, y: origY, xType: typeof origX, yType: typeof origY }
+      });
+    }
+
     // v2.1.5: Build target address based on parent context
     const localAddress = coordsToAddress(x, y);
     const targetAddress = parentAddress ? `${parentAddress}.${localAddress}` : localAddress;
@@ -4459,9 +4473,13 @@ app.post('/api/grid-wars/action', async (req, res) => {
       return res.status(403).json({ error: 'Session has ended. Grid Wars is frozen.' });
     }
 
-    // Validate coordinates
+    // Validate coordinates - v2.2.1: Include actual values in error for debugging
     if (x < 0 || x >= GRID_WARS_CONFIG.mapSize || y < 0 || y >= GRID_WARS_CONFIG.mapSize) {
-      return res.status(400).json({ error: 'Coordinates out of bounds' });
+      console.error(`[Action] Coordinates out of bounds: x=${x}, y=${y}, mapSize=${GRID_WARS_CONFIG.mapSize}`);
+      return res.status(400).json({
+        error: 'Coordinates out of bounds',
+        details: { x, y, maxValid: GRID_WARS_CONFIG.mapSize - 1, parentAddress, cellLevel: targetLevel }
+      });
     }
 
     // Get player's current state
@@ -4726,8 +4744,7 @@ app.post('/api/grid-wars/action', async (req, res) => {
         }
       } else {
         // Insert new territory
-        // v2.1.3: Include address fields for v2.0 hierarchy support
-        const cellAddress = coordsToAddress(x, y);
+        // v2.2.1: Fixed - use targetAddress and correct parent/level for subcell claims
         await supabase
           .from('grid_wars_territories')
           .insert({
@@ -4736,9 +4753,9 @@ app.post('/api/grid-wars/action', async (req, res) => {
             y,
             owner: username,
             strength: GRID_WARS_CONFIG.maxCellStrength,
-            address: cellAddress,
-            parent_address: null,
-            cell_level: 0,
+            address: targetAddress,           // v2.2.1: Full address (e.g., "e4.b3" for subcells)
+            parent_address: parentAddress || null,  // v2.2.1: Parent from request
+            cell_level: targetLevel,          // v2.2.1: Level from request
             is_developed: false
           });
       }

@@ -441,3 +441,119 @@ describe('Grid Wars v2.2 - Level Cap', () => {
     expect(3 > maxLevel).toBe(true);
   });
 });
+
+describe('Grid Wars v2.2.1 - Subcell Claim Fixes', () => {
+  let state;
+
+  beforeEach(async () => {
+    mockFetch.mockClear();
+    state = new GridWarsState({ serverUrl: 'http://test-server' });
+    state.setUser('alice');
+  });
+
+  describe('claimTerritory sends correct parent context', () => {
+    it('sends parentAddress and cellLevel for subcell claims', async () => {
+      await initStateWithGame(state);
+
+      // Simulate being zoomed into e5
+      state.currentParent = 'e5';
+      state.currentLevel = 1;
+
+      // Mock successful claim response
+      mockFetch.mockResolvedValueOnce(mockResponse({
+        success: true,
+        actionId: 'test-action-id',
+        x: 2,
+        y: 3,
+        address: 'e5.c4',
+        parentAddress: 'e5',
+        cellLevel: 1
+      }));
+
+      await state.claimTerritory(2, 3);
+
+      // Check the claim request
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe('http://test-server/api/grid-wars/action');
+      const body = JSON.parse(options.body);
+      expect(body.action).toBe('claim');
+      expect(body.x).toBe(2);
+      expect(body.y).toBe(3);
+      expect(body.parentAddress).toBe('e5');
+      expect(body.cellLevel).toBe(1);
+    });
+
+    it('sends null parentAddress for root-level claims', async () => {
+      await initStateWithGame(state);
+
+      // Simulate being at root level
+      state.currentParent = null;
+      state.currentLevel = 0;
+
+      // Mock successful claim response
+      mockFetch.mockResolvedValueOnce(mockResponse({
+        success: true,
+        actionId: 'test-action-id',
+        x: 4,
+        y: 4
+      }));
+
+      await state.claimTerritory(4, 4);
+
+      // Check the claim request
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body.parentAddress).toBeNull();
+      expect(body.cellLevel).toBe(0);
+    });
+
+    it('sends level 2 parent context for nested subcells', async () => {
+      await initStateWithGame(state);
+
+      // Simulate being zoomed into e5.c3
+      state.currentParent = 'e5.c3';
+      state.currentLevel = 2;
+
+      // Mock successful claim response
+      mockFetch.mockResolvedValueOnce(mockResponse({
+        success: true,
+        actionId: 'test-action-id',
+        x: 0,
+        y: 0,
+        address: 'e5.c3.a1',
+        parentAddress: 'e5.c3',
+        cellLevel: 2
+      }));
+
+      await state.claimTerritory(0, 0);
+
+      // Check the claim request
+      const [url, options] = mockFetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body.parentAddress).toBe('e5.c3');
+      expect(body.cellLevel).toBe(2);
+    });
+  });
+
+  describe('error handling shows details', () => {
+    it('logs error details when server returns them', async () => {
+      await initStateWithGame(state);
+
+      // Mock error response with details
+      mockFetch.mockResolvedValueOnce(mockResponse({
+        error: 'Coordinates out of bounds',
+        details: { x: 10, y: 5, maxValid: 7, parentAddress: 'e5', cellLevel: 1 }
+      }, 400));
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(state.claimTerritory(10, 5)).rejects.toThrow('Coordinates out of bounds');
+
+      // Verify error details were logged
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+  });
+});
