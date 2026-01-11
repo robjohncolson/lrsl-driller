@@ -5,6 +5,7 @@
  * v1.2.1: Added 3-tier activity pricing, boot bonus, visual dimming settings
  * v1.5: Bitcoin model - 3x cost inflation, permanent economy
  * v1.6: Radical simplification - 8x8 map, single leaderboard, no nodes
+ * v2.0: Hierarchical subdivision - develop/drill mechanics, fractal grid
  */
 
 const GRID_WARS_CONFIG = {
@@ -329,6 +330,29 @@ const GRID_WARS_CONFIG = {
   presenceHeartbeatMs: 30000,          // Client heartbeat every 30 seconds
   presenceStaleThresholdMs: 300000,    // Remove after 5 minutes of no heartbeat
   presencePruneIntervalMs: 60000,      // Check for stale presence every minute
+
+  // ============================================
+  // v2.0: HIERARCHICAL SUBDIVISION
+  // ============================================
+
+  // Master toggle for subdivision features
+  hierarchyEnabled: true,
+  maxSubdivisionLevel: 2,              // Max depth: d5.c3.a1 = 3 levels total (0, 1, 2)
+
+  // Development (owner subdivides their cell)
+  developmentCost: 100,                // Points to subdivide a cell you own
+  ownerRetentionCells: ['d4', 'd5', 'e4', 'e5'],  // Center 4 cells owner keeps
+
+  // Drilling (attacker forces subdivision)
+  drillCost: 75,                       // Points to force-subdivide an enemy cell
+  drillSaturationThreshold: 85,        // Map must be 85%+ full to allow drilling
+  attackerDrillCell: 'a1',             // Corner cell attacker gets
+
+  // Subcell economy (1/4 of macro costs)
+  subcellClaimCost: 10,                // Base cost to claim neutral subcell
+  subcellTakeoverCostCold: 15,         // Subcell takeover: >8min inactive
+  subcellTakeoverCostWarm: 20,         // Subcell takeover: 3-8min inactive
+  subcellTakeoverCostActive: 25,       // Subcell takeover: <3min active
 };
 
 

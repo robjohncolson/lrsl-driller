@@ -74,6 +74,10 @@ export class GridRenderer {
     // Last known avatar positions for direction tracking
     this.lastAvatarPositions = {};
 
+    // v2.0: Presence dots mode (replaces moveable avatars)
+    this._usePresenceDots = false;
+    this._onlinePlayers = new Set(); // Set of usernames currently online
+
     // v1.2.1: Static layer dirty flag - redraw static layer when true
     this._staticDirty = true;
 
@@ -199,14 +203,19 @@ export class GridRenderer {
    * v1.2.1: Sets static dirty flag for layer optimization
    */
   setTerritory(x, y, owner, data = {}) {
-    if (owner || data.node_type) {
+    if (owner || data.node_type || data.is_developed) {
       this.territories[`${x},${y}`] = {
         owner,
         color: owner ? this.getPlayerColor(owner) : null,
         strength: data.strength || 3,
         node_type: data.node_type || null,
         ownerLastAnswer: data.ownerLastAnswer || null,  // v1.2.1
-        pending: data.pending || false  // v1.2.1: Claim status
+        pending: data.pending || false,  // v1.2.1: Claim status
+        isBountyTarget: data.isBountyTarget || false,  // v1.5
+        // v2.0: Hierarchy fields
+        address: data.address || null,
+        is_developed: data.is_developed || false,
+        cell_level: data.cell_level || 0
       };
     } else {
       delete this.territories[`${x},${y}`];
@@ -365,11 +374,14 @@ export class GridRenderer {
       // Draw pending territories (animated)
       this.drawTerritoriesPending(dynamicCtx, now);
 
-      // Draw avatar wake trails
-      this.drawAvatarWakes(dynamicCtx, now);
-
-      // Draw avatars
-      this.drawAvatars(dynamicCtx, now);
+      // v2.0: Draw presence dots instead of moveable avatars
+      if (this._usePresenceDots) {
+        this.drawOwnerPresence(dynamicCtx, now);
+      } else {
+        // Legacy: Draw avatar wake trails and avatars
+        this.drawAvatarWakes(dynamicCtx, now);
+        this.drawAvatars(dynamicCtx, now);
+      }
 
       // Draw pulse animations
       this.drawPulses(dynamicCtx, now);
@@ -403,11 +415,14 @@ export class GridRenderer {
       // Draw grid lines
       this.drawGrid(ctx);
 
-      // Draw avatar wake trails (before avatars)
-      this.drawAvatarWakes(ctx, now);
-
-      // Draw avatars
-      this.drawAvatars(ctx, now);
+      // v2.0: Draw presence dots instead of moveable avatars
+      if (this._usePresenceDots) {
+        this.drawOwnerPresence(ctx, now);
+      } else {
+        // Legacy: Draw avatar wake trails and avatars
+        this.drawAvatarWakes(ctx, now);
+        this.drawAvatars(ctx, now);
+      }
 
       // Draw pulse animations
       this.drawPulses(ctx, now);
@@ -474,7 +489,57 @@ export class GridRenderer {
       if (territory.node_type && territory.owner) {
         this.drawNodeIndicator(ctx, x, y, territory.node_type, now);
       }
+
+      // v2.0: Draw developed cell indicator (subdivision icon)
+      if (territory.is_developed) {
+        this.drawDevelopedIndicator(ctx, x, y, now);
+      }
     }
+  }
+
+  /**
+   * v2.0: Draw developed cell indicator (shows cell is subdivided)
+   * Displays a mini-grid pattern and icon to indicate the cell can be zoomed into
+   */
+  drawDevelopedIndicator(ctx, x, y, now) {
+    const centerX = x * this.cellSize + this.cellSize / 2;
+    const centerY = y * this.cellSize + this.cellSize / 2;
+    const size = this.cellSize - 8;
+    const startX = centerX - size / 2;
+    const startY = centerY - size / 2;
+
+    // Draw mini 3x3 grid lines to suggest subdivision
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+    ctx.lineWidth = 0.5;
+
+    for (let i = 1; i < 3; i++) {
+      const offset = (size / 3) * i;
+
+      // Vertical lines
+      ctx.beginPath();
+      ctx.moveTo(startX + offset, startY);
+      ctx.lineTo(startX + offset, startY + size);
+      ctx.stroke();
+
+      // Horizontal lines
+      ctx.beginPath();
+      ctx.moveTo(startX, startY + offset);
+      ctx.lineTo(startX + size, startY + offset);
+      ctx.stroke();
+    }
+
+    // Draw pulsing zoom indicator in center
+    const pulseOpacity = 0.5 + 0.3 * Math.sin(now / 500);
+    ctx.fillStyle = `rgba(0, 255, 255, ${pulseOpacity})`;
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('+', centerX, centerY);
+
+    // Reset
+    ctx.lineWidth = 1;
+    ctx.textAlign = 'start';
+    ctx.textBaseline = 'alphabetic';
   }
 
   /**
@@ -894,6 +959,71 @@ export class GridRenderer {
     }
   }
 
+  // ============================================
+  // v2.0: PRESENCE DOTS (replaces moveable avatars)
+  // ============================================
+
+  /**
+   * v2.0: Enable/disable presence dots mode
+   * When enabled, shows small dots on owned cells instead of moveable avatars
+   */
+  setUsePresenceDots(enabled) {
+    this._usePresenceDots = enabled;
+  }
+
+  /**
+   * v2.0: Set the list of online players (for presence dots)
+   * @param {string[]} players - Array of usernames currently online
+   */
+  setOnlinePlayers(players) {
+    this._onlinePlayers = new Set(players || []);
+  }
+
+  /**
+   * v2.0: Draw owner presence dots on cells owned by online players
+   * Shows small green dot in bottom-right corner of each owned cell
+   */
+  drawOwnerPresence(ctx, now) {
+    const dotRadius = Math.max(3, this.cellSize * 0.12);
+    const blink = 0.7 + 0.3 * Math.abs(Math.sin(now / 600)); // Slow pulse
+
+    for (const [key, cell] of Object.entries(this.territories)) {
+      if (!cell.owner) continue;
+      if (!this._onlinePlayers.has(cell.owner)) continue;
+
+      // Cell is owned by an online player - show presence dot
+      const cx = cell.x * this.cellSize + this.cellSize - dotRadius - 3;
+      const cy = cell.y * this.cellSize + this.cellSize - dotRadius - 3;
+      const color = this.getPlayerSolidColor(cell.owner);
+
+      ctx.save();
+      ctx.globalAlpha = blink;
+
+      // Outer glow
+      ctx.beginPath();
+      ctx.arc(cx, cy, dotRadius + 2, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = blink * 0.3;
+      ctx.fill();
+
+      // Inner dot
+      ctx.beginPath();
+      ctx.arc(cx, cy, dotRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#00ff41'; // Green for "online"
+      ctx.globalAlpha = blink;
+      ctx.fill();
+
+      // White center
+      ctx.beginPath();
+      ctx.arc(cx, cy, dotRadius * 0.4, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = blink * 0.8;
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
   /**
    * Draw pulse animations
    */
@@ -975,6 +1105,7 @@ export class GridRenderer {
    * Load full game state
    * v1.2: Removed contested_by (contestation system removed)
    * v1.2.1: Added ownerLastAnswer for visual dimming, pending for claim status
+   * v2.0: Added hierarchy fields (address, is_developed, cell_level)
    */
   loadState(state) {
     if (state.territories) {
@@ -984,7 +1115,12 @@ export class GridRenderer {
           strength: t.strength,
           node_type: t.node_type,
           ownerLastAnswer: t.ownerLastAnswer,  // v1.2.1
-          pending: t.pending  // v1.2.1
+          pending: t.pending,  // v1.2.1
+          isBountyTarget: t.isBountyTarget,  // v1.5
+          // v2.0: Hierarchy fields
+          address: t.address,
+          is_developed: t.is_developed,
+          cell_level: t.cell_level
         });
       }
     }
@@ -996,6 +1132,11 @@ export class GridRenderer {
     } else {
       this.surgeCell = null;
     }
+
+    // v2.0: Store navigation state for renderer use
+    this.currentLevel = state.currentLevel || 0;
+    this.currentParent = state.currentParent || null;
+    this.breadcrumb = state.breadcrumb || [];
   }
 }
 

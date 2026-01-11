@@ -134,6 +134,17 @@ export class GridWarsState {
     // v1.3: Action ID reconciliation - resync handling
     this._resyncInProgress = false;
     this._pendingActionsQueue = [];
+
+    // v2.0: Hierarchy navigation state
+    this.currentParent = null;    // null = root level, "d5" = inside d5
+    this.currentLevel = 0;
+    this.breadcrumb = [];         // ["d5", "c3"] for d5.c3
+    this.parentCell = null;       // Parent cell info when zoomed in
+
+    // v2.0: Hierarchy event callbacks
+    this.onCellDeveloped = options.onCellDeveloped || null;
+    this.onCellDrilled = options.onCellDrilled || null;
+    this.onNavigate = options.onNavigate || null;
   }
 
   /**
@@ -182,6 +193,7 @@ export class GridWarsState {
 
   /**
    * Refresh full game state from server
+   * v2.0: Supports hierarchy navigation via parent parameter
    */
   async refreshState() {
     if (!this.gameId) {
@@ -189,7 +201,13 @@ export class GridWarsState {
     }
 
     try {
-      const response = await fetch(`${this.serverUrl}/api/grid-wars/games/${this.gameId}/state`);
+      // v2.0: Include parent in request URL for hierarchy support
+      let url = `${this.serverUrl}/api/grid-wars/games/${this.gameId}/state`;
+      if (this.currentParent) {
+        url += `?parent=${encodeURIComponent(this.currentParent)}`;
+      }
+
+      const response = await fetch(url);
 
       if (!response.ok) {
         const error = await response.json();
@@ -201,13 +219,29 @@ export class GridWarsState {
       // Update local caches
       this.game = state.game;
 
+      // v2.0: Update hierarchy navigation state
+      if (state.currentLevel !== undefined) {
+        this.currentLevel = state.currentLevel;
+      }
+      if (state.breadcrumb !== undefined) {
+        this.breadcrumb = state.breadcrumb;
+      }
+      if (state.parentCell !== undefined) {
+        this.parentCell = state.parentCell;
+      }
+
       this.territories.clear();
       for (const t of state.territories) {
         this.territories.set(`${t.x},${t.y}`, {
           owner: t.owner,
           claimed_at: t.claimed_at,
           strength: t.strength || GRID_WARS_CONFIG.maxCellStrength,
-          node_type: t.node_type || null
+          node_type: t.node_type || null,
+          // v2.0: Hierarchy fields
+          address: t.address || null,
+          parent_address: t.parent_address || null,
+          is_developed: t.is_developed || false,
+          cell_level: t.cell_level || 0
         });
       }
 
@@ -889,6 +923,234 @@ export class GridWarsState {
     return this.surge;
   }
 
+  // ============================================
+  // v2.0: HIERARCHY NAVIGATION
+  // ============================================
+
+  /**
+   * v2.0: Navigate into a developed cell
+   * @param {string} address - Cell address to zoom into
+   */
+  async zoomIn(address) {
+    this.currentParent = address;
+    this.currentLevel = address.split('.').length;
+    this.breadcrumb = address.split('.');
+
+    await this.refreshState();
+
+    if (this.onNavigate) {
+      this.onNavigate({
+        action: 'zoomIn',
+        address,
+        level: this.currentLevel,
+        breadcrumb: this.breadcrumb
+      });
+    }
+
+    this._emitStateChange();
+  }
+
+  /**
+   * v2.0: Navigate up one level
+   */
+  async zoomOut() {
+    if (!this.currentParent) return; // Already at root
+
+    const parts = this.currentParent.split('.');
+    parts.pop();
+
+    this.currentParent = parts.length ? parts.join('.') : null;
+    this.currentLevel = parts.length;
+    this.breadcrumb = parts;
+
+    await this.refreshState();
+
+    if (this.onNavigate) {
+      this.onNavigate({
+        action: 'zoomOut',
+        address: this.currentParent,
+        level: this.currentLevel,
+        breadcrumb: this.breadcrumb
+      });
+    }
+
+    this._emitStateChange();
+  }
+
+  /**
+   * v2.0: Navigate directly to a specific level
+   * @param {string|null} address - Target address (null for root)
+   */
+  async zoomTo(address) {
+    if (!address) {
+      this.currentParent = null;
+      this.currentLevel = 0;
+      this.breadcrumb = [];
+    } else {
+      this.currentParent = address;
+      this.currentLevel = address.split('.').length;
+      this.breadcrumb = address.split('.');
+    }
+
+    await this.refreshState();
+
+    if (this.onNavigate) {
+      this.onNavigate({
+        action: 'zoomTo',
+        address: this.currentParent,
+        level: this.currentLevel,
+        breadcrumb: this.breadcrumb
+      });
+    }
+
+    this._emitStateChange();
+  }
+
+  /**
+   * v2.0: Get current navigation state
+   */
+  getNavigationState() {
+    return {
+      currentParent: this.currentParent,
+      currentLevel: this.currentLevel,
+      breadcrumb: this.breadcrumb,
+      canZoomOut: this.currentParent !== null,
+      parentCell: this.parentCell
+    };
+  }
+
+  /**
+   * v2.0: Check if a cell is developed (can zoom in)
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean}
+   */
+  isDeveloped(x, y) {
+    const territory = this.territories.get(`${x},${y}`);
+    return territory?.is_developed || false;
+  }
+
+  /**
+   * v2.0: Get cell address at position
+   * @param {number} x
+   * @param {number} y
+   * @returns {string|null}
+   */
+  getCellAddress(x, y) {
+    const territory = this.territories.get(`${x},${y}`);
+    return territory?.address || null;
+  }
+
+  // ============================================
+  // v2.0: DEVELOP & DRILL ACTIONS
+  // ============================================
+
+  /**
+   * v2.0: Develop (subdivide) a cell you own
+   * Costs 100 points, creates 64 subcells, owner keeps center 4
+   * @param {string} address - Cell address to develop
+   */
+  async developCell(address) {
+    if (!this.gameId || !this.username) {
+      throw new Error('Not initialized or no user set');
+    }
+
+    try {
+      const response = await fetch(`${this.serverUrl}/api/grid-wars/develop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: this.gameId,
+          username: this.username,
+          address
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to develop cell');
+      }
+
+      const result = await response.json();
+
+      // Auto-zoom into the developed cell
+      await this.zoomIn(address);
+
+      if (this.onCellDeveloped) {
+        this.onCellDeveloped({
+          address,
+          subcellsCreated: result.subcellsCreated,
+          ownerRetained: result.ownerRetained,
+          cost: result.cost
+        });
+      }
+
+      return result;
+    } catch (err) {
+      this._handleError('developCell', err);
+      throw err;
+    }
+  }
+
+  /**
+   * v2.0: Drill into an enemy cell (force subdivision)
+   * Only available at 85%+ saturation
+   * Costs 75 points, attacker gets corner a1, defender keeps center 4
+   * @param {string} targetAddress - Enemy cell address to drill
+   */
+  async drillCell(targetAddress) {
+    if (!this.gameId || !this.username) {
+      throw new Error('Not initialized or no user set');
+    }
+
+    try {
+      const response = await fetch(`${this.serverUrl}/api/grid-wars/drill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: this.gameId,
+          username: this.username,
+          targetAddress
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to drill cell');
+      }
+
+      const result = await response.json();
+
+      // Auto-zoom into the drilled cell
+      await this.zoomIn(targetAddress);
+
+      if (this.onCellDrilled) {
+        this.onCellDrilled({
+          address: targetAddress,
+          attackerCell: result.attackerCell,
+          defenderCells: result.defenderCells,
+          cost: result.cost
+        });
+      }
+
+      return result;
+    } catch (err) {
+      this._handleError('drillCell', err);
+      throw err;
+    }
+  }
+
+  /**
+   * v2.0: Check if drilling is available (map saturation >= 85%)
+   */
+  canDrill() {
+    if (!GRID_WARS_CONFIG.hierarchyEnabled) return false;
+
+    const threshold = GRID_WARS_CONFIG.drillSaturationThreshold || 85;
+    const fillPercent = this.scarcityPhase?.fillPercent || 0;
+    return fillPercent >= threshold;
+  }
+
   /**
    * v1.5: Get current scarcity phase info
    * @returns {object|null} { phase, multiplier, message, fillPercent }
@@ -1339,6 +1601,69 @@ export class GridWarsState {
           this.onLeaderboardUpdate(message.leaderboard);
         }
         break;
+
+      // v2.0: Cell developed (subdivided)
+      case 'cell_developed':
+        // Update local territory to show as developed
+        for (const [key, territory] of this.territories) {
+          if (territory.address === message.address) {
+            territory.is_developed = true;
+            break;
+          }
+        }
+
+        // Notify
+        if (this.onCellDeveloped) {
+          this.onCellDeveloped({
+            address: message.address,
+            developer: message.developer,
+            newCells: message.newCells,
+            ownerRetained: message.ownerRetained
+          });
+        }
+
+        // Show system event
+        if (this.onSystemEvent) {
+          this.onSystemEvent({
+            event: 'cell_developed',
+            message: `${message.developer} developed ${message.address}!`
+          });
+        }
+
+        this._emitStateChange();
+        break;
+
+      // v2.0: Cell drilled (forced subdivision by attacker)
+      case 'cell_drilled':
+        // Update local territory to show as developed
+        for (const [key, territory] of this.territories) {
+          if (territory.address === message.address) {
+            territory.is_developed = true;
+            break;
+          }
+        }
+
+        // Notify
+        if (this.onCellDrilled) {
+          this.onCellDrilled({
+            address: message.address,
+            attacker: message.attacker,
+            defender: message.defender,
+            attackerGained: message.attackerGained,
+            defenderRetained: message.defenderRetained
+          });
+        }
+
+        // Show system event
+        if (this.onSystemEvent) {
+          this.onSystemEvent({
+            event: 'cell_drilled',
+            message: `${message.attacker} drilled into ${message.defender}'s ${message.address}!`
+          });
+        }
+
+        this._emitStateChange();
+        break;
     }
   }
 
@@ -1347,6 +1672,7 @@ export class GridWarsState {
    * Returns data in format expected by GridRenderer
    * v1.2: Removed contested_by (contestation system removed)
    * v1.2.1: Added pending flag for claim status visualization
+   * v2.0: Added hierarchy fields (address, is_developed) and navigation state
    */
   getRenderState() {
     const territories = [];
@@ -1362,7 +1688,11 @@ export class GridWarsState {
         node_type: data.node_type,
         ownerLastAnswer: ownerData?.last_answer_at || null,
         pending: data.pending || false, // v1.2.1: Include pending status
-        isBountyTarget: data.owner ? this.bountyTargets.includes(data.owner) : false // v1.5
+        isBountyTarget: data.owner ? this.bountyTargets.includes(data.owner) : false, // v1.5
+        // v2.0: Hierarchy fields
+        address: data.address || null,
+        is_developed: data.is_developed || false,
+        cell_level: data.cell_level || 0
       });
     }
 
@@ -1384,7 +1714,12 @@ export class GridWarsState {
       players,
       surge: this.surge,
       scarcityPhase: this.scarcityPhase,   // v1.5
-      bountyTargets: this.bountyTargets    // v1.5
+      bountyTargets: this.bountyTargets,   // v1.5
+      // v2.0: Hierarchy navigation state
+      currentParent: this.currentParent,
+      currentLevel: this.currentLevel,
+      breadcrumb: this.breadcrumb,
+      parentCell: this.parentCell
     };
   }
 

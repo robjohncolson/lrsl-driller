@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server)
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v1.6.3 (Fixed AI grading prompt placeholder replacement)
+**Current Version**: v2.0 (Hierarchical territory subdivision with fractal model)
 
 ## Development Commands
 
@@ -49,6 +49,8 @@ The `index.html` legacy app works standalone (file:// protocol) but the modular 
 
 **Shared** - `shared/` - Code shared between platform and server:
 - `scoring.config.js` - Level-weighted scoring formula (exports `calculateWeightedPoints`, `getLevelMultiplier`, `getPointsBreakdown`)
+- `address-utils.js` - Chess-notation addressing for v2.0 hierarchy (exports `coordsToAddress`, `addressToCoords`, `buildAddress`, `getParentAddress`, `getLevel`, `getBreadcrumb`)
+- `gridwars.config.js` - Grid Wars constants (must sync with `railway-server/gridwars.config.js`)
 
 **Cartridges (Lessons)** - `cartridges/{id}/` - content-specific, fully self-contained:
 - `manifest.json` - Config: modes, inputs, hints, progression, grading settings
@@ -142,7 +144,22 @@ Star tiers based on **total penalties** (hints + retries count equally):
 
 A territory control game where students earn points from drill stars to claim cells on a shared map. Located in `platform/game/` with server endpoints at `/api/grid-wars/*`.
 
-**Philosophy (v1.6.1)**: Extreme scarcity on 8×8 map (64 cells for 41 students). Leaderboard sorted by `territories_count` (current holdings). No resource nodes — pure territory control.
+### v2.0: Hierarchical Subdivision (Fractal Model)
+
+Macro cells (8×8 grid) can be "developed" into 8×8 subcell grids. Same renderer, different data - like folders in a file system.
+
+**Key Mechanics:**
+- **Develop** (100 pts): Owner subdivides their cell, keeps center 4 subcells (d4, d5, e4, e5)
+- **Drill** (75 pts): Attacker forces subdivision at 85%+ saturation, gets corner a1
+- **Navigation**: Click developed cell to zoom in; breadcrumb/Escape to zoom out
+- **Addressing**: Chess notation - "d5", "d5.c3", "d5.c3.a1" (max 3 levels)
+
+**Files for v2.0:**
+- `shared/address-utils.js` - Coordinate ↔ notation conversion
+- `railway-server/address-utils.js` - CommonJS copy for server
+- `railway-server/migrations/003_v2.0_hierarchical.sql` - Database schema
+
+**Leaderboard**: Shows `"3 + 12 📦"` format (macro cells + subcells), sorted by `(macro × 64) + sub`
 
 ### Cost Calculation (Stacked Multipliers)
 ```
@@ -154,22 +171,17 @@ FINAL_COST = BASE × SCARCITY × (1-VELOCITY) × (1-GUERRILLA) × (1-OVEREXTENSI
 - **Guerrilla** (size ratio): -30% to -50% for small vs large (scaled for 64 cells)
 - **Overextension** (isolation): -15% to -30% for edge/isolated cells
 
-### v1.6.1 Key Features
+### Earlier Features (v1.3-v1.6)
 - **8×8 map**: 64 cells total, extreme scarcity (boot bonus 30, can't claim immediately)
-- **Territory leaderboard**: Header "🏰 TERRITORY HELD", sorted by `territories_count` (not lifetime_earned)
-- **No resource nodes**: `nodesEnabled: false`, pure territory control
+- **Territory leaderboard**: Sorted by `territories_count` (current holdings)
 - **Scarcity phases**: EXPANSION (0-30%), TENSION (30-60%), SCARCITY (60-85%), SATURATION (85-100%)
 - **Bounty system**: Players with >20% of map (13 cells) become targets (+10 pts for attackers)
-- **Centralized config**: Server imports from `shared/gridwars.config.js` (single source of truth)
-- **Startup logging**: Server logs config values on startup for deployment verification
-
-### State Machine Documentation
-See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions (32 sections covering grading, game engine, Grid Wars, WebSocket, AI normalization, key pool rotation, prompt template interpolation, etc.).
-
-### Earlier Features (v1.3-v1.5)
 - **Level-weighted scoring**: Stars worth more at higher levels (0.5x→3.0x). Uses `shared/scoring.config.js`
 - **Session management**: Teacher can end/resume sessions, freeze claims while drills continue
 - **Velocity persistence**: Point events stored in Supabase (survives restarts)
+
+### State Machine Documentation
+See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions (45 sections covering grading, game engine, Grid Wars v2.0 hierarchy, WebSocket, AI normalization, etc.).
 
 ## Environment Variables (Railway Server)
 
@@ -181,13 +193,13 @@ See `docs/STATE_MACHINES.md` for complete diagrams of all component state transi
 ## Testing
 
 ```bash
-npm test                                          # All tests
+npm test                                          # All tests (971 tests)
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
-npx vitest run tests/game/grid-wars-v1.6.test.js   # Grid Wars v1.6 tests
-npx vitest run tests/game/grid-wars-v1.6.2.test.js # v1.6.2 regression tests (32 tests)
+npx vitest run tests/game/grid-wars-v2.0.test.js # v2.0 hierarchy tests (40 tests)
+npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
-npx vitest run tests/server/prompt-utils.test.js # v1.6.3 prompt placeholder tests
+npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
 ```
 
 Test organization:
@@ -205,7 +217,9 @@ SQL migrations for Supabase are in `railway-server/migrations/`. Run these in Su
 
 ```bash
 # Current migrations:
-railway-server/migrations/001_point_events.sql  # v1.5.1: Velocity tracking (uses player_id column)
+railway-server/migrations/001_point_events.sql       # v1.5.1: Velocity tracking
+railway-server/migrations/002_v1.6_fresh_start.sql   # v1.6: Fresh start schema
+railway-server/migrations/003_v2.0_hierarchical.sql  # v2.0: Hierarchy columns (address, parent_address, is_developed, cell_level)
 ```
 
 **Note**: The `point_events` table uses `player_id` column (not `username`). This was fixed in v1.6.2.
@@ -214,34 +228,27 @@ railway-server/migrations/001_point_events.sql  # v1.5.1: Velocity tracking (use
 
 - `shared/gridwars.config.js` - Grid Wars constants for frontend (Vite build)
 - `railway-server/gridwars.config.js` - **Copy** for Railway deployment (must stay in sync with shared/)
+- `shared/address-utils.js` - Chess notation utilities for v2.0 hierarchy
+- `railway-server/address-utils.js` - **CommonJS copy** for Railway (must stay in sync with shared/)
 - `shared/scoring.config.js` - Level-weighted scoring formula
-- `railway-server/prompt-utils.js` - Prompt template interpolation (v1.6.3)
+- `railway-server/prompt-utils.js` - Prompt template interpolation
 - `cartridges/registry.json` - Available cartridge listing
 
 ## Important Notes
 
-**Two config copies**: Railway deploys only `railway-server/`, so it has its own copy of `gridwars.config.js`. When changing Grid Wars constants, **update both files**:
-1. `shared/gridwars.config.js` (frontend)
-2. `railway-server/gridwars.config.js` (server)
+**Synced file copies**: Railway deploys only `railway-server/`, so it has its own copies. When changing these, **update both files**:
+
+| Shared (frontend) | Railway copy (server) |
+|-------------------|----------------------|
+| `shared/gridwars.config.js` | `railway-server/gridwars.config.js` |
+| `shared/address-utils.js` | `railway-server/address-utils.js` |
 
 **Leaderboard persistence gap**: `app.html` saves stars to localStorage only — does NOT call `/api/progress`. Students using the new platform don't appear on the server leaderboard. See `KNOWN_ISSUES.md` for details.
 
-See `KNOWN_ISSUES.md` for documented bugs and debugging context.
+## Version History (Bug Fixes)
 
-## v1.6.3 Bug Fix
+**v2.0**: Hierarchical subdivision - develop/drill actions, breadcrumb navigation, presence dots replacing avatars
 
-**AI grading prompt placeholder**: Templates using `{{STUDENT_ANSWER}}` (SCREAMING_SNAKE_CASE) were not getting the student answer replaced, causing AI to respond "student answer is missing". Fixed by adding explicit handling for the uppercase alias in `buildCartridgePrompt()`.
+**v1.6.3**: AI grading prompt placeholder - `{{STUDENT_ANSWER}}` now works as alias for `{{studentAnswer}}`
 
-- `buildCartridgePrompt` extracted to `railway-server/prompt-utils.js` for testability
-- Both `{{STUDENT_ANSWER}}` and `{{studentAnswer}}` now work as aliases for `scenario.studentAnswer`
-- 27 regression tests added in `tests/server/prompt-utils.test.js`
-
-## v1.6.2 Bug Fixes
-
-These issues were fixed in v1.6.2 — included here for context if similar bugs arise:
-
-1. **Frontend grid size**: `grid-panel.js` had hardcoded `gridSize: 20` instead of using `GRID_WARS_CONFIG.mapSize`. Fixed by reading from config.
-
-2. **AI grading parser**: Server rejected valid JSON responses in direct format `{score, feedback}`. Added `normalizeGradingResponse()` to accept both direct and field-keyed formats.
-
-3. **Velocity query column**: Code used `username` but table has `player_id` column. Fixed in both `recordPointEvent()` and `getPlayerVelocity()`.
+**v1.6.2**: Three fixes - grid size from config (not hardcoded), AI grading parser accepts direct JSON format, velocity query uses `player_id` column

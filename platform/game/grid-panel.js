@@ -248,19 +248,25 @@ export class GridPanel {
           </div>
 
           <div style="color:#94a3b8;margin-bottom:8px;">
-            <span style="color:#22d3ee;">2.</span> <strong style="color:#e2e8f0;">Move</strong> - Use arrow keys to move your dot around the map
+            <span style="color:#22d3ee;">2.</span> <strong style="color:#e2e8f0;">Claim</strong> - Click a cell to claim (40 pts) or takeover enemy territory
           </div>
 
           <div style="color:#94a3b8;margin-bottom:8px;">
-            <span style="color:#22d3ee;">3.</span> <strong style="color:#e2e8f0;">Claim</strong> - Press SPACEBAR to claim (10 pts) or takeover (20 pts)
+            <span style="color:#22d3ee;">3.</span> <strong style="color:#e2e8f0;">Develop</strong> - Subdivide your cell into 64 subcells (100 pts)<br>
+            <span style="font-size:0.65rem;color:#64748b;margin-left:12px;">You keep the center 4 subcells, others become unclaimed</span>
+          </div>
+
+          <div style="color:#94a3b8;margin-bottom:8px;">
+            <span style="color:#22d3ee;">4.</span> <strong style="color:#e2e8f0;">Drill</strong> - Force-subdivide an enemy cell at 85%+ map fill (75 pts)<br>
+            <span style="font-size:0.65rem;color:#64748b;margin-left:12px;">You get the corner cell, they keep the center 4</span>
           </div>
 
           <div style="color:#94a3b8;">
-            <span style="color:#22d3ee;">4.</span> <strong style="color:#e2e8f0;">Health</strong> - Stay near your territory to stay healthy!
+            <span style="color:#22d3ee;">5.</span> <strong style="color:#e2e8f0;">Navigate</strong> - Click developed cells to zoom in, ESC to zoom out
           </div>
 
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid #374151;color:#64748b;font-size:0.65rem;">
-            Controls: Arrow keys = Move | Spacebar = Claim | Click = Claim cell
+            Controls: Click = Select/Claim | ESC = Zoom Out | Developed cells = Click to enter
           </div>
         </div>
 
@@ -272,6 +278,11 @@ export class GridPanel {
 
         <!-- Expandable content -->
         <div id="gw-content" style="display:none;">
+          <!-- v2.0: Breadcrumb Navigation -->
+          <div id="gw-breadcrumb" style="display:none;padding:6px 12px;background:#0a0a0a;border-bottom:1px solid #166534;font-size:0.7rem;">
+            <span id="gw-breadcrumb-content" style="color:#22d3ee;">MAP</span>
+          </div>
+
           <!-- Mini Grid -->
           <div style="padding:8px;background:#030712;">
             <div style="aspect-ratio:1;max-width:100%;margin:0 auto;background:#000;border:1px solid #14532d;border-radius:4px;overflow:hidden;">
@@ -285,6 +296,15 @@ export class GridPanel {
             <div style="display:flex;gap:8px;">
               <button class="gw-action-btn" data-action="claim" data-cost="10" style="flex:1;">
                 □ Claim Territory<span class="gw-cost">10⚡</span>
+              </button>
+            </div>
+            <!-- v2.0: Develop/Drill buttons (hidden by default) -->
+            <div id="gw-hierarchy-actions" style="display:none;margin-top:8px;border-top:1px solid #374151;padding-top:8px;">
+              <button id="gw-develop-btn" class="gw-action-btn" style="display:none;width:100%;background:#1e3a5f;border-color:#22d3ee;" disabled>
+                🏗️ DEVELOP<span class="gw-cost">100⚡</span>
+              </button>
+              <button id="gw-drill-btn" class="gw-action-btn" style="display:none;width:100%;background:#5f1e1e;border-color:#ef4444;margin-top:6px;" disabled>
+                ⛏️ DRILL IN<span class="gw-cost">75⚡</span>
               </button>
             </div>
           </div>
@@ -355,6 +375,20 @@ export class GridPanel {
         #gw-help-btn:hover {
           border-color: #00ff41;
           color: #00ff41;
+        }
+        /* v2.0: Breadcrumb styles */
+        .gw-breadcrumb-part {
+          cursor: pointer;
+          padding: 2px 6px;
+          border-radius: 3px;
+          transition: background 0.2s;
+        }
+        .gw-breadcrumb-part:hover {
+          background: rgba(34, 211, 238, 0.2);
+        }
+        .gw-breadcrumb-separator {
+          color: #6b7280;
+          margin: 0 4px;
         }
         /* v1.6: Leaderboard styles (single view, no tabs) */
         #gw-leaderboard-content::-webkit-scrollbar {
@@ -516,6 +550,18 @@ export class GridPanel {
 
     // v1.6: Single leaderboard (no tabs)
     this._leaderboardData = null;
+
+    // v2.0: Develop button
+    const developBtn = this.container.querySelector('#gw-develop-btn');
+    if (developBtn) {
+      developBtn.addEventListener('click', () => this.handleDevelop());
+    }
+
+    // v2.0: Drill button
+    const drillBtn = this.container.querySelector('#gw-drill-btn');
+    if (drillBtn) {
+      drillBtn.addEventListener('click', () => this.handleDrill());
+    }
   }
 
   /**
@@ -531,21 +577,48 @@ export class GridPanel {
 
   /**
    * Handle keydown events for avatar movement
+   * v2.0: Escape/Backspace now zoom out when inside a developed cell
    */
   async handleKeydown(e) {
     // Ignore if user is typing in an input field
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-    // ESC key collapses panel (works even when collapsed, no-op)
-    if (e.key === 'Escape' && this.isExpanded) {
-      e.preventDefault();
-      this.toggleExpand();
+    // v2.0: Escape/Backspace - zoom out if inside a developed cell
+    if (e.key === 'Escape' || e.key === 'Backspace') {
+      const navState = this.state?.getNavigationState?.();
+      if (navState && navState.currentLevel > 0) {
+        e.preventDefault();
+        await this.state.zoomOut();
+        this.updateBreadcrumb();
+        this.syncRendererState();
+        return;
+      }
+      // Fallback: ESC collapses panel if at root level
+      if (e.key === 'Escape' && this.isExpanded) {
+        e.preventDefault();
+        this.toggleExpand();
+        return;
+      }
       return;
     }
 
     // Only handle movement when panel is expanded
     if (!this.isExpanded) return;
 
+    // v2.0: Arrow key movement disabled when hierarchy mode is enabled
+    // (avatars replaced with presence dots)
+    if (GRID_WARS_CONFIG.hierarchyEnabled) {
+      // Spacebar can still claim at selected cell
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        if (this._selectedForAction) {
+          await this.handleClaimAtPosition();
+        }
+      }
+      return;
+    }
+
+    // Legacy mode: arrow key movement
     const keyToDirection = {
       'ArrowUp': 'up',
       'ArrowDown': 'down',
@@ -749,6 +822,11 @@ export class GridPanel {
       cellSize: size / mapSize
     });
 
+    // v2.0: Enable presence dots mode (replaces moveable avatars)
+    if (GRID_WARS_CONFIG.hierarchyEnabled) {
+      this.renderer.setUsePresenceDots(true);
+    }
+
     // Mouse events on canvas
     canvas.addEventListener('click', (e) => this.onCanvasClick(e));
     canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e));
@@ -782,6 +860,7 @@ export class GridPanel {
 
   /**
    * Handle canvas click - claim/takeover territory
+   * v2.0: Click on developed cell zooms in instead of claiming
    */
   async onCanvasClick(e) {
     const cell = this.renderer.mouseToGrid(e.clientX, e.clientY);
@@ -790,11 +869,27 @@ export class GridPanel {
     this.selectedCell = cell;
     this.renderer.pulseCell(cell.x, cell.y, '#ffffff', 300);
 
+    // v2.0: Check if cell is developed - zoom in instead of claim
+    if (this.state?.isDeveloped?.(cell.x, cell.y)) {
+      const address = this.state.getCellAddress(cell.x, cell.y);
+      if (address) {
+        await this.state.zoomIn(address);
+        this.updateBreadcrumb();
+        this.syncRendererState();
+        this.updateHierarchyActions();
+        this.updateStatus(`Viewing inside ${address.toUpperCase()}`);
+        return;
+      }
+    }
+
     const owner = this.state.getTerritoryOwner(cell.x, cell.y);
 
-    // Can't claim own territory
+    // v2.0: Show develop/drill actions for selected cell
+    this.updateHierarchyActions(cell.x, cell.y, owner);
+
+    // Can't claim own territory (but can develop it)
     if (owner === this.state.username) {
-      this.updateStatus('You already own this territory');
+      this.updateStatus('Your territory — DEVELOP to subdivide');
       return;
     }
 
@@ -839,6 +934,7 @@ export class GridPanel {
   /**
    * Sync renderer state from state manager
    * v1.2: Removed contested_by (contestation system removed)
+   * v2.0: Added hierarchy data (is_developed, address, cell_level), presence dots
    */
   syncRendererState() {
     if (!this.renderer || !this.state) return;
@@ -850,11 +946,20 @@ export class GridPanel {
     for (const t of renderState.territories) {
       this.renderer.setTerritory(t.x, t.y, t.owner, {
         strength: t.strength,
-        node_type: t.node_type
+        node_type: t.node_type,
+        is_developed: t.is_developed,  // v2.0
+        address: t.address,            // v2.0
+        cell_level: t.cell_level       // v2.0
       });
     }
 
-    // Update avatars
+    // v2.0: Update online players for presence dots
+    if (GRID_WARS_CONFIG.hierarchyEnabled && this.renderer.setOnlinePlayers) {
+      const onlinePlayers = (renderState.players || []).map(p => p.username);
+      this.renderer.setOnlinePlayers(onlinePlayers);
+    }
+
+    // Update avatars (legacy - only used when presence dots disabled)
     this.renderer.setAvatars(renderState.players || []);
 
     // Update surge cell
@@ -1107,6 +1212,7 @@ export class GridPanel {
   /**
    * Render/update the panel
    * v1.2: Removed updateContestedDisplay (contestation system removed)
+   * v2.0: Added breadcrumb update
    */
   render() {
     this.syncRendererState();
@@ -1122,6 +1228,7 @@ export class GridPanel {
     this.updateDiminishingDisplay(); // v1.4
     this.updateScarcityDisplay();    // v1.5
     this.updateVelocityDisplay();    // v1.5
+    this.updateBreadcrumb();         // v2.0
   }
 
   /**
@@ -1325,6 +1432,7 @@ export class GridPanel {
 
   /**
    * v1.6: Render single leaderboard content
+   * v2.0: Shows macro + subcell counts when hierarchy is enabled
    */
   renderLeaderboardContent() {
     const contentEl = this.container?.querySelector('#gw-leaderboard-content');
@@ -1337,10 +1445,17 @@ export class GridPanel {
       return;
     }
 
-    // v1.6.1: Sort by territories_count, show only territory held
-    const sortedEntries = [...entries].sort((a, b) =>
-      (b.territories_count || 0) - (a.territories_count || 0)
-    );
+    // v2.0: Sort by weighted score (macro cells count more than subcells)
+    // Each macro cell is worth 64 subcells for ranking purposes
+    const sortedEntries = [...entries].sort((a, b) => {
+      const aScore = (a.macro_cells || 0) * 64 + (a.sub_cells || 0);
+      const bScore = (b.macro_cells || 0) * 64 + (b.sub_cells || 0);
+      // Fallback to territories_count if v2.0 fields not present
+      if (aScore === 0 && bScore === 0) {
+        return (b.territories_count || 0) - (a.territories_count || 0);
+      }
+      return bScore - aScore;
+    });
 
     // Find current player's rank (in sorted order)
     const myIndex = sortedEntries.findIndex(e => e.username === this.state?.username);
@@ -1354,12 +1469,28 @@ export class GridPanel {
       const isMe = entry.username === this.state?.username;
       const name = entry.real_name || entry.username || 'Unknown';
       const displayName = name.length > 12 ? name.slice(0, 10) + '...' : name;
-      const cells = entry.territories_count || 0;
+
+      // v2.0: Show macro + sub cells if hierarchy data present
+      const macro = entry.macro_cells || 0;
+      const sub = entry.sub_cells || 0;
+      const hasHierarchy = macro > 0 || sub > 0;
+
+      let cellDisplay;
+      if (hasHierarchy && GRID_WARS_CONFIG.hierarchyEnabled) {
+        // Format: "3 + 12 📦" (macro + subcells)
+        cellDisplay = sub > 0
+          ? `${macro} + ${sub} 📦`
+          : `${macro} 🏰`;
+      } else {
+        // Legacy: just show total
+        const cells = entry.territories_count || 0;
+        cellDisplay = `${cells} 🏰`;
+      }
 
       return `
         <div class="gw-lb-entry${isMe ? ' my-entry' : ''}" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;${isMe ? 'background:rgba(0,255,65,0.1);margin:0 -4px;padding:4px;border-radius:3px;' : ''}">
           <span style="color:${isMe ? '#00ff41' : '#e2e8f0'};">${i + 1}. ${displayName}</span>
-          <span style="color:#fbbf24;font-weight:bold;">${cells} 🏰</span>
+          <span style="color:#fbbf24;font-weight:bold;">${cellDisplay}</span>
         </div>
       `;
     }).join('');
@@ -1417,6 +1548,172 @@ export class GridPanel {
     const indicator = this.container?.querySelector('#gw-resync-indicator');
     if (indicator) {
       indicator.style.display = 'none';
+    }
+  }
+
+  // ============================================
+  // v2.0: HIERARCHY NAVIGATION METHODS
+  // ============================================
+
+  /**
+   * v2.0: Update breadcrumb navigation display
+   */
+  updateBreadcrumb() {
+    const breadcrumbContainer = this.container?.querySelector('#gw-breadcrumb');
+    const breadcrumbContent = this.container?.querySelector('#gw-breadcrumb-content');
+    if (!breadcrumbContainer || !breadcrumbContent || !this.state) return;
+
+    const navState = this.state.getNavigationState?.() || { currentLevel: 0, breadcrumb: [] };
+
+    if (navState.currentLevel === 0) {
+      // At root level - hide breadcrumb
+      breadcrumbContainer.style.display = 'none';
+      return;
+    }
+
+    // Show breadcrumb when zoomed in
+    breadcrumbContainer.style.display = 'block';
+
+    // Build breadcrumb HTML
+    const parts = ['MAP', ...navState.breadcrumb.map(p => p.toUpperCase())];
+    const html = parts.map((part, i) => {
+      const isLast = i === parts.length - 1;
+      const address = i === 0 ? null : navState.breadcrumb.slice(0, i).join('.');
+
+      if (isLast) {
+        // Current location - not clickable
+        return `<span style="color:#00ff41;font-weight:bold;">${part}</span>`;
+      } else {
+        // Clickable ancestor
+        return `<span class="gw-breadcrumb-part" data-address="${address || ''}">${part}</span><span class="gw-breadcrumb-separator">›</span>`;
+      }
+    }).join('');
+
+    breadcrumbContent.innerHTML = html;
+
+    // Add click handlers
+    breadcrumbContent.querySelectorAll('.gw-breadcrumb-part').forEach(el => {
+      el.addEventListener('click', async () => {
+        const address = el.dataset.address || null;
+        await this.state.zoomTo(address);
+        this.updateBreadcrumb();
+        this.syncRendererState();
+        this.updateHierarchyActions();
+      });
+    });
+  }
+
+  /**
+   * v2.0: Update develop/drill button visibility based on selected cell
+   */
+  updateHierarchyActions(x = null, y = null, owner = null) {
+    const container = this.container?.querySelector('#gw-hierarchy-actions');
+    const developBtn = this.container?.querySelector('#gw-develop-btn');
+    const drillBtn = this.container?.querySelector('#gw-drill-btn');
+
+    if (!container || !developBtn || !drillBtn || !this.state) return;
+
+    // Hide all by default
+    container.style.display = 'none';
+    developBtn.style.display = 'none';
+    drillBtn.style.display = 'none';
+
+    // Check if hierarchy is enabled
+    if (!GRID_WARS_CONFIG.hierarchyEnabled) return;
+
+    // No cell selected
+    if (x === null || y === null) {
+      this._selectedForAction = null;
+      return;
+    }
+
+    // Store selected cell for action
+    const address = this.state.getCellAddress(x, y);
+    this._selectedForAction = { x, y, address, owner };
+
+    // Check if cell is already developed
+    if (this.state.isDeveloped?.(x, y)) {
+      return; // Already developed - no actions available
+    }
+
+    const points = this.state.getActionPoints();
+    const navState = this.state.getNavigationState?.() || { currentLevel: 0 };
+
+    // Check if at max subdivision level
+    const maxLevel = GRID_WARS_CONFIG.maxSubdivisionLevel || 2;
+    if (navState.currentLevel >= maxLevel) {
+      return; // Can't subdivide further
+    }
+
+    container.style.display = 'block';
+
+    // DEVELOP button - for own territory
+    if (owner === this.state.username) {
+      developBtn.style.display = 'block';
+      const cost = GRID_WARS_CONFIG.developmentCost || 100;
+      developBtn.disabled = points < cost;
+      developBtn.querySelector('.gw-cost').textContent = `${cost}⚡`;
+    }
+
+    // DRILL button - for enemy territory at 85%+ saturation
+    if (owner && owner !== this.state.username) {
+      const canDrill = this.state.canDrill?.() || false;
+      if (canDrill) {
+        drillBtn.style.display = 'block';
+        const cost = GRID_WARS_CONFIG.drillCost || 75;
+        drillBtn.disabled = points < cost;
+        drillBtn.querySelector('.gw-cost').textContent = `${cost}⚡`;
+      }
+    }
+  }
+
+  /**
+   * v2.0: Handle DEVELOP button click
+   */
+  async handleDevelop() {
+    if (!this._selectedForAction || !this.state) return;
+
+    const { address } = this._selectedForAction;
+    if (!address) {
+      this.updateStatus('No cell selected for development');
+      return;
+    }
+
+    try {
+      await this.state.developCell(address);
+      sounds.claim();
+      this.showToast(`Developed ${address.toUpperCase()} — Zoom in to claim subcells!`);
+      this.syncRendererState();
+      this.updateHierarchyActions();
+      this._selectedForAction = null;
+    } catch (err) {
+      sounds.error();
+      this.updateStatus(`Develop failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * v2.0: Handle DRILL button click
+   */
+  async handleDrill() {
+    if (!this._selectedForAction || !this.state) return;
+
+    const { address } = this._selectedForAction;
+    if (!address) {
+      this.updateStatus('No cell selected for drilling');
+      return;
+    }
+
+    try {
+      await this.state.drillCell(address);
+      sounds.takeover();
+      this.showToast(`Drilled into ${address.toUpperCase()} — You got the corner!`);
+      this.syncRendererState();
+      this.updateHierarchyActions();
+      this._selectedForAction = null;
+    } catch (err) {
+      sounds.error();
+      this.updateStatus(`Drill failed: ${err.message}`);
     }
   }
 

@@ -11,6 +11,18 @@ const {
 } = require('./avatar-utils.js');
 const { GRID_WARS_CONFIG } = require('./gridwars.config.js');
 const { buildCartridgePrompt } = require('./prompt-utils.js');
+const {
+  coordsToAddress,
+  addressToCoords,
+  buildAddress,
+  getParentAddress,
+  getLevel,
+  getBreadcrumb,
+  parseAddress,
+  isCenterCell,
+  CENTER_CELLS,
+  DRILL_CELL
+} = require('./address-utils.js');
 
 // ============================================
 // CONFIGURATION
@@ -40,12 +52,15 @@ console.log('AI Providers configured:', {
   groq: !!GROQ_API_KEY
 });
 
-// Grid Wars v1.6 config verification
+// Grid Wars config verification
 console.log('=== GRID WARS CONFIG ===');
 console.log('mapSize:', GRID_WARS_CONFIG.mapSize);
 console.log('nodesEnabled:', GRID_WARS_CONFIG.nodesEnabled);
 console.log('claimCost:', GRID_WARS_CONFIG.claimCost);
 console.log('bootBonus:', GRID_WARS_CONFIG.bootBonus);
+console.log('v2.0 hierarchyEnabled:', GRID_WARS_CONFIG.hierarchyEnabled);
+console.log('v2.0 developmentCost:', GRID_WARS_CONFIG.developmentCost);
+console.log('v2.0 drillCost:', GRID_WARS_CONFIG.drillCost);
 console.log('========================');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3564,6 +3579,7 @@ app.get('/api/grid-wars/games/active', async (req, res) => {
 app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
   try {
     const { gameId } = req.params;
+    const { parent } = req.query;  // v2.0: Optional parent address for hierarchy navigation
 
     // Get game info
     const { data: game, error: gameError } = await supabase
@@ -3579,13 +3595,38 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
       throw gameError;
     }
 
-    // Get territories with all new fields
-    const { data: territories, error: terrError } = await supabase
+    // v2.0: Determine target level and parent for hierarchy queries
+    const targetLevel = parent ? getLevel(parent) + 1 : 0;
+
+    // Get territories with all fields including v2.0 hierarchy fields
+    let territoriesQuery = supabase
       .from('grid_wars_territories')
-      .select('x, y, owner, claimed_at, strength, contested_by, contested_since, node_type')
-      .eq('game_id', gameId);
+      .select('x, y, owner, claimed_at, strength, contested_by, contested_since, node_type, address, parent_address, is_developed, cell_level')
+      .eq('game_id', gameId)
+      .eq('cell_level', targetLevel);
+
+    // v2.0: Filter by parent address if zoomed in
+    if (parent) {
+      territoriesQuery = territoriesQuery.eq('parent_address', parent);
+    } else {
+      territoriesQuery = territoriesQuery.is('parent_address', null);
+    }
+
+    const { data: territories, error: terrError } = await territoriesQuery;
 
     if (terrError) throw terrError;
+
+    // v2.0: Get parent cell info if zoomed in
+    let parentCell = null;
+    if (parent) {
+      const { data: parentData } = await supabase
+        .from('grid_wars_territories')
+        .select('*')
+        .eq('game_id', gameId)
+        .eq('address', parent)
+        .single();
+      parentCell = parentData;
+    }
 
     // Get structures (legacy)
     const { data: structures, error: structError } = await supabase
@@ -3630,8 +3671,19 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
         takeoverCost: GRID_WARS_CONFIG.takeoverCost,
         nodeClaimCost: GRID_WARS_CONFIG.nodeClaimCost,
         surgeCost: GRID_WARS_CONFIG.surgeCost,
-        reinforceCost: GRID_WARS_CONFIG.reinforceCost
-      }
+        reinforceCost: GRID_WARS_CONFIG.reinforceCost,
+        // v2.0: Hierarchy config
+        hierarchyEnabled: GRID_WARS_CONFIG.hierarchyEnabled,
+        developmentCost: GRID_WARS_CONFIG.developmentCost,
+        drillCost: GRID_WARS_CONFIG.drillCost,
+        drillSaturationThreshold: GRID_WARS_CONFIG.drillSaturationThreshold,
+        subcellClaimCost: GRID_WARS_CONFIG.subcellClaimCost
+      },
+      // v2.0: Hierarchy navigation state
+      currentLevel: targetLevel,
+      parentAddress: parent || null,
+      parentCell,
+      breadcrumb: getBreadcrumb(parent)
     });
   } catch (err) {
     console.error('GET /api/grid-wars/games/:gameId/state error:', err);
@@ -4792,8 +4844,361 @@ app.post('/api/grid-wars/points/add', async (req, res) => {
   }
 });
 
+// ============================================
+// v2.0: HIERARCHICAL SUBDIVISION ENDPOINTS
+// ============================================
+
+/**
+ * POST /api/grid-wars/develop
+ * Owner develops (subdivides) their cell into 8x8 subcells
+ * - Costs 100 points (configurable via developmentCost)
+ * - Owner keeps center 4 cells (d4, d5, e4, e5)
+ * - Creates 64 subcells (60 neutral, 4 owned)
+ */
+app.post('/api/grid-wars/develop', async (req, res) => {
+  try {
+    const { gameId, username, address } = req.body;
+
+    if (!gameId || !username || !address) {
+      return res.status(400).json({ error: 'gameId, username, and address required' });
+    }
+
+    // Check if hierarchy is enabled
+    if (!GRID_WARS_CONFIG.hierarchyEnabled) {
+      return res.status(501).json({ error: 'Hierarchical territories not enabled' });
+    }
+
+    // 1. Verify cell exists and player owns it
+    const { data: cell, error: cellError } = await supabase
+      .from('grid_wars_territories')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('address', address)
+      .single();
+
+    if (cellError || !cell) {
+      return res.status(404).json({ error: 'Cell not found' });
+    }
+
+    if (cell.owner !== username) {
+      return res.status(403).json({ error: 'You do not own this cell' });
+    }
+
+    if (cell.is_developed) {
+      return res.status(400).json({ error: 'Cell already developed' });
+    }
+
+    // Check max subdivision level
+    const currentLevel = getLevel(address);
+    if (currentLevel >= GRID_WARS_CONFIG.maxSubdivisionLevel) {
+      return res.status(400).json({
+        error: `Maximum subdivision depth reached (${GRID_WARS_CONFIG.maxSubdivisionLevel})`
+      });
+    }
+
+    // 2. Check player has enough points
+    const { data: player, error: playerError } = await supabase
+      .from('grid_wars_players')
+      .select('action_points')
+      .eq('game_id', gameId)
+      .eq('username', username)
+      .single();
+
+    if (playerError || !player) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    const cost = GRID_WARS_CONFIG.developmentCost;
+    if (player.action_points < cost) {
+      return res.status(400).json({
+        error: 'Insufficient points',
+        required: cost,
+        available: player.action_points
+      });
+    }
+
+    // 3. Deduct points
+    await supabase
+      .from('grid_wars_players')
+      .update({ action_points: player.action_points - cost })
+      .eq('game_id', gameId)
+      .eq('username', username);
+
+    // 4. Mark cell as developed
+    await supabase
+      .from('grid_wars_territories')
+      .update({ is_developed: true })
+      .eq('game_id', gameId)
+      .eq('address', address);
+
+    // 5. Create 64 subcells
+    const newLevel = currentLevel + 1;
+    const centerCells = GRID_WARS_CONFIG.ownerRetentionCells || CENTER_CELLS;
+    const subcells = [];
+    const now = new Date().toISOString();
+
+    for (let x = 0; x < 8; x++) {
+      for (let y = 0; y < 8; y++) {
+        const localAddress = coordsToAddress(x, y);
+        const fullAddress = buildAddress(address, x, y);
+        const isCenter = centerCells.includes(localAddress);
+
+        subcells.push({
+          game_id: gameId,
+          address: fullAddress,
+          parent_address: address,
+          cell_level: newLevel,
+          x: x,
+          y: y,
+          owner: isCenter ? username : null,
+          claimed_at: isCenter ? now : null,
+          is_developed: false,
+          strength: isCenter ? GRID_WARS_CONFIG.maxCellStrength : null
+        });
+      }
+    }
+
+    const { error: insertError } = await supabase
+      .from('grid_wars_territories')
+      .insert(subcells);
+
+    if (insertError) {
+      console.error('Failed to create subcells:', insertError);
+      return res.status(500).json({ error: 'Failed to create subcells' });
+    }
+
+    // 6. Broadcast development event
+    broadcast({
+      type: 'cell_developed',
+      gameId,
+      address,
+      developer: username,
+      newCells: 64,
+      ownerRetained: centerCells.length,
+      newLevel
+    });
+
+    // Update leaderboard
+    broadcastLeaderboardUpdate(gameId);
+
+    console.log(`Grid Wars v2.0: ${username} developed ${address} (64 subcells, kept ${centerCells.length})`);
+
+    res.json({
+      success: true,
+      address,
+      subcellsCreated: 64,
+      ownerRetained: centerCells.length,
+      ownerCells: centerCells.map(c => buildAddress(address, addressToCoords(c).x, addressToCoords(c).y)),
+      cost
+    });
+
+  } catch (err) {
+    console.error('POST /api/grid-wars/develop error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/grid-wars/drill
+ * Attacker forces subdivision of enemy cell
+ * - Only available at 85%+ map saturation
+ * - Costs 75 points (configurable via drillCost)
+ * - Original owner keeps center 4 cells (d4, d5, e4, e5)
+ * - Attacker gets corner cell (a1)
+ * - Creates 64 subcells (59 neutral, 4 defender, 1 attacker)
+ */
+app.post('/api/grid-wars/drill', async (req, res) => {
+  try {
+    const { gameId, username, targetAddress } = req.body;
+
+    if (!gameId || !username || !targetAddress) {
+      return res.status(400).json({ error: 'gameId, username, and targetAddress required' });
+    }
+
+    // Check if hierarchy is enabled
+    if (!GRID_WARS_CONFIG.hierarchyEnabled) {
+      return res.status(501).json({ error: 'Hierarchical territories not enabled' });
+    }
+
+    // 1. Check map saturation (drilling only at 85%+)
+    const { data: allCells, error: countError } = await supabase
+      .from('grid_wars_territories')
+      .select('owner')
+      .eq('game_id', gameId)
+      .eq('cell_level', 0);  // Only check macro level
+
+    if (countError) {
+      return res.status(500).json({ error: 'Failed to check map saturation' });
+    }
+
+    const totalCells = GRID_WARS_CONFIG.mapSize * GRID_WARS_CONFIG.mapSize;
+    const claimedCells = (allCells || []).filter(c => c.owner).length;
+    const fillPercent = (claimedCells / totalCells) * 100;
+    const threshold = GRID_WARS_CONFIG.drillSaturationThreshold || 85;
+
+    if (fillPercent < threshold) {
+      return res.status(400).json({
+        error: `Drilling only available at ${threshold}%+ map saturation`,
+        currentFill: fillPercent.toFixed(1),
+        required: threshold
+      });
+    }
+
+    // 2. Verify target cell exists and is enemy-owned
+    const { data: target, error: targetError } = await supabase
+      .from('grid_wars_territories')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('address', targetAddress)
+      .single();
+
+    if (targetError || !target) {
+      return res.status(404).json({ error: 'Cell not found' });
+    }
+
+    if (!target.owner) {
+      return res.status(400).json({ error: 'Cannot drill neutral cell — just claim it' });
+    }
+
+    if (target.owner === username) {
+      return res.status(400).json({ error: 'Cannot drill your own cell — use develop instead' });
+    }
+
+    if (target.is_developed) {
+      return res.status(400).json({ error: 'Cell already developed — zoom in and claim subcells' });
+    }
+
+    // Check max subdivision level
+    const currentLevel = getLevel(targetAddress);
+    if (currentLevel >= GRID_WARS_CONFIG.maxSubdivisionLevel) {
+      return res.status(400).json({
+        error: `Maximum subdivision depth reached (${GRID_WARS_CONFIG.maxSubdivisionLevel})`
+      });
+    }
+
+    // 3. Check attacker has enough points
+    const { data: attacker, error: attackerError } = await supabase
+      .from('grid_wars_players')
+      .select('action_points')
+      .eq('game_id', gameId)
+      .eq('username', username)
+      .single();
+
+    if (attackerError || !attacker) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    const cost = GRID_WARS_CONFIG.drillCost;
+    if (attacker.action_points < cost) {
+      return res.status(400).json({
+        error: 'Insufficient points',
+        required: cost,
+        available: attacker.action_points
+      });
+    }
+
+    // 4. Deduct points from attacker
+    await supabase
+      .from('grid_wars_players')
+      .update({ action_points: attacker.action_points - cost })
+      .eq('game_id', gameId)
+      .eq('username', username);
+
+    // 5. Mark cell as developed
+    await supabase
+      .from('grid_wars_territories')
+      .update({ is_developed: true })
+      .eq('game_id', gameId)
+      .eq('address', targetAddress);
+
+    // 6. Create 64 subcells
+    const originalOwner = target.owner;
+    const newLevel = currentLevel + 1;
+    const centerCells = GRID_WARS_CONFIG.ownerRetentionCells || CENTER_CELLS;
+    const attackerCell = GRID_WARS_CONFIG.attackerDrillCell || DRILL_CELL;
+    const subcells = [];
+    const now = new Date().toISOString();
+
+    for (let x = 0; x < 8; x++) {
+      for (let y = 0; y < 8; y++) {
+        const localAddress = coordsToAddress(x, y);
+        const fullAddress = buildAddress(targetAddress, x, y);
+
+        let owner = null;
+        let claimedAt = null;
+        let strength = null;
+
+        if (centerCells.includes(localAddress)) {
+          owner = originalOwner;
+          claimedAt = now;
+          strength = GRID_WARS_CONFIG.maxCellStrength;
+        } else if (localAddress === attackerCell) {
+          owner = username;
+          claimedAt = now;
+          strength = GRID_WARS_CONFIG.maxCellStrength;
+        }
+
+        subcells.push({
+          game_id: gameId,
+          address: fullAddress,
+          parent_address: targetAddress,
+          cell_level: newLevel,
+          x: x,
+          y: y,
+          owner,
+          claimed_at: claimedAt,
+          is_developed: false,
+          strength
+        });
+      }
+    }
+
+    const { error: insertError } = await supabase
+      .from('grid_wars_territories')
+      .insert(subcells);
+
+    if (insertError) {
+      console.error('Failed to create subcells:', insertError);
+      return res.status(500).json({ error: 'Failed to create subcells' });
+    }
+
+    // 7. Broadcast drill event
+    const attackerFullAddress = buildAddress(targetAddress, addressToCoords(attackerCell).x, addressToCoords(attackerCell).y);
+    const defenderCells = centerCells.map(c => buildAddress(targetAddress, addressToCoords(c).x, addressToCoords(c).y));
+
+    broadcast({
+      type: 'cell_drilled',
+      gameId,
+      address: targetAddress,
+      attacker: username,
+      defender: originalOwner,
+      attackerGained: attackerFullAddress,
+      defenderRetained: defenderCells,
+      newLevel
+    });
+
+    // Update leaderboard
+    broadcastLeaderboardUpdate(gameId);
+
+    console.log(`Grid Wars v2.0: ${username} drilled into ${originalOwner}'s ${targetAddress}`);
+
+    res.json({
+      success: true,
+      address: targetAddress,
+      attackerCell: attackerFullAddress,
+      defenderCells,
+      cost
+    });
+
+  } catch (err) {
+    console.error('POST /api/grid-wars/drill error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get leaderboard for Grid Wars
 // v1.6: Single leaderboard sorted by lifetime_earned
+// v2.0: Includes macro_cells and sub_cells counts for hierarchy display
 app.get('/api/grid-wars/leaderboard', async (req, res) => {
   try {
     const { gameId } = req.query;
@@ -4816,6 +5221,26 @@ app.get('/api/grid-wars/leaderboard', async (req, res) => {
       throw error;
     }
 
+    // v2.0: Get cell counts by level (macro vs subcell)
+    const { data: territories } = await supabase
+      .from('grid_wars_territories')
+      .select('owner, cell_level')
+      .eq('game_id', gameId)
+      .not('owner', 'is', null);
+
+    // Count macro (level 0) and sub (level > 0) cells per player
+    const cellCounts = {};
+    for (const t of territories || []) {
+      if (!cellCounts[t.owner]) {
+        cellCounts[t.owner] = { macro: 0, sub: 0 };
+      }
+      if (t.cell_level === 0 || t.cell_level === null) {
+        cellCounts[t.owner].macro++;
+      } else {
+        cellCounts[t.owner].sub++;
+      }
+    }
+
     // Get real names
     const usernames = (players || []).map(p => p.username);
     let usersMap = {};
@@ -4832,7 +5257,9 @@ app.get('/api/grid-wars/leaderboard', async (req, res) => {
 
     const leaderboard = (players || []).map(p => ({
       ...p,
-      real_name: usersMap[p.username] || null
+      real_name: usersMap[p.username] || null,
+      macro_cells: cellCounts[p.username]?.macro || 0,    // v2.0
+      sub_cells: cellCounts[p.username]?.sub || 0         // v2.0
     }));
 
     res.json(leaderboard);
@@ -4845,6 +5272,7 @@ app.get('/api/grid-wars/leaderboard', async (req, res) => {
 /**
  * v1.6: Broadcast leaderboard update to all connected clients
  * Called after territory claims or points earned to keep UI in sync
+ * v2.0: Includes macro_cells and sub_cells for hierarchy display
  */
 async function broadcastLeaderboardUpdate(gameId) {
   try {
@@ -4859,6 +5287,25 @@ async function broadcastLeaderboardUpdate(gameId) {
       return;
     }
 
+    // v2.0: Get cell counts by level (macro vs subcell)
+    const { data: territories } = await supabase
+      .from('grid_wars_territories')
+      .select('owner, cell_level')
+      .eq('game_id', gameId)
+      .not('owner', 'is', null);
+
+    const cellCounts = {};
+    for (const t of territories || []) {
+      if (!cellCounts[t.owner]) {
+        cellCounts[t.owner] = { macro: 0, sub: 0 };
+      }
+      if (t.cell_level === 0 || t.cell_level === null) {
+        cellCounts[t.owner].macro++;
+      } else {
+        cellCounts[t.owner].sub++;
+      }
+    }
+
     // Get real names
     const usernames = (players || []).map(p => p.username);
     let usersMap = {};
@@ -4875,7 +5322,9 @@ async function broadcastLeaderboardUpdate(gameId) {
 
     const leaderboard = (players || []).map(p => ({
       ...p,
-      real_name: usersMap[p.username] || null
+      real_name: usersMap[p.username] || null,
+      macro_cells: cellCounts[p.username]?.macro || 0,
+      sub_cells: cellCounts[p.username]?.sub || 0
     }));
 
     broadcast({
