@@ -294,8 +294,8 @@ export class GridPanel {
           <div style="padding:8px 12px;background:#1f2937;">
             <div style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Actions</div>
             <div style="display:flex;gap:8px;">
-              <button class="gw-action-btn" data-action="claim" data-cost="10" style="flex:1;">
-                □ Claim Territory<span class="gw-cost">10⚡</span>
+              <button class="gw-action-btn" data-action="claim" data-cost="${GRID_WARS_CONFIG.claimCost}" style="flex:1;">
+                □ Claim Territory<span class="gw-cost">${GRID_WARS_CONFIG.claimCost}⚡</span>
               </button>
             </div>
             <!-- v2.0: Develop/Drill buttons (hidden by default) -->

@@ -35,9 +35,9 @@ function mockResponse(data, status = 200) {
 describe('Grid Wars v1.2.1 Features', () => {
   describe('3-Tier Activity Pricing Config', () => {
     it('has correct 3-tier cost values', () => {
-      expect(GRID_WARS_CONFIG.takeoverCostCold).toBe(15);   // >10min inactive
-      expect(GRID_WARS_CONFIG.takeoverCostWarm).toBe(20);   // 2-10min inactive
-      expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(25); // <2min inactive
+      expect(GRID_WARS_CONFIG.takeoverCostCold).toBe(60);   // >10min inactive
+      expect(GRID_WARS_CONFIG.takeoverCostWarm).toBe(80);   // 2-10min inactive
+      expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(100); // <2min inactive
     });
 
     it('has correct activity window thresholds', () => {
@@ -47,7 +47,7 @@ describe('Grid Wars v1.2.1 Features', () => {
     });
 
     it('maintains legacy alias for backwards compatibility', () => {
-      expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(15);
+      expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(60);
       expect(GRID_WARS_CONFIG.activeDrillingWindow).toBe(120);
     });
   });
@@ -64,7 +64,7 @@ describe('Grid Wars v1.2.1 Features', () => {
     });
 
     it('has correct boot bonus config value', () => {
-      expect(GRID_WARS_CONFIG.bootBonus).toBe(15);
+      expect(GRID_WARS_CONFIG.bootBonus).toBe(30);
     });
 
     it('has onBootBonus callback slot', () => {
@@ -84,13 +84,13 @@ describe('Grid Wars v1.2.1 Features', () => {
         x: 10,
         y: 10,
         health: 100,
-        bootBonus: 15,
-        actionPoints: 15
+        bootBonus: 30,
+        actionPoints: 30
       }));
 
       await state.initAvatar();
 
-      expect(onBootBonus).toHaveBeenCalledWith({ points: 15 });
+      expect(onBootBonus).toHaveBeenCalledWith({ points: 30 });
     });
 
     it('does not call onBootBonus when bootBonus is 0', async () => {
@@ -134,13 +134,13 @@ describe('Grid Wars v1.2.1 Features', () => {
         x: 10,
         y: 10,
         health: 100,
-        bootBonus: 15,
-        actionPoints: 15
+        bootBonus: 30,
+        actionPoints: 30
       }));
 
       await state.initAvatar();
 
-      expect(state.getActionPoints()).toBe(15);
+      expect(state.getActionPoints()).toBe(30);
     });
   });
 
@@ -337,7 +337,7 @@ describe('Grid Wars v1.2.1 Features', () => {
 
       // Add player with last_answer_at
       state.players.set('bob', {
-        action_points: 50,
+        action_points: 100,
         territories_count: 1,
         health: 100,
         last_answer_at: lastAnswerTime
@@ -372,7 +372,7 @@ describe('Grid Wars v1.2.1 Features', () => {
     it('getRenderState returns null ownerLastAnswer when owner has no last_answer_at', () => {
       // Add player without last_answer_at
       state.players.set('bob', {
-        action_points: 50,
+        action_points: 100,
         territories_count: 1,
         health: 100
       });
@@ -424,7 +424,7 @@ describe('Grid Wars v1.2.1 Features', () => {
         players: [
           {
             username: 'bob',
-            action_points: 50,
+            action_points: 100,
             territories_count: 5,
             health: 100,
             last_answer_at: lastAnswerTime
@@ -518,28 +518,28 @@ describe('Grid Wars v1.2.1 Features', () => {
       state = new GridWarsState({ serverUrl: 'http://localhost:3001' });
       state.gameId = 'test-game';
       state.username = 'alice';
-      state.players.set('alice', { action_points: 50, territories_count: 5, health: 100 });
+      state.players.set('alice', { action_points: 100, territories_count: 5, health: 100 });
     });
 
     // v1.3: Updated to check baseCost (cost is now scaled)
     it('getClaimCostAt returns base cost for enemy territory', () => {
       state.territories.set('5,5', { owner: 'bob' });
-      state.players.set('bob', { action_points: 30, territories_count: 1, health: 100 });
+      state.players.set('bob', { action_points: 100, territories_count: 1, health: 100 });
 
       const costInfo = state.getClaimCostAt(5, 5);
 
-      expect(costInfo.baseCost).toBe(GRID_WARS_CONFIG.takeoverCostBase); // 15
+      expect(costInfo.baseCost).toBe(GRID_WARS_CONFIG.takeoverCostBase); // 60
       expect(costInfo.cost).toBeGreaterThanOrEqual(costInfo.baseCost);   // Scaled
-      expect(costInfo.activeCostBase).toBe(GRID_WARS_CONFIG.takeoverCostActive); // 25
+      expect(costInfo.activeCostBase).toBe(GRID_WARS_CONFIG.takeoverCostActive); // 100
       expect(costInfo.activeCost).toBeGreaterThanOrEqual(costInfo.activeCostBase); // Scaled
       expect(costInfo.isEnemy).toBe(true);
       expect(costInfo.defender).toBe('bob');
     });
 
     it('getClaimCostAt includes WARM cost in config', () => {
-      // The WARM cost (20) exists in config for server-side use
+      // The WARM cost (80) exists in config for server-side use
       // Client shows binary ACTIVE/COLD but server uses 3-tier
-      expect(GRID_WARS_CONFIG.takeoverCostWarm).toBe(20);
+      expect(GRID_WARS_CONFIG.takeoverCostWarm).toBe(80);
 
       // Verify it's between COLD and ACTIVE
       expect(GRID_WARS_CONFIG.takeoverCostWarm).toBeGreaterThan(GRID_WARS_CONFIG.takeoverCostCold);

@@ -35,13 +35,13 @@ describe('Grid Wars v1.2 Features', () => {
       state = new GridWarsState({ serverUrl: 'http://localhost:3001' });
       state.gameId = 'test-game';
       state.username = 'alice';
-      state.players.set('alice', { action_points: 50, territories_count: 5, health: 100 });
+      state.players.set('alice', { action_points: 100, territories_count: 5, health: 100 });
       state.players.set('bob', { action_points: 30, territories_count: 3, health: 100 });
     });
 
     it('has correct activity-based config values', () => {
-      expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(15);
-      expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(25);
+      expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(60);
+      expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(100);
       expect(GRID_WARS_CONFIG.activeDrillingWindow).toBe(120); // v1.2.1: extended to 2 minutes
     });
 
@@ -74,29 +74,29 @@ describe('Grid Wars v1.2 Features', () => {
     });
 
     it('canAffordClaimAt uses scaled cost for enemy territory check', () => {
-      // With 50 points, can afford scaled takeover (base 15 * ~1.17 = 18)
+      // With 100 points, can afford scaled takeover (base 60 * ~1.2 = 72)
       state.territories.set('5,5', { owner: 'bob' });
       expect(state.canAffordClaimAt(5, 5)).toBe(true);
 
-      // v1.3: At 14 points, scale = 1 + 0.1 * log10(14) ≈ 1.115
-      // Scaled cost = ceil(15 * 1.115) = 17, cannot afford with 14 points
-      state.players.set('alice', { action_points: 14, territories_count: 5, health: 100 });
+      // v1.6: At 59 points, scale = 1 + 0.1 * log10(59) ≈ 1.18
+      // Scaled cost = ceil(60 * 1.18) = 71, cannot afford with 59 points
+      state.players.set('alice', { action_points: 59, territories_count: 5, health: 100 });
       expect(state.canAffordClaimAt(5, 5)).toBe(false);
     });
 
     it('canAffordClaimAt checks for scaled neutral territory cost', () => {
-      // v1.3: At 10 points, scale = 1.1, cost = ceil(10 * 1.1) = 11
-      // With 10 points, cannot afford 11 cost neutral claim
-      state.players.set('alice', { action_points: 10, territories_count: 5, health: 100 });
-      expect(state.canAffordClaimAt(5, 5)).toBe(false); // v1.3: 10 < 11 (scaled)
+      // v1.6: At 40 points, scale = 1 + 0.1 * log10(40) ≈ 1.16, cost = ceil(40 * 1.16) = 47
+      // With 40 points, cannot afford 47 cost neutral claim
+      state.players.set('alice', { action_points: 40, territories_count: 5, health: 100 });
+      expect(state.canAffordClaimAt(5, 5)).toBe(false); // v1.6: 40 < 47 (scaled)
 
-      // At 11 points, scale = 1 + 0.1 * log10(11) ≈ 1.104, cost = ceil(10 * 1.104) = 12
-      // Still cannot afford with 11 points
-      state.players.set('alice', { action_points: 11, territories_count: 5, health: 100 });
-      expect(state.canAffordClaimAt(5, 5)).toBe(false); // v1.3: 11 < 12 (scaled)
+      // At 44 points, scale = 1 + 0.1 * log10(44) ≈ 1.16, cost = ceil(40 * 1.16) = 47
+      // Still cannot afford with 44 points
+      state.players.set('alice', { action_points: 44, territories_count: 5, health: 100 });
+      expect(state.canAffordClaimAt(5, 5)).toBe(false); // v1.6: 44 < 47 (scaled)
 
-      // With 12 points exactly, can afford neutral claim (12 >= 12)
-      state.players.set('alice', { action_points: 12, territories_count: 5, health: 100 });
+      // With 47 points exactly, can afford neutral claim (47 >= 47)
+      state.players.set('alice', { action_points: 47, territories_count: 5, health: 100 });
       expect(state.canAffordClaimAt(5, 5)).toBe(true);
     });
   });
@@ -410,7 +410,7 @@ describe('Grid Wars v1.2 Features', () => {
       state = new GridWarsState({ serverUrl: 'http://localhost:3001' });
       state.gameId = 'test-game';
       state.username = 'alice';
-      state.players.set('alice', { action_points: 50, territories_count: 2, health: 100 });
+      state.players.set('alice', { action_points: 100, territories_count: 2, health: 100 });
     });
 
     it('new claims start at max strength', () => {

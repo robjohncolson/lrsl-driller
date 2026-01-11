@@ -56,18 +56,19 @@ async function initStateWithGame(state, extraData = {}) {
 }
 
 describe('Grid Wars v3 - Config', () => {
-  it('has node claim cost (15 pts)', () => {
-    expect(GRID_WARS_CONFIG.nodeClaimCost).toBe(15);
+  // v2.1.3: Updated to match v1.6 server config values
+  it('has node claim cost (60 pts)', () => {
+    expect(GRID_WARS_CONFIG.nodeClaimCost).toBe(60);
   });
 
-  it('has surge cost (5 pts)', () => {
-    expect(GRID_WARS_CONFIG.surgeCost).toBe(5);
+  it('has surge cost (20 pts)', () => {
+    expect(GRID_WARS_CONFIG.surgeCost).toBe(20);
   });
 
-  // v1.2: Updated pricing tests (contestation system removed)
-  it('has activity-based takeover costs (v1.2)', () => {
-    expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(15);   // Inactive defender
-    expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(25); // Active defender
+  // v1.6: Updated pricing tests (activity-based, higher costs for 8x8 map)
+  it('has activity-based takeover costs (v1.6)', () => {
+    expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(60);    // Inactive defender (was 15 in v1.2)
+    expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(100); // Active defender (was 25 in v1.2)
   });
 
   it('has max contiguity bonus (5 in v1.2)', () => {

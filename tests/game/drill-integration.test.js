@@ -54,11 +54,12 @@ describe('Drill Integration', () => {
     });
   });
 
+  // v2.1.3: Updated for v1.6 economy (40 point claim cost for 8x8 map scarcity)
   describe('Claim Cost Economy', () => {
     const claimCost = GRID_WARS_CONFIG.claimCost;
 
-    it('claim costs 10 points', () => {
-      expect(claimCost).toBe(10);
+    it('claim costs 40 points (v1.6 economy)', () => {
+      expect(claimCost).toBe(40);
     });
 
     it('cannot afford claim after single gold star (4 pts)', () => {
@@ -66,60 +67,61 @@ describe('Drill Integration', () => {
       expect(points >= claimCost).toBe(false);
     });
 
-    it('cannot afford claim after 2 gold stars (8 pts)', () => {
-      const points = GRID_WARS_CONFIG.starPoints.gold * 2; // 8
+    it('cannot afford claim after 5 gold stars (20 pts)', () => {
+      const points = GRID_WARS_CONFIG.starPoints.gold * 5; // 20
       expect(points >= claimCost).toBe(false);
     });
 
-    it('can afford claim after 3 gold stars (12 pts)', () => {
-      const points = GRID_WARS_CONFIG.starPoints.gold * 3; // 12
+    it('can afford claim after 10 gold stars (40 pts)', () => {
+      const points = GRID_WARS_CONFIG.starPoints.gold * 10; // 40
       expect(points >= claimCost).toBe(true);
     });
 
-    it('can afford claim after 4 silver stars (12 pts)', () => {
-      const points = GRID_WARS_CONFIG.starPoints.silver * 4; // 12
+    it('can afford claim after 14 silver stars (42 pts)', () => {
+      const points = GRID_WARS_CONFIG.starPoints.silver * 14; // 42
       expect(points >= claimCost).toBe(true);
     });
 
-    it('can afford claim after 5 bronze stars (10 pts)', () => {
-      const points = GRID_WARS_CONFIG.starPoints.bronze * 5; // 10
+    it('can afford claim after 20 bronze stars (40 pts)', () => {
+      const points = GRID_WARS_CONFIG.starPoints.bronze * 20; // 40
       expect(points >= claimCost).toBe(true);
     });
 
-    it('can afford claim after 10 tin stars (10 pts)', () => {
-      const points = GRID_WARS_CONFIG.starPoints.tin * 10; // 10
+    it('can afford claim after 40 tin stars (40 pts)', () => {
+      const points = GRID_WARS_CONFIG.starPoints.tin * 40; // 40
       expect(points >= claimCost).toBe(true);
     });
 
-    it('realistic session with 3 gold + 2 silver can afford 1 claim', () => {
-      // 3 gold (12) + 2 silver (6) = 18 points, claim costs 10, leaves 8
-      const points = GRID_WARS_CONFIG.starPoints.gold * 3 + GRID_WARS_CONFIG.starPoints.silver * 2;
-      expect(points).toBe(18);
+    it('realistic session with 8 gold + 4 silver can afford 1 claim', () => {
+      // 8 gold (32) + 4 silver (12) = 44 points, claim costs 40, leaves 4
+      const points = GRID_WARS_CONFIG.starPoints.gold * 8 + GRID_WARS_CONFIG.starPoints.silver * 4;
+      expect(points).toBe(44);
       expect(points >= claimCost).toBe(true);
-      expect(points - claimCost).toBe(8); // 8 points remaining
+      expect(points - claimCost).toBe(4); // 4 points remaining
     });
 
     it('realistic session with mixed stars can afford claim', () => {
-      // 2 gold (8) + 1 silver (3) + 2 bronze (4) = 15 points
+      // 6 gold (24) + 4 silver (12) + 3 bronze (6) = 42 points
       const points =
-        GRID_WARS_CONFIG.starPoints.gold * 2 +
-        GRID_WARS_CONFIG.starPoints.silver * 1 +
-        GRID_WARS_CONFIG.starPoints.bronze * 2;
-      expect(points).toBe(15);
+        GRID_WARS_CONFIG.starPoints.gold * 6 +
+        GRID_WARS_CONFIG.starPoints.silver * 4 +
+        GRID_WARS_CONFIG.starPoints.bronze * 3;
+      expect(points).toBe(42);
       expect(points >= claimCost).toBe(true);
     });
   });
 
+  // v2.1.3: Updated for v1.6 economy (40 point claim cost)
   describe('Point Economy Balance', () => {
-    it('3 gold stars can buy 1 claim with change', () => {
-      const goldPoints = GRID_WARS_CONFIG.starPoints.gold * 3; // 12
-      const claimCost = GRID_WARS_CONFIG.claimCost; // 10
-      expect(goldPoints - claimCost).toBe(2);
+    it('11 gold stars can buy 1 claim with change', () => {
+      const goldPoints = GRID_WARS_CONFIG.starPoints.gold * 11; // 44
+      const claimCost = GRID_WARS_CONFIG.claimCost; // 40
+      expect(goldPoints - claimCost).toBe(4);
     });
 
-    it('10 tin stars exactly pay for 1 claim', () => {
-      const tinPoints = GRID_WARS_CONFIG.starPoints.tin * 10; // 10
-      const claimCost = GRID_WARS_CONFIG.claimCost; // 10
+    it('40 tin stars exactly pay for 1 claim', () => {
+      const tinPoints = GRID_WARS_CONFIG.starPoints.tin * 40; // 40
+      const claimCost = GRID_WARS_CONFIG.claimCost; // 40
       expect(tinPoints - claimCost).toBe(0);
     });
 

@@ -9,19 +9,20 @@ const DEFAULT_SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 
 // Game config (must match server - will be fetched from server on init)
 // v1.3: Updated activity windows, added spam prevention
+// v2.1.3: Updated defaults to match server config (40 claim cost, etc.)
 export let GRID_WARS_CONFIG = {
-  claimCost: 10,
+  claimCost: 40,
 
   // v1.3: 3-tier activity-based pricing
-  takeoverCostCold: 15,      // >8min since defender's last answer
-  takeoverCostWarm: 20,      // 3-8min since defender's last answer
-  takeoverCostActive: 25,    // <3min since defender's last answer
+  takeoverCostCold: 60,      // >8min since defender's last answer
+  takeoverCostWarm: 80,      // 3-8min since defender's last answer
+  takeoverCostActive: 100,   // <3min since defender's last answer
 
   // Legacy alias
-  takeoverCostBase: 15,
+  takeoverCostBase: 60,
 
-  nodeClaimCost: 15,
-  surgeCost: 5,
+  nodeClaimCost: 60,
+  surgeCost: 20,
   starPoints: {
     gold: 4,
     silver: 3,
@@ -33,8 +34,8 @@ export let GRID_WARS_CONFIG = {
   classGoalBonus: 10,
   maxContiguityBonus: 5,
 
-  // v1.2.1: Boot bonus
-  bootBonus: 15,
+  // v1.2.1: Boot bonus (v2.1.3: updated to match server)
+  bootBonus: 30,
 
   maxCellStrength: 3,
 

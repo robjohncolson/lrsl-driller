@@ -4520,13 +4520,21 @@ app.post('/api/grid-wars/action', async (req, res) => {
       // Claim or update territory (works for neutral, resource nodes, AND enemy territories)
       if (existingTerritory) {
         // Update existing (resource node or enemy takeover)
+        // v2.1.3: Include address if missing (for legacy cells without address)
+        const updateData = {
+          owner: username,
+          claimed_at: new Date().toISOString(),
+          strength: GRID_WARS_CONFIG.maxCellStrength
+        };
+        if (!existingTerritory.address) {
+          updateData.address = coordsToAddress(x, y);
+          updateData.parent_address = null;
+          updateData.cell_level = 0;
+          updateData.is_developed = existingTerritory.is_developed || false;
+        }
         await supabase
           .from('grid_wars_territories')
-          .update({
-            owner: username,
-            claimed_at: new Date().toISOString(),
-            strength: GRID_WARS_CONFIG.maxCellStrength
-          })
+          .update(updateData)
           .eq('game_id', gameId)
           .eq('x', x)
           .eq('y', y);
@@ -4576,6 +4584,8 @@ app.post('/api/grid-wars/action', async (req, res) => {
         }
       } else {
         // Insert new territory
+        // v2.1.3: Include address fields for v2.0 hierarchy support
+        const cellAddress = coordsToAddress(x, y);
         await supabase
           .from('grid_wars_territories')
           .insert({
@@ -4583,7 +4593,11 @@ app.post('/api/grid-wars/action', async (req, res) => {
             x,
             y,
             owner: username,
-            strength: GRID_WARS_CONFIG.maxCellStrength
+            strength: GRID_WARS_CONFIG.maxCellStrength,
+            address: cellAddress,
+            parent_address: null,
+            cell_level: 0,
+            is_developed: false
           });
       }
 

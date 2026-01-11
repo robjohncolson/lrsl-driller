@@ -49,9 +49,9 @@ describe('Grid Wars v1.3 Features', () => {
     });
 
     it('has correct 3-tier cost values', () => {
-      expect(GRID_WARS_CONFIG.takeoverCostCold).toBe(15);   // >8min inactive
-      expect(GRID_WARS_CONFIG.takeoverCostWarm).toBe(20);   // 3-8min inactive
-      expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(25); // <3min inactive
+      expect(GRID_WARS_CONFIG.takeoverCostCold).toBe(60);   // >8min inactive
+      expect(GRID_WARS_CONFIG.takeoverCostWarm).toBe(80);   // 3-8min inactive
+      expect(GRID_WARS_CONFIG.takeoverCostActive).toBe(100); // <3min inactive
     });
 
     it('WARM cost is between COLD and ACTIVE', () => {
@@ -60,7 +60,7 @@ describe('Grid Wars v1.3 Features', () => {
     });
 
     it('maintains legacy aliases for backwards compatibility', () => {
-      expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(15);
+      expect(GRID_WARS_CONFIG.takeoverCostBase).toBe(60);
       expect(GRID_WARS_CONFIG.activeDrillingWindow).toBe(120);
     });
   });
@@ -269,27 +269,27 @@ describe('Grid Wars v1.3 Features', () => {
       state.players.set('alice', { action_points: 10, territories_count: 0, health: 100 });
 
       // scale = 1 + 0.1 * log10(10) = 1 + 0.1 * 1 = 1.1
-      // cost = ceil(10 * 1.1) = 11
-      const scaledCost = state._calculateScaledCost(10);
-      expect(scaledCost).toBe(11);
+      // cost = ceil(40 * 1.1) = 44
+      const scaledCost = state._calculateScaledCost(40);
+      expect(scaledCost).toBe(44);
     });
 
     it('calculates scaled cost at 100 points (scale = 1.2)', () => {
       state.players.set('alice', { action_points: 100, territories_count: 0, health: 100 });
 
       // scale = 1 + 0.1 * log10(100) = 1 + 0.1 * 2 = 1.2
-      // cost = ceil(10 * 1.2) = 12
-      const scaledCost = state._calculateScaledCost(10);
-      expect(scaledCost).toBe(12);
+      // cost = ceil(40 * 1.2) = 48
+      const scaledCost = state._calculateScaledCost(40);
+      expect(scaledCost).toBe(48);
     });
 
     it('calculates scaled cost at 1000 points (scale = 1.3)', () => {
       state.players.set('alice', { action_points: 1000, territories_count: 0, health: 100 });
 
       // scale = 1 + 0.1 * log10(1000) = 1 + 0.1 * 3 = 1.3
-      // cost = ceil(10 * 1.3) = 13
-      const scaledCost = state._calculateScaledCost(10);
-      expect(scaledCost).toBe(13);
+      // cost = ceil(40 * 1.3) = 52
+      const scaledCost = state._calculateScaledCost(40);
+      expect(scaledCost).toBe(52);
     });
 
     it('uses minimum points (10) for scaling when points are below threshold', () => {
@@ -297,8 +297,8 @@ describe('Grid Wars v1.3 Features', () => {
 
       // At 5 points, should use minPoints (10) for calculation
       // scale = 1 + 0.1 * log10(10) = 1.1
-      const scaledCost = state._calculateScaledCost(10);
-      expect(scaledCost).toBe(11);
+      const scaledCost = state._calculateScaledCost(40);
+      expect(scaledCost).toBe(44);
     });
 
     it('returns base cost when point ceiling disabled', () => {
@@ -306,9 +306,9 @@ describe('Grid Wars v1.3 Features', () => {
       GRID_WARS_CONFIG.pointCeilingEnabled = false;
 
       state.players.set('alice', { action_points: 1000, territories_count: 0, health: 100 });
-      const scaledCost = state._calculateScaledCost(10);
+      const scaledCost = state._calculateScaledCost(40);
 
-      expect(scaledCost).toBe(10);
+      expect(scaledCost).toBe(40);
 
       GRID_WARS_CONFIG.pointCeilingEnabled = originalEnabled;
     });
@@ -318,8 +318,8 @@ describe('Grid Wars v1.3 Features', () => {
 
       const costInfo = state.getClaimCostAt(5, 5);
 
-      expect(costInfo.baseCost).toBe(GRID_WARS_CONFIG.claimCost); // 10
-      expect(costInfo.cost).toBe(12); // ceil(10 * 1.2)
+      expect(costInfo.baseCost).toBe(GRID_WARS_CONFIG.claimCost); // 40
+      expect(costInfo.cost).toBe(48); // ceil(40 * 1.2)
       expect(costInfo.isEnemy).toBe(false);
     });
 
@@ -330,23 +330,28 @@ describe('Grid Wars v1.3 Features', () => {
 
       const costInfo = state.getClaimCostAt(5, 5);
 
-      expect(costInfo.baseCost).toBe(15);          // takeoverCostBase
-      expect(costInfo.cost).toBe(18);              // ceil(15 * 1.2)
-      expect(costInfo.activeCostBase).toBe(25);   // takeoverCostActive
-      expect(costInfo.activeCost).toBe(30);       // ceil(25 * 1.2)
+      expect(costInfo.baseCost).toBe(60);          // takeoverCostBase
+      expect(costInfo.cost).toBe(72);              // ceil(60 * 1.2) at 100 pts: scale = 1.2
+      expect(costInfo.activeCostBase).toBe(100);   // takeoverCostActive
+      expect(costInfo.activeCost).toBe(120);       // ceil(100 * 1.2)
       expect(costInfo.isEnemy).toBe(true);
     });
 
     it('canAffordClaimAt uses scaled cost', () => {
-      // At 12 points, scale = 1.1 (log10(12) ≈ 1.08, scale ≈ 1.108)
-      // scaled cost = ceil(10 * 1.108) = 12
-      // With exactly 12 points, should afford 12 cost
-      state.players.set('alice', { action_points: 12, territories_count: 0, health: 100 });
+      // At 100 points, scale = 1.2 (log10(100) = 2, scale = 1 + 0.1*2 = 1.2)
+      // scaled cost = ceil(40 * 1.2) = 48
+      // With 100 points, should easily afford 48 cost
+      state.players.set('alice', { action_points: 100, territories_count: 0, health: 100 });
       expect(state.canAffordClaimAt(5, 5)).toBe(true);
 
-      // At 11 points, scale ≈ 1.104, cost = ceil(10 * 1.104) = 12
-      // Cannot afford with only 11 points
-      state.players.set('alice', { action_points: 11, territories_count: 0, health: 100 });
+      // At exactly 48 points, scale = 1.168 (log10(48) ≈ 1.68), cost = ceil(40 * 1.168) = 47
+      // With 48 points, should afford 47 cost
+      state.players.set('alice', { action_points: 48, territories_count: 0, health: 100 });
+      expect(state.canAffordClaimAt(5, 5)).toBe(true);
+
+      // At 44 points, scale = 1.164 (log10(44) ≈ 1.64), cost = ceil(40 * 1.164) = 47
+      // 44 points < 47 cost, cannot afford
+      state.players.set('alice', { action_points: 44, territories_count: 0, health: 100 });
       expect(state.canAffordClaimAt(5, 5)).toBe(false);
     });
   });
@@ -500,7 +505,7 @@ describe('Grid Wars v1.3 Features', () => {
       state = new GridWarsState({ serverUrl: 'http://localhost:3001' });
       state.gameId = 'test-game';
       state.username = 'alice';
-      state.players.set('alice', { action_points: 50, territories_count: 0, health: 100 });
+      state.players.set('alice', { action_points: 200, territories_count: 0, health: 100 });
     });
 
     it('initializes with resync mode off', () => {
@@ -671,7 +676,7 @@ describe('Grid Wars v1.3 Features', () => {
     });
 
     it('claim flow uses scaled cost for deduction', async () => {
-      // At 100 points, scale = 1.2, neutral claim cost = ceil(10 * 1.2) = 12
+      // At 100 points, scale = 1.2, neutral claim cost = ceil(40 * 1.2) = 48
       state.players.set('alice', { action_points: 100, territories_count: 0, health: 100 });
 
       global.fetch.mockResolvedValueOnce(mockResponse({
@@ -682,8 +687,8 @@ describe('Grid Wars v1.3 Features', () => {
 
       await state.claimTerritory(5, 5);
 
-      // Optimistic deduction should use scaled cost (12)
-      expect(state.getActionPoints()).toBe(88); // 100 - 12
+      // Optimistic deduction should use scaled cost (48)
+      expect(state.getActionPoints()).toBe(52); // 100 - 48
     });
 
     it('claim flow includes action ID for reconciliation', async () => {

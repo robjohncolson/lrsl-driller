@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.1.2 (Grid Wars Rendering Fixes)
+**Current Version**: v2.1.3 (Develop Button + Address + Claim Cost Fixes)
 
 ## Critical: File Sync Requirements
 
@@ -229,7 +229,7 @@ See `docs/STATE_MACHINES.md` for complete diagrams of all component state transi
 ## Testing
 
 ```bash
-npm test                                          # All tests (1110 tests)
+npm test                                          # All tests (1131 tests)
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
 npx vitest run tests/game/grid-wars-v2.0.test.js   # v2.0 hierarchy tests (40 tests)
@@ -275,6 +275,13 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.1.3**: Develop Button + Address Population + Claim Cost Fixes
+- Fixed server claim action: new territories now include `address`, `parent_address`, `cell_level`, `is_developed` fields
+- Fixed server update action: legacy cells without address now get address populated on takeover
+- Fixed claim cost display: grid-panel.js now uses `GRID_WARS_CONFIG.claimCost` instead of hardcoded "10"
+- Fixed client-side config defaults: updated to match v1.6 server config (claimCost: 40, takeoverCostCold: 60, etc.)
+- Root cause of develop button failure: address was null because claim didn't set it, causing `handleDevelop()` to exit early
 
 **v2.1.2**: Grid Wars Rendering Fixes
 - Fixed `drawOwnerPresence()` - was accessing undefined `cell.x`/`cell.y` properties (x,y are in the key string, not the object)
