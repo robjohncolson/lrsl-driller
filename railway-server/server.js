@@ -4441,13 +4441,15 @@ app.get('/api/grid-wars/hall-of-fame', async (req, res) => {
 app.post('/api/grid-wars/action', async (req, res) => {
   try {
     // v2.1.5: Added parentAddress and cellLevel for subcell claims
-    const { gameId, username, action, actionId, x, y, parentAddress, cellLevel } = req.body;
+    // v2.2.1: Use let for x, y since we need to parse them as integers
+    const { gameId, username, action, actionId, parentAddress, cellLevel } = req.body;
+    let { x, y } = req.body;
 
     if (!gameId || !username || !action || x === undefined || y === undefined) {
       return res.status(400).json({ error: 'Missing required fields: gameId, username, action, x, y' });
     }
 
-    // v2.2.1: Ensure coordinates are parsed as integers and reassign for use throughout
+    // v2.2.1: Ensure coordinates are parsed as integers
     const origX = x, origY = y;  // Keep originals for error reporting
     x = parseInt(x, 10);
     y = parseInt(y, 10);

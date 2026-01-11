@@ -352,7 +352,7 @@ export class GridPanel {
               <span style="color:#fbbf24;font-size:0.7rem;font-weight:bold;">🏰 TERRITORY HELD</span>
               <span id="gw-my-rank" style="color:#6b7280;font-size:0.6rem;">Rank: --</span>
             </div>
-            <div id="gw-leaderboard-content" style="padding:8px;background:#0f172a;max-height:150px;overflow-y:auto;font-size:0.65rem;">
+            <div id="gw-leaderboard-content" style="padding:8px;background:#0f172a;max-height:250px;overflow-y:auto;font-size:0.65rem;">
               <div style="color:#6b7280;text-align:center;">Loading...</div>
             </div>
           </div>
@@ -865,6 +865,7 @@ export class GridPanel {
 
   /**
    * Initialize the canvas renderer
+   * v2.2.1: Fixed to prevent double rendering - reuse existing renderer if present
    */
   initCanvas() {
     const canvas = this.container.querySelector('#gw-canvas');
@@ -878,6 +879,15 @@ export class GridPanel {
 
     // v1.6.2: Use config mapSize instead of hardcoded 20
     const mapSize = GRID_WARS_CONFIG.mapSize || 8;
+
+    // v2.2.1: Only create renderer if it doesn't exist, otherwise just resize
+    if (this.renderer) {
+      // Renderer exists - just resize and refresh
+      this.renderer.resize();
+      this.syncRendererState();
+      return;
+    }
+
     console.log('[GridPanel] Creating renderer with mapSize:', mapSize);
 
     this.renderer = new GridRenderer(canvas, {
@@ -895,7 +905,7 @@ export class GridPanel {
       console.log('[GridPanel] Legacy avatar mode (chevrons visible)');
     }
 
-    // Mouse events on canvas
+    // Mouse events on canvas - only add once
     canvas.addEventListener('click', (e) => this.onCanvasClick(e));
     canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e));
 
@@ -1810,7 +1820,7 @@ export class GridPanel {
 
   /**
    * v2.2: Handle GIFT button click
-   * Prompts for recipient and transfers cell ownership
+   * v2.2.1: Shows dropdown with online players instead of text prompt
    */
   async handleGift() {
     if (!this._selectedForAction || !this.state) return;
@@ -1821,20 +1831,74 @@ export class GridPanel {
       return;
     }
 
-    const recipient = prompt('Gift this cell to whom? (Enter username)');
-    if (!recipient || !recipient.trim()) return;
+    // Get list of other players (exclude self)
+    const players = Array.from(this.state.players?.values() || [])
+      .filter(p => p.username !== this.state.username)
+      .sort((a, b) => a.username.localeCompare(b.username));
 
-    try {
-      await this.state.giftCell(address, recipient.trim());
-      sounds.claim();
-      this.showToast(`Gifted ${address.toUpperCase()} to ${recipient}!`);
-      this.syncRendererState();
-      this.updateHierarchyActions();
-      this._selectedForAction = null;
-    } catch (err) {
-      sounds.error();
-      this.updateStatus(`Gift failed: ${err.message}`);
+    if (players.length === 0) {
+      this.updateStatus('No other players to gift to');
+      return;
     }
+
+    // Create modal with dropdown
+    const modal = document.createElement('div');
+    modal.id = 'gw-gift-modal';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8); display: flex; align-items: center;
+      justify-content: center; z-index: 10000;
+    `;
+    modal.innerHTML = `
+      <div style="background:#1a1a2e; border:1px solid #374151; border-radius:8px;
+                  padding:20px; max-width:300px; width:90%;">
+        <div style="color:#fbbf24; font-size:14px; font-weight:bold; margin-bottom:12px;">
+          🎁 Gift ${address.toUpperCase()}
+        </div>
+        <div style="color:#9ca3af; font-size:12px; margin-bottom:12px;">
+          Select a player to receive this cell:
+        </div>
+        <select id="gw-gift-recipient" style="width:100%; padding:8px; background:#0a0a0a;
+                border:1px solid #374151; border-radius:4px; color:#e5e7eb; font-size:13px;
+                margin-bottom:16px;">
+          ${players.map(p => `<option value="${p.username}">${p.username} (${p.territories_count || 0} cells)</option>`).join('')}
+        </select>
+        <div style="display:flex; gap:8px;">
+          <button id="gw-gift-cancel" style="flex:1; padding:8px; background:#374151;
+                  border:none; border-radius:4px; color:#e5e7eb; cursor:pointer;">
+            Cancel
+          </button>
+          <button id="gw-gift-confirm" style="flex:1; padding:8px; background:#22c55e;
+                  border:none; border-radius:4px; color:#000; cursor:pointer; font-weight:bold;">
+            Gift
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Handle modal interactions
+    const closeModal = () => modal.remove();
+    modal.querySelector('#gw-gift-cancel').onclick = closeModal;
+    modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+
+    modal.querySelector('#gw-gift-confirm').onclick = async () => {
+      const recipient = modal.querySelector('#gw-gift-recipient').value;
+      closeModal();
+
+      try {
+        await this.state.giftCell(address, recipient);
+        sounds.claim();
+        this.showToast(`Gifted ${address.toUpperCase()} to ${recipient}!`);
+        this.syncRendererState();
+        this.updateHierarchyActions();
+        this._selectedForAction = null;
+      } catch (err) {
+        sounds.error();
+        this.updateStatus(`Gift failed: ${err.message}`);
+      }
+    };
   }
 
   /**
