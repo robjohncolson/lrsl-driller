@@ -568,6 +568,7 @@ export class GridWarsState {
     this._applyOptimisticClaim(x, y, estimatedCost, currentOwner, actionId);
 
     try {
+      // v2.1.5: Include parent context for subcell claims
       const response = await fetch(`${this.serverUrl}/api/grid-wars/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -577,7 +578,9 @@ export class GridWarsState {
           action: 'claim',
           actionId,  // v1.3: Include actionId for reconciliation
           x,
-          y
+          y,
+          parentAddress: this.currentParent,  // v2.1.5: null for macro, "e5" for subcell
+          cellLevel: this.currentLevel         // v2.1.5: 0 for macro, 1+ for subcell
         })
       });
 

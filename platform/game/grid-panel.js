@@ -290,6 +290,16 @@ export class GridPanel {
             </div>
           </div>
 
+          <!-- v2.1.5: Selected Cell Coordinates -->
+          <div id="gw-coords-section" style="display:none;padding:8px 12px;background:#0f172a;border-bottom:1px solid #1e3a5f;">
+            <div id="gw-coords-display" style="font-size:16px;font-weight:bold;color:#22d3ee;font-family:monospace;text-align:center;">
+              📍 --
+            </div>
+            <div id="gw-coords-level" style="font-size:10px;color:#64748b;text-align:center;margin-top:2px;">
+              Click a cell to select
+            </div>
+          </div>
+
           <!-- Action button -->
           <div style="padding:8px 12px;background:#1f2937;">
             <div style="font-size:0.65rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Actions</div>
@@ -303,9 +313,16 @@ export class GridPanel {
               <button id="gw-develop-btn" class="gw-action-btn" style="display:none;width:100%;background:#1e3a5f;border-color:#22d3ee;" disabled>
                 🏗️ DEVELOP<span class="gw-cost">100⚡</span>
               </button>
+              <!-- v2.1.5: Tooltip explaining develop mechanic -->
+              <div id="gw-develop-hint" style="display:none;font-size:10px;color:#64748b;margin-top:4px;text-align:center;">
+                Creates 64 subcells. You keep center 4. Other 60 become neutral.
+              </div>
               <button id="gw-drill-btn" class="gw-action-btn" style="display:none;width:100%;background:#5f1e1e;border-color:#ef4444;margin-top:6px;" disabled>
                 ⛏️ DRILL IN<span class="gw-cost">75⚡</span>
               </button>
+              <div id="gw-drill-hint" style="display:none;font-size:10px;color:#64748b;margin-top:4px;text-align:center;">
+                Force-subdivide enemy cell. You get corner (a1), they keep center 4.
+              </div>
             </div>
           </div>
 
@@ -605,9 +622,42 @@ export class GridPanel {
     // Only handle movement when panel is expanded
     if (!this.isExpanded) return;
 
-    // v2.0: Arrow key movement disabled when hierarchy mode is enabled
-    // (avatars replaced with presence dots)
+    // v2.1.5: Arrow key navigation in hierarchy mode
     if (GRID_WARS_CONFIG.hierarchyEnabled) {
+      // Arrow Up - zoom into selected developed cell
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (this._selectedForAction?.address) {
+          const cell = this.state.territories.get(`${this._selectedForAction.x},${this._selectedForAction.y}`);
+          if (cell?.is_developed) {
+            await this.state.zoomIn(this._selectedForAction.address);
+            this.updateBreadcrumb();
+            this.syncRendererState();
+            this.updateHierarchyActions();
+            this.updateStatus(`Zoomed into ${this._selectedForAction.address.toUpperCase()}`);
+          } else {
+            this.updateStatus('Select a developed cell (🔲) to zoom in');
+          }
+        }
+        return;
+      }
+
+      // Arrow Down - zoom out
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const navState = this.state?.getNavigationState?.();
+        if (navState && navState.currentLevel > 0) {
+          await this.state.zoomOut();
+          this.updateBreadcrumb();
+          this.syncRendererState();
+          this.updateHierarchyActions();
+          this.updateStatus('Zoomed out');
+        } else {
+          this.updateStatus('Already at root level');
+        }
+        return;
+      }
+
       // Spacebar can still claim at selected cell
       if (e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault();
@@ -873,6 +923,9 @@ export class GridPanel {
 
     this.selectedCell = cell;
     this.renderer.pulseCell(cell.x, cell.y, '#ffffff', 300);
+
+    // v2.1.5: Update coordinate display
+    this.updateCoordsDisplay(cell.x, cell.y);
 
     // v2.0: Check if cell is developed - zoom in instead of claim
     if (this.state?.isDeveloped?.(cell.x, cell.y)) {
@@ -1626,6 +1679,8 @@ export class GridPanel {
     const container = this.container?.querySelector('#gw-hierarchy-actions');
     const developBtn = this.container?.querySelector('#gw-develop-btn');
     const drillBtn = this.container?.querySelector('#gw-drill-btn');
+    const developHint = this.container?.querySelector('#gw-develop-hint');
+    const drillHint = this.container?.querySelector('#gw-drill-hint');
 
     if (!container || !developBtn || !drillBtn || !this.state) return;
 
@@ -1633,6 +1688,8 @@ export class GridPanel {
     container.style.display = 'none';
     developBtn.style.display = 'none';
     drillBtn.style.display = 'none';
+    if (developHint) developHint.style.display = 'none';
+    if (drillHint) drillHint.style.display = 'none';
 
     // Check if hierarchy is enabled
     if (!GRID_WARS_CONFIG.hierarchyEnabled) return;
@@ -1666,6 +1723,7 @@ export class GridPanel {
     // DEVELOP button - for own territory
     if (owner === this.state.username) {
       developBtn.style.display = 'block';
+      if (developHint) developHint.style.display = 'block';
       const cost = GRID_WARS_CONFIG.developmentCost || 100;
       developBtn.disabled = points < cost;
       developBtn.querySelector('.gw-cost').textContent = `${cost}⚡`;
@@ -1676,6 +1734,7 @@ export class GridPanel {
       const canDrill = this.state.canDrill?.() || false;
       if (canDrill) {
         drillBtn.style.display = 'block';
+        if (drillHint) drillHint.style.display = 'block';
         const cost = GRID_WARS_CONFIG.drillCost || 75;
         drillBtn.disabled = points < cost;
         drillBtn.querySelector('.gw-cost').textContent = `${cost}⚡`;
@@ -1706,6 +1765,51 @@ export class GridPanel {
       sounds.error();
       this.updateStatus(`Develop failed: ${err.message}`);
     }
+  }
+
+  /**
+   * v2.1.5: Update coordinate display
+   */
+  updateCoordsDisplay(x, y) {
+    const coordsSection = this.container.querySelector('#gw-coords-section');
+    const coordsDisplay = this.container.querySelector('#gw-coords-display');
+    const coordsLevel = this.container.querySelector('#gw-coords-level');
+
+    if (!coordsSection || !coordsDisplay || !coordsLevel) return;
+
+    if (x === undefined || y === undefined) {
+      coordsSection.style.display = 'none';
+      return;
+    }
+
+    coordsSection.style.display = 'block';
+
+    // Build the full address
+    const localAddress = String.fromCharCode(97 + x) + (y + 1);
+    const currentParent = this.state?.currentParent;
+    const fullAddress = currentParent ? `${currentParent}.${localAddress}` : localAddress;
+    const level = this.state?.currentLevel || 0;
+
+    // Get owner info
+    const territory = this.state?.territories?.get(`${x},${y}`);
+    const owner = territory?.owner;
+    const isDeveloped = territory?.is_developed;
+
+    // Display address
+    coordsDisplay.innerHTML = `📍 ${fullAddress.toUpperCase()}`;
+
+    // Display level and owner info
+    let levelText = level === 0 ? 'MACRO LEVEL' : `LEVEL ${level}`;
+    if (owner) {
+      const ownerColor = owner === this.state.username ? '#22c55e' : '#ef4444';
+      levelText += ` • <span style="color:${ownerColor};">${owner}</span>`;
+    } else {
+      levelText += ' • <span style="color:#64748b;">Neutral</span>';
+    }
+    if (isDeveloped) {
+      levelText += ' • <span style="color:#22d3ee;">🔲 Developed</span>';
+    }
+    coordsLevel.innerHTML = levelText;
   }
 
   /**

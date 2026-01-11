@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.1.3 (Develop Button + Address + Claim Cost Fixes)
+**Current Version**: v2.1.5 (Subcell Claims + Navigation + Coordinates)
 
 ## Critical: File Sync Requirements
 
@@ -275,6 +275,17 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.1.5**: Subcell Claims + Navigation + Coordinates
+- Fixed subcell claims: client now sends `parentAddress` and `cellLevel` to server
+- Server looks up territories by address (not just x,y) when claiming subcells
+- Added coordinate display (`📍 E5.A1`) showing selected cell address, level, and owner
+- Added arrow key navigation: Up=zoom into developed cell, Down=zoom out
+- Added develop/drill tooltips explaining mechanics (center 4 retention)
+- Server response includes full address info for client reconciliation
+
+**v2.1.4**: Enhanced Error Logging for Develop/Drill
+- Added detailed Supabase error logging (code, message, details) for subcell creation
 
 **v2.1.3**: Develop Button + Address Population + Claim Cost Fixes
 - Fixed server claim action: new territories now include `address`, `parent_address`, `cell_level`, `is_developed` fields

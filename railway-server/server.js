@@ -4341,11 +4341,19 @@ app.get('/api/grid-wars/hall-of-fame', async (req, res) => {
 // Perform an action (claim territory, reinforce)
 app.post('/api/grid-wars/action', async (req, res) => {
   try {
-    const { gameId, username, action, actionId, x, y } = req.body;
+    // v2.1.5: Added parentAddress and cellLevel for subcell claims
+    const { gameId, username, action, actionId, x, y, parentAddress, cellLevel } = req.body;
 
     if (!gameId || !username || !action || x === undefined || y === undefined) {
       return res.status(400).json({ error: 'Missing required fields: gameId, username, action, x, y' });
     }
+
+    // v2.1.5: Build target address based on parent context
+    const localAddress = coordsToAddress(x, y);
+    const targetAddress = parentAddress ? `${parentAddress}.${localAddress}` : localAddress;
+    const targetLevel = cellLevel || 0;
+
+    console.log(`[Action] ${action} at ${targetAddress} (x=${x}, y=${y}, parent=${parentAddress || 'root'}, level=${targetLevel})`);
 
     // v1.3.2: Check if session is frozen (Grid Wars paused but drills still work)
     if (frozenGames.get(gameId)?.frozen) {
@@ -4393,14 +4401,30 @@ app.post('/api/grid-wars/action', async (req, res) => {
                         game?.surge_expires && new Date(game.surge_expires) > new Date();
 
     if (action === 'claim') {
-      // Check if already owned or is a resource node placeholder
-      const { data: existingTerritory } = await supabase
-        .from('grid_wars_territories')
-        .select('owner, node_type, strength')
-        .eq('game_id', gameId)
-        .eq('x', x)
-        .eq('y', y)
-        .single();
+      // v2.1.5: Check if already owned or is a resource node placeholder
+      // Use address for subcell lookups, x/y for macro cells (backwards compatibility)
+      let existingTerritory;
+      if (parentAddress) {
+        // Subcell claim - look up by address
+        const { data } = await supabase
+          .from('grid_wars_territories')
+          .select('id, owner, node_type, strength, address, parent_address, cell_level, is_developed')
+          .eq('game_id', gameId)
+          .eq('address', targetAddress)
+          .single();
+        existingTerritory = data;
+      } else {
+        // Macro claim - look up by x,y (backwards compatible)
+        const { data } = await supabase
+          .from('grid_wars_territories')
+          .select('id, owner, node_type, strength, address, parent_address, cell_level, is_developed')
+          .eq('game_id', gameId)
+          .eq('x', x)
+          .eq('y', y)
+          .is('parent_address', null)  // Only match root-level cells
+          .single();
+        existingTerritory = data;
+      }
 
       // Resource nodes exist as unclaimed territories with node_type set
       const isResourceNode = existingTerritory?.node_type && !existingTerritory?.owner;
@@ -4520,24 +4544,43 @@ app.post('/api/grid-wars/action', async (req, res) => {
       // Claim or update territory (works for neutral, resource nodes, AND enemy territories)
       if (existingTerritory) {
         // Update existing (resource node or enemy takeover)
-        // v2.1.3: Include address if missing (for legacy cells without address)
+        // v2.1.5: Update by ID or address for subcells
         const updateData = {
           owner: username,
           claimed_at: new Date().toISOString(),
           strength: GRID_WARS_CONFIG.maxCellStrength
         };
+        // v2.1.3: Include address if missing (for legacy cells without address)
         if (!existingTerritory.address) {
-          updateData.address = coordsToAddress(x, y);
-          updateData.parent_address = null;
-          updateData.cell_level = 0;
+          updateData.address = targetAddress;
+          updateData.parent_address = parentAddress || null;
+          updateData.cell_level = targetLevel;
           updateData.is_developed = existingTerritory.is_developed || false;
         }
-        await supabase
-          .from('grid_wars_territories')
-          .update(updateData)
-          .eq('game_id', gameId)
-          .eq('x', x)
-          .eq('y', y);
+
+        // v2.1.5: Use ID for precise updates (subcells share x,y with parent)
+        if (existingTerritory.id) {
+          await supabase
+            .from('grid_wars_territories')
+            .update(updateData)
+            .eq('id', existingTerritory.id);
+        } else if (parentAddress) {
+          // Subcell - update by address
+          await supabase
+            .from('grid_wars_territories')
+            .update(updateData)
+            .eq('game_id', gameId)
+            .eq('address', targetAddress);
+        } else {
+          // Macro - update by x,y (backwards compatible)
+          await supabase
+            .from('grid_wars_territories')
+            .update(updateData)
+            .eq('game_id', gameId)
+            .eq('x', x)
+            .eq('y', y)
+            .is('parent_address', null);
+        }
 
         // Decrement previous owner's territory count if takeover
         if (isEnemyTakeover) {
@@ -4665,12 +4708,16 @@ app.post('/api/grid-wars/action', async (req, res) => {
       const goalResult = await incrementClassGoal(gameId);
 
       // Broadcast
+      // v2.1.5: Include address info for subcell claims
       broadcast({
         type: 'territory_claimed',
         gameId,
         username,
         x,
         y,
+        address: targetAddress,      // v2.1.5
+        parentAddress: parentAddress || null,  // v2.1.5
+        cellLevel: targetLevel,      // v2.1.5
         cluster: newCluster,
         isNode: isResourceNode,
         nodeType: existingTerritory?.node_type,
@@ -4683,9 +4730,13 @@ app.post('/api/grid-wars/action', async (req, res) => {
       broadcastLeaderboardUpdate(gameId);
 
       // v1.3: Build authoritative cell state for client reconciliation
+      // v2.1.5: Include address info
       const authoritativeCell = {
         x,
         y,
+        address: targetAddress,
+        parent_address: parentAddress || null,
+        cell_level: targetLevel,
         owner: username,
         strength: GRID_WARS_CONFIG.maxCellStrength,
         claimed_at: new Date().toISOString(),
@@ -4715,6 +4766,9 @@ app.post('/api/grid-wars/action', async (req, res) => {
         actionId,  // v1.3: Echo actionId for reconciliation
         x,
         y,
+        address: targetAddress,         // v2.1.5: Full address including parent
+        parentAddress: parentAddress || null,  // v2.1.5
+        cellLevel: targetLevel,         // v2.1.5
         cost,
         baseCost,  // v1.3: Base cost before scaling (for UI display)
         newPoints: currentPoints - cost,
