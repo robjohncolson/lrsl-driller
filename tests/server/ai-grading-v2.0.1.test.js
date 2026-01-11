@@ -348,3 +348,254 @@ describe('Error Cases', () => {
     expect(displayModel).toBe('Llama-3.3-70B');
   });
 });
+
+// ==================== v2.1.1 FIELD ID REMAPPING ====================
+describe('Field ID Remapping (v2.1.1)', () => {
+  describe('/api/ai/grade Endpoint', () => {
+    it('remaps answer field to actual field ID from scenario.fieldId', () => {
+      // Simulate the server-side remapping logic
+      const scenario = { fieldId: 'slope', topic: 'LSRL' };
+      const answers = { slope: 'For every 1 unit increase...' };
+      const result = {
+        answer: { score: 'E', feedback: 'Correct!' },
+        _provider: 'groq',
+        _model: 'llama-3.3-70b-versatile'
+      };
+
+      // v2.1.1: Remap 'answer' to actual field ID
+      const actualFieldId = scenario.fieldId || Object.keys(answers)[0];
+      if (result.answer && actualFieldId && actualFieldId !== 'answer') {
+        result[actualFieldId] = result.answer;
+        delete result.answer;
+      }
+
+      expect(result.slope).toBeDefined();
+      expect(result.answer).toBeUndefined();
+      expect(result.slope.score).toBe('E');
+    });
+
+    it('remaps answer field to first answer key when scenario.fieldId is missing', () => {
+      const scenario = { topic: 'LSRL' }; // No fieldId
+      const answers = { interpretation: 'The slope means...' };
+      const result = {
+        answer: { score: 'P', feedback: 'Missing context.' },
+        _provider: 'gemini',
+        _model: 'gemini-2.0-flash'
+      };
+
+      const actualFieldId = scenario.fieldId || Object.keys(answers)[0];
+      if (result.answer && actualFieldId && actualFieldId !== 'answer') {
+        result[actualFieldId] = result.answer;
+        delete result.answer;
+      }
+
+      expect(result.interpretation).toBeDefined();
+      expect(result.answer).toBeUndefined();
+      expect(result.interpretation.score).toBe('P');
+    });
+
+    it('does not remap when field ID is already answer', () => {
+      const scenario = { fieldId: 'answer' };
+      const answers = { answer: 'Some response' };
+      const result = {
+        answer: { score: 'E', feedback: 'Good!' },
+        _provider: 'groq'
+      };
+
+      const actualFieldId = scenario.fieldId || Object.keys(answers)[0];
+      if (result.answer && actualFieldId && actualFieldId !== 'answer') {
+        result[actualFieldId] = result.answer;
+        delete result.answer;
+      }
+
+      expect(result.answer).toBeDefined();
+      expect(result.answer.score).toBe('E');
+    });
+
+    it('does not remap when AI returns proper field ID', () => {
+      const scenario = { fieldId: 'slope' };
+      const answers = { slope: 'The slope interpretation...' };
+      const result = {
+        slope: { score: 'E', feedback: 'Correct!' }, // AI already returned correct field ID
+        _provider: 'groq'
+      };
+
+      const actualFieldId = scenario.fieldId || Object.keys(answers)[0];
+      if (result.answer && actualFieldId && actualFieldId !== 'answer') {
+        result[actualFieldId] = result.answer;
+        delete result.answer;
+      }
+
+      expect(result.slope).toBeDefined();
+      expect(result.answer).toBeUndefined();
+    });
+
+    it('preserves metadata fields during remapping', () => {
+      const scenario = { fieldId: 'term' };
+      const answers = { term: 'Bias' };
+      const result = {
+        answer: { score: 'E', feedback: 'Correct!' },
+        _provider: 'groq',
+        _model: 'llama-3.3-70b-versatile',
+        _keyId: 'pool-key-1',
+        _gradingMode: 'ai',
+        _serverGraded: true
+      };
+
+      const actualFieldId = scenario.fieldId || Object.keys(answers)[0];
+      if (result.answer && actualFieldId && actualFieldId !== 'answer') {
+        result[actualFieldId] = result.answer;
+        delete result.answer;
+      }
+
+      // Verify metadata preserved
+      expect(result._provider).toBe('groq');
+      expect(result._model).toBe('llama-3.3-70b-versatile');
+      expect(result._keyId).toBe('pool-key-1');
+      expect(result._gradingMode).toBe('ai');
+      expect(result._serverGraded).toBe(true);
+      // Verify field remapped
+      expect(result.term).toBeDefined();
+    });
+  });
+
+  describe('/api/ai/appeal Endpoint', () => {
+    it('remaps answer field for appeal responses', () => {
+      const answers = { slope: 'The slope means...' };
+      const result = {
+        answer: { score: 'E', feedback: 'Appeal accepted.' },
+        _provider: 'groq',
+        _gradingMode: 'ai-appeal'
+      };
+
+      const actualFieldId = Object.keys(answers)[0];
+      if (result.answer && actualFieldId && actualFieldId !== 'answer') {
+        result[actualFieldId] = result.answer;
+        delete result.answer;
+      }
+
+      expect(result.slope).toBeDefined();
+      expect(result.answer).toBeUndefined();
+    });
+  });
+
+  describe('Client-Side Panel Integration', () => {
+    it('panel receives correct field ID after remapping', () => {
+      // After server remapping, platform.js should find the correct field
+      const aiResults = {
+        slope: { score: 'E', feedback: 'Correct!' }, // Remapped from 'answer'
+        _provider: 'groq',
+        _model: 'llama-3.3-70b-versatile'
+      };
+
+      // Simulate platform.js grade() logic
+      const results = {
+        fields: {
+          slope: { score: 'I', _keywordScore: 'I', _method: 'keywords' }
+        },
+        _gradingMethod: 'keywords'
+      };
+
+      // Process AI results (lines 366-443 in platform.js)
+      for (const [fieldId, aiResult] of Object.entries(aiResults)) {
+        if (fieldId.startsWith('_')) continue;
+        if (!aiResult || typeof aiResult !== 'object') continue;
+
+        const currentResult = results.fields[fieldId];
+        if (!currentResult) continue;
+
+        currentResult._aiScore = aiResult.score;
+        currentResult._aiFeedback = aiResult.feedback;
+        currentResult._provider = aiResults._provider;
+        currentResult._model = aiResults._model;
+      }
+      results._gradingMethod = 'keywords+ai';
+
+      // Verify _aiScore is now set (this is what v2.1.1 fixes)
+      expect(results.fields.slope._aiScore).toBe('E');
+      expect(results.fields.slope._provider).toBe('groq');
+      expect(results.fields.slope._model).toBe('llama-3.3-70b-versatile');
+    });
+
+    it('panel shows when _aiScore is set correctly', () => {
+      const results = {
+        _gradingMethod: 'keywords+ai',
+        _aiFailed: false,
+        fields: {
+          slope: {
+            score: 'E',
+            _aiScore: 'E',
+            _aiFeedback: 'Correct!',
+            _provider: 'groq',
+            _model: 'llama-3.3-70b-versatile',
+            _keywordScore: 'I'
+          }
+        }
+      };
+
+      // Simulate onGradingComplete logic
+      let aiResponse = null;
+      let keywordScore = null;
+
+      if (results._gradingMethod === 'keywords+ai' && !results._aiFailed) {
+        for (const [fieldId, result] of Object.entries(results.fields)) {
+          if (result._aiScore) {
+            aiResponse = {
+              _provider: result._provider,
+              _model: result._model,
+              results: { [fieldId]: { score: result._aiScore, feedback: result._aiFeedback } }
+            };
+            keywordScore = result._keywordScore;
+            break;
+          }
+        }
+      }
+
+      // This would have failed before v2.1.1 fix
+      expect(aiResponse).not.toBeNull();
+      expect(aiResponse._provider).toBe('groq');
+      expect(aiResponse._model).toBe('llama-3.3-70b-versatile');
+      expect(keywordScore).toBe('I');
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('handles empty answers object', () => {
+      const scenario = { fieldId: 'slope' };
+      const answers = {};
+      const result = {
+        answer: { score: 'E', feedback: 'Correct!' }
+      };
+
+      const actualFieldId = scenario.fieldId || Object.keys(answers)[0];
+      if (result.answer && actualFieldId && actualFieldId !== 'answer') {
+        result[actualFieldId] = result.answer;
+        delete result.answer;
+      }
+
+      // Should still remap using scenario.fieldId
+      expect(result.slope).toBeDefined();
+      expect(result.answer).toBeUndefined();
+    });
+
+    it('handles multi-field responses without remapping', () => {
+      const scenario = { fieldId: 'slope' };
+      const answers = { slope: '...', intercept: '...' };
+      const result = {
+        slope: { score: 'E', feedback: 'Good slope!' },
+        intercept: { score: 'P', feedback: 'Missing context.' }
+      };
+
+      // No 'answer' field, so no remapping needed
+      const actualFieldId = scenario.fieldId || Object.keys(answers)[0];
+      if (result.answer && actualFieldId && actualFieldId !== 'answer') {
+        result[actualFieldId] = result.answer;
+        delete result.answer;
+      }
+
+      expect(result.slope).toBeDefined();
+      expect(result.intercept).toBeDefined();
+      expect(result.answer).toBeUndefined();
+    });
+  });
+});

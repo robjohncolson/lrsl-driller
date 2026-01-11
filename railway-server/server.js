@@ -1624,6 +1624,15 @@ app.post('/api/ai/grade', async (req, res) => {
 
     const result = await gradingQueue.add(() => gradeWithAI(prompt, preferProvider));
 
+    // v2.1.1: Remap 'answer' field ID to actual field ID from request
+    // normalizeGradingResponse defaults to 'answer' but client expects the actual field ID
+    const actualFieldId = scenario.fieldId || Object.keys(answers)[0];
+    if (result.answer && actualFieldId && actualFieldId !== 'answer') {
+      console.log(`[AI] Remapping field ID: 'answer' -> '${actualFieldId}'`);
+      result[actualFieldId] = result.answer;
+      delete result.answer;
+    }
+
     result._gradingMode = 'ai';
     result._serverGraded = true;
 
@@ -1699,6 +1708,14 @@ app.post('/api/ai/appeal', async (req, res) => {
     console.log(`Appeal request queued (position ${queuePos}): ${scenario.topic}, cartridge: ${cartridgeId || 'unknown'}`);
 
     const result = await gradingQueue.add(() => gradeWithAI(prompt, preferProvider));
+
+    // v2.1.1: Remap 'answer' field ID to actual field ID from request (consistency with /api/ai/grade)
+    const actualFieldId = Object.keys(answers)[0];
+    if (result.answer && actualFieldId && actualFieldId !== 'answer') {
+      console.log(`[AI Appeal] Remapping field ID: 'answer' -> '${actualFieldId}'`);
+      result[actualFieldId] = result.answer;
+      delete result.answer;
+    }
 
     result._gradingMode = 'ai-appeal';
     result._serverGraded = true;
