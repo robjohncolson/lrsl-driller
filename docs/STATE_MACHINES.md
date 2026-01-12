@@ -5699,6 +5699,419 @@ REGRESSION TESTS:
 
 ---
 
-*Updated to v2.2.6*
+## 77. v2.2.7 TERRITORY DISPLAY STATE
+
+```
+v2.2.7 TERRITORY DISPLAY — GLOBAL VS LOCAL STATE
+─────────────────────────────────────────────────
+
+PROBLEM: Territory percentage changed with zoom level
+──────────────────────────────────────────────────────
+
+BEFORE (v2.2.6):
+┌─────────────────────────────────────────────────────────────┐
+│  At MACRO level:        │  Zoomed into D5:                 │
+│  "Your territory: 3%"   │  "Your territory: 8%"            │
+│  (2/64 macro cells)     │  (5/64 local subcells)           │
+│                         │                                   │
+│  DIFFERENT NUMBERS FOR SAME OWNERSHIP!                      │
+└─────────────────────────────────────────────────────────────┘
+
+AFTER (v2.2.7):
+┌─────────────────────────────────────────────────────────────┐
+│  At MACRO level:        │  Zoomed into D5:                 │
+│  "Your territory: 0.22%"│  "Your territory: 0.22%"         │
+│  (GLOBAL weighted)      │  (GLOBAL weighted - SAME!)       │
+│                         │                                   │
+│  ZOOM INVARIANT - Uses server's weighted calculation        │
+└─────────────────────────────────────────────────────────────┘
+
+DATA FLOW:
+┌────────────────┐     ┌────────────────┐     ┌────────────────┐
+│ Client Request │────>│ Server State   │────>│ Client Display │
+│ GET /state     │     │ Endpoint       │     │                │
+│ ?username=X    │     │                │     │                │
+└────────────────┘     └────────────────┘     └────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │ calculateWeightedTerritory()  │
+              │ - Queries ALL territories     │
+              │ - Weights by level:           │
+              │   Level 0: 1.0 unit           │
+              │   Level 1: 1/64 unit          │
+              │   Level 2: 1/4096 unit        │
+              │ - Returns global percentage   │
+              └───────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │ getMapFillPercent(gameId)     │
+              │ - Counts ALL owned cells      │
+              │ - Returns 0.0 to 1.0          │
+              └───────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │ State Response includes:      │
+              │ {                             │
+              │   territories: [...filtered], │
+              │   userStats: { GLOBAL },      │
+              │   globalMapFill: XX           │
+              │ }                             │
+              └───────────────────────────────┘
+```
+
+---
+
+## 78. v2.2.7 UI SECTION DISTINCTION
+
+```
+v2.2.7 UI SECTIONS — NAVIGATION VS SELECTION
+─────────────────────────────────────────────
+
+BEFORE (v2.2.6):
+┌─────────────────────────────────────────────────────────────┐
+│ Both sections used 📍 emoji — CONFUSING!                    │
+│                                                             │
+│ ┌─────────────────────────────┐                            │
+│ │ 📍 LEVEL 2 — Inside D5      │  ← Navigation?             │
+│ │ Your territory: 8% (9📦)    │                            │
+│ └─────────────────────────────┘                            │
+│                                                             │
+│ ┌─────────────────────────────┐                            │
+│ │ 📍 D5                       │  ← Selection?              │
+│ │ LEVEL 1 • Cherry_Tiger      │                            │
+│ └─────────────────────────────┘                            │
+│                                                             │
+│ Users confused: "Which is which?"                           │
+└─────────────────────────────────────────────────────────────┘
+
+AFTER (v2.2.7):
+┌─────────────────────────────────────────────────────────────┐
+│ ┌─────────────────────────────┐                            │
+│ │ 📍 VIEWING                  │ ← Cyan border (#0aa)       │
+│ │ Level 2 — Inside D5         │   "Where you ARE"          │
+│ │ Your territory: 0.22% (1🏰) │                            │
+│ │ Map filled: 25%             │                            │
+│ └─────────────────────────────┘                            │
+│                                                             │
+│ ┌─────────────────────────────┐                            │
+│ │ 🎯 SELECTED CELL            │ ← Purple border (#448)     │
+│ │ D5.E4                       │   "What you CLICKED"       │
+│ │ 🟥 Cherry_Tiger • Level 2   │   Color swatch from server │
+│ └─────────────────────────────┘                            │
+│                                                             │
+│ Clear visual & semantic distinction!                        │
+└─────────────────────────────────────────────────────────────┘
+
+STYLING COMPARISON:
+┌───────────────┬──────────────────┬──────────────────┐
+│ Aspect        │ Navigation       │ Selection        │
+├───────────────┼──────────────────┼──────────────────┤
+│ Label         │ "📍 VIEWING"     │ "🎯 SELECTED"    │
+│ Border Color  │ #0aa (cyan)      │ #448 (purple)    │
+│ Background    │ rgba(0,100,100)  │ rgba(50,50,80)   │
+│ Purpose       │ Where you are    │ What you clicked │
+│ Updates on    │ Zoom in/out      │ Cell click       │
+└───────────────┴──────────────────┴──────────────────┘
+```
+
+---
+
+## 79. v2.2.7 updateTerritoryStats() STATE
+
+```
+v2.2.7 updateTerritoryStats() — STATE FLOW
+──────────────────────────────────────────
+
+INPUT STATE:
+┌───────────────────────────────────────────────────────────┐
+│ this.state.userStats     │ From server, GLOBAL weighted  │
+│ this.state.globalMapFill │ From server, 0-100 percentage │
+└───────────────────────────────────────────────────────────┘
+
+DECISION FLOW:
+                    ┌─────────────────┐
+                    │ userStats       │
+                    │ available?      │
+                    └────────┬────────┘
+                             │
+              ┌──────────────┴──────────────┐
+              │                             │
+              ▼                             ▼
+       ┌──────────┐                  ┌──────────┐
+       │   YES    │                  │    NO    │
+       └────┬─────┘                  └────┬─────┘
+            │                             │
+            ▼                             ▼
+┌───────────────────────┐    ┌───────────────────────┐
+│ Build breakdown:      │    │ Show fallback:        │
+│ - macro🏰 count       │    │ "Your territory: --"  │
+│ - sub1📦 count        │    │ "Map filled: X%"      │
+│ - sub2🔹 count        │    │ (if globalMapFill)    │
+│                       │    │                       │
+│ Show: X.XX% (N🏰+M📦) │    │ or "Map filled: --"   │
+│ Map filled: Y%        │    │                       │
+└───────────────────────┘    └───────────────────────┘
+
+OUTPUT FORMAT:
+┌─────────────────────────────────────────────────────────────┐
+│ "Your territory: 0.22% (1🏰 + 9📦) | Map filled: 25%"      │
+│                 ▲               ▲                    ▲      │
+│                 │               │                    │      │
+│           GLOBAL %         Breakdown          GLOBAL fill   │
+│         (weighted)       (by cell type)    (from server)    │
+└─────────────────────────────────────────────────────────────┘
+
+KEY INVARIANT:
+┌─────────────────────────────────────────────────────────────┐
+│ Territory percentage NEVER changes when zooming!            │
+│ - At macro: "Your territory: 0.22%"                         │
+│ - At level 1: "Your territory: 0.22%"                       │
+│ - At level 2: "Your territory: 0.22%"                       │
+│ Always the same because it's GLOBAL weighted calculation    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 80. v2.2.7 updateCoordsDisplay() STATE
+
+```
+v2.2.7 updateCoordsDisplay(x, y) — STATE FLOW
+──────────────────────────────────────────────
+
+INPUT:
+┌───────────────┬──────────────────────────────────────────┐
+│ x, y          │ Grid coordinates of selected cell        │
+│ undefined     │ Clears selection display                 │
+└───────────────┴──────────────────────────────────────────┘
+
+DECISION FLOW:
+                    ┌─────────────────┐
+                    │ x,y undefined?  │
+                    └────────┬────────┘
+                             │
+              ┌──────────────┴──────────────┐
+              │                             │
+              ▼                             ▼
+       ┌──────────┐                  ┌──────────┐
+       │   YES    │                  │    NO    │
+       └────┬─────┘                  └────┬─────┘
+            │                             │
+            ▼                             ▼
+┌───────────────────────┐    ┌───────────────────────────────┐
+│ Hide section:         │    │ 1. Build address:             │
+│ display = 'none'      │    │    localAddr = chr(97+x)+(y+1)│
+│                       │    │    fullAddr = parent.local    │
+│                       │    │                               │
+│                       │    │ 2. Get territory info:        │
+│                       │    │    owner, isDeveloped         │
+│                       │    │                               │
+│                       │    │ 3. Get owner color:           │
+│                       │    │    playerColors[owner] or     │
+│                       │    │    fallback (#22c55e/#ef4444) │
+│                       │    │                               │
+│                       │    │ 4. Build display HTML         │
+└───────────────────────┘    └───────────────────────────────┘
+
+OUTPUT HTML:
+┌─────────────────────────────────────────────────────────────┐
+│ gw-coords-display:                                          │
+│   "D5.E4"  ← No emoji (emoji is in "SELECTED CELL" label)  │
+│                                                             │
+│ gw-coords-level:                                            │
+│   [color swatch] Cherry_Tiger | Level 2 | ⊞ Developed      │
+│        ▲               ▲           ▲            ▲          │
+│        │               │           │            │          │
+│   10x10 div       Owner name   1-indexed   If developed    │
+│   with bg color  (from server)                             │
+└─────────────────────────────────────────────────────────────┘
+
+COLOR SWATCH LOGIC:
+┌────────────────────────────────────────────────────────────┐
+│ if (owner) {                                               │
+│   color = playerColors[owner]     // Server-assigned       │
+│        || (owner === username     // Fallback:             │
+│            ? '#22c55e'            //   Own = green         │
+│            : '#ef4444')           //   Enemy = red         │
+│ } else {                                                   │
+│   color = '#444'                  // Neutral = gray        │
+│ }                                                          │
+└────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 81. v2.2.7 SERVER STATE RESPONSE
+
+```
+v2.2.7 SERVER STATE RESPONSE — NEW FIELDS
+─────────────────────────────────────────
+
+GET /api/grid-wars/games/:gameId/state?parent=X&username=Y
+
+RESPONSE STRUCTURE:
+┌─────────────────────────────────────────────────────────────┐
+│ {                                                           │
+│   game: { ... },                                            │
+│   territories: [ ... ],    // May be filtered by parent    │
+│   players: [ ... ],                                         │
+│   config: { ... },                                          │
+│   playerColors: { ... },                                    │
+│   subcellSummaries: { ... },                                │
+│                                                             │
+│   // v2.2.4: Global weighted user stats                     │
+│   userStats: {                                              │
+│     units: 1.140625,       // Weighted unit count          │
+│     percent: "1.78",       // Global percentage string     │
+│     breakdown: {                                            │
+│       macro: 1,            // Undeveloped macro cells      │
+│       sub1: 9,             // Level 1 subcells             │
+│       sub2: 0              // Level 2 sub-subcells         │
+│     }                                                       │
+│   },                                                        │
+│                                                             │
+│   // v2.2.7: Global map fill percentage                     │
+│   globalMapFill: 25        // 0-100, NOT view-filtered     │
+│ }                                                           │
+└─────────────────────────────────────────────────────────────┘
+
+KEY PROPERTIES:
+┌────────────────────┬────────────────────────────────────────┐
+│ Property           │ Description                            │
+├────────────────────┼────────────────────────────────────────┤
+│ territories        │ FILTERED by parent (current view)      │
+│ userStats          │ GLOBAL (all levels, all parents)       │
+│ globalMapFill      │ GLOBAL (all owned cells / 64)          │
+└────────────────────┴────────────────────────────────────────┘
+
+CALCULATION:
+┌─────────────────────────────────────────────────────────────┐
+│ globalMapFill = await getMapFillPercent(gameId);           │
+│                                                             │
+│ // Returns 0.0 to 1.0, server multiplies by 100            │
+│ // and rounds for response                                  │
+│                                                             │
+│ res.json({                                                  │
+│   ...                                                       │
+│   globalMapFill: Math.round(globalMapFill * 100)           │
+│ });                                                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 82. v2.2.7 GRID STATE STORAGE
+
+```
+v2.2.7 GRID STATE STORAGE — NEW PROPERTIES
+──────────────────────────────────────────
+
+GridWarsState CLASS PROPERTIES:
+┌─────────────────────────────────────────────────────────────┐
+│ constructor() {                                             │
+│   // ... existing properties ...                            │
+│                                                             │
+│   // v2.2.4: Weighted territory stats for current user     │
+│   this.userStats = null;                                    │
+│   // { units, percent, breakdown: {macro, sub1, sub2} }    │
+│                                                             │
+│   // v2.2.7: Global map fill percentage (not view-relative)│
+│   this.globalMapFill = 0;                                   │
+│   // 0-100                                                  │
+│ }                                                           │
+└─────────────────────────────────────────────────────────────┘
+
+refreshState() UPDATES:
+┌─────────────────────────────────────────────────────────────┐
+│ async refreshState() {                                      │
+│   const state = await fetch(...);                           │
+│                                                             │
+│   // ... existing state updates ...                         │
+│                                                             │
+│   // v2.2.4: Store user's weighted territory stats         │
+│   if (state.userStats) {                                    │
+│     this.userStats = state.userStats;                       │
+│   }                                                         │
+│                                                             │
+│   // v2.2.7: Store GLOBAL map fill percentage              │
+│   if (state.globalMapFill !== undefined) {                  │
+│     this.globalMapFill = state.globalMapFill;               │
+│   }                                                         │
+│                                                             │
+│   this._emitStateChange();                                  │
+│ }                                                           │
+└─────────────────────────────────────────────────────────────┘
+
+ACCESS IN PANEL:
+┌─────────────────────────────────────────────────────────────┐
+│ // grid-panel.js                                            │
+│ updateTerritoryStats() {                                    │
+│   const userStats = this.state.userStats;     // Object    │
+│   const globalMapFill = this.state.globalMapFill; // 0-100 │
+│   // ... use for display ...                                │
+│ }                                                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 83. v2.2.7 VERIFICATION CHECKLIST
+
+```
+v2.2.7 VERIFICATION CHECKLIST
+─────────────────────────────
+
+SERVER CHANGES:
+□ railway-server/server.js calls getMapFillPercent(gameId)
+□ globalMapFill added to state response
+□ globalMapFill is Math.round(fill * 100) for 0-100 range
+□ userStats still calculated globally (not filtered by parent)
+
+CLIENT STATE:
+□ grid-state.js constructor initializes globalMapFill = 0
+□ grid-state.js constructor initializes userStats = null
+□ refreshState() stores globalMapFill from response
+□ refreshState() stores userStats from response
+
+UI - NAVIGATION SECTION:
+□ HTML template has "📍 VIEWING" label
+□ Cyan border (#0aa) and background
+□ Level display format: "Level X — ROOT" or "Level X — Inside Y"
+□ No emoji prefix in level display (emoji in label above)
+
+UI - SELECTION SECTION:
+□ HTML template has "🎯 SELECTED CELL" label
+□ Purple border (#448) and background
+□ Address displayed without emoji prefix
+□ Owner color swatch from playerColors
+□ Falls back to green/red for self/enemy if no color
+
+TERRITORY STATS:
+□ updateTerritoryStats() uses this.state.userStats
+□ updateTerritoryStats() uses this.state.globalMapFill
+□ No local calculation of territory percentage
+□ No local calculation of map fill percentage
+□ Display: "Your territory: X.XX% (N🏰 + M📦) | Map filled: Y%"
+
+ZOOM INVARIANCE:
+□ At macro level: note territory %
+□ Zoom into developed cell
+□ Territory % is UNCHANGED
+□ Map filled % is UNCHANGED
+□ Click different cells - stats don't change
+□ Zoom out - stats still same
+
+REGRESSION TESTS:
+□ tests/game/grid-wars-v2.2.7.test.js passes (32 tests)
+□ All existing Grid Wars tests still pass
+□ All 1458+ platform tests pass
+```
+
+---
+
+*Updated to v2.2.7*
 *Last updated: January 2026*
-*Total sections: 76*
+*Total sections: 83*

@@ -156,6 +156,12 @@ export class GridWarsState {
     this.breadcrumb = [];         // ["d5", "c3"] for d5.c3
     this.parentCell = null;       // Parent cell info when zoomed in
 
+    // v2.2.4: Weighted territory stats for current user
+    this.userStats = null;        // { units, percent, breakdown: {macro, sub1, sub2} }
+
+    // v2.2.7: Global map fill percentage (not view-relative)
+    this.globalMapFill = 0;       // 0-100
+
     // v2.0: Hierarchy event callbacks
     this.onCellDeveloped = options.onCellDeveloped || null;
     this.onCellDrilled = options.onCellDrilled || null;
@@ -311,6 +317,11 @@ export class GridWarsState {
       // v2.2.4: Store user's weighted territory stats
       if (state.userStats) {
         this.userStats = state.userStats;
+      }
+
+      // v2.2.7: Store GLOBAL map fill percentage (not view-relative)
+      if (state.globalMapFill !== undefined) {
+        this.globalMapFill = state.globalMapFill;
       }
 
       this._emitStateChange();

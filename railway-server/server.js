@@ -4046,6 +4046,9 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
       userStats = await calculateWeightedTerritory(gameId, username);
     }
 
+    // v2.2.7: Calculate GLOBAL map fill percentage (not filtered by current view)
+    const globalMapFill = await getMapFillPercent(gameId);
+
     // Get class goal progress
     const classGoal = {
       current: game.class_goal_current || 0,
@@ -4091,7 +4094,9 @@ app.get('/api/grid-wars/games/:gameId/state', async (req, res) => {
       playerColors,
       subcellSummaries,
       // v2.2.4: Weighted territory stats for requesting user
-      userStats
+      userStats,
+      // v2.2.7: Global map fill percentage (always shows total, not current view)
+      globalMapFill: Math.round(globalMapFill * 100)
     });
   } catch (err) {
     console.error('GET /api/grid-wars/games/:gameId/state error:', err);

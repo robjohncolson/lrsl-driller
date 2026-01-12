@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A subject-agnostic drill/quiz platform for teachers ("Driller Platform"). Think of it like a game console: the platform is the console, lessons are cartridges.
 
-Current cartridges (10 total) are listed in `cartridges/registry.json` and span AP Statistics, Algebra 2, and Computer Science topics.
+Current cartridges (11 total) are listed in `cartridges/registry.json` and span AP Statistics, Algebra 2, and Computer Science topics.
 
 **Deployment**: Vercel (frontend) + Railway (backend server for AI grading, WebSocket, time tracking, Grid Wars)
 
@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.2.6 (Hostile Takeover: Seize Developed Cells)
+**Current Version**: v2.2.7 (Territory Display Fix: Global Percentage + Clear Labels)
 
 ## Critical: File Sync Requirements
 
@@ -229,7 +229,7 @@ See `docs/STATE_MACHINES.md` for complete diagrams of all component state transi
 ## Testing
 
 ```bash
-npm test                                          # All tests (1250 tests)
+npm test                                          # All tests (1458 tests)
 npm run test:watch                                # Watch mode
 npx vitest run tests/grading/sampling.test.js    # Single test file
 npx vitest run tests/game/grid-wars-v2.0.test.js   # v2.0 hierarchy tests (40 tests)
@@ -239,6 +239,7 @@ npx vitest run tests/game/grid-wars-v2.2.2.test.js # v2.2.2 click-to-select (32 
 npx vitest run tests/game/grid-wars-v2.2.3.test.js # v2.2.3 color/gift/zoom/level (40+ tests)
 npx vitest run tests/game/grid-wars-v2.2.5.test.js # v2.2.5 landlord tax + fortification (52 tests)
 npx vitest run tests/game/grid-wars-v2.2.6.test.js # v2.2.6 hostile takeover (60 tests)
+npx vitest run tests/game/grid-wars-v2.2.7.test.js # v2.2.7 territory display fix (32 tests)
 npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
@@ -253,7 +254,7 @@ Test organization:
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
 - `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality)
-- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.2.6)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.2.7)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
@@ -280,6 +281,19 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.2.7**: Territory Display Fix - Global Percentage + Clear Labels
+- Fixed territory % to always show GLOBAL weighted percentage (not view-relative)
+- Fixed map fill % to always show GLOBAL fill (not current view count)
+- Added "📍 VIEWING" label to navigation section (cyan border, shows current level/parent)
+- Added "🎯 SELECTED CELL" label to selection section (purple border, shows clicked cell)
+- Navigation and selection now visually distinct to avoid confusion
+- Territory stats no longer change when zooming in/out - always global
+- Added `globalMapFill` to server state response (calculated from ALL territories)
+- Added `globalMapFill` storage in grid-state.js
+- Updated `updateTerritoryStats()` to use server's global values
+- Updated `updateCoordsDisplay()` to show owner color swatch from server
+- Added 32 regression tests in `tests/game/grid-wars-v2.2.7.test.js`
 
 **v2.2.6**: Hostile Takeover - Seize Developed Cells
 - Added Hostile Takeover: Attack a developed macro cell (150 pts base) to become its new landlord

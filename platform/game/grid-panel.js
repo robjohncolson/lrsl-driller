@@ -309,13 +309,16 @@ export class GridPanel {
             <span id="gw-breadcrumb-content" style="color:#22d3ee;">MAP</span>
           </div>
 
-          <!-- v2.2.3: Level Indicator (always visible, prominent) -->
-          <div id="gw-level-indicator" style="padding:8px 12px;background:rgba(0,255,255,0.05);border-bottom:1px solid #166534;text-align:center;">
+          <!-- v2.2.7: Navigation Context (where you ARE in the hierarchy) -->
+          <div id="gw-level-indicator" style="padding:8px 12px;background:rgba(0,100,100,0.15);border:1px solid #0aa;border-radius:4px;margin:8px;text-align:center;">
+            <div style="font-size:10px;color:#088;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">
+              📍 VIEWING
+            </div>
             <div id="gw-level-display" style="font-size:16px;font-weight:bold;color:#0ff;text-shadow:0 0 8px #0ff40;">
-              📍 LEVEL 1 — ROOT
+              Level 1 — ROOT
             </div>
             <div id="gw-territory-stats" style="font-size:11px;color:#6b7280;margin-top:4px;">
-              Your territory: -- | Total claimed: --
+              Your territory: -- | Map filled: --
             </div>
           </div>
 
@@ -326,12 +329,15 @@ export class GridPanel {
             </div>
           </div>
 
-          <!-- v2.1.5: Selected Cell Coordinates -->
-          <div id="gw-coords-section" style="display:none;padding:8px 12px;background:#0f172a;border-bottom:1px solid #1e3a5f;">
-            <div id="gw-coords-display" style="font-size:16px;font-weight:bold;color:#22d3ee;font-family:monospace;text-align:center;">
-              📍 --
+          <!-- v2.2.7: Selected Cell Info (what you CLICKED) -->
+          <div id="gw-coords-section" style="display:none;padding:8px 12px;background:rgba(50,50,80,0.3);border:1px solid #448;border-radius:4px;margin:8px;">
+            <div style="font-size:10px;color:#668;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">
+              🎯 SELECTED CELL
             </div>
-            <div id="gw-coords-level" style="font-size:10px;color:#64748b;text-align:center;margin-top:2px;">
+            <div id="gw-coords-display" style="font-size:18px;font-weight:bold;color:#fff;font-family:monospace;text-align:center;">
+              --
+            </div>
+            <div id="gw-coords-level" style="font-size:11px;color:#aaa;text-align:center;margin-top:4px;">
               Click a cell to select
             </div>
           </div>
@@ -2184,7 +2190,8 @@ export class GridPanel {
   }
 
   /**
-   * v2.1.5: Update coordinate display
+   * v2.2.7: Update coordinate display for selected cell
+   * Shows address, owner with color swatch, level, and developed status
    */
   updateCoordsDisplay(x, y) {
     const coordsSection = this.container.querySelector('#gw-coords-section');
@@ -2211,22 +2218,25 @@ export class GridPanel {
     const owner = territory?.owner;
     const isDeveloped = territory?.is_developed;
 
-    // Display address
-    coordsDisplay.innerHTML = `📍 ${fullAddress.toUpperCase()}`;
+    // v2.2.7: Display address (no emoji - it's in the "SELECTED CELL" label)
+    coordsDisplay.innerHTML = fullAddress.toUpperCase();
 
-    // Display level and owner info
-    // v2.2.3: Use 1-indexed level naming (LEVEL 1, 2, 3 instead of MACRO, LEVEL 1, 2)
-    let levelText = `LEVEL ${level + 1}`;
-    if (owner) {
-      const ownerColor = owner === this.state.username ? '#22c55e' : '#ef4444';
-      levelText += ` • <span style="color:${ownerColor};">${owner}</span>`;
-    } else {
-      levelText += ' • <span style="color:#64748b;">Neutral</span>';
-    }
+    // v2.2.7: Build detailed info with owner color swatch from server
+    const ownerColor = owner
+      ? (this.state.playerColors?.[owner] || (owner === this.state.username ? '#22c55e' : '#ef4444'))
+      : '#444';
+    const ownerName = owner || 'Neutral';
+
+    // Build info line with color swatch
+    let infoHtml = `<span style="display:inline-block;width:10px;height:10px;background:${ownerColor};border-radius:2px;margin-right:6px;vertical-align:middle;"></span>`;
+    infoHtml += `<span style="color:${ownerColor};">${ownerName}</span>`;
+    infoHtml += `<span style="color:#666;margin-left:8px;">Level ${level + 1}</span>`;
+
     if (isDeveloped) {
-      levelText += ' • <span style="color:#22d3ee;">🔲 Developed</span>';
+      infoHtml += '<span style="color:#22d3ee;margin-left:8px;">⊞ Developed</span>';
     }
-    coordsLevel.innerHTML = levelText;
+
+    coordsLevel.innerHTML = infoHtml;
   }
 
   /**
@@ -2240,9 +2250,9 @@ export class GridPanel {
     const navState = this.state.getNavigationState?.() || { currentLevel: 0, currentParent: null };
     const level = navState.currentLevel;
 
-    // v2.2.3: Level naming is 1-indexed (Level 1, Level 2, Level 3)
+    // v2.2.7: Level naming is 1-indexed (Level 1, Level 2, Level 3)
     const displayLevel = level + 1;
-    const levelName = `LEVEL ${displayLevel}`;
+    const levelName = `Level ${displayLevel}`;
 
     // Show parent address when zoomed in
     let locationText;
@@ -2252,39 +2262,32 @@ export class GridPanel {
       locationText = 'ROOT';
     }
 
-    levelDisplay.innerHTML = `📍 ${levelName} — ${locationText}`;
+    // v2.2.7: No 📍 prefix - it's now in the "VIEWING" label above
+    levelDisplay.innerHTML = `${levelName} — ${locationText}`;
 
     // Also update territory stats
     this.updateTerritoryStats();
   }
 
   /**
-   * v2.2.4: Update territory stats display with weighted calculation
-   * Uses server-provided userStats that accounts for all levels
+   * v2.2.7: Update territory stats display with GLOBAL weighted calculation
+   * ALWAYS uses server-provided userStats that accounts for ALL levels
    * Display format: "Your territory: X.XX% (N🏰 + M📦)" where:
    * - 🏰 = macro cells (undeveloped, level 0)
    * - 📦 = subcells (level 1)
    * - 🔹 = sub-subcells (level 2)
+   * NOTE: Percentages are GLOBAL - they don't change when zooming in/out
    */
   updateTerritoryStats() {
     const statsEl = this.container?.querySelector('#gw-territory-stats');
     if (!statsEl || !this.state) return;
 
     const userStats = this.state.userStats;
-    const territories = this.state.territories;
-    const username = this.state.username;
 
-    // Calculate map fill percent from current level's territories
-    let total = 0;
-    const totalCells = (GRID_WARS_CONFIG.mapSize || 8) ** 2;
-    for (const [key, cell] of territories || []) {
-      if (cell.owner) {
-        total++;
-      }
-    }
-    const fillPercent = totalCells > 0 ? Math.round((total / totalCells) * 100) : 0;
+    // v2.2.7: Use GLOBAL map fill from server (not local view calculation)
+    const globalMapFill = this.state.globalMapFill;
 
-    // Use weighted stats from server if available
+    // Use weighted stats from server if available (GLOBAL, not view-relative)
     if (userStats) {
       const { percent, breakdown } = userStats;
       const parts = [];
@@ -2301,18 +2304,13 @@ export class GridPanel {
       }
 
       const breakdownStr = parts.length > 0 ? ` (${parts.join(' + ')})` : '';
+      const fillDisplay = globalMapFill !== undefined ? `${globalMapFill}%` : '--';
 
-      statsEl.innerHTML = `Your territory: <span style="color:#22c55e;font-weight:bold;">${percent}%</span>${breakdownStr} | Map filled: <span style="color:#fbbf24;">${fillPercent}%</span>`;
+      statsEl.innerHTML = `Your territory: <span style="color:#22c55e;font-weight:bold;">${percent}%</span>${breakdownStr} | Map filled: <span style="color:#fbbf24;">${fillDisplay}</span>`;
     } else {
-      // Fallback: count at current level only (less accurate)
-      let owned = 0;
-      for (const [key, cell] of territories || []) {
-        if (cell.owner === username) {
-          owned++;
-        }
-      }
-      const percent = totalCells > 0 ? Math.round((owned / totalCells) * 100) : 0;
-      statsEl.innerHTML = `Your territory: <span style="color:#22c55e;font-weight:bold;">${owned}/${totalCells}</span> (${percent}%) | Map filled: <span style="color:#fbbf24;">${fillPercent}%</span>`;
+      // Fallback when userStats not available (no username provided)
+      const fillDisplay = globalMapFill !== undefined ? `${globalMapFill}%` : '--';
+      statsEl.innerHTML = `Your territory: <span style="color:#6b7280;">--</span> | Map filled: <span style="color:#fbbf24;">${fillDisplay}</span>`;
     }
   }
 
