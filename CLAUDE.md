@@ -251,7 +251,7 @@ Test organization:
 - `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1)
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
-- `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1)
+- `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality)
 - `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.2.2)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
@@ -290,10 +290,16 @@ See "Critical: File Sync Requirements" at top for files that must be synced betw
 - Client shows toast: "💰 +X pts rent from [player]" when receiving rent
 - Attack button shows "🏰+25%" indicator when attacking inside fortified territory
 - Updated develop tooltip to show all 4 benefits (subcells, rent, defense, drill immunity)
-- Added `getParentAddress()`, `processLandlordTax()`, `getFortificationMultiplier()` helpers in server.js
+- Added `processLandlordTax()`, `getFortificationMultiplier()` helpers in server.js (uses `getParentAddress()` from address-utils.js)
 - Added `onRentCollected` callback in grid-state.js and grid-panel.js
 - Added `isInsideFortifiedTerritory()` method in grid-panel.js
 - Added 52 regression tests in `tests/game/grid-wars-v2.2.5.test.js`
+
+**v2.2.5.1**: Duplicate Function Fix (Railway Deploy)
+- Fixed `SyntaxError: Identifier 'getParentAddress' has already been declared` on Railway startup
+- Root cause: `getParentAddress()` was imported from `address-utils.js` (line 18) AND redeclared inline at line 2565
+- Fix: Removed duplicate function declaration, server now uses imported version only
+- Added `tests/server/code-quality.test.js` (4 tests) to prevent duplicate function regressions
 
 **v2.2.4**: Territory Stats Fix, Weighted Calculation
 - Removed duplicate "territory" wording: status messages and claim button now use "Owned" instead of "Your territory"

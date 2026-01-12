@@ -2558,18 +2558,6 @@ async function isBountyTarget(gameId, username) {
 // ============================================
 
 /**
- * Extract parent address from a full address
- * @param {string} address - Full cell address (e.g., "d5.c3.a1")
- * @returns {string|null} Parent address (e.g., "d5.c3") or null if no parent
- */
-function getParentAddress(address) {
-  if (!address || !address.includes('.')) return null;
-  const parts = address.split('.');
-  parts.pop();
-  return parts.join('.') || null;
-}
-
-/**
  * Process landlord tax after successful claim/attack of a subcell
  * Landlord (parent cell owner) earns 20% of the claim/attack cost
  *
