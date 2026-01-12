@@ -353,6 +353,17 @@ const GRID_WARS_CONFIG = {
   subcellTakeoverCostCold: 15,         // Subcell takeover: >8min inactive
   subcellTakeoverCostWarm: 20,         // Subcell takeover: 3-8min inactive
   subcellTakeoverCostActive: 25,       // Subcell takeover: <3min active
+
+  // ============================================
+  // v2.2.5: DEVELOPMENT INCENTIVES
+  // ============================================
+
+  // Landlord Tax: Developer earns rent when others claim/attack inside their territory
+  landlordTaxRate: 0.20,               // 20% of claim/attack cost goes to landlord
+  landlordTaxMinimum: 1,               // Minimum 1 point (prevents zero rent)
+
+  // Fortification: Attacks inside someone else's developed cell cost more
+  fortificationMultiplier: 1.25,       // +25% attack cost inside enemy's developed territory
 };
 
 

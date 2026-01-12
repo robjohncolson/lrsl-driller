@@ -1,6 +1,23 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v2.2.4.
+Complete state machine documentation for all components as of v2.2.5.
+
+**v2.2.5 Changes (Development Incentives: Landlord Tax + Fortification):**
+- Added Landlord Tax: Developer earns 20% rent when others claim/attack subcells inside their developed territory
+  - Server: `processLandlordTax()` called after successful claims
+  - WebSocket: `rent_collected` message broadcast to notify landlords
+  - Client: Toast notification "💰 +X pts rent from [player]"
+- Added Fortification: Attacks inside enemy's developed cell cost +25% more
+  - Server: `getFortificationMultiplier()` returns 1.25x for subcells in enemy's developed territory
+  - Applied after overextension discount in cost calculation
+  - Client: Attack button shows "🏰+25%" indicator when fortified
+- Self-exclusion: No penalties when operating inside your OWN developed territory
+- New helper: `getParentAddress()` extracts parent from "d5.c3" → "d5"
+- Config: `landlordTaxRate: 0.20`, `landlordTaxMinimum: 1`, `fortificationMultiplier: 1.25`
+- Updated develop tooltip with all 4 benefits (subcells, rent, defense, drill immunity)
+- Added `onRentCollected` callback in grid-state.js for WebSocket message handling
+- Added `isInsideFortifiedTerritory()` in grid-panel.js for UI indicator
+- Added 52 regression tests in `tests/game/grid-wars-v2.2.5.test.js`
 
 **v2.2.4 Changes (Territory Stats Fix, Weighted Calculation):**
 - Removed duplicate "territory" wording in UI:
@@ -4890,6 +4907,393 @@ REGRESSION TESTS:
 
 ---
 
-*Updated to v2.2.3*
+## 66. v2.2.5 LANDLORD TAX STATE MACHINE
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    LANDLORD TAX FLOW                             │
+│                                                                  │
+│  TRIGGER: After successful claim/attack in action handler        │
+│  LOCATION: railway-server/server.js - processLandlordTax()       │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │           processLandlordTax(gameId, username,           │   │
+│  │                       targetAddress, cost)                │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│                              ▼                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │           Is target a subcell?                            │   │
+│  │           (address contains '.')                          │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│               │                        │                         │
+│               │ NO                     │ YES                     │
+│               ▼                        ▼                         │
+│  ┌──────────────────┐    ┌──────────────────────────────────┐   │
+│  │  Return null     │    │  Extract parentAddress           │   │
+│  │  (macro cell,    │    │  "d5.c3" → "d5"                  │   │
+│  │   no tax)        │    │  "d5.c3.a1" → "d5.c3"            │   │
+│  └──────────────────┘    └──────────────────────────────────┘   │
+│                                        │                         │
+│                                        ▼                         │
+│               ┌──────────────────────────────────────────────┐  │
+│               │   Fetch parent cell from database             │  │
+│               │   SELECT owner, is_developed                  │  │
+│               │   WHERE address = parentAddress               │  │
+│               └──────────────────────────────────────────────┘  │
+│                              │                                   │
+│                              ▼                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  Is parent developed AND owned by someone else?          │   │
+│  │  - is_developed === true                                  │   │
+│  │  - owner !== null                                         │   │
+│  │  - owner !== claimerUsername (no self-tax)               │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│               │                        │                         │
+│               │ NO                     │ YES                     │
+│               ▼                        ▼                         │
+│  ┌──────────────────┐    ┌──────────────────────────────────┐   │
+│  │  Return null     │    │  Calculate rent:                 │   │
+│  │  (not eligible)  │    │  rent = max(1, floor(cost * 0.2))│   │
+│  └──────────────────┘    │                                  │   │
+│                          │  e.g., cost=10 → rent=2          │   │
+│                          │       cost=75 → rent=15          │   │
+│                          └──────────────────────────────────┘   │
+│                                        │                         │
+│                                        ▼                         │
+│               ┌──────────────────────────────────────────────┐  │
+│               │   Pay landlord via RPC:                       │  │
+│               │   increment_action_points(landlord, rent)     │  │
+│               └──────────────────────────────────────────────┘  │
+│                                        │                         │
+│                                        ▼                         │
+│               ┌──────────────────────────────────────────────┐  │
+│               │   Return { landlord, tenant, rent, cell }     │  │
+│               └──────────────────────────────────────────────┘  │
+│                                        │                         │
+│                                        ▼                         │
+│               ┌──────────────────────────────────────────────┐  │
+│               │   CALLER broadcasts 'rent_collected' message  │  │
+│               │   { type: 'rent_collected', landlord, tenant, │  │
+│               │     rent, cell }                              │  │
+│               └──────────────────────────────────────────────┘  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Rent Calculation Examples:**
+
+| Claim Cost | Tax Rate | Raw Rent | Minimum | Final Rent |
+|------------|----------|----------|---------|------------|
+| 10 pts     | 20%      | 2.0      | 1       | 2 pts      |
+| 15 pts     | 20%      | 3.0      | 1       | 3 pts      |
+| 19 pts     | 20%      | 3.8      | 1       | 3 pts      |
+| 4 pts      | 20%      | 0.8      | 1       | 1 pt       |
+
+---
+
+## 67. v2.2.5 FORTIFICATION MULTIPLIER STATE MACHINE
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   FORTIFICATION CHECK FLOW                       │
+│                                                                  │
+│  TRIGGER: During attack cost calculation (enemy takeover)        │
+│  LOCATION: railway-server/server.js - getFortificationMultiplier │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │         getFortificationMultiplier(gameId,                │   │
+│  │                     attackerUsername, targetAddress)      │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│                              ▼                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │           Is target a subcell?                            │   │
+│  │           (address contains '.')                          │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│               │                        │                         │
+│               │ NO                     │ YES                     │
+│               ▼                        ▼                         │
+│  ┌──────────────────┐    ┌──────────────────────────────────┐   │
+│  │  Return {        │    │  Extract parentAddress           │   │
+│  │    multiplier:   │    │  "d5.a1" → "d5"                  │   │
+│  │      1.0,        │    └──────────────────────────────────┘   │
+│  │    isFortified:  │                  │                         │
+│  │      false       │                  ▼                         │
+│  │  }               │    ┌──────────────────────────────────┐   │
+│  └──────────────────┘    │  Fetch parent cell:              │   │
+│                          │  SELECT owner, is_developed       │   │
+│                          └──────────────────────────────────┘   │
+│                                        │                         │
+│                                        ▼                         │
+│               ┌──────────────────────────────────────────────┐  │
+│               │         CHECK ALL CONDITIONS:                 │  │
+│               │                                               │  │
+│               │  1. Parent must be developed (is_developed)   │  │
+│               │  2. Parent must have owner (owner !== null)   │  │
+│               │  3. Owner must NOT be attacker (no self-pen)  │  │
+│               └──────────────────────────────────────────────┘  │
+│                              │                                   │
+│           ┌──────────────────┼──────────────────┐               │
+│           │                  │                  │               │
+│           ▼                  ▼                  ▼               │
+│  ┌────────────┐    ┌────────────────┐   ┌────────────────┐     │
+│  │ Parent NOT │    │ Parent owned   │   │ Parent owned   │     │
+│  │ developed  │    │ by ATTACKER    │   │ by ENEMY       │     │
+│  └────────────┘    └────────────────┘   └────────────────┘     │
+│           │                  │                  │               │
+│           ▼                  ▼                  ▼               │
+│  ┌────────────────────────────────┐   ┌────────────────────┐   │
+│  │  Return { multiplier: 1.0,     │   │  Return {          │   │
+│  │           isFortified: false } │   │    multiplier:     │   │
+│  │  (No penalty)                  │   │      1.25,         │   │
+│  └────────────────────────────────┘   │    isFortified:    │   │
+│                                       │      true,         │   │
+│                                       │    landlord:       │   │
+│                                       │      parentOwner   │   │
+│                                       │  }                 │   │
+│                                       │  (+25% penalty!)   │   │
+│                                       └────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Cost Calculation Order (v2.2.5):**
+
+```
+1. Base attack cost (60/80/100 for COLD/WARM/ACTIVE)
+      ↓
+2. × Scarcity multiplier (1.0x → 3.0x)
+      ↓
+3. × (1 - Velocity discount) (0% to 40%)
+      ↓
+4. × (1 - Guerrilla discount) (0% to 50%)
+      ↓
+5. × (1 - Overextension discount) (0% to 30%)
+      ↓
+6. × Fortification multiplier (1.0 or 1.25)  ← NEW in v2.2.5
+      ↓
+7. Apply soft point ceiling (logarithmic)
+      ↓
+8. Apply underdog discount if eligible
+      ↓
+9. Final cost (rounded)
+```
+
+---
+
+## 68. v2.2.5 CLIENT FORTIFICATION UI STATE MACHINE
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 FORTIFICATION UI INDICATOR                       │
+│                                                                  │
+│  LOCATION: platform/game/grid-panel.js                           │
+│  TRIGGER: updateClaimButton() when enemy cell selected           │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                isInsideFortifiedTerritory()              │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│                              ▼                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  Is _selectedForAction set?                              │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│               │                        │                         │
+│               │ NO                     │ YES                     │
+│               ▼                        ▼                         │
+│  ┌──────────────────┐    ┌──────────────────────────────────┐   │
+│  │  Return false    │    │  Get address from selection       │   │
+│  └──────────────────┘    └──────────────────────────────────┘   │
+│                                        │                         │
+│                                        ▼                         │
+│               ┌──────────────────────────────────────────────┐  │
+│               │  Is address a subcell? (contains '.')         │  │
+│               └──────────────────────────────────────────────┘  │
+│                      │                        │                  │
+│                      │ NO                     │ YES              │
+│                      ▼                        ▼                  │
+│       ┌──────────────────┐    ┌──────────────────────────────┐  │
+│       │  Return false    │    │  Extract parent address       │  │
+│       │  (macro cell)    │    │  getParentAddress(address)    │  │
+│       └──────────────────┘    └──────────────────────────────┘  │
+│                                        │                         │
+│                                        ▼                         │
+│               ┌──────────────────────────────────────────────┐  │
+│               │  Find parent in getRenderState().territories  │  │
+│               │  territories.find(t => t.address === parent)  │  │
+│               └──────────────────────────────────────────────┘  │
+│                              │                                   │
+│                              ▼                                   │
+│               ┌──────────────────────────────────────────────┐  │
+│               │  CHECK:                                       │  │
+│               │  - parentCell.is_developed === true          │  │
+│               │  - parentCell.owner exists                    │  │
+│               │  - parentCell.owner !== currentUser          │  │
+│               └──────────────────────────────────────────────┘  │
+│                      │                        │                  │
+│                      │ FAIL                   │ PASS             │
+│                      ▼                        ▼                  │
+│       ┌──────────────────┐    ┌──────────────────────────────┐  │
+│       │  Return false    │    │  Return true                 │  │
+│       │  (not fortified) │    │  (IS FORTIFIED!)             │  │
+│       └──────────────────┘    └──────────────────────────────┘  │
+│                                        │                         │
+│                                        ▼                         │
+│       ┌──────────────────────────────────────────────────────┐  │
+│       │          updateClaimButton() uses result:            │  │
+│       │                                                       │  │
+│       │  if (isFortified) {                                  │  │
+│       │    btn.innerHTML = '⚔️ Attack' + cost +               │  │
+│       │      '<span style="color:#f59e0b">🏰+25%</span>'     │  │
+│       │  } else {                                            │  │
+│       │    btn.innerHTML = '⚔️ Attack' + cost                 │  │
+│       │  }                                                    │  │
+│       └──────────────────────────────────────────────────────┘  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 69. v2.2.5 RENT COLLECTED WEBSOCKET FLOW
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              RENT COLLECTED NOTIFICATION FLOW                    │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    SERVER SIDE                            │   │
+│  │  (railway-server/server.js - /api/grid-wars/action)       │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│                              ▼                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  After successful claim:                                  │   │
+│  │  const taxResult = await processLandlordTax(...)          │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│               ┌──────────────┴──────────────┐                   │
+│               │                             │                   │
+│               ▼                             ▼                   │
+│  ┌────────────────────┐      ┌────────────────────────────┐    │
+│  │ taxResult = null   │      │ taxResult = { landlord,    │    │
+│  │ (no tax applied)   │      │   tenant, rent, cell }     │    │
+│  │                    │      │                            │    │
+│  │ No broadcast       │      │ Broadcast to all clients:  │    │
+│  └────────────────────┘      │ {                          │    │
+│                              │   type: 'rent_collected',  │    │
+│                              │   landlord: 'alice',       │    │
+│                              │   tenant: 'bob',           │    │
+│                              │   rent: 5,                 │    │
+│                              │   cell: 'd5.a1'            │    │
+│                              │ }                          │    │
+│                              └────────────────────────────┘    │
+│                                           │                     │
+│                 ┌─────────────────────────┼─────────────────┐   │
+│                 │                         │                 │   │
+│                 ▼                         ▼                 ▼   │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                    CLIENT SIDE                            │  │
+│  │  (grid-state.js handleWebSocketMessage)                   │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                 │                         │                 │   │
+│                 ▼                         ▼                 ▼   │
+│  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐│
+│  │   LANDLORD     │    │    TENANT      │    │   OTHER        ││
+│  │   (alice)      │    │    (bob)       │    │   PLAYER       ││
+│  └────────────────┘    └────────────────┘    └────────────────┘│
+│          │                    │                    │            │
+│          ▼                    ▼                    ▼            │
+│  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐│
+│  │ message.landlord    │ message.landlord    │ message.landlord││
+│  │ === username?  │    │ !== username   │    │ !== username   ││
+│  │                │    │                │    │                ││
+│  │ ✓ YES         │    │ ✗ NO           │    │ ✗ NO           ││
+│  └────────────────┘    └────────────────┘    └────────────────┘│
+│          │                    │                    │            │
+│          ▼                    ▼                    ▼            │
+│  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐│
+│  │ Call callback: │    │ Ignore         │    │ Ignore         ││
+│  │ onRentCollected│    │                │    │                ││
+│  │ ({landlord,    │    │                │    │                ││
+│  │  tenant, rent, │    │                │    │                ││
+│  │  cell})        │    │                │    │                ││
+│  └────────────────┘    └────────────────┘    └────────────────┘│
+│          │                                                      │
+│          ▼                                                      │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │           grid-panel.js onRentCollected handler           │  │
+│  │                                                           │  │
+│  │  onRentCollected: (data) => {                            │  │
+│  │    sounds.points();  // Play reward sound                │  │
+│  │    this.showToast(`💰 +${data.rent} pts rent from        │  │
+│  │                    ${data.tenant}`, 3000);               │  │
+│  │    this.updatePointsDisplay();  // Refresh points        │  │
+│  │  }                                                        │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 70. v2.2.5 VERIFICATION CHECKLIST
+
+```
+LANDLORD TAX:
+□ processLandlordTax() returns null for macro cells (no '.' in address)
+□ processLandlordTax() returns null when parent not developed
+□ processLandlordTax() returns null when parent has no owner
+□ processLandlordTax() returns null when claimer IS parent owner (no self-tax)
+□ processLandlordTax() calculates 20% of cost, minimum 1
+□ Rent is paid via increment_action_points RPC
+□ rent_collected WebSocket message is broadcast after tax
+□ Config uses landlordTaxRate (0.20) and landlordTaxMinimum (1)
+
+FORTIFICATION:
+□ getFortificationMultiplier() returns 1.0 for macro cells
+□ getFortificationMultiplier() returns 1.0 when parent not developed
+□ getFortificationMultiplier() returns 1.0 when attacking inside OWN territory
+□ getFortificationMultiplier() returns 1.25 when attacking inside ENEMY's territory
+□ Fortification applied AFTER overextension discount in cost calculation
+□ Config uses fortificationMultiplier (1.25)
+
+CLIENT UI:
+□ isInsideFortifiedTerritory() returns false for macro cells
+□ isInsideFortifiedTerritory() returns false for own territory
+□ isInsideFortifiedTerritory() returns true for enemy's developed territory
+□ Attack button shows "🏰+25%" indicator when fortified
+□ getParentAddress() extracts parent correctly ("d5.a1" → "d5")
+
+NOTIFICATIONS:
+□ onRentCollected callback is wired up in grid-panel.js
+□ grid-state.js handles 'rent_collected' WebSocket message
+□ Only landlord receives notification (not tenant or others)
+□ Toast shows "💰 +X pts rent from [player]"
+□ sounds.points() plays for landlord
+
+DEVELOP TOOLTIP:
+□ Shows "📦 Creates 64 subcells (you keep center 4)"
+□ Shows "💰 Earn 20% rent when others claim inside"
+□ Shows "🏰 Attackers pay +25% more for your subcells"
+□ Shows "🛡️ Immune to drilling"
+
+COMBINED SCENARIO:
+□ Player A develops D5
+□ Player B claims D5.A1 for 10 pts → A gets 2 pts rent
+□ Player C attacks D5.A1 (cost 15 base) → fortified cost 19
+□ Player A gets ~4 pts rent (20% of 19)
+□ Player A attacking inside D5 → NO fortification, NO rent
+
+REGRESSION TESTS:
+□ tests/game/grid-wars-v2.2.5.test.js passes (52 tests)
+□ All existing Grid Wars tests still pass
+□ All 1250+ platform tests pass
+```
+
+---
+
+*Updated to v2.2.5*
 *Last updated: January 2026*
-*Total sections: 65*
+*Total sections: 70*

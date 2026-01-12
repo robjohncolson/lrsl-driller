@@ -123,6 +123,7 @@ export class GridWarsState {
     this.onAfkDecay = options.onAfkDecay || null;           // v1.5
     this.onScarcityChange = options.onScarcityChange || null; // v1.5
     this.onLeaderboardUpdate = options.onLeaderboardUpdate || null; // v1.6
+    this.onRentCollected = options.onRentCollected || null; // v2.2.5
 
     // v1.3.2: Session state
     this._sessionFrozen = false;
@@ -1618,6 +1619,19 @@ export class GridWarsState {
           this.onSystemEvent({
             event: 'bounty_claimed',
             message: message.message
+          });
+        }
+        break;
+
+      // v2.2.5: Landlord tax rent collected notification
+      case 'rent_collected':
+        // Notify landlord that they earned rent
+        if (message.landlord === this.username && this.onRentCollected) {
+          this.onRentCollected({
+            landlord: message.landlord,
+            tenant: message.tenant,
+            rent: message.rent,
+            cell: message.cell
           });
         }
         break;

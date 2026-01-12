@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.2.4 (Territory Stats Fix, Weighted Calculation)
+**Current Version**: v2.2.5 (Development Incentives: Landlord Tax + Fortification)
 
 ## Critical: File Sync Requirements
 
@@ -237,6 +237,7 @@ npx vitest run tests/game/grid-wars-v2.1.2.test.js # v2.1.2 rendering fixes (21 
 npx vitest run tests/game/grid-wars-v2.1.5.test.js # v2.1.5 subcell claims (34 tests)
 npx vitest run tests/game/grid-wars-v2.2.2.test.js # v2.2.2 click-to-select (32 tests)
 npx vitest run tests/game/grid-wars-v2.2.3.test.js # v2.2.3 color/gift/zoom/level (40+ tests)
+npx vitest run tests/game/grid-wars-v2.2.5.test.js # v2.2.5 landlord tax + fortification (52 tests)
 npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
@@ -278,6 +279,21 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.2.5**: Development Incentives - Landlord Tax + Fortification
+- Added Landlord Tax: Developers earn 20% rent when others claim/attack subcells inside their developed territory
+- Added Fortification: Attacks inside enemy's developed cell cost +25% more
+- Tax only applies when: (1) Target is a subcell with parent, (2) Parent is developed, (3) Parent owner differs from claimer
+- No self-tax: Claiming inside your own developed territory incurs no rent or fortification penalty
+- Config values: `landlordTaxRate: 0.20`, `landlordTaxMinimum: 1`, `fortificationMultiplier: 1.25`
+- New WebSocket message `rent_collected` notifies landlords of rent income
+- Client shows toast: "💰 +X pts rent from [player]" when receiving rent
+- Attack button shows "🏰+25%" indicator when attacking inside fortified territory
+- Updated develop tooltip to show all 4 benefits (subcells, rent, defense, drill immunity)
+- Added `getParentAddress()`, `processLandlordTax()`, `getFortificationMultiplier()` helpers in server.js
+- Added `onRentCollected` callback in grid-state.js and grid-panel.js
+- Added `isInsideFortifiedTerritory()` method in grid-panel.js
+- Added 52 regression tests in `tests/game/grid-wars-v2.2.5.test.js`
 
 **v2.2.4**: Territory Stats Fix, Weighted Calculation
 - Removed duplicate "territory" wording: status messages and claim button now use "Owned" instead of "Your territory"

@@ -125,6 +125,13 @@ export class GridPanel {
       onLeaderboardUpdate: (leaderboard) => {
         this._leaderboardData = leaderboard;
         this.renderLeaderboardContent();
+      },
+      // v2.2.5: Landlord tax rent collected notification
+      onRentCollected: (data) => {
+        sounds.points();
+        this.showToast(`💰 +${data.rent} pts rent from ${data.tenant}`, 3000);
+        // Refresh points display
+        this.updatePointsDisplay();
       }
     });
 
@@ -323,9 +330,12 @@ export class GridPanel {
               <button id="gw-develop-btn" class="gw-action-btn" style="display:none;width:100%;background:#1e3a5f;border-color:#22d3ee;" disabled>
                 🏗️ DEVELOP<span class="gw-cost">100⚡</span>
               </button>
-              <!-- v2.1.5: Tooltip explaining develop mechanic -->
-              <div id="gw-develop-hint" style="display:none;font-size:10px;color:#64748b;margin-top:4px;text-align:center;">
-                Creates 64 subcells. You keep center 4. Other 60 become neutral.
+              <!-- v2.1.5: Tooltip explaining develop mechanic, v2.2.5: Added rent and fortification benefits -->
+              <div id="gw-develop-hint" style="display:none;font-size:10px;color:#64748b;margin-top:4px;text-align:left;line-height:1.4;">
+                <div>📦 Creates 64 subcells (you keep center 4)</div>
+                <div>💰 Earn 20% rent when others claim inside</div>
+                <div>🏰 Attackers pay +25% more for your subcells</div>
+                <div>🛡️ Immune to drilling</div>
               </div>
               <button id="gw-drill-btn" class="gw-action-btn" style="display:none;width:100%;background:#5f1e1e;border-color:#ef4444;margin-top:6px;" disabled>
                 ⛏️ DRILL IN<span class="gw-cost">75⚡</span>
@@ -1033,7 +1043,48 @@ export class GridPanel {
   }
 
   /**
+   * v2.2.5: Extract parent address from a full address
+   * @param {string} address - Full cell address (e.g., "d5.c3.a1")
+   * @returns {string|null} Parent address or null if no parent
+   */
+  getParentAddress(address) {
+    if (!address || !address.includes('.')) return null;
+    const parts = address.split('.');
+    parts.pop();
+    return parts.join('.') || null;
+  }
+
+  /**
+   * v2.2.5: Check if selected cell is inside someone else's fortified territory
+   * Returns true if the cell is a subcell inside another player's developed cell
+   */
+  isInsideFortifiedTerritory() {
+    if (!this._selectedForAction) return false;
+
+    const address = this._selectedForAction.address;
+    if (!address || !address.includes('.')) return false;  // Macro cell
+
+    const parentAddress = this.getParentAddress(address);
+    if (!parentAddress) return false;
+
+    // Find parent cell from territories
+    const renderState = this.state?.getRenderState?.();
+    if (!renderState?.territories) return false;
+
+    const parentCell = renderState.territories.find(t => t.address === parentAddress);
+    if (!parentCell) return false;
+
+    // Must be developed and owned by someone OTHER than current user
+    if (!parentCell.is_developed) return false;
+    if (!parentCell.owner) return false;
+    if (parentCell.owner === this.state?.username) return false;
+
+    return true;
+  }
+
+  /**
    * v2.2.1: Update claim button text and state based on selected cell
+   * v2.2.5: Added fortification indicator for attacks inside enemy's developed territory
    */
   updateClaimButton() {
     const claimBtn = this.container.querySelector('.gw-action-btn[data-action="claim"]');
@@ -1055,8 +1106,14 @@ export class GridPanel {
       claimBtn.innerHTML = `□ Owned<span class="gw-cost">--</span>`;
     } else if (costInfo.isEnemy) {
       // Enemy territory - show attack
+      // v2.2.5: Check for fortification bonus
+      const isFortified = this.isInsideFortifiedTerritory();
       claimBtn.disabled = points < costInfo.cost;
-      claimBtn.innerHTML = `⚔️ Attack<span class="gw-cost">${costInfo.cost}⚡</span>`;
+      if (isFortified) {
+        claimBtn.innerHTML = `⚔️ Attack<span class="gw-cost">${costInfo.cost}⚡</span><span style="color:#f59e0b;font-size:9px;margin-left:4px;">🏰+25%</span>`;
+      } else {
+        claimBtn.innerHTML = `⚔️ Attack<span class="gw-cost">${costInfo.cost}⚡</span>`;
+      }
     } else {
       // Neutral - show claim
       claimBtn.disabled = points < costInfo.cost;

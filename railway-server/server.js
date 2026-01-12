@@ -2554,6 +2554,131 @@ async function isBountyTarget(gameId, username) {
 }
 
 // ============================================
+// v2.2.5: DEVELOPMENT INCENTIVES (Landlord Tax + Fortification)
+// ============================================
+
+/**
+ * Extract parent address from a full address
+ * @param {string} address - Full cell address (e.g., "d5.c3.a1")
+ * @returns {string|null} Parent address (e.g., "d5.c3") or null if no parent
+ */
+function getParentAddress(address) {
+  if (!address || !address.includes('.')) return null;
+  const parts = address.split('.');
+  parts.pop();
+  return parts.join('.') || null;
+}
+
+/**
+ * Process landlord tax after successful claim/attack of a subcell
+ * Landlord (parent cell owner) earns 20% of the claim/attack cost
+ *
+ * @param {string} gameId
+ * @param {string} claimerUsername - Player who claimed/attacked
+ * @param {string} targetAddress - Address of claimed cell
+ * @param {number} cost - Cost paid by claimer
+ * @returns {Promise<object|null>} Tax result or null if no tax applies
+ */
+async function processLandlordTax(gameId, claimerUsername, targetAddress, cost) {
+  // Only applies to subcells (address has a parent)
+  const parentAddress = getParentAddress(targetAddress);
+  if (!parentAddress) return null;  // Macro cell, no tax
+
+  // Find parent cell owner
+  const { data: parentCell, error } = await supabase
+    .from('grid_wars_territories')
+    .select('owner, is_developed')
+    .eq('game_id', gameId)
+    .eq('address', parentAddress)
+    .single();
+
+  if (error || !parentCell) {
+    console.log(`[Landlord Tax] No parent cell found for ${targetAddress}`);
+    return null;
+  }
+
+  // Must be developed and owned by someone else
+  if (!parentCell.is_developed || !parentCell.owner) return null;
+  if (parentCell.owner === claimerUsername) return null;  // No self-tax
+
+  // Calculate rent (configurable rate, minimum 1)
+  const taxRate = GRID_WARS_CONFIG.landlordTaxRate || 0.20;
+  const minTax = GRID_WARS_CONFIG.landlordTaxMinimum || 1;
+  const rent = Math.max(minTax, Math.floor(cost * taxRate));
+
+  // Pay the landlord using RPC for atomic increment
+  const { error: rpcError } = await supabase.rpc('increment_action_points', {
+    p_game_id: gameId,
+    p_username: parentCell.owner,
+    p_delta: rent
+  });
+
+  if (rpcError) {
+    console.error(`[Landlord Tax] Failed to pay landlord: ${rpcError.message}`);
+    return null;
+  }
+
+  console.log(`[Landlord Tax] ${parentCell.owner} earned ${rent} pts rent from ${claimerUsername} claiming ${targetAddress}`);
+
+  return {
+    landlord: parentCell.owner,
+    tenant: claimerUsername,
+    rent: rent,
+    cell: targetAddress
+  };
+}
+
+/**
+ * Calculate fortification multiplier for attacking inside developed territory
+ * Attacking subcells inside someone else's developed cell costs +25% more
+ *
+ * @param {string} gameId
+ * @param {string} attackerUsername - Player attempting the attack
+ * @param {string} targetAddress - Address of cell being attacked
+ * @returns {Promise<object>} { multiplier, isFortified, landlord }
+ */
+async function getFortificationMultiplier(gameId, attackerUsername, targetAddress) {
+  // Only applies to subcells
+  const parentAddress = getParentAddress(targetAddress);
+  if (!parentAddress) {
+    return { multiplier: 1.0, isFortified: false, landlord: null };  // Macro cell
+  }
+
+  // Find parent cell
+  const { data: parentCell, error } = await supabase
+    .from('grid_wars_territories')
+    .select('owner, is_developed')
+    .eq('game_id', gameId)
+    .eq('address', parentAddress)
+    .single();
+
+  if (error || !parentCell) {
+    return { multiplier: 1.0, isFortified: false, landlord: null };
+  }
+
+  // Must be developed and owned by someone OTHER than attacker
+  if (!parentCell.is_developed) {
+    return { multiplier: 1.0, isFortified: false, landlord: null };
+  }
+  if (!parentCell.owner) {
+    return { multiplier: 1.0, isFortified: false, landlord: null };
+  }
+  if (parentCell.owner === attackerUsername) {
+    return { multiplier: 1.0, isFortified: false, landlord: null };  // No penalty in your own territory
+  }
+
+  // Apply fortification multiplier
+  const multiplier = GRID_WARS_CONFIG.fortificationMultiplier || 1.25;
+  console.log(`[Fortification] +${Math.round((multiplier - 1) * 100)}% cost for ${attackerUsername} attacking inside ${parentCell.owner}'s territory`);
+
+  return {
+    multiplier: multiplier,
+    isFortified: true,
+    landlord: parentCell.owner
+  };
+}
+
+// ============================================
 // v1.3: SPAM PREVENTION (WRONG ANSWER TRACKING)
 // ============================================
 
@@ -4684,6 +4809,12 @@ app.post('/api/grid-wars/action', async (req, res) => {
         if (overextension.discount > 0) {
           cost = Math.ceil(cost * (1 - overextension.discount));
         }
+
+        // v2.2.5: Apply fortification multiplier (attacks inside enemy's developed territory cost more)
+        const fortification = await getFortificationMultiplier(gameId, username, targetAddress);
+        if (fortification.isFortified) {
+          cost = Math.ceil(cost * fortification.multiplier);
+        }
       } else if (isResourceNode) {
         cost = GRID_WARS_CONFIG.nodeClaimCost;
       } else if (isSurgeCell) {
@@ -4890,6 +5021,20 @@ app.post('/api/grid-wars/action', async (req, res) => {
 
       // Increment class goal and check if reached
       const goalResult = await incrementClassGoal(gameId);
+
+      // v2.2.5: Process landlord tax for subcell claims/attacks
+      const taxResult = await processLandlordTax(gameId, username, targetAddress, cost);
+      if (taxResult) {
+        // Broadcast rent notification to landlord
+        broadcast({
+          type: 'rent_collected',
+          gameId,
+          landlord: taxResult.landlord,
+          tenant: taxResult.tenant,
+          rent: taxResult.rent,
+          cell: taxResult.cell
+        });
+      }
 
       // Broadcast
       // v2.1.5: Include address info for subcell claims
