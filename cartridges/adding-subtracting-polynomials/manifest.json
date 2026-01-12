@@ -1,0 +1,433 @@
+{
+  "meta": {
+    "id": "adding-subtracting-polynomials",
+    "name": "Adding & Subtracting Polynomials (Scaffolded Drills)",
+    "subject": "Algebra 2",
+    "description": "15 micro-lessons building from vocabulary → like terms → combining like terms → adding/subtracting polynomials → function operations → applications (perimeter, profit) → error analysis → closure & number structure."
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "polynomial vocabulary",
+      "like terms",
+      "combining like terms",
+      "adding polynomials",
+      "subtracting polynomials",
+      "distributing a negative sign",
+      "standard form",
+      "leading coefficient & constant term",
+      "closure under addition/subtraction",
+      "function operations (f+g, f-g)",
+      "applications (perimeter, profit)",
+      "rational vs irrational coefficients"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "infoPanel": [
+      { "label": "Level", "value": "{{levelName}}" },
+      { "label": "Task", "value": "{{problemText}}" },
+      { "label": "Given", "value": "{{givenText}}" }
+    ]
+  },
+  "modes": [
+    {
+      "id": "l01-vocabulary",
+      "name": "Level 1: Vocabulary — Classify by Terms",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "polyType",
+            "type": "choice",
+            "label": "Type of expression",
+            "options": [
+              "Monomial",
+              "Binomial",
+              "Trinomial",
+              "Polynomial (4+ terms)"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-like-terms",
+      "name": "Level 2: Identify Like Terms",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "likeChoice",
+            "type": "choice",
+            "label": "Which option shows like terms?",
+            "options": ["A", "B", "C", "D"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-combine-like-terms",
+      "name": "Level 3: Combine Like Terms (Simple)",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "simplified",
+            "type": "text",
+            "label": "Simplified expression",
+            "placeholder": "Example: 4x^{2} - 3x + 1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-simplify-polynomial",
+      "name": "Level 4: Simplify a Polynomial (Mixed)",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "simplified",
+            "type": "text",
+            "label": "Simplified polynomial (standard form)",
+            "placeholder": "Write in descending powers"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-add-horizontal",
+      "name": "Level 5: Add Polynomials (Horizontal)",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "simplified",
+            "type": "text",
+            "label": "Sum (standard form)",
+            "placeholder": "Example: 4x^{2} + 2x + 2"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-add-vertical",
+      "name": "Level 6: Add Polynomials (Vertical Alignment)",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "simplified",
+            "type": "text",
+            "label": "Sum (standard form)",
+            "placeholder": "Line up like terms by degree"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l07-subtract-distribute",
+      "name": "Level 7: Subtract Polynomials (Distribute the Negative)",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "simplified",
+            "type": "text",
+            "label": "Difference (standard form)",
+            "placeholder": "Distribute the minus to ALL terms first"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l08-subtract-mixed",
+      "name": "Level 8: Subtract Polynomials (Mixed Signs & Missing Terms)",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "simplified",
+            "type": "text",
+            "label": "Difference (standard form)",
+            "placeholder": "Include 0 coefficients mentally for missing powers"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l09-three-polys",
+      "name": "Level 9: Add/Subtract 3 Polynomials",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "simplified",
+            "type": "text",
+            "label": "Simplified result (standard form)",
+            "placeholder": "Combine like terms across all three"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l10-linear-set-s",
+      "name": "Level 10: Linear Set S — Leading Coefficient & Constant",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "sumExpr",
+            "type": "text",
+            "label": "Simplified sum",
+            "placeholder": "Example: 10x - 2"
+          },
+          {
+            "id": "leadingCoeff",
+            "type": "number",
+            "label": "Leading coefficient",
+            "min": -100,
+            "max": 100,
+            "step": 1
+          },
+          {
+            "id": "constantTerm",
+            "type": "number",
+            "label": "Constant term",
+            "min": -200,
+            "max": 200,
+            "step": 1
+          },
+          {
+            "id": "inS",
+            "type": "choice",
+            "label": "Is your sum in $S=\\{ax+b\\}$?",
+            "options": ["Yes", "No"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l11-function-ops",
+      "name": "Level 11: Function Notation — (f + g)(x) or (f - g)(x)",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "result",
+            "type": "text",
+            "label": "Resulting function (standard form)",
+            "placeholder": "Example: 3x^{2} - 2x + 1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l12-perimeter",
+      "name": "Level 12: Application — Perimeter with Polynomials",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "perimeter",
+            "type": "text",
+            "label": "Perimeter expression (simplified)",
+            "placeholder": "Example: 8x + 14"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l13-profit",
+      "name": "Level 13: Application — Profit = Revenue − Cost",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "profit",
+            "type": "text",
+            "label": "Profit function $P(x)$ in standard form",
+            "placeholder": "Example: -2x^{2} + 37x - 64"
+          },
+          {
+            "id": "yIntercept",
+            "type": "number",
+            "label": "Profit when x = 0 (the y-intercept)",
+            "min": -1000,
+            "max": 1000,
+            "step": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l14-error-analysis",
+      "name": "Level 14: Error Analysis — Spot the Mistake",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "errorChoice",
+            "type": "choice",
+            "label": "What was the student's error?",
+            "options": ["A", "B", "C", "D"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l15-closure-and-numbers",
+      "name": "Level 15: Closure & Number Structure (Capstone Concepts)",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "trueStatement",
+            "type": "choice",
+            "label": "Choose the TRUE statement",
+            "options": ["A", "B", "C", "D"]
+          },
+          {
+            "id": "irrChoice",
+            "type": "choice",
+            "label": "Rational vs Irrational coefficients",
+            "options": ["A", "B", "C", "D"]
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "polyType": "Count the *terms* separated by $+$ or $-$. A monomial has 1 term, a binomial has 2, a trinomial has 3, and a polynomial with 4+ terms has 4 or more terms.",
+      "likeChoice": "Like terms have the **same variable(s) raised to the same power(s)**. For example, $3x^2$ and $-5x^2$ are like terms; $3x^2$ and $3x^3$ are not.",
+      "simplified": "Use the Commutative and Associative Properties to *reorder and group* like terms, then combine coefficients. Write your final answer in **standard form** (descending powers).",
+      "sumExpr": "Add the coefficients of like terms. For linear expressions, your answer should look like $ax+b$ (standard form).",
+      "leadingCoeff": "The leading coefficient is the coefficient of the **highest-degree** term (the first term in standard form).",
+      "constantTerm": "The constant term is the term with **no variable** (degree 0).",
+      "inS": "$S=\\{ax+b\\}$. If your simplified result can be written as $ax+b$ (including $a=0$), then it is in $S$.",
+      "result": "Compute $(f ± g)(x)$ by adding/subtracting the expressions for $f(x)$ and $g(x)$, then combine like terms.",
+      "perimeter": "Perimeter is the sum of side lengths. For a rectangle, $P=2L+2W$. Distribute first (if needed), then combine like terms.",
+      "profit": "Profit is **revenue minus cost**: $P(x)=R(x)-c(x)$. Revenue is price times quantity: $R(x)=v(x)x$. Distribute, then combine like terms.",
+      "yIntercept": "The $y$-intercept is the value when $x=0$. For a polynomial in standard form, it is also the **constant term**.",
+      "errorChoice": "In subtraction, rewrite: $A-(B+C)=A-B-C$. The negative sign must be distributed to **every** term inside the parentheses.",
+      "trueStatement": "Closure means: doing the operation stays in the same set. Think: polynomials under $+$ and $-$; whole numbers under $-$.",
+      "irrChoice": "Key facts: rational ± rational is rational. Rational + irrational is irrational. Nonzero rational × irrational is irrational."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "l01-vocabulary",
+        "name": "01",
+        "unlockedBy": "default",
+        "celebrationMessage": "Nice! Vocabulary unlocks the rest."
+      },
+      {
+        "id": "l02-like-terms",
+        "name": "02",
+        "unlockedBy": "default",
+        "celebrationMessage": "Great—now you can spot like terms."
+      },
+      {
+        "id": "l03-combine-like-terms",
+        "name": "03",
+        "unlockedBy": "default",
+        "celebrationMessage": "Clean combining!"
+      },
+      {
+        "id": "l04-simplify-polynomial",
+        "name": "04",
+        "unlockedBy": "default",
+        "celebrationMessage": "Good structure—keep grouping like terms."
+      },
+      {
+        "id": "l05-add-horizontal",
+        "name": "05",
+        "unlockedBy": "default",
+        "celebrationMessage": "Addition is just combining like terms."
+      },
+      {
+        "id": "l06-add-vertical",
+        "name": "06",
+        "unlockedBy": "default",
+        "celebrationMessage": "Vertical alignment = place value for polynomials."
+      },
+      {
+        "id": "l07-subtract-distribute",
+        "name": "07",
+        "unlockedBy": "default",
+        "celebrationMessage": "Nice—minus sign distributed correctly."
+      },
+      {
+        "id": "l08-subtract-mixed",
+        "name": "08",
+        "unlockedBy": "default",
+        "celebrationMessage": "Great work managing signs and missing terms."
+      },
+      {
+        "id": "l09-three-polys",
+        "name": "09",
+        "unlockedBy": "default",
+        "celebrationMessage": "Three polynomials? No problem."
+      },
+      {
+        "id": "l10-linear-set-s",
+        "name": "10",
+        "unlockedBy": "default",
+        "celebrationMessage": "You nailed leading coefficient and constant term."
+      },
+      {
+        "id": "l11-function-ops",
+        "name": "11",
+        "unlockedBy": "default",
+        "celebrationMessage": "Function operations are polynomial operations in disguise."
+      },
+      {
+        "id": "l12-perimeter",
+        "name": "12",
+        "unlockedBy": "default",
+        "celebrationMessage": "Nice application—perimeter simplified."
+      },
+      {
+        "id": "l13-profit",
+        "name": "13",
+        "unlockedBy": "default",
+        "celebrationMessage": "Profit model simplified—great!"
+      },
+      {
+        "id": "l14-error-analysis",
+        "name": "14",
+        "unlockedBy": "default",
+        "celebrationMessage": "Sharp eyes—mathematical critique!"
+      },
+      {
+        "id": "l15-closure-and-numbers",
+        "name": "15",
+        "unlockedBy": "default",
+        "celebrationMessage": "Capstone concepts complete. Well done!"
+      }
+    ]
+  }
+}
