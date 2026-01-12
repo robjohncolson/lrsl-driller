@@ -1,6 +1,22 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v2.2.5.
+Complete state machine documentation for all components as of v2.2.6.
+
+**v2.2.6 Changes (Hostile Takeover: Seize Developed Cells):**
+- Added Hostile Takeover: Attack a developed macro cell to become its new landlord
+  - Server: Detects when target is `is_developed && cell_level === 0 && !parentAddress`
+  - Base cost: 150 pts (from `hostileTakeoverBaseCost` config)
+  - Multipliers applied: Activity tier (1.0/1.33/1.67), Scarcity (1.0→3.0), Velocity discount, Guerrilla discount
+  - NOT applied: Overextension discount, Fortification penalty (those are for subcells)
+- Only macro cell ownership transfers; subcells unchanged
+- Rent redirects to new landlord; fortification now protects new landlord's subcells
+- WebSocket: `hostile_takeover` message broadcast with attacker, previousOwner, address, cost
+- Client UI: Gold "👑 Takeover" button with gradient styling when enemy developed cell selected at macro level
+- Toast notifications: Success for attacker, warning for previous owner, neutral for others
+- New methods: `isHostileTakeoverTarget()`, `calculateTakeoverCost()`, `getMapFillPercent()` in grid-panel.js
+- New handler: `onHostileTakeover` callback in grid-state.js for WebSocket message
+- Config: `hostileTakeoverBaseCost: 150` in both shared/ and railway-server/ config files
+- Added 60 regression tests in `tests/game/grid-wars-v2.2.6.test.js`
 
 **v2.2.5 Changes (Development Incentives: Landlord Tax + Fortification):**
 - Added Landlord Tax: Developer earns 20% rent when others claim/attack subcells inside their developed territory
@@ -5294,6 +5310,395 @@ REGRESSION TESTS:
 
 ---
 
-*Updated to v2.2.5*
+## 71. v2.2.6 HOSTILE TAKEOVER DETECTION STATE MACHINE
+
+**v2.2.6 Feature:** Attack a developed macro cell to become its new landlord. Subcells unchanged.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                HOSTILE TAKEOVER DETECTION                            │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Server: /api/grid-wars/action (action: 'claim')             │   │
+│  │                                                               │   │
+│  │  // After checking isOwnTerritory, before normal attack:     │   │
+│  │  const isHostileTakeover = isEnemyTakeover &&                │   │
+│  │                            existingTerritory?.is_developed && │   │
+│  │                            (cell_level === 0 || undefined) && │   │
+│  │                            !parentAddress;                    │   │
+│  │                                                               │   │
+│  │  if (isHostileTakeover) {                                    │   │
+│  │    // Special handling - see section 72                      │   │
+│  │    return hostileTakeoverResponse;                           │   │
+│  │  }                                                            │   │
+│  │                                                               │   │
+│  │  // Normal attack logic continues...                         │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  DETECTION CONDITIONS (ALL must be true):                           │
+│  ┌────────────────────────────────────────────────────────────┐    │
+│  │ isEnemyTakeover     │ existingTerritory.owner !== username  │    │
+│  ├────────────────────────────────────────────────────────────┤    │
+│  │ is_developed        │ Cell has been subdivided (true)       │    │
+│  ├────────────────────────────────────────────────────────────┤    │
+│  │ cell_level === 0    │ Is a macro cell (not a subcell)       │    │
+│  ├────────────────────────────────────────────────────────────┤    │
+│  │ !parentAddress      │ Request is at macro level (not zoomed)│    │
+│  └────────────────────────────────────────────────────────────┘    │
+│                                                                      │
+│  EXCLUSIONS (NOT hostile takeover):                                  │
+│  • Attacking undeveloped enemy cell → Normal attack                 │
+│  • Attacking enemy subcell → Normal attack (with fortification)     │
+│  • Claiming neutral cell → Normal claim                              │
+│  • Attacking while zoomed into subcells → Normal attack             │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 72. v2.2.6 HOSTILE TAKEOVER COST CALCULATION
+
+**Cost Formula:** `BASE × ACTIVITY × SCARCITY × (1-VELOCITY) × (1-GUERRILLA)`
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│             HOSTILE TAKEOVER COST CALCULATION                        │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  let cost = GRID_WARS_CONFIG.hostileTakeoverBaseCost; // 150 │   │
+│  │                                                               │   │
+│  │  // 1. Activity Tier (defender's activity)                   │   │
+│  │  const activityMultiplier =                                  │   │
+│  │    activityTier === 'ACTIVE' ? 1.67 :                        │   │
+│  │    activityTier === 'WARM'   ? 1.33 : 1.0;  // COLD          │   │
+│  │  cost = Math.ceil(cost * activityMultiplier);                │   │
+│  │                                                               │   │
+│  │  // 2. Scarcity (map fill %)                                 │   │
+│  │  const scarcityMultiplier = getScarcityMultiplier(fillPct);  │   │
+│  │  cost = Math.ceil(cost * scarcityMultiplier);                │   │
+│  │                                                               │   │
+│  │  // 3. Velocity Discount (attacker earning rate)             │   │
+│  │  if (velocityTier.discount > 0) {                            │   │
+│  │    cost = Math.ceil(cost * (1 - velocityTier.discount));     │   │
+│  │  }                                                            │   │
+│  │                                                               │   │
+│  │  // 4. Guerrilla Discount (small vs large empire)            │   │
+│  │  if (guerrilla.discount > 0) {                               │   │
+│  │    cost = Math.ceil(cost * (1 - guerrilla.discount));        │   │
+│  │  }                                                            │   │
+│  │                                                               │   │
+│  │  // NOT APPLIED:                                              │   │
+│  │  // - Overextension (developed cells are valuable, not edge) │   │
+│  │  // - Fortification (that's for subcells, not macro cell)    │   │
+│  │  // - Soft point ceiling (not applied to takeovers)          │   │
+│  │  // - Underdog assist (for neutral claims only)              │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  COST EXAMPLES:                                                      │
+│  ┌────────────────────────────────────────────────────────────┐    │
+│  │ Scenario                        │ Calculation      │ Cost   │    │
+│  ├────────────────────────────────────────────────────────────┤    │
+│  │ Base (COLD, EXPANSION, IDLE)   │ 150×1.0×1.0×1×1  │ 150    │    │
+│  │ WARM defender                   │ 150×1.33×1.0     │ 200    │    │
+│  │ ACTIVE defender                 │ 150×1.67×1.0     │ 251    │    │
+│  │ SATURATION phase                │ 150×1.0×3.0      │ 450    │    │
+│  │ ACTIVE + SATURATION             │ 150×1.67×3.0     │ 753    │    │
+│  │ BLAZING attacker (40% off)      │ 150×1.0×1.0×0.6  │ 90     │    │
+│  │ Guerrilla strike (50% off)      │ 150×1.0×1.0×0.5  │ 75     │    │
+│  │ Max discounts combined          │ 150×0.6×0.5      │ 45     │    │
+│  └────────────────────────────────────────────────────────────┘    │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 73. v2.2.6 HOSTILE TAKEOVER EXECUTION
+
+**What changes:** Only macro cell owner. Subcells unchanged.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│              HOSTILE TAKEOVER EXECUTION                              │
+│                                                                      │
+│  BEFORE TAKEOVER (D5 owned by Sam, developed):                       │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  D5:      owner: "Sam", is_developed: true                   │   │
+│  │  D5.D4:   owner: "Sam"   (center 4 retained from develop)    │   │
+│  │  D5.D5:   owner: "Sam"                                       │   │
+│  │  D5.E4:   owner: "Sam"                                       │   │
+│  │  D5.E5:   owner: "Sam"                                       │   │
+│  │  D5.A1:   owner: "Alex"  (attacker already owned this)       │   │
+│  │  D5.B2:   owner: null    (neutral subcell)                   │   │
+│  │  Rent from claims → Sam                                      │   │
+│  │  Fortification protects Sam's subcells                       │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  EXECUTION:                                                          │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  1. Deduct cost from attacker (Alex)                         │   │
+│  │     await upsertGridWarsPlayer(gameId, username, -cost);     │   │
+│  │                                                               │   │
+│  │  2. Update ONLY the macro cell owner                         │   │
+│  │     await supabase.from('grid_wars_territories')             │   │
+│  │       .update({                                               │   │
+│  │         owner: username,        // "Alex"                     │   │
+│  │         claimed_at: new Date()                                │   │
+│  │         // is_developed: true (unchanged)                     │   │
+│  │         // subcells: NOT TOUCHED                              │   │
+│  │       })                                                      │   │
+│  │       .eq('id', existingTerritory.id);                       │   │
+│  │                                                               │   │
+│  │  3. Update territory counts                                  │   │
+│  │     upsertGridWarsPlayer(gameId, username, 0, +1);  // Alex  │   │
+│  │     upsertGridWarsPlayer(gameId, prevOwner, 0, -1); // Sam   │   │
+│  │                                                               │   │
+│  │  4. Broadcast hostile_takeover message                       │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  AFTER TAKEOVER (D5 now owned by Alex):                              │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  D5:      owner: "Alex" ← CHANGED, is_developed: true        │   │
+│  │  D5.D4:   owner: "Sam"   ← UNCHANGED                         │   │
+│  │  D5.D5:   owner: "Sam"   ← UNCHANGED                         │   │
+│  │  D5.E4:   owner: "Sam"   ← UNCHANGED                         │   │
+│  │  D5.E5:   owner: "Sam"   ← UNCHANGED                         │   │
+│  │  D5.A1:   owner: "Alex"  ← UNCHANGED                         │   │
+│  │  D5.B2:   owner: null    ← UNCHANGED                         │   │
+│  │  Rent from future claims → Alex (NEW LANDLORD)               │   │
+│  │  Fortification now protects Alex's subcells                  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 74. v2.2.6 HOSTILE TAKEOVER WEBSOCKET FLOW
+
+**Message type:** `hostile_takeover`
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│           HOSTILE TAKEOVER WEBSOCKET FLOW                            │
+│                                                                      │
+│  SERVER BROADCAST:                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  broadcast({                                                  │   │
+│  │    type: 'hostile_takeover',                                 │   │
+│  │    gameId,                                                    │   │
+│  │    attacker: username,          // "Alex"                    │   │
+│  │    previousOwner: prevOwner,    // "Sam"                     │   │
+│  │    address: targetAddress,      // "d5"                      │   │
+│  │    x, y,                        // 4, 4                      │   │
+│  │    cost: takeoverCost,          // 150+                      │   │
+│  │    activityTier                 // "COLD"/"WARM"/"ACTIVE"    │   │
+│  │  });                                                          │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  CLIENT HANDLER (grid-state.js):                                     │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  case 'hostile_takeover':                                    │   │
+│  │    // Update territory ownership in local state              │   │
+│  │    const existing = this.territories.get(`${x},${y}`) || {}; │   │
+│  │    this.territories.set(`${x},${y}`, {                       │   │
+│  │      ...existing,                                             │   │
+│  │      owner: message.attacker,                                │   │
+│  │      claimed_at: new Date().toISOString()                    │   │
+│  │      // is_developed stays true                              │   │
+│  │    });                                                        │   │
+│  │                                                               │   │
+│  │    // Update territory counts                                │   │
+│  │    this._updatePlayerTerritoriesCount(attacker, +1);         │   │
+│  │    this._updatePlayerTerritoriesCount(previousOwner, -1);    │   │
+│  │                                                               │   │
+│  │    // Notify via callback                                    │   │
+│  │    if (this.onHostileTakeover) {                             │   │
+│  │      this.onHostileTakeover(data);                           │   │
+│  │    }                                                          │   │
+│  │    this._emitStateChange();                                  │   │
+│  │    break;                                                     │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  CLIENT CALLBACK (grid-panel.js):                                    │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  onHostileTakeover: (data) => {                              │   │
+│  │    this.syncRendererState();                                 │   │
+│  │    this.updatePointsDisplay();                               │   │
+│  │    this.updateClaimButton();                                 │   │
+│  │    this.updateLevelIndicator();                              │   │
+│  │                                                               │   │
+│  │    if (data.attacker === this.state?.username) {             │   │
+│  │      sounds.claim();                                         │   │
+│  │      this.showToast(`👑 You seized ${addr} from ${prev}!`);  │   │
+│  │    } else if (data.previousOwner === this.state?.username) { │   │
+│  │      sounds.error();                                         │   │
+│  │      this.showToast(`⚠️ ${attacker} seized your empire!`);  │   │
+│  │    } else {                                                   │   │
+│  │      this.showToast(`👑 ${attacker} seized ${addr}`);        │   │
+│  │    }                                                          │   │
+│  │  }                                                            │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 75. v2.2.6 CLIENT TAKEOVER BUTTON STATE MACHINE
+
+**Button states:** Select → Takeover (for developed enemy cells at macro level)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│           TAKEOVER BUTTON STATE MACHINE                              │
+│                                                                      │
+│  isHostileTakeoverTarget() CHECK:                                    │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  function isHostileTakeoverTarget() {                        │   │
+│  │    if (!this._selectedForAction) return false;               │   │
+│  │                                                               │   │
+│  │    const { x, y, address, owner } = this._selectedForAction; │   │
+│  │                                                               │   │
+│  │    // Must be enemy territory                                │   │
+│  │    if (!owner || owner === this.state?.username) return false;│   │
+│  │                                                               │   │
+│  │    // Must be at macro level (not zoomed in)                 │   │
+│  │    const navState = this.state?.getNavigationState?.();      │   │
+│  │    if (navState?.currentLevel > 0) return false;             │   │
+│  │    if (navState?.currentParent) return false;                │   │
+│  │                                                               │   │
+│  │    // Address must be simple (no dots = macro cell)          │   │
+│  │    if (address && address.includes('.')) return false;       │   │
+│  │                                                               │   │
+│  │    // Cell must be developed                                 │   │
+│  │    if (!this.state?.isDeveloped?.(x, y)) return false;       │   │
+│  │                                                               │   │
+│  │    return true;                                               │   │
+│  │  }                                                            │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  updateClaimButton() FLOW:                                           │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                                                               │   │
+│  │  ┌─────────────┐   No selection                              │   │
+│  │  │ □ Select    │ ──────────────────────────────────────────▶ │   │
+│  │  │   Cell      │                                              │   │
+│  │  └─────────────┘                                              │   │
+│  │        │                                                      │   │
+│  │        ▼ Cell selected                                       │   │
+│  │  ┌─────────────────────────────────────────────────────────┐ │   │
+│  │  │              IS HOSTILE TAKEOVER TARGET?                 │ │   │
+│  │  │                                                          │ │   │
+│  │  │    YES: Developed enemy macro cell at macro level        │ │   │
+│  │  │    ┌─────────────────────────────────────┐               │ │   │
+│  │  │    │ 👑 Takeover    │ ${cost}+⚡ │       │               │ │   │
+│  │  │    │ Gold gradient background           │               │ │   │
+│  │  │    │ style.background = linear-gradient │               │ │   │
+│  │  │    │ style.color = #000                 │               │ │   │
+│  │  │    │ style.fontWeight = bold            │               │ │   │
+│  │  │    └─────────────────────────────────────┘               │ │   │
+│  │  │                                                          │ │   │
+│  │  │    NO: Fall through to normal logic                      │ │   │
+│  │  │    ┌─────────────┐ ┌─────────────┐ ┌─────────────┐      │ │   │
+│  │  │    │ ⚔️ Attack   │ │ 🚩 Claim    │ │ □ Owned     │      │ │   │
+│  │  │    │ (enemy)     │ │ (neutral)   │ │ (own cell)  │      │ │   │
+│  │  │    └─────────────┘ └─────────────┘ └─────────────┘      │ │   │
+│  │  └─────────────────────────────────────────────────────────┘ │   │
+│  │                                                               │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  calculateTakeoverCost() (CLIENT ESTIMATE):                          │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  function calculateTakeoverCost() {                          │   │
+│  │    let cost = 150;  // hostileTakeoverBaseCost               │   │
+│  │                                                               │   │
+│  │    // Client only knows map fill, not defender activity      │   │
+│  │    const fillPercent = this.getMapFillPercent();             │   │
+│  │    let scarcityMultiplier = 1.0;                             │   │
+│  │    if (fillPercent >= 0.85) scarcityMultiplier = 3.0;        │   │
+│  │    else if (fillPercent >= 0.60) scarcityMultiplier = 2.0;   │   │
+│  │    else if (fillPercent >= 0.30) scarcityMultiplier = 1.5;   │   │
+│  │                                                               │   │
+│  │    cost = Math.ceil(cost * scarcityMultiplier);              │   │
+│  │    return cost;  // Server may adjust based on activity      │   │
+│  │  }                                                            │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 76. v2.2.6 VERIFICATION CHECKLIST
+
+```
+v2.2.6 VERIFICATION CHECKLIST
+─────────────────────────────
+
+CONFIG:
+□ shared/gridwars.config.js has hostileTakeoverBaseCost: 150
+□ railway-server/gridwars.config.js has hostileTakeoverBaseCost: 150
+□ Both config files are in sync
+
+SERVER DETECTION:
+□ Hostile takeover detected when: isEnemyTakeover && is_developed && cell_level===0 && !parentAddress
+□ Returns early from action handler with special response
+□ Does NOT fall through to normal attack logic
+
+COST CALCULATION:
+□ Uses hostileTakeoverBaseCost (150) as base
+□ Applies activity tier multiplier (1.0/1.33/1.67)
+□ Applies scarcity multiplier (1.0→3.0)
+□ Applies velocity discount (10-40%)
+□ Applies guerrilla discount (30-50%)
+□ Does NOT apply overextension discount
+□ Does NOT apply fortification multiplier
+□ Does NOT apply soft point ceiling
+□ Does NOT apply underdog assist
+
+EXECUTION:
+□ Only macro cell owner changes
+□ Subcell owners unchanged
+□ is_developed stays true
+□ Territory counts updated (attacker +1, defender -1)
+□ Points deducted from attacker
+
+WEBSOCKET:
+□ broadcast() called with type: 'hostile_takeover'
+□ Message includes: attacker, previousOwner, address, x, y, cost, activityTier
+□ grid-state.js handles 'hostile_takeover' case
+□ Updates local territory map with new owner
+□ Calls onHostileTakeover callback
+
+CLIENT UI:
+□ isHostileTakeoverTarget() correctly detects eligible cells
+□ calculateTakeoverCost() provides reasonable estimate
+□ getMapFillPercent() calculates correctly
+□ updateClaimButton() shows "👑 Takeover" with gold styling
+□ Cost shows with "+" suffix (server may adjust)
+
+TOASTS:
+□ Attacker sees: "👑 You seized D5 from Sam!"
+□ Previous owner sees: "⚠️ Alex seized your empire at D5!"
+□ Other players see: "👑 Alex seized D5 from Sam"
+□ sounds.claim() for attacker, sounds.error() for victim
+
+SIDE EFFECTS:
+□ Rent now flows to new landlord
+□ Fortification now protects new landlord's subcells
+□ Previous owner still owns their subcells inside
+
+REGRESSION TESTS:
+□ tests/game/grid-wars-v2.2.6.test.js passes (60 tests)
+□ tests/game/grid-wars-v2.2.5.test.js still passes (52 tests)
+□ All existing Grid Wars tests still pass
+□ All 1300+ platform tests pass
+```
+
+---
+
+*Updated to v2.2.6*
 *Last updated: January 2026*
-*Total sections: 70*
+*Total sections: 76*

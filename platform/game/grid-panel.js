@@ -132,6 +132,25 @@ export class GridPanel {
         this.showToast(`💰 +${data.rent} pts rent from ${data.tenant}`, 3000);
         // Refresh points display
         this.updatePointsDisplay();
+      },
+      // v2.2.6: Hostile takeover notification
+      onHostileTakeover: (data) => {
+        // Refresh state and UI
+        this.syncRendererState();
+        this.updatePointsDisplay();
+        this.updateClaimButton();
+        this.updateLevelIndicator();
+
+        // Show appropriate toast based on who the user is
+        if (data.attacker === this.state?.username) {
+          sounds.claim();
+          this.showToast(`👑 You seized ${data.address.toUpperCase()} from ${data.previousOwner}!`, 4000);
+        } else if (data.previousOwner === this.state?.username) {
+          sounds.error();
+          this.showToast(`⚠️ ${data.attacker} seized your empire at ${data.address.toUpperCase()}!`, 5000);
+        } else {
+          this.showToast(`👑 ${data.attacker} seized ${data.address.toUpperCase()} from ${data.previousOwner}`, 3000);
+        }
       }
     });
 
@@ -1083,8 +1102,80 @@ export class GridPanel {
   }
 
   /**
+   * v2.2.6: Check if selected cell is a hostile takeover target
+   * Returns true if the cell is a developed macro cell owned by someone else
+   * and we're at macro level (not zoomed into a subcell)
+   */
+  isHostileTakeoverTarget() {
+    if (!this._selectedForAction) return false;
+
+    const { x, y, address, owner } = this._selectedForAction;
+
+    // Must be enemy territory
+    if (!owner || owner === this.state?.username) return false;
+
+    // Must be at macro level (not zoomed into subcells)
+    const navState = this.state?.getNavigationState?.();
+    if (navState?.currentLevel > 0 || navState?.currentParent) return false;
+
+    // Cell address must be a simple macro address (no dots)
+    if (address && address.includes('.')) return false;
+
+    // Cell must be developed
+    if (!this.state?.isDeveloped?.(x, y)) return false;
+
+    return true;
+  }
+
+  /**
+   * v2.2.6: Calculate estimated hostile takeover cost
+   * Client-side approximation - server determines actual cost
+   */
+  calculateTakeoverCost() {
+    const config = GRID_WARS_CONFIG;
+    let cost = config.hostileTakeoverBaseCost || 150;
+
+    // Activity tier approximation (we don't have exact defender data)
+    // Use 1.0x (COLD) for estimate, server will adjust
+    // const activityMultiplier = 1.0;
+
+    // Scarcity approximation
+    const fillPercent = this.getMapFillPercent();
+    let scarcityMultiplier = 1.0;
+    if (fillPercent >= 0.85) {
+      scarcityMultiplier = 3.0;
+    } else if (fillPercent >= 0.60) {
+      scarcityMultiplier = 2.0;
+    } else if (fillPercent >= 0.30) {
+      scarcityMultiplier = 1.5;
+    }
+    cost = Math.ceil(cost * scarcityMultiplier);
+
+    return cost;
+  }
+
+  /**
+   * v2.2.6: Get approximate map fill percentage for client-side cost estimates
+   */
+  getMapFillPercent() {
+    const renderState = this.state?.getRenderState?.();
+    if (!renderState?.territories) return 0;
+
+    const mapSize = GRID_WARS_CONFIG.mapSize || 8;
+    const totalCells = mapSize * mapSize;
+
+    // Count owned macro cells (not subcells)
+    const ownedMacroCells = renderState.territories.filter(t =>
+      t.owner && (!t.parent_address && (t.cell_level === 0 || t.cell_level === undefined))
+    ).length;
+
+    return ownedMacroCells / totalCells;
+  }
+
+  /**
    * v2.2.1: Update claim button text and state based on selected cell
    * v2.2.5: Added fortification indicator for attacks inside enemy's developed territory
+   * v2.2.6: Added hostile takeover button for developed macro cells
    */
   updateClaimButton() {
     const claimBtn = this.container.querySelector('.gw-action-btn[data-action="claim"]');
@@ -1104,11 +1195,23 @@ export class GridPanel {
       // Own territory - can't claim - v2.2.4: Changed wording
       claimBtn.disabled = true;
       claimBtn.innerHTML = `□ Owned<span class="gw-cost">--</span>`;
+    } else if (this.isHostileTakeoverTarget()) {
+      // v2.2.6: Hostile takeover - developed enemy macro cell at macro level
+      const takeoverCost = this.calculateTakeoverCost();
+      claimBtn.disabled = points < takeoverCost;
+      claimBtn.innerHTML = `👑 Takeover<span class="gw-cost">${takeoverCost}+⚡</span>`;
+      claimBtn.style.background = 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)';
+      claimBtn.style.color = '#000';
+      claimBtn.style.fontWeight = 'bold';
     } else if (costInfo.isEnemy) {
       // Enemy territory - show attack
       // v2.2.5: Check for fortification bonus
       const isFortified = this.isInsideFortifiedTerritory();
       claimBtn.disabled = points < costInfo.cost;
+      // Reset takeover styling
+      claimBtn.style.background = '';
+      claimBtn.style.color = '';
+      claimBtn.style.fontWeight = '';
       if (isFortified) {
         claimBtn.innerHTML = `⚔️ Attack<span class="gw-cost">${costInfo.cost}⚡</span><span style="color:#f59e0b;font-size:9px;margin-left:4px;">🏰+25%</span>`;
       } else {
@@ -1117,6 +1220,10 @@ export class GridPanel {
     } else {
       // Neutral - show claim
       claimBtn.disabled = points < costInfo.cost;
+      // Reset takeover styling
+      claimBtn.style.background = '';
+      claimBtn.style.color = '';
+      claimBtn.style.fontWeight = '';
       claimBtn.innerHTML = `🚩 Claim<span class="gw-cost">${costInfo.cost}⚡</span>`;
     }
   }

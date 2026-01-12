@@ -364,6 +364,14 @@ const GRID_WARS_CONFIG = {
 
   // Fortification: Attacks inside someone else's developed cell cost more
   fortificationMultiplier: 1.25,       // +25% attack cost inside enemy's developed territory
+
+  // ============================================
+  // v2.2.6: HOSTILE TAKEOVER
+  // ============================================
+
+  // Attack a developed macro cell to become its new landlord
+  // Subcells are unchanged; only macro ownership transfers
+  hostileTakeoverBaseCost: 150,        // Base cost to seize a developed cell
 };
 
 

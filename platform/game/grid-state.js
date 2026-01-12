@@ -1636,6 +1636,36 @@ export class GridWarsState {
         }
         break;
 
+      // v2.2.6: Hostile takeover - attacker seized a developed macro cell
+      case 'hostile_takeover':
+        // Update territory ownership in local state (keep is_developed and other properties)
+        const existingCell = this.territories.get(`${message.x},${message.y}`) || {};
+        this.territories.set(`${message.x},${message.y}`, {
+          ...existingCell,
+          owner: message.attacker,
+          claimed_at: new Date().toISOString()
+          // is_developed stays true, subcells unchanged
+        });
+        // Update territory counts
+        this._updatePlayerTerritoriesCount(message.attacker, 1);
+        if (message.previousOwner) {
+          this._updatePlayerTerritoriesCount(message.previousOwner, -1);
+        }
+        // Notify via callback
+        if (this.onHostileTakeover) {
+          this.onHostileTakeover({
+            attacker: message.attacker,
+            previousOwner: message.previousOwner,
+            address: message.address,
+            x: message.x,
+            y: message.y,
+            cost: message.cost,
+            activityTier: message.activityTier
+          });
+        }
+        this._emitStateChange();
+        break;
+
       // v1.5: Scarcity phase update
       case 'scarcity_update':
         const oldPhase = this.scarcityPhase?.phase;

@@ -4736,6 +4736,134 @@ app.post('/api/grid-wars/action', async (req, res) => {
         return res.status(400).json({ error: 'You already own this territory' });
       }
 
+      // v2.2.6: Hostile Takeover - attack a developed macro cell to become its landlord
+      // Subcells are unchanged; only macro ownership transfers
+      const isHostileTakeover = isEnemyTakeover &&
+                                 existingTerritory?.is_developed &&
+                                 (existingTerritory?.cell_level === 0 || existingTerritory?.cell_level === undefined) &&
+                                 !parentAddress;  // Must be at macro level
+
+      if (isHostileTakeover) {
+        console.log(`[Hostile Takeover] ${username} attempting to seize developed cell ${targetAddress} from ${previousOwner}`);
+
+        // Calculate takeover cost: BASE × ACTIVITY_TIER × SCARCITY × (1 - VELOCITY) × (1 - GUERRILLA)
+        // Note: NO overextension discount, NO fortification (that's for subcells)
+        let takeoverCost = GRID_WARS_CONFIG.hostileTakeoverBaseCost || 150;
+
+        // Get defender's activity tier
+        const { data: defender } = await supabase
+          .from('grid_wars_players')
+          .select('last_answer_at, territories_count')
+          .eq('game_id', gameId)
+          .eq('username', previousOwner)
+          .single();
+
+        const timeSinceAnswer = defender?.last_answer_at
+          ? (Date.now() - new Date(defender.last_answer_at).getTime()) / 1000
+          : Infinity;
+
+        // Activity tier multiplier (1.0 for COLD, 1.33 for WARM, 1.67 for ACTIVE)
+        let activityTier;
+        let activityMultiplier = 1.0;
+        if (timeSinceAnswer < GRID_WARS_CONFIG.activeWindowSeconds) {
+          activityTier = 'ACTIVE';
+          activityMultiplier = 1.67;
+        } else if (timeSinceAnswer < GRID_WARS_CONFIG.warmWindowSeconds) {
+          activityTier = 'WARM';
+          activityMultiplier = 1.33;
+        } else {
+          activityTier = 'COLD';
+          activityMultiplier = 1.0;
+        }
+        takeoverCost = Math.ceil(takeoverCost * activityMultiplier);
+
+        // Apply scarcity multiplier
+        const fillPercent = await getMapFillPercent(gameId);
+        const scarcityMultiplier = getScarcityMultiplier(fillPercent);
+        takeoverCost = Math.ceil(takeoverCost * scarcityMultiplier);
+
+        // Apply velocity discount
+        const velocity = await getPlayerVelocity(gameId, username);
+        const velocityTier = getVelocityTier(velocity);
+        if (velocityTier.discount > 0) {
+          takeoverCost = Math.ceil(takeoverCost * (1 - velocityTier.discount));
+        }
+
+        // Apply guerrilla discount
+        const attackerCells = player?.territories_count || 0;
+        const defenderCells = defender?.territories_count || 0;
+        const guerrilla = getGuerrillaDiscount(attackerCells, defenderCells);
+        if (guerrilla.discount > 0) {
+          takeoverCost = Math.ceil(takeoverCost * (1 - guerrilla.discount));
+        }
+
+        console.log(`[Hostile Takeover] Cost breakdown: base=150, activity=${activityTier}(×${activityMultiplier}), scarcity=${scarcityMultiplier.toFixed(2)}, velocity=-${(velocityTier.discount * 100).toFixed(0)}%, guerrilla=-${(guerrilla.discount * 100).toFixed(0)}% → final=${takeoverCost}`);
+
+        // Check if player can afford
+        if (currentPoints < takeoverCost) {
+          return res.status(400).json({
+            error: `Insufficient points for hostile takeover. Need ${takeoverCost}, have ${currentPoints}`,
+            required: takeoverCost,
+            have: currentPoints,
+            isHostileTakeover: true
+          });
+        }
+
+        // Deduct points from attacker
+        await upsertGridWarsPlayer(gameId, username, -takeoverCost);
+
+        // Transfer ownership of MACRO CELL ONLY
+        // Subcells remain unchanged
+        const { error: updateError } = await supabase
+          .from('grid_wars_territories')
+          .update({
+            owner: username,
+            claimed_at: new Date().toISOString()
+            // is_developed stays true
+            // subcells are NOT touched
+          })
+          .eq('id', existingTerritory.id);
+
+        if (updateError) {
+          console.error('[Hostile Takeover] Failed to update territory:', updateError);
+          // Refund points on failure
+          await upsertGridWarsPlayer(gameId, username, takeoverCost);
+          return res.status(500).json({ error: 'Failed to complete hostile takeover' });
+        }
+
+        // Update territory counts
+        await upsertGridWarsPlayer(gameId, username, 0, 1);        // Attacker gains 1 territory
+        await upsertGridWarsPlayer(gameId, previousOwner, 0, -1); // Defender loses 1 territory
+
+        console.log(`[Hostile Takeover] SUCCESS: ${username} seized ${targetAddress} from ${previousOwner} for ${takeoverCost} pts`);
+
+        // Broadcast hostile takeover event
+        broadcast({
+          type: 'hostile_takeover',
+          gameId,
+          attacker: username,
+          previousOwner: previousOwner,
+          address: targetAddress,
+          x,
+          y,
+          cost: takeoverCost,
+          activityTier
+        });
+
+        // Also broadcast leaderboard update
+        broadcastLeaderboardUpdate(gameId);
+
+        return res.json({
+          success: true,
+          action: 'hostile_takeover',
+          address: targetAddress,
+          previousOwner: previousOwner,
+          cost: takeoverCost,
+          isHostileTakeover: true,
+          newPointsTotal: currentPoints - takeoverCost
+        });
+      }
+
       // v1.2: Activity-based dynamic pricing for enemy takeover
       let cost = GRID_WARS_CONFIG.claimCost;
       let defenderIsActive = false;

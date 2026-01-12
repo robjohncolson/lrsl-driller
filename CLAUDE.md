@@ -14,7 +14,7 @@ Current cartridges (10 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.2.5 (Development Incentives: Landlord Tax + Fortification)
+**Current Version**: v2.2.6 (Hostile Takeover: Seize Developed Cells)
 
 ## Critical: File Sync Requirements
 
@@ -238,6 +238,7 @@ npx vitest run tests/game/grid-wars-v2.1.5.test.js # v2.1.5 subcell claims (34 t
 npx vitest run tests/game/grid-wars-v2.2.2.test.js # v2.2.2 click-to-select (32 tests)
 npx vitest run tests/game/grid-wars-v2.2.3.test.js # v2.2.3 color/gift/zoom/level (40+ tests)
 npx vitest run tests/game/grid-wars-v2.2.5.test.js # v2.2.5 landlord tax + fortification (52 tests)
+npx vitest run tests/game/grid-wars-v2.2.6.test.js # v2.2.6 hostile takeover (60 tests)
 npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
@@ -252,7 +253,7 @@ Test organization:
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
 - `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality)
-- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.2.2)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.2.6)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
@@ -279,6 +280,20 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v2.2.6**: Hostile Takeover - Seize Developed Cells
+- Added Hostile Takeover: Attack a developed macro cell (150 pts base) to become its new landlord
+- Only macro cell ownership transfers; all subcell owners keep their cells unchanged
+- Cost calculation: BASE × ACTIVITY_TIER × SCARCITY × (1-VELOCITY) × (1-GUERRILLA)
+- Exclusions: NO overextension discount, NO fortification penalty (those are for subcells)
+- Rent redirects to new landlord; fortification now protects new landlord's subcells
+- Config: `hostileTakeoverBaseCost: 150` in both shared/ and railway-server/ config files
+- WebSocket: `hostile_takeover` message broadcast with attacker, previousOwner, address, cost
+- Client UI: Gold "👑 Takeover" button with gradient styling when enemy developed cell selected
+- Toast notifications: Success for attacker, warning for previous owner, neutral for others
+- New methods: `isHostileTakeoverTarget()`, `calculateTakeoverCost()`, `getMapFillPercent()` in grid-panel.js
+- New handler: `onHostileTakeover` callback in grid-state.js for WebSocket message
+- Added 60 regression tests in `tests/game/grid-wars-v2.2.6.test.js`
 
 **v2.2.5**: Development Incentives - Landlord Tax + Fortification
 - Added Landlord Tax: Developers earn 20% rent when others claim/attack subcells inside their developed territory
