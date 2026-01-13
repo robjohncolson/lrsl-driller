@@ -21,6 +21,10 @@ export class PongPanel {
     this._tokens = config.tokens || PONG_CONFIG.startingTokens;
     this._duelsEnabled = config.duelsEnabled !== false;
 
+    // v3.1: Token from drilling progress
+    this._correctCount = config.correctCount || 0;
+    this._tokensPerCorrect = PONG_CONFIG.tokenSources?.correctAnswersPerToken || 10;
+
     // Current state
     this._activeGame = null;
     this._renderer = null;
@@ -61,7 +65,8 @@ export class PongPanel {
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span id="pong-tokens" style="background:#1e293b;padding:4px 8px;border-radius:4px;font-size:0.85rem;">
-              <span style="color:#fbbf24;">Token:</span> ${this._tokens}
+              <span style="color:#fbbf24;">⚔️</span> ${this._tokens}
+              <span style="font-size:0.65rem;color:#6b7280;margin-left:2px;">(${this._correctCount % this._tokensPerCorrect}/${this._tokensPerCorrect})</span>
             </span>
             <span id="pong-status" style="font-size:0.7rem;color:#6b7280;">
               ${this._duelsEnabled ? 'Ready' : 'Disabled'}
@@ -166,9 +171,29 @@ export class PongPanel {
    */
   setTokens(tokens) {
     this._tokens = tokens;
+    this._updateTokenDisplay();
+  }
+
+  /**
+   * v3.1: Set correct answer count for token progress
+   * @param {number} count
+   */
+  setCorrectCount(count) {
+    this._correctCount = count;
+    this._updateTokenDisplay();
+  }
+
+  /**
+   * v3.1: Update the token display with progress
+   */
+  _updateTokenDisplay() {
     const el = this._container?.querySelector('#pong-tokens');
     if (el) {
-      el.innerHTML = `<span style="color:#fbbf24;">Token:</span> ${tokens}`;
+      const progress = this._correctCount % this._tokensPerCorrect;
+      el.innerHTML = `
+        <span style="color:#fbbf24;">⚔️</span> ${this._tokens}
+        <span style="font-size:0.65rem;color:#6b7280;margin-left:2px;">(${progress}/${this._tokensPerCorrect})</span>
+      `;
     }
   }
 
@@ -735,7 +760,28 @@ export class PongPanel {
       case 'token_granted':
         if (message.username === this._username) {
           this.setTokens(message.tokens);
-          this._showToast(`+${message.tokensGranted} Token from rent!`, 'success');
+
+          // v3.1: Update correct count if provided (from drilling)
+          if (message.correctCount !== undefined) {
+            this.setCorrectCount(message.correctCount);
+          }
+
+          // Show reason-specific toast
+          let toastMessage;
+          switch (message.reason) {
+            case 'drilling':
+              toastMessage = `🎯 +${message.tokensGranted} Token from drilling!`;
+              break;
+            case 'duel_win':
+              toastMessage = `🏆 +${message.tokensGranted} Token for winning!`;
+              break;
+            case 'rent':
+              toastMessage = `💰 +${message.tokensGranted} Token from rent!`;
+              break;
+            default:
+              toastMessage = `+${message.tokensGranted} Token earned!`;
+          }
+          this._showToast(toastMessage, 'success');
         }
         break;
     }

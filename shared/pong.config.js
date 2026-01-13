@@ -49,9 +49,19 @@ const PONG_CONFIG = {
   // ============================================
 
   tokenCostPerDuel: 1,            // Tokens spent to challenge
-  rentPerToken: 20,               // Earn 1 token per 20 pts rent collected
   maxTokens: 5,                   // Can't hoard more than 5
-  startingTokens: 1,              // New players start with 1 token
+
+  // Token sources
+  tokenSources: {
+    startingTokens: 2,            // New players start with 2 tokens
+    rentPerToken: 20,             // 1 token per 20 pts rent collected
+    correctAnswersPerToken: 10,   // 1 token per 10 correct answers
+    duelWinBonus: 1,              // Win a duel = +1 token
+  },
+
+  // Legacy aliases for backward compatibility
+  rentPerToken: 20,               // Earn 1 token per 20 pts rent collected
+  startingTokens: 2,              // New players start with 2 tokens
 
   // ============================================
   // ECONOMY / PAYOUTS

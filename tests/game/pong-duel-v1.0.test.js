@@ -116,8 +116,8 @@ describe('Pong Duel v1.0 - Config Constants', () => {
       expect(PONG_CONFIG.maxTokens).toBe(5);
     });
 
-    it('should start with 1 token', () => {
-      expect(PONG_CONFIG.startingTokens).toBe(1);
+    it('should start with 2 tokens (v3.1 update)', () => {
+      expect(PONG_CONFIG.startingTokens).toBe(2);
     });
 
     it('should have loser consolation at 50%', () => {

@@ -2683,6 +2683,97 @@ async function grantTokensFromRent(gameId, username, rentAmount) {
 }
 
 /**
+ * Grant challenge tokens from drilling (correct answers)
+ * Called after ANY correct answer (E or P grade)
+ * v3.1: 1 token per 10 correct answers
+ * @param {string} gameId - The game ID
+ * @param {string} username - The student's username
+ * @returns {Promise<{tokensGranted: number, newCount: number, nextTokenAt: number}>}
+ */
+async function grantTokensFromDrilling(gameId, username) {
+  if (!gameId || !username) {
+    console.log('[Pong:Tokens] Missing gameId or username, skipping');
+    return { tokensGranted: 0, newCount: 0, nextTokenAt: 10 };
+  }
+
+  // Get current state
+  const { data: player, error } = await supabase
+    .from('grid_wars_players')
+    .select('correct_answer_count, last_token_grant_count, challenge_tokens')
+    .eq('game_id', gameId)
+    .eq('username', username)
+    .single();
+
+  if (error || !player) {
+    console.log('[Pong:Tokens] Player not found:', username, error?.message);
+    return { tokensGranted: 0, newCount: 0, nextTokenAt: 10 };
+  }
+
+  const oldCount = player.correct_answer_count || 0;
+  const newCount = oldCount + 1;
+  const lastGrantCount = player.last_token_grant_count || 0;
+
+  // Calculate token thresholds
+  const tokensPerCorrect = PONG_CONFIG.tokenSources?.correctAnswersPerToken || 10;
+  const oldTokenThreshold = Math.floor(lastGrantCount / tokensPerCorrect);
+  const newTokenThreshold = Math.floor(newCount / tokensPerCorrect);
+
+  const updates = { correct_answer_count: newCount };
+  let tokensGranted = 0;
+  let newTokens = player.challenge_tokens || PONG_CONFIG.startingTokens;
+
+  // Check if we crossed a threshold since last grant
+  if (newTokenThreshold > oldTokenThreshold) {
+    const maxTokens = PONG_CONFIG.maxTokens || 5;
+    const currentTokens = player.challenge_tokens || PONG_CONFIG.startingTokens;
+
+    if (currentTokens < maxTokens) {
+      tokensGranted = 1;
+      newTokens = Math.min(maxTokens, currentTokens + 1);
+      updates.challenge_tokens = newTokens;
+      updates.last_token_grant_count = newCount;
+
+      console.log(`[Pong:Tokens] ${username} earned token from drilling! ${newCount} correct answers, now has ${newTokens} tokens`);
+
+      // Notify the player via WebSocket
+      broadcast({
+        type: 'token_granted',
+        gameId: gameId,
+        username: username,
+        tokens: newTokens,
+        tokensGranted: 1,
+        reason: 'drilling',
+        correctCount: newCount,
+        nextTokenAt: (newTokenThreshold + 1) * tokensPerCorrect
+      });
+    } else {
+      console.log(`[Pong:Tokens] ${username} at max tokens (${maxTokens}), not granting`);
+      // Still update last_token_grant_count so we don't keep trying
+      updates.last_token_grant_count = newCount;
+    }
+  }
+
+  // Update the count
+  await supabase
+    .from('grid_wars_players')
+    .update(updates)
+    .eq('game_id', gameId)
+    .eq('username', username);
+
+  // Log progress
+  const nextThreshold = (newTokenThreshold + 1) * tokensPerCorrect;
+  const progress = newCount % tokensPerCorrect;
+  console.log(`[Pong:Tokens] ${username}: ${newCount} correct (${progress}/${tokensPerCorrect} to next token)`);
+
+  return {
+    tokensGranted,
+    newCount,
+    nextTokenAt: nextThreshold,
+    tokens: newTokens
+  };
+}
+
+/**
  * Check if player can initiate a duel (rate limiting)
  * @param {string} gameId
  * @param {string} username
@@ -7336,10 +7427,10 @@ app.get('/api/pong/player/:gameId/:username', async (req, res) => {
   const { gameId, username } = req.params;
 
   try {
-    // Get tokens
+    // Get tokens and drilling progress
     const { data: player } = await supabase
       .from('grid_wars_players')
-      .select('challenge_tokens, total_rent_earned, recent_correct_count')
+      .select('challenge_tokens, total_rent_earned, recent_correct_count, correct_answer_count')
       .eq('game_id', gameId)
       .eq('username', username)
       .single();
@@ -7352,10 +7443,20 @@ app.get('/api/pong/player/:gameId/:username', async (req, res) => {
       .eq('username', username)
       .single();
 
+    // v3.1: Calculate progress toward next token
+    const correctCount = player?.correct_answer_count || 0;
+    const tokensPerCorrect = PONG_CONFIG.tokenSources?.correctAnswersPerToken || 10;
+    const progress = correctCount % tokensPerCorrect;
+    const nextTokenAt = (Math.floor(correctCount / tokensPerCorrect) + 1) * tokensPerCorrect;
+
     res.json({
       tokens: player?.challenge_tokens || PONG_CONFIG.startingTokens,
       totalRent: player?.total_rent_earned || 0,
       recentCorrect: player?.recent_correct_count || 0,
+      correctCount: correctCount,
+      tokenProgress: progress,
+      tokensPerCorrect: tokensPerCorrect,
+      nextTokenAt: nextTokenAt,
       stats: stats || { wins: 0, losses: 0, conquest_wins: 0, defense_wins: 0 }
     });
   } catch (err) {
@@ -7379,6 +7480,38 @@ app.get('/api/pong/active/:gameId', async (req, res) => {
   } catch (err) {
     console.error('[Pong] Active duels error:', err);
     res.status(500).json({ error: 'Failed to fetch active duels' });
+  }
+});
+
+// POST /api/pong/record-correct - Record a correct answer for token earning
+// v3.1: Called by client after any E or P grade
+app.post('/api/pong/record-correct', async (req, res) => {
+  const { gameId, username } = req.body;
+  const clientCount = wsClientCount || 'unknown';
+
+  console.log(`[Pong:Correct] Recording correct answer for ${username} in ${gameId} (clients: ${clientCount})`);
+
+  if (!gameId || !username) {
+    return res.status(400).json({ error: 'gameId and username required' });
+  }
+
+  try {
+    // Increment recent correct count (for paddle bonus)
+    await incrementRecentCorrectCount(gameId, username);
+
+    // Grant tokens from drilling (for challenge tokens)
+    const result = await grantTokensFromDrilling(gameId, username);
+
+    res.json({
+      success: true,
+      correctCount: result.newCount,
+      tokensGranted: result.tokensGranted,
+      tokens: result.tokens,
+      nextTokenAt: result.nextTokenAt
+    });
+  } catch (err) {
+    console.error('[Pong:Correct] Error:', err);
+    res.status(500).json({ error: 'Failed to record correct answer' });
   }
 });
 
@@ -7729,6 +7862,43 @@ async function endPongMatch(game, winnerUsername, reason) {
     // Update stats
     await updatePongStats(game.gameId, winnerUsername, true, isAttackerWin ? 'conquest' : 'defense');
     await updatePongStats(game.gameId, loserUsername, false, isAttackerWin ? 'defense' : 'conquest');
+
+    // v3.1: Grant winner +1 token for winning the duel
+    const duelWinBonus = PONG_CONFIG.tokenSources?.duelWinBonus || 1;
+    const { data: winnerPlayer } = await supabase
+      .from('grid_wars_players')
+      .select('challenge_tokens')
+      .eq('game_id', game.gameId)
+      .eq('username', winnerUsername)
+      .single();
+
+    if (winnerPlayer) {
+      const maxTokens = PONG_CONFIG.maxTokens || 5;
+      const currentTokens = winnerPlayer.challenge_tokens || PONG_CONFIG.startingTokens;
+      const newTokens = Math.min(maxTokens, currentTokens + duelWinBonus);
+
+      if (newTokens > currentTokens) {
+        await supabase
+          .from('grid_wars_players')
+          .update({ challenge_tokens: newTokens })
+          .eq('game_id', game.gameId)
+          .eq('username', winnerUsername);
+
+        console.log(`[Pong:Tokens] ${winnerUsername} earned token from duel win! Now has ${newTokens} tokens`);
+
+        // Notify winner of bonus token
+        broadcast({
+          type: 'token_granted',
+          gameId: game.gameId,
+          username: winnerUsername,
+          tokens: newTokens,
+          tokensGranted: duelWinBonus,
+          reason: 'duel_win'
+        });
+      } else {
+        console.log(`[Pong:Tokens] ${winnerUsername} at max tokens (${maxTokens}), no duel win bonus`);
+      }
+    }
 
     // Record match history
     await supabase

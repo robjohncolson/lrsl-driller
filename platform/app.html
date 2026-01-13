@@ -1024,12 +1024,14 @@
           return;
         }
 
-        // Fetch player's pong stats including tokens
+        // Fetch player's pong stats including tokens and drilling progress
         const response = await fetch(`${SERVER_URL}/api/pong/player/${gridPanel.state?.gameId}/${username}`);
-        let tokens = 1;
+        let tokens = 2;  // v3.1: Default starting tokens is now 2
+        let correctCount = 0;
         if (response.ok) {
           const data = await response.json();
-          tokens = data.tokens || 1;
+          tokens = data.tokens || 2;
+          correctCount = data.correctCount || 0;  // v3.1: Track drilling progress
         }
 
         // Get player colors from grid state
@@ -1037,7 +1039,7 @@
 
         // Create pong panel
         const gameId = gridPanel.state?.gameId;
-        console.log('[PongDuel] Creating PongPanel with gameId:', gameId, 'username:', username);
+        console.log('[PongDuel] Creating PongPanel with gameId:', gameId, 'username:', username, 'correctCount:', correctCount);
 
         pongPanel = new PongPanel(container, {
           gameId: gameId,
@@ -1045,6 +1047,7 @@
           serverUrl: SERVER_URL,
           playerColors: playerColors,
           tokens: tokens,
+          correctCount: correctCount,  // v3.1: Pass drilling progress
           duelsEnabled: true
         });
 
@@ -3246,6 +3249,33 @@
 
             // Update grading status display
             updateGradingStatus(results);
+
+            // v3.1: Record correct answers for Pong Duel token earning
+            // Any field with E or P grade counts as a correct answer
+            const hasCorrectAnswer = Object.values(results.fields || {}).some(
+              r => r.score === 'E' || r.score === 'P'
+            );
+            if (hasCorrectAnswer && gridPanel?.state?.gameId && userSystem.currentUser) {
+              fetch(`${SERVER_URL}/api/pong/record-correct`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  gameId: gridPanel.state.gameId,
+                  username: userSystem.currentUser.username
+                })
+              })
+              .then(r => r.json())
+              .then(data => {
+                if (data.success) {
+                  console.log(`[Pong:Tokens] Recorded correct answer: ${data.correctCount} total, progress ${data.correctCount % 10}/10`);
+                  // Update pong panel's correct count for progress display
+                  if (pongPanel && data.correctCount !== undefined) {
+                    pongPanel.setCorrectCount(data.correctCount);
+                  }
+                }
+              })
+              .catch(err => console.warn('[Pong:Tokens] Failed to record correct answer:', err.message));
+            }
 
             // v2.0.1: Update AI feedback panel
             // v2.1: Enhanced logging for AI flow debugging

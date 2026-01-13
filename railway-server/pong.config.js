@@ -34,9 +34,19 @@ const PONG_CONFIG = {
 
   // === TOKENS ===
   tokenCostPerDuel: 1,
-  rentPerToken: 20,
   maxTokens: 5,
-  startingTokens: 1,
+
+  // Token sources
+  tokenSources: {
+    startingTokens: 2,            // New players start with 2 tokens
+    rentPerToken: 20,             // 1 token per 20 pts rent collected
+    correctAnswersPerToken: 10,   // 1 token per 10 correct answers
+    duelWinBonus: 1,              // Win a duel = +1 token
+  },
+
+  // Legacy aliases for backward compatibility
+  rentPerToken: 20,
+  startingTokens: 2,
 
   // === ECONOMY ===
   loserConsolationPercent: 0.50,
