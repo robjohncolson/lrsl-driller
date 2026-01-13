@@ -14,7 +14,7 @@ Current cartridges (11 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v2.2.7 (Territory Display Fix: Global Percentage + Clear Labels)
+**Current Version**: v3.0.0 (Pong Duel: Territory Resolver Minigame)
 
 ## Critical: File Sync Requirements
 
@@ -24,6 +24,7 @@ Railway deploys only `railway-server/`, so certain files must be manually synced
 |-----------------------|-------------------|-------|
 | `shared/gridwars.config.js` | `railway-server/gridwars.config.js` | Grid Wars constants |
 | `shared/address-utils.js` | `railway-server/address-utils.js` | Chess notation utils |
+| `shared/pong.config.js` | `railway-server/pong.config.js` | Pong Duel constants |
 
 **When modifying these files, update BOTH copies or tests/functionality will break.**
 
@@ -65,13 +66,14 @@ When modifying grading behavior, the `onGradingComplete` callback at ~line 3095 
 **Platform (Console)** - `platform/` - topic-agnostic orchestrator:
 - `platform.js` - Main orchestrator, loads cartridges, coordinates engines
 - `core/` - Engines: game-engine (streaks/stars), grading-engine (dual grading), graph-engine (canvas plots), input-renderer (dynamic forms), cartridge-loader, shuffle-bag, user-system, websocket-client, time-tracker, celebration, leaderboard, sound-engine, ai-feedback-panel (v2.0.1)
-- `game/` - Grid Wars: grid-state, grid-renderer, grid-panel, teacher-view, audio
+- `game/` - Grid Wars: grid-state, grid-renderer, grid-panel, teacher-view, audio; Pong Duel: pong-game, pong-renderer, pong-panel
 - `core/radical-*.js` - Algebra 2 radicals: visualizer, game, prime game, complex game
 
 **Shared** - `shared/` - Code shared between platform and server:
 - `scoring.config.js` - Level-weighted scoring formula (exports `calculateWeightedPoints`, `getLevelMultiplier`, `getPointsBreakdown`)
 - `address-utils.js` - Chess-notation addressing for v2.0 hierarchy (exports `coordsToAddress`, `addressToCoords`, `buildAddress`, `getParentAddress`, `getLevel`, `getBreadcrumb`)
 - `gridwars.config.js` - Grid Wars constants (must sync with `railway-server/gridwars.config.js`)
+- `pong.config.js` - Pong Duel constants (must sync with `railway-server/pong.config.js`)
 
 **Cartridges (Lessons)** - `cartridges/{id}/` - content-specific, fully self-contained:
 - `manifest.json` - Config: modes, inputs, hints, progression, grading settings
@@ -91,7 +93,8 @@ When modifying grading behavior, the `onGradingComplete` callback at ~line 3095 
 - `/api/users`, `/api/progress`, `/api/leaderboard` - User management
 - `/api/progress/cartridge-sync` - v2.1: Sync aggregate star counts per cartridge to `user_progress` table
 - `/api/grid-wars/*` - Grid Wars game state (territories, claims, contestation)
-- WebSocket broadcasts: star earned, user online/offline, class time events, grid updates
+- `/api/pong/*` - Pong Duel minigame (challenge, accept, decline, input, leaderboard, toggle)
+- WebSocket broadcasts: star earned, user online/offline, class time events, grid updates, pong messages
 
 ### Grading Flow
 
@@ -240,6 +243,7 @@ npx vitest run tests/game/grid-wars-v2.2.3.test.js # v2.2.3 color/gift/zoom/leve
 npx vitest run tests/game/grid-wars-v2.2.5.test.js # v2.2.5 landlord tax + fortification (52 tests)
 npx vitest run tests/game/grid-wars-v2.2.6.test.js # v2.2.6 hostile takeover (60 tests)
 npx vitest run tests/game/grid-wars-v2.2.7.test.js # v2.2.7 territory display fix (32 tests)
+npx vitest run tests/game/pong-duel-v1.0.test.js  # v3.0 pong duel (106 tests)
 npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
@@ -254,7 +258,7 @@ Test organization:
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
 - `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality)
-- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.2.7)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.2.7); Pong Duel tests (pong-duel-v1.0)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
@@ -268,6 +272,7 @@ railway-server/migrations/001_point_events.sql       # v1.5.1: Velocity tracking
 railway-server/migrations/002_v1.6_fresh_start.sql   # v1.6: Fresh start schema
 railway-server/migrations/003_v2.0_hierarchical.sql  # v2.0: Hierarchy columns (address, parent_address, is_developed, cell_level)
 railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table for aggregate star counts per cartridge
+railway-server/migrations/006_pong_duels.sql        # v3.0: Pong Duel tables (tokens, stats, duels, matches, log)
 ```
 
 **Note**: The `point_events` table uses `player_id` column (not `username`). This was fixed in v1.6.2.
@@ -281,6 +286,25 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v3.0.0**: Pong Duel - Territory Resolver Minigame
+- Added Pong Duel as alternative to paying points for Grid Wars attacks
+- Token economy: Earn 1 token per 20 pts landlord rent, spend 1 to challenge
+- Paddle bonus: +5px per correct answer in last 10 minutes (max +20px, 4 answers)
+- Match mechanics: First to 3 wins, 90s max duration, server-authoritative physics at 30Hz
+- Challenge flow: Attacker challenges → Defender accepts/declines (30s timeout) → Match
+- "After Submit" option: Defender can defer acceptance until current problem graded
+- Consolation: Loser receives 50% of attack cost back
+- Rate limiting: Max 2 duels per player per 10 minute window
+- Controls: W/S or Arrow keys for keyboard, touch zones (top=up, bottom=down) for mobile
+- 4 oscillator sounds: hit (440Hz), score (660Hz), win (C-E-G arpeggio), lose (D-B descent)
+- Spectator mode for passive viewing of active duels
+- Teacher toggle to enable/disable duels globally
+- Attack options modal: PAY (instant) vs CHALLENGE (pong duel)
+- New files: `shared/pong.config.js`, `platform/game/pong-*.js`, `railway-server/migrations/006_pong_duels.sql`
+- New server endpoints: `/api/pong/challenge`, `accept`, `decline`, `input`, `leaderboard`, `toggle`
+- WebSocket messages: `pong_challenge`, `pong_accepted`, `pong_countdown`, `pong_tick`, `pong_end`, `token_granted`
+- Added 106 regression tests in `tests/game/pong-duel-v1.0.test.js`
 
 **v2.2.7**: Territory Display Fix - Global Percentage + Clear Labels
 - Fixed territory % to always show GLOBAL weighted percentage (not view-relative)

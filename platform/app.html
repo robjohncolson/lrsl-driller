@@ -255,6 +255,9 @@
   </div>
   <div id="grid-wars-backdrop" class="fixed inset-0 bg-black/30 z-45 hidden"></div>
 
+  <!-- Pong Duel Overlay Container (v3.0) -->
+  <div id="pong-panel-container"></div>
+
   <!-- Main Content - Split Pane Layout -->
   <main id="main-content" class="max-w-6xl mx-auto px-4 min-h-[calc(100vh-48px)] flex flex-col lg:flex-row gap-4 py-4">
     <!-- Left Pane: Question (fixed, never scrolls) -->
@@ -786,9 +789,10 @@
     import { TimeTracker } from './core/time-tracker.js';
     import { CartridgeLoader } from './core/cartridge-loader.js';
     import { GridPanel } from './game/grid-panel.js';
+    import { PongPanel } from './game/pong-panel.js';
     import { calculateWeightedPoints, getPointsBreakdown } from '../shared/scoring.config.js';
     import { createAIFeedbackPanel, updateAIFeedbackPanel, showAIFeedbackError, hideAIFeedbackPanel } from './core/ai-feedback-panel.js';
-    console.log('[APP] All imports successful, GridPanel:', typeof GridPanel);
+    console.log('[APP] All imports successful, GridPanel:', typeof GridPanel, 'PongPanel:', typeof PongPanel);
 
     // ==================== CONFIGURATION ====================
     const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
@@ -894,6 +898,14 @@
         if (gridPanel) {
           gridPanel.handleWebSocketMessage(message);
         }
+        // v3.0: Forward Pong messages to the pong panel
+        if (pongPanel && message.type?.startsWith('pong_')) {
+          pongPanel.handleMessage(message);
+        }
+        // v3.0: Handle token grants
+        if (message.type === 'token_granted' && pongPanel) {
+          pongPanel.handleMessage(message);
+        }
       }
     });
 
@@ -903,6 +915,7 @@
     let gridPanel = null; // Grid Wars panel instance
     let gridWarsEnabled = true; // Feature flag for Grid Wars
     let aiFeedbackPanel = null; // v2.0.1: AI feedback panel instance
+    let pongPanel = null; // v3.0: Pong Duel panel instance
 
     /**
      * Sync local star counts with server to fix any discrepancies
@@ -971,12 +984,55 @@
           if (isTeacher) {
             gridPanel.enableTeacherControls();
           }
+
+          // v3.0: Initialize Pong Duel panel
+          await initPongDuel(username);
         } else {
           console.warn('[GridWars] Failed to initialize - tables may not exist yet');
         }
       } catch (err) {
         console.warn('[GridWars] Init error:', err.message, err);
         // Grid Wars is optional - don't break the app
+      }
+    }
+
+    /**
+     * v3.0: Initialize Pong Duel panel
+     */
+    async function initPongDuel(username) {
+      if (!gridPanel) return;
+
+      try {
+        console.log('[PongDuel] Initializing for', username);
+
+        // Fetch player's pong stats including tokens
+        const response = await fetch(`${SERVER_URL}/api/pong/player/${gridPanel.state?.gameId}/${username}`);
+        let tokens = 1;
+        if (response.ok) {
+          const data = await response.json();
+          tokens = data.tokens || 1;
+        }
+
+        // Get player colors from grid state
+        const playerColors = gridPanel.state?.getPlayerColors?.() || {};
+
+        // Create pong panel
+        pongPanel = new PongPanel(document.getElementById('pong-panel-container'), {
+          gameId: gridPanel.state?.gameId,
+          username: username,
+          serverUrl: SERVER_URL,
+          playerColors: playerColors,
+          tokens: tokens,
+          duelsEnabled: true
+        });
+
+        // Connect grid panel to pong panel for duel challenges
+        gridPanel.setPongPanel(pongPanel);
+
+        console.log('[PongDuel] Initialized with', tokens, 'tokens');
+      } catch (err) {
+        console.warn('[PongDuel] Init error:', err.message);
+        // Pong is optional - don't break the app
       }
     }
 
@@ -2029,12 +2085,14 @@
       // These must match the aliases defined in init()
       const shortcuts = [
         { alias: 'exp', name: 'Experimental Design' },
+        { alias: 'inf', name: 'Design Choices + Inference' },
         { alias: 'lsrl', name: 'LSRL Interpretation' },
         { alias: 'calc', name: 'LSRL Calculations' },
         { alias: 'res', name: 'Residuals' },
         { alias: 'lev', name: 'Leverage Points' },
         { alias: 'rad', name: 'Radicals' },
-        { alias: 'poly', name: 'Polynomials' },
+        { alias: 'poly', name: 'Graphing Polynomials' },
+        { alias: 'addsub', name: 'Add/Subtract Polynomials' },
         { alias: 'samp', name: 'Sampling/Data' },
         { alias: 'mit', name: 'MIT 6.0001' }
       ];
@@ -3699,6 +3757,8 @@
         'lev': 'leverage-points',
         'rad': 'algebra2-radicals',
         'poly': 'graphing-polynomials',
+        'addsub': 'adding-subtracting-polynomials',
+        'addpoly': 'adding-subtracting-polynomials',
         'samp': 'sampling',
         'dat': 'sampling',
         'mit': 'mit-6-0001-lec1'

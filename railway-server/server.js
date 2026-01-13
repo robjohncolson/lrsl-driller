@@ -10,6 +10,7 @@ const {
   getUniqueAvatar
 } = require('./avatar-utils.js');
 const { GRID_WARS_CONFIG } = require('./gridwars.config.js');
+const { PONG_CONFIG } = require('./pong.config.js');
 const { buildCartridgePrompt } = require('./prompt-utils.js');
 const {
   coordsToAddress,
@@ -2616,6 +2617,233 @@ async function processLandlordTax(gameId, claimerUsername, targetAddress, cost) 
   };
 }
 
+// ============================================
+// PONG DUEL SYSTEM
+// ============================================
+
+// In-memory active duels for real-time physics (not persisted)
+const activeDuels = new Map();
+
+/**
+ * Grant challenge tokens from landlord rent
+ * Called after processLandlordTax pays the landlord
+ * @param {string} gameId
+ * @param {string} username - Landlord who received rent
+ * @param {number} rentAmount - Amount of rent received
+ */
+async function grantTokensFromRent(gameId, username, rentAmount) {
+  // Get current token state
+  const { data: player } = await supabase
+    .from('grid_wars_players')
+    .select('challenge_tokens, total_rent_earned, last_token_grant_rent')
+    .eq('game_id', gameId)
+    .eq('username', username)
+    .single();
+
+  if (!player) return;
+
+  const newTotalRent = (player.total_rent_earned || 0) + rentAmount;
+  const rentSinceLastToken = newTotalRent - (player.last_token_grant_rent || 0);
+  const tokensToGrant = Math.floor(rentSinceLastToken / PONG_CONFIG.rentPerToken);
+
+  if (tokensToGrant > 0) {
+    const currentTokens = player.challenge_tokens || PONG_CONFIG.startingTokens;
+    const newTokens = Math.min(PONG_CONFIG.maxTokens, currentTokens + tokensToGrant);
+    const newLastGrant = (player.last_token_grant_rent || 0) + (tokensToGrant * PONG_CONFIG.rentPerToken);
+
+    await supabase
+      .from('grid_wars_players')
+      .update({
+        challenge_tokens: newTokens,
+        total_rent_earned: newTotalRent,
+        last_token_grant_rent: newLastGrant
+      })
+      .eq('game_id', gameId)
+      .eq('username', username);
+
+    console.log(`[Pong] ${username} earned ${tokensToGrant} token(s) from rent (now has ${newTokens})`);
+
+    // Notify player via WebSocket
+    broadcast({
+      type: 'token_granted',
+      gameId: gameId,
+      username: username,
+      tokens: newTokens,
+      tokensGranted: tokensToGrant,
+      reason: 'rent'
+    });
+  } else {
+    // Just update rent total without granting tokens
+    await supabase
+      .from('grid_wars_players')
+      .update({ total_rent_earned: newTotalRent })
+      .eq('game_id', gameId)
+      .eq('username', username);
+  }
+}
+
+/**
+ * Check if player can initiate a duel (rate limiting)
+ * @param {string} gameId
+ * @param {string} username
+ * @returns {Promise<boolean>}
+ */
+async function canPlayerDuel(gameId, username) {
+  const cutoffTime = new Date(Date.now() - PONG_CONFIG.duelCooldownMinutes * 60 * 1000);
+
+  const { count } = await supabase
+    .from('pong_duel_log')
+    .select('*', { count: 'exact', head: true })
+    .eq('game_id', gameId)
+    .eq('username', username)
+    .gte('created_at', cutoffTime.toISOString());
+
+  return (count || 0) < PONG_CONFIG.maxDuelsPerPlayer;
+}
+
+/**
+ * Calculate paddle height with drilling bonus
+ * Base height + bonus per recent correct answer
+ * @param {string} gameId
+ * @param {string} username
+ * @returns {Promise<number>} Paddle height in pixels
+ */
+async function calculatePaddleHeight(gameId, username) {
+  const baseHeight = PONG_CONFIG.paddleBaseHeight;
+
+  // Get recent correct count from player record
+  const { data: player } = await supabase
+    .from('grid_wars_players')
+    .select('recent_correct_count, recent_correct_window_start')
+    .eq('game_id', gameId)
+    .eq('username', username)
+    .single();
+
+  if (!player) return baseHeight;
+
+  // Check if window is still valid (within last 10 minutes)
+  const windowStart = player.recent_correct_window_start
+    ? new Date(player.recent_correct_window_start)
+    : null;
+  const windowValid = windowStart &&
+    (Date.now() - windowStart.getTime()) < PONG_CONFIG.recentCorrectWindowMinutes * 60 * 1000;
+
+  const recentCorrect = windowValid ? (player.recent_correct_count || 0) : 0;
+  const bonus = Math.min(PONG_CONFIG.paddleBonusMax, recentCorrect * PONG_CONFIG.paddleBonusPerCorrect);
+
+  return baseHeight + bonus;
+}
+
+/**
+ * Increment recent correct answer count for a player
+ * Called when a drill answer is graded as correct
+ * @param {string} gameId
+ * @param {string} username
+ */
+async function incrementRecentCorrectCount(gameId, username) {
+  const windowDuration = PONG_CONFIG.recentCorrectWindowMinutes * 60 * 1000;
+  const now = new Date();
+
+  // Get current state
+  const { data: player } = await supabase
+    .from('grid_wars_players')
+    .select('recent_correct_count, recent_correct_window_start')
+    .eq('game_id', gameId)
+    .eq('username', username)
+    .single();
+
+  if (!player) return;
+
+  const windowStart = player.recent_correct_window_start
+    ? new Date(player.recent_correct_window_start)
+    : null;
+
+  // Check if window expired
+  if (!windowStart || (now.getTime() - windowStart.getTime()) > windowDuration) {
+    // Reset window
+    await supabase
+      .from('grid_wars_players')
+      .update({
+        recent_correct_count: 1,
+        recent_correct_window_start: now.toISOString()
+      })
+      .eq('game_id', gameId)
+      .eq('username', username);
+  } else {
+    // Increment count
+    await supabase
+      .from('grid_wars_players')
+      .update({
+        recent_correct_count: (player.recent_correct_count || 0) + 1
+      })
+      .eq('game_id', gameId)
+      .eq('username', username);
+  }
+}
+
+/**
+ * Check if duels are enabled for a game
+ * @param {string} gameId
+ * @returns {Promise<boolean>}
+ */
+async function areDuelsEnabled(gameId) {
+  const { data: game } = await supabase
+    .from('grid_wars_games')
+    .select('duels_enabled')
+    .eq('game_id', gameId)
+    .single();
+
+  return game?.duels_enabled !== false; // Default to true if not set
+}
+
+/**
+ * Update pong stats for a player
+ * @param {string} gameId
+ * @param {string} username
+ * @param {boolean} isWin
+ * @param {'conquest'|'defense'} winType
+ */
+async function updatePongStats(gameId, username, isWin, winType) {
+  const { data: existing } = await supabase
+    .from('pong_stats')
+    .select('*')
+    .eq('game_id', gameId)
+    .eq('username', username)
+    .single();
+
+  if (existing) {
+    const updates = {
+      wins: existing.wins + (isWin ? 1 : 0),
+      losses: existing.losses + (isWin ? 0 : 1),
+      updated_at: new Date().toISOString()
+    };
+
+    if (isWin && winType === 'conquest') updates.conquest_wins = existing.conquest_wins + 1;
+    if (isWin && winType === 'defense') updates.defense_wins = existing.defense_wins + 1;
+
+    await supabase
+      .from('pong_stats')
+      .update(updates)
+      .eq('game_id', gameId)
+      .eq('username', username);
+  } else {
+    await supabase
+      .from('pong_stats')
+      .insert({
+        game_id: gameId,
+        username: username,
+        wins: isWin ? 1 : 0,
+        losses: isWin ? 0 : 1,
+        conquest_wins: isWin && winType === 'conquest' ? 1 : 0,
+        defense_wins: isWin && winType === 'defense' ? 1 : 0
+      });
+  }
+}
+
+// ============================================
+// END PONG HELPER FUNCTIONS
+// ============================================
+
 /**
  * Calculate fortification multiplier for attacking inside developed territory
  * Attacking subcells inside someone else's developed cell costs +25% more
@@ -5155,6 +5383,9 @@ app.post('/api/grid-wars/action', async (req, res) => {
           rent: taxResult.rent,
           cell: taxResult.cell
         });
+
+        // v3.0: Grant Pong duel tokens from rent
+        await grantTokensFromRent(gameId, taxResult.landlord, taxResult.rent);
       }
 
       // Broadcast
@@ -6788,6 +7019,710 @@ app.get('/api/grid-wars/config', (req, res) => {
     dimmingFadeMinutes: GRID_WARS_CONFIG.dimmingFadeMinutes
   });
 });
+
+// ============================================
+// PONG DUEL ENDPOINTS
+// ============================================
+
+// POST /api/pong/challenge - Attacker initiates a duel challenge
+app.post('/api/pong/challenge', async (req, res) => {
+  const { gameId, attackerUsername, defenderUsername, territoryAddress, attackCost } = req.body;
+
+  console.log('[Pong] Challenge:', { attacker: attackerUsername, defender: defenderUsername, cell: territoryAddress });
+
+  try {
+    // Check if duels are enabled
+    if (!await areDuelsEnabled(gameId)) {
+      return res.status(403).json({ error: 'Duels are currently disabled' });
+    }
+
+    // Verify attacker has tokens
+    const { data: attacker } = await supabase
+      .from('grid_wars_players')
+      .select('challenge_tokens')
+      .eq('game_id', gameId)
+      .eq('username', attackerUsername)
+      .single();
+
+    if (!attacker || (attacker.challenge_tokens || 0) < PONG_CONFIG.tokenCostPerDuel) {
+      return res.status(400).json({
+        error: 'Not enough Challenge Tokens',
+        required: PONG_CONFIG.tokenCostPerDuel,
+        have: attacker?.challenge_tokens || 0
+      });
+    }
+
+    // Check rate limit
+    if (!await canPlayerDuel(gameId, attackerUsername)) {
+      return res.status(429).json({
+        error: `Max ${PONG_CONFIG.maxDuelsPerPlayer} duels per ${PONG_CONFIG.duelCooldownMinutes} minutes`
+      });
+    }
+
+    // Verify territory ownership
+    const { data: territory } = await supabase
+      .from('grid_wars_territories')
+      .select('owner')
+      .eq('game_id', gameId)
+      .eq('address', territoryAddress)
+      .single();
+
+    if (!territory || territory.owner !== defenderUsername) {
+      return res.status(400).json({ error: 'Territory not owned by defender' });
+    }
+
+    // Deduct token
+    await supabase
+      .from('grid_wars_players')
+      .update({ challenge_tokens: attacker.challenge_tokens - PONG_CONFIG.tokenCostPerDuel })
+      .eq('game_id', gameId)
+      .eq('username', attackerUsername);
+
+    // Log for rate limiting
+    await supabase
+      .from('pong_duel_log')
+      .insert({ game_id: gameId, username: attackerUsername });
+
+    // Calculate paddle heights
+    const attackerPaddle = await calculatePaddleHeight(gameId, attackerUsername);
+    const defenderPaddle = await calculatePaddleHeight(gameId, defenderUsername);
+
+    // Create duel
+    const duelId = `duel-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+
+    await supabase
+      .from('pong_duels')
+      .insert({
+        id: duelId,
+        game_id: gameId,
+        attacker_username: attackerUsername,
+        defender_username: defenderUsername,
+        territory_address: territoryAddress,
+        attack_cost: attackCost,
+        phase: 'pending',
+        attacker_paddle_height: attackerPaddle,
+        defender_paddle_height: defenderPaddle
+      });
+
+    // Broadcast challenge to all (defender sees notification)
+    broadcast({
+      type: 'pong_challenge',
+      gameId: gameId,
+      duelId: duelId,
+      attacker: attackerUsername,
+      defender: defenderUsername,
+      territory: territoryAddress,
+      attackCost: attackCost,
+      expiresAt: new Date(Date.now() + PONG_CONFIG.challengeTimeoutSeconds * 1000).toISOString()
+    });
+
+    // Set timeout for auto-decline
+    setTimeout(async () => {
+      const { data: duel } = await supabase
+        .from('pong_duels')
+        .select('phase')
+        .eq('id', duelId)
+        .single();
+
+      if (duel?.phase === 'pending') {
+        await handleDuelDecline(gameId, duelId, 'timeout');
+      }
+    }, PONG_CONFIG.challengeTimeoutSeconds * 1000);
+
+    res.json({ success: true, duelId });
+  } catch (err) {
+    console.error('[Pong] Challenge error:', err);
+    res.status(500).json({ error: 'Failed to create challenge' });
+  }
+});
+
+// POST /api/pong/accept - Defender accepts a challenge
+app.post('/api/pong/accept', async (req, res) => {
+  const { gameId, duelId, username } = req.body;
+
+  try {
+    const { data: duel } = await supabase
+      .from('pong_duels')
+      .select('*')
+      .eq('id', duelId)
+      .single();
+
+    if (!duel) {
+      return res.status(404).json({ error: 'Duel not found' });
+    }
+
+    if (duel.defender_username !== username) {
+      return res.status(403).json({ error: 'Only defender can accept' });
+    }
+
+    if (duel.phase !== 'pending') {
+      return res.status(400).json({ error: 'Duel already started or ended' });
+    }
+
+    // Log defender's duel participation
+    await supabase
+      .from('pong_duel_log')
+      .insert({ game_id: gameId, username: username });
+
+    // Start countdown
+    await supabase
+      .from('pong_duels')
+      .update({ phase: 'countdown', started_at: new Date().toISOString() })
+      .eq('id', duelId);
+
+    // Broadcast countdown start
+    broadcast({
+      type: 'pong_countdown',
+      gameId: gameId,
+      duelId: duelId,
+      attacker: duel.attacker_username,
+      defender: duel.defender_username,
+      territory: duel.territory_address,
+      attackerPaddle: duel.attacker_paddle_height,
+      defenderPaddle: duel.defender_paddle_height,
+      countdownSeconds: PONG_CONFIG.countdownSeconds
+    });
+
+    // Start match after countdown
+    setTimeout(() => {
+      startPongMatch(gameId, duelId);
+    }, PONG_CONFIG.countdownSeconds * 1000);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Pong] Accept error:', err);
+    res.status(500).json({ error: 'Failed to accept challenge' });
+  }
+});
+
+// POST /api/pong/decline - Defender declines a challenge
+app.post('/api/pong/decline', async (req, res) => {
+  const { gameId, duelId, username } = req.body;
+
+  try {
+    const { data: duel } = await supabase
+      .from('pong_duels')
+      .select('*')
+      .eq('id', duelId)
+      .single();
+
+    if (!duel || duel.defender_username !== username) {
+      return res.status(403).json({ error: 'Invalid decline request' });
+    }
+
+    await handleDuelDecline(gameId, duelId, 'declined');
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Pong] Decline error:', err);
+    res.status(500).json({ error: 'Failed to decline challenge' });
+  }
+});
+
+// Helper: Handle duel decline (called directly or by timeout)
+async function handleDuelDecline(gameId, duelId, reason) {
+  const { data: duel } = await supabase
+    .from('pong_duels')
+    .select('*')
+    .eq('id', duelId)
+    .single();
+
+  if (!duel || duel.phase !== 'pending') return;
+
+  // Mark duel as cancelled
+  await supabase
+    .from('pong_duels')
+    .update({ phase: 'cancelled', ended_at: new Date().toISOString() })
+    .eq('id', duelId);
+
+  // Broadcast decline
+  broadcast({
+    type: 'pong_declined',
+    gameId: gameId,
+    duelId: duelId,
+    attacker: duel.attacker_username,
+    defender: duel.defender_username,
+    territory: duel.territory_address,
+    attackCost: duel.attack_cost,
+    reason: reason  // 'declined' or 'timeout'
+  });
+
+  console.log(`[Pong] Duel ${duelId} declined (${reason})`);
+}
+
+// POST /api/pong/input - Player sends their input state
+app.post('/api/pong/input', async (req, res) => {
+  const { duelId, username, input } = req.body;  // input: { up: bool, down: bool }
+
+  // Store in memory (not DB - too fast)
+  if (!activeDuels.has(duelId)) {
+    return res.status(404).json({ error: 'Duel not active' });
+  }
+
+  const duel = activeDuels.get(duelId);
+
+  if (username === duel.attacker) {
+    duel.inputs.attacker = input;
+  } else if (username === duel.defender) {
+    duel.inputs.defender = input;
+  }
+
+  res.json({ success: true });
+});
+
+// GET /api/pong/leaderboard/:gameId - Get pong duel leaderboard
+app.get('/api/pong/leaderboard/:gameId', async (req, res) => {
+  const { gameId } = req.params;
+
+  try {
+    const { data } = await supabase
+      .from('pong_stats')
+      .select('username, wins, losses, conquest_wins, defense_wins')
+      .eq('game_id', gameId)
+      .order('wins', { ascending: false })
+      .limit(20);
+
+    res.json({ players: data || [] });
+  } catch (err) {
+    console.error('[Pong] Leaderboard error:', err);
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
+  }
+});
+
+// GET /api/pong/player/:gameId/:username - Get player's pong stats and tokens
+app.get('/api/pong/player/:gameId/:username', async (req, res) => {
+  const { gameId, username } = req.params;
+
+  try {
+    // Get tokens
+    const { data: player } = await supabase
+      .from('grid_wars_players')
+      .select('challenge_tokens, total_rent_earned, recent_correct_count')
+      .eq('game_id', gameId)
+      .eq('username', username)
+      .single();
+
+    // Get stats
+    const { data: stats } = await supabase
+      .from('pong_stats')
+      .select('wins, losses, conquest_wins, defense_wins')
+      .eq('game_id', gameId)
+      .eq('username', username)
+      .single();
+
+    res.json({
+      tokens: player?.challenge_tokens || PONG_CONFIG.startingTokens,
+      totalRent: player?.total_rent_earned || 0,
+      recentCorrect: player?.recent_correct_count || 0,
+      stats: stats || { wins: 0, losses: 0, conquest_wins: 0, defense_wins: 0 }
+    });
+  } catch (err) {
+    console.error('[Pong] Player stats error:', err);
+    res.status(500).json({ error: 'Failed to fetch player stats' });
+  }
+});
+
+// GET /api/pong/active/:gameId - Get count of active duels
+app.get('/api/pong/active/:gameId', async (req, res) => {
+  const { gameId } = req.params;
+
+  try {
+    const { count } = await supabase
+      .from('pong_duels')
+      .select('*', { count: 'exact', head: true })
+      .eq('game_id', gameId)
+      .in('phase', ['pending', 'countdown', 'active']);
+
+    res.json({ activeDuels: count || 0 });
+  } catch (err) {
+    console.error('[Pong] Active duels error:', err);
+    res.status(500).json({ error: 'Failed to fetch active duels' });
+  }
+});
+
+// POST /api/pong/toggle - Teacher toggles duels on/off
+app.post('/api/pong/toggle', async (req, res) => {
+  const { gameId, enabled, password } = req.body;
+
+  // Verify teacher password
+  if (password !== TEACHER_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid teacher password' });
+  }
+
+  try {
+    await supabase
+      .from('grid_wars_games')
+      .update({ duels_enabled: enabled })
+      .eq('game_id', gameId);
+
+    console.log(`[Pong] Duels ${enabled ? 'enabled' : 'disabled'} for ${gameId}`);
+
+    // Broadcast toggle to all clients
+    broadcast({
+      type: 'pong_toggle',
+      gameId: gameId,
+      enabled: enabled
+    });
+
+    res.json({ success: true, duelsEnabled: enabled });
+  } catch (err) {
+    console.error('[Pong] Toggle error:', err);
+    res.status(500).json({ error: 'Failed to toggle duels' });
+  }
+});
+
+// GET /api/pong/config - Get pong config (for client)
+app.get('/api/pong/config', (req, res) => {
+  res.json({
+    courtWidth: PONG_CONFIG.courtWidth,
+    courtHeight: PONG_CONFIG.courtHeight,
+    paddleBaseHeight: PONG_CONFIG.paddleBaseHeight,
+    paddleBonusMax: PONG_CONFIG.paddleBonusMax,
+    ballSize: PONG_CONFIG.ballSize,
+    pointsToWin: PONG_CONFIG.pointsToWin,
+    countdownSeconds: PONG_CONFIG.countdownSeconds,
+    maxDurationSeconds: PONG_CONFIG.maxDurationSeconds,
+    tokenCostPerDuel: PONG_CONFIG.tokenCostPerDuel,
+    rentPerToken: PONG_CONFIG.rentPerToken,
+    maxTokens: PONG_CONFIG.maxTokens,
+    loserConsolationPercent: PONG_CONFIG.loserConsolationPercent,
+    maxDuelsPerPlayer: PONG_CONFIG.maxDuelsPerPlayer,
+    duelCooldownMinutes: PONG_CONFIG.duelCooldownMinutes,
+    challengeTimeoutSeconds: PONG_CONFIG.challengeTimeoutSeconds
+  });
+});
+
+// ============================================
+// PONG MATCH ENGINE
+// ============================================
+
+/**
+ * Start a pong match
+ * @param {string} gameId
+ * @param {string} duelId
+ */
+async function startPongMatch(gameId, duelId) {
+  try {
+    const { data: duel } = await supabase
+      .from('pong_duels')
+      .select('*')
+      .eq('id', duelId)
+      .single();
+
+    if (!duel) return;
+
+    // Initialize game state
+    const gameState = {
+      duelId: duelId,
+      gameId: gameId,
+      attacker: duel.attacker_username,
+      defender: duel.defender_username,
+      territory: duel.territory_address,
+      attackCost: duel.attack_cost,
+
+      // Paddles
+      paddles: {
+        attacker: {
+          y: PONG_CONFIG.courtHeight / 2 - duel.attacker_paddle_height / 2,
+          height: duel.attacker_paddle_height
+        },
+        defender: {
+          y: PONG_CONFIG.courtHeight / 2 - duel.defender_paddle_height / 2,
+          height: duel.defender_paddle_height
+        }
+      },
+
+      // Ball
+      ball: {
+        x: PONG_CONFIG.courtWidth / 2,
+        y: PONG_CONFIG.courtHeight / 2,
+        vx: (Math.random() > 0.5 ? 1 : -1) * PONG_CONFIG.ballSpeedInitial,
+        vy: (Math.random() - 0.5) * PONG_CONFIG.ballSpeedInitial
+      },
+
+      // Score
+      score: { attacker: 0, defender: 0 },
+
+      // Inputs (updated by /api/pong/input)
+      inputs: {
+        attacker: { up: false, down: false },
+        defender: { up: false, down: false }
+      },
+
+      // Timing
+      startTime: Date.now(),
+      tickCount: 0
+    };
+
+    activeDuels.set(duelId, gameState);
+
+    // Update DB
+    await supabase
+      .from('pong_duels')
+      .update({ phase: 'active' })
+      .eq('id', duelId);
+
+    // Broadcast match start
+    broadcast({
+      type: 'pong_start',
+      gameId: gameId,
+      duelId: duelId,
+      attacker: gameState.attacker,
+      defender: gameState.defender,
+      territory: gameState.territory,
+      paddles: gameState.paddles,
+      ball: gameState.ball
+    });
+
+    console.log(`[Pong] Match started: ${duel.attacker_username} vs ${duel.defender_username} for ${duel.territory_address}`);
+
+    // Start game loop
+    const intervalId = setInterval(() => {
+      pongTick(gameState, intervalId);
+    }, 1000 / PONG_CONFIG.serverTickRate);
+
+    gameState.intervalId = intervalId;
+  } catch (err) {
+    console.error('[Pong] startPongMatch error:', err);
+  }
+}
+
+/**
+ * Pong physics tick
+ * @param {Object} game - Game state
+ * @param {number} intervalId - Interval ID for cleanup
+ */
+function pongTick(game, intervalId) {
+  game.tickCount++;
+
+  // Move paddles
+  for (const side of ['attacker', 'defender']) {
+    const input = game.inputs[side];
+    const paddle = game.paddles[side];
+
+    if (input.up) {
+      paddle.y = Math.max(0, paddle.y - PONG_CONFIG.paddleSpeed);
+    }
+    if (input.down) {
+      paddle.y = Math.min(PONG_CONFIG.courtHeight - paddle.height, paddle.y + PONG_CONFIG.paddleSpeed);
+    }
+  }
+
+  // Move ball
+  game.ball.x += game.ball.vx;
+  game.ball.y += game.ball.vy;
+
+  // Bounce off top/bottom
+  if (game.ball.y <= 0 || game.ball.y >= PONG_CONFIG.courtHeight - PONG_CONFIG.ballSize) {
+    game.ball.vy *= -1;
+    game.ball.y = Math.max(0, Math.min(PONG_CONFIG.courtHeight - PONG_CONFIG.ballSize, game.ball.y));
+  }
+
+  // Check paddle collisions
+  // Attacker paddle (left side)
+  const attackerPaddle = game.paddles.attacker;
+  if (game.ball.x <= PONG_CONFIG.paddleMargin + PONG_CONFIG.paddleWidth &&
+      game.ball.x >= PONG_CONFIG.paddleMargin &&
+      game.ball.y + PONG_CONFIG.ballSize >= attackerPaddle.y &&
+      game.ball.y <= attackerPaddle.y + attackerPaddle.height &&
+      game.ball.vx < 0) {
+    game.ball.vx = Math.min(PONG_CONFIG.ballSpeedMax, Math.abs(game.ball.vx) + PONG_CONFIG.ballSpeedIncrement);
+    // Add spin based on where ball hit paddle
+    const hitPos = (game.ball.y - attackerPaddle.y) / attackerPaddle.height;
+    game.ball.vy += (hitPos - 0.5) * 3;
+
+    broadcast({ type: 'pong_hit', gameId: game.gameId, duelId: game.duelId, side: 'attacker' });
+  }
+
+  // Defender paddle (right side)
+  const defenderPaddle = game.paddles.defender;
+  const defenderX = PONG_CONFIG.courtWidth - PONG_CONFIG.paddleMargin - PONG_CONFIG.paddleWidth;
+  if (game.ball.x + PONG_CONFIG.ballSize >= defenderX &&
+      game.ball.x <= defenderX + PONG_CONFIG.paddleWidth &&
+      game.ball.y + PONG_CONFIG.ballSize >= defenderPaddle.y &&
+      game.ball.y <= defenderPaddle.y + defenderPaddle.height &&
+      game.ball.vx > 0) {
+    game.ball.vx = -Math.min(PONG_CONFIG.ballSpeedMax, Math.abs(game.ball.vx) + PONG_CONFIG.ballSpeedIncrement);
+    const hitPos = (game.ball.y - defenderPaddle.y) / defenderPaddle.height;
+    game.ball.vy += (hitPos - 0.5) * 3;
+
+    broadcast({ type: 'pong_hit', gameId: game.gameId, duelId: game.duelId, side: 'defender' });
+  }
+
+  // Check scoring
+  let scored = null;
+  if (game.ball.x <= 0) {
+    // Defender scores
+    game.score.defender++;
+    scored = 'defender';
+  } else if (game.ball.x >= PONG_CONFIG.courtWidth) {
+    // Attacker scores
+    game.score.attacker++;
+    scored = 'attacker';
+  }
+
+  if (scored) {
+    broadcast({
+      type: 'pong_score',
+      gameId: game.gameId,
+      duelId: game.duelId,
+      scorer: scored,
+      score: game.score
+    });
+
+    // Check for winner
+    if (game.score.attacker >= PONG_CONFIG.pointsToWin) {
+      endPongMatch(game, game.attacker, 'score');
+      return;
+    }
+    if (game.score.defender >= PONG_CONFIG.pointsToWin) {
+      endPongMatch(game, game.defender, 'score');
+      return;
+    }
+
+    // Reset ball
+    resetBall(game, scored === 'attacker' ? 'defender' : 'attacker');
+  }
+
+  // Check timeout
+  const elapsed = (Date.now() - game.startTime) / 1000;
+  if (elapsed >= PONG_CONFIG.maxDurationSeconds) {
+    // Sudden death - whoever is ahead wins
+    if (game.score.attacker > game.score.defender) {
+      endPongMatch(game, game.attacker, 'timeout');
+      return;
+    } else if (game.score.defender > game.score.attacker) {
+      endPongMatch(game, game.defender, 'timeout');
+      return;
+    }
+    // If tied, continue (sudden death mode)
+  }
+
+  // Broadcast state (every tick for real-time physics)
+  broadcast({
+    type: 'pong_tick',
+    gameId: game.gameId,
+    duelId: game.duelId,
+    paddles: game.paddles,
+    ball: game.ball,
+    score: game.score,
+    timeRemaining: Math.max(0, PONG_CONFIG.maxDurationSeconds - elapsed)
+  });
+}
+
+/**
+ * Reset ball after a point is scored
+ * @param {Object} game - Game state
+ * @param {string} serveTo - Which side to serve to
+ */
+function resetBall(game, serveTo) {
+  game.ball.x = PONG_CONFIG.courtWidth / 2;
+  game.ball.y = PONG_CONFIG.courtHeight / 2;
+
+  const direction = serveTo === 'attacker' ? -1 : 1;
+  game.ball.vx = direction * PONG_CONFIG.ballSpeedInitial;
+  game.ball.vy = (Math.random() - 0.5) * PONG_CONFIG.ballSpeedInitial;
+}
+
+/**
+ * End a pong match and handle rewards
+ * @param {Object} game - Game state
+ * @param {string} winnerUsername - Winner's username
+ * @param {string} reason - 'score' or 'timeout'
+ */
+async function endPongMatch(game, winnerUsername, reason) {
+  // Stop game loop
+  clearInterval(game.intervalId);
+  activeDuels.delete(game.duelId);
+
+  const isAttackerWin = winnerUsername === game.attacker;
+  const loserUsername = isAttackerWin ? game.defender : game.attacker;
+
+  // Calculate consolation for loser
+  const consolation = Math.floor(game.attackCost * PONG_CONFIG.loserConsolationPercent);
+
+  try {
+    // Update territory if attacker won
+    if (isAttackerWin) {
+      await supabase
+        .from('grid_wars_territories')
+        .update({
+          owner: game.attacker,
+          claimed_at: new Date().toISOString()
+        })
+        .eq('game_id', game.gameId)
+        .eq('address', game.territory);
+
+      // Update territory counts
+      await supabase.rpc('increment_action_points', {
+        p_game_id: game.gameId,
+        p_username: game.attacker,
+        p_delta: 0  // Just trigger count update
+      });
+    }
+
+    // Pay consolation to loser
+    const { error: consolationError } = await supabase.rpc('increment_action_points', {
+      p_game_id: game.gameId,
+      p_username: loserUsername,
+      p_delta: consolation
+    });
+
+    if (consolationError) {
+      console.error('[Pong] Failed to pay consolation:', consolationError);
+    }
+
+    // Update duel record
+    await supabase
+      .from('pong_duels')
+      .update({
+        phase: 'finished',
+        attacker_score: game.score.attacker,
+        defender_score: game.score.defender,
+        winner_username: winnerUsername,
+        ended_at: new Date().toISOString()
+      })
+      .eq('id', game.duelId);
+
+    // Update stats
+    await updatePongStats(game.gameId, winnerUsername, true, isAttackerWin ? 'conquest' : 'defense');
+    await updatePongStats(game.gameId, loserUsername, false, isAttackerWin ? 'defense' : 'conquest');
+
+    // Record match history
+    await supabase
+      .from('pong_matches')
+      .insert({
+        game_id: game.gameId,
+        duel_id: game.duelId,
+        attacker_username: game.attacker,
+        defender_username: game.defender,
+        territory_address: game.territory,
+        winner_username: winnerUsername,
+        attacker_score: game.score.attacker,
+        defender_score: game.score.defender,
+        duration_seconds: (Date.now() - game.startTime) / 1000,
+        consolation_paid: consolation
+      });
+
+    // Broadcast result
+    broadcast({
+      type: 'pong_end',
+      gameId: game.gameId,
+      duelId: game.duelId,
+      winner: winnerUsername,
+      loser: loserUsername,
+      isAttackerWin: isAttackerWin,
+      territory: game.territory,
+      score: game.score,
+      consolation: consolation,
+      reason: reason
+    });
+
+    console.log(`[Pong] Match ended: ${winnerUsername} beat ${loserUsername} for ${game.territory} (${game.score.attacker}-${game.score.defender})`);
+  } catch (err) {
+    console.error('[Pong] endPongMatch error:', err);
+  }
+}
 
 // ============================================
 // HTTP SERVER + WEBSOCKET

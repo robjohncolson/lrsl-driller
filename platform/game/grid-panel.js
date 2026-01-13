@@ -20,8 +20,37 @@ export class GridPanel {
     this.isExpanded = false;
     this.selectedCell = null;
 
+    // v3.0: Pong Duel integration
+    this._pongPanel = null;
+    this._duelsEnabled = true;
+
     // Callbacks
     this.onPointsChange = options.onPointsChange || null;
+  }
+
+  /**
+   * v3.0: Set the Pong Panel reference for duel challenges
+   * @param {PongPanel} pongPanel
+   */
+  setPongPanel(pongPanel) {
+    this._pongPanel = pongPanel;
+  }
+
+  /**
+   * v3.0: Set whether duels are enabled
+   * @param {boolean} enabled
+   */
+  setDuelsEnabled(enabled) {
+    this._duelsEnabled = enabled;
+    this.updateClaimButton();
+  }
+
+  /**
+   * v3.0: Get player's challenge tokens
+   * @returns {number}
+   */
+  getPongTokens() {
+    return this._pongPanel?.getTokens() || 0;
   }
 
   /**
@@ -1236,6 +1265,7 @@ export class GridPanel {
 
   /**
    * v2.2.1: Handle CLAIM button click (separate from canvas click)
+   * v3.0: Added Pong Duel option for attacks
    */
   async handleClaimButtonClick() {
     if (!this._selectedForAction || !this.state) {
@@ -1243,7 +1273,7 @@ export class GridPanel {
       return;
     }
 
-    const { x, y, owner } = this._selectedForAction;
+    const { x, y, owner, address } = this._selectedForAction;
 
     // Can't claim own territory
     if (owner === this.state.username) {
@@ -1253,6 +1283,147 @@ export class GridPanel {
 
     const isTakeover = !!owner;
 
+    // v3.0: If attacking and duels enabled, show attack options modal
+    if (isTakeover && this._duelsEnabled && this._pongPanel) {
+      const costInfo = this.state?.getClaimCostAt(x, y);
+      if (costInfo) {
+        this._showAttackOptionsModal(x, y, owner, address || `${String.fromCharCode(97 + x)}${y + 1}`, costInfo.cost);
+        return;
+      }
+    }
+
+    // Execute normal claim/attack
+    await this._executeClaimOrAttack(x, y, isTakeover);
+  }
+
+  /**
+   * v3.0: Show attack options modal with Pay Points or Challenge Duel
+   */
+  _showAttackOptionsModal(x, y, owner, address, attackCost) {
+    const tokens = this.getPongTokens();
+    const hasTokens = tokens >= 1;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('gw-attack-modal');
+    if (existingModal) existingModal.remove();
+
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.id = 'gw-attack-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      font-family: monospace;
+    `;
+
+    const ownerColor = this.state?.getPlayerColor?.(owner) || '#ff4444';
+
+    modal.innerHTML = `
+      <div style="background:#111827;border:2px solid #166534;border-radius:8px;padding:20px;max-width:320px;text-align:center;color:#e2e8f0;">
+        <div style="font-size:0.8rem;color:#6b7280;margin-bottom:8px;">ATTACK OPTIONS</div>
+        <div style="font-size:1.4rem;font-weight:bold;color:#fbbf24;margin-bottom:4px;">${address.toUpperCase()}</div>
+        <div style="font-size:0.85rem;color:${ownerColor};margin-bottom:16px;">Owned by ${owner}</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+          <button id="gw-pay-attack" style="
+            background: linear-gradient(135deg, #1e3a5f, #0f172a);
+            border: 2px solid #22d3ee;
+            color: #22d3ee;
+            padding: 12px 16px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.15s;
+          ">
+            💰 PAY ${attackCost} PTS
+          </button>
+
+          <button id="gw-duel-attack" style="
+            background: linear-gradient(135deg, ${hasTokens ? '#3a1e5f' : '#2a2a2a'}, ${hasTokens ? '#1a0f2a' : '#1a1a1a'});
+            border: 2px solid ${hasTokens ? '#a855f7' : '#444'};
+            color: ${hasTokens ? '#c084fc' : '#666'};
+            padding: 12px 16px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: ${hasTokens ? 'pointer' : 'not-allowed'};
+            border-radius: 4px;
+            transition: all 0.15s;
+            ${hasTokens ? '' : 'opacity: 0.6;'}
+          " ${hasTokens ? '' : 'disabled'}>
+            🏓 CHALLENGE DUEL (1 Token)
+          </button>
+        </div>
+
+        ${!hasTokens ? `
+          <div style="font-size:0.7rem;color:#6b7280;margin-bottom:16px;">
+            Earn tokens from landlord rent to challenge duels
+          </div>
+        ` : `
+          <div style="font-size:0.7rem;color:#9ca3af;margin-bottom:16px;">
+            Win the duel = free territory!<br>
+            Lose = 50% of attack cost consolation
+          </div>
+        `}
+
+        <button id="gw-cancel-attack" style="
+          background: transparent;
+          border: 1px solid #374151;
+          color: #6b7280;
+          padding: 8px 16px;
+          font-family: inherit;
+          font-size: 0.75rem;
+          cursor: pointer;
+          border-radius: 4px;
+        ">
+          CANCEL
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Wire up buttons
+    modal.querySelector('#gw-pay-attack').addEventListener('click', async () => {
+      modal.remove();
+      await this._executeClaimOrAttack(x, y, true);
+    });
+
+    modal.querySelector('#gw-duel-attack').addEventListener('click', async () => {
+      if (!hasTokens) return;
+      modal.remove();
+      const success = await this._pongPanel.initiateChallenge(owner, address, attackCost);
+      if (success) {
+        this.updateStatus('Challenge sent! Waiting for response...');
+      }
+    });
+
+    modal.querySelector('#gw-cancel-attack').addEventListener('click', () => {
+      modal.remove();
+    });
+
+    // Close on escape
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        modal.remove();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  }
+
+  /**
+   * v3.0: Execute the actual claim or attack
+   */
+  async _executeClaimOrAttack(x, y, isTakeover) {
     try {
       await this.state.claimTerritory(x, y);
       if (isTakeover) {

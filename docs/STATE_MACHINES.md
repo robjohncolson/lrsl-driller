@@ -1,6 +1,24 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v2.2.6.
+Complete state machine documentation for all components as of v3.0.0.
+
+**v3.0.0 Changes (Pong Duel: Territory Resolver):**
+- Added Pong Duel minigame as alternative to paying points for Grid Wars attacks
+- Token economy: Earn 1 token per 20 pts landlord rent, spend 1 to challenge
+- Paddle bonus: +5px per correct drill answer in last 10 minutes (max +20px)
+- Match mechanics: First to 3 wins, 90s max duration, server-authoritative physics at 30Hz
+- Challenge flow: Attacker challenges → Defender accepts/declines (30s timeout) → Match
+- Consolation: Loser receives 50% of attack cost back
+- Rate limiting: Max 2 duels per player per 10 minute window
+- Controls: W/S or Arrow keys for keyboard, touch zones (top=up, bottom=down) for mobile
+- 4 sounds: hit (paddle), score (point), win (victory), lose (defeat)
+- Spectator mode for passive viewing of active duels
+- Teacher toggle to enable/disable duels globally
+- New files: shared/pong.config.js, platform/game/pong-*.js, railway-server/migrations/006_pong_duels.sql
+- New server endpoints: /api/pong/challenge, accept, decline, input, leaderboard, toggle
+- WebSocket messages: pong_challenge, pong_accepted, pong_countdown, pong_tick, pong_end, token_granted
+- Grid Wars attack modal offers choice: PAY (original) or CHALLENGE (pong duel)
+- Added 106 regression tests in tests/game/pong-duel-v1.0.test.js
 
 **v2.2.6 Changes (Hostile Takeover: Seize Developed Cells):**
 - Added Hostile Takeover: Attack a developed macro cell to become its new landlord
@@ -6112,6 +6130,756 @@ REGRESSION TESTS:
 
 ---
 
-*Updated to v2.2.7*
+## 84. PONG DUEL - TOKEN ECONOMY STATE MACHINE (v3.0)
+
+```
+TOKEN EARNING (from Landlord Rent):
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    RENT COLLECTED EVENT                             │
+    │                                                                     │
+    │  • Someone claims/attacks a subcell inside your developed territory │
+    │  • You receive 20% rent (landlordTaxRate = 0.20)                    │
+    │  • Minimum 1 pt (landlordTaxMinimum = 1)                            │
+    └────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    grantTokensFromRent()                            │
+    │                                                                     │
+    │  1. Fetch player: total_rent_earned, last_token_grant_rent, tokens  │
+    │  2. newTotal = total_rent_earned + rentAmount                       │
+    │  3. rentSinceLastGrant = newTotal - last_token_grant_rent           │
+    │  4. tokensToGrant = floor(rentSinceLastGrant / rentPerToken)        │
+    │     where rentPerToken = 20                                         │
+    └────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                    ┌────────────────┴────────────────┐
+                    │                                 │
+                    ▼                                 ▼
+        ┌───────────────────┐             ┌───────────────────┐
+        │ tokensToGrant = 0 │             │ tokensToGrant > 0 │
+        │                   │             │                   │
+        │ Just update       │             │ Grant tokens:     │
+        │ total_rent_earned │             │ - Add to tokens   │
+        │                   │             │ - Cap at maxTokens│
+        │                   │             │ - Update grant pt │
+        │                   │             │ - Broadcast event │
+        └───────────────────┘             └───────────────────┘
+
+TOKEN CAPPING:
+──────────────────────────────────────────────────────────────────────────
+                    ┌─────────────────────────────────────────────┐
+                    │           BEFORE GRANT                      │
+                    │                                             │
+                    │  Player has: 3 tokens                       │
+                    │  Earning:    2 tokens                       │
+                    │  Max cap:    5 tokens                       │
+                    └──────────────────┬──────────────────────────┘
+                                       │
+                                       ▼
+                    ┌─────────────────────────────────────────────┐
+                    │           AFTER GRANT                       │
+                    │                                             │
+                    │  newTokens = min(3 + 2, 5) = 5              │
+                    │  Excess is LOST (no rollover)               │
+                    └─────────────────────────────────────────────┘
+
+TOKEN SPENDING:
+──────────────────────────────────────────────────────────────────────────
+                    ┌─────────────────────────────────────────────┐
+                    │           CHALLENGE INITIATED               │
+                    │                                             │
+                    │  Cost: tokenCostPerDuel = 1                 │
+                    │  Deducted IMMEDIATELY on challenge          │
+                    │  NOT refunded if declined/timeout           │
+                    └─────────────────────────────────────────────┘
+```
+
+---
+
+## 85. PONG DUEL - CHALLENGE FLOW STATE MACHINE (v3.0)
+
+```
+CHALLENGE INITIATION:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    ATTACKER CLICKS "CHALLENGE"                      │
+    │                                                                     │
+    │  In attack options modal (PAY vs CHALLENGE)                         │
+    │  Requires: 1+ tokens, target owns cells, duels enabled              │
+    └────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    POST /api/pong/challenge                         │
+    │                                                                     │
+    │  Body: { gameId, challenger, defender, targetAddress, attackCost }  │
+    └────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                    ┌────────────────┴────────────────┐
+                    │                                 │
+                    ▼                                 ▼
+        ┌───────────────────┐             ┌───────────────────┐
+        │   VALIDATION FAIL │             │  VALIDATION PASS  │
+        │                   │             │                   │
+        │ • No tokens       │             │ • Deduct 1 token  │
+        │ • Rate limited    │             │ • Create duel     │
+        │ • Duels disabled  │             │ • Record in DB    │
+        │ • Target invalid  │             │ • Start timeout   │
+        │                   │             │                   │
+        │ Return 400/403    │             │ Broadcast         │
+        └───────────────────┘             │ 'pong_challenge'  │
+                                          └─────────┬─────────┘
+                                                    │
+                                                    ▼
+                    ┌─────────────────────────────────────────────┐
+                    │              PENDING STATE                  │
+                    │                                             │
+                    │  duel.status = 'pending'                    │
+                    │  Timeout: 30 seconds (challengeTimeoutSecs) │
+                    └──────────────────┬──────────────────────────┘
+                                       │
+                    ┌──────────────────┼──────────────────┐
+                    │                  │                  │
+                    ▼                  ▼                  ▼
+        ┌───────────────────┐ ┌───────────────┐ ┌───────────────────┐
+        │     ACCEPTED      │ │   DECLINED    │ │     TIMEOUT       │
+        │                   │ │               │ │                   │
+        │ POST /accept      │ │ POST /decline │ │ 30s elapsed       │
+        │ → Start match     │ │ → Notify both │ │ → Auto-decline    │
+        │ → 3s countdown    │ │ → No refund   │ │ → Notify attacker │
+        └───────────────────┘ └───────────────┘ └───────────────────┘
+
+DEFENDER RESPONSE OPTIONS:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    INCOMING CHALLENGE TOAST                         │
+    │                                                                     │
+    │  "[Attacker] challenges you for [Territory]!"                       │
+    │                                                                     │
+    │  ┌──────────┐  ┌──────────┐  ┌──────────────────┐                   │
+    │  │  ACCEPT  │  │ DECLINE  │  │  AFTER SUBMIT    │                   │
+    │  │   ⚔️     │  │    ✕     │  │  (deferred)      │                   │
+    │  └──────────┘  └──────────┘  └──────────────────┘                   │
+    └─────────────────────────────────────────────────────────────────────┘
+
+"AFTER SUBMIT" FLOW:
+──────────────────────────────────────────────────────────────────────────
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │  1. Defender clicks "After Submit"                                  │
+    │  2. Toast changes to "Will accept after current problem"            │
+    │  3. Defender continues drilling                                     │
+    │  4. On next gradeAnswer() call → auto-accept triggered              │
+    │  5. Match starts after grading completes                            │
+    └─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 86. PONG DUEL - MATCH ENGINE STATE MACHINE (v3.0)
+
+```
+MATCH LIFECYCLE:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+    │   WAITING   │────▶│  COUNTDOWN  │────▶│   ACTIVE    │────▶│  FINISHED   │
+    │             │     │   (3s)      │     │             │     │             │
+    └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+
+COUNTDOWN PHASE:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    3-SECOND COUNTDOWN                               │
+    │                                                                     │
+    │  t=0: Both players connected                                        │
+    │       Broadcast 'pong_countdown' with:                              │
+    │       - attacker, defender names                                    │
+    │       - territory at stake                                          │
+    │       - paddle heights (based on recent_correct_count)              │
+    │                                                                     │
+    │  Display: "3" → "2" → "1" → "GO!"                                   │
+    │                                                                     │
+    │  t=3: Broadcast 'pong_start', begin physics tick                    │
+    └─────────────────────────────────────────────────────────────────────┘
+
+ACTIVE PHASE (Server-Authoritative):
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    SERVER TICK LOOP (30 Hz)                         │
+    │                                                                     │
+    │  Every 33ms:                                                        │
+    │  1. Apply player inputs (up/down → paddle velocity)                 │
+    │  2. Update paddle positions (clamped to court)                      │
+    │  3. Update ball position (ball.x += vx, ball.y += vy)               │
+    │  4. Check wall collisions (top/bottom → reverse vy)                 │
+    │  5. Check paddle collisions (bounce angle based on hit point)       │
+    │  6. Check scoring (ball past left/right edge)                       │
+    │  7. Check win condition (first to 3)                                │
+    │  8. Check timeout (90 seconds)                                      │
+    │  9. Broadcast 'pong_tick' with full state                           │
+    └─────────────────────────────────────────────────────────────────────┘
+
+BALL PHYSICS:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    PADDLE COLLISION                                 │
+    │                                                                     │
+    │  1. Detect overlap: ball rect ∩ paddle rect                         │
+    │  2. Calculate hit point: (ballCenterY - paddleCenterY) / paddleH    │
+    │     → relativeY ∈ [-1, 1]                                           │
+    │  3. Bounce angle: relativeY × 60° (max angle)                       │
+    │  4. New velocity:                                                   │
+    │     vx = speed × cos(angle) × direction                             │
+    │     vy = speed × sin(angle)                                         │
+    │  5. Speed increase: speed += 0.3 (capped at 10)                     │
+    │  6. Broadcast 'pong_hit' for sound effect                           │
+    └─────────────────────────────────────────────────────────────────────┘
+
+    ┌───────────────────────────────────────────────────────────────────┐
+    │                     PADDLE HIT ZONES                              │
+    │                                                                   │
+    │              ┌─────┐                                              │
+    │    Top (-60°)│  ▲  │← Ball hits here → steep upward bounce       │
+    │              │     │                                              │
+    │   Center (0°)│  ●  │← Ball hits here → flat horizontal bounce    │
+    │              │     │                                              │
+    │ Bottom (+60°)│  ▼  │← Ball hits here → steep downward bounce     │
+    │              └─────┘                                              │
+    │                                                                   │
+    │   Angle = hitPoint × 60°, where hitPoint ∈ [-1, 1]                │
+    └───────────────────────────────────────────────────────────────────┘
+
+SCORING:
+──────────────────────────────────────────────────────────────────────────
+
+    Ball past LEFT edge (x < 0):
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │  DEFENDER SCORES                                                    │
+    │  - Increment score.defender                                         │
+    │  - Broadcast 'pong_score' { scorer: 'defender' }                    │
+    │  - Reset ball to center, serve toward attacker                      │
+    └─────────────────────────────────────────────────────────────────────┘
+
+    Ball past RIGHT edge (x > courtWidth - ballSize):
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │  ATTACKER SCORES                                                    │
+    │  - Increment score.attacker                                         │
+    │  - Broadcast 'pong_score' { scorer: 'attacker' }                    │
+    │  - Reset ball to center, serve toward defender                      │
+    └─────────────────────────────────────────────────────────────────────┘
+
+WIN CONDITIONS:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌────────────────────────┐     ┌────────────────────────┐
+    │   FIRST TO 3 WINS     │     │   TIMEOUT (90s)        │
+    │                        │     │                        │
+    │  score >= pointsToWin  │     │  timeRemaining <= 0    │
+    │  → Winner declared     │     │  → Higher score wins   │
+    │                        │     │  → Tie: defender wins  │
+    └────────────────────────┘     └────────────────────────┘
+```
+
+---
+
+## 87. PONG DUEL - MATCH OUTCOME STATE MACHINE (v3.0)
+
+```
+MATCH END FLOW:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    endPongMatch(game, winner, reason)               │
+    │                                                                     │
+    │  reason: 'score' | 'timeout' | 'disconnect' | 'forfeit'             │
+    └────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    DETERMINE OUTCOME                                │
+    │                                                                     │
+    │  isAttackerWin = (winner === attacker)                              │
+    │  consolation = floor(attackCost × 0.50)                             │
+    └────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                    ┌────────────────┴────────────────┐
+                    │                                 │
+                    ▼                                 ▼
+        ┌───────────────────────────┐   ┌───────────────────────────────┐
+        │    ATTACKER WINS          │   │    DEFENDER WINS              │
+        │                           │   │                               │
+        │ • Territory transfers     │   │ • Territory stays             │
+        │ • No consolation          │   │ • Attacker gets consolation   │
+        │ • Broadcast 'pong_end'    │   │   (50% of attack cost)        │
+        │   isAttackerWin: true     │   │ • Broadcast 'pong_end'        │
+        │                           │   │   isAttackerWin: false        │
+        └───────────────────────────┘   └───────────────────────────────┘
+                    │                                 │
+                    └────────────────┬────────────────┘
+                                     │
+                                     ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    UPDATE STATISTICS                                │
+    │                                                                     │
+    │  pong_stats table:                                                  │
+    │  - Winner: wins++, win_streak++, lose_streak=0                      │
+    │  - Loser:  losses++, lose_streak++, win_streak=0                    │
+    │                                                                     │
+    │  pong_matches table:                                                │
+    │  - Record full match details                                        │
+    │                                                                     │
+    │  pong_duel_log table:                                               │
+    │  - Record duel outcome for rate limiting                            │
+    └─────────────────────────────────────────────────────────────────────┘
+
+TERRITORY TRANSFER (Attacker Wins):
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │  Same as normal Grid Wars attack:                                   │
+    │                                                                     │
+    │  1. UPDATE grid_wars_territories                                    │
+    │     SET owner = attacker, activity_tier = 'ACTIVE'                  │
+    │     WHERE address = targetAddress                                   │
+    │                                                                     │
+    │  2. Broadcast 'territory_update'                                    │
+    │                                                                     │
+    │  3. Update leaderboard                                              │
+    └─────────────────────────────────────────────────────────────────────┘
+
+CONSOLATION PRIZE (Defender Wins):
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │  loserConsolationPercent = 0.50                                     │
+    │                                                                     │
+    │  Example:                                                           │
+    │  - Attack cost was 80 pts                                           │
+    │  - Attacker already spent 1 token (not refunded)                    │
+    │  - Attacker receives: floor(80 × 0.50) = 40 pts                     │
+    │                                                                     │
+    │  This softens the blow but still rewards winning                    │
+    └─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 88. PONG DUEL - PADDLE HEIGHT BONUS STATE MACHINE (v3.0)
+
+```
+PADDLE HEIGHT CALCULATION:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    calculatePaddleHeight(gameId, username)          │
+    │                                                                     │
+    │  1. Fetch player: recent_correct_count, recent_correct_window_start │
+    │  2. Check if window expired (> 10 minutes ago)                      │
+    │     → If expired, reset count to 0                                  │
+    │  3. bonus = min(count × 5, 20)                                      │
+    │  4. return baseHeight (80) + bonus                                  │
+    └─────────────────────────────────────────────────────────────────────┘
+
+    ┌───────────────────────────────────────────────────────────────────┐
+    │                    PADDLE SIZE PROGRESSION                        │
+    │                                                                   │
+    │  Correct answers    Bonus      Total height                       │
+    │  in last 10 min     (px)       (px)                               │
+    │  ─────────────────────────────────────────────                    │
+    │       0               0          80    ████████                   │
+    │       1               5          85    █████████                  │
+    │       2              10          90    ██████████                 │
+    │       3              15          95    ███████████                │
+    │       4+             20         100    ████████████ (max)         │
+    │                                                                   │
+    │  25% larger paddle = significant advantage                        │
+    │  Rewards: drilling before dueling                                 │
+    └───────────────────────────────────────────────────────────────────┘
+
+WINDOW RESET:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │  On star award (grading complete with E/P):                         │
+    │                                                                     │
+    │  1. Check if window_start is NULL or > 10 min ago                   │
+    │     → If so, reset: count=1, window_start=NOW()                     │
+    │     → Else, increment: count++                                      │
+    │                                                                     │
+    │  incrementRecentCorrectCount(gameId, username)                      │
+    └─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 89. PONG DUEL - RATE LIMITING STATE MACHINE (v3.0)
+
+```
+RATE LIMIT CHECK:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    canPlayerDuel(gameId, username)                  │
+    │                                                                     │
+    │  1. Query pong_duel_log for player's duels in last 10 minutes       │
+    │  2. Count rows where created_at > NOW() - 10 min                    │
+    │  3. Return count < maxDuelsPerPlayer (2)                            │
+    └────────────────────────────────────┬────────────────────────────────┘
+                                         │
+                        ┌────────────────┴────────────────┐
+                        │                                 │
+                        ▼                                 ▼
+            ┌───────────────────┐             ┌───────────────────┐
+            │   count < 2       │             │   count >= 2      │
+            │                   │             │                   │
+            │   ✓ Can duel      │             │   ✗ Rate limited  │
+            │                   │             │   "Try again in   │
+            │                   │             │    X minutes"     │
+            └───────────────────┘             └───────────────────┘
+
+RATE LIMIT TIMELINE:
+──────────────────────────────────────────────────────────────────────────
+
+    t=0:00   Player challenges → Duel 1 recorded
+    t=2:00   Player challenges → Duel 2 recorded
+    t=3:00   Player tries to challenge → BLOCKED (2 in window)
+    t=10:00  Duel 1 expires from window
+    t=10:01  Player challenges → Duel 3 allowed (only Duel 2 in window)
+    t=12:00  Duel 2 expires from window
+    t=12:01  Player challenges → Duel 4 allowed (only Duel 3 in window)
+```
+
+---
+
+## 90. PONG DUEL - INPUT HANDLING STATE MACHINE (v3.0)
+
+```
+CLIENT INPUT FLOW:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    KEYBOARD INPUT                                   │
+    │                                                                     │
+    │  keydown 'w'/'W'/ArrowUp:                                           │
+    │    input.up = true                                                  │
+    │    → _sendInput()                                                   │
+    │                                                                     │
+    │  keydown 's'/'S'/ArrowDown:                                         │
+    │    input.down = true                                                │
+    │    → _sendInput()                                                   │
+    │                                                                     │
+    │  keyup (any of above):                                              │
+    │    input.up/down = false                                            │
+    │    → _sendInput()                                                   │
+    └─────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    TOUCH INPUT                                      │
+    │                                                                     │
+    │  touchstart:                                                        │
+    │    relativeY = (touchY - canvasTop) / canvasHeight                  │
+    │                                                                     │
+    │    if relativeY < 0.5:   (top half)                                 │
+    │      input.up = true, input.down = false                            │
+    │    else:                 (bottom half)                              │
+    │      input.down = true, input.up = false                            │
+    │                                                                     │
+    │  touchend:                                                          │
+    │    input.up = false, input.down = false                             │
+    └─────────────────────────────────────────────────────────────────────┘
+
+INPUT THROTTLING:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    _sendInput()                                     │
+    │                                                                     │
+    │  inputKey = `${input.up}-${input.down}`                             │
+    │                                                                     │
+    │  if (inputKey === lastInputSent) return;  // No change              │
+    │                                                                     │
+    │  lastInputSent = inputKey;                                          │
+    │                                                                     │
+    │  POST /api/pong/input {                                             │
+    │    duelId,                                                          │
+    │    username,                                                        │
+    │    input: { up: bool, down: bool }                                  │
+    │  }                                                                  │
+    │                                                                     │
+    │  Fire-and-forget (no await)                                         │
+    └─────────────────────────────────────────────────────────────────────┘
+
+SERVER INPUT PROCESSING:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │  On each pongTick():                                                │
+    │                                                                     │
+    │  For each player (attacker, defender):                              │
+    │    if input.up && !input.down:                                      │
+    │      paddle.y -= paddleSpeed (7)                                    │
+    │    if input.down && !input.up:                                      │
+    │      paddle.y += paddleSpeed (7)                                    │
+    │                                                                     │
+    │  Clamp paddle.y to [0, courtHeight - paddleHeight]                  │
+    └─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 91. PONG DUEL - WEBSOCKET MESSAGES STATE MACHINE (v3.0)
+
+```
+MESSAGE TYPES:
+──────────────────────────────────────────────────────────────────────────
+
+    Server → Client:
+    ─────────────────
+    pong_challenge    │ New challenge received (to defender)
+    pong_accepted     │ Challenge was accepted (to both)
+    pong_declined     │ Challenge was declined (to attacker)
+    pong_countdown    │ 3-second countdown starting (to room)
+    pong_start        │ Match begins (to room)
+    pong_tick         │ Game state update at 30Hz (to room)
+    pong_score        │ Point scored (to room)
+    pong_hit          │ Ball hit paddle (to room, for sound)
+    pong_end          │ Match finished with outcome (to room)
+    token_granted     │ Player earned new token (to player)
+
+MESSAGE ROUTING (Client):
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                    onGridMessage(message)                           │
+    │                                                                     │
+    │  if (message.type?.startsWith('pong_') && pongPanel) {              │
+    │    pongPanel.handleMessage(message);                                │
+    │  }                                                                  │
+    │                                                                     │
+    │  if (message.type === 'token_granted' && pongPanel) {               │
+    │    pongPanel.handleMessage(message);                                │
+    │  }                                                                  │
+    └─────────────────────────────────────────────────────────────────────┘
+
+PONG_TICK MESSAGE STRUCTURE:
+──────────────────────────────────────────────────────────────────────────
+
+    {
+      type: 'pong_tick',
+      duelId: 'abc123',
+      paddles: {
+        attacker: { y: 160, height: 85 },
+        defender: { y: 180, height: 100 }
+      },
+      ball: { x: 300, y: 200, vx: 5, vy: -2 },
+      score: { attacker: 1, defender: 2 },
+      timeRemaining: 45.5
+    }
+
+PONG_END MESSAGE STRUCTURE:
+──────────────────────────────────────────────────────────────────────────
+
+    {
+      type: 'pong_end',
+      duelId: 'abc123',
+      winner: 'alice',
+      loser: 'bob',
+      isAttackerWin: true,
+      score: { attacker: 3, defender: 1 },
+      territory: 'd5',
+      attackCost: 80,
+      consolation: 40,
+      reason: 'score'  // or 'timeout'
+    }
+```
+
+---
+
+## 92. PONG DUEL - SPECTATOR MODE STATE MACHINE (v3.0)
+
+```
+SPECTATOR DETECTION:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │  isSpectator = (username !== attacker && username !== defender)     │
+    │                                                                     │
+    │  Spectators:                                                        │
+    │  • Receive all pong_* messages for the duel                         │
+    │  • Cannot send input (server ignores)                               │
+    │  • See "SPECTATING" badge on canvas                                 │
+    │  • See match outcome without personal win/lose styling              │
+    └─────────────────────────────────────────────────────────────────────┘
+
+SPECTATOR VIEW:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                                                         SPECTATING  │
+    │                                                                     │
+    │                           1 - 2                                     │
+    │                                                                     │
+    │     ████                    ●                             ████      │
+    │     ████                                                  ████      │
+    │     ████                                                  ████      │
+    │                                                                     │
+    │     Alice                                                   Bob     │
+    └─────────────────────────────────────────────────────────────────────┘
+
+    On match end (spectator view):
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                         MATCH OVER                                  │
+    │                                                                     │
+    │                      [Winner] wins!                                 │
+    │                          3 - 1                                      │
+    └─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 93. PONG DUEL - ATTACK OPTIONS MODAL STATE MACHINE (v3.0)
+
+```
+MODAL TRIGGER:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │  When user clicks ATTACK button in Grid Wars (if duels enabled):   │
+    │                                                                     │
+    │  handleClaimButtonClick() →                                         │
+    │    if (owner && owner !== username && this._duelsEnabled) {         │
+    │      _showAttackOptionsModal(...)                                   │
+    │    } else {                                                         │
+    │      _executeClaimOrAttack(...)  // Direct claim/attack             │
+    │    }                                                                │
+    └─────────────────────────────────────────────────────────────────────┘
+
+MODAL UI:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                     ATTACK OPTIONS                                  │
+    │                                                                     │
+    │  Target: D5 (owned by alice)                                        │
+    │  Cost: 80 pts                                                       │
+    │                                                                     │
+    │  ┌─────────────────────────────────────────────────────────────┐    │
+    │  │  💰 PAY 80 PTS                                              │    │
+    │  │  Instant takeover. Points deducted immediately.             │    │
+    │  └─────────────────────────────────────────────────────────────┘    │
+    │                                                                     │
+    │  ┌─────────────────────────────────────────────────────────────┐    │
+    │  │  🏓 CHALLENGE TO DUEL (1 token)                             │    │
+    │  │  Play Pong! Winner takes territory.                         │    │
+    │  │  Loser gets 50% consolation.                                │    │
+    │  └─────────────────────────────────────────────────────────────┘    │
+    │                                                                     │
+    │                        [Cancel]                                     │
+    └─────────────────────────────────────────────────────────────────────┘
+
+BUTTON STATES:
+──────────────────────────────────────────────────────────────────────────
+
+    PAY button:
+    • Enabled if user has enough points
+    • Click → _executeClaimOrAttack() → Standard attack
+
+    CHALLENGE button:
+    • Enabled if user has tokens AND duels enabled
+    • Disabled if 0 tokens (shows "No tokens")
+    • Click → pongPanel.initiateChallenge(defender, territory, cost)
+```
+
+---
+
+## 94. PONG DUEL - CHECKLIST (v3.0)
+
+```
+IMPLEMENTATION CHECKLIST:
+──────────────────────────────────────────────────────────────────────────
+
+CONFIG:
+□ shared/pong.config.js exists with all constants
+□ railway-server/pong.config.js is CommonJS copy
+□ Court: 600×400, Paddle: 12×80, Ball: 14px
+□ Points to win: 3, Max duration: 90s
+□ Token cost: 1, Rent per token: 20, Max tokens: 5
+□ Rate limit: 2 duels per 10 minutes
+□ Consolation: 50% of attack cost
+
+DATABASE:
+□ Migration 006_pong_duels.sql run in Supabase
+□ grid_wars_players has token columns
+□ pong_stats table exists
+□ pong_duels table exists
+□ pong_matches table exists
+□ pong_duel_log table exists
+□ duels_enabled column in grid_wars_games
+
+SERVER ENDPOINTS:
+□ POST /api/pong/challenge - Initiate challenge
+□ POST /api/pong/accept - Accept challenge
+□ POST /api/pong/decline - Decline challenge
+□ POST /api/pong/input - Player input
+□ GET /api/pong/leaderboard/:gameId - Stats
+□ GET /api/pong/player/:gameId/:username - Player stats
+□ GET /api/pong/active/:gameId - Active duels
+□ POST /api/pong/toggle - Teacher enable/disable
+□ GET /api/pong/config - Config values
+
+MATCH ENGINE:
+□ activeDuels Map stores active games
+□ startPongMatch() initializes game state
+□ pongTick() runs at 30Hz via setInterval
+□ Ball physics: position, velocity, bounce
+□ Paddle collision with angle calculation
+□ Score detection on left/right edges
+□ Win condition: first to 3 or timeout
+□ endPongMatch() handles cleanup and rewards
+
+CLIENT FILES:
+□ platform/game/pong-game.js - State manager
+□ platform/game/pong-renderer.js - Canvas render
+□ platform/game/pong-panel.js - UI component
+□ Keyboard controls: W/S, ArrowUp/ArrowDown
+□ Touch controls: top/bottom half zones
+□ Sound effects: hit, score, win, lose
+
+INTEGRATION:
+□ PongPanel imported in app.html
+□ pong-panel-container div in HTML
+□ WebSocket routing for pong_* messages
+□ initPongDuel() called after grid panel init
+□ Grid panel shows attack options modal
+□ Token display in UI
+□ Leaderboard shows pong stats
+
+TESTS:
+□ tests/game/pong-duel-v1.0.test.js (106 tests)
+□ Config constant tests
+□ Token economy tests
+□ Paddle height bonus tests
+□ Rate limiting tests
+□ Ball physics tests
+□ Paddle collision tests
+□ Scoring tests
+
+REGRESSION:
+□ All Pong tests pass (106)
+□ All Grid Wars tests still pass
+□ All platform tests still pass
+```
+
+---
+
+*Updated to v3.0.0*
 *Last updated: January 2026*
-*Total sections: 83*
+*Total sections: 94*
