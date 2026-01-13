@@ -7489,9 +7489,8 @@ app.get('/api/pong/active/:gameId', async (req, res) => {
 // v3.1: Called by client after any E or P grade
 app.post('/api/pong/record-correct', async (req, res) => {
   const { gameId, username } = req.body;
-  const clientCount = wsClientCount || 'unknown';
 
-  console.log(`[Pong:Correct] Recording correct answer for ${username} in ${gameId} (clients: ${clientCount})`);
+  console.log(`[Pong:Correct] Recording correct answer for ${username} in ${gameId}`);
 
   if (!gameId || !username) {
     return res.status(400).json({ error: 'gameId and username required' });
