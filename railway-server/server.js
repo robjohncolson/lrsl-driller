@@ -7141,11 +7141,13 @@ app.post('/api/pong/challenge', async (req, res) => {
       .eq('username', attackerUsername)
       .single();
 
-    if (!attacker || (attacker.challenge_tokens || 0) < PONG_CONFIG.tokenCostPerDuel) {
+    // Use startingTokens as default for NULL (new players who haven't had tokens set yet)
+    const attackerTokens = attacker?.challenge_tokens ?? PONG_CONFIG.startingTokens;
+    if (!attacker || attackerTokens < PONG_CONFIG.tokenCostPerDuel) {
       return res.status(400).json({
         error: 'Not enough Challenge Tokens',
         required: PONG_CONFIG.tokenCostPerDuel,
-        have: attacker?.challenge_tokens || 0
+        have: attackerTokens
       });
     }
 
@@ -7168,10 +7170,10 @@ app.post('/api/pong/challenge', async (req, res) => {
       return res.status(400).json({ error: 'Territory not owned by defender' });
     }
 
-    // Deduct token
+    // Deduct token (use attackerTokens which handles NULL correctly)
     await supabase
       .from('grid_wars_players')
-      .update({ challenge_tokens: attacker.challenge_tokens - PONG_CONFIG.tokenCostPerDuel })
+      .update({ challenge_tokens: attackerTokens - PONG_CONFIG.tokenCostPerDuel })
       .eq('game_id', gameId)
       .eq('username', attackerUsername);
 

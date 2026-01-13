@@ -1030,8 +1030,9 @@
         let correctCount = 0;
         if (response.ok) {
           const data = await response.json();
-          tokens = data.tokens || 2;
-          correctCount = data.correctCount || 0;  // v3.1: Track drilling progress
+          // Use ?? (nullish coalescing) so 0 tokens is shown correctly (not treated as falsy)
+          tokens = data.tokens ?? 2;
+          correctCount = data.correctCount ?? 0;  // v3.1: Track drilling progress
         }
 
         // Get player colors from grid state
