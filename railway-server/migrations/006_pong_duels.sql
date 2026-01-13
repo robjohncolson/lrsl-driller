@@ -6,9 +6,9 @@
 -- STEP 1: Add token and tracking columns to grid_wars_players
 -- =============================================================================
 
--- Challenge tokens for initiating duels
+-- Challenge tokens for initiating duels (v3.1: start with 2)
 ALTER TABLE grid_wars_players
-ADD COLUMN IF NOT EXISTS challenge_tokens INTEGER NOT NULL DEFAULT 1;
+ADD COLUMN IF NOT EXISTS challenge_tokens INTEGER NOT NULL DEFAULT 2;
 
 -- Rent tracking for token generation
 ALTER TABLE grid_wars_players
@@ -158,8 +158,10 @@ COMMENT ON COLUMN grid_wars_games.duels_enabled IS 'Teacher toggle to enable/dis
 -- NOTES
 -- =============================================================================
 -- Token economy:
---   - Players start with 1 token
+--   - Players start with 2 tokens (v3.1)
 --   - Earn 1 token per 20 pts of landlord rent collected
+--   - Earn 1 token per 10 correct answers (v3.1)
+--   - Earn 1 token for winning a duel (v3.1)
 --   - Max 5 tokens
 --   - Spend 1 token to challenge a duel
 --

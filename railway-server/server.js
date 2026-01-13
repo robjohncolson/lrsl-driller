@@ -2647,7 +2647,7 @@ async function grantTokensFromRent(gameId, username, rentAmount) {
   const tokensToGrant = Math.floor(rentSinceLastToken / PONG_CONFIG.rentPerToken);
 
   if (tokensToGrant > 0) {
-    const currentTokens = player.challenge_tokens || PONG_CONFIG.startingTokens;
+    const currentTokens = player.challenge_tokens ?? PONG_CONFIG.startingTokens;
     const newTokens = Math.min(PONG_CONFIG.maxTokens, currentTokens + tokensToGrant);
     const newLastGrant = (player.last_token_grant_rent || 0) + (tokensToGrant * PONG_CONFIG.rentPerToken);
 
@@ -2720,12 +2720,12 @@ async function grantTokensFromDrilling(gameId, username) {
 
   const updates = { correct_answer_count: newCount };
   let tokensGranted = 0;
-  let newTokens = player.challenge_tokens || PONG_CONFIG.startingTokens;
+  let newTokens = player.challenge_tokens ?? PONG_CONFIG.startingTokens;
 
   // Check if we crossed a threshold since last grant
   if (newTokenThreshold > oldTokenThreshold) {
-    const maxTokens = PONG_CONFIG.maxTokens || 5;
-    const currentTokens = player.challenge_tokens || PONG_CONFIG.startingTokens;
+    const maxTokens = PONG_CONFIG.maxTokens ?? 5;
+    const currentTokens = player.challenge_tokens ?? PONG_CONFIG.startingTokens;
 
     if (currentTokens < maxTokens) {
       tokensGranted = 1;
@@ -7452,7 +7452,7 @@ app.get('/api/pong/player/:gameId/:username', async (req, res) => {
     const nextTokenAt = (Math.floor(correctCount / tokensPerCorrect) + 1) * tokensPerCorrect;
 
     res.json({
-      tokens: player?.challenge_tokens || PONG_CONFIG.startingTokens,
+      tokens: player?.challenge_tokens ?? PONG_CONFIG.startingTokens,
       totalRent: player?.total_rent_earned || 0,
       recentCorrect: player?.recent_correct_count || 0,
       correctCount: correctCount,
@@ -7874,8 +7874,8 @@ async function endPongMatch(game, winnerUsername, reason) {
       .single();
 
     if (winnerPlayer) {
-      const maxTokens = PONG_CONFIG.maxTokens || 5;
-      const currentTokens = winnerPlayer.challenge_tokens || PONG_CONFIG.startingTokens;
+      const maxTokens = PONG_CONFIG.maxTokens ?? 5;
+      const currentTokens = winnerPlayer.challenge_tokens ?? PONG_CONFIG.startingTokens;
       const newTokens = Math.min(maxTokens, currentTokens + duelWinBonus);
 
       if (newTokens > currentTokens) {
