@@ -1,6 +1,17 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v3.0.0.
+Complete state machine documentation for all components as of v3.0.1.
+
+**v3.0.1 Changes (Pong Duel: Debugging & Robustness):**
+- Enhanced server-side logging for all pong endpoints with client count tracking
+- Enhanced client-side logging in pong-panel.js for message routing debugging
+- Added visual "Challenge Pending" status for attacker with countdown timer
+- Added connection status indicator (green/red dot) in Pong Panel header
+- Added polling fallback endpoint: GET /api/pong/duel/:duelId/status
+- Added `_showPendingChallenge()`, `_clearPendingChallenge()`, `_startChallengePolling()` methods
+- Added `setConnectionStatus()` method for WebSocket connection display
+- Polling fallback polls every 2 seconds to detect missed WebSocket messages
+- Pending challenge UI clears on: countdown start, decline, timeout, or poll detection
 
 **v3.0.0 Changes (Pong Duel: Territory Resolver):**
 - Added Pong Duel minigame as alternative to paying points for Grid Wars attacks
@@ -6834,6 +6845,7 @@ SERVER ENDPOINTS:
 □ GET /api/pong/active/:gameId - Active duels
 □ POST /api/pong/toggle - Teacher enable/disable
 □ GET /api/pong/config - Config values
+□ GET /api/pong/duel/:duelId/status - Polling fallback (v3.0.1)
 
 MATCH ENGINE:
 □ activeDuels Map stores active games
@@ -6876,10 +6888,144 @@ REGRESSION:
 □ All Pong tests pass (106)
 □ All Grid Wars tests still pass
 □ All platform tests still pass
+
+v3.0.1 ADDITIONS:
+□ Pending challenge UI shows for attacker
+□ Connection status indicator in header
+□ Polling fallback for missed WebSocket messages
+□ Console logging for debugging
 ```
 
 ---
 
-*Updated to v3.0.0*
+## 95. PONG DUEL - PENDING CHALLENGE STATE MACHINE (v3.0.1)
+
+```
+ATTACKER PENDING CHALLENGE FLOW:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    initiateChallenge()                          │
+    │  1. POST /api/pong/challenge → server                           │
+    │  2. On success: _showPendingChallenge({ duelId, defender, ... })│
+    │  3. Start countdown timer (30 seconds)                          │
+    │  4. Start polling fallback (every 2 seconds)                    │
+    └─────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    PENDING STATE (UI visible)                   │
+    │                                                                 │
+    │    ┌─────────────────────────────────────────────────────┐      │
+    │    │  ⏳ CHALLENGE PENDING                               │      │
+    │    │  Waiting for [defender]                             │      │
+    │    │  Target: D5                                         │      │
+    │    │  25s                                                │      │
+    │    │  If declined, you can proceed with normal attack    │      │
+    │    └─────────────────────────────────────────────────────┘      │
+    │                                                                 │
+    │  Timer: _pendingChallengeInterval (1s updates)                  │
+    │  Poll:  _pollInterval (2s checks /api/pong/duel/:id/status)     │
+    └─────────────────────────────────────────────────────────────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              ▼                     ▼                     ▼
+    ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
+    │ pong_countdown  │   │ pong_declined   │   │ Timer expires   │
+    │ message recv'd  │   │ message recv'd  │   │ (30s timeout)   │
+    └────────┬────────┘   └────────┬────────┘   └────────┬────────┘
+             │                     │                     │
+             ▼                     ▼                     ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    _clearPendingChallenge()                     │
+    │  1. clearInterval(_pendingChallengeInterval)                    │
+    │  2. clearInterval(_pollInterval)                                │
+    │  3. this._pendingChallenge = null                               │
+    │  4. Hide toast element                                          │
+    └─────────────────────────────────────────────────────────────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              ▼                     ▼                     ▼
+    ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
+    │ _startMatch()   │   │ Toast: declined │   │ Timeout handled │
+    │ Match begins!   │   │ or timed out    │   │ by server       │
+    └─────────────────┘   └─────────────────┘   └─────────────────┘
+
+
+POLLING FALLBACK FLOW:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    _startChallengePolling(duelId)               │
+    │  Interval: every 2000ms                                         │
+    └─────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  GET /api/pong/duel/:duelId/status                              │
+    │  Returns: { phase, attacker, defender, territory }              │
+    └─────────────────────────────────────────────────────────────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              ▼                     ▼                     ▼
+    ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
+    │ phase='pending' │   │ phase='countdown'│   │ phase='cancelled'│
+    │ Continue poll   │   │ or 'active'     │   │                 │
+    └─────────────────┘   └────────┬────────┘   └────────┬────────┘
+                                   │                     │
+                                   ▼                     ▼
+                          _clearPendingChallenge()   _clearPendingChallenge()
+                          (WebSocket should handle)  (Challenge ended)
+
+
+CONNECTION STATUS INDICATOR:
+──────────────────────────────────────────────────────────────────────────
+
+    Header:  PONG DUEL ● Token: 1
+                       ↑
+                       └─ #pong-connection element
+
+    setConnectionStatus(connected):
+    ├─ true  → color: #22c55e (green), title: "Connected"
+    └─ false → color: #ef4444 (red),   title: "Disconnected"
+
+    Called from:
+    ├─ updateConnectionStatus() in app.html (on WebSocket state change)
+    └─ initPongDuel() sets initial status from wsClient.isConnected()
+
+
+CONSOLE LOGGING (DEBUG):
+──────────────────────────────────────────────────────────────────────────
+
+    Server logs:
+    [Pong:Challenge] Request received: { attacker, defender, territory, gameId }
+    [Pong:Challenge] Duel created: duel-xxx - Broadcasting to all clients...
+    [Pong:Broadcast] pong_challenge seq=X sent to Y/Z clients
+    [Pong:Broadcast] Challenge details: attacker=A, defender=B, territory=C
+    [Pong:Challenge] Success! Returning duelId: duel-xxx
+
+    Client logs:
+    [PongDuel] Initializing for [username]
+    [PongDuel] Creating PongPanel with gameId: X, username: Y
+    [PongDuel] Initialized successfully with N tokens
+    [PongPanel] Connection status: Connected
+    [PongPanel] Initiating challenge: { me, defender, territory, cost }
+    [PongPanel] Sending challenge request to server...
+    [PongPanel] Challenge created successfully: duel-xxx
+    [PongPanel] Showing pending challenge status: { duelId, defender, ... }
+    [PongPanel] Starting challenge polling for: duel-xxx
+    [App] Routing pong message: pong_challenge seq=X
+    [PongPanel] Received message: pong_challenge { seq, me, attacker, defender }
+    [PongPanel] Challenge received - defender: X me: Y
+    [PongPanel] I am the defender! Showing challenge toast...
+    [PongPanel] Poll result: { phase: 'pending' }
+    [PongPanel] Countdown received for duel: duel-xxx
+    [PongPanel] I am the attacker - clearing pending state, starting match
+    [PongPanel] Clearing pending challenge status
+```
+
+---
+
+*Updated to v3.0.1*
 *Last updated: January 2026*
-*Total sections: 94*
+*Total sections: 95*

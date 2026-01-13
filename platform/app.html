@@ -899,12 +899,21 @@
           gridPanel.handleWebSocketMessage(message);
         }
         // v3.0: Forward Pong messages to the pong panel
-        if (pongPanel && message.type?.startsWith('pong_')) {
-          pongPanel.handleMessage(message);
+        if (message.type?.startsWith('pong_')) {
+          // v3.0.1: Enhanced logging for pong message routing
+          console.log('[App] Routing pong message:', message.type, 'seq:', message.seq);
+          if (pongPanel) {
+            pongPanel.handleMessage(message);
+          } else {
+            console.error('[App] pongPanel not initialized - message lost!');
+          }
         }
         // v3.0: Handle token grants
-        if (message.type === 'token_granted' && pongPanel) {
-          pongPanel.handleMessage(message);
+        if (message.type === 'token_granted') {
+          console.log('[App] Token granted message:', message);
+          if (pongPanel) {
+            pongPanel.handleMessage(message);
+          }
         }
       }
     });
@@ -1000,10 +1009,20 @@
      * v3.0: Initialize Pong Duel panel
      */
     async function initPongDuel(username) {
-      if (!gridPanel) return;
+      if (!gridPanel) {
+        console.warn('[PongDuel] Cannot initialize - gridPanel not available');
+        return;
+      }
 
       try {
         console.log('[PongDuel] Initializing for', username);
+
+        // Check container exists
+        const container = document.getElementById('pong-panel-container');
+        if (!container) {
+          console.error('[PongDuel] pong-panel-container not found in DOM!');
+          return;
+        }
 
         // Fetch player's pong stats including tokens
         const response = await fetch(`${SERVER_URL}/api/pong/player/${gridPanel.state?.gameId}/${username}`);
@@ -1017,8 +1036,11 @@
         const playerColors = gridPanel.state?.getPlayerColors?.() || {};
 
         // Create pong panel
-        pongPanel = new PongPanel(document.getElementById('pong-panel-container'), {
-          gameId: gridPanel.state?.gameId,
+        const gameId = gridPanel.state?.gameId;
+        console.log('[PongDuel] Creating PongPanel with gameId:', gameId, 'username:', username);
+
+        pongPanel = new PongPanel(container, {
+          gameId: gameId,
           username: username,
           serverUrl: SERVER_URL,
           playerColors: playerColors,
@@ -1029,9 +1051,12 @@
         // Connect grid panel to pong panel for duel challenges
         gridPanel.setPongPanel(pongPanel);
 
-        console.log('[PongDuel] Initialized with', tokens, 'tokens');
+        // Set initial connection status
+        pongPanel.setConnectionStatus(wsClient.isConnected());
+
+        console.log('[PongDuel] Initialized successfully with', tokens, 'tokens');
       } catch (err) {
-        console.warn('[PongDuel] Init error:', err.message);
+        console.error('[PongDuel] Init error:', err.message, err);
         // Pong is optional - don't break the app
       }
     }
@@ -1323,6 +1348,10 @@
         dot.className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
       } else {
         dot.className = 'w-2 h-2 bg-gray-400 rounded-full';
+      }
+      // v3.0.1: Update pong panel connection status
+      if (pongPanel) {
+        pongPanel.setConnectionStatus(connected);
       }
     }
 

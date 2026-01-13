@@ -28,7 +28,10 @@ export class PongPanel {
     this._incomingChallenge = null;      // Challenge sent to me
     this._pendingAcceptAfterSubmit = null;
     this._challengeTimerInterval = null;
+    this._pendingChallengeInterval = null;  // v3.0.1: Timer for attacker pending UI
+    this._pollInterval = null;              // v3.0.1: Polling fallback interval
     this._leaderboardData = [];
+    this._wsConnected = false;              // v3.0.1: WebSocket connection status
 
     // Spectator game (watching others duel)
     this._spectatorGame = null;
@@ -52,7 +55,10 @@ export class PongPanel {
       <div class="pong-panel" style="background:#111827;color:#00ff41;font-family:monospace;border-radius:0;overflow:hidden;">
         <!-- Header -->
         <div class="pong-header" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#0f172a;border-bottom:1px solid #166534;">
-          <span style="font-weight:bold;font-size:1rem;">PONG DUEL</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-weight:bold;font-size:1rem;">PONG DUEL</span>
+            <span id="pong-connection" style="font-size:10px;color:#ef4444;" title="Disconnected">●</span>
+          </div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span id="pong-tokens" style="background:#1e293b;padding:4px 8px;border-radius:4px;font-size:0.85rem;">
               <span style="color:#fbbf24;">Token:</span> ${this._tokens}
@@ -199,6 +205,20 @@ export class PongPanel {
   }
 
   /**
+   * v3.0.1: Set WebSocket connection status
+   * @param {boolean} connected
+   */
+  setConnectionStatus(connected) {
+    this._wsConnected = connected;
+    const el = this._container?.querySelector('#pong-connection');
+    if (el) {
+      el.style.color = connected ? '#22c55e' : '#ef4444';
+      el.title = connected ? 'Connected' : 'Disconnected';
+    }
+    console.log('[PongPanel] Connection status:', connected ? 'Connected' : 'Disconnected');
+  }
+
+  /**
    * Initiate a challenge (called from Grid Wars attack UI)
    * @param {string} defenderUsername
    * @param {string} territoryAddress
@@ -206,17 +226,27 @@ export class PongPanel {
    * @returns {Promise<boolean>} Success
    */
   async initiateChallenge(defenderUsername, territoryAddress, attackCost) {
+    console.log('[PongPanel] Initiating challenge:', {
+      me: this._username,
+      defender: defenderUsername,
+      territory: territoryAddress,
+      cost: attackCost
+    });
+
     if (!this._duelsEnabled) {
+      console.log('[PongPanel] Challenge blocked - duels disabled');
       this._showToast('Duels are currently disabled', 'error');
       return false;
     }
 
     if (this._tokens < PONG_CONFIG.tokenCostPerDuel) {
+      console.log('[PongPanel] Challenge blocked - not enough tokens:', this._tokens);
       this._showToast(`Not enough tokens! Need ${PONG_CONFIG.tokenCostPerDuel}, have ${this._tokens}`, 'error');
       return false;
     }
 
     try {
+      console.log('[PongPanel] Sending challenge request to server...');
       const response = await fetch(`${this._serverUrl}/api/pong/challenge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -231,17 +261,28 @@ export class PongPanel {
 
       if (!response.ok) {
         const error = await response.json();
+        console.error('[PongPanel] Challenge failed:', error);
         this._showToast(`Challenge failed: ${error.error}`, 'error');
         return false;
       }
 
       const data = await response.json();
+      console.log('[PongPanel] Challenge created successfully:', data.duelId);
       this._pendingChallenge = data.duelId;
       this.setTokens(this._tokens - PONG_CONFIG.tokenCostPerDuel);
+
+      // v3.0.1: Show pending challenge status
+      this._showPendingChallenge({
+        duelId: data.duelId,
+        defender: defenderUsername,
+        territory: territoryAddress,
+        expiresAt: new Date(Date.now() + PONG_CONFIG.challengeTimeoutSeconds * 1000)
+      });
 
       this._showToast('Challenge sent! Waiting for response...', 'info');
       return true;
     } catch (e) {
+      console.error('[PongPanel] Challenge network error:', e);
       this._showToast('Challenge failed: Network error', 'error');
       return false;
     }
@@ -312,6 +353,107 @@ export class PongPanel {
 
     const toast = this._container?.querySelector('#pong-challenge-toast');
     if (toast) toast.style.display = 'none';
+  }
+
+  /**
+   * v3.0.1: Show pending challenge status for attacker
+   * @param {Object} challenge - { duelId, defender, territory, expiresAt }
+   */
+  _showPendingChallenge(challenge) {
+    console.log('[PongPanel] Showing pending challenge status:', challenge);
+
+    const toast = this._container?.querySelector('#pong-challenge-toast');
+    if (!toast) return;
+
+    const defenderColor = this._playerColors[challenge.defender] || '#ffffff';
+
+    toast.style.display = 'block';
+    toast.innerHTML = `
+      <div style="text-align:center;">
+        <div style="font-size:0.7rem;color:#fbbf24;margin-bottom:4px;">⏳ CHALLENGE PENDING</div>
+        <div style="font-size:1rem;font-weight:bold;color:${defenderColor};margin-bottom:4px;">
+          Waiting for ${challenge.defender}
+        </div>
+        <div style="font-size:0.75rem;color:#9ca3af;margin-bottom:8px;">
+          Target: <span style="color:#fbbf24;">${challenge.territory.toUpperCase()}</span>
+        </div>
+        <div id="pong-pending-timer" style="font-size:0.8rem;color:#6b7280;">
+          ${PONG_CONFIG.challengeTimeoutSeconds}s
+        </div>
+        <div style="font-size:0.6rem;color:#4b5563;margin-top:8px;">
+          If declined, you can proceed with normal attack
+        </div>
+      </div>
+    `;
+
+    // Start countdown timer
+    const timerEl = toast.querySelector('#pong-pending-timer');
+    const expiresAt = challenge.expiresAt.getTime();
+
+    if (this._pendingChallengeInterval) {
+      clearInterval(this._pendingChallengeInterval);
+    }
+
+    this._pendingChallengeInterval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+      if (timerEl) timerEl.textContent = `${remaining}s`;
+
+      if (remaining <= 0) {
+        this._clearPendingChallenge();
+      }
+    }, 1000);
+
+    // Start polling fallback in case WebSocket missed the response
+    this._startChallengePolling(challenge.duelId);
+  }
+
+  /**
+   * v3.0.1: Clear pending challenge status
+   */
+  _clearPendingChallenge() {
+    console.log('[PongPanel] Clearing pending challenge status');
+
+    if (this._pendingChallengeInterval) {
+      clearInterval(this._pendingChallengeInterval);
+      this._pendingChallengeInterval = null;
+    }
+
+    if (this._pollInterval) {
+      clearInterval(this._pollInterval);
+      this._pollInterval = null;
+    }
+
+    this._pendingChallenge = null;
+
+    const toast = this._container?.querySelector('#pong-challenge-toast');
+    if (toast) toast.style.display = 'none';
+  }
+
+  /**
+   * v3.0.1: Polling fallback for challenge status
+   * @param {string} duelId
+   */
+  _startChallengePolling(duelId) {
+    console.log('[PongPanel] Starting challenge polling for:', duelId);
+
+    this._pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`${this._serverUrl}/api/pong/duel/${duelId}/status`);
+        const data = await response.json();
+
+        console.log('[PongPanel] Poll result:', data);
+
+        if (data.phase === 'countdown' || data.phase === 'active') {
+          console.log('[PongPanel] Duel started! Clearing pending state');
+          this._clearPendingChallenge();
+        } else if (data.phase === 'cancelled') {
+          console.log('[PongPanel] Duel cancelled');
+          this._clearPendingChallenge();
+        }
+      } catch (e) {
+        console.error('[PongPanel] Poll failed:', e);
+      }
+    }, 2000);  // Poll every 2 seconds
   }
 
   /**
@@ -523,14 +665,32 @@ export class PongPanel {
    * @param {Object} message - Server message
    */
   handleMessage(message) {
+    // v3.0.1: Enhanced logging for debugging message delivery
+    console.log('[PongPanel] Received message:', message.type, {
+      seq: message.seq,
+      me: this._username,
+      attacker: message.attacker,
+      defender: message.defender
+    });
+
     switch (message.type) {
       case 'pong_challenge':
+        console.log('[PongPanel] Challenge received - defender:', message.defender, 'me:', this._username);
         if (message.defender === this._username) {
+          console.log('[PongPanel] I am the defender! Showing challenge toast...');
           this.showIncomingChallenge(message);
+        } else if (message.attacker === this._username) {
+          console.log('[PongPanel] I am the attacker - challenge was sent successfully');
         }
         break;
 
       case 'pong_countdown':
+        console.log('[PongPanel] Countdown received for duel:', message.duelId);
+        // Clear pending challenge UI if I was the attacker
+        if (message.attacker === this._username) {
+          console.log('[PongPanel] I am the attacker - clearing pending state, starting match');
+          this._clearPendingChallenge();
+        }
         if (message.attacker === this._username || message.defender === this._username ||
             this._shouldSpectate(message)) {
           this._startMatch(message);
@@ -561,7 +721,8 @@ export class PongPanel {
 
       case 'pong_declined':
         if (message.attacker === this._username) {
-          this._pendingChallenge = null;
+          console.log('[PongPanel] Challenge declined, clearing pending state');
+          this._clearPendingChallenge();
           const reason = message.reason === 'timeout' ? 'timed out' : 'declined';
           this._showToast(`Challenge ${reason}. You can proceed with normal attack.`, 'info');
         }

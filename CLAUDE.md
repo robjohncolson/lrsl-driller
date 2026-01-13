@@ -14,7 +14,7 @@ Current cartridges (11 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v3.0.0 (Pong Duel: Territory Resolver Minigame)
+**Current Version**: v3.0.1 (Pong Duel: Debugging & Robustness)
 
 ## Critical: File Sync Requirements
 
@@ -286,6 +286,17 @@ railway-server/migrations/006_pong_duels.sql        # v3.0: Pong Duel tables (to
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v3.0.1**: Pong Duel - Debugging & Robustness
+- Enhanced server-side logging for all pong endpoints with client count tracking
+- Enhanced client-side logging in pong-panel.js for message routing debugging
+- Added visual "Challenge Pending" status for attacker with countdown timer
+- Added connection status indicator (green/red dot) in Pong Panel header
+- Added polling fallback endpoint: `GET /api/pong/duel/:duelId/status`
+- Added `_showPendingChallenge()`, `_clearPendingChallenge()`, `_startChallengePolling()` methods
+- Added `setConnectionStatus()` method for WebSocket connection display
+- Polling fallback polls every 2 seconds to detect missed WebSocket messages
+- Pending challenge UI clears on: countdown start, decline, timeout, or poll detection
 
 **v3.0.0**: Pong Duel - Territory Resolver Minigame
 - Added Pong Duel as alternative to paying points for Grid Wars attacks

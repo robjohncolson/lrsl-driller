@@ -7028,7 +7028,13 @@ app.get('/api/grid-wars/config', (req, res) => {
 app.post('/api/pong/challenge', async (req, res) => {
   const { gameId, attackerUsername, defenderUsername, territoryAddress, attackCost } = req.body;
 
-  console.log('[Pong] Challenge:', { attacker: attackerUsername, defender: defenderUsername, cell: territoryAddress });
+  console.log('[Pong:Challenge] Request received:', {
+    attacker: attackerUsername,
+    defender: defenderUsername,
+    territory: territoryAddress,
+    gameId: gameId,
+    attackCost: attackCost
+  });
 
   try {
     // Check if duels are enabled
@@ -7104,6 +7110,8 @@ app.post('/api/pong/challenge', async (req, res) => {
         defender_paddle_height: defenderPaddle
       });
 
+    console.log('[Pong:Challenge] Duel created:', duelId, '- Broadcasting to all clients...');
+
     // Broadcast challenge to all (defender sees notification)
     broadcast({
       type: 'pong_challenge',
@@ -7129,9 +7137,10 @@ app.post('/api/pong/challenge', async (req, res) => {
       }
     }, PONG_CONFIG.challengeTimeoutSeconds * 1000);
 
+    console.log('[Pong:Challenge] Success! Returning duelId:', duelId);
     res.json({ success: true, duelId });
   } catch (err) {
-    console.error('[Pong] Challenge error:', err);
+    console.error('[Pong:Challenge] Error:', err);
     res.status(500).json({ error: 'Failed to create challenge' });
   }
 });
@@ -7139,6 +7148,8 @@ app.post('/api/pong/challenge', async (req, res) => {
 // POST /api/pong/accept - Defender accepts a challenge
 app.post('/api/pong/accept', async (req, res) => {
   const { gameId, duelId, username } = req.body;
+
+  console.log('[Pong:Accept] Request:', { gameId, duelId, username });
 
   try {
     const { data: duel } = await supabase
@@ -7188,9 +7199,10 @@ app.post('/api/pong/accept', async (req, res) => {
       startPongMatch(gameId, duelId);
     }, PONG_CONFIG.countdownSeconds * 1000);
 
+    console.log('[Pong:Accept] Success! Match starting in', PONG_CONFIG.countdownSeconds, 'seconds');
     res.json({ success: true });
   } catch (err) {
-    console.error('[Pong] Accept error:', err);
+    console.error('[Pong:Accept] Error:', err);
     res.status(500).json({ error: 'Failed to accept challenge' });
   }
 });
@@ -7198,6 +7210,8 @@ app.post('/api/pong/accept', async (req, res) => {
 // POST /api/pong/decline - Defender declines a challenge
 app.post('/api/pong/decline', async (req, res) => {
   const { gameId, duelId, username } = req.body;
+
+  console.log('[Pong:Decline] Request:', { gameId, duelId, username });
 
   try {
     const { data: duel } = await supabase
@@ -7212,10 +7226,38 @@ app.post('/api/pong/decline', async (req, res) => {
 
     await handleDuelDecline(gameId, duelId, 'declined');
 
+    console.log('[Pong:Decline] Success');
     res.json({ success: true });
   } catch (err) {
-    console.error('[Pong] Decline error:', err);
+    console.error('[Pong:Decline] Error:', err);
     res.status(500).json({ error: 'Failed to decline challenge' });
+  }
+});
+
+// GET /api/pong/duel/:duelId/status - v3.0.1: Polling fallback for duel status
+app.get('/api/pong/duel/:duelId/status', async (req, res) => {
+  const { duelId } = req.params;
+
+  try {
+    const { data: duel, error } = await supabase
+      .from('pong_duels')
+      .select('phase, attacker_username, defender_username, territory_address')
+      .eq('id', duelId)
+      .single();
+
+    if (error || !duel) {
+      return res.status(404).json({ error: 'Duel not found' });
+    }
+
+    res.json({
+      phase: duel.phase,
+      attacker: duel.attacker_username,
+      defender: duel.defender_username,
+      territory: duel.territory_address
+    });
+  } catch (err) {
+    console.error('[Pong:Status] Error:', err);
+    res.status(500).json({ error: 'Failed to get duel status' });
   }
 });
 
@@ -7760,9 +7802,20 @@ function broadcast(message) {
   broadcastSequence++;
   const messageWithSeq = { ...message, seq: broadcastSequence };
   const payload = JSON.stringify(messageWithSeq);
+  let sentCount = 0;
+  let totalClients = 0;
   for (const [ws] of clients) {
+    totalClients++;
     if (ws.readyState === 1) { // OPEN
       ws.send(payload);
+      sentCount++;
+    }
+  }
+  // v3.0.1: Enhanced logging for pong messages to debug delivery issues
+  if (message.type?.startsWith('pong_')) {
+    console.log(`[Pong:Broadcast] ${message.type} seq=${broadcastSequence} sent to ${sentCount}/${totalClients} clients`);
+    if (message.type === 'pong_challenge') {
+      console.log(`[Pong:Broadcast] Challenge details: attacker=${message.attacker}, defender=${message.defender}, territory=${message.territory}`);
     }
   }
 }
