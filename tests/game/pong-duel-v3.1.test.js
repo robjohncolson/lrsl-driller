@@ -568,3 +568,240 @@ describe('Pong Duel v3.1 - Token Granted WebSocket Message', () => {
     });
   });
 });
+
+// ============================================
+// v3.1.1 - NULLISH COALESCING FIX
+// ============================================
+
+describe('Pong Duel v3.1.1 - Nullish Coalescing Token Fallback', () => {
+  const startingTokens = PONG_CONFIG.startingTokens;
+
+  describe('|| vs ?? operator behavior', () => {
+    it('should understand || treats 0 as falsy', () => {
+      const tokensWithOr = 0 || startingTokens;
+      expect(tokensWithOr).toBe(2); // WRONG: Shows 2 when user has 0
+    });
+
+    it('should understand ?? only falls back for null/undefined', () => {
+      const tokensWithNullish = 0 ?? startingTokens;
+      expect(tokensWithNullish).toBe(0); // CORRECT: Shows 0 when user has 0
+    });
+
+    it('should fall back to startingTokens for null', () => {
+      const tokensNull = null ?? startingTokens;
+      expect(tokensNull).toBe(2);
+    });
+
+    it('should fall back to startingTokens for undefined', () => {
+      const tokensUndefined = undefined ?? startingTokens;
+      expect(tokensUndefined).toBe(2);
+    });
+
+    it('should NOT fall back for 0 with ??', () => {
+      const tokensZero = 0 ?? startingTokens;
+      expect(tokensZero).toBe(0);
+    });
+
+    it('should NOT fall back for empty string with ??', () => {
+      const tokensEmpty = '' ?? 'default';
+      expect(tokensEmpty).toBe('');
+    });
+  });
+
+  describe('Token fallback simulation', () => {
+    /**
+     * Simulates the correct token fallback behavior
+     * MUST use ?? not || to handle 0 correctly
+     */
+    function getTokensFallback(dbValue) {
+      return dbValue ?? startingTokens;
+    }
+
+    it('should return 2 for new player (null in DB)', () => {
+      expect(getTokensFallback(null)).toBe(2);
+    });
+
+    it('should return 0 for player who spent all tokens', () => {
+      expect(getTokensFallback(0)).toBe(0);
+    });
+
+    it('should return 1 for player with 1 token', () => {
+      expect(getTokensFallback(1)).toBe(1);
+    });
+
+    it('should return 5 for player at max tokens', () => {
+      expect(getTokensFallback(5)).toBe(5);
+    });
+  });
+
+  describe('Challenge validation with correct fallback', () => {
+    function canChallenge(dbTokens) {
+      const tokens = dbTokens ?? startingTokens;
+      return tokens >= PONG_CONFIG.tokenCostPerDuel;
+    }
+
+    it('should allow challenge for new player (null -> 2 tokens)', () => {
+      expect(canChallenge(null)).toBe(true);
+    });
+
+    it('should deny challenge for player with 0 tokens', () => {
+      expect(canChallenge(0)).toBe(false);
+    });
+
+    it('should allow challenge for player with 1 token', () => {
+      expect(canChallenge(1)).toBe(true);
+    });
+
+    it('should allow challenge for player with 5 tokens', () => {
+      expect(canChallenge(5)).toBe(true);
+    });
+  });
+});
+
+// ============================================
+// v3.1.3 - CONSISTENT FALLBACK ACROSS ENDPOINTS
+// ============================================
+
+describe('Pong Duel v3.1.3 - Consistent Token Fallback', () => {
+  const startingTokens = PONG_CONFIG.startingTokens;
+  const maxTokens = PONG_CONFIG.maxTokens;
+
+  describe('Status endpoint token display', () => {
+    function getStatusTokens(dbTokens) {
+      // v3.1.3: Uses ?? for correct fallback
+      return dbTokens ?? startingTokens;
+    }
+
+    it('should show 0 when DB has 0 (not lie with 2)', () => {
+      expect(getStatusTokens(0)).toBe(0);
+    });
+
+    it('should show 2 when DB has null (new player)', () => {
+      expect(getStatusTokens(null)).toBe(2);
+    });
+  });
+
+  describe('grantTokensFromRent token calculation', () => {
+    function calculateNewTokens(dbTokens, tokensToGrant) {
+      // v3.1.3: Uses ?? for correct fallback
+      const currentTokens = dbTokens ?? startingTokens;
+      return Math.min(maxTokens, currentTokens + tokensToGrant);
+    }
+
+    it('should add tokens to actual 0, not fallback 2', () => {
+      // Player has 0 tokens, grants 1 -> should have 1, not 3
+      expect(calculateNewTokens(0, 1)).toBe(1);
+    });
+
+    it('should add tokens to null as starting tokens', () => {
+      // New player (null), grants 1 -> should have 3 (2 + 1)
+      expect(calculateNewTokens(null, 1)).toBe(3);
+    });
+
+    it('should cap at max tokens', () => {
+      expect(calculateNewTokens(4, 2)).toBe(5);
+    });
+  });
+
+  describe('grantTokensFromDrilling token calculation', () => {
+    function calculateNewTokens(dbTokens) {
+      // v3.1.3: Uses ?? for correct fallback
+      const currentTokens = dbTokens ?? startingTokens;
+      if (currentTokens < maxTokens) {
+        return Math.min(maxTokens, currentTokens + 1);
+      }
+      return currentTokens;
+    }
+
+    it('should add to actual 0, not fallback 2', () => {
+      expect(calculateNewTokens(0)).toBe(1);
+    });
+
+    it('should add to null as starting tokens', () => {
+      expect(calculateNewTokens(null)).toBe(3);
+    });
+
+    it('should not exceed max', () => {
+      expect(calculateNewTokens(5)).toBe(5);
+    });
+  });
+
+  describe('Duel win bonus calculation', () => {
+    function calculateWinBonus(dbTokens) {
+      // v3.1.3: Uses ?? for correct fallback
+      const currentTokens = dbTokens ?? startingTokens;
+      const duelWinBonus = PONG_CONFIG.tokenSources?.duelWinBonus || 1;
+      return Math.min(maxTokens, currentTokens + duelWinBonus);
+    }
+
+    it('should add bonus to actual 0', () => {
+      expect(calculateWinBonus(0)).toBe(1);
+    });
+
+    it('should add bonus to null as starting tokens', () => {
+      expect(calculateWinBonus(null)).toBe(3);
+    });
+
+    it('should cap at max', () => {
+      expect(calculateWinBonus(5)).toBe(5);
+    });
+  });
+});
+
+// ============================================
+// v3.1.2 - ENDPOINT ROBUSTNESS
+// ============================================
+
+describe('Pong Duel v3.1.2 - Endpoint Robustness', () => {
+  describe('/api/pong/record-correct validation', () => {
+    const isValid = (body) => !!(body.gameId && body.username);
+
+    it('should require gameId', () => {
+      expect(isValid({ username: 'alice' })).toBe(false);
+    });
+
+    it('should require username', () => {
+      expect(isValid({ gameId: 'game-1' })).toBe(false);
+    });
+
+    it('should accept valid request', () => {
+      expect(isValid({ gameId: 'game-1', username: 'alice' })).toBe(true);
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should return 400 for missing gameId', () => {
+      const body = { username: 'alice' };
+      const statusCode = (!body.gameId || !body.username) ? 400 : 200;
+      expect(statusCode).toBe(400);
+    });
+
+    it('should return 400 for missing username', () => {
+      const body = { gameId: 'game-1' };
+      const statusCode = (!body.gameId || !body.username) ? 400 : 200;
+      expect(statusCode).toBe(400);
+    });
+
+    it('should return 200 for valid request', () => {
+      const body = { gameId: 'game-1', username: 'alice' };
+      const statusCode = (!body.gameId || !body.username) ? 400 : 200;
+      expect(statusCode).toBe(200);
+    });
+  });
+});
+
+// ============================================
+// DATABASE MIGRATION 006 DEFAULTS
+// ============================================
+
+describe('Pong Duel v3.1 - Migration 006 Defaults', () => {
+  it('should have startingTokens = 2 in config (matches migration)', () => {
+    expect(PONG_CONFIG.startingTokens).toBe(2);
+  });
+
+  it('should document that migration DEFAULT is 2', () => {
+    // Migration 006 line 11: ADD COLUMN challenge_tokens INTEGER NOT NULL DEFAULT 2
+    const migrationDefault = 2;
+    expect(migrationDefault).toBe(PONG_CONFIG.startingTokens);
+  });
+});

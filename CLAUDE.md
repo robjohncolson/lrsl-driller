@@ -14,7 +14,7 @@ Current cartridges (11 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v3.0.1 (Pong Duel: Debugging & Robustness)
+**Current Version**: v3.1.3 (Token from Drilling + Fixes)
 
 ## Critical: File Sync Requirements
 
@@ -244,6 +244,7 @@ npx vitest run tests/game/grid-wars-v2.2.5.test.js # v2.2.5 landlord tax + forti
 npx vitest run tests/game/grid-wars-v2.2.6.test.js # v2.2.6 hostile takeover (60 tests)
 npx vitest run tests/game/grid-wars-v2.2.7.test.js # v2.2.7 territory display fix (32 tests)
 npx vitest run tests/game/pong-duel-v1.0.test.js  # v3.0 pong duel (106 tests)
+npx vitest run tests/game/pong-duel-v3.1.test.js  # v3.1 token from drilling (95 tests)
 npx vitest run tests/game/grid-wars-v1.6.test.js # Grid Wars v1.6 tests
 npx vitest run tests/core/scoring-config.test.js # Level-weighted scoring tests
 npx vitest run tests/server/prompt-utils.test.js # Prompt placeholder tests
@@ -258,7 +259,7 @@ Test organization:
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
 - `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality)
-- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.2.7); Pong Duel tests (pong-duel-v1.0)
+- `tests/game/` - Grid Wars tests (grid-state, teacher-view, drill-integration, realtime-sync, avatar-utils, version-specific: v1.1 through v2.2.7); Pong Duel tests (pong-duel-v1.0, pong-duel-v3.1)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
@@ -273,6 +274,7 @@ railway-server/migrations/002_v1.6_fresh_start.sql   # v1.6: Fresh start schema
 railway-server/migrations/003_v2.0_hierarchical.sql  # v2.0: Hierarchy columns (address, parent_address, is_developed, cell_level)
 railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table for aggregate star counts per cartridge
 railway-server/migrations/006_pong_duels.sql        # v3.0: Pong Duel tables (tokens, stats, duels, matches, log)
+railway-server/migrations/007_pong_drilling_tokens.sql  # v3.1: Token from drilling columns (correct_answer_count, last_token_grant_count)
 ```
 
 **Note**: The `point_events` table uses `player_id` column (not `username`). This was fixed in v1.6.2.
@@ -286,6 +288,33 @@ railway-server/migrations/006_pong_duels.sql        # v3.0: Pong Duel tables (to
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v3.1.3**: Token Fallback Consistency
+- Fixed all `challenge_tokens` fallbacks to use `??` instead of `||`
+- `||` treats 0 as falsy → shows wrong token count (2 when user has 0)
+- `??` only falls back for null/undefined → correct behavior
+- Updated migration 006 default from 1 to 2 tokens
+- Fixed: status endpoint, grantTokensFromRent, grantTokensFromDrilling, duel win bonus
+
+**v3.1.2**: Undefined Variable Fix
+- Fixed `ReferenceError: wsClientCount is not defined` crash on `/api/pong/record-correct`
+- Removed debug logging that referenced undefined variable
+
+**v3.1.1**: Token Fallback Fix
+- Fixed "Not enough Challenge Tokens" error when UI showed 2 tokens but server saw 0
+- Root cause: Challenge endpoint used `??` but status endpoint used `||`
+- Changed challenge endpoint to use `??` for consistent fallback behavior
+
+**v3.1.0**: Token from Drilling
+- Earn 1 Challenge Token per 10 correct answers (E or P grade)
+- New columns: `correct_answer_count`, `last_token_grant_count` in `grid_wars_players`
+- New endpoint: `POST /api/pong/record-correct` called after correct answer
+- Token progress display in PongPanel header: "⚔️ 2 (7/10)"
+- Duel win bonus: +1 token for winning a duel (reason: 'duel_win')
+- Starting tokens increased from 1 to 2
+- New migration: `railway-server/migrations/007_pong_drilling_tokens.sql`
+- WebSocket: `token_granted` message with reason field ('drilling', 'duel_win', 'rent')
+- Added 95 regression tests in `tests/game/pong-duel-v3.1.test.js`
 
 **v3.0.1**: Pong Duel - Debugging & Robustness
 - Enhanced server-side logging for all pong endpoints with client count tracking

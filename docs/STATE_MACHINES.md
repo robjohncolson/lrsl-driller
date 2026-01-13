@@ -1,6 +1,22 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v3.0.1.
+Complete state machine documentation for all components as of v3.1.3.
+
+**v3.1.x Changes (Token from Drilling + Fixes):**
+- v3.1.3: Consistent nullish coalescing (`??`) across all token fallbacks
+  - Status endpoint, grantTokensFromRent, grantTokensFromDrilling, duel win bonus
+  - CRITICAL: `||` treats 0 as falsy (wrong), `??` only falls back for null/undefined (correct)
+- v3.1.2: Removed undefined `wsClientCount` variable from record-correct endpoint
+- v3.1.1: Fixed challenge endpoint to use `??` for token fallback
+  - Bug: Server said "0 tokens" but UI showed "2 tokens" due to `||` vs `??`
+- v3.1.0: Token from Drilling feature
+  - Earn 1 Challenge Token per 10 correct answers (E or P grade)
+  - New columns: `correct_answer_count`, `last_token_grant_count` (migration 007)
+  - New endpoint: `/api/pong/record-correct`
+  - Token progress display in PongPanel: "⚔️ 2 (7/10)"
+  - Duel win bonus: +1 token for winning a duel
+  - Starting tokens increased: 1 → 2
+  - 95 regression tests in `tests/game/pong-duel-v3.1.test.js`
 
 **v3.0.1 Changes (Pong Duel: Debugging & Robustness):**
 - Enhanced server-side logging for all pong endpoints with client count tracking
@@ -7026,6 +7042,345 @@ CONSOLE LOGGING (DEBUG):
 
 ---
 
-*Updated to v3.0.1*
+## 96. TOKEN FROM DRILLING STATE MACHINE (v3.1)
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    grantTokensFromDrilling(gameId, username)               │
+└────────────────────────────────────────────────────────────────────────────┘
+
+        ┌─────────────────┐
+        │     START       │
+        └────────┬────────┘
+                 │
+                 ▼
+        ┌─────────────────┐
+        │  Valid input?   │
+        └────────┬────────┘
+                 │
+         ┌───────┴───────┐
+         │ NO            │ YES
+         ▼               ▼
+    ┌─────────┐   ┌─────────────────┐
+    │  SKIP   │   │  Fetch player   │
+    │ (noop)  │   │  from Supabase  │
+    └─────────┘   └────────┬────────┘
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │ Player found?   │
+                  └────────┬────────┘
+                           │
+                   ┌───────┴───────┐
+                   │ NO            │ YES
+                   ▼               ▼
+              ┌─────────┐   ┌─────────────────────────┐
+              │  SKIP   │   │  newCount = oldCount + 1│
+              │ (noop)  │   │  Calculate thresholds   │
+              └─────────┘   └────────────┬────────────┘
+                                         │
+                                         ▼
+                            ┌─────────────────────────┐
+                            │ newThreshold > old?     │
+                            │ (crossed 10s boundary)  │
+                            └────────────┬────────────┘
+                                         │
+                                 ┌───────┴───────┐
+                                 │ NO            │ YES
+                                 ▼               ▼
+                          ┌───────────┐  ┌─────────────────┐
+                          │ NO GRANT  │  │ At max tokens?  │
+                          │ (update   │  │ (5 max)         │
+                          │  count)   │  └────────┬────────┘
+                          └───────────┘           │
+                                          ┌───────┴───────┐
+                                          │ YES           │ NO
+                                          ▼               ▼
+                                   ┌───────────┐  ┌─────────────────┐
+                                   │ NO GRANT  │  │  GRANT TOKEN!   │
+                                   │ (update   │  │  tokens += 1    │
+                                   │  count)   │  │  Broadcast WS   │
+                                   └───────────┘  └─────────────────┘
+
+STATE VARIABLES:
+──────────────────────────────────────────────────────────────────────────
+correct_answer_count    - Total correct answers (never resets)
+last_token_grant_count  - Count at which last token was granted
+challenge_tokens        - Current token balance
+
+THRESHOLD FORMULA:
+──────────────────────────────────────────────────────────────────────────
+tokensPerCorrect = 10  (from PONG_CONFIG.tokenSources.correctAnswersPerToken)
+oldThreshold = floor(lastGrantCount / tokensPerCorrect)
+newThreshold = floor(newCount / tokensPerCorrect)
+
+TOKEN_GRANTED if: newThreshold > oldThreshold AND tokens < maxTokens
+```
+
+---
+
+## 97. TOKEN FALLBACK STATE MACHINE (v3.1.1-v3.1.3)
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                     Token Fallback: ?? vs ||                               │
+└────────────────────────────────────────────────────────────────────────────┘
+
+PROBLEM (v3.1.1 bug):
+──────────────────────────────────────────────────────────────────────────
+
+    Client (status endpoint):   tokens = player.challenge_tokens || 2
+    Server (challenge endpoint): tokens = player.challenge_tokens ?? 2
+
+    Database value: challenge_tokens = 0 (user spent all tokens)
+
+    Client: 0 || 2 = 2  ← SHOWS 2 TOKENS (wrong!)
+    Server: 0 ?? 2 = 0  ← VALIDATES 0 TOKENS (correct)
+
+    Result: "Not enough Challenge Tokens" error despite UI showing 2
+
+
+OPERATOR BEHAVIOR:
+──────────────────────────────────────────────────────────────────────────
+
+    ┌─────────────────┬────────────────────┬────────────────────┐
+    │  DB Value       │  || 2 (OR)         │  ?? 2 (NULLISH)    │
+    ├─────────────────┼────────────────────┼────────────────────┤
+    │  null           │  2                 │  2                 │
+    │  undefined      │  2                 │  2                 │
+    │  0              │  2 (WRONG!)        │  0 (CORRECT)       │
+    │  1              │  1                 │  1                 │
+    │  5              │  5                 │  5                 │
+    │  ""             │  2 (WRONG!)        │  "" (CORRECT)      │
+    └─────────────────┴────────────────────┴────────────────────┘
+
+                  || treats 0, "", false as falsy → fallback
+                  ?? only treats null/undefined as nullish → fallback
+
+
+CORRECT PATTERN (v3.1.3):
+──────────────────────────────────────────────────────────────────────────
+
+    // ALWAYS use ?? for token fallback
+    const tokens = player?.challenge_tokens ?? PONG_CONFIG.startingTokens;
+
+    Locations fixed in v3.1.3:
+    ├─ /api/pong/player/:gameId/:username (status endpoint)
+    ├─ grantTokensFromRent()
+    ├─ grantTokensFromDrilling()
+    └─ endPongMatch() (duel win bonus)
+
+
+SEMANTIC MEANING:
+──────────────────────────────────────────────────────────────────────────
+
+    null     = Player never had tokens initialized → use startingTokens
+    0        = Player spent all tokens → show 0 (they need to earn more)
+    N        = Player has N tokens → show N
+```
+
+---
+
+## 98. RECORD-CORRECT ENDPOINT STATE MACHINE (v3.1)
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│              POST /api/pong/record-correct                                 │
+└────────────────────────────────────────────────────────────────────────────┘
+
+        Client (app.html)                          Server (server.js)
+        ─────────────────                          ─────────────────
+
+    onGradingComplete({fields})
+            │
+            ▼
+    ┌───────────────────┐
+    │ hasCorrectAnswer? │
+    │ (E or P grade)    │
+    └────────┬──────────┘
+             │
+     ┌───────┴───────┐
+     │ NO            │ YES
+     ▼               ▼
+  (skip)    ┌───────────────────┐
+            │  POST /api/pong/  │
+            │  record-correct   │──────────────────────┐
+            └───────────────────┘                      │
+                                                       ▼
+                                          ┌─────────────────────────┐
+                                          │  Validate gameId,       │
+                                          │  username               │
+                                          └────────────┬────────────┘
+                                                       │
+                                               ┌───────┴───────┐
+                                               │ INVALID       │ VALID
+                                               ▼               ▼
+                                         ┌─────────┐  ┌────────────────────┐
+                                         │ 400 Bad │  │ incrementRecentCount│
+                                         │ Request │  │ (paddle bonus)     │
+                                         └─────────┘  └────────────┬───────┘
+                                                                   │
+                                                                   ▼
+                                                      ┌────────────────────┐
+                                                      │grantTokensFromDrill│
+                                                      │ (token earning)    │
+                                                      └────────────┬───────┘
+                                                                   │
+                                                                   ▼
+                                                      ┌────────────────────┐
+                                                      │ Return response:   │
+                                                      │ {success, tokens,  │
+                                                      │  correctCount,     │
+                                                      │  tokensGranted,    │
+                                                      │  nextTokenAt}      │
+                                                      └────────────────────┘
+
+
+CLIENT DETECTION (app.html):
+──────────────────────────────────────────────────────────────────────────
+
+    function hasCorrectAnswer(fields) {
+        return Object.values(fields).some(r => r.score === 'E' || r.score === 'P');
+    }
+
+    // Called in onGradingComplete:
+    if (hasCorrectAnswer(fields) && gameId && username) {
+        fetch('/api/pong/record-correct', { body: { gameId, username } });
+    }
+
+
+REQUEST/RESPONSE:
+──────────────────────────────────────────────────────────────────────────
+
+    Request:  { gameId: "default", username: "alice" }
+
+    Response: {
+        success: true,
+        correctCount: 15,      // Total correct answers
+        tokensGranted: 0,      // Tokens granted this request (0 or 1)
+        tokens: 3,             // Current token balance
+        nextTokenAt: 20        // Next threshold for token
+    }
+```
+
+---
+
+## 99. TOKEN PROGRESS DISPLAY STATE MACHINE (v3.1)
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    PongPanel._updateTokenDisplay()                         │
+└────────────────────────────────────────────────────────────────────────────┘
+
+        ┌─────────────────────────────┐
+        │     Token Header Element    │
+        │     #pong-header-tokens     │
+        └──────────────┬──────────────┘
+                       │
+                       ▼
+        ┌─────────────────────────────┐
+        │  Calculate progress:        │
+        │  progress = count % 10      │
+        └──────────────┬──────────────┘
+                       │
+                       ▼
+        ┌─────────────────────────────┐
+        │  Format display:            │
+        │  "⚔️ {tokens} ({n}/{10})"   │
+        └─────────────────────────────┘
+
+
+DISPLAY EXAMPLES:
+──────────────────────────────────────────────────────────────────────────
+
+    correctCount = 0:   ⚔️ 2 (0/10)    ← New player
+    correctCount = 7:   ⚔️ 2 (7/10)    ← 7 correct, 3 more to token
+    correctCount = 10:  ⚔️ 3 (0/10)    ← Just earned token! Counter reset
+    correctCount = 15:  ⚔️ 3 (5/10)    ← 5 toward next token
+    correctCount = 37:  ⚔️ 5 (7/10)    ← At max tokens (5), progress shown
+
+
+STATE VARIABLES:
+──────────────────────────────────────────────────────────────────────────
+
+    this._tokens         - Current token count (from server)
+    this._correctCount   - Total correct answers (from server)
+    this._tokensPerCorrect - Config value (10)
+
+
+UPDATE TRIGGERS:
+──────────────────────────────────────────────────────────────────────────
+
+    1. initPongDuel() - Initial load from /api/pong/player/:gameId/:username
+    2. record-correct response - After recording correct answer
+    3. token_granted WebSocket - Real-time notification of token earned
+
+
+WEBSOCKET MESSAGE:
+──────────────────────────────────────────────────────────────────────────
+
+    {
+        type: 'token_granted',
+        gameId: 'default',
+        username: 'alice',
+        tokens: 3,
+        tokensGranted: 1,
+        reason: 'drilling',
+        correctCount: 10,
+        nextTokenAt: 20
+    }
+
+    Reason values:
+    - 'drilling' - Earned from 10 correct answers
+    - 'duel_win' - Earned from winning a duel
+    - 'rent'     - Earned from landlord rent
+```
+
+---
+
+## 100. v3.1 VERIFICATION CHECKLIST
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                          v3.1 Verification                                 │
+└────────────────────────────────────────────────────────────────────────────┘
+
+CONFIG:
+□ tokenSources.startingTokens = 2
+□ tokenSources.correctAnswersPerToken = 10
+□ tokenSources.duelWinBonus = 1
+□ Legacy alias startingTokens = 2
+
+DATABASE (Migration 007):
+□ correct_answer_count column exists
+□ last_token_grant_count column exists
+□ Index on (game_id, username, correct_answer_count)
+
+ENDPOINTS:
+□ POST /api/pong/record-correct accepts { gameId, username }
+□ Response includes { correctCount, tokensGranted, tokens, nextTokenAt }
+□ GET /api/pong/player/:gameId/:username includes correctCount, tokenProgress
+
+CLIENT:
+□ app.html calls record-correct on E or P grade
+□ PongPanel shows token progress (n/10)
+□ Token granted toast appears with correct reason
+
+NULLISH COALESCING (??):
+□ Challenge endpoint: attacker?.challenge_tokens ?? startingTokens
+□ Status endpoint: player?.challenge_tokens ?? startingTokens
+□ grantTokensFromRent: player.challenge_tokens ?? startingTokens
+□ grantTokensFromDrilling: player.challenge_tokens ?? startingTokens
+□ endPongMatch winner bonus: challenge_tokens ?? startingTokens
+
+TESTS:
+□ 95 tests in pong-duel-v3.1.test.js pass
+□ ?? vs || behavior documented and tested
+□ Token progress calculations verified
+```
+
+---
+
+*Updated to v3.1.3*
 *Last updated: January 2026*
-*Total sections: 95*
+*Total sections: 100*
