@@ -285,6 +285,31 @@
         <!-- Mode Tabs -->
         <div id="mode-tabs" class="flex gap-2 flex-nowrap overflow-x-auto no-scrollbar pb-2 -mx-1 px-1 items-stretch snap-x snap-mandatory"></div>
 
+        <!-- Teacher Progression Controls (hidden by default) -->
+        <div id="teacher-progression-panel" class="hidden bg-purple-50 border border-purple-200 rounded-lg p-3 mb-2">
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-purple-700 font-semibold text-sm flex items-center gap-1">
+              <span class="bg-purple-600 text-white text-xs px-1.5 py-0.5 rounded">T</span>
+              Progression
+            </span>
+            <span id="progression-level-name" class="text-gray-600 text-sm font-medium"></span>
+            <div class="flex items-center gap-2">
+              <label class="text-gray-500 text-sm">Gold required:</label>
+              <input type="number" id="gold-req-input" min="1" max="10" value="3"
+                     class="w-14 px-2 py-1 border border-gray-300 rounded text-center text-sm font-mono">
+              <button id="save-gold-req-btn" title="Save override"
+                      class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded font-medium transition-colors">
+                Save
+              </button>
+              <button id="reset-gold-req-btn" title="Reset to manifest default"
+                      class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm rounded font-medium transition-colors">
+                Reset
+              </button>
+            </div>
+            <span id="progression-override-status" class="text-xs text-purple-600 hidden">(Override active)</span>
+          </div>
+        </div>
+
         <!-- Input Cards -->
         <div id="input-container" class="space-y-4"></div>
 
@@ -913,6 +938,32 @@
           console.log('[App] Token granted message:', message);
           if (pongPanel) {
             pongPanel.handleMessage(message);
+          }
+        }
+        // v3.2: Handle progression override changes from teacher
+        if (message.type === 'progression_override_changed') {
+          console.log('[App] Progression override changed:', message);
+          if (message.cartridgeId === currentCartridgeId && platform?.gameEngine) {
+            platform.gameEngine.updateOverride(message.modeId, message.goldRequired);
+            renderModeTabs();
+            updateTeacherProgressionControls();
+            // Notify user if not the one who made the change
+            if (!isTeacher) {
+              const modeName = platform.currentCartridge?.manifest?.modes?.find(m => m.id === message.modeId)?.name || message.modeId;
+              celebration.showToast(`Teacher changed ${modeName} requirement to ${message.goldRequired} gold`, 'info');
+            }
+          }
+        }
+        if (message.type === 'progression_override_removed') {
+          console.log('[App] Progression override removed:', message);
+          if (message.cartridgeId === currentCartridgeId && platform?.gameEngine) {
+            platform.gameEngine.removeOverride(message.modeId);
+            renderModeTabs();
+            updateTeacherProgressionControls();
+            if (!isTeacher) {
+              const modeName = platform.currentCartridge?.manifest?.modes?.find(m => m.id === message.modeId)?.name || message.modeId;
+              celebration.showToast(`Teacher reset ${modeName} to default requirement`, 'info');
+            }
           }
         }
       }
@@ -3031,7 +3082,6 @@
       tabsContainer.innerHTML = '';
       const gameState = platform.gameEngine.getState();
       const currentMode = platform.currentMode;
-      const goldToUnlock = gameState.goldToUnlock || 3;
       const goldToMaster = 10; // Auto-progress threshold
 
       const baseTabClass = 'mode-tab snap-start';
@@ -3043,13 +3093,17 @@
         const isUnlocked = gameState.unlockedTiers.includes(mode.id);
         const isCurrentMode = mode.id === currentMode;
 
+        // Get per-level gold requirement (respects overrides > manifest > global default)
+        const goldToUnlock = platform.gameEngine.getRequiredGold(mode.id);
+        const hasOverride = platform.gameEngine.hasOverride(mode.id);
+
         // Get gold stars earned on this mode
         const modeGold = gameState.starsPerMode?.[mode.id]?.gold || 0;
         const isMastered = modeGold >= goldToMaster;
 
         const btn = document.createElement('button');
         btn.dataset.modeId = mode.id;
-        btn.title = mode.name + (isMastered ? ' (Mastered!)' : '');
+        btn.title = mode.name + (isMastered ? ' (Mastered!)' : '') + (hasOverride ? ' (Teacher override)' : '');
         btn.setAttribute('aria-label', mode.name);
 
         // Short name (L1, L2, etc.)
@@ -3062,7 +3116,8 @@
               btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>`;
             } else {
               const stars = modeGold >= goldToUnlock ? '✓' : `${modeGold}/${goldToUnlock}`;
-              btn.innerHTML = `${shortName} <span class="text-yellow-400 text-xs ml-1">★${stars}</span>`;
+              const overrideIndicator = hasOverride ? '<span class="text-purple-400">*</span>' : '';
+              btn.innerHTML = `${shortName} <span class="text-yellow-400 text-xs ml-1">★${stars}</span>${overrideIndicator}`;
             }
           } else {
             // Mastered levels show graduation cap, completed show checkmark
@@ -3085,19 +3140,24 @@
             platform.setMode(mode.id);
             await platform.loadProblem();
             updateScenarioDisplay();
+            updateTeacherProgressionControls(); // Update teacher controls when mode changes
           });
         } else {
           // Locked mode - show what's needed (gold stars on previous level)
           const prevModeId = gameState.modeOrder?.[i - 1];
           const prevModeGold = prevModeId ? (gameState.starsPerMode?.[prevModeId]?.gold || 0) : 0;
-          btn.innerHTML = `<span class="opacity-50">${shortName}</span> <span class="text-xs">🔒${prevModeGold}/${goldToUnlock}</span>`;
+          const overrideIndicator = hasOverride ? '*' : '';
+          btn.innerHTML = `<span class="opacity-50">${shortName}</span> <span class="text-xs">🔒${prevModeGold}/${goldToUnlock}${overrideIndicator}</span>`;
           btn.className = lockedTabClass;
           btn.disabled = true;
-          btn.title = `Earn ${goldToUnlock} gold stars on the previous level to unlock`;
+          btn.title = `Earn ${goldToUnlock} gold stars on the previous level to unlock` + (hasOverride ? ' (Teacher override)' : '');
         }
 
         tabsContainer.appendChild(btn);
       });
+
+      // Update teacher progression controls if visible
+      updateTeacherProgressionControls();
     }
 
     // Listen for tier unlock events to update mode tabs and auto-advance
@@ -3491,6 +3551,21 @@
         console.log('[App] Cartridge loaded. Manifest:', platform.currentCartridge?.manifest?.meta);
         console.log('[App] Current mode:', platform.currentMode);
 
+        // Fetch teacher progression overrides from server
+        try {
+          const gameId = gridPanel?.state?.gameId || 'default';
+          const resp = await fetch(`${SERVER_URL}/api/progression-overrides/${cartridgeId}?gameId=${gameId}`);
+          if (resp.ok) {
+            const { overrides } = await resp.json();
+            if (Object.keys(overrides).length > 0) {
+              console.log('[App] Applying progression overrides:', overrides);
+              platform.gameEngine.setOverrides(overrides);
+            }
+          }
+        } catch (err) {
+          console.log('[App] Progression overrides unavailable, using manifest defaults');
+        }
+
         document.getElementById('app-title').textContent = platform.currentCartridge?.manifest?.meta?.name || 'Driller';
         document.getElementById('current-cartridge-name').textContent = platform.currentCartridge?.manifest?.meta?.name || cartridgeId;
 
@@ -3595,6 +3670,134 @@
       const problemId = `${currentCartridgeId}-${platform.currentMode}-${Date.now()}`;
       timeTracker.startProblem(problemId, currentCartridgeId, platform.currentMode);
     }
+
+    // ==================== TEACHER PROGRESSION CONTROLS ====================
+
+    // Update teacher progression controls based on current mode
+    function updateTeacherProgressionControls() {
+      const panel = document.getElementById('teacher-progression-panel');
+      if (!panel) return;
+
+      // Only show for teachers
+      if (!isTeacher) {
+        panel.classList.add('hidden');
+        return;
+      }
+
+      // Need platform and current mode
+      if (!platform?.currentMode || !platform?.gameEngine) {
+        panel.classList.add('hidden');
+        return;
+      }
+
+      panel.classList.remove('hidden');
+
+      const currentModeId = platform.currentMode;
+      const modes = platform.currentCartridge?.manifest?.modes || [];
+      const mode = modes.find(m => m.id === currentModeId);
+      const modeName = mode?.name || currentModeId;
+
+      // Update level name display
+      document.getElementById('progression-level-name').textContent = modeName;
+
+      // Get current requirement and override status
+      const currentReq = platform.gameEngine.getRequiredGold(currentModeId);
+      const hasOverride = platform.gameEngine.hasOverride(currentModeId);
+      const manifestDefault = platform.gameEngine.getManifestDefault(currentModeId);
+
+      // Update input value
+      document.getElementById('gold-req-input').value = currentReq;
+
+      // Update override status indicator
+      const statusEl = document.getElementById('progression-override-status');
+      if (hasOverride) {
+        statusEl.classList.remove('hidden');
+        statusEl.textContent = `(Override: ${currentReq}, default: ${manifestDefault})`;
+      } else {
+        statusEl.classList.add('hidden');
+      }
+    }
+
+    // Save progression override
+    async function saveProgressionOverride() {
+      const modeId = platform?.currentMode;
+      if (!modeId || !currentCartridgeId) return;
+
+      const goldInput = document.getElementById('gold-req-input');
+      const goldRequired = parseInt(goldInput.value, 10);
+
+      if (isNaN(goldRequired) || goldRequired < 1 || goldRequired > 10) {
+        celebration.showToast('Gold required must be between 1 and 10', 'error');
+        return;
+      }
+
+      try {
+        const gameId = gridPanel?.state?.gameId || 'default';
+        const resp = await fetch(`${SERVER_URL}/api/progression-overrides/${currentCartridgeId}/${modeId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            goldRequired,
+            password: teacherPassword,
+            gameId,
+            username: userSystem.currentUser?.username
+          })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.error || 'Failed to save');
+        }
+
+        // Update local state
+        platform.gameEngine.updateOverride(modeId, goldRequired);
+        renderModeTabs();
+
+        const modeName = platform.currentCartridge?.manifest?.modes?.find(m => m.id === modeId)?.name || modeId;
+        celebration.showToast(`${modeName} now requires ${goldRequired} gold star${goldRequired > 1 ? 's' : ''}`, 'success');
+      } catch (err) {
+        console.error('[Progression] Save error:', err);
+        celebration.showToast('Failed to save progression override', 'error');
+      }
+    }
+
+    // Reset progression override to manifest default
+    async function resetProgressionOverride() {
+      const modeId = platform?.currentMode;
+      if (!modeId || !currentCartridgeId) return;
+
+      try {
+        const gameId = gridPanel?.state?.gameId || 'default';
+        const resp = await fetch(`${SERVER_URL}/api/progression-overrides/${currentCartridgeId}/${modeId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            password: teacherPassword,
+            gameId
+          })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.error || 'Failed to reset');
+        }
+
+        // Update local state
+        platform.gameEngine.removeOverride(modeId);
+        renderModeTabs();
+
+        const manifestDefault = platform.gameEngine.getManifestDefault(modeId);
+        const modeName = platform.currentCartridge?.manifest?.modes?.find(m => m.id === modeId)?.name || modeId;
+        celebration.showToast(`${modeName} reset to default (${manifestDefault} gold)`, 'success');
+      } catch (err) {
+        console.error('[Progression] Reset error:', err);
+        celebration.showToast('Failed to reset progression override', 'error');
+      }
+    }
+
+    // Wire up teacher progression control buttons
+    document.getElementById('save-gold-req-btn')?.addEventListener('click', saveProgressionOverride);
+    document.getElementById('reset-gold-req-btn')?.addEventListener('click', resetProgressionOverride);
 
     // ==================== ACTION BUTTONS ====================
     document.getElementById('btn-grade').addEventListener('click', async () => {

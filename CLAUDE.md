@@ -14,7 +14,7 @@ Current cartridges (11 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v3.1.3 (Token from Drilling + Fixes)
+**Current Version**: v3.2.0 (Teacher-Configurable Progression)
 
 ## Critical: File Sync Requirements
 
@@ -252,10 +252,11 @@ npx vitest run tests/core/ai-feedback-panel.test.js       # v2.0.1 AI panel test
 npx vitest run tests/server/ai-grading-v2.0.1.test.js     # v2.0.1 + v2.1.1 server response tests (31 tests)
 npx vitest run tests/core/ai-feedback-panel-v2.1.test.js  # v2.1 debug logging tests (23 tests)
 npx vitest run tests/server/progress-sync-v2.1.test.js    # v2.1 progress sync tests (37 tests)
+npx vitest run tests/core/game-engine-progression.test.js # v3.2 progression override tests (24 tests)
 ```
 
 Test organization:
-- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1)
+- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1, game-engine-progression)
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design)
 - `tests/server/` - Railway server API tests (api, grid-wars-api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality)
@@ -275,6 +276,7 @@ railway-server/migrations/003_v2.0_hierarchical.sql  # v2.0: Hierarchy columns (
 railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table for aggregate star counts per cartridge
 railway-server/migrations/006_pong_duels.sql        # v3.0: Pong Duel tables (tokens, stats, duels, matches, log)
 railway-server/migrations/007_pong_drilling_tokens.sql  # v3.1: Token from drilling columns (correct_answer_count, last_token_grant_count)
+railway-server/migrations/008_progression_overrides.sql # v3.2: Teacher-configurable progression overrides table
 ```
 
 **Note**: The `point_events` table uses `player_id` column (not `username`). This was fixed in v1.6.2.
@@ -288,6 +290,19 @@ railway-server/migrations/007_pong_drilling_tokens.sql  # v3.1: Token from drill
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v3.2.0**: Teacher-Configurable Progression
+- Per-level gold star requirements now work from manifest `unlockedBy.gold` values
+- Fixed game-engine to use per-level requirements instead of global `goldToUnlock`
+- Teachers can adjust any level's gold requirement on the fly via new UI controls
+- New database table `progression_overrides` stores teacher overrides per cartridge/level
+- New API endpoints: `GET/PUT/DELETE /api/progression-overrides/:cartridgeId/:modeId`
+- WebSocket broadcasts `progression_override_changed` and `progression_override_removed` for real-time sync
+- Teacher UI panel shows current level's gold requirement with save/reset buttons
+- Override indicator (*) appears on levels with teacher overrides in mode tabs
+- Polynomial cartridge updated with proper sequential progression (L7-9 require only 1 gold star)
+- New migration: `railway-server/migrations/008_progression_overrides.sql`
+- Added 24 regression tests in `tests/core/game-engine-progression.test.js`
 
 **v3.1.3**: Token Fallback Consistency
 - Fixed all `challenge_tokens` fallbacks to use `??` instead of `||`

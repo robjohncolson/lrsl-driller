@@ -25,6 +25,9 @@ export class GameEngine {
     // Retry tracking (wrong answers count as penalties)
     this.retriesThisProblem = 0;
 
+    // Teacher progression overrides (modeId -> goldRequired)
+    this.progressionOverrides = {};
+
     // Callbacks
     this.onStreakUpdate = config.onStreakUpdate || (() => {});
     this.onStarEarned = config.onStarEarned || (() => {});
@@ -207,14 +210,17 @@ export class GameEngine {
       }
 
       // STRICT sequential unlock: previous level MUST have enough gold stars
-      // No fallback to legacy conditions - levels must be completed in order
+      // Uses per-level requirements (override > manifest > global default)
       const previousModeId = this.modeOrder[i - 1];
       const previousModeStars = this.starsPerMode[previousModeId] || { gold: 0 };
 
       // Also check that the previous level is actually unlocked (prevents skipping)
       const previousUnlocked = this.unlockedTiers.includes(previousModeId);
 
-      if (previousUnlocked && previousModeStars.gold >= this.goldToUnlock) {
+      // Get the required gold for the CURRENT tier (what you need to unlock it)
+      const requiredGold = this.getRequiredGold(tier.id);
+
+      if (previousUnlocked && previousModeStars.gold >= requiredGold) {
         this.unlockedTiers.push(tier.id);
         this.onTierUnlocked(tier);
         this.saveState();
@@ -248,6 +254,79 @@ export class GameEngine {
   }
 
   /**
+   * Get required gold stars for a specific mode
+   * Priority: 1) Teacher override, 2) Manifest unlockedBy.gold, 3) Global default
+   */
+  getRequiredGold(modeId) {
+    // 1. Check teacher override first
+    if (this.progressionOverrides?.[modeId] !== undefined) {
+      return this.progressionOverrides[modeId];
+    }
+    // 2. Check manifest's unlockedBy.gold for this mode
+    const mode = this.unlockRules?.find(m => m.id === modeId);
+    if (mode?.unlockedBy?.gold !== undefined) {
+      return mode.unlockedBy.gold;
+    }
+    // 3. Fall back to global default
+    return this.goldToUnlock;
+  }
+
+  /**
+   * Get the manifest default for a mode (ignoring overrides)
+   */
+  getManifestDefault(modeId) {
+    const mode = this.unlockRules?.find(m => m.id === modeId);
+    if (mode?.unlockedBy?.gold !== undefined) {
+      return mode.unlockedBy.gold;
+    }
+    return this.goldToUnlock;
+  }
+
+  /**
+   * Set all progression overrides at once (from server)
+   */
+  setOverrides(overrides) {
+    this.progressionOverrides = overrides || {};
+    // Re-evaluate unlocks with new overrides
+    if (this.unlockRules) {
+      // Clear unlocked tiers and re-check from scratch
+      this.unlockedTiers = [];
+      this.checkUnlocks(this.unlockRules);
+    }
+  }
+
+  /**
+   * Update a single progression override
+   */
+  updateOverride(modeId, goldRequired) {
+    this.progressionOverrides[modeId] = goldRequired;
+    // Re-evaluate unlocks
+    if (this.unlockRules) {
+      this.unlockedTiers = [];
+      this.checkUnlocks(this.unlockRules);
+    }
+  }
+
+  /**
+   * Remove an override (revert to manifest default)
+   */
+  removeOverride(modeId) {
+    delete this.progressionOverrides[modeId];
+    // Re-evaluate unlocks
+    if (this.unlockRules) {
+      this.unlockedTiers = [];
+      this.checkUnlocks(this.unlockRules);
+    }
+  }
+
+  /**
+   * Check if a mode has an active override
+   */
+  hasOverride(modeId) {
+    return this.progressionOverrides?.[modeId] !== undefined;
+  }
+
+  /**
    * Get current state
    */
   getState() {
@@ -259,6 +338,7 @@ export class GameEngine {
       unlockedTiers: [...this.unlockedTiers],
       modeOrder: [...this.modeOrder],
       goldToUnlock: this.goldToUnlock,
+      progressionOverrides: { ...this.progressionOverrides },
       hintsUsed: this.hintsUsedThisProblem.size,
       retriesUsed: this.retriesThisProblem,
       totalPenalties: this.getTotalPenalties(),

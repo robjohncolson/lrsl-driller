@@ -1,6 +1,18 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v3.1.3.
+Complete state machine documentation for all components as of v3.2.0.
+
+**v3.2.0 Changes (Teacher-Configurable Progression):**
+- Per-level gold star requirements now respected from manifest `unlockedBy.gold` values
+- Game engine fixed to use per-level requirements instead of global `goldToUnlock`
+- Teachers can adjust any level's gold requirement on the fly via new UI panel
+- New database table: `progression_overrides` (migration 008)
+- New API endpoints: `GET/PUT/DELETE /api/progression-overrides/:cartridgeId/:modeId`
+- WebSocket: `progression_override_changed`, `progression_override_removed` messages
+- New methods in game-engine.js: `getRequiredGold()`, `setOverrides()`, `updateOverride()`, `removeOverride()`, `hasOverride()`, `getManifestDefault()`
+- Override indicator (*) appears on levels with teacher overrides in mode tabs
+- Polynomial cartridge updated with proper sequential progression (L7-9 require 1 gold)
+- Added 24 regression tests in `tests/core/game-engine-progression.test.js`
 
 **v3.1.x Changes (Token from Drilling + Fixes):**
 - v3.1.3: Consistent nullish coalescing (`??`) across all token fallbacks
@@ -7381,6 +7393,319 @@ TESTS:
 
 ---
 
-*Updated to v3.1.3*
+## 101. PROGRESSION OVERRIDE STATE MACHINE (v3.2)
+
+Teacher-configurable gold star requirements per level.
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │         getRequiredGold(modeId)         │
+                    └─────────────────────────────────────────┘
+                                        │
+                    ┌───────────────────┼───────────────────┐
+                    ▼                   ▼                   ▼
+        ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+        │ Check Override   │ │ Check Manifest   │ │ Global Default   │
+        │ progressionOver- │ │ mode.unlockedBy  │ │ this.goldToUnlock│
+        │ rides[modeId]    │ │ .gold            │ │ (default: 3)     │
+        └──────────────────┘ └──────────────────┘ └──────────────────┘
+                │                   │                      │
+                │ if defined       │ if defined           │ fallback
+                ▼                   ▼                      ▼
+        ┌──────────────────────────────────────────────────────────┐
+        │                  PRIORITY ORDER:                          │
+        │   1. Override (teacher set)  →  return override value     │
+        │   2. Manifest (cartridge)    →  return manifest.gold      │
+        │   3. Global default          →  return 3                  │
+        └──────────────────────────────────────────────────────────┘
+
+STATE TRANSITIONS (Teacher Actions):
+
+  setOverrides(overrides)           updateOverride(modeId, gold)
+  ┌─────────────────────────┐       ┌─────────────────────────┐
+  │ Replace ALL overrides   │       │ Set SINGLE override     │
+  │ Clear unlockedTiers     │       │ Clear unlockedTiers     │
+  │ Re-run checkUnlocks()   │       │ Re-run checkUnlocks()   │
+  └─────────────────────────┘       └─────────────────────────┘
+
+  removeOverride(modeId)
+  ┌─────────────────────────┐
+  │ Delete specific override │
+  │ Clear unlockedTiers     │
+  │ Re-run checkUnlocks()   │
+  │ Reverts to manifest def │
+  └─────────────────────────┘
+```
+
+---
+
+## 102. PROGRESSION OVERRIDE API FLOW (v3.2)
+
+```
+CLIENT                              SERVER                          DATABASE
+  │                                   │                                │
+  │  GET /api/progression-overrides   │                                │
+  │  /:cartridgeId?gameId=xxx         │                                │
+  │ ──────────────────────────────────>                                │
+  │                                   │  SELECT mode_id, gold_required │
+  │                                   │  FROM progression_overrides    │
+  │                                   │  WHERE game_id AND cartridge_id│
+  │                                   │ ────────────────────────────────>
+  │                                   │                                │
+  │                                   │  Array of {mode_id, gold_req}  │
+  │                                   │ <────────────────────────────────
+  │                                   │                                │
+  │  { overrides: { modeId: gold } }  │                                │
+  │ <──────────────────────────────────                                │
+  │                                   │                                │
+  │  gameEngine.setOverrides(...)     │                                │
+  │                                   │                                │
+
+TEACHER UPDATE FLOW:
+
+TEACHER                             SERVER                          WEBSOCKET
+  │                                   │                                │
+  │  PUT /api/progression-overrides   │                                │
+  │  /:cartridgeId/:modeId            │                                │
+  │  { goldRequired, password }       │                                │
+  │ ──────────────────────────────────>                                │
+  │                                   │                                │
+  │                                   │  Validate teacher password     │
+  │                                   │  UPSERT progression_overrides  │
+  │                                   │                                │
+  │                                   │  broadcast({                   │
+  │                                   │    type: 'progression_override_│
+  │                                   │          changed',             │
+  │                                   │    cartridgeId, modeId,        │
+  │                                   │    goldRequired                │
+  │                                   │  })─────────────────────────────>
+  │                                   │                                │
+  │  { success: true }                │                                │
+  │ <──────────────────────────────────                                │
+  │                                   │                                │
+                                                                       │
+                                              ALL CONNECTED CLIENTS    │
+                                                        │              │
+                                                        │  progression_│
+                                                        │  override_   │
+                                                        │  changed     │
+                                                        │ <─────────────
+                                                        │
+                                                        │  gameEngine.
+                                                        │  updateOverride()
+                                                        │  renderModeTabs()
+```
+
+---
+
+## 103. checkUnlocks() STATE MACHINE (v3.2 FIX)
+
+Previous behavior (broken): Used global `goldToUnlock` for ALL levels.
+New behavior (fixed): Uses per-level requirement from `getRequiredGold()`.
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │           checkUnlocks(tierRules)       │
+                    └─────────────────────────────────────────┘
+                                        │
+                          for each tier in tierRules:
+                                        │
+                    ┌───────────────────┼───────────────────┐
+                    │                   │                   │
+            ┌───────┴───────┐   ┌───────┴───────┐   ┌───────┴───────┐
+            │  i === 0 OR   │   │ Already       │   │ Check         │
+            │  unlockedBy   │   │ unlocked?     │   │ Previous      │
+            │  === 'default'│   │               │   │ Level         │
+            └───────────────┘   └───────────────┘   └───────────────┘
+                    │                   │                   │
+                    │                   │                   ▼
+                    │                   │   ┌─────────────────────────┐
+                    │                   │   │ previousModeId =        │
+                    │                   │   │   modeOrder[i - 1]      │
+                    │                   │   │                         │
+                    │                   │   │ previousModeStars =     │
+                    │                   │   │   starsPerMode[prev]    │
+                    │                   │   │                         │
+                    │                   │   │ requiredGold =          │
+                    │                   │   │   getRequiredGold(      │  ← NEW in v3.2
+                    │                   │   │     tier.id)            │
+                    │                   │   └─────────────────────────┘
+                    │                   │                   │
+                    │                   │                   ▼
+                    │                   │   ┌─────────────────────────┐
+                    │                   │   │ previousUnlocked AND    │
+                    │                   │   │ previousModeStars.gold  │
+                    │                   │   │   >= requiredGold ?     │
+                    │                   │   └─────────────────────────┘
+                    │                   │           │           │
+                    │                   │          YES          NO
+                    │                   │           │           │
+                    ▼                   ▼           ▼           ▼
+            ┌───────────────────────────────┐   ┌───────────────┐
+            │     Add to unlockedTiers      │   │  Skip (locked)│
+            │     Set currentTier if first  │   │               │
+            │     Call onTierUnlocked()     │   │               │
+            │     saveState()               │   │               │
+            └───────────────────────────────┘   └───────────────┘
+```
+
+---
+
+## 104. TEACHER PROGRESSION UI STATE MACHINE (v3.2)
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │    teacher-progression-panel (HTML)     │
+                    │    #progression-level-name              │
+                    │    #gold-req-input                      │
+                    │    #save-gold-req-btn                   │
+                    │    #reset-gold-req-btn                  │
+                    │    #progression-override-status         │
+                    └─────────────────────────────────────────┘
+
+VISIBILITY STATE:
+
+  isTeacher = false              isTeacher = true
+  ┌─────────────────┐            ┌─────────────────┐
+  │  panel.hidden   │            │ panel.visible   │
+  │  = true         │ ◄─────────►│ = true          │
+  └─────────────────┘            └─────────────────┘
+       No controls                    │
+                                      │ updateTeacherProgressionControls()
+                                      ▼
+                          ┌─────────────────────────┐
+                          │ Show current level name │
+                          │ Set input to current    │
+                          │   getRequiredGold()     │
+                          │ Show/hide override      │
+                          │   status indicator      │
+                          └─────────────────────────┘
+
+BUTTON ACTIONS:
+
+  #save-gold-req-btn click           #reset-gold-req-btn click
+  ┌─────────────────────────┐        ┌─────────────────────────┐
+  │ saveProgressionOverride()│        │resetProgressionOverride()│
+  │                         │        │                         │
+  │ 1. Validate 1-10 range  │        │ 1. DELETE to server     │
+  │ 2. PUT to server        │        │ 2. removeOverride()     │
+  │ 3. updateOverride()     │        │ 3. renderModeTabs()     │
+  │ 4. renderModeTabs()     │        │ 4. Show toast           │
+  │ 5. Show success toast   │        └─────────────────────────┘
+  └─────────────────────────┘
+
+MODE TAB DISPLAY:
+
+  hasOverride = false                hasOverride = true
+  ┌─────────────────────────┐        ┌─────────────────────────┐
+  │ L7 ★3/3                 │        │ L7 ★1/1*                │
+  │                         │        │        ▲                │
+  │ Shows manifest default  │        │        │ purple asterisk│
+  └─────────────────────────┘        └─────────────────────────┘
+```
+
+---
+
+## 105. WEBSOCKET PROGRESSION MESSAGES (v3.2)
+
+```
+progression_override_changed:
+┌─────────────────────────────────────────────────────────────────┐
+│ {                                                               │
+│   type: 'progression_override_changed',                         │
+│   cartridgeId: 'adding-subtracting-polynomials',                │
+│   modeId: 'l07-subtract-distribute',                            │
+│   goldRequired: 1                                               │
+│ }                                                               │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │ broadcast to ALL clients
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ Client Handler:                                                 │
+│   if (message.cartridgeId === currentCartridgeId) {             │
+│     gameEngine.updateOverride(modeId, goldRequired);            │
+│     renderModeTabs();                                           │
+│     updateTeacherProgressionControls();                         │
+│     if (!isTeacher) showToast("Teacher changed...");            │
+│   }                                                             │
+└─────────────────────────────────────────────────────────────────┘
+
+progression_override_removed:
+┌─────────────────────────────────────────────────────────────────┐
+│ {                                                               │
+│   type: 'progression_override_removed',                         │
+│   cartridgeId: 'adding-subtracting-polynomials',                │
+│   modeId: 'l07-subtract-distribute'                             │
+│ }                                                               │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │ broadcast to ALL clients
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ Client Handler:                                                 │
+│   if (message.cartridgeId === currentCartridgeId) {             │
+│     gameEngine.removeOverride(modeId);                          │
+│     renderModeTabs();                                           │
+│     updateTeacherProgressionControls();                         │
+│     if (!isTeacher) showToast("Teacher reset...");              │
+│   }                                                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 106. v3.2 VERIFICATION CHECKLIST
+
+```
+GAME ENGINE (platform/core/game-engine.js):
+□ progressionOverrides property initialized as {}
+□ getRequiredGold(modeId) checks: override → manifest → global
+□ getManifestDefault(modeId) ignores overrides
+□ setOverrides(overrides) clears and re-evaluates unlocks
+□ updateOverride(modeId, gold) sets single and re-evaluates
+□ removeOverride(modeId) deletes and re-evaluates
+□ hasOverride(modeId) returns boolean
+□ checkUnlocks() uses getRequiredGold() not this.goldToUnlock
+□ getState() includes progressionOverrides
+
+DATABASE (migration 008):
+□ progression_overrides table exists
+□ Columns: id, game_id, cartridge_id, mode_id, gold_required, updated_by, updated_at
+□ Unique constraint on (game_id, cartridge_id, mode_id)
+□ Index on (game_id, cartridge_id) for lookup
+
+SERVER (railway-server/server.js):
+□ GET /api/progression-overrides/:cartridgeId returns { overrides: {} }
+□ PUT /api/progression-overrides/:cartridgeId/:modeId requires password
+□ DELETE /api/progression-overrides/:cartridgeId/:modeId requires password
+□ Both PUT and DELETE broadcast WebSocket messages
+
+CLIENT (platform/app.html):
+□ Fetches overrides in loadCartridge() after manifest loaded
+□ Calls gameEngine.setOverrides() before renderModeTabs()
+□ Teacher panel HTML exists with id="teacher-progression-panel"
+□ updateTeacherProgressionControls() called on mode change
+□ saveProgressionOverride() and resetProgressionOverride() wired to buttons
+□ WebSocket handlers for progression_override_changed/removed
+□ renderModeTabs() uses gameEngine.getRequiredGold(mode.id)
+□ Override indicator (*) shown when hasOverride() true
+
+POLYNOMIAL CARTRIDGE (manifest.json):
+□ L1: unlockedBy: "default"
+□ L2-L6: unlockedBy: { gold: 3 }
+□ L7-L9: unlockedBy: { gold: 1 }  ← tough levels, easy progression
+□ L10-L15: unlockedBy: { gold: 3 }
+
+TESTS:
+□ 24 tests in game-engine-progression.test.js pass
+□ getRequiredGold priority order tested
+□ Override management methods tested
+□ checkUnlocks with per-level requirements tested
+```
+
+---
+
+*Updated to v3.2.0*
 *Last updated: January 2026*
-*Total sections: 100*
+*Total sections: 106*

@@ -54,7 +54,7 @@
     {
       "id": "l02-like-terms",
       "name": "Level 2: Identify Like Terms",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -69,7 +69,7 @@
     {
       "id": "l03-combine-like-terms",
       "name": "Level 3: Combine Like Terms (Simple)",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -84,7 +84,7 @@
     {
       "id": "l04-simplify-polynomial",
       "name": "Level 4: Simplify a Polynomial (Mixed)",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -99,7 +99,7 @@
     {
       "id": "l05-add-horizontal",
       "name": "Level 5: Add Polynomials (Horizontal)",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -114,7 +114,7 @@
     {
       "id": "l06-add-vertical",
       "name": "Level 6: Add Polynomials (Vertical Alignment)",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -129,7 +129,7 @@
     {
       "id": "l07-subtract-distribute",
       "name": "Level 7: Subtract Polynomials (Distribute the Negative)",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 1 },
       "layout": {
         "inputs": [
           {
@@ -144,7 +144,7 @@
     {
       "id": "l08-subtract-mixed",
       "name": "Level 8: Subtract Polynomials (Mixed Signs & Missing Terms)",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 1 },
       "layout": {
         "inputs": [
           {
@@ -159,7 +159,7 @@
     {
       "id": "l09-three-polys",
       "name": "Level 9: Add/Subtract 3 Polynomials",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 1 },
       "layout": {
         "inputs": [
           {
@@ -174,7 +174,7 @@
     {
       "id": "l10-linear-set-s",
       "name": "Level 10: Linear Set S — Leading Coefficient & Constant",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -211,7 +211,7 @@
     {
       "id": "l11-function-ops",
       "name": "Level 11: Function Notation — (f + g)(x) or (f - g)(x)",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -226,7 +226,7 @@
     {
       "id": "l12-perimeter",
       "name": "Level 12: Application — Perimeter with Polynomials",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -241,7 +241,7 @@
     {
       "id": "l13-profit",
       "name": "Level 13: Application — Profit = Revenue − Cost",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -264,7 +264,7 @@
     {
       "id": "l14-error-analysis",
       "name": "Level 14: Error Analysis — Spot the Mistake",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -279,7 +279,7 @@
     {
       "id": "l15-closure-and-numbers",
       "name": "Level 15: Closure & Number Structure (Capstone Concepts)",
-      "unlockedBy": "default",
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -347,85 +347,85 @@
       {
         "id": "l02-like-terms",
         "name": "02",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Great—now you can spot like terms."
       },
       {
         "id": "l03-combine-like-terms",
         "name": "03",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Clean combining!"
       },
       {
         "id": "l04-simplify-polynomial",
         "name": "04",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Good structure—keep grouping like terms."
       },
       {
         "id": "l05-add-horizontal",
         "name": "05",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Addition is just combining like terms."
       },
       {
         "id": "l06-add-vertical",
         "name": "06",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Vertical alignment = place value for polynomials."
       },
       {
         "id": "l07-subtract-distribute",
         "name": "07",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Nice—minus sign distributed correctly."
       },
       {
         "id": "l08-subtract-mixed",
         "name": "08",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Great work managing signs and missing terms."
       },
       {
         "id": "l09-three-polys",
         "name": "09",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Three polynomials? No problem."
       },
       {
         "id": "l10-linear-set-s",
         "name": "10",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "You nailed leading coefficient and constant term."
       },
       {
         "id": "l11-function-ops",
         "name": "11",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Function operations are polynomial operations in disguise."
       },
       {
         "id": "l12-perimeter",
         "name": "12",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Nice application—perimeter simplified."
       },
       {
         "id": "l13-profit",
         "name": "13",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Profit model simplified—great!"
       },
       {
         "id": "l14-error-analysis",
         "name": "14",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Sharp eyes—mathematical critique!"
       },
       {
         "id": "l15-closure-and-numbers",
         "name": "15",
-        "unlockedBy": "default",
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Capstone concepts complete. Well done!"
       }
     ]

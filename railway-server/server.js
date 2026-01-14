@@ -7516,6 +7516,124 @@ app.post('/api/pong/record-correct', async (req, res) => {
   }
 });
 
+// ============================================
+// PROGRESSION OVERRIDES (Teacher-configurable)
+// ============================================
+
+// GET /api/progression-overrides/:cartridgeId - Get all overrides for a cartridge
+app.get('/api/progression-overrides/:cartridgeId', async (req, res) => {
+  const { cartridgeId } = req.params;
+  const gameId = req.query.gameId || 'default';
+
+  try {
+    const { data, error } = await supabase
+      .from('progression_overrides')
+      .select('mode_id, gold_required')
+      .eq('game_id', gameId)
+      .eq('cartridge_id', cartridgeId);
+
+    if (error) throw error;
+
+    // Convert array to object: { modeId: goldRequired }
+    const overrides = {};
+    (data || []).forEach(row => {
+      overrides[row.mode_id] = row.gold_required;
+    });
+
+    console.log(`[Progression] Fetched ${Object.keys(overrides).length} overrides for ${cartridgeId}`);
+    res.json({ overrides });
+  } catch (err) {
+    console.error('[Progression] Fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch progression overrides' });
+  }
+});
+
+// PUT /api/progression-overrides/:cartridgeId/:modeId - Set/update gold requirement (teacher only)
+app.put('/api/progression-overrides/:cartridgeId/:modeId', async (req, res) => {
+  const { cartridgeId, modeId } = req.params;
+  const { goldRequired, password, gameId = 'default', username } = req.body;
+
+  // Verify teacher password
+  if (password !== TEACHER_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid teacher password' });
+  }
+
+  // Validate goldRequired
+  const gold = parseInt(goldRequired, 10);
+  if (isNaN(gold) || gold < 1 || gold > 10) {
+    return res.status(400).json({ error: 'goldRequired must be between 1 and 10' });
+  }
+
+  try {
+    // Upsert the override
+    const { error } = await supabase
+      .from('progression_overrides')
+      .upsert({
+        game_id: gameId,
+        cartridge_id: cartridgeId,
+        mode_id: modeId,
+        gold_required: gold,
+        updated_by: username || 'teacher',
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'game_id,cartridge_id,mode_id'
+      });
+
+    if (error) throw error;
+
+    console.log(`[Progression] Set ${cartridgeId}/${modeId} to ${gold} gold (by ${username || 'teacher'})`);
+
+    // Broadcast to all clients
+    broadcast({
+      type: 'progression_override_changed',
+      cartridgeId,
+      modeId,
+      goldRequired: gold
+    });
+
+    res.json({ success: true, cartridgeId, modeId, goldRequired: gold });
+  } catch (err) {
+    console.error('[Progression] Update error:', err);
+    res.status(500).json({ error: 'Failed to update progression override' });
+  }
+});
+
+// DELETE /api/progression-overrides/:cartridgeId/:modeId - Remove override (revert to manifest default)
+app.delete('/api/progression-overrides/:cartridgeId/:modeId', async (req, res) => {
+  const { cartridgeId, modeId } = req.params;
+  const { password, gameId = 'default' } = req.body;
+
+  // Verify teacher password
+  if (password !== TEACHER_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid teacher password' });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('progression_overrides')
+      .delete()
+      .eq('game_id', gameId)
+      .eq('cartridge_id', cartridgeId)
+      .eq('mode_id', modeId);
+
+    if (error) throw error;
+
+    console.log(`[Progression] Removed override for ${cartridgeId}/${modeId}`);
+
+    // Broadcast to all clients
+    broadcast({
+      type: 'progression_override_removed',
+      cartridgeId,
+      modeId
+    });
+
+    res.json({ success: true, cartridgeId, modeId, removed: true });
+  } catch (err) {
+    console.error('[Progression] Delete error:', err);
+    res.status(500).json({ error: 'Failed to remove progression override' });
+  }
+});
+
 // POST /api/pong/toggle - Teacher toggles duels on/off
 app.post('/api/pong/toggle', async (req, res) => {
   const { gameId, enabled, password } = req.body;
