@@ -3090,8 +3090,11 @@
 
       modes.forEach((mode, i) => {
         // Check if mode is unlocked using the game engine's sequential unlock logic
-        const isUnlocked = gameState.unlockedTiers.includes(mode.id);
+        // Teachers bypass all locks
+        const studentUnlocked = gameState.unlockedTiers.includes(mode.id);
+        const isUnlocked = isTeacher || studentUnlocked;
         const isCurrentMode = mode.id === currentMode;
+        const teacherBypass = isTeacher && !studentUnlocked; // Teacher accessing locked level
 
         // Get per-level gold requirement (respects overrides > manifest > global default)
         const goldToUnlock = platform.gameEngine.getRequiredGold(mode.id);
@@ -3103,30 +3106,33 @@
 
         const btn = document.createElement('button');
         btn.dataset.modeId = mode.id;
-        btn.title = mode.name + (isMastered ? ' (Mastered!)' : '') + (hasOverride ? ' (Teacher override)' : '');
+        btn.title = mode.name + (isMastered ? ' (Mastered!)' : '') + (teacherBypass ? ' (Teacher access - locked for students)' : '') + (hasOverride ? ' (Teacher override)' : '');
         btn.setAttribute('aria-label', mode.name);
 
         // Short name (L1, L2, etc.)
         const shortName = mode.name.replace('Level ', 'L');
 
         if (isUnlocked) {
+          // Teacher bypass indicator (🔑 = locked for students but teacher has access)
+          const bypassIndicator = teacherBypass ? '<span class="text-amber-400 text-xs ml-1">🔑</span>' : '';
+
           // Show progress indicator for current mode
           if (isCurrentMode) {
             if (isMastered) {
-              btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>`;
+              btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>${bypassIndicator}`;
             } else {
               const stars = modeGold >= goldToUnlock ? '✓' : `${modeGold}/${goldToUnlock}`;
               const overrideIndicator = hasOverride ? '<span class="text-purple-400">*</span>' : '';
-              btn.innerHTML = `${shortName} <span class="text-yellow-400 text-xs ml-1">★${stars}</span>${overrideIndicator}`;
+              btn.innerHTML = `${shortName} <span class="text-yellow-400 text-xs ml-1">★${stars}</span>${overrideIndicator}${bypassIndicator}`;
             }
           } else {
             // Mastered levels show graduation cap, completed show checkmark
             if (isMastered) {
-              btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>`;
+              btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>${bypassIndicator}`;
             } else if (modeGold >= goldToUnlock) {
-              btn.innerHTML = `${shortName} <span class="text-green-500 text-xs ml-1">✓</span>`;
+              btn.innerHTML = `${shortName} <span class="text-green-500 text-xs ml-1">✓</span>${bypassIndicator}`;
             } else {
-              btn.textContent = shortName;
+              btn.innerHTML = `${shortName}${bypassIndicator}`;
             }
           }
           btn.className = isCurrentMode ? activeTabClass : baseTabClass;
