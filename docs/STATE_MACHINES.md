@@ -1,6 +1,12 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v3.2.0.
+Complete state machine documentation for all components as of v3.2.1.
+
+**v3.2.1 Changes (Teacher Level Bypass):**
+- Teachers can now access ALL levels regardless of progression gating
+- 🔑 indicator on mode tabs shows levels that are locked for students but accessible to teachers
+- Tooltip displays "Teacher access - locked for students" for bypassed levels
+- `renderModeTabs()` now checks `isTeacher` flag to bypass unlock requirements
 
 **v3.2.0 Changes (Teacher-Configurable Progression):**
 - Per-level gold star requirements now respected from manifest `unlockedBy.gold` values
@@ -7706,6 +7712,109 @@ TESTS:
 
 ---
 
-*Updated to v3.2.0*
+## 107. TEACHER LEVEL BYPASS STATE MACHINE (v3.2.1)
+
+Teachers need unrestricted access to all levels for previewing content and helping students.
+
+### renderModeTabs() Access Check
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    MODE TAB ACCESS CHECK                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  For each mode in modes array:                                   │
+│                                                                  │
+│    studentUnlocked = gameState.unlockedTiers.includes(mode.id)  │
+│                         │                                        │
+│                         ▼                                        │
+│    ┌──────────────────────────────────────────────┐             │
+│    │  isUnlocked = isTeacher || studentUnlocked   │             │
+│    └──────────────────────────────────────────────┘             │
+│                         │                                        │
+│           ┌─────────────┴─────────────┐                         │
+│           ▼                           ▼                         │
+│    ┌─────────────┐            ┌─────────────┐                   │
+│    │ isTeacher?  │──YES──────▶│  UNLOCKED   │                   │
+│    └─────────────┘            │  (always)   │                   │
+│           │ NO                └─────────────┘                   │
+│           ▼                                                      │
+│    ┌─────────────────┐                                          │
+│    │ studentUnlocked?│──YES──▶ UNLOCKED                         │
+│    └─────────────────┘                                          │
+│           │ NO                                                   │
+│           ▼                                                      │
+│        LOCKED                                                    │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Teacher Bypass Visual Indicator
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  TEACHER BYPASS INDICATOR                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  teacherBypass = isTeacher && !studentUnlocked                  │
+│                         │                                        │
+│           ┌─────────────┴─────────────┐                         │
+│           │                           │                         │
+│           ▼                           ▼                         │
+│    teacherBypass = TRUE        teacherBypass = FALSE            │
+│           │                           │                         │
+│           ▼                           ▼                         │
+│    ┌─────────────────┐        ┌─────────────────┐              │
+│    │ Show 🔑 icon    │        │ Normal display  │              │
+│    │ (amber color)   │        │ (no bypass icon)│              │
+│    └─────────────────┘        └─────────────────┘              │
+│           │                                                      │
+│           ▼                                                      │
+│    Tooltip: "Teacher access - locked for students"              │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Mode Tab Display States (Teacher View)
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                  MODE TAB STATES (TEACHER)                      │
+├────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  STUDENT-UNLOCKED LEVELS:                                       │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ L1 ★2/3   L2 ✓   L3 🎓   L4 ★0/3                        │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│    Normal display - clickable, no bypass indicator              │
+│                                                                 │
+│  STUDENT-LOCKED LEVELS (teacher bypass):                        │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ L5 🔑   L6 🔑   L7 🔑   ...   L15 🔑                     │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│    Clickable for teacher, 🔑 shows student lock status          │
+│                                                                 │
+│  STUDENT VIEW (comparison):                                     │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ L1 ★2/3   L2 ✓   L3 🎓   L4 ★0/3   L5 🔒0/3   ...       │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│    Locked levels show 🔒, are disabled and unclickable          │
+│                                                                 │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Code Location
+
+```
+platform/app.html - renderModeTabs() function (~line 3091-3160):
+- Line 3094: studentUnlocked = gameState.unlockedTiers.includes(mode.id)
+- Line 3095: isUnlocked = isTeacher || studentUnlocked
+- Line 3097: teacherBypass = isTeacher && !studentUnlocked
+- Line 3117: bypassIndicator = teacherBypass ? '🔑' : ''
+```
+
+---
+
+*Updated to v3.2.1*
 *Last updated: January 2026*
-*Total sections: 106*
+*Total sections: 107*

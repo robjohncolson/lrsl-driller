@@ -14,7 +14,7 @@ Current cartridges (11 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v3.2.0 (Teacher-Configurable Progression)
+**Current Version**: v3.2.1 (Teacher Level Bypass)
 
 ## Critical: File Sync Requirements
 
@@ -290,6 +290,12 @@ railway-server/migrations/008_progression_overrides.sql # v3.2: Teacher-configur
 See "Critical: File Sync Requirements" at top for files that must be synced between frontend/server.
 
 ## Version History (Bug Fixes)
+
+**v3.2.1**: Teacher Level Bypass
+- Teachers can now access ALL levels regardless of progression gating
+- Added 🔑 indicator on mode tabs for levels that are locked for students but accessible to teachers
+- Tooltip displays "Teacher access - locked for students" for bypassed levels
+- `renderModeTabs()` checks `isTeacher` flag to bypass unlock requirements
 
 **v3.2.0**: Teacher-Configurable Progression
 - Per-level gold star requirements now work from manifest `unlockedBy.gold` values
