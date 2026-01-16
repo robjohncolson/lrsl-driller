@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "id": "_template-contexts",
+    "description": "TEMPLATE: Real-world scenarios for problem variety. Delete this file if not using contexts."
+  },
+  "contexts": [
+    {
+      "id": "scenario-1",
+      "topic": "Example Topic 1",
+      "description": "A detailed description of this real-world scenario.",
+      "variable1": "value1",
+      "variable2": "value2",
+      "numericRange": [10, 50]
+    },
+    {
+      "id": "scenario-2",
+      "topic": "Example Topic 2",
+      "description": "Another real-world scenario with different context.",
+      "variable1": "different_value1",
+      "variable2": "different_value2",
+      "numericRange": [20, 100]
+    },
+    {
+      "id": "scenario-3",
+      "topic": "Example Topic 3",
+      "description": "A third scenario for variety.",
+      "variable1": "third_value1",
+      "variable2": "third_value2",
+      "numericRange": [5, 25]
+    }
+  ]
+}

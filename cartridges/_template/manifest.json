@@ -1,0 +1,219 @@
+{
+  "meta": {
+    "id": "_template",
+    "name": "TEMPLATE: Replace With Your Lesson Name",
+    "subject": "Subject Area (e.g., AP Statistics, Algebra 2)",
+    "description": "Brief description of what students will practice in this drill."
+  },
+
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "STANDARD-CODE-1",
+      "STANDARD-CODE-2"
+    ]
+  },
+
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      { "label": "Level", "value": "{{levelName}}" },
+      { "label": "Task", "value": "{{problemText}}" },
+      { "label": "Given", "value": "{{givenText}}" }
+    ]
+  },
+
+  "modes": [
+    {
+      "id": "l01-first-concept",
+      "name": "Level 1: Introduction / Vocabulary",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "choiceAnswer",
+            "type": "choice",
+            "label": "Select the correct answer:",
+            "options": ["Option A", "Option B", "Option C", "Option D"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-basic-skill",
+      "name": "Level 2: Basic Skill Application",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "dropdownAnswer",
+            "type": "dropdown",
+            "label": "Choose the best answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-calculation",
+      "name": "Level 3: Calculation Practice",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "numericAnswer",
+            "type": "number",
+            "label": "Calculate the result:",
+            "min": -1000,
+            "max": 1000,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-short-response",
+      "name": "Level 4: Short Response",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "textAnswer",
+            "type": "text",
+            "label": "Enter your answer:",
+            "placeholder": "Type your response here..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-explanation",
+      "name": "Level 5: Explanation / Justification",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "conceptChoice",
+            "type": "choice",
+            "label": "What is the answer?",
+            "options": ["Yes", "No"]
+          },
+          {
+            "id": "explanation",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Explain why you chose your answer..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-capstone",
+      "name": "Level 6: Capstone / Integration",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstoneChoice",
+            "type": "dropdown",
+            "label": "Identify the concept:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstoneCalc",
+            "type": "number",
+            "label": "Calculate the value:",
+            "step": 0.1
+          },
+          {
+            "id": "capstoneExplain",
+            "type": "textarea",
+            "label": "Explain your approach:",
+            "rows": 2,
+            "placeholder": "Describe your reasoning..."
+          }
+        ]
+      }
+    }
+  ],
+
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+
+  "hints": {
+    "perField": {
+      "choiceAnswer": "Hint for Level 1: Think about [key concept]. Remember that [important fact].",
+      "dropdownAnswer": "Hint for Level 2: Look for [distinguishing feature]. The key is [critical detail].",
+      "numericAnswer": "Hint for Level 3: Use the formula [formula]. Remember to [common step].",
+      "textAnswer": "Hint for Level 4: Your answer should include [required element]. Format: [expected format].",
+      "conceptChoice": "Hint for Level 5a: Ask yourself: does this have [property]?",
+      "explanation": "Hint for Level 5b: A complete explanation mentions [concept 1] and [concept 2]. Use sentence frame: 'This is [X] because [Y].'",
+      "capstoneChoice": "Hint for Capstone: First identify [feature], then determine [classification].",
+      "capstoneCalc": "Hint for Capstone calculation: Apply [formula] using values [from where].",
+      "capstoneExplain": "Hint for Capstone explanation: Connect [concept] to [application]. Mention [key vocabulary]."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "l01-first-concept",
+        "name": "01",
+        "unlockedBy": "default",
+        "celebrationMessage": "Great start! You've got the basics down."
+      },
+      {
+        "id": "l02-basic-skill",
+        "name": "02",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Excellent! Now let's apply this skill."
+      },
+      {
+        "id": "l03-calculation",
+        "name": "03",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Nice calculations! Time for some practice."
+      },
+      {
+        "id": "l04-short-response",
+        "name": "04",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Good work! Let's go deeper."
+      },
+      {
+        "id": "l05-explanation",
+        "name": "05",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Strong explanations! Almost there."
+      },
+      {
+        "id": "l06-capstone",
+        "name": "06",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Capstone complete! You've mastered this topic!"
+      }
+    ]
+  }
+}

@@ -117,7 +117,20 @@ If AI fails → Teacher Review Queue
 
 ## Creating Cartridges
 
-See `CARTRIDGE-DEVELOPMENT-GUIDE.md` for full details. A cartridge requires 3-4 files:
+**For manual development**: See `CARTRIDGE-DEVELOPMENT-GUIDE.md` for full details.
+
+**For LLM-assisted generation**: The `cartridges/` directory contains resources for generating cartridges with ChatGPT or other LLMs:
+- `CARTRIDGE-STATE-MACHINE.md` - Visual state machine diagrams for cartridge lifecycle
+- `CARTRIDGE-GENERATION-PROMPT.md` - Comprehensive LLM instructions with examples
+- `_template/` - Blank slate cartridge with all required files (manifest, generator, grading-rules, ai-prompt)
+
+To generate a new cartridge with an LLM:
+1. Provide the LLM with `CARTRIDGE-GENERATION-PROMPT.md` and `CARTRIDGE-STATE-MACHINE.md`
+2. Supply lesson content (e.g., PowerPoint slides) and curriculum standards
+3. LLM generates all files based on `_template/` structure
+4. Copy output to `cartridges/{new-id}/` and register
+
+A cartridge requires 3-4 files:
 
 **manifest.json** - Declares UI, modes, hints, progression:
 ```json

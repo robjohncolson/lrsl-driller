@@ -7815,6 +7815,85 @@ platform/app.html - renderModeTabs() function (~line 3091-3160):
 
 ---
 
+## 108. CARTRIDGE DEVELOPMENT (External Documentation)
+
+For detailed state machines specific to **cartridge development and compliance**, see the dedicated documentation in the `cartridges/` directory:
+
+```
+cartridges/
+├── CARTRIDGE-STATE-MACHINE.md      ← Cartridge lifecycle diagrams
+│   • Cartridge loading & validation
+│   • Problem generation flow
+│   • Grading pipeline (dual grading)
+│   • Star award calculation
+│   • Progression & mode unlocking
+│   • Hint system
+│   • Input types
+│   • AI feedback panel
+│   • Validation checklist
+│
+├── CARTRIDGE-GENERATION-PROMPT.md  ← LLM instructions for generating cartridges
+│   • Platform architecture overview
+│   • Manifest structure & rules
+│   • Mode design guidelines
+│   • Generator.js requirements
+│   • Grading patterns (numeric, keyword, exact)
+│   • AI prompt template structure
+│   • Hints & progression best practices
+│   • Curriculum alignment
+│   • Common pitfalls
+│
+└── _template/                      ← Blank slate cartridge template
+    ├── manifest.json               (6 example levels)
+    ├── generator.js                (skeleton with patterns)
+    ├── grading-rules.js            (all grading patterns)
+    ├── ai-grader-prompt.txt        (template structure)
+    ├── contexts.json               (optional)
+    └── README.md                   (usage instructions)
+```
+
+### Cartridge State Machine Summary
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         CARTRIDGE LIFECYCLE OVERVIEW                             │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+  DISCOVERY          LOADING              ACTIVE               GRADING
+     │                  │                   │                    │
+     ▼                  ▼                   ▼                    ▼
+┌──────────┐     ┌───────────┐      ┌─────────────┐      ┌─────────────┐
+│ registry │────▶│ manifest  │─────▶│ generate    │─────▶│ keywords    │
+│ .json    │     │ .json     │      │ Problem()   │      │ + AI        │
+└──────────┘     └───────────┘      └─────────────┘      └──────┬──────┘
+                       │                                        │
+                       ▼                                        ▼
+                ┌───────────┐                            ┌─────────────┐
+                │ generator │                            │ max(kw, ai) │
+                │ .js       │                            │ = final     │
+                └───────────┘                            └──────┬──────┘
+                       │                                        │
+                       ▼                                        ▼
+                ┌───────────┐                            ┌─────────────┐
+                │ grading   │                            │ ALL E?      │
+                │ -rules.js │                            │ → star      │
+                └───────────┘                            └─────────────┘
+
+See cartridges/CARTRIDGE-STATE-MACHINE.md for complete diagrams.
+```
+
+### Use Case: LLM-Generated Cartridges
+
+These documents enable ChatGPT or other LLMs to generate fully-compliant cartridges:
+
+1. Provide the LLM with `CARTRIDGE-GENERATION-PROMPT.md` and `CARTRIDGE-STATE-MACHINE.md`
+2. Supply a PowerPoint/lesson content and curriculum standards
+3. LLM generates all required files based on `_template/` structure
+4. Copy output to new `cartridges/{id}/` directory
+5. Add to `registry.json` and `app.html` dropdown
+
+---
+
 *Updated to v3.2.1*
 *Last updated: January 2026*
-*Total sections: 107*
+*Total sections: 108*
