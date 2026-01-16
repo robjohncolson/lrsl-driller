@@ -1,0 +1,280 @@
+{
+  "meta": {
+    "id": "a2t3l3",
+    "name": "Polynomial Identities & Binomial Theorem",
+    "subject": "Algebra 2",
+    "description": "Practice recognizing and using polynomial identities (squares/cubes), Pascal’s Triangle patterns, and Binomial Theorem coefficients."
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "A-SSE.A.1a",
+      "A-SSE.A.2",
+      "A-APR.A.1a",
+      "A-APR.A.1b",
+      "A-APR.C.4",
+      "A-APR.C.5",
+      "N-CN.C.8",
+      "MP.2",
+      "MP.3",
+      "MP.7"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      {
+        "label": "Level",
+        "value": "{{levelName}}"
+      },
+      {
+        "label": "Task",
+        "value": "{{problemText}}"
+      },
+      {
+        "label": "Given",
+        "value": "{{givenText}}"
+      }
+    ]
+  },
+  "modes": [
+    {
+      "id": "l01-identity-match",
+      "name": "Level 1: Identify the Identity",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "identityName",
+            "type": "choice",
+            "label": "Which identity matches the structure?",
+            "options": [
+              "Difference of Squares",
+              "Square of a Sum",
+              "Difference of Cubes",
+              "Sum of Cubes"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-rewrite-choice",
+      "name": "Level 2: Rewrite Using an Identity",
+      "unlockedBy": {
+        "gold": 2
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "rewriteChoice",
+            "type": "dropdown",
+            "label": "Choose the correct rewritten form:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-numeric-shortcuts",
+      "name": "Level 3: Numeric Shortcuts with Identities",
+      "unlockedBy": {
+        "gold": 2
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "numericResult",
+            "type": "number",
+            "label": "Compute the value:",
+            "min": -1000000,
+            "max": 1000000,
+            "step": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-factor-polynomials",
+      "name": "Level 4: Factor (and Extend to Complex Numbers)",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "factorAnswer",
+            "type": "text",
+            "label": "Factor the expression (use parentheses; use ^ for exponents):",
+            "placeholder": "Example: (x-6)(x^2+6x+36)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-pascal-patterns",
+      "name": "Level 5: Pascal’s Triangle & Binomial Coefficients",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pascalValue",
+            "type": "number",
+            "label": "Enter the value:",
+            "min": -1000000,
+            "max": 1000000,
+            "step": 1
+          },
+          {
+            "id": "pascalExplain",
+            "type": "textarea",
+            "label": "Explain how you found it (Pascal’s Triangle / Binomial Theorem):",
+            "rows": 3,
+            "placeholder": "Mention the row/adjacent sums/binomial coefficient (n choose k), etc."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-binomial-term-error",
+      "name": "Level 6: Binomial Term Finder (Error Analysis)",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "termCoeff",
+            "type": "number",
+            "label": "Correct coefficient:",
+            "min": -1000000,
+            "max": 1000000,
+            "step": 1
+          },
+          {
+            "id": "termExpVar1",
+            "type": "number",
+            "label": "Exponent of {{var1}}:",
+            "min": 0,
+            "max": 12,
+            "step": 1
+          },
+          {
+            "id": "termExpVar2",
+            "type": "number",
+            "label": "Exponent of {{var2}}:",
+            "min": 0,
+            "max": 12,
+            "step": 1
+          },
+          {
+            "id": "errorExplain",
+            "type": "textarea",
+            "label": "Explain the error and the correct reasoning:",
+            "rows": 3,
+            "placeholder": "Focus on the binomial coefficient (Pascal’s Triangle / n choose k) and the exponent pattern."
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "identityName": "Look for a pattern: a^2−b^2 (difference of squares), (a+b)^2 (square of a sum), a^3−b^3 (difference of cubes), or a^3+b^3 (sum of cubes).",
+      "rewriteChoice": "Match to the identity:\n• a^2−b^2=(a+b)(a−b)\n• (a+b)^2=a^2+2ab+b^2\n• a^3±b^3=(a±b)(a^2∓ab+b^2)\nWatch the sign on the middle term for cubes!",
+      "numericResult": "Try rewriting first:\n• (n+d)(n−d)=n^2−d^2\n• (a±b)^2=a^2±2ab+b^2\n• a^3±b^3=(a±b)(a^2∓ab+b^2)\nThen compute.",
+      "factorAnswer": "Step 1: Identify a and b so the expression matches a^2−b^2, a^3−b^3, or a^3+b^3.\nStep 2: Apply the identity.\nTip: Use parentheses for factors and ^ for exponents.",
+      "pascalValue": "For Pascal’s Triangle: each interior number is the sum of the two numbers diagonally above it.\nRow sums follow 1,2,4,8,... so the sum of Row n is 2^n.\nBinomial coefficients C(n,k) are the numbers in Row n.",
+      "pascalExplain": "Sentence frame: “I used Pascal’s Triangle. [Explain adjacent sums / row sum 2^n / row n gives C(n,k)]. The coefficient I needed is ______ because ______.”",
+      "termCoeff": "For the term that uses k copies of the second term: coefficient = C(n,k)·(p)^(n−k)·(q)^k. The exponents are {{var1}}^(n−k) and {{var2}}^k.",
+      "termExpVar1": "The exponents always add to n. Starting term has {{var1}}^n, then {{var1}} exponent decreases by 1 each term.",
+      "termExpVar2": "The exponent of {{var2}} increases by 1 each term (starting at 0).",
+      "errorExplain": "Common mistake: using only p^(n−k)q^k and forgetting the binomial coefficient C(n,k) (from Pascal’s Triangle). Also check the exponent pattern: powers add to n."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": [
+      "problem"
+    ],
+    "tiers": [
+      {
+        "id": "l01-identity-match",
+        "name": "01",
+        "unlockedBy": "default",
+        "celebrationMessage": "Nice! You can spot the structure. Next: rewrite using the identity."
+      },
+      {
+        "id": "l02-rewrite-choice",
+        "name": "02",
+        "unlockedBy": {
+          "gold": 2
+        },
+        "celebrationMessage": "Great! Now let's use identities to compute quickly."
+      },
+      {
+        "id": "l03-numeric-shortcuts",
+        "name": "03",
+        "unlockedBy": {
+          "gold": 2
+        },
+        "celebrationMessage": "Solid number sense. Next: factor polynomials with identities."
+      },
+      {
+        "id": "l04-factor-polynomials",
+        "name": "04",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Factoring unlocked! Next: Pascal’s Triangle and binomial coefficients."
+      },
+      {
+        "id": "l05-pascal-patterns",
+        "name": "05",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "You’ve got the coefficients and patterns. Final level: term-finding + error analysis."
+      },
+      {
+        "id": "l06-binomial-term-error",
+        "name": "06",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Capstone complete! You can use structure, coefficients, and reasoning to avoid common errors."
+      }
+    ]
+  }
+}

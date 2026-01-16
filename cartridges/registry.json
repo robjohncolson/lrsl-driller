@@ -50,6 +50,13 @@
       "shortCode": "ADDSUB"
     },
     {
+      "id": "a2t3l3",
+      "name": "Polynomial Identities & Binomial Theorem",
+      "subject": "Algebra 2",
+      "description": "Identities (squares/cubes), Pascal's Triangle, Binomial Theorem coefficients",
+      "shortCode": "IDENT"
+    },
+    {
       "id": "sampling",
       "name": "Collecting Data (3.1-3.3)",
       "subject": "AP Statistics",

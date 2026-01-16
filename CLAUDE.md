@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A subject-agnostic drill/quiz platform for teachers ("Driller Platform"). Think of it like a game console: the platform is the console, lessons are cartridges.
 
-Current cartridges (11 total) are listed in `cartridges/registry.json` and span AP Statistics, Algebra 2, and Computer Science topics.
+Current cartridges (12 total) are listed in `cartridges/registry.json` and span AP Statistics, Algebra 2, and Computer Science topics.
 
 **Deployment**: Vercel (frontend) + Railway (backend server for AI grading, WebSocket, time tracking, Grid Wars)
 
