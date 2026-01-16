@@ -43,6 +43,25 @@ app.use(cors());
 app.use(express.json());
 
 // ============================================
+// HTTP SERVER + WEBSOCKET SETUP
+// ============================================
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
+// Track connected WebSocket clients
+const clients = new Map();
+
+// Broadcast message to all connected clients
+function broadcast(message) {
+  const payload = JSON.stringify(message);
+  for (const [ws] of clients) {
+    if (ws.readyState === 1) { // OPEN
+      ws.send(payload);
+    }
+  }
+}
+
+// ============================================
 // VERSION - Update this when deploying new versions
 // ============================================
 const CURRENT_VERSION = '0.0.1';
