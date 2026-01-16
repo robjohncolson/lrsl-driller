@@ -98,10 +98,9 @@
           </div>
         </div>
 
-        <!-- Grid Wars Toggle -->
-        <button id="grid-wars-btn" class="p-1.5 hover:bg-green-100 text-green-600 rounded-lg transition-colors relative" title="Grid Wars">
-          <span class="text-base">🎮</span>
-          <span id="gw-points-badge" class="absolute -top-1 -right-1 bg-cyan-500 text-white text-xs font-bold min-w-4 h-4 px-0.5 rounded-full flex items-center justify-center hidden">0</span>
+        <!-- CTF Toggle -->
+        <button id="ctf-btn" class="p-1.5 hover:bg-green-100 text-green-600 rounded-lg transition-colors relative" title="Capture The Flag">
+          <span class="text-base">🚩</span>
         </button>
 
         <!-- Leaderboard (icon only) -->
@@ -250,14 +249,11 @@
     </div>
   </div>
 
-  <!-- Grid Wars Sidebar Panel -->
-  <div id="grid-wars-sidebar" class="fixed right-0 top-0 bottom-0 bg-gray-900 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto" style="width: min(92vw, 640px);">
-    <div id="grid-wars-container" class="p-2"></div>
+  <!-- CTF Sidebar Panel -->
+  <div id="ctf-sidebar" class="fixed right-0 top-0 bottom-0 bg-gray-900 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto" style="width: min(92vw, 480px);">
+    <div id="ctf-container" class="p-2"></div>
   </div>
-  <div id="grid-wars-backdrop" class="fixed inset-0 bg-black/30 z-45 hidden"></div>
-
-  <!-- Pong Duel Overlay Container (v3.0) -->
-  <div id="pong-panel-container"></div>
+  <div id="ctf-backdrop" class="fixed inset-0 bg-black/30 z-45 hidden"></div>
 
   <!-- Main Content - Split Pane Layout -->
   <main id="main-content" class="max-w-6xl mx-auto px-4 min-h-[calc(100vh-48px)] flex flex-col lg:flex-row gap-4 py-4">
@@ -814,11 +810,10 @@
     import { ClassTime } from './core/class-time.js';
     import { TimeTracker } from './core/time-tracker.js';
     import { CartridgeLoader } from './core/cartridge-loader.js';
-    import { GridPanel } from './game/grid-panel.js';
-    import { PongPanel } from './game/pong-panel.js';
+    import { CTFPanel } from './game/ctf-panel.js';
     import { calculateWeightedPoints, getPointsBreakdown } from '../shared/scoring.config.js';
     import { createAIFeedbackPanel, updateAIFeedbackPanel, showAIFeedbackError, hideAIFeedbackPanel } from './core/ai-feedback-panel.js';
-    console.log('[APP] All imports successful, GridPanel:', typeof GridPanel, 'PongPanel:', typeof PongPanel);
+    console.log('[APP] All imports successful, CTFPanel:', typeof CTFPanel);
 
     // ==================== CONFIGURATION ====================
     const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
@@ -920,26 +915,9 @@
         applyTeacherGrades(message);
       },
       onGridMessage: (message) => {
-        // Forward Grid Wars messages to the panel
-        if (gridPanel) {
-          gridPanel.handleWebSocketMessage(message);
-        }
-        // v3.0: Forward Pong messages to the pong panel
-        if (message.type?.startsWith('pong_')) {
-          // v3.0.1: Enhanced logging for pong message routing
-          console.log('[App] Routing pong message:', message.type, 'seq:', message.seq);
-          if (pongPanel) {
-            pongPanel.handleMessage(message);
-          } else {
-            console.error('[App] pongPanel not initialized - message lost!');
-          }
-        }
-        // v3.0: Handle token grants
-        if (message.type === 'token_granted') {
-          console.log('[App] Token granted message:', message);
-          if (pongPanel) {
-            pongPanel.handleMessage(message);
-          }
+        // Forward CTF messages to the panel
+        if (message.type?.startsWith('ctf_') && ctfPanel) {
+          ctfPanel.handleMessage(message);
         }
         // v3.2: Handle progression override changes from teacher
         if (message.type === 'progression_override_changed') {
@@ -973,10 +951,9 @@
     let platform = null;
     let currentCartridgeId = localStorage.getItem('lastCartridgeId') || 'lsrl-interpretation';
     let pendingTeacherReview = null; // Store results for teacher review
-    let gridPanel = null; // Grid Wars panel instance
-    let gridWarsEnabled = true; // Feature flag for Grid Wars
+    let ctfPanel = null; // CTF panel instance
+    let ctfEnabled = true; // Feature flag for CTF
     let aiFeedbackPanel = null; // v2.0.1: AI feedback panel instance
-    let pongPanel = null; // v3.0: Pong Duel panel instance
 
     /**
      * Sync local star counts with server to fix any discrepancies
@@ -1006,164 +983,55 @@
       }
     }
 
-    // ==================== GRID WARS INTEGRATION ====================
+    // ==================== CTF INTEGRATION ====================
 
     /**
-     * Initialize Grid Wars panel for a user
+     * Initialize CTF panel for a user
      */
-    async function initGridWars(username) {
-      console.log('[GridWars] initGridWars called for', username, 'enabled:', gridWarsEnabled);
-      if (!gridWarsEnabled) return;
+    async function initCTF(username) {
+      console.log('[CTF] initCTF called for', username, 'enabled:', ctfEnabled);
+      if (!ctfEnabled) return;
 
       try {
-        console.log('[GridWars] Creating GridPanel...');
-        gridPanel = new GridPanel({
-          serverUrl: SERVER_URL,
-          onError: (err) => console.warn('[GridWars]', err),
-          onPointsChange: (data) => {
-            updateGridWarsPointsBadge(data.total);
-          }
-        });
-
-        console.log('[GridWars] Setting container...');
-        gridPanel.setContainer('#grid-wars-container');
-        console.log('[GridWars] Container set, calling init...');
-        const success = await gridPanel.init(username);
-        console.log('[GridWars] init returned:', success);
-
-        if (success) {
-          console.log('[GridWars] Initialized for', username);
-          const currentPoints = gridPanel.getActionPoints();
-          updateGridWarsPointsBadge(currentPoints);
-
-          // Bootstrap: If user has 0 Grid Wars points, sync their historical stars
-          if (currentPoints === 0) {
-            await bootstrapGridWarsPoints(username);
-          }
-
-          // If already in teacher mode, enable wave controls
-          if (isTeacher) {
-            gridPanel.enableTeacherControls();
-          }
-
-          // v3.0: Initialize Pong Duel panel
-          await initPongDuel(username);
-        } else {
-          console.warn('[GridWars] Failed to initialize - tables may not exist yet');
-        }
-      } catch (err) {
-        console.warn('[GridWars] Init error:', err.message, err);
-        // Grid Wars is optional - don't break the app
-      }
-    }
-
-    /**
-     * v3.0: Initialize Pong Duel panel
-     */
-    async function initPongDuel(username) {
-      if (!gridPanel) {
-        console.warn('[PongDuel] Cannot initialize - gridPanel not available');
-        return;
-      }
-
-      try {
-        console.log('[PongDuel] Initializing for', username);
-
-        // Check container exists
-        const container = document.getElementById('pong-panel-container');
+        const container = document.getElementById('ctf-container');
         if (!container) {
-          console.error('[PongDuel] pong-panel-container not found in DOM!');
+          console.error('[CTF] ctf-container not found in DOM!');
           return;
         }
 
-        // Fetch player's pong stats including tokens and drilling progress
-        const response = await fetch(`${SERVER_URL}/api/pong/player/${gridPanel.state?.gameId}/${username}`);
-        let tokens = 2;  // v3.1: Default starting tokens is now 2
-        let correctCount = 0;
-        if (response.ok) {
-          const data = await response.json();
-          // Use ?? (nullish coalescing) so 0 tokens is shown correctly (not treated as falsy)
-          tokens = data.tokens ?? 2;
-          correctCount = data.correctCount ?? 0;  // v3.1: Track drilling progress
+        console.log('[CTF] Creating CTFPanel...');
+        ctfPanel = new CTFPanel(container, SERVER_URL);
+
+        // Initialize for current cartridge
+        await ctfPanel.init(currentCartridgeId, username, isTeacher);
+
+        // If teacher, fetch all users for team assignment
+        if (isTeacher) {
+          try {
+            const response = await fetch(`${SERVER_URL}/api/users`);
+            if (response.ok) {
+              const users = await response.json();
+              ctfPanel.setAvailableUsers(users);
+            }
+          } catch (err) {
+            console.warn('[CTF] Failed to fetch users:', err.message);
+          }
         }
 
-        // Get player colors from grid state
-        const playerColors = gridPanel.state?.getPlayerColors?.() || {};
-
-        // Create pong panel
-        const gameId = gridPanel.state?.gameId;
-        console.log('[PongDuel] Creating PongPanel with gameId:', gameId, 'username:', username, 'correctCount:', correctCount);
-
-        pongPanel = new PongPanel(container, {
-          gameId: gameId,
-          username: username,
-          serverUrl: SERVER_URL,
-          playerColors: playerColors,
-          tokens: tokens,
-          correctCount: correctCount,  // v3.1: Pass drilling progress
-          duelsEnabled: true
-        });
-
-        // Connect grid panel to pong panel for duel challenges
-        gridPanel.setPongPanel(pongPanel);
-
-        // Set initial connection status
-        pongPanel.setConnectionStatus(wsClient.isConnected());
-
-        console.log('[PongDuel] Initialized successfully with', tokens, 'tokens');
+        console.log('[CTF] Initialized for', username);
       } catch (err) {
-        console.error('[PongDuel] Init error:', err.message, err);
-        // Pong is optional - don't break the app
+        console.warn('[CTF] Init error:', err.message, err);
+        // CTF is optional - don't break the app
       }
     }
 
     /**
-     * Bootstrap Grid Wars points from historical stars (one-time sync)
-     * Uses weighted points (accounts for level difficulty multipliers)
+     * Toggle the CTF sidebar
      */
-    async function bootstrapGridWarsPoints(username) {
-      try {
-        // Fetch user's star history and weighted total from server
-        const response = await fetch(`${SERVER_URL}/api/users/${username}/stars`);
-        if (!response.ok) {
-          console.log('[GridWars] No star history found, skipping bootstrap');
-          return;
-        }
-
-        const { weightedTotal } = await response.json();
-
-        if (weightedTotal > 0) {
-          console.log(`[GridWars] Bootstrapping ${weightedTotal} weighted points from historical stars`);
-          await gridPanel.state.addPoints(null, weightedTotal);
-          updateGridWarsPointsBadge(gridPanel.getActionPoints());
-        }
-      } catch (err) {
-        console.warn('[GridWars] Bootstrap failed:', err.message);
-      }
-    }
-
-    /**
-     * Update the points badge in the header
-     */
-    function updateGridWarsPointsBadge(points) {
-      const badge = document.getElementById('gw-points-badge');
-      if (!badge) return;
-
-      if (points > 0) {
-        badge.textContent = points > 99 ? '99+' : points;
-        badge.classList.remove('hidden');
-      } else {
-        badge.classList.add('hidden');
-      }
-    }
-
-    /**
-     * Toggle the Grid Wars sidebar
-     */
-    function toggleGridWarsSidebar() {
-      const sidebar = document.getElementById('grid-wars-sidebar');
-      const backdrop = document.getElementById('grid-wars-backdrop');
-      const btn = document.getElementById('grid-wars-btn');
+    function toggleCTFSidebar() {
+      const sidebar = document.getElementById('ctf-sidebar');
+      const backdrop = document.getElementById('ctf-backdrop');
+      const btn = document.getElementById('ctf-btn');
 
       const isOpen = !sidebar.classList.contains('translate-x-full');
 
@@ -1178,9 +1046,9 @@
       }
     }
 
-    // Grid Wars sidebar toggle event listeners
-    document.getElementById('grid-wars-btn').addEventListener('click', toggleGridWarsSidebar);
-    document.getElementById('grid-wars-backdrop').addEventListener('click', toggleGridWarsSidebar);
+    // CTF sidebar toggle event listeners
+    document.getElementById('ctf-btn').addEventListener('click', toggleCTFSidebar);
+    document.getElementById('ctf-backdrop').addEventListener('click', toggleCTFSidebar);
 
     // Helper to get best available topic name for notifications/logging
     function getCurrentTopicName() {
@@ -1404,10 +1272,6 @@
         dot.className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
       } else {
         dot.className = 'w-2 h-2 bg-gray-400 rounded-full';
-      }
-      // v3.0.1: Update pong panel connection status
-      if (pongPanel) {
-        pongPanel.setConnectionStatus(connected);
       }
     }
 
@@ -2151,11 +2015,6 @@
 
       // Show URL shortcuts in cartridge dropdown
       showCartridgeShortcuts();
-
-      // Enable Grid Wars wave controls for teacher
-      if (gridPanel) {
-        gridPanel.enableTeacherControls();
-      }
 
       // Load pending reviews
       loadPendingReviews();
@@ -3225,8 +3084,8 @@
     document.addEventListener('platform:starEarned', async (e) => {
       const { starType, modeId } = e.detail || {};
 
-      // Add Grid Wars points for the star earned (with level-weighted scoring)
-      if (gridPanel && starType) {
+      // Add CTF points for the star earned (with level-weighted scoring)
+      if (ctfPanel && starType) {
         try {
           // Get current level position for weighted scoring
           const gameState = platform.gameEngine.getState();
@@ -3241,9 +3100,9 @@
           const breakdown = getPointsBreakdown(starType, Math.max(0, levelIndex), totalLevels);
           console.log(`[Scoring] ${starType} star at ${breakdown.levelLabel}: ${weightedPoints} pts (${breakdown.levelMultiplier}x multiplier)`);
 
-          await gridPanel.addPointsFromStar(starType, weightedPoints);
+          await ctfPanel.addPoints(weightedPoints, starType);
         } catch (err) {
-          console.warn('[GridWars] Failed to add points:', err.message);
+          console.warn('[CTF] Failed to add points:', err.message);
         }
       }
 
@@ -3317,33 +3176,6 @@
 
             // Update grading status display
             updateGradingStatus(results);
-
-            // v3.1: Record correct answers for Pong Duel token earning
-            // Any field with E or P grade counts as a correct answer
-            const hasCorrectAnswer = Object.values(results.fields || {}).some(
-              r => r.score === 'E' || r.score === 'P'
-            );
-            if (hasCorrectAnswer && gridPanel?.state?.gameId && userSystem.currentUser) {
-              fetch(`${SERVER_URL}/api/pong/record-correct`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  gameId: gridPanel.state.gameId,
-                  username: userSystem.currentUser.username
-                })
-              })
-              .then(r => r.json())
-              .then(data => {
-                if (data.success) {
-                  console.log(`[Pong:Tokens] Recorded correct answer: ${data.correctCount} total, progress ${data.correctCount % 10}/10`);
-                  // Update pong panel's correct count for progress display
-                  if (pongPanel && data.correctCount !== undefined) {
-                    pongPanel.setCorrectCount(data.correctCount);
-                  }
-                }
-              })
-              .catch(err => console.warn('[Pong:Tokens] Failed to record correct answer:', err.message));
-            }
 
             // v2.0.1: Update AI feedback panel
             // v2.1: Enhanced logging for AI flow debugging
@@ -3560,7 +3392,7 @@
 
         // Fetch teacher progression overrides from server
         try {
-          const gameId = gridPanel?.state?.gameId || 'default';
+          const gameId = 'default';
           const resp = await fetch(`${SERVER_URL}/api/progression-overrides/${cartridgeId}?gameId=${gameId}`);
           if (resp.ok) {
             const { overrides } = await resp.json();
@@ -3739,7 +3571,7 @@
       }
 
       try {
-        const gameId = gridPanel?.state?.gameId || 'default';
+        const gameId = 'default';
         const resp = await fetch(`${SERVER_URL}/api/progression-overrides/${currentCartridgeId}/${modeId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -3774,7 +3606,7 @@
       if (!modeId || !currentCartridgeId) return;
 
       try {
-        const gameId = gridPanel?.state?.gameId || 'default';
+        const gameId = 'default';
         const resp = await fetch(`${SERVER_URL}/api/progression-overrides/${currentCartridgeId}/${modeId}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
@@ -4092,12 +3924,12 @@
         // Sync local stars with server on return visit
         syncStarsWithServer(userSystem.currentUser.username);
 
-        // Initialize Grid Wars (non-blocking)
-        console.log('[APP] About to call initGridWars for:', userSystem.currentUser.username);
-        initGridWars(userSystem.currentUser.username).then(() => {
-          console.log('[APP] initGridWars promise resolved');
+        // Initialize CTF (non-blocking)
+        console.log('[APP] About to call initCTF for:', userSystem.currentUser.username);
+        initCTF(userSystem.currentUser.username).then(() => {
+          console.log('[APP] initCTF promise resolved');
         }).catch(err => {
-          console.error('[APP] initGridWars promise rejected:', err);
+          console.error('[APP] initCTF promise rejected:', err);
         });
       } else {
         usernameModal.show(true); // First visit - cannot close modal

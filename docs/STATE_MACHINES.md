@@ -1,6 +1,21 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v3.2.1.
+Complete state machine documentation for all components as of v4.0.0.
+
+**v4.0.0 Changes (Linear CTF Refactor):**
+- Replaced complex Grid Wars territory control game (~8,350 lines) with simple linear CTF game (~930 lines)
+- Replaced Pong Duel minigame (~1,600 lines) - no longer needed with simplified game
+- Net reduction: ~9,500 lines of code
+- New game: 21-position tug-of-war, teams push front line toward enemy flag
+- Per-cartridge games: Each cartridge has its own CTF instance
+- Teacher assigns students to Blue/Red teams
+- 20 team points = 1 position moved, first to reach enemy flag wins
+- New files: `shared/ctf.config.js`, `platform/game/ctf-state.js`, `ctf-renderer.js`, `ctf-panel.js`
+- New migration: `railway-server/migrations/009_ctf.sql` (ctf_games, ctf_players tables)
+- New API endpoints: `/api/ctf/:cartridgeId/state`, `join`, `points`, `reset`, `leaderboard`, `assign-teams`
+- WebSocket messages: `ctf_front_moved`, `ctf_points`, `ctf_victory`, `ctf_reset`, `ctf_player_joined`, `ctf_teams_updated`
+- Deleted all Grid Wars and Pong files, endpoints, and tests
+- **Note:** Sections 3-19 and 33-108 below document the now-removed Grid Wars/Pong systems and are preserved for historical reference only
 
 **v3.2.1 Changes (Teacher Level Bypass):**
 - Teachers can now access ALL levels regardless of progression gating
@@ -15,159 +30,8 @@ Complete state machine documentation for all components as of v3.2.1.
 - New database table: `progression_overrides` (migration 008)
 - New API endpoints: `GET/PUT/DELETE /api/progression-overrides/:cartridgeId/:modeId`
 - WebSocket: `progression_override_changed`, `progression_override_removed` messages
-- New methods in game-engine.js: `getRequiredGold()`, `setOverrides()`, `updateOverride()`, `removeOverride()`, `hasOverride()`, `getManifestDefault()`
 - Override indicator (*) appears on levels with teacher overrides in mode tabs
-- Polynomial cartridge updated with proper sequential progression (L7-9 require 1 gold)
 - Added 24 regression tests in `tests/core/game-engine-progression.test.js`
-
-**v3.1.x Changes (Token from Drilling + Fixes):**
-- v3.1.3: Consistent nullish coalescing (`??`) across all token fallbacks
-  - Status endpoint, grantTokensFromRent, grantTokensFromDrilling, duel win bonus
-  - CRITICAL: `||` treats 0 as falsy (wrong), `??` only falls back for null/undefined (correct)
-- v3.1.2: Removed undefined `wsClientCount` variable from record-correct endpoint
-- v3.1.1: Fixed challenge endpoint to use `??` for token fallback
-  - Bug: Server said "0 tokens" but UI showed "2 tokens" due to `||` vs `??`
-- v3.1.0: Token from Drilling feature
-  - Earn 1 Challenge Token per 10 correct answers (E or P grade)
-  - New columns: `correct_answer_count`, `last_token_grant_count` (migration 007)
-  - New endpoint: `/api/pong/record-correct`
-  - Token progress display in PongPanel: "⚔️ 2 (7/10)"
-  - Duel win bonus: +1 token for winning a duel
-  - Starting tokens increased: 1 → 2
-  - 95 regression tests in `tests/game/pong-duel-v3.1.test.js`
-
-**v3.0.1 Changes (Pong Duel: Debugging & Robustness):**
-- Enhanced server-side logging for all pong endpoints with client count tracking
-- Enhanced client-side logging in pong-panel.js for message routing debugging
-- Added visual "Challenge Pending" status for attacker with countdown timer
-- Added connection status indicator (green/red dot) in Pong Panel header
-- Added polling fallback endpoint: GET /api/pong/duel/:duelId/status
-- Added `_showPendingChallenge()`, `_clearPendingChallenge()`, `_startChallengePolling()` methods
-- Added `setConnectionStatus()` method for WebSocket connection display
-- Polling fallback polls every 2 seconds to detect missed WebSocket messages
-- Pending challenge UI clears on: countdown start, decline, timeout, or poll detection
-
-**v3.0.0 Changes (Pong Duel: Territory Resolver):**
-- Added Pong Duel minigame as alternative to paying points for Grid Wars attacks
-- Token economy: Earn 1 token per 20 pts landlord rent, spend 1 to challenge
-- Paddle bonus: +5px per correct drill answer in last 10 minutes (max +20px)
-- Match mechanics: First to 3 wins, 90s max duration, server-authoritative physics at 30Hz
-- Challenge flow: Attacker challenges → Defender accepts/declines (30s timeout) → Match
-- Consolation: Loser receives 50% of attack cost back
-- Rate limiting: Max 2 duels per player per 10 minute window
-- Controls: W/S or Arrow keys for keyboard, touch zones (top=up, bottom=down) for mobile
-- 4 sounds: hit (paddle), score (point), win (victory), lose (defeat)
-- Spectator mode for passive viewing of active duels
-- Teacher toggle to enable/disable duels globally
-- New files: shared/pong.config.js, platform/game/pong-*.js, railway-server/migrations/006_pong_duels.sql
-- New server endpoints: /api/pong/challenge, accept, decline, input, leaderboard, toggle
-- WebSocket messages: pong_challenge, pong_accepted, pong_countdown, pong_tick, pong_end, token_granted
-- Grid Wars attack modal offers choice: PAY (original) or CHALLENGE (pong duel)
-- Added 106 regression tests in tests/game/pong-duel-v1.0.test.js
-
-**v2.2.6 Changes (Hostile Takeover: Seize Developed Cells):**
-- Added Hostile Takeover: Attack a developed macro cell to become its new landlord
-  - Server: Detects when target is `is_developed && cell_level === 0 && !parentAddress`
-  - Base cost: 150 pts (from `hostileTakeoverBaseCost` config)
-  - Multipliers applied: Activity tier (1.0/1.33/1.67), Scarcity (1.0→3.0), Velocity discount, Guerrilla discount
-  - NOT applied: Overextension discount, Fortification penalty (those are for subcells)
-- Only macro cell ownership transfers; subcells unchanged
-- Rent redirects to new landlord; fortification now protects new landlord's subcells
-- WebSocket: `hostile_takeover` message broadcast with attacker, previousOwner, address, cost
-- Client UI: Gold "👑 Takeover" button with gradient styling when enemy developed cell selected at macro level
-- Toast notifications: Success for attacker, warning for previous owner, neutral for others
-- New methods: `isHostileTakeoverTarget()`, `calculateTakeoverCost()`, `getMapFillPercent()` in grid-panel.js
-- New handler: `onHostileTakeover` callback in grid-state.js for WebSocket message
-- Config: `hostileTakeoverBaseCost: 150` in both shared/ and railway-server/ config files
-- Added 60 regression tests in `tests/game/grid-wars-v2.2.6.test.js`
-
-**v2.2.5 Changes (Development Incentives: Landlord Tax + Fortification):**
-- Added Landlord Tax: Developer earns 20% rent when others claim/attack subcells inside their developed territory
-  - Server: `processLandlordTax()` called after successful claims
-  - WebSocket: `rent_collected` message broadcast to notify landlords
-  - Client: Toast notification "💰 +X pts rent from [player]"
-- Added Fortification: Attacks inside enemy's developed cell cost +25% more
-  - Server: `getFortificationMultiplier()` returns 1.25x for subcells in enemy's developed territory
-  - Applied after overextension discount in cost calculation
-  - Client: Attack button shows "🏰+25%" indicator when fortified
-- Self-exclusion: No penalties when operating inside your OWN developed territory
-- New helper: `getParentAddress()` extracts parent from "d5.c3" → "d5"
-- Config: `landlordTaxRate: 0.20`, `landlordTaxMinimum: 1`, `fortificationMultiplier: 1.25`
-- Updated develop tooltip with all 4 benefits (subcells, rent, defense, drill immunity)
-- Added `onRentCollected` callback in grid-state.js for WebSocket message handling
-- Added `isInsideFortifiedTerritory()` in grid-panel.js for UI indicator
-- Added 52 regression tests in `tests/game/grid-wars-v2.2.5.test.js`
-
-**v2.2.4 Changes (Territory Stats Fix, Weighted Calculation):**
-- Removed duplicate "territory" wording in UI:
-  - Status messages now use "Owned" instead of "Your territory" or "YOUR TERRITORY"
-  - Claim button shows "□ Owned" instead of "□ Your Territory" when own cell selected
-- Implemented weighted territory calculation across ALL levels:
-  - Level 0 (macro undeveloped) = 1 unit (1/64 of map = 1.56%)
-  - Level 0 (macro developed) = 0 units (ownership transferred to subcells)
-  - Level 1 (subcell) = 1/64 unit (1/4096 of map = 0.024%)
-  - Level 2 (sub-subcell) = 1/4096 unit (1/262144 of map = 0.0004%)
-- New `calculateWeightedTerritory()` function in server.js
-- Server state response now includes `userStats: { units, percent, breakdown: { macro, sub1, sub2 } }`
-- Client sends `username` parameter in state request for personalized weighted stats
-- Updated `updateTerritoryStats()` display format: "Your territory: 1.66% (1🏰 + 4📦)"
-  - 🏰 = macro cells (undeveloped)
-  - 📦 = subcells (level 1)
-  - 🔹 = sub-subcells (level 2)
-- Key insight: Developing a cell loses 93.75% of territory value (1 unit → 4/64 = 1/16 unit)
-- Added 20 regression tests in `tests/game/grid-wars-v2.2.4.test.js`
-
-**v2.2.3 Changes (Color Consistency, Gift Fix, Zoom Behavior, Level Display):**
-- Fixed color mismatch: `setTerritory()` and `drawOwnerPresence()` now use `getServerPlayerColor()` instead of auto-assigned colors
-- Fixed gift dropdown showing "undefined": now uses `players.entries()` to properly extract usernames from Map keys
-- Removed auto-zoom on developed cell click: clicking developed cells now selects them instead of zooming in
-- Added keyboard navigation hints in status messages: "Press ↑ to zoom in"
-- Fixed level naming: now uses 1-indexed ("LEVEL 1", "LEVEL 2", "LEVEL 3") instead of "MACRO"
-- Added prominent level indicator section: `#gw-level-indicator` with 16px bold cyan text
-- Added `updateLevelIndicator()` method called after all zoom operations
-- Added `updateTerritoryStats()` method showing "Your territory: X/64 (Y%) | Map filled: Z%"
-- Level indicator and territory stats update on navigation (zoom in/out), not just cell selection
-- Updated help section with keyboard controls documentation
-- Added 40+ regression tests in `tests/game/grid-wars-v2.2.3.test.js`
-
-**v2.2.2 Changes (Click-to-Select, No Auto-Claim):**
-- Canvas clicks now SELECT cells instead of auto-claiming
-- New `_selectedForAction` state stores selected cell for action
-- CLAIM button click triggers `handleClaimButtonClick()` to execute claim
-- Cyan pulsing selection highlight (separate from white hover)
-- New `updateClaimButton()` updates button text/state based on selection
-- Added `setSelectedCell()` method to renderer
-- Grid renderer diagnostics: logging + 200px minimum size enforcement
-- Added 32 regression tests in `tests/game/grid-wars-v2.2.2.test.js`
-
-**v2.1.5 Changes (Subcell Claims + Navigation Polish):**
-- Fixed subcell claims: Now sends `parentAddress` and `cellLevel` to server
-  - Client: `claimTerritory()` includes `parentAddress: this.currentParent, cellLevel: this.currentLevel`
-  - Server: Builds `targetAddress` from parent context, uses address-based lookup for subcells
-- Added coordinate display: Shows full address like "📍 D5.C3.A1" in UI
-  - New `updateCoordsDisplay(x, y)` method in grid-panel.js
-  - Updates on cell hover via `onCellHover` callback
-- Added arrow key navigation:
-  - Up arrow: Zoom into developed cell (equivalent to double-click)
-  - Down arrow: Zoom out to parent level (equivalent to ESC)
-- Added develop/drill tooltips explaining mechanics:
-  - Develop: "Subdivide into 64 subcells. Keep center 4 (d4,d5,e4,e5). 60 become neutral."
-  - Drill: "Force subdivision. You claim corner a1. Defender keeps center 4."
-- Added 34 regression tests in `tests/game/grid-wars-v2.1.5.test.js`
-
-**v2.1.2 Changes (Grid Wars Rendering Fixes):**
-- Fixed `drawOwnerPresence()`: Was accessing undefined `cell.x`/`cell.y` properties
-  - Territory objects are stored as `{ "x,y": { owner, color, ... } }` - coords in key, not object
-  - Fix: Extract coords with `const [x, y] = key.split(',').map(Number)`
-- Added `hierarchyEnabled` default to client-side config
-  - Was only set after server config fetch, causing chevrons to appear on slow loads
-  - Now defaults to `true` so presence dots mode is always enabled for v2.0+
-- Added debug logging throughout Grid Wars state/panel/renderer:
-  - `[GridWarsState] refreshState response:` - territory/player counts from server
-  - `[GridPanel] syncRendererState:` - data passed to renderer
-  - `[GridPanel] hierarchyEnabled:` - confirms which mode is active
-  - `[GridRenderer] setUsePresenceDots:` - confirms presence dots enabled
-- Added 21 regression tests in `tests/game/grid-wars-v2.1.2.test.js`
 
 **v2.1.1 Changes (AI Feedback Panel Fix):**
 - Fixed field ID mismatch: Server normalized to 'answer' but client expected actual field ID
@@ -179,7 +43,6 @@ Complete state machine documentation for all components as of v3.2.1.
 - Enhanced AI feedback panel with debug logging for grading flow transparency
 - New `/api/progress/cartridge-sync` endpoint for aggregate star counts per cartridge
 - New `user_progress` table (migration 004) stores star counts per user per cartridge
-- Unified leaderboard now includes user_progress data alongside Grid Wars and lsrl_progress
 - Stars now sync to server after each award for proper leaderboard tracking
 
 **v2.0.1 Changes (AI Feedback Transparency):**
@@ -189,41 +52,11 @@ Complete state machine documentation for all components as of v3.2.1.
 - Appeal integration: Panel updates with "AI APPEAL REVIEW" title after appeals
 - Panel lifecycle: Hidden on Skip/Next/Try Again, shown after AI grading completes
 - New component: `platform/core/ai-feedback-panel.js`
-- Updated: `platform.js` captures `_model` from AI response
-- Updated: `app.html` integrates panel into grading flow
-
-**v2.0 Changes (Fractal Subdivision):**
-- Hierarchical territory system: Cells can be subdivided into 64 subcells
-- Chess-notation addressing: "d5", "d5.c3", "d5.c3.a1" (max 3 levels)
-- Develop action: Owner pays 100 pts, keeps center 4 subcells (d4, d5, e4, e5)
-- Drill action: Attacker pays 75 pts at 85%+ map fill, gets corner (a1)
-- Navigation: Click developed cell to zoom in, ESC/Backspace to zoom out
-- Breadcrumb UI: Clickable path navigation (MAP › D5 › C3)
-- Presence dots: Replace moveable avatars with dots on owned cells
-- Leaderboard: Shows macro + subcell counts ("3 + 12 📦")
-- New state endpoint: `?parent=d5` query param for hierarchy navigation
-- WebSocket broadcasts: `cell_developed`, `cell_drilled` events
-- 40 new unit tests for address utilities
 
 **v1.6.3 Changes:**
 - Fixed AI grading prompt: `{{STUDENT_ANSWER}}` (SCREAMING_SNAKE_CASE) now replaced correctly
 - Extracted `buildCartridgePrompt` to `railway-server/prompt-utils.js` for testability
-- Added 27 regression tests for prompt placeholder replacement
 - Both `{{STUDENT_ANSWER}}` and `{{studentAnswer}}` now supported as aliases
-
-**v1.6.2 Changes:**
-- Fixed frontend grid size: Now uses `GRID_WARS_CONFIG.mapSize` instead of hardcoded 20
-- Fixed AI grading parser: Accepts both direct `{score, feedback}` and field-keyed formats
-- Fixed velocity query: Uses `player_id` column (not `username`)
-- Added `normalizeGradingResponse()` for consistent AI response handling
-- Updated `grid-state.js` defaults: `mapSize: 8`, `classGoalTarget: 50`
-- Added regression tests (32 new tests covering v1.6.2 fixes)
-
-**v1.6.1 Changes:**
-- Removed Class Goal UI (no progress bar)
-- Simplified leaderboard: sorted by territories_count only (not lifetime_earned)
-- Header changed from "🏆 LEADERBOARD" to "🏰 TERRITORY HELD"
-- Server now imports config from shared/gridwars.config.js (no more hardcoded values)
 
 ---
 
@@ -253,11 +86,11 @@ Complete state machine documentation for all components as of v3.2.1.
               │   CALCULATE STAR      │                           │   STREAK RESET TO 0   │
               │   BASED ON PENALTIES  │                           │   NO STAR AWARDED     │
               └───────────┬───────────┘                           │                       │
-                          │                                       │   Report wrong answer │
-                          │                                       │   to Grid Wars (spam  │
-    ┌─────────────────────┼─────────────────────┬─────────────────│   prevention v1.3)    │
-    │                     │                     │                 └───────────────────────┘
-    ▼                     ▼                     ▼                     ▼
+                          │                                       │   (no points awarded  │
+                          │                                       │    to CTF team)       │
+    ┌─────────────────────┼─────────────────────┬─────────────────┴───────────────────────┘
+    │                     │                     │
+    ▼                     ▼                     ▼
 ┌─────────┐         ┌─────────┐         ┌─────────┐         ┌─────────┐
 │  GOLD   │         │ SILVER  │         │ BRONZE  │         │   TIN   │
 │  ★★★★   │         │  ★★★    │         │   ★★    │         │    ★    │
@@ -281,7 +114,7 @@ Complete state machine documentation for all components as of v3.2.1.
                     │   STREAK++                    │
                     │   STAR_COUNTS[type]++         │
                     │   → Check tier unlocks        │
-                    │   → Send to Grid Wars         │
+                    │   → Send to CTF (points)      │
                     │   → Broadcast leaderboard     │
                     └───────────────────────────────┘
 ```
@@ -372,7 +205,117 @@ AI Fallback Chain:
 
 ---
 
-## 3. GRID WARS — Territory Claim Flow (v2.0)
+## CTF (Capture The Flag) — Game Flow (v4.0)
+
+**Added in v4.0** - Replaces Grid Wars and Pong Duel with a simple linear tug-of-war game.
+
+### Game Concept
+
+```
+BLUE FLAG                                                    RED FLAG
+   🚩 ←─────────────────────────────────────────────────────→ 🚩
+   [0][1][2][3][4][5][6][7][8][9][▣][11][12][13][14][15][16][17][18][19][20]
+                                  ↑
+                            Front Line (starts at 10)
+
+Blue team drills → front line moves RIGHT toward Red flag
+Red team drills → front line moves LEFT toward Blue flag
+First team to reach enemy flag WINS
+```
+
+### Points Flow State Machine
+
+```
+                              ┌─────────────────────────────────────────────────────┐
+                              │           STUDENT EARNS STAR (Gold/Silver/etc)       │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │   calculateWeightedPoints(starType, levelIndex)      │
+                              │   (Gold=4, Silver=3, Bronze=2, Tin=1) × levelMultiplier │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │   POST /api/ctf/:cartridgeId/points                  │
+                              │   { username, points, starType }                     │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                          ┌───────────────────────────┴───────────────────────────┐
+                          │                                                       │
+                          ▼                                                       ▼
+              ┌───────────────────────┐                           ┌───────────────────────┐
+              │   team_points +=      │                           │   FRONT POSITION      │
+              │   weighted_points     │                           │   CALCULATION         │
+              └───────────┬───────────┘                           └───────────┬───────────┘
+                          │                                                   │
+                          └───────────────────┬───────────────────────────────┘
+                                              │
+                                              ▼
+                          ┌───────────────────────────────────────────────────────┐
+                          │   newPosition = startPosition + (blue / pointsPerMove) │
+                          │                              - (red / pointsPerMove)   │
+                          └───────────────────────┬───────────────────────────────┘
+                                                  │
+              ┌───────────────────────────────────┼───────────────────────────────────┐
+              │                                   │                                   │
+              ▼                                   ▼                                   ▼
+    ┌─────────────────┐                 ┌─────────────────┐                 ┌─────────────────┐
+    │ position ≤ 0   │                 │ 0 < pos < 20    │                 │ position ≥ 20  │
+    │ RED WINS!      │                 │ Game continues  │                 │ BLUE WINS!     │
+    └─────────────────┘                 │ Broadcast       │                 └─────────────────┘
+                                        │ ctf_front_moved │
+                                        └─────────────────┘
+```
+
+### Team Assignment State Machine
+
+```
+┌─────────────────┐         POST /join        ┌─────────────────┐
+│   UNASSIGNED    │ ───────────────────────▶ │   ON TEAM       │
+│   userTeam=null │         {team: 'blue'}    │   userTeam='blue'│
+└─────────────────┘                           └─────────────────┘
+                                                      │
+                                                      │ Teacher reassigns
+                                                      │ via assign-teams
+                                                      ▼
+                                              ┌─────────────────┐
+                                              │   TEAM CHANGED  │
+                                              │   userTeam='red'│
+                                              └─────────────────┘
+```
+
+### WebSocket Messages
+
+| Message | Trigger | Payload |
+|---------|---------|---------|
+| `ctf_front_moved` | Points added | `{cartridgeId, frontPosition, bluePoints, redPoints, movedBy}` |
+| `ctf_points` | Points added | `{cartridgeId, username, team, points, frontPosition}` |
+| `ctf_victory` | Win condition | `{cartridgeId, winner, finalPosition}` |
+| `ctf_reset` | Teacher reset | `{cartridgeId, preserveTeams}` |
+| `ctf_player_joined` | Team join | `{cartridgeId, username, team}` |
+| `ctf_teams_updated` | Bulk update | `{cartridgeId}` |
+
+### Database Schema
+
+```sql
+-- One row per cartridge (auto-created on first access)
+ctf_games: { cartridge_id, front_position, blue_points, red_points, winner, created_at, updated_at }
+
+-- Team assignments and contribution tracking
+ctf_players: { cartridge_id, username, team, points_contributed }
+```
+
+---
+
+## HISTORICAL: Grid Wars & Pong Duel Documentation (Removed in v4.0)
+
+**Note:** The following sections (3-19, 33-108) document the Grid Wars territory control game and Pong Duel minigame that were removed in v4.0. They are preserved for historical reference only.
+
+---
+
+## 3. GRID WARS — Territory Claim Flow (v2.0) [HISTORICAL]
 
 **v2.0 Note:** This flow now includes hierarchy checks. See sections 33-37 for:
 - Section 33: Hierarchical Navigation State Machine

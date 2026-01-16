@@ -1,6 +1,6 @@
 /**
  * Code quality tests for railway-server
- * Prevents regressions like duplicate function declarations
+ * Ensures server code has proper structure
  */
 
 import { describe, it, expect } from 'vitest';
@@ -8,75 +8,101 @@ import fs from 'fs';
 import path from 'path';
 
 const SERVER_PATH = path.join(process.cwd(), 'railway-server', 'server.js');
-const ADDRESS_UTILS_PATH = path.join(process.cwd(), 'railway-server', 'address-utils.js');
+const CTF_CONFIG_PATH = path.join(process.cwd(), 'shared', 'ctf.config.js');
 
 describe('Server Code Quality', () => {
-  describe('No duplicate function declarations', () => {
-    it('should not have functions declared that are already imported from address-utils', () => {
-      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
-      const addressUtilsCode = fs.readFileSync(ADDRESS_UTILS_PATH, 'utf-8');
-
-      // Extract exported function names from address-utils.js
-      const exportMatch = addressUtilsCode.match(/module\.exports\s*=\s*\{([^}]+)\}/);
-      expect(exportMatch).toBeTruthy();
-
-      const exportedFunctions = exportMatch[1]
-        .split(',')
-        .map(name => name.trim())
-        .filter(name => name && !name.includes(':'));
-
-      // Check that none of these functions are redeclared in server.js
-      const duplicates = [];
-      for (const funcName of exportedFunctions) {
-        // Look for function declarations (not imports or calls)
-        const declarationPattern = new RegExp(`^\\s*function\\s+${funcName}\\s*\\(`, 'm');
-        const arrowPattern = new RegExp(`^\\s*const\\s+${funcName}\\s*=\\s*\\([^)]*\\)\\s*=>`, 'm');
-
-        if (declarationPattern.test(serverCode) || arrowPattern.test(serverCode)) {
-          duplicates.push(funcName);
-        }
-      }
-
-      expect(duplicates, `Found duplicate declarations for imported functions: ${duplicates.join(', ')}`).toEqual([]);
+  describe('CTF Configuration', () => {
+    it('should have CTF config file', () => {
+      expect(fs.existsSync(CTF_CONFIG_PATH)).toBe(true);
     });
 
-    it('should import getParentAddress from address-utils (v2.2.5 regression)', () => {
-      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
-
-      // Verify address-utils.js is required
-      expect(serverCode).toContain("require('./address-utils.js')");
-
-      // Verify getParentAddress is in the import destructuring at top of file
-      const importSection = serverCode.slice(0, 2000);
-      expect(importSection).toContain('getParentAddress');
+    it('should export CTF_CONFIG', () => {
+      const configCode = fs.readFileSync(CTF_CONFIG_PATH, 'utf-8');
+      expect(configCode).toContain('export const CTF_CONFIG');
     });
 
-    it('should not have duplicate function getParentAddress declaration', () => {
-      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
-
-      // Count occurrences of "function getParentAddress"
-      const matches = serverCode.match(/function\s+getParentAddress\s*\(/g);
-
-      expect(matches, 'getParentAddress should not be declared in server.js (it is imported from address-utils.js)').toBeNull();
+    it('should have CommonJS export for server compatibility', () => {
+      const configCode = fs.readFileSync(CTF_CONFIG_PATH, 'utf-8');
+      expect(configCode).toContain('module.exports');
     });
   });
 
-  describe('Required imports are present', () => {
-    it('should import all needed functions from address-utils', () => {
+  describe('Server CTF Endpoints', () => {
+    it('should have CTF state endpoint', () => {
       const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('/api/ctf/:cartridgeId/state');
+    });
 
-      const requiredImports = [
-        'coordsToAddress',
-        'addressToCoords',
-        'buildAddress',
-        'getParentAddress',
-        'getLevel',
-        'getBreadcrumb'
-      ];
+    it('should have CTF join endpoint', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('/api/ctf/:cartridgeId/join');
+    });
 
-      for (const funcName of requiredImports) {
-        expect(serverCode, `Missing import: ${funcName}`).toContain(funcName);
-      }
+    it('should have CTF points endpoint', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('/api/ctf/:cartridgeId/points');
+    });
+
+    it('should have CTF reset endpoint', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('/api/ctf/:cartridgeId/reset');
+    });
+
+    it('should have CTF leaderboard endpoint', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('/api/ctf/:cartridgeId/leaderboard');
+    });
+
+    it('should have CTF assign-teams endpoint', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('/api/ctf/:cartridgeId/assign-teams');
+    });
+
+    it('should have CTF player removal endpoint', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('/api/ctf/:cartridgeId/player/:username');
+    });
+
+    it('should have CTF config endpoint', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('/api/ctf/config');
+    });
+  });
+
+  describe('Server Structure', () => {
+    it('should not have Grid Wars endpoints (removed in v4.0)', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).not.toContain('/api/grid-wars/');
+    });
+
+    it('should not have Pong endpoints (removed in v4.0)', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).not.toContain('/api/pong/');
+    });
+
+    it('should not import address-utils (removed in v4.0)', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).not.toContain("require('./address-utils.js')");
+    });
+
+    it('should not import gridwars.config (removed in v4.0)', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).not.toContain("require('./gridwars.config.js')");
+    });
+
+    it('should not import pong.config (removed in v4.0)', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).not.toContain("require('./pong.config.js')");
+    });
+  });
+
+  describe('WebSocket Broadcasts', () => {
+    it('should have CTF WebSocket message broadcasts', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('ctf_front_moved');
+      expect(serverCode).toContain('ctf_victory');
+      expect(serverCode).toContain('ctf_reset');
+      expect(serverCode).toContain('ctf_player_joined');
     });
   });
 });
