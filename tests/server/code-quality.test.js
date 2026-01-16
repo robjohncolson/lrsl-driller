@@ -105,4 +105,47 @@ describe('Server Code Quality', () => {
       expect(serverCode).toContain('ctf_player_joined');
     });
   });
+
+  describe('Server Infrastructure (v4.0.1 regression prevention)', () => {
+    it('should create HTTP server from Express app', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('http.createServer(app)');
+    });
+
+    it('should create WebSocket server', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('new WebSocketServer');
+    });
+
+    it('should have clients Map for tracking connections', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('const clients = new Map()');
+    });
+
+    it('should have broadcast function defined', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('function broadcast(message)');
+    });
+
+    it('should import http module', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain("require('http')");
+    });
+
+    it('should import WebSocketServer from ws', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain("{ WebSocketServer }");
+      expect(serverCode).toContain("require('ws')");
+    });
+
+    it('should call server.listen at the end', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain('server.listen(PORT');
+    });
+
+    it('should have wss.on connection handler', () => {
+      const serverCode = fs.readFileSync(SERVER_PATH, 'utf-8');
+      expect(serverCode).toContain("wss.on('connection'");
+    });
+  });
 });

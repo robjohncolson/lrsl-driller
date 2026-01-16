@@ -1,6 +1,15 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v4.0.0.
+Complete state machine documentation for all components as of v4.0.1.
+
+**v4.0.1 Changes (Server Infrastructure Fix):**
+- Fixed server crash caused by missing infrastructure code accidentally deleted in v4.0.0
+- Restored: HTTP server creation (`http.createServer(app)`)
+- Restored: WebSocket server initialization (`new WebSocketServer({ server })`)
+- Restored: `clients` Map for tracking WebSocket connections
+- Restored: `broadcast()` function for sending messages to all clients
+- Added 8 regression tests in `tests/server/code-quality.test.js` to prevent future infrastructure deletions
+- Root cause: Large refactor accidentally removed server setup section between Express app and endpoints
 
 **v4.0.0 Changes (Linear CTF Refactor):**
 - Replaced complex Grid Wars territory control game (~8,350 lines) with simple linear CTF game (~930 lines)

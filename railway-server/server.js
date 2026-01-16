@@ -64,7 +64,7 @@ function broadcast(message) {
 // ============================================
 // VERSION - Update this when deploying new versions
 // ============================================
-const CURRENT_VERSION = '0.0.1';
+const CURRENT_VERSION = '4.0.1';
 
 // Health check
 app.get('/', (req, res) => {

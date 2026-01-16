@@ -14,7 +14,7 @@ Current cartridges (12 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v3.2.1 (Teacher Level Bypass)
+**Current Version**: v4.0.1 (Server Infrastructure Fix)
 
 ## Development Commands
 
@@ -292,6 +292,14 @@ railway-server/migrations/009_ctf.sql               # v4.0: CTF tables (ctf_game
 - New files: `shared/ctf.config.js`, `platform/game/ctf-*.js`
 - New migration: `railway-server/migrations/009_ctf.sql`
 - Deleted Grid Wars and Pong files, endpoints, and tests
+
+**v4.0.1**: Server Infrastructure Fix
+- Fixed server crash caused by missing infrastructure code accidentally deleted in v4.0.0
+- Restored: HTTP server creation (`http.createServer(app)`)
+- Restored: WebSocket server initialization (`new WebSocketServer({ server })`)
+- Restored: `clients` Map for tracking WebSocket connections
+- Restored: `broadcast()` function for sending messages to all clients
+- Added 8 regression tests to prevent future infrastructure deletions
 
 **v3.2.1**: Teacher Level Bypass
 - Teachers can now access ALL levels regardless of progression gating
