@@ -79,6 +79,7 @@ When modifying grading behavior, the `onGradingComplete` callback at ~line 3095 
 - `/api/users`, `/api/progress`, `/api/leaderboard` - User management
 - `/api/progress/cartridge-sync` - v2.1: Sync aggregate star counts per cartridge to `user_progress` table
 - `/api/ctf/:cartridgeId/*` - CTF game state (state, join, points, reset, leaderboard, assign-teams, player removal)
+- `/api/roster` - Teacher roster management (GET all students, PUT update student, POST bulk-assign)
 - WebSocket broadcasts: star earned, user online/offline, class time events, CTF updates (front moved, points, victory, reset, player joined)
 
 ### Grading Flow
@@ -270,6 +271,7 @@ SQL migrations for Supabase are in `railway-server/migrations/`. Run these in Su
 railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table for aggregate star counts per cartridge
 railway-server/migrations/008_progression_overrides.sql # v3.2: Teacher-configurable progression overrides table
 railway-server/migrations/009_ctf.sql               # v4.0: CTF tables (ctf_games, ctf_players)
+railway-server/migrations/010_class_periods.sql     # v4.1: class_period column for roster management
 ```
 
 ## Configuration Files
@@ -280,6 +282,17 @@ railway-server/migrations/009_ctf.sql               # v4.0: CTF tables (ctf_game
 - `cartridges/registry.json` - Available cartridge listing
 
 ## Version History (Bug Fixes)
+
+**v4.1.0**: Teacher Class Roster Management
+- Teachers can now organize students by class periods (A-G)
+- New roster modal accessible via teacher toolbar button
+- Teachers can map usernames to real names and assign class periods
+- Bulk assignment support for quick semester setup
+- Leaderboard now displays class period badges next to usernames
+- New migration: `railway-server/migrations/010_class_periods.sql`
+- New file: `platform/core/roster-modal.js`
+- New endpoints: `GET/PUT /api/roster`, `POST /api/roster/bulk-assign`
+- Added 23 tests in `tests/server/roster-api.test.js`
 
 **v4.0.0**: Linear CTF Refactor
 - Replaced complex Grid Wars territory control game (~8,350 lines) with simple linear CTF game (~930 lines)

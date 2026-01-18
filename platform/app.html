@@ -85,6 +85,9 @@
         <button id="time-analytics-btn" style="display: none;" class="p-1.5 bg-teal-100 hover:bg-teal-200 text-teal-700 rounded-lg transition-colors" title="Time Analytics">
           <span class="text-base">⏱️</span>
         </button>
+        <button id="roster-btn" style="display: none;" class="p-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors" title="Class Roster">
+          <span class="text-base">📋</span>
+        </button>
 
         <!-- Online Indicator (compact) -->
         <div id="online-indicator" class="relative">
@@ -813,6 +816,7 @@
     import { CTFPanel } from './game/ctf-panel.js';
     import { calculateWeightedPoints, getPointsBreakdown } from '../shared/scoring.config.js';
     import { createAIFeedbackPanel, updateAIFeedbackPanel, showAIFeedbackError, hideAIFeedbackPanel } from './core/ai-feedback-panel.js';
+    import { RosterModal } from './core/roster-modal.js';
     console.log('[APP] All imports successful, CTFPanel:', typeof CTFPanel);
 
     // ==================== CONFIGURATION ====================
@@ -954,6 +958,7 @@
     let ctfPanel = null; // CTF panel instance
     let ctfEnabled = true; // Feature flag for CTF
     let aiFeedbackPanel = null; // v2.0.1: AI feedback panel instance
+    let rosterModal = null; // Teacher roster management modal
 
     /**
      * Sync local star counts with server to fix any discrepancies
@@ -2004,10 +2009,18 @@
       const classTimeBtn = document.getElementById('class-time-btn');
       const reviewBtn = document.getElementById('teacher-review-btn');
       const timeAnalyticsBtn = document.getElementById('time-analytics-btn');
+      const rosterBtn = document.getElementById('roster-btn');
 
       if (classTimeBtn) classTimeBtn.style.display = 'flex';
       if (reviewBtn) reviewBtn.style.display = 'flex';
       if (timeAnalyticsBtn) timeAnalyticsBtn.style.display = 'flex';
+      if (rosterBtn) rosterBtn.style.display = 'flex';
+
+      // Initialize roster modal with teacher password
+      if (!rosterModal) {
+        rosterModal = new RosterModal({ serverUrl: SERVER_URL });
+      }
+      rosterModal.setTeacherPassword(password);
 
       if (showToast) {
         celebration.showToast('Welcome, Teacher!', 'success');
@@ -2898,6 +2911,13 @@
     document.getElementById('close-teacher-review-panel')?.addEventListener('click', closeTeacherReviewPanel);
     document.getElementById('teacher-review-backdrop')?.addEventListener('click', closeTeacherReviewPanel);
     document.getElementById('refresh-reviews-btn')?.addEventListener('click', loadPendingReviews);
+
+    // Roster modal event listener
+    document.getElementById('roster-btn')?.addEventListener('click', () => {
+      if (rosterModal) {
+        rosterModal.open();
+      }
+    });
 
     document.getElementById('review-filter-pending')?.addEventListener('click', () => {
       currentReviewFilter = 'pending';

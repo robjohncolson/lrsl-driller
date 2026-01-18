@@ -190,12 +190,18 @@ export class Leaderboard {
       const el = document.createElement('div');
       el.className = `p-4 rounded-xl ${isCurrentUser ? 'bg-purple-50 border-2 border-purple-300' : 'bg-gray-50'} ${rank <= 3 ? 'shadow-md' : ''} opacity-0 transform translate-y-4 transition-all duration-300`;
 
+      // Period badge with color coding
+      const periodBadge = entry.class_period
+        ? `<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">${entry.class_period}</span>`
+        : '';
+
       el.innerHTML = `
         <div class="flex items-center gap-3">
           <div class="${rankClass} w-10 text-center">${rankIcon}</div>
           <div class="text-2xl">${avatar}</div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
+              ${periodBadge}
               <span class="font-semibold text-gray-800 truncate">${entry.username}</span>
               ${isCurrentUser ? '<span class="text-xs bg-purple-200 text-purple-700 px-2 py-0.5 rounded-full">YOU</span>' : ''}
             </div>

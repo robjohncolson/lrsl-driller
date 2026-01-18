@@ -64,7 +64,7 @@ function broadcast(message) {
 // ============================================
 // VERSION - Update this when deploying new versions
 // ============================================
-const CURRENT_VERSION = '4.0.1';
+const CURRENT_VERSION = '4.1.0';
 
 // Health check
 app.get('/', (req, res) => {
@@ -705,7 +705,7 @@ app.get('/api/leaderboard/unified', async (req, res) => {
       playerMap.set(p.username, existing);
     }
 
-    // 3. Get all real names
+    // 3. Get all real names and class periods
     const usernames = [...playerMap.keys()];
     let usersMap = {};
     if (usernames.length > 0) {
@@ -714,10 +714,10 @@ app.get('/api/leaderboard/unified', async (req, res) => {
         const batch = usernames.slice(i, i + batchSize);
         const { data: users } = await supabase
           .from('users')
-          .select('username, real_name')
+          .select('username, real_name, class_period')
           .in('username', batch);
         for (const u of users || []) {
-          usersMap[u.username] = u.real_name;
+          usersMap[u.username] = { real_name: u.real_name, class_period: u.class_period };
         }
       }
     }
@@ -726,7 +726,8 @@ app.get('/api/leaderboard/unified', async (req, res) => {
     const leaderboard = [...playerMap.entries()]
       .map(([username, data]) => ({
         username,
-        real_name: usersMap[username] || null,
+        real_name: usersMap[username]?.real_name || null,
+        class_period: usersMap[username]?.class_period || null,
         weighted_score: Math.round((data.points || 0) * 10) / 10,
         gold: data.gold || 0,
         silver: data.silver || 0,
@@ -2556,6 +2557,147 @@ app.delete('/api/ctf/:cartridgeId/player/:username', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ============================================
+// ROSTER MANAGEMENT ENDPOINTS (Teacher Only)
+// ============================================
+
+// GET /api/roster - Get all students with class periods (teacher only)
+app.get('/api/roster', async (req, res) => {
+  try {
+    const password = req.headers['x-teacher-password'];
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('username, real_name, class_period, created_at')
+      .eq('user_type', 'student')
+      .order('class_period', { ascending: true, nullsFirst: false })
+      .order('username', { ascending: true });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error('GET /api/roster error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/roster/:username - Update student's real_name and/or class_period
+app.put('/api/roster/:username', async (req, res) => {
+  try {
+    const password = req.headers['x-teacher-password'];
+    const { username } = req.params;
+    const { real_name, class_period } = req.body;
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    // Validate class_period if provided
+    if (class_period !== undefined && class_period !== null) {
+      const validPeriods = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+      if (!validPeriods.includes(class_period)) {
+        return res.status(400).json({ error: 'Invalid class period. Must be A-G or null.' });
+      }
+    }
+
+    // Build update object with only provided fields
+    const updates = {};
+    if (real_name !== undefined) updates.real_name = real_name || null;
+    if (class_period !== undefined) updates.class_period = class_period || null;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('username', username)
+      .eq('user_type', 'student')
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error('PUT /api/roster/:username error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/roster/bulk-assign - Bulk assign periods to multiple students
+app.post('/api/roster/bulk-assign', async (req, res) => {
+  try {
+    const password = req.headers['x-teacher-password'];
+    const { assignments } = req.body; // Array of { username, class_period, real_name? }
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    if (!Array.isArray(assignments) || assignments.length === 0) {
+      return res.status(400).json({ error: 'Assignments must be a non-empty array' });
+    }
+
+    // Validate all class periods
+    const validPeriods = ['A', 'B', 'C', 'D', 'E', 'F', 'G', null];
+    for (const a of assignments) {
+      if (!a.username) {
+        return res.status(400).json({ error: 'Each assignment must have a username' });
+      }
+      if (a.class_period !== undefined && !validPeriods.includes(a.class_period)) {
+        return res.status(400).json({ error: `Invalid class period for ${a.username}. Must be A-G or null.` });
+      }
+    }
+
+    // Process each assignment
+    const results = [];
+    const errors = [];
+
+    for (const a of assignments) {
+      const updates = {};
+      if (a.class_period !== undefined) updates.class_period = a.class_period || null;
+      if (a.real_name !== undefined) updates.real_name = a.real_name || null;
+
+      if (Object.keys(updates).length === 0) continue;
+
+      const { data, error } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('username', a.username)
+        .eq('user_type', 'student')
+        .select()
+        .single();
+
+      if (error) {
+        errors.push({ username: a.username, error: error.message });
+      } else if (data) {
+        results.push(data);
+      } else {
+        errors.push({ username: a.username, error: 'Student not found' });
+      }
+    }
+
+    res.json({
+      success: errors.length === 0,
+      updated: results.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (err) {
+    console.error('POST /api/roster/bulk-assign error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 function getOnlineUsers() {
   const users = [];
   for (const [, data] of clients) {

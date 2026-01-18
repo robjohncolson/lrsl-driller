@@ -1,6 +1,17 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v4.0.1.
+Complete state machine documentation for all components as of v4.1.0.
+
+**v4.1.0 Changes (Teacher Class Roster Management):**
+- Teachers can now organize students by class periods (A-G)
+- New roster modal accessible via teacher toolbar button (📋)
+- Teachers can map usernames to real names and assign class periods
+- Bulk assignment support for quick semester setup
+- Leaderboard now displays class period badges next to usernames
+- New migration: `railway-server/migrations/010_class_periods.sql`
+- New file: `platform/core/roster-modal.js`
+- New API endpoints: `GET/PUT /api/roster`, `POST /api/roster/bulk-assign`
+- Added 23 tests in `tests/server/roster-api.test.js`
 
 **v4.0.1 Changes (Server Infrastructure Fix):**
 - Fixed server crash caused by missing infrastructure code accidentally deleted in v4.0.0
@@ -2471,6 +2482,7 @@ Result: "Student Answer:\nrandom assignment"   ← CORRECTLY REPLACED
 | 44 | Complete v2.0 Flow Diagram | End-to-end hierarchy |
 | 45 | v2.0 Verification Checklist | System health checks |
 | 46 | AI Feedback Panel (v2.0.1) | Grading transparency UI |
+| 109 | Roster Modal (v4.1.0) | Teacher class roster management |
 
 ---
 
@@ -7846,6 +7858,194 @@ These documents enable ChatGPT or other LLMs to generate fully-compliant cartrid
 
 ---
 
-*Updated to v3.2.1*
+## 109. ROSTER MODAL STATE MACHINE (v4.1.0)
+
+Teacher class roster management for organizing students by class periods (A-G).
+
+### Modal Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           ROSTER MODAL LIFECYCLE                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+  TEACHER CLICKS 📋 BUTTON
+            │
+            ▼
+    ┌───────────────┐
+    │    CLOSED     │◄────────────────────────────────────────┐
+    └───────┬───────┘                                         │
+            │ open()                                          │
+            ▼                                                 │
+    ┌───────────────┐      fetchRoster()       ┌──────────────┴──────────────┐
+    │   LOADING     │─────────────────────────▶│       DISPLAYING            │
+    │   (spinner)   │                          │   (table with students)     │
+    └───────────────┘                          └──────────────┬──────────────┘
+                                                              │
+                              ┌────────────────┬──────────────┼──────────────┐
+                              │                │              │              │
+                              ▼                ▼              ▼              ▼
+                      ┌─────────────┐  ┌─────────────┐ ┌───────────┐ ┌───────────┐
+                      │  FILTERING  │  │   EDITING   │ │  SAVING   │ │   CLOSE   │
+                      │  by period  │  │  inline     │ │  (row or  │ │  (confirm │
+                      │  or search  │  │  fields     │ │  bulk)    │ │  if dirty)│
+                      └──────┬──────┘  └──────┬──────┘ └─────┬─────┘ └─────┬─────┘
+                             │                │              │             │
+                             └────────────────┴──────────────┘             │
+                                              │                            │
+                                              ▼                            │
+                              ┌──────────────────────────────┐             │
+                              │        DISPLAYING            │─────────────┘
+                              └──────────────────────────────┘
+```
+
+### Period Filter States
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           PERIOD FILTER TABS                                     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    [All] [A] [B] [C] [D] [E] [F] [G] [?]
+      │    │   │   │   │   │   │   │   └── Unassigned (class_period = null)
+      │    └───┴───┴───┴───┴───┴───┴────── Class periods A through G
+      └──────────────────────────────────── Show all students
+
+  FILTER SELECTION
+        │
+        ▼
+┌───────────────────┐
+│  currentFilter =  │
+│  'all' | 'A'-'G'  │
+│  | 'unassigned'   │
+└────────┬──────────┘
+         │
+         ▼
+┌───────────────────┐     ┌───────────────────┐
+│  applyFilters()   │────▶│  renderTable()    │
+│  + searchQuery    │     │  (filtered list)  │
+└───────────────────┘     └───────────────────┘
+```
+
+### Inline Editing Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         INLINE EDITING FLOW                                      │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+  USER EDITS FIELD (real_name or class_period)
+                │
+                ▼
+    ┌───────────────────────────┐
+    │   handleFieldChange()     │
+    │   Compare with original   │
+    └────────────┬──────────────┘
+                 │
+        ┌────────┴────────┐
+        │                 │
+        ▼                 ▼
+  ┌──────────┐      ┌───────────┐
+  │ CHANGED  │      │ UNCHANGED │
+  └────┬─────┘      └─────┬─────┘
+       │                  │
+       ▼                  ▼
+┌─────────────────┐ ┌─────────────────┐
+│ Add to          │ │ Remove from     │
+│ pendingChanges  │ │ pendingChanges  │
+│ Map             │ │ Map             │
+└────────┬────────┘ └─────────────────┘
+         │
+         ▼
+┌─────────────────────────────────┐
+│ Update row styling:             │
+│ • Yellow background if pending  │
+│ • Enable/disable Save button    │
+│ • Show "Save All" if any dirty  │
+└─────────────────────────────────┘
+```
+
+### Save Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              SAVE FLOW                                           │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+           SINGLE ROW SAVE                           BULK SAVE
+                 │                                       │
+                 ▼                                       ▼
+    ┌─────────────────────────┐           ┌─────────────────────────┐
+    │ PUT /api/roster/:user   │           │ POST /api/roster/       │
+    │ {real_name, class_period}│           │ bulk-assign             │
+    │ x-teacher-password      │           │ {assignments: [...]}    │
+    └────────────┬────────────┘           └────────────┬────────────┘
+                 │                                     │
+                 ▼                                     ▼
+         ┌───────────────┐                    ┌───────────────┐
+         │   SUCCESS     │                    │   SUCCESS     │
+         │ Update local  │                    │   refresh()   │
+         │ Clear pending │                    │ Reload data   │
+         │ Show toast    │                    │ Show toast    │
+         └───────────────┘                    └───────────────┘
+```
+
+### API Endpoints
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         ROSTER API ENDPOINTS                                     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+GET /api/roster
+├── Header: x-teacher-password (required)
+├── Returns: [{ username, real_name, class_period, created_at }]
+└── Sorted: by class_period (nulls last), then username
+
+PUT /api/roster/:username
+├── Header: x-teacher-password (required)
+├── Body: { real_name?, class_period? }
+├── Validates: class_period must be A-G or null
+└── Returns: Updated user object
+
+POST /api/roster/bulk-assign
+├── Header: x-teacher-password (required)
+├── Body: { assignments: [{ username, class_period?, real_name? }] }
+├── Processes: Each assignment independently
+└── Returns: { success, updated, errors? }
+```
+
+### Leaderboard Period Badge
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      LEADERBOARD PERIOD BADGE                                    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+  LEADERBOARD ENTRY RENDER
+            │
+            ▼
+    ┌───────────────────┐
+    │ entry.class_period│
+    │ exists?           │
+    └────────┬──────────┘
+             │
+      ┌──────┴──────┐
+      │             │
+      ▼             ▼
+  ┌───────┐    ┌─────────────────────────────┐
+  │ NULL  │    │ BADGE: [A] Blue bg, bold    │
+  │ (skip)│    │ Displayed before username   │
+  └───────┘    └─────────────────────────────┘
+
+Example:
+  🥇 [A] Apple_Tiger     245 pts
+  🥈 [B] Blue_Bear       198 pts
+  🥉     Cool_Cat        167 pts  ← No badge (unassigned)
+```
+
+---
+
+*Updated to v4.1.0*
 *Last updated: January 2026*
-*Total sections: 108*
+*Total sections: 109*

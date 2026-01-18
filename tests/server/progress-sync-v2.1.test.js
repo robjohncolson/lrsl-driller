@@ -255,11 +255,12 @@ describe('Unified Leaderboard with user_progress (v2.1)', () => {
         const entry = data[0];
         expect(entry).toHaveProperty('username');
         expect(entry).toHaveProperty('weighted_score');
-        expect(entry).toHaveProperty('territories');
         expect(entry).toHaveProperty('gold');
         expect(entry).toHaveProperty('silver');
         expect(entry).toHaveProperty('bronze');
         expect(entry).toHaveProperty('tin');
+        // Note: territories removed in v4.0 (Grid Wars replaced by CTF)
+        // Note: class_period added in v4.1 for roster management
       }
     });
 
@@ -302,13 +303,7 @@ describe('Unified Leaderboard with user_progress (v2.1)', () => {
       }
     });
 
-    it('territories count is non-negative', async () => {
-      const { data } = await api('/api/leaderboard/unified');
-
-      for (const entry of data) {
-        expect(entry.territories).toBeGreaterThanOrEqual(0);
-      }
-    });
+    // Note: territories test removed in v4.0 (Grid Wars replaced by CTF)
   });
 
   describe('Period Filter', () => {
