@@ -2114,6 +2114,48 @@ app.get('/api/time-tracking/class-summary', async (req, res) => {
 });
 
 // ============================================
+// GAME MODE CONFIGURATION (v4.3)
+// ============================================
+
+// Game Mode Configuration (matches shared/game-mode.config.js)
+const GAME_MODE_CONFIG = {
+  modes: { CTF: 'ctf', KOTH: 'koth' },
+  tiebreakers: { PONG: 'pong', QUICK_CALC: 'quick_calc', REFLEX_DUEL: 'reflex_duel' },
+  defaults: { gameMode: 'ctf', tiebreakerType: 'pong' },
+  koth: {
+    windowDurationMs: 7 * 60 * 1000,
+    fullWeightMs: 3 * 60 * 1000,
+    decayStartMs: 3 * 60 * 1000,
+    decayMidMs: 5 * 60 * 1000,
+    minDecayWeight: 0,
+    controlCheckIntervalMs: 1000,
+    bankingIntervalMs: 1000,
+    tiebreakerThresholdSeconds: 30,
+    starPoints: { gold: 4, silver: 3, bronze: 2, tin: 1 }
+  },
+  quickCalc: {
+    pointsToWin: 5,
+    lockoutMs: 1000,
+    timeoutMs: 15000,
+    minNumber: 10,
+    maxNumber: 99,
+    operations: ['+', '-', '*']
+  },
+  reflexDuel: {
+    pointsToWin: 5,
+    minDelayMs: 1500,
+    maxDelayMs: 4000,
+    tieThresholdMs: 20
+  },
+  series: {
+    matchesToWin: 2,
+    readyCheckTimeoutMs: 30000,
+    championsPerTeam: 3
+  },
+  validPeriods: ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+};
+
+// ============================================
 // LINEAR CTF (CAPTURE THE FLAG) ENDPOINTS
 // ============================================
 
@@ -3267,6 +3309,1031 @@ app.post('/api/ctf/:cartridgeId/tiebreaker/start-match', async (req, res) => {
     });
   } catch (err) {
     console.error('POST /api/ctf/:cartridgeId/tiebreaker/start-match error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// GAME MODE SETTINGS ENDPOINTS (v4.3)
+// ============================================
+
+/**
+ * Get or create game mode settings for a cartridge/period
+ */
+async function getOrCreateGameModeSettings(cartridgeId, classPeriod) {
+  const { data: existing, error } = await supabase
+    .from('game_mode_settings')
+    .select('*')
+    .eq('cartridge_id', cartridgeId)
+    .eq('class_period', classPeriod)
+    .single();
+
+  if (existing) return existing;
+
+  // Create with defaults
+  const { data: created, error: createError } = await supabase
+    .from('game_mode_settings')
+    .insert({
+      cartridge_id: cartridgeId,
+      class_period: classPeriod,
+      game_mode: GAME_MODE_CONFIG.defaults.gameMode,
+      tiebreaker_type: GAME_MODE_CONFIG.defaults.tiebreakerType
+    })
+    .select()
+    .single();
+
+  if (createError && createError.code !== '23505') throw createError;
+  return created || { game_mode: GAME_MODE_CONFIG.defaults.gameMode, tiebreaker_type: GAME_MODE_CONFIG.defaults.tiebreakerType };
+}
+
+// GET /api/game-mode/:cartridgeId/settings - Get game mode and tiebreaker settings
+app.get('/api/game-mode/:cartridgeId/settings', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period } = req.query;
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const settings = await getOrCreateGameModeSettings(cartridgeId, class_period);
+    res.json({
+      gameMode: settings.game_mode,
+      tiebreakerType: settings.tiebreaker_type
+    });
+  } catch (err) {
+    console.error('GET /api/game-mode/:cartridgeId/settings error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/game-mode/:cartridgeId/settings - Update game mode and tiebreaker settings (teacher only)
+app.put('/api/game-mode/:cartridgeId/settings', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period } = req.query;
+    const { game_mode, tiebreaker_type } = req.body;
+    const password = req.headers['x-teacher-password'];
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    // Validate game_mode
+    if (game_mode && !Object.values(GAME_MODE_CONFIG.modes).includes(game_mode)) {
+      return res.status(400).json({ error: 'Invalid game_mode. Must be ctf or koth.' });
+    }
+
+    // Validate tiebreaker_type
+    if (tiebreaker_type && !Object.values(GAME_MODE_CONFIG.tiebreakers).includes(tiebreaker_type)) {
+      return res.status(400).json({ error: 'Invalid tiebreaker_type. Must be pong, quick_calc, or reflex_duel.' });
+    }
+
+    // Upsert settings
+    const updates = {};
+    if (game_mode) updates.game_mode = game_mode;
+    if (tiebreaker_type) updates.tiebreaker_type = tiebreaker_type;
+
+    const { data, error } = await supabase
+      .from('game_mode_settings')
+      .upsert({
+        cartridge_id: cartridgeId,
+        class_period: class_period,
+        ...updates
+      }, { onConflict: 'cartridge_id,class_period' })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Broadcast settings change
+    broadcast({
+      type: 'game_mode_changed',
+      cartridgeId,
+      classPeriod: class_period,
+      gameMode: data.game_mode,
+      tiebreakerType: data.tiebreaker_type
+    });
+
+    res.json({
+      gameMode: data.game_mode,
+      tiebreakerType: data.tiebreaker_type
+    });
+  } catch (err) {
+    console.error('PUT /api/game-mode/:cartridgeId/settings error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// KING OF THE HILL (KotH) ENDPOINTS (v4.3)
+// ============================================
+
+/**
+ * Get or create KotH game for a cartridge/period
+ */
+async function getOrCreateKotHGame(cartridgeId, classPeriod) {
+  let game;
+  const { data, error } = await supabase
+    .from('koth_games')
+    .select('*')
+    .eq('cartridge_id', cartridgeId)
+    .eq('class_period', classPeriod)
+    .single();
+
+  if (data) return data;
+
+  // Create new game
+  const { data: newGame, error: createError } = await supabase
+    .from('koth_games')
+    .insert({
+      cartridge_id: cartridgeId,
+      class_period: classPeriod,
+      session_status: 'idle',
+      blue_banked_seconds: 0,
+      red_banked_seconds: 0
+    })
+    .select()
+    .single();
+
+  if (createError && createError.code !== '23505') throw createError;
+  return newGame || { session_status: 'idle', blue_banked_seconds: 0, red_banked_seconds: 0 };
+}
+
+/**
+ * Get KotH players for a cartridge/period
+ */
+async function getKotHPlayers(cartridgeId, classPeriod) {
+  const { data: players, error } = await supabase
+    .from('koth_players')
+    .select('username, team, session_points, first_point_at, total_points')
+    .eq('cartridge_id', cartridgeId)
+    .eq('class_period', classPeriod)
+    .order('total_points', { ascending: false });
+
+  if (error && error.code !== '42P01') throw error;
+  return players || [];
+}
+
+/**
+ * Get recent point events within the rolling window
+ */
+async function getKotHPointEvents(cartridgeId, classPeriod) {
+  const windowStart = new Date(Date.now() - GAME_MODE_CONFIG.koth.windowDurationMs);
+
+  const { data: events, error } = await supabase
+    .from('koth_point_events')
+    .select('username, team, points, earned_at')
+    .eq('cartridge_id', cartridgeId)
+    .eq('class_period', classPeriod)
+    .gte('earned_at', windowStart.toISOString())
+    .order('earned_at', { ascending: false });
+
+  if (error && error.code !== '42P01') throw error;
+  return events || [];
+}
+
+/**
+ * Calculate rolling total with decay for KotH
+ */
+function calculateKotHRollingTotal(team, pointEvents) {
+  const { fullWeightMs, decayStartMs, decayMidMs, windowDurationMs } = GAME_MODE_CONFIG.koth;
+  const now = Date.now();
+  let total = 0;
+
+  for (const event of pointEvents.filter(e => e.team === team)) {
+    const ageMs = now - new Date(event.earned_at).getTime();
+
+    if (ageMs < 0) continue; // Future event (shouldn't happen)
+
+    if (ageMs < fullWeightMs) {
+      // 0-3 min: 100% weight
+      total += event.points;
+    } else if (ageMs < decayMidMs) {
+      // 3-5 min: decay from 100% to 50%
+      const decayProgress = (ageMs - decayStartMs) / (decayMidMs - decayStartMs);
+      total += event.points * (1 - decayProgress * 0.5);
+    } else if (ageMs < windowDurationMs) {
+      // 5-7 min: decay from 50% to 0%
+      const finalDecayProgress = (ageMs - decayMidMs) / (windowDurationMs - decayMidMs);
+      total += event.points * 0.5 * (1 - finalDecayProgress);
+    }
+    // >= 7 min: fully expired, don't add
+  }
+
+  return Math.floor(total);
+}
+
+/**
+ * Determine hill holder based on rolling totals
+ */
+function determineHillHolder(blueTotal, redTotal) {
+  if (blueTotal > redTotal) return 'blue';
+  if (redTotal > blueTotal) return 'red';
+  return null; // Contested/tied
+}
+
+// GET /api/koth/:cartridgeId/state - Get current KotH game state
+app.get('/api/koth/:cartridgeId/state', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { username, class_period } = req.query;
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const game = await getOrCreateKotHGame(cartridgeId, class_period);
+    const players = await getKotHPlayers(cartridgeId, class_period);
+    const pointEvents = await getKotHPointEvents(cartridgeId, class_period);
+
+    // Calculate rolling totals
+    const blueRollingTotal = calculateKotHRollingTotal('blue', pointEvents);
+    const redRollingTotal = calculateKotHRollingTotal('red', pointEvents);
+    const currentHolder = determineHillHolder(blueRollingTotal, redRollingTotal);
+
+    // Separate by team
+    const blueTeam = players.filter(p => p.team === 'blue');
+    const redTeam = players.filter(p => p.team === 'red');
+
+    // Find current user's team
+    let userTeam = null;
+    if (username) {
+      const userPlayer = players.find(p => p.username === username);
+      userTeam = userPlayer?.team || null;
+    }
+
+    res.json({
+      cartridgeId,
+      classPeriod: class_period,
+      blueBankedSeconds: game.blue_banked_seconds,
+      redBankedSeconds: game.red_banked_seconds,
+      blueRollingTotal,
+      redRollingTotal,
+      currentHillHolder: currentHolder,
+      hillControlSince: game.hill_control_since,
+      winner: game.winner,
+      blueTeam,
+      redTeam,
+      userTeam,
+      sessionStatus: game.session_status,
+      sessionStartTime: game.session_start_time,
+      sessionEndTime: game.session_end_time,
+      sessionStartedAt: game.session_started_at,
+      sessionEndedAt: game.session_ended_at,
+      endReason: game.end_reason,
+      tiebreakerWinner: game.tiebreaker_winner,
+      config: GAME_MODE_CONFIG.koth
+    });
+  } catch (err) {
+    console.error('GET /api/koth/:cartridgeId/state error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/koth/:cartridgeId/join - Assign player to a team
+app.post('/api/koth/:cartridgeId/join', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { username, team, class_period } = req.body;
+
+    if (!username || !team) {
+      return res.status(400).json({ error: 'Username and team required' });
+    }
+
+    if (!['blue', 'red'].includes(team)) {
+      return res.status(400).json({ error: 'Team must be blue or red' });
+    }
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    await getOrCreateKotHGame(cartridgeId, class_period);
+
+    const { data: player, error } = await supabase
+      .from('koth_players')
+      .upsert({
+        cartridge_id: cartridgeId,
+        class_period,
+        username,
+        team,
+        session_points: 0,
+        total_points: 0
+      }, { onConflict: 'cartridge_id,class_period,username' })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    broadcast({
+      type: 'koth_player_joined',
+      cartridgeId,
+      classPeriod: class_period,
+      username,
+      team
+    });
+
+    res.json({ success: true, team });
+  } catch (err) {
+    console.error('POST /api/koth/:cartridgeId/join error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/koth/:cartridgeId/points - Add points from earned star
+app.post('/api/koth/:cartridgeId/points', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { username, points, starType, class_period } = req.body;
+
+    if (!username || points === undefined) {
+      return res.status(400).json({ error: 'Username and points required' });
+    }
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const game = await getOrCreateKotHGame(cartridgeId, class_period);
+
+    // Check session status
+    if (game.session_status !== 'idle' && game.session_status !== 'active') {
+      return res.status(400).json({ error: 'Session not active' });
+    }
+
+    // Get player
+    const { data: player, error: playerError } = await supabase
+      .from('koth_players')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .eq('username', username)
+      .single();
+
+    if (playerError || !player) {
+      return res.status(400).json({ error: 'Player not found. Join a team first.' });
+    }
+
+    // Record point event
+    const { error: eventError } = await supabase
+      .from('koth_point_events')
+      .insert({
+        cartridge_id: cartridgeId,
+        class_period,
+        username,
+        team: player.team,
+        points,
+        star_type: starType
+      });
+
+    if (eventError) throw eventError;
+
+    // Update player stats
+    const now = new Date().toISOString();
+    const { error: updateError } = await supabase
+      .from('koth_players')
+      .update({
+        session_points: player.session_points + points,
+        total_points: player.total_points + points,
+        first_point_at: player.first_point_at || now
+      })
+      .eq('id', player.id);
+
+    if (updateError) throw updateError;
+
+    // Get updated rolling totals
+    const pointEvents = await getKotHPointEvents(cartridgeId, class_period);
+    const blueTotal = calculateKotHRollingTotal('blue', pointEvents);
+    const redTotal = calculateKotHRollingTotal('red', pointEvents);
+    const newHolder = determineHillHolder(blueTotal, redTotal);
+
+    // Check if hill control changed
+    if (newHolder !== game.current_hill_holder) {
+      await supabase
+        .from('koth_games')
+        .update({
+          current_hill_holder: newHolder,
+          hill_control_since: newHolder ? now : null
+        })
+        .eq('cartridge_id', cartridgeId)
+        .eq('class_period', class_period);
+
+      broadcast({
+        type: 'koth_hill_control_changed',
+        cartridgeId,
+        classPeriod: class_period,
+        holder: newHolder,
+        since: now
+      });
+    }
+
+    broadcast({
+      type: 'koth_points',
+      cartridgeId,
+      classPeriod: class_period,
+      username,
+      team: player.team,
+      points,
+      blueTotal,
+      redTotal
+    });
+
+    res.json({
+      success: true,
+      team: player.team,
+      blueRollingTotal: blueTotal,
+      redRollingTotal: redTotal,
+      hillHolder: newHolder
+    });
+  } catch (err) {
+    console.error('POST /api/koth/:cartridgeId/points error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/koth/:cartridgeId/session/configure - Configure session times
+app.put('/api/koth/:cartridgeId/session/configure', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, start_time, end_time } = req.body;
+    const password = req.headers['x-teacher-password'];
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const game = await getOrCreateKotHGame(cartridgeId, class_period);
+
+    if (game.session_status !== 'idle') {
+      return res.status(400).json({ error: 'Cannot configure session while active' });
+    }
+
+    const { data, error } = await supabase
+      .from('koth_games')
+      .update({
+        session_start_time: start_time,
+        session_end_time: end_time,
+        session_status: 'scheduled'
+      })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    broadcast({
+      type: 'koth_session_configured',
+      cartridgeId,
+      classPeriod: class_period,
+      startTime: start_time,
+      endTime: end_time
+    });
+
+    res.json({ startTime: start_time, endTime: end_time });
+  } catch (err) {
+    console.error('PUT /api/koth/:cartridgeId/session/configure error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/koth/:cartridgeId/session/start - Start session manually
+app.post('/api/koth/:cartridgeId/session/start', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, duration_minutes } = req.body;
+    const password = req.headers['x-teacher-password'];
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const game = await getOrCreateKotHGame(cartridgeId, class_period);
+
+    if (game.session_status === 'active') {
+      return res.status(400).json({ error: 'Session already active' });
+    }
+
+    const now = new Date();
+    let endTime = game.session_end_time;
+
+    if (duration_minutes) {
+      const endDate = new Date(now.getTime() + duration_minutes * 60000);
+      endTime = endDate.toTimeString().slice(0, 5);
+    }
+
+    // Reset session points for all players
+    await supabase
+      .from('koth_players')
+      .update({ session_points: 0, first_point_at: null })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
+
+    const { data, error } = await supabase
+      .from('koth_games')
+      .update({
+        session_status: 'active',
+        session_started_at: now.toISOString(),
+        session_end_time: endTime,
+        blue_banked_seconds: 0,
+        red_banked_seconds: 0,
+        current_hill_holder: null,
+        hill_control_since: null,
+        winner: null
+      })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    broadcast({
+      type: 'koth_session_started',
+      cartridgeId,
+      classPeriod: class_period,
+      startedAt: now.toISOString(),
+      endsAt: endTime
+    });
+
+    res.json({ startedAt: now.toISOString(), endTime });
+  } catch (err) {
+    console.error('POST /api/koth/:cartridgeId/session/start error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/koth/:cartridgeId/session/stop - Stop session manually
+app.post('/api/koth/:cartridgeId/session/stop', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period } = req.body;
+    const password = req.headers['x-teacher-password'];
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const game = await getOrCreateKotHGame(cartridgeId, class_period);
+
+    if (game.session_status !== 'active') {
+      return res.status(400).json({ error: 'No active session to stop' });
+    }
+
+    const now = new Date();
+
+    // Determine winner based on banked time
+    let winner = null;
+    let requiresTiebreaker = false;
+    const diff = Math.abs(game.blue_banked_seconds - game.red_banked_seconds);
+
+    if (diff <= GAME_MODE_CONFIG.koth.tiebreakerThresholdSeconds) {
+      requiresTiebreaker = true;
+    } else if (game.blue_banked_seconds > game.red_banked_seconds) {
+      winner = 'blue';
+    } else {
+      winner = 'red';
+    }
+
+    const { data, error } = await supabase
+      .from('koth_games')
+      .update({
+        session_status: requiresTiebreaker ? 'tiebreaker' : 'ended',
+        session_ended_at: now.toISOString(),
+        end_reason: 'manual',
+        winner: winner
+      })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    broadcast({
+      type: 'koth_session_ended',
+      cartridgeId,
+      classPeriod: class_period,
+      endedAt: now.toISOString(),
+      reason: 'manual',
+      blueBankedSeconds: game.blue_banked_seconds,
+      redBankedSeconds: game.red_banked_seconds,
+      winner,
+      requiresTiebreaker
+    });
+
+    res.json({
+      sessionStatus: data.session_status,
+      winner,
+      requiresTiebreaker,
+      blueBankedSeconds: game.blue_banked_seconds,
+      redBankedSeconds: game.red_banked_seconds
+    });
+  } catch (err) {
+    console.error('POST /api/koth/:cartridgeId/session/stop error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/koth/:cartridgeId/reset - Reset game
+app.post('/api/koth/:cartridgeId/reset', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { preserveTeams, class_period } = req.body;
+    const password = req.headers['x-teacher-password'];
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    // Reset game state
+    const { error: gameError } = await supabase
+      .from('koth_games')
+      .update({
+        session_status: 'idle',
+        session_start_time: null,
+        session_end_time: null,
+        session_started_at: null,
+        session_ended_at: null,
+        blue_banked_seconds: 0,
+        red_banked_seconds: 0,
+        current_hill_holder: null,
+        hill_control_since: null,
+        end_reason: null,
+        winner: null,
+        tiebreaker_winner: null
+      })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
+
+    if (gameError) throw gameError;
+
+    // Delete point events
+    await supabase
+      .from('koth_point_events')
+      .delete()
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
+
+    if (!preserveTeams) {
+      await supabase
+        .from('koth_players')
+        .delete()
+        .eq('cartridge_id', cartridgeId)
+        .eq('class_period', class_period);
+    } else {
+      await supabase
+        .from('koth_players')
+        .update({ session_points: 0, first_point_at: null })
+        .eq('cartridge_id', cartridgeId)
+        .eq('class_period', class_period);
+    }
+
+    broadcast({
+      type: 'koth_reset',
+      cartridgeId,
+      classPeriod: class_period,
+      preserveTeams
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/koth/:cartridgeId/reset error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/koth/:cartridgeId/leaderboard - Get player rankings
+app.get('/api/koth/:cartridgeId/leaderboard', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period } = req.query;
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const players = await getKotHPlayers(cartridgeId, class_period);
+
+    const blueTeam = players
+      .filter(p => p.team === 'blue')
+      .sort((a, b) => b.session_points - a.session_points);
+    const redTeam = players
+      .filter(p => p.team === 'red')
+      .sort((a, b) => b.session_points - a.session_points);
+
+    res.json({ blueTeam, redTeam });
+  } catch (err) {
+    console.error('GET /api/koth/:cartridgeId/leaderboard error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// UNIFIED TIEBREAKER ENDPOINTS (v4.3)
+// ============================================
+
+// GET /api/tiebreaker/:cartridgeId/status - Get tiebreaker status
+app.get('/api/tiebreaker/:cartridgeId/status', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, game_mode } = req.query;
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const mode = game_mode || GAME_MODE_CONFIG.defaults.gameMode;
+
+    // Get champions
+    const { data: champions } = await supabase
+      .from('tiebreaker_champions')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .eq('game_mode', mode)
+      .order('champion_rank');
+
+    const blueChampions = (champions || []).filter(c => c.team === 'blue');
+    const redChampions = (champions || []).filter(c => c.team === 'red');
+
+    // Get matches
+    const { data: matches } = await supabase
+      .from('tiebreaker_matches')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .eq('game_mode', mode)
+      .order('match_number');
+
+    res.json({
+      blueChampions,
+      redChampions,
+      matches: matches || [],
+      matchesToWin: GAME_MODE_CONFIG.series.matchesToWin
+    });
+  } catch (err) {
+    console.error('GET /api/tiebreaker/:cartridgeId/status error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/tiebreaker/:cartridgeId/ready - Mark champion as ready
+app.post('/api/tiebreaker/:cartridgeId/ready', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, game_mode, username, match_number } = req.body;
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const mode = game_mode || GAME_MODE_CONFIG.defaults.gameMode;
+
+    // Find the match
+    const { data: match, error } = await supabase
+      .from('tiebreaker_matches')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .eq('game_mode', mode)
+      .eq('match_number', match_number)
+      .single();
+
+    if (error || !match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Determine which side the player is on
+    let update = {};
+    if (match.blue_player === username) {
+      update.blue_ready = true;
+    } else if (match.red_player === username) {
+      update.red_ready = true;
+    } else {
+      return res.status(400).json({ error: 'Player not in this match' });
+    }
+
+    // Check if both ready
+    const bothReady = (match.blue_ready || update.blue_ready) && (match.red_ready || update.red_ready);
+    if (bothReady) {
+      update.status = 'ready';
+    }
+
+    await supabase
+      .from('tiebreaker_matches')
+      .update(update)
+      .eq('id', match.id);
+
+    broadcast({
+      type: 'tiebreaker_ready',
+      cartridgeId,
+      classPeriod: class_period,
+      gameMode: mode,
+      username,
+      matchNumber: match_number,
+      bothReady
+    });
+
+    res.json({ success: true, bothReady });
+  } catch (err) {
+    console.error('POST /api/tiebreaker/:cartridgeId/ready error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/tiebreaker/:cartridgeId/start-match - Start a tiebreaker match
+app.post('/api/tiebreaker/:cartridgeId/start-match', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, game_mode, match_number } = req.body;
+    const password = req.headers['x-teacher-password'];
+
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const mode = game_mode || GAME_MODE_CONFIG.defaults.gameMode;
+
+    const { data: match, error } = await supabase
+      .from('tiebreaker_matches')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .eq('game_mode', mode)
+      .eq('match_number', match_number)
+      .single();
+
+    if (error || !match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    const now = new Date().toISOString();
+
+    await supabase
+      .from('tiebreaker_matches')
+      .update({
+        status: 'in_progress',
+        started_at: now
+      })
+      .eq('id', match.id);
+
+    broadcast({
+      type: 'tiebreaker_match_start',
+      cartridgeId,
+      classPeriod: class_period,
+      gameMode: mode,
+      matchNumber: match_number,
+      bluePlayer: match.blue_player,
+      redPlayer: match.red_player
+    });
+
+    res.json({
+      success: true,
+      matchNumber: match_number,
+      bluePlayer: match.blue_player,
+      redPlayer: match.red_player
+    });
+  } catch (err) {
+    console.error('POST /api/tiebreaker/:cartridgeId/start-match error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/tiebreaker/:cartridgeId/match-result - Record match result
+app.post('/api/tiebreaker/:cartridgeId/match-result', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, game_mode, match_number, winner, blue_score, red_score } = req.body;
+
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const mode = game_mode || GAME_MODE_CONFIG.defaults.gameMode;
+
+    const now = new Date().toISOString();
+
+    // Update match
+    const { data: match, error } = await supabase
+      .from('tiebreaker_matches')
+      .update({
+        status: 'complete',
+        winner,
+        blue_score,
+        red_score,
+        ended_at: now
+      })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .eq('game_mode', mode)
+      .eq('match_number', match_number)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Get all matches to check if series is complete
+    const { data: allMatches } = await supabase
+      .from('tiebreaker_matches')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .eq('game_mode', mode);
+
+    const blueWins = (allMatches || []).filter(m => m.winner === 'blue').length;
+    const redWins = (allMatches || []).filter(m => m.winner === 'red').length;
+    const seriesWinner = blueWins >= GAME_MODE_CONFIG.series.matchesToWin ? 'blue' :
+                         redWins >= GAME_MODE_CONFIG.series.matchesToWin ? 'red' : null;
+
+    broadcast({
+      type: 'tiebreaker_match_end',
+      cartridgeId,
+      classPeriod: class_period,
+      gameMode: mode,
+      matchNumber: match_number,
+      winner,
+      blueScore: blue_score,
+      redScore: red_score,
+      seriesWinner,
+      blueWins,
+      redWins
+    });
+
+    // If series complete, update game
+    if (seriesWinner) {
+      const gameTable = mode === 'ctf' ? 'ctf_games' : 'koth_games';
+
+      await supabase
+        .from(gameTable)
+        .update({
+          session_status: 'ended',
+          winner: seriesWinner,
+          tiebreaker_winner: seriesWinner
+        })
+        .eq('cartridge_id', cartridgeId)
+        .eq('class_period', class_period);
+
+      broadcast({
+        type: 'tiebreaker_series_complete',
+        cartridgeId,
+        classPeriod: class_period,
+        gameMode: mode,
+        winner: seriesWinner,
+        blueWins,
+        redWins
+      });
+    }
+
+    res.json({
+      success: true,
+      matchNumber: match_number,
+      winner,
+      seriesWinner,
+      blueWins,
+      redWins
+    });
+  } catch (err) {
+    console.error('POST /api/tiebreaker/:cartridgeId/match-result error:', err);
     res.status(500).json({ error: err.message });
   }
 });

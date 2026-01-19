@@ -14,7 +14,7 @@ Current cartridges (12 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v4.2.0 (CTF Timed Sessions & Tiebreaker)
+**Current Version**: v4.3.0 (Game Mode & Tiebreaker Expansion)
 
 ## Development Commands
 
@@ -333,6 +333,33 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 - `cartridges/registry.json` - Available cartridge listing
 
 ## Version History (Bug Fixes)
+
+**v4.3.0**: Game Mode & Tiebreaker Expansion
+- **Modular game mode architecture**: Teachers can now choose between CTF and King of the Hill (KotH) game modes
+- **Multiple tiebreaker minigames**: Pong (existing), Quick Calc (new), and Reflex Duel (new)
+- Game mode and tiebreaker are independently selectable per cartridge/period
+- **King of the Hill (KotH)**: New rolling window point-based game mode
+  - Points decay over 7-minute sliding window (0-3min: 100%, 3-5min: decay to 50%, 5-7min: decay to 0%)
+  - Team with higher rolling total controls the "hill"
+  - Controller banks 1 second per second of hill control
+  - Winner: Team with more banked seconds when session ends
+  - Within 30 seconds triggers tiebreaker
+- **Quick Calc tiebreaker**: Mental math racing game
+  - 2-digit arithmetic (+, -, *)
+  - 1-second lockout on wrong answer
+  - 15-second timeout per problem
+  - First to 5 points wins
+- **Reflex Duel tiebreaker**: Reaction time racing game
+  - Random delay 1.5-4 seconds before flash
+  - Early tap gives opponent point
+  - 20ms tie threshold triggers redraw
+  - First to 5 points wins
+- New files: `shared/game-mode.config.js`, `platform/game/game-mode-manager.js`, `platform/game/tiebreaker-manager.js`, `platform/game/koth-state.js`, `platform/game/koth-panel.js`, `platform/game/koth-renderer.js`, `platform/game/quick-calc.js`, `platform/game/reflex-duel.js`
+- New migration: `railway-server/migrations/012_game_modes.sql`
+- New endpoints: 2 game-mode settings + 10 KotH + 4 unified tiebreaker endpoints
+- New WebSocket messages: 6 KotH-specific + 4 shared tiebreaker message types
+- Added tests in `tests/game/` directory (game-mode-config, koth, quick-calc, reflex-duel)
+- Updated `shared/ctf.config.js` with tiebreakerTypes enum
 
 **v4.2.0**: CTF Timed Sessions & Tiebreaker
 - **Per-class-period games**: Each period (A-G) has isolated CTF game state per cartridge

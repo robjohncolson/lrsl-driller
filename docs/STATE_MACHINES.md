@@ -8381,6 +8381,531 @@ Example:
 
 ---
 
-*Updated to v4.1.0*
+## v4.3 Game Mode & Tiebreaker Expansion
+
+### Game Mode Manager
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          GAME MODE MANAGER                                       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌───────────────┐
+                              │  INIT STATE   │
+                              │ currentMode:  │
+                              │    null       │
+                              └───────┬───────┘
+                                      │
+                              ┌───────▼───────┐
+                              │ loadSettings  │
+                              │ from server   │
+                              └───────┬───────┘
+                                      │
+              ┌───────────────────────┴───────────────────────┐
+              │                                               │
+              ▼                                               ▼
+    ┌─────────────────┐                             ┌─────────────────┐
+    │   CTF MODE      │◀────── setMode('koth') ─────│   KOTH MODE     │
+    │ (existing)      │─────── setMode('ctf') ──────▶│ (new v4.3)      │
+    │                 │                             │                 │
+    │ - ctf-state     │                             │ - koth-state    │
+    │ - ctf-panel     │                             │ - koth-panel    │
+    │ - ctf-renderer  │                             │ - koth-renderer │
+    └─────────────────┘                             └─────────────────┘
+              │                                               │
+              └───────────────────┬───────────────────────────┘
+                                  │
+                          ┌───────▼───────┐
+                          │ TIEBREAKER    │
+                          │ (common to    │
+                          │ both modes)   │
+                          └───────────────┘
+```
+
+### Game Mode Settings Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                       GAME MODE SETTINGS FLOW                                    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    TEACHER SELECTS MODE                    TEACHER SELECTS TIEBREAKER
+            │                                         │
+            ▼                                         ▼
+    ┌───────────────┐                        ┌───────────────┐
+    │  CTF / KotH   │                        │ Pong / Quick  │
+    │  Dropdown     │                        │ Calc / Reflex │
+    └───────┬───────┘                        └───────┬───────┘
+            │                                         │
+            └──────────────┬──────────────────────────┘
+                           │
+                   ┌───────▼───────┐
+                   │ PUT /api/     │
+                   │ game-mode/    │
+                   │ :cartridgeId/ │
+                   │ settings      │
+                   └───────┬───────┘
+                           │
+                   ┌───────▼───────┐
+                   │ WebSocket     │
+                   │ broadcast     │
+                   │ settings_     │
+                   │ changed       │
+                   └───────┬───────┘
+                           │
+            ┌──────────────┴──────────────┐
+            │                             │
+            ▼                             ▼
+    ┌───────────────┐             ┌───────────────┐
+    │ Game Mode     │             │ All clients   │
+    │ Manager       │             │ receive       │
+    │ switches      │             │ update        │
+    │ panel         │             │               │
+    └───────────────┘             └───────────────┘
+```
+
+### King of the Hill State Machine
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          KOTH SESSION STATES                                     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────┐
+    │  IDLE   │◀────────── teacher reset ──────────┐
+    └────┬────┘                                    │
+         │                                          │
+    configure times                                 │
+         │                                          │
+         ▼                                          │
+    ┌─────────────┐                                │
+    │ SCHEDULED   │                                │
+    └────┬────────┘                                │
+         │                                          │
+    start time reached                              │
+    OR teacher manual start                         │
+         │                                          │
+         ▼                                          │
+    ┌─────────────┐                                │
+    │   ACTIVE    │─────── time expires ───────────┤
+    │             │              │                  │
+    │ Points      │              ▼                  │
+    │ accepted    │     ┌───────────────┐          │
+    │             │     │ Check banked  │          │
+    │ Rolling     │     │ time diff     │          │
+    │ totals      │     └───────┬───────┘          │
+    │ calculated  │             │                  │
+    │             │    ┌────────┴────────┐         │
+    │ Hill holder │    │                 │         │
+    │ banks time  │    ▼                 ▼         │
+    └─────────────┘ >30 sec diff    ≤30 sec diff   │
+                        │                 │        │
+                        ▼                 ▼        │
+                 ┌───────────┐    ┌─────────────┐  │
+                 │  ENDED    │    │ TIEBREAKER  │──┘
+                 │           │    │             │
+                 │ Winner    │    │ Best of 3   │
+                 │ declared  │    │ minigame    │
+                 └───────────┘    └─────────────┘
+```
+
+### KotH Rolling Window Point Decay
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                       KOTH ROLLING WINDOW (7 minutes)                            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    WEIGHT
+      │
+  100%├────────────┐
+      │            │
+      │            │
+      │            └────────────┐
+   75%│                         │
+      │                         │
+   50%│                         └────────────┐
+      │                                      │
+   25%│                                      │
+      │                                      │
+    0%├──────────────────────────────────────┴─────────
+      │            │             │           │
+      0          3min          5min        7min      TIME
+      │            │             │           │
+      └────────────┘             └───────────┘
+       FULL WEIGHT                DECAY ZONE
+         (100%)                 100%→50%→0%
+
+    calculateRollingTotal(team, pointEvents, now):
+      total = 0
+      for each event where team matches:
+        age = now - event.earned_at
+
+        if age < 3min:
+          total += event.points * 1.0          // Full weight
+        else if age < 5min:
+          decay = (age - 3min) / 2min
+          total += event.points * (1 - decay*0.5)  // 100%→50%
+        else if age < 7min:
+          decay = (age - 5min) / 2min
+          total += event.points * 0.5 * (1-decay)  // 50%→0%
+        else:
+          // Point expired, not counted
+
+      return floor(total)
+```
+
+### KotH Hill Control
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          HILL CONTROL LOGIC                                      │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    Every 1 second during ACTIVE session:
+
+    ┌─────────────────────────────┐
+    │ Calculate rolling totals    │
+    │ for both teams              │
+    └──────────────┬──────────────┘
+                   │
+                   ▼
+         ┌─────────────────┐
+         │ Compare totals  │
+         └────────┬────────┘
+                  │
+       ┌──────────┼──────────┐
+       │          │          │
+       ▼          ▼          ▼
+   blue > red  equal    red > blue
+       │          │          │
+       ▼          ▼          ▼
+   ┌───────┐  ┌───────┐  ┌───────┐
+   │ BLUE  │  │CONTEST│  │  RED  │
+   │ holds │  │(no one│  │ holds │
+   │ hill  │  │ holds)│  │ hill  │
+   └───┬───┘  └───┬───┘  └───┬───┘
+       │          │          │
+       ▼          │          ▼
+   Blue banks     │      Red banks
+   +1 second      │      +1 second
+                  │
+                  ▼
+              No banking
+              (contested)
+```
+
+### Tiebreaker Manager
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                       TIEBREAKER MANAGER STATE                                   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    Session ends in dead zone (CTF) or within 30 sec (KotH)
+                           │
+                           ▼
+                 ┌─────────────────┐
+                 │ SELECT CHAMPIONS│
+                 │ Top 3 by        │
+                 │ velocity        │
+                 └────────┬────────┘
+                          │
+                          ▼
+                 ┌─────────────────┐
+                 │  READY CHECK    │
+                 │  30 second      │
+                 │  timeout        │
+                 └────────┬────────┘
+                          │
+         ┌────────────────┼────────────────┐
+         │                │                │
+         ▼                ▼                ▼
+    All ready      Timeout/forfeit     Cancelled
+         │                │
+         ▼                ▼
+    ┌─────────────┐  ┌─────────────┐
+    │ START       │  │ FORFEIT     │
+    │ MATCH 1     │  │ Award win   │
+    └──────┬──────┘  └─────────────┘
+           │
+           ▼
+    ┌─────────────────────────────────────┐
+    │           BEST OF 3                  │
+    │                                      │
+    │   Match 1: Champion 1 vs Champion 1  │
+    │   Match 2: Champion 2 vs Champion 2  │
+    │   Match 3: Champion 3 vs Champion 3  │
+    │   (if needed)                        │
+    └─────────────┬───────────────────────┘
+                  │
+           Team wins 2 matches
+                  │
+                  ▼
+           ┌─────────────┐
+           │  COMPLETE   │
+           │  Award      │
+           │  victory    │
+           └─────────────┘
+```
+
+### Quick Calc Minigame
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         QUICK CALC STATE MACHINE                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────┐
+    │ WAITING_START   │
+    │ (scores: 0-0)   │
+    └────────┬────────┘
+             │
+             │ start()
+             ▼
+    ┌─────────────────┐
+    │ GENERATE_PROBLEM│──────────────────────────┐
+    │                 │                          │
+    │ Two 2-digit     │                          │
+    │ numbers         │                          │
+    │ Operation: +-*  │                          │
+    └────────┬────────┘                          │
+             │                                   │
+             ▼                                   │
+    ┌─────────────────┐                          │
+    │ AWAITING_ANSWER │◀─────────────────────────┤
+    │                 │                          │
+    │ 15 sec timeout  │                          │
+    └────────┬────────┘                          │
+             │                                   │
+    ┌────────┼────────┬─────────┐               │
+    │        │        │         │               │
+    ▼        ▼        ▼         ▼               │
+  Blue    Red     Timeout    Wrong              │
+  correct correct (15s)     answer              │
+    │        │        │         │               │
+    ▼        ▼        │         ▼               │
+  Blue++   Red++      │     1 sec               │
+    │        │        │     lockout             │
+    └────────┴────────┴─────────┘               │
+             │                                   │
+             ▼                                   │
+    ┌─────────────────┐                          │
+    │ CHECK WIN       │                          │
+    │ (5 points?)     │                          │
+    └────────┬────────┘                          │
+             │                                   │
+      ┌──────┴──────┐                           │
+      │             │                           │
+      ▼             ▼                           │
+   Winner       No winner                       │
+   found        yet                             │
+      │             │                           │
+      ▼             └───────────────────────────┘
+    ┌─────────────┐
+    │  GAME OVER  │
+    │  Winner     │
+    │  declared   │
+    └─────────────┘
+```
+
+### Quick Calc Problem Generation
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      QUICK CALC PROBLEM GENERATION                               │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    generateProblem():
+           │
+           ▼
+    ┌─────────────────┐
+    │ Pick random     │
+    │ operation       │
+    │ (+, -, *)       │
+    └────────┬────────┘
+             │
+    ┌────────┼────────┬─────────┐
+    │        │        │         │
+    ▼        ▼        ▼         │
+   ADD      SUB      MUL        │
+    │        │        │         │
+    ▼        ▼        ▼         │
+  ┌─────┐ ┌─────────┐ ┌─────────┐
+  │a,b: │ │a = max  │ │a,b: 2-13│
+  │10-99│ │b = min  │ │(simpler)│
+  └──┬──┘ │ensures  │ └────┬────┘
+     │    │positive │      │
+     │    │result   │      │
+     │    └────┬────┘      │
+     └─────────┼───────────┘
+               │
+               ▼
+        ┌─────────────┐
+        │ Calculate   │
+        │ answer      │
+        └─────────────┘
+```
+
+### Reflex Duel Minigame
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        REFLEX DUEL STATE MACHINE                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────┐
+    │ WAITING_START   │
+    │ (scores: 0-0)   │
+    └────────┬────────┘
+             │
+             │ start()
+             ▼
+    ┌─────────────────┐
+    │  ROUND START    │◀───────────────────────────┐
+    │                 │                            │
+    │  Reset tap      │                            │
+    │  times          │                            │
+    └────────┬────────┘                            │
+             │                                     │
+             ▼                                     │
+    ┌─────────────────┐                            │
+    │   WAITING       │                            │
+    │   (Yellow bg)   │                            │
+    │   "Wait..."     │                            │
+    └────────┬────────┘                            │
+             │                                     │
+      ┌──────┴──────┐                             │
+      │             │                             │
+      ▼             ▼                             │
+  Early tap    Random delay                       │
+  detected     1.5-4 sec                          │
+      │             │                             │
+      ▼             ▼                             │
+  Opponent    ┌─────────────────┐                 │
+  scores      │    READY        │                 │
+  point       │   (Orange bg)   │                 │
+      │       │ "Get ready..."  │                 │
+      │       └────────┬────────┘                 │
+      │                │                          │
+      │         ┌──────┴──────┐                   │
+      │         │             │                   │
+      │         ▼             ▼                   │
+      │    Early tap     Flash timer              │
+      │    detected      fires                    │
+      │         │             │                   │
+      │         ▼             ▼                   │
+      │    Opponent    ┌─────────────────┐        │
+      │    scores      │     FLASH       │        │
+      │    point       │   (Green bg)    │        │
+      │         │      │   "GO! TAP!"    │        │
+      │         │      └────────┬────────┘        │
+      │         │               │                 │
+      │         │        ┌──────┼──────┐          │
+      │         │        │      │      │          │
+      │         │        ▼      ▼      ▼          │
+      │         │     Blue   Both    Red          │
+      │         │     taps   tap     taps         │
+      │         │     first  within  first        │
+      │         │        │   20ms      │          │
+      │         │        │     │       │          │
+      │         │        ▼     ▼       ▼          │
+      │         │     Blue   TIE     Red          │
+      │         │     wins  (redraw) wins         │
+      │         │        │     │       │          │
+      └─────────┴────────┴─────┴───────┘          │
+                         │                        │
+                         ▼                        │
+              ┌─────────────────┐                 │
+              │    RESULT       │                 │
+              │ Show reaction   │                 │
+              │ times           │                 │
+              └────────┬────────┘                 │
+                       │                          │
+                       ▼                          │
+              ┌─────────────────┐                 │
+              │  CHECK WIN      │                 │
+              │  (5 points?)    │                 │
+              └────────┬────────┘                 │
+                       │                          │
+                ┌──────┴──────┐                   │
+                │             │                   │
+                ▼             ▼                   │
+             Winner       No winner               │
+             found        yet                     │
+                │             │                   │
+                ▼             └───────────────────┘
+          ┌─────────────┐
+          │  GAME OVER  │
+          │  Winner     │
+          │  declared   │
+          └─────────────┘
+```
+
+### Reflex Duel Round Resolution
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     REFLEX DUEL RESOLUTION LOGIC                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    resolveRound(blueTapTime, redTapTime, flashTime):
+           │
+           ▼
+    ┌─────────────────┐
+    │ Both tapped?    │
+    └────────┬────────┘
+             │
+      ┌──────┼──────┐
+      │      │      │
+      ▼      │      ▼
+    Neither  │    Both
+    tapped   │    tapped
+      │      │      │
+      ▼      │      ▼
+    REDRAW   │  ┌─────────────────┐
+    (new     │  │ Calculate       │
+    round)   │  │ reaction times  │
+             │  │ blue = blueTap  │
+             │  │        - flash  │
+             │  │ red = redTap    │
+             │  │       - flash   │
+             │  └────────┬────────┘
+             │           │
+             │           ▼
+             │  ┌─────────────────┐
+             │  │ |diff| <= 20ms? │
+             │  └────────┬────────┘
+             │           │
+             │    ┌──────┴──────┐
+             │    │             │
+             │    ▼             ▼
+             │   YES           NO
+             │    │             │
+             │    ▼             ▼
+             │  REDRAW      Faster
+             │  (tie)       player
+             │              wins
+             │
+             ▼
+    ┌─────────────────┐
+    │ Only one        │
+    │ tapped?         │
+    └────────┬────────┘
+             │
+      ┌──────┴──────┐
+      │             │
+      ▼             ▼
+    Blue          Red
+    only          only
+      │             │
+      ▼             ▼
+    Blue          Red
+    wins          wins
+```
+
+---
+
+*Updated to v4.3.0*
 *Last updated: January 2026*
-*Total sections: 109*
+*Total sections: 118*

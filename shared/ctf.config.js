@@ -66,7 +66,14 @@ export const CTF_CONFIG = {
   pongPaddleSpeed: 5,
 
   // Valid class periods
-  validPeriods: ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+  validPeriods: ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+
+  // Tiebreaker types (v4.3)
+  tiebreakerTypes: {
+    PONG: 'pong',
+    QUICK_CALC: 'quick_calc',
+    REFLEX_DUEL: 'reflex_duel'
+  }
 };
 
 // CommonJS export for server
