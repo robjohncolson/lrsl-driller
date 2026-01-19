@@ -2124,7 +2124,16 @@ const CTF_CONFIG = {
   blueFlag: 0,
   redFlag: 20,
   pointsPerMove: 20,
-  starPoints: { gold: 4, silver: 3, bronze: 2, tin: 1 }
+  starPoints: { gold: 4, silver: 3, bronze: 2, tin: 1 },
+  // v4.2: Session and tiebreaker settings
+  validPeriods: ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+  deadZoneMin: 9,
+  deadZoneMax: 11,
+  championsPerTeam: 3,
+  matchesToWin: 2,
+  sessionCheckIntervalMs: 10000,
+  warningMinutes: [5, 1],
+  readyCheckTimeoutMs: 30000
 };
 
 /**
