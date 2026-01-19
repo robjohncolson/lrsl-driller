@@ -8904,8 +8904,164 @@ Example:
     wins          wins
 ```
 
+### App.html GameModeManager Integration
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    APP.HTML GAME MODE INTEGRATION                                │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                         APP STARTUP
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │ User logs in    │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ initGameMode()  │
+                    │ called          │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Create          │
+                    │ GameModeManager │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Fetch settings  │
+                    │ from server     │
+                    └────────┬────────┘
+                             │
+                    ┌────────┴────────┐
+                    │                 │
+                    ▼                 ▼
+              mode = 'ctf'      mode = 'koth'
+                    │                 │
+                    ▼                 ▼
+              ┌───────────┐    ┌───────────┐
+              │ Load      │    │ Load      │
+              │ CTFPanel  │    │ KotHPanel │
+              └───────────┘    └───────────┘
+```
+
+### WebSocket Message Routing
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    WEBSOCKET MESSAGE ROUTING                                     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+              INCOMING WEBSOCKET MESSAGE
+                         │
+                         ▼
+              ┌─────────────────────┐
+              │ Check message.type  │
+              └─────────┬───────────┘
+                        │
+         ┌──────────────┼──────────────┬─────────────────┐
+         │              │              │                 │
+         ▼              ▼              ▼                 ▼
+    ctf_*          koth_*       game_mode_         other
+    messages       messages     changed            messages
+         │              │              │                 │
+         ▼              ▼              ▼                 ▼
+    ┌─────────┐   ┌─────────┐   ┌───────────┐      ┌─────────┐
+    │ Route   │   │ Route   │   │ Switch    │      │ Handle  │
+    │ to CTF  │   │ to KotH │   │ active    │      │ by app  │
+    │ panel   │   │ panel   │   │ mode      │      │         │
+    └─────────┘   └─────────┘   └───────────┘      └─────────┘
+```
+
+### Star Earned Points Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    STAR EARNED → GAME MODE POINTS                                │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    platform:starEarned event
+              │
+              ▼
+    ┌─────────────────────┐
+    │ Extract starType,   │
+    │ modeId from event   │
+    └─────────┬───────────┘
+              │
+              ▼
+    ┌─────────────────────┐
+    │ Calculate weighted  │
+    │ points (level mult) │
+    └─────────┬───────────┘
+              │
+              ▼
+    ┌─────────────────────┐
+    │ gameModeManager     │
+    │ .addPoints(pts,type)│
+    └─────────┬───────────┘
+              │
+              ▼
+    ┌─────────────────────┐
+    │ Delegates to active │
+    │ panel (CTF or KotH) │
+    └─────────┬───────────┘
+              │
+       ┌──────┴──────┐
+       │             │
+       ▼             ▼
+    CTF Mode     KotH Mode
+       │             │
+       ▼             ▼
+    Moves        Adds to
+    front        rolling
+    line         total
+```
+
+### Teacher Mode Selector
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    TEACHER MODE SELECTOR UI                                      │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────┐
+    │  Game Mode: [CTF ▼]    Tiebreaker: [Pong ▼]        │
+    └─────────────────────────────────────────────────────┘
+                │                      │
+                ▼                      ▼
+    ┌───────────────────┐    ┌───────────────────┐
+    │ • Capture The Flag│    │ • Pong            │
+    │ • King of the Hill│    │ • Quick Calc      │
+    └───────────────────┘    │ • Reflex Duel     │
+                             └───────────────────┘
+
+    ON CHANGE:
+         │
+         ▼
+    ┌─────────────────────┐
+    │ PUT /api/game-mode/ │
+    │ :cartridgeId/       │
+    │ settings            │
+    └─────────┬───────────┘
+              │
+              ▼
+    ┌─────────────────────┐
+    │ WebSocket broadcast │
+    │ game_mode_changed   │
+    └─────────┬───────────┘
+              │
+              ▼
+    ┌─────────────────────┐
+    │ All clients switch  │
+    │ to new mode         │
+    └─────────────────────┘
+```
+
 ---
 
 *Updated to v4.3.0*
 *Last updated: January 2026*
-*Total sections: 118*
+*Total sections: 122*

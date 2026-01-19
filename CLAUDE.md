@@ -338,6 +338,10 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 - **Modular game mode architecture**: Teachers can now choose between CTF and King of the Hill (KotH) game modes
 - **Multiple tiebreaker minigames**: Pong (existing), Quick Calc (new), and Reflex Duel (new)
 - Game mode and tiebreaker are independently selectable per cartridge/period
+- **GameModeManager integration**: `app.html` now uses `GameModeManager` instead of `CTFPanel` directly
+  - Teacher UI: Dropdowns for game mode (CTF/KotH) and tiebreaker (Pong/Quick Calc/Reflex Duel)
+  - WebSocket routing for `ctf_*`, `koth_*`, and `game_mode_changed` messages
+  - Star earned events delegate to active panel via `gameModeManager.addPoints()`
 - **King of the Hill (KotH)**: New rolling window point-based game mode
   - Points decay over 7-minute sliding window (0-3min: 100%, 3-5min: decay to 50%, 5-7min: decay to 0%)
   - Team with higher rolling total controls the "hill"
@@ -357,9 +361,10 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 - New files: `shared/game-mode.config.js`, `platform/game/game-mode-manager.js`, `platform/game/tiebreaker-manager.js`, `platform/game/koth-state.js`, `platform/game/koth-panel.js`, `platform/game/koth-renderer.js`, `platform/game/quick-calc.js`, `platform/game/reflex-duel.js`
 - New migration: `railway-server/migrations/012_game_modes.sql`
 - New endpoints: 2 game-mode settings + 10 KotH + 4 unified tiebreaker endpoints
-- New WebSocket messages: 6 KotH-specific + 4 shared tiebreaker message types
-- Added tests in `tests/game/` directory (game-mode-config, koth, quick-calc, reflex-duel)
+- New WebSocket messages: 6 KotH-specific + 4 shared tiebreaker message types + `game_mode_changed`
+- Added tests in `tests/game/` directory (game-mode-config, koth, quick-calc, reflex-duel, game-mode-manager)
 - Updated `shared/ctf.config.js` with tiebreakerTypes enum
+- Updated `platform/app.html`: replaced `CTFPanel` with `GameModeManager`, renamed `initCTF()` to `initGameMode()`
 
 **v4.2.0**: CTF Timed Sessions & Tiebreaker
 - **Per-class-period games**: Each period (A-G) has isolated CTF game state per cartridge
