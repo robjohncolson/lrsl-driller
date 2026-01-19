@@ -2,6 +2,7 @@
  * CTF Canvas Renderer
  *
  * Draws the linear tug-of-war lane showing the front line position.
+ * Includes session timer overlay and warning states.
  */
 
 import { CTF_CONFIG } from '../../shared/ctf.config.js';
@@ -11,6 +12,10 @@ export class CTFRenderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.dpr = window.devicePixelRatio || 1;
+
+    // Overlay state
+    this.warningMinutes = null;
+    this.sessionStatus = 'idle';
 
     this._resize();
     window.addEventListener('resize', () => this._resize());
@@ -26,12 +31,29 @@ export class CTFRenderer {
   }
 
   /**
+   * Set warning state for session ending soon
+   */
+  setWarningMinutes(minutes) {
+    this.warningMinutes = minutes;
+  }
+
+  /**
+   * Set session status for overlay rendering
+   */
+  setSessionStatus(status) {
+    this.sessionStatus = status;
+  }
+
+  /**
    * Render the CTF lane
    */
   render(state) {
     const { ctx, width, height } = this;
-    const { frontPosition, winner, bluePoints, redPoints } = state;
+    const { frontPosition, winner, bluePoints, redPoints, sessionStatus } = state;
     const { colors, laneLength, blueFlag, redFlag, pointsPerMove } = CTF_CONFIG;
+
+    // Update session status from state
+    this.sessionStatus = sessionStatus || 'idle';
 
     // Clear
     ctx.fillStyle = colors.background;
@@ -104,6 +126,14 @@ export class CTFRenderer {
     ctx.fillStyle = colors.red;
     ctx.fillRect(redBarX + blueBarWidth * (1 - redProgress), progressY, blueBarWidth * redProgress, progressHeight);
 
+    // Draw session status indicator (top left)
+    this._drawSessionIndicator();
+
+    // Draw warning overlay if session ending soon
+    if (this.warningMinutes !== null && this.sessionStatus === 'active') {
+      this._drawWarningOverlay();
+    }
+
     // Draw victory overlay if game is won
     if (winner) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -114,6 +144,11 @@ export class CTFRenderer {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(`${winner.toUpperCase()} WINS!`, width / 2, height / 2);
+    }
+
+    // Draw tiebreaker overlay if in tiebreaker mode
+    if (this.sessionStatus === 'tiebreaker' && !winner) {
+      this._drawTiebreakerOverlay();
     }
   }
 
@@ -140,6 +175,68 @@ export class CTFRenderer {
     ctx.lineTo(x, y - 10);
     ctx.closePath();
     ctx.fill();
+  }
+
+  /**
+   * Draw session status indicator
+   */
+  _drawSessionIndicator() {
+    const { ctx, width } = this;
+
+    // Session status badge in top-left
+    const statusColors = {
+      idle: '#6b7280',
+      scheduled: '#3b82f6',
+      active: '#10b981',
+      tiebreaker: '#f59e0b',
+      ended: '#ef4444'
+    };
+
+    const color = statusColors[this.sessionStatus] || '#6b7280';
+
+    // Small status dot
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(15, 10, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /**
+   * Draw warning overlay for session ending soon
+   */
+  _drawWarningOverlay() {
+    const { ctx, width, height } = this;
+
+    // Pulsing border based on urgency
+    const urgency = this.warningMinutes <= 1 ? 'danger' : 'warning';
+    const borderColor = urgency === 'danger' ? '#ef4444' : '#f59e0b';
+
+    // Pulsing effect
+    const pulse = Math.sin(Date.now() / (urgency === 'danger' ? 200 : 500)) * 0.3 + 0.7;
+
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = pulse;
+    ctx.strokeRect(2, 2, width - 4, height - 4);
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Draw tiebreaker overlay
+   */
+  _drawTiebreakerOverlay() {
+    const { ctx, width, height } = this;
+
+    // Semi-transparent overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, width, height);
+
+    // Tiebreaker text
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('TIEBREAKER', width / 2, height / 2);
   }
 
   /**

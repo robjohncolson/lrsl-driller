@@ -37,8 +37,36 @@ export const CTF_CONFIG = {
     neutral: '#6b7280',     // Tailwind gray-500
     frontLine: '#fbbf24',   // Tailwind amber-400
     background: '#1f2937',  // Tailwind gray-800
-    text: '#f9fafb'         // Tailwind gray-50
-  }
+    text: '#f9fafb',        // Tailwind gray-50
+    warning: '#f59e0b',     // Tailwind amber-500
+    danger: '#dc2626'       // Tailwind red-600
+  },
+
+  // Session settings
+  sessionCheckIntervalMs: 10000,     // Check sessions every 10s
+  warningMinutes: [5, 1],            // Warn at 5min and 1min remaining
+
+  // Dead zone (tiebreaker trigger) - positions 9, 10, 11 (center +/- 1)
+  deadZoneMin: 9,
+  deadZoneMax: 11,
+
+  // Tiebreaker settings
+  readyCheckTimeoutMs: 30000,        // 30s to confirm ready
+  championsPerTeam: 3,
+  matchesToWin: 2,                   // Best of 3
+
+  // Pong settings
+  pongPointsToWin: 5,
+  pongCanvasWidth: 400,
+  pongCanvasHeight: 300,
+  pongPaddleHeight: 60,
+  pongPaddleWidth: 10,
+  pongBallRadius: 4,
+  pongBallSpeed: 4,
+  pongPaddleSpeed: 5,
+
+  // Valid class periods
+  validPeriods: ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 };
 
 // CommonJS export for server

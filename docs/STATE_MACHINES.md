@@ -1,6 +1,19 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v4.1.0.
+Complete state machine documentation for all components as of v4.2.0.
+
+**v4.2.0 Changes (CTF Timed Sessions & Tiebreaker):**
+- Per-class-period CTF games: Each period (A-G) has isolated game state per cartridge
+- Timed sessions: Teachers can schedule start/end times or manually control sessions
+- Session states: idle → scheduled → active → tiebreaker → ended
+- Dead zone tiebreaker: If session ends at positions 9-11, triggers Pong tiebreaker
+- Champion selection by velocity (session_points / minutes_since_first_point)
+- Best-of-3 Pong matches between top 3 players per team
+- New migration: `railway-server/migrations/011_ctf_sessions.sql`
+- New file: `platform/game/pong-tiebreaker.js`
+- New endpoints: 4 session + 4 tiebreaker endpoints
+- New WebSocket messages: 9 session/tiebreaker message types
+- Added tests in `tests/server/ctf-sessions.test.js`
 
 **v4.1.0 Changes (Teacher Class Roster Management):**
 - Teachers can now organize students by class periods (A-G)
@@ -320,12 +333,334 @@ First team to reach enemy flag WINS
 ### Database Schema
 
 ```sql
--- One row per cartridge (auto-created on first access)
-ctf_games: { cartridge_id, front_position, blue_points, red_points, winner, created_at, updated_at }
+-- One row per (cartridge, class_period) combination (v4.2)
+ctf_games: {
+  cartridge_id, class_period,           -- Unique per period
+  front_position, blue_points, red_points, winner,
+  session_status, session_start_time, session_end_time,  -- v4.2 session management
+  session_started_at, session_ended_at, end_reason,
+  tiebreaker_winner
+}
 
--- Team assignments and contribution tracking
-ctf_players: { cartridge_id, username, team, points_contributed }
+-- Team assignments and contribution tracking (v4.2 adds class_period, session tracking)
+ctf_players: {
+  cartridge_id, class_period, username, team,
+  points_contributed, session_points, first_point_at  -- v4.2 session tracking
+}
+
+-- Tiebreaker match results (v4.2)
+ctf_tiebreaker_matches: {
+  cartridge_id, class_period, match_number,  -- 1, 2, or 3
+  blue_player, red_player, blue_score, red_score, winner
+}
 ```
+
+---
+
+## CTF Session Management (v4.2)
+
+**Added in v4.2** - Time-bounded sessions with automatic start/end and dead-zone tiebreaker.
+
+### Session State Machine
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           CTF SESSION STATES (v4.2)                             │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                     PUT /session/configure
+                     {startTime, endTime}
+        ┌─────────┐ ─────────────────────────▶ ┌───────────┐
+        │  IDLE   │                            │ SCHEDULED │
+        │         │ ◀─────────────────────────  │           │
+        └────┬────┘   POST /session/stop       └─────┬─────┘
+             │        (before start time)            │
+             │                                       │
+             │ POST /session/start                   │ Auto-start at
+             │ (manual start)                        │ scheduled time
+             │                                       │
+             ▼                                       ▼
+        ┌─────────────────────────────────────────────────┐
+        │                    ACTIVE                        │
+        │  • Points accepted from students                 │
+        │  • session_points tracked per player             │
+        │  • WebSocket: ctf_session_warning at 5min, 1min  │
+        └───────────────────────┬─────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────────────┐
+        │                       │                               │
+        │ POST /session/stop    │ Timer expires                 │ Flag captured
+        │ (manual)              │ (timeout)                     │ (position 0 or 20)
+        │                       │                               │
+        ▼                       ▼                               ▼
+  ┌───────────┐        ┌───────────────┐               ┌───────────┐
+  │  CHECK    │        │    CHECK      │               │   ENDED   │
+  │ POSITION  │        │   POSITION    │               │ (winner)  │
+  └─────┬─────┘        └───────┬───────┘               └───────────┘
+        │                      │
+        ├──────────────────────┤
+        │                      │
+        ▼                      ▼
+  Position in              Position in
+  DEAD ZONE                CLEAR ZONE
+  (9, 10, 11)              (0-8 or 12-20)
+        │                      │
+        ▼                      ▼
+  ┌───────────┐          ┌───────────┐
+  │TIEBREAKER │          │   ENDED   │
+  │  (Pong)   │          │ (winner   │
+  └─────┬─────┘          │ by pos)   │
+        │                └───────────┘
+        │
+        │ Tiebreaker complete
+        ▼
+  ┌───────────┐
+  │   ENDED   │
+  │(tiebreaker│
+  │  winner)  │
+  └───────────┘
+```
+
+### Points Flow with Session Check (v4.2)
+
+```
+                              ┌─────────────────────────────────────────────────────┐
+                              │           STUDENT EARNS STAR (Gold/Silver/etc)       │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌─────────────────────────────────────────────────────┐
+                              │   CHECK SESSION STATUS                               │
+                              │   GET /api/ctf/:cartridgeId/session/status          │
+                              │   ?class_period=X                                    │
+                              └───────────────────────┬─────────────────────────────┘
+                                                      │
+                          ┌───────────────────────────┴───────────────────────────┐
+                          │                                                       │
+                          ▼                                                       ▼
+              ┌───────────────────────┐                           ┌───────────────────────┐
+              │ status = 'idle' OR    │                           │ status = 'scheduled'  │
+              │ status = 'active'     │                           │ OR 'tiebreaker'       │
+              │ → Points ACCEPTED     │                           │ OR 'ended'            │
+              └───────────┬───────────┘                           │ → Points REJECTED     │
+                          │                                       │ (400 error)           │
+                          │                                       └───────────────────────┘
+                          ▼
+              ┌───────────────────────────────────────────────────────┐
+              │   POST /api/ctf/:cartridgeId/points?class_period=X    │
+              │   { username, points, starType }                      │
+              │                                                       │
+              │   Updates:                                            │
+              │   • points_contributed (all-time)                     │
+              │   • session_points (current session)                  │
+              │   • first_point_at (if null)                          │
+              └───────────────────────────────────────────────────────┘
+```
+
+### Velocity Calculation for Champion Selection
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    CHAMPION SELECTION (when tiebreaker triggered)               │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+For each player on team:
+    velocity = session_points / minutes_since_first_point
+
+    ┌──────────────────┐
+    │ Example:         │
+    │ Player A: 30 pts │
+    │ in 5 minutes     │
+    │ → velocity = 6   │
+    │                  │
+    │ Player B: 30 pts │
+    │ in 10 minutes    │
+    │ → velocity = 3   │
+    │                  │
+    │ Player A ranked  │
+    │ higher (faster)  │
+    └──────────────────┘
+
+Select top 3 by velocity per team:
+    Blue Champions: [#1 velocity, #2, #3]
+    Red Champions:  [#1 velocity, #2, #3]
+```
+
+---
+
+## CTF Tiebreaker Flow (v4.2)
+
+**Added in v4.2** - Best-of-3 Pong matches when session ends in dead zone.
+
+### Tiebreaker State Machine
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           TIEBREAKER FLOW (v4.2)                                │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+Session ends in DEAD ZONE (position 9, 10, or 11)
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         TIEBREAKER STARTING                                      │
+│   • Select champions by velocity (top 3 per team)                               │
+│   • Broadcast: ctf_tiebreaker_starting {blueChampions, redChampions}            │
+│   • Start 30-second ready check                                                 │
+└─────────────────────────────────┬───────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                            READY CHECK (30 seconds)                              │
+│                                                                                  │
+│   Champions must POST /tiebreaker/ready within 30 seconds                       │
+│   Broadcast: ctf_tiebreaker_ready {username, team} for each                     │
+└─────────────────────────────────┬───────────────────────────────────────────────┘
+                                  │
+          ┌───────────────────────┴───────────────────────┐
+          │                                               │
+          ▼                                               ▼
+┌─────────────────┐                             ┌─────────────────┐
+│  All 6 ready    │                             │ Timeout (30s)   │
+│  (or available) │                             │ Missing players │
+└────────┬────────┘                             │ = FORFEIT       │
+         │                                      └────────┬────────┘
+         │                                               │
+         └───────────────────┬───────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          MATCH 1: Blue #1 vs Red #1                              │
+│   Broadcast: ctf_tiebreaker_match_start {matchNumber: 1, bluePl, redPl}         │
+│   Play Pong (first to 5 points)                                                 │
+│   Record result: POST /tiebreaker/match-result                                  │
+│   Broadcast: ctf_tiebreaker_match_end {matchNumber: 1, winner, score}           │
+└─────────────────────────────────┬───────────────────────────────────────────────┘
+                                  │
+         ┌────────────────────────┴────────────────────────┐
+         │ blueWins < 2 && redWins < 2                     │ blueWins >= 2 || redWins >= 2
+         ▼                                                 ▼
+┌─────────────────────────────────────────┐      ┌─────────────────┐
+│           MATCH 2: Blue #2 vs Red #2    │      │   TIEBREAKER    │
+│   (same flow as Match 1)                │      │   COMPLETE      │
+└────────────────────┬────────────────────┘      └────────┬────────┘
+                     │                                    │
+         ┌───────────┴───────────┐                        │
+         │                       │                        │
+         ▼                       ▼                        │
+  Still tied?              Winner found?                  │
+  (1-1)                    (2-0 or 2-1)                   │
+         │                       │                        │
+         ▼                       └────────────────────────┤
+┌─────────────────────────────────────────┐              │
+│           MATCH 3: Blue #3 vs Red #3    │              │
+│   (decides tiebreaker)                  │              │
+└────────────────────┬────────────────────┘              │
+                     │                                    │
+                     └────────────────────────────────────┤
+                                                          │
+                                                          ▼
+                    ┌─────────────────────────────────────────────────────────────┐
+                    │                      TIEBREAKER COMPLETE                     │
+                    │   Broadcast: ctf_tiebreaker_complete {winner, matchResults}  │
+                    │   Update: ctf_games.session_status = 'ended'                 │
+                    │   Update: ctf_games.tiebreaker_winner = winner               │
+                    │   Update: ctf_games.end_reason = 'tiebreaker_complete'       │
+                    └─────────────────────────────────────────────────────────────┘
+```
+
+### Forfeit Scenarios
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              FORFEIT HANDLING                                    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────┬─────────────────────────────────────────────────────┐
+│ Scenario                   │ Result                                              │
+├────────────────────────────┼─────────────────────────────────────────────────────┤
+│ Blue player missing        │ Red wins match (forfeit_blue)                       │
+│ Red player missing         │ Blue wins match (forfeit_red)                       │
+│ Both players missing       │ Match skipped (skip), no point awarded              │
+│ Entire Blue team missing   │ Red wins tiebreaker 2-0                            │
+│ Entire Red team missing    │ Blue wins tiebreaker 2-0                           │
+│ Both teams missing         │ Draw - front stays at current position             │
+└────────────────────────────┴─────────────────────────────────────────────────────┘
+```
+
+### Pong Match State Machine
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              PONG MATCH FLOW                                     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+              ┌─────────────────────────────────────┐
+              │         MATCH START                 │
+              │   • Canvas: 400x300 px              │
+              │   • Ball starts center              │
+              │   • Paddles at mid-height           │
+              │   • Blue player = host (ball auth)  │
+              └─────────────────┬───────────────────┘
+                                │
+                                ▼
+              ┌─────────────────────────────────────┐
+              │           GAME LOOP                 │
+              │                                     │
+              │   Input:                            │
+              │   ├─ W/S or ↑/↓ keys               │
+              │   └─ Touch (top/bottom half)       │
+              │                                     │
+              │   Host updates:                     │
+              │   ├─ Ball position (physics)       │
+              │   └─ Broadcast: pong_ball_sync     │
+              │                                     │
+              │   All players:                      │
+              │   └─ Broadcast: pong_paddle_update │
+              └─────────────────┬───────────────────┘
+                                │
+                                ▼
+              ┌─────────────────────────────────────┐
+              │         BALL SCORING                │
+              │                                     │
+              │   Ball exits left  → Red scores    │
+              │   Ball exits right → Blue scores   │
+              │                                     │
+              │   Broadcast: pong_point_scored     │
+              │   Reset ball to center             │
+              └─────────────────┬───────────────────┘
+                                │
+                ┌───────────────┴───────────────┐
+                │                               │
+                ▼                               ▼
+    ┌───────────────────┐           ┌───────────────────┐
+    │ Score < 5         │           │ Score >= 5        │
+    │ Continue playing  │           │ MATCH END         │
+    └───────────────────┘           │ Winner declared   │
+                                    └─────────┬─────────┘
+                                              │
+                                              ▼
+                                ┌─────────────────────────────┐
+                                │   Report to server:         │
+                                │   POST /tiebreaker/match-result │
+                                │   {matchNumber, winner,     │
+                                │    blueScore, redScore}     │
+                                └─────────────────────────────┘
+```
+
+### Session WebSocket Messages (v4.2)
+
+| Message | Trigger | Payload |
+|---------|---------|---------|
+| `ctf_session_configured` | Times set | `{cartridgeId, classPeriod, startTime, endTime}` |
+| `ctf_session_started` | Session begins | `{cartridgeId, classPeriod, endsAt}` |
+| `ctf_session_warning` | 5min/1min left | `{cartridgeId, classPeriod, minutesRemaining}` |
+| `ctf_session_ended` | Session ends | `{cartridgeId, classPeriod, reason, frontPosition}` |
+| `ctf_tiebreaker_starting` | Champions selected | `{cartridgeId, classPeriod, blueChampions, redChampions}` |
+| `ctf_tiebreaker_ready` | Player ready | `{cartridgeId, classPeriod, username, team}` |
+| `ctf_tiebreaker_match_start` | Pong begins | `{cartridgeId, classPeriod, matchNumber, bluePlayer, redPlayer}` |
+| `ctf_tiebreaker_match_end` | Pong ends | `{cartridgeId, classPeriod, matchNumber, winner, blueScore, redScore}` |
+| `ctf_tiebreaker_complete` | Final result | `{cartridgeId, classPeriod, winner, matchResults}` |
 
 ---
 

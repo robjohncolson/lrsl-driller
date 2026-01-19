@@ -2128,14 +2128,28 @@ const CTF_CONFIG = {
 };
 
 /**
- * Get or create CTF game for a cartridge
+ * Validate class_period parameter
  */
-async function getOrCreateCTFGame(cartridgeId) {
+function validateClassPeriod(classPeriod) {
+  if (!classPeriod) {
+    return { valid: false, error: 'class_period is required' };
+  }
+  if (!CTF_CONFIG.validPeriods.includes(classPeriod)) {
+    return { valid: false, error: `class_period must be one of: ${CTF_CONFIG.validPeriods.join(', ')}` };
+  }
+  return { valid: true };
+}
+
+/**
+ * Get or create CTF game for a cartridge and class period
+ */
+async function getOrCreateCTFGame(cartridgeId, classPeriod) {
   // Try to get existing game
   let { data: game, error } = await supabase
     .from('ctf_games')
     .select('*')
     .eq('cartridge_id', cartridgeId)
+    .eq('class_period', classPeriod)
     .single();
 
   if (error && error.code === 'PGRST116') {
@@ -2144,10 +2158,12 @@ async function getOrCreateCTFGame(cartridgeId) {
       .from('ctf_games')
       .insert({
         cartridge_id: cartridgeId,
+        class_period: classPeriod,
         front_position: CTF_CONFIG.startPosition,
         blue_points: 0,
         red_points: 0,
-        winner: null
+        winner: null,
+        session_status: 'idle'
       })
       .select()
       .single();
@@ -2162,13 +2178,14 @@ async function getOrCreateCTFGame(cartridgeId) {
 }
 
 /**
- * Get CTF players for a cartridge
+ * Get CTF players for a cartridge and class period
  */
-async function getCTFPlayers(cartridgeId) {
+async function getCTFPlayers(cartridgeId, classPeriod) {
   const { data: players, error } = await supabase
     .from('ctf_players')
-    .select('username, team, points_contributed')
+    .select('username, team, points_contributed, session_points, first_point_at')
     .eq('cartridge_id', cartridgeId)
+    .eq('class_period', classPeriod)
     .order('points_contributed', { ascending: false });
 
   if (error && error.code !== '42P01') throw error;
@@ -2202,10 +2219,16 @@ function calculateFrontPosition(bluePoints, redPoints) {
 app.get('/api/ctf/:cartridgeId/state', async (req, res) => {
   try {
     const { cartridgeId } = req.params;
-    const { username } = req.query;
+    const { username, class_period } = req.query;
 
-    const game = await getOrCreateCTFGame(cartridgeId);
-    const players = await getCTFPlayers(cartridgeId);
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const game = await getOrCreateCTFGame(cartridgeId, class_period);
+    const players = await getCTFPlayers(cartridgeId, class_period);
 
     // Separate by team
     const blueTeam = players.filter(p => p.team === 'blue');
@@ -2220,6 +2243,7 @@ app.get('/api/ctf/:cartridgeId/state', async (req, res) => {
 
     res.json({
       cartridgeId,
+      classPeriod: class_period,
       frontPosition: game.front_position,
       bluePoints: game.blue_points,
       redPoints: game.red_points,
@@ -2227,6 +2251,14 @@ app.get('/api/ctf/:cartridgeId/state', async (req, res) => {
       blueTeam,
       redTeam,
       userTeam,
+      // Session info
+      sessionStatus: game.session_status,
+      sessionStartTime: game.session_start_time,
+      sessionEndTime: game.session_end_time,
+      sessionStartedAt: game.session_started_at,
+      sessionEndedAt: game.session_ended_at,
+      endReason: game.end_reason,
+      tiebreakerWinner: game.tiebreaker_winner,
       config: CTF_CONFIG
     });
   } catch (err) {
@@ -2244,7 +2276,7 @@ app.get('/api/ctf/config', (req, res) => {
 app.post('/api/ctf/:cartridgeId/join', async (req, res) => {
   try {
     const { cartridgeId } = req.params;
-    const { username, team } = req.body;
+    const { username, team, class_period } = req.body;
 
     if (!username || !team) {
       return res.status(400).json({ error: 'Username and team required' });
@@ -2254,19 +2286,27 @@ app.post('/api/ctf/:cartridgeId/join', async (req, res) => {
       return res.status(400).json({ error: 'Team must be blue or red' });
     }
 
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
     // Ensure game exists
-    await getOrCreateCTFGame(cartridgeId);
+    await getOrCreateCTFGame(cartridgeId, class_period);
 
     // Upsert player
     const { data: player, error } = await supabase
       .from('ctf_players')
       .upsert({
         cartridge_id: cartridgeId,
+        class_period,
         username,
         team,
-        points_contributed: 0
+        points_contributed: 0,
+        session_points: 0
       }, {
-        onConflict: 'cartridge_id,username'
+        onConflict: 'cartridge_id,class_period,username'
       })
       .select()
       .single();
@@ -2277,6 +2317,7 @@ app.post('/api/ctf/:cartridgeId/join', async (req, res) => {
     broadcast({
       type: 'ctf_player_joined',
       cartridgeId,
+      classPeriod: class_period,
       username,
       team
     });
@@ -2292,17 +2333,38 @@ app.post('/api/ctf/:cartridgeId/join', async (req, res) => {
 app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
   try {
     const { cartridgeId } = req.params;
-    const { username, points, starType } = req.body;
+    const { username, points, starType, class_period } = req.body;
 
     if (!username || points === undefined) {
       return res.status(400).json({ error: 'Username and points required' });
     }
 
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    // Get current game state
+    const game = await getOrCreateCTFGame(cartridgeId, class_period);
+
+    // Check session status - only accept points during active or idle sessions
+    if (game.session_status !== 'active' && game.session_status !== 'idle') {
+      return res.status(400).json({
+        error: 'Session not active',
+        sessionStatus: game.session_status,
+        message: game.session_status === 'ended' ? 'Session has ended' :
+                 game.session_status === 'tiebreaker' ? 'Tiebreaker in progress' :
+                 'Session is scheduled but not started'
+      });
+    }
+
     // Get player's team
     const { data: player, error: playerError } = await supabase
       .from('ctf_players')
-      .select('team, points_contributed')
+      .select('team, points_contributed, session_points, first_point_at')
       .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
       .eq('username', username)
       .single();
 
@@ -2312,9 +2374,6 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
       }
       throw playerError;
     }
-
-    // Get current game state
-    const game = await getOrCreateCTFGame(cartridgeId);
 
     // Check if game already won
     if (game.winner) {
@@ -2326,12 +2385,24 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
       });
     }
 
-    // Update player's points
+    // Update player's points (both all-time and session)
     const newPlayerPoints = (player.points_contributed || 0) + points;
+    const newSessionPoints = (player.session_points || 0) + points;
+    const playerUpdate = {
+      points_contributed: newPlayerPoints,
+      session_points: newSessionPoints
+    };
+
+    // Set first_point_at if this is the player's first contribution this session
+    if (!player.first_point_at && game.session_status === 'active') {
+      playerUpdate.first_point_at = new Date().toISOString();
+    }
+
     await supabase
       .from('ctf_players')
-      .update({ points_contributed: newPlayerPoints })
+      .update(playerUpdate)
       .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
       .eq('username', username);
 
     // Update team points in game
@@ -2352,12 +2423,19 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
     };
     if (winner) {
       gameUpdate.winner = winner;
+      // If a flag was captured during an active session, end the session
+      if (game.session_status === 'active') {
+        gameUpdate.session_status = 'ended';
+        gameUpdate.session_ended_at = new Date().toISOString();
+        gameUpdate.end_reason = 'flag_captured';
+      }
     }
 
     const { error: updateError } = await supabase
       .from('ctf_games')
       .update(gameUpdate)
-      .eq('cartridge_id', cartridgeId);
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
 
     if (updateError) throw updateError;
 
@@ -2365,6 +2443,7 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
     broadcast({
       type: 'ctf_points',
       cartridgeId,
+      classPeriod: class_period,
       username,
       team: player.team,
       points,
@@ -2378,6 +2457,7 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
       broadcast({
         type: 'ctf_front_moved',
         cartridgeId,
+        classPeriod: class_period,
         frontPosition: newPosition,
         bluePoints,
         redPoints
@@ -2389,6 +2469,7 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
       broadcast({
         type: 'ctf_victory',
         cartridgeId,
+        classPeriod: class_period,
         winner,
         finalPosition: newPosition
       });
@@ -2400,7 +2481,8 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
       bluePoints,
       redPoints,
       winner,
-      playerPoints: newPlayerPoints
+      playerPoints: newPlayerPoints,
+      sessionPoints: newSessionPoints
     });
   } catch (err) {
     console.error('POST /api/ctf/:cartridgeId/points error:', err);
@@ -2412,18 +2494,32 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
 app.post('/api/ctf/:cartridgeId/reset', async (req, res) => {
   try {
     const { cartridgeId } = req.params;
-    const { preserveTeams } = req.body;
+    const { preserveTeams, class_period } = req.body;
 
-    // Reset game state
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    // Reset game state (including session state)
     const { error: gameError } = await supabase
       .from('ctf_games')
       .update({
         front_position: CTF_CONFIG.startPosition,
         blue_points: 0,
         red_points: 0,
-        winner: null
+        winner: null,
+        session_status: 'idle',
+        session_start_time: null,
+        session_end_time: null,
+        session_started_at: null,
+        session_ended_at: null,
+        end_reason: null,
+        tiebreaker_winner: null
       })
-      .eq('cartridge_id', cartridgeId);
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
 
     if (gameError) throw gameError;
 
@@ -2431,8 +2527,13 @@ app.post('/api/ctf/:cartridgeId/reset', async (req, res) => {
     if (preserveTeams) {
       const { error: playerError } = await supabase
         .from('ctf_players')
-        .update({ points_contributed: 0 })
-        .eq('cartridge_id', cartridgeId);
+        .update({
+          points_contributed: 0,
+          session_points: 0,
+          first_point_at: null
+        })
+        .eq('cartridge_id', cartridgeId)
+        .eq('class_period', class_period);
 
       if (playerError) throw playerError;
     } else {
@@ -2440,15 +2541,24 @@ app.post('/api/ctf/:cartridgeId/reset', async (req, res) => {
       const { error: deleteError } = await supabase
         .from('ctf_players')
         .delete()
-        .eq('cartridge_id', cartridgeId);
+        .eq('cartridge_id', cartridgeId)
+        .eq('class_period', class_period);
 
       if (deleteError) throw deleteError;
     }
+
+    // Delete tiebreaker matches
+    await supabase
+      .from('ctf_tiebreaker_matches')
+      .delete()
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
 
     // Broadcast reset
     broadcast({
       type: 'ctf_reset',
       cartridgeId,
+      classPeriod: class_period,
       preserveTeams
     });
 
@@ -2463,8 +2573,15 @@ app.post('/api/ctf/:cartridgeId/reset', async (req, res) => {
 app.get('/api/ctf/:cartridgeId/leaderboard', async (req, res) => {
   try {
     const { cartridgeId } = req.params;
+    const { class_period } = req.query;
 
-    const players = await getCTFPlayers(cartridgeId);
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const players = await getCTFPlayers(cartridgeId, class_period);
 
     // Sort by points within each team
     const blueTeam = players
@@ -2478,9 +2595,12 @@ app.get('/api/ctf/:cartridgeId/leaderboard', async (req, res) => {
     const blueTotal = blueTeam.reduce((sum, p) => sum + p.points_contributed, 0);
     const redTotal = redTeam.reduce((sum, p) => sum + p.points_contributed, 0);
 
+    const blueSessionTotal = blueTeam.reduce((sum, p) => sum + (p.session_points || 0), 0);
+    const redSessionTotal = redTeam.reduce((sum, p) => sum + (p.session_points || 0), 0);
+
     res.json({
-      blue: { players: blueTeam, totalPoints: blueTotal },
-      red: { players: redTeam, totalPoints: redTotal }
+      blue: { players: blueTeam, totalPoints: blueTotal, sessionPoints: blueSessionTotal },
+      red: { players: redTeam, totalPoints: redTotal, sessionPoints: redSessionTotal }
     });
   } catch (err) {
     console.error('GET /api/ctf/:cartridgeId/leaderboard error:', err);
@@ -2492,27 +2612,35 @@ app.get('/api/ctf/:cartridgeId/leaderboard', async (req, res) => {
 app.post('/api/ctf/:cartridgeId/assign-teams', async (req, res) => {
   try {
     const { cartridgeId } = req.params;
-    const { assignments } = req.body; // Array of { username, team }
+    const { assignments, class_period } = req.body; // Array of { username, team }
 
     if (!Array.isArray(assignments)) {
       return res.status(400).json({ error: 'Assignments must be an array' });
     }
 
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
     // Ensure game exists
-    await getOrCreateCTFGame(cartridgeId);
+    await getOrCreateCTFGame(cartridgeId, class_period);
 
     // Upsert all players
     const records = assignments.map(a => ({
       cartridge_id: cartridgeId,
+      class_period,
       username: a.username,
       team: a.team,
-      points_contributed: 0
+      points_contributed: 0,
+      session_points: 0
     }));
 
     const { error } = await supabase
       .from('ctf_players')
       .upsert(records, {
-        onConflict: 'cartridge_id,username'
+        onConflict: 'cartridge_id,class_period,username'
       });
 
     if (error) throw error;
@@ -2521,6 +2649,7 @@ app.post('/api/ctf/:cartridgeId/assign-teams', async (req, res) => {
     broadcast({
       type: 'ctf_teams_updated',
       cartridgeId,
+      classPeriod: class_period,
       assignments
     });
 
@@ -2535,11 +2664,19 @@ app.post('/api/ctf/:cartridgeId/assign-teams', async (req, res) => {
 app.delete('/api/ctf/:cartridgeId/player/:username', async (req, res) => {
   try {
     const { cartridgeId, username } = req.params;
+    const { class_period } = req.query;
+
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
 
     const { error } = await supabase
       .from('ctf_players')
       .delete()
       .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
       .eq('username', username);
 
     if (error) throw error;
@@ -2548,12 +2685,579 @@ app.delete('/api/ctf/:cartridgeId/player/:username', async (req, res) => {
     broadcast({
       type: 'ctf_player_removed',
       cartridgeId,
+      classPeriod: class_period,
       username
     });
 
     res.json({ success: true });
   } catch (err) {
     console.error('DELETE /api/ctf/:cartridgeId/player/:username error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// CTF SESSION MANAGEMENT ENDPOINTS
+// ============================================
+
+// PUT /api/ctf/:cartridgeId/session/configure - Set session start/end times
+app.put('/api/ctf/:cartridgeId/session/configure', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, start_time, end_time } = req.body;
+
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    if (!start_time || !end_time) {
+      return res.status(400).json({ error: 'start_time and end_time required' });
+    }
+
+    // Ensure game exists
+    const game = await getOrCreateCTFGame(cartridgeId, class_period);
+
+    // Only allow configuration in idle state
+    if (game.session_status !== 'idle' && game.session_status !== 'scheduled') {
+      return res.status(400).json({
+        error: 'Cannot configure session while active or in tiebreaker',
+        sessionStatus: game.session_status
+      });
+    }
+
+    // Update session times
+    const { error } = await supabase
+      .from('ctf_games')
+      .update({
+        session_start_time: start_time,
+        session_end_time: end_time,
+        session_status: 'scheduled'
+      })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
+
+    if (error) throw error;
+
+    // Broadcast configuration
+    broadcast({
+      type: 'ctf_session_configured',
+      cartridgeId,
+      classPeriod: class_period,
+      startTime: start_time,
+      endTime: end_time
+    });
+
+    res.json({ success: true, startTime: start_time, endTime: end_time });
+  } catch (err) {
+    console.error('PUT /api/ctf/:cartridgeId/session/configure error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ctf/:cartridgeId/session/start - Manually start session
+app.post('/api/ctf/:cartridgeId/session/start', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, duration_minutes } = req.body;
+
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const game = await getOrCreateCTFGame(cartridgeId, class_period);
+
+    // Only allow start from idle or scheduled state
+    if (game.session_status !== 'idle' && game.session_status !== 'scheduled') {
+      return res.status(400).json({
+        error: 'Session cannot be started from current state',
+        sessionStatus: game.session_status
+      });
+    }
+
+    const now = new Date();
+    let sessionEndedAt = null;
+
+    // If duration_minutes provided, calculate end time
+    if (duration_minutes) {
+      sessionEndedAt = new Date(now.getTime() + duration_minutes * 60 * 1000);
+    } else if (game.session_end_time) {
+      // Use scheduled end time - parse time and apply to today's date
+      const [hours, minutes] = game.session_end_time.split(':');
+      sessionEndedAt = new Date(now);
+      sessionEndedAt.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      // If end time is before now, it might be for tomorrow
+      if (sessionEndedAt <= now) {
+        sessionEndedAt.setDate(sessionEndedAt.getDate() + 1);
+      }
+    }
+
+    // Reset session points for all players
+    await supabase
+      .from('ctf_players')
+      .update({ session_points: 0, first_point_at: null })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
+
+    // Update game state
+    const { error } = await supabase
+      .from('ctf_games')
+      .update({
+        session_status: 'active',
+        session_started_at: now.toISOString(),
+        session_ended_at: null,
+        end_reason: null,
+        winner: null,
+        tiebreaker_winner: null
+      })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
+
+    if (error) throw error;
+
+    // Broadcast session started
+    broadcast({
+      type: 'ctf_session_started',
+      cartridgeId,
+      classPeriod: class_period,
+      startedAt: now.toISOString(),
+      endsAt: sessionEndedAt ? sessionEndedAt.toISOString() : null
+    });
+
+    res.json({
+      success: true,
+      sessionStatus: 'active',
+      startedAt: now.toISOString(),
+      endsAt: sessionEndedAt ? sessionEndedAt.toISOString() : null
+    });
+  } catch (err) {
+    console.error('POST /api/ctf/:cartridgeId/session/start error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ctf/:cartridgeId/session/stop - Manually stop session
+app.post('/api/ctf/:cartridgeId/session/stop', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period } = req.body;
+
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const game = await getOrCreateCTFGame(cartridgeId, class_period);
+
+    // Only allow stop from active state
+    if (game.session_status !== 'active') {
+      return res.status(400).json({
+        error: 'No active session to stop',
+        sessionStatus: game.session_status
+      });
+    }
+
+    const now = new Date();
+
+    // Check if we need tiebreaker (dead zone: positions 9, 10, 11)
+    const inDeadZone = game.front_position >= CTF_CONFIG.deadZoneMin &&
+                       game.front_position <= CTF_CONFIG.deadZoneMax;
+
+    let newStatus = 'ended';
+    let endReason = 'manual';
+
+    if (inDeadZone) {
+      newStatus = 'tiebreaker';
+      endReason = null;
+    }
+
+    // Update game state
+    const { error } = await supabase
+      .from('ctf_games')
+      .update({
+        session_status: newStatus,
+        session_ended_at: now.toISOString(),
+        end_reason: endReason
+      })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
+
+    if (error) throw error;
+
+    // Broadcast session ended
+    broadcast({
+      type: 'ctf_session_ended',
+      cartridgeId,
+      classPeriod: class_period,
+      reason: endReason || 'tiebreaker_needed',
+      frontPosition: game.front_position,
+      requiresTiebreaker: inDeadZone
+    });
+
+    // If tiebreaker needed, trigger champion selection
+    if (inDeadZone) {
+      await initiateTiebreaker(cartridgeId, class_period);
+    }
+
+    res.json({
+      success: true,
+      sessionStatus: newStatus,
+      endReason: endReason,
+      requiresTiebreaker: inDeadZone
+    });
+  } catch (err) {
+    console.error('POST /api/ctf/:cartridgeId/session/stop error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/ctf/:cartridgeId/session/status - Get session status with computed timer
+app.get('/api/ctf/:cartridgeId/session/status', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period } = req.query;
+
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const game = await getOrCreateCTFGame(cartridgeId, class_period);
+    const now = new Date();
+
+    let remainingMs = null;
+    let endsAt = null;
+
+    if (game.session_status === 'active' && game.session_end_time) {
+      // Calculate end time for today
+      const [hours, minutes] = game.session_end_time.split(':');
+      endsAt = new Date(now);
+      endsAt.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      if (endsAt <= game.session_started_at) {
+        endsAt.setDate(endsAt.getDate() + 1);
+      }
+      remainingMs = Math.max(0, endsAt.getTime() - now.getTime());
+    }
+
+    res.json({
+      sessionStatus: game.session_status,
+      sessionStartTime: game.session_start_time,
+      sessionEndTime: game.session_end_time,
+      sessionStartedAt: game.session_started_at,
+      sessionEndedAt: game.session_ended_at,
+      endReason: game.end_reason,
+      tiebreakerWinner: game.tiebreaker_winner,
+      endsAt: endsAt ? endsAt.toISOString() : null,
+      remainingMs,
+      frontPosition: game.front_position,
+      winner: game.winner
+    });
+  } catch (err) {
+    console.error('GET /api/ctf/:cartridgeId/session/status error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// CTF TIEBREAKER ENDPOINTS
+// ============================================
+
+/**
+ * Calculate velocity for champion selection
+ * Velocity = session_points / minutes_since_first_point
+ */
+function calculateVelocity(player, now) {
+  if (!player.first_point_at || player.session_points === 0) return 0;
+  const minutesSinceFirst = (now - new Date(player.first_point_at)) / 60000;
+  if (minutesSinceFirst <= 0) return player.session_points; // Just started
+  return player.session_points / minutesSinceFirst;
+}
+
+/**
+ * Select champions for tiebreaker based on velocity
+ */
+async function selectChampions(cartridgeId, classPeriod) {
+  const players = await getCTFPlayers(cartridgeId, classPeriod);
+  const now = new Date();
+
+  const bluePlayers = players
+    .filter(p => p.team === 'blue' && p.session_points > 0)
+    .map(p => ({ ...p, velocity: calculateVelocity(p, now) }))
+    .sort((a, b) => b.velocity - a.velocity)
+    .slice(0, CTF_CONFIG.championsPerTeam);
+
+  const redPlayers = players
+    .filter(p => p.team === 'red' && p.session_points > 0)
+    .map(p => ({ ...p, velocity: calculateVelocity(p, now) }))
+    .sort((a, b) => b.velocity - a.velocity)
+    .slice(0, CTF_CONFIG.championsPerTeam);
+
+  return { blueChampions: bluePlayers, redChampions: redPlayers };
+}
+
+/**
+ * Initiate tiebreaker sequence
+ */
+async function initiateTiebreaker(cartridgeId, classPeriod) {
+  const { blueChampions, redChampions } = await selectChampions(cartridgeId, classPeriod);
+
+  // Create tiebreaker match records
+  for (let i = 0; i < CTF_CONFIG.championsPerTeam; i++) {
+    const bluePlayer = blueChampions[i]?.username || null;
+    const redPlayer = redChampions[i]?.username || null;
+
+    await supabase
+      .from('ctf_tiebreaker_matches')
+      .upsert({
+        cartridge_id: cartridgeId,
+        class_period: classPeriod,
+        match_number: i + 1,
+        blue_player: bluePlayer,
+        red_player: redPlayer,
+        winner: null
+      }, {
+        onConflict: 'cartridge_id,class_period,match_number'
+      });
+  }
+
+  // Broadcast tiebreaker starting
+  broadcast({
+    type: 'ctf_tiebreaker_starting',
+    cartridgeId,
+    classPeriod,
+    blueChampions: blueChampions.map(p => ({ username: p.username, velocity: p.velocity })),
+    redChampions: redChampions.map(p => ({ username: p.username, velocity: p.velocity }))
+  });
+}
+
+// GET /api/ctf/:cartridgeId/tiebreaker/status - Get tiebreaker status
+app.get('/api/ctf/:cartridgeId/tiebreaker/status', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period } = req.query;
+
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const game = await getOrCreateCTFGame(cartridgeId, class_period);
+
+    // Get tiebreaker matches
+    const { data: matches, error } = await supabase
+      .from('ctf_tiebreaker_matches')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .order('match_number');
+
+    if (error) throw error;
+
+    // Calculate current score
+    let blueWins = 0;
+    let redWins = 0;
+    matches?.forEach(m => {
+      if (m.winner === 'blue' || m.winner === 'forfeit_red') blueWins++;
+      if (m.winner === 'red' || m.winner === 'forfeit_blue') redWins++;
+    });
+
+    res.json({
+      sessionStatus: game.session_status,
+      tiebreakerWinner: game.tiebreaker_winner,
+      matches: matches || [],
+      blueWins,
+      redWins,
+      matchesToWin: CTF_CONFIG.matchesToWin
+    });
+  } catch (err) {
+    console.error('GET /api/ctf/:cartridgeId/tiebreaker/status error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ctf/:cartridgeId/tiebreaker/ready - Champion confirms ready
+app.post('/api/ctf/:cartridgeId/tiebreaker/ready', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, username, match_number } = req.body;
+
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    // Broadcast ready status
+    broadcast({
+      type: 'ctf_tiebreaker_ready',
+      cartridgeId,
+      classPeriod: class_period,
+      username,
+      matchNumber: match_number
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/ctf/:cartridgeId/tiebreaker/ready error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ctf/:cartridgeId/tiebreaker/match-result - Record match result
+app.post('/api/ctf/:cartridgeId/tiebreaker/match-result', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, match_number, winner, blue_score, red_score } = req.body;
+
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    if (!match_number || !winner) {
+      return res.status(400).json({ error: 'match_number and winner required' });
+    }
+
+    // Update match record
+    const { error: matchError } = await supabase
+      .from('ctf_tiebreaker_matches')
+      .update({
+        winner,
+        blue_score: blue_score || 0,
+        red_score: red_score || 0,
+        ended_at: new Date().toISOString()
+      })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .eq('match_number', match_number);
+
+    if (matchError) throw matchError;
+
+    // Broadcast match end
+    broadcast({
+      type: 'ctf_tiebreaker_match_end',
+      cartridgeId,
+      classPeriod: class_period,
+      matchNumber: match_number,
+      winner,
+      blueScore: blue_score || 0,
+      redScore: red_score || 0
+    });
+
+    // Check if tiebreaker is complete
+    const { data: matches } = await supabase
+      .from('ctf_tiebreaker_matches')
+      .select('winner')
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period);
+
+    let blueWins = 0;
+    let redWins = 0;
+    matches?.forEach(m => {
+      if (m.winner === 'blue' || m.winner === 'forfeit_red') blueWins++;
+      if (m.winner === 'red' || m.winner === 'forfeit_blue') redWins++;
+    });
+
+    let tiebreakerWinner = null;
+    if (blueWins >= CTF_CONFIG.matchesToWin) {
+      tiebreakerWinner = 'blue';
+    } else if (redWins >= CTF_CONFIG.matchesToWin) {
+      tiebreakerWinner = 'red';
+    }
+
+    if (tiebreakerWinner) {
+      // Update game with tiebreaker result
+      await supabase
+        .from('ctf_games')
+        .update({
+          session_status: 'ended',
+          end_reason: 'tiebreaker_complete',
+          tiebreaker_winner: tiebreakerWinner,
+          winner: tiebreakerWinner
+        })
+        .eq('cartridge_id', cartridgeId)
+        .eq('class_period', class_period);
+
+      // Broadcast tiebreaker complete
+      broadcast({
+        type: 'ctf_tiebreaker_complete',
+        cartridgeId,
+        classPeriod: class_period,
+        winner: tiebreakerWinner,
+        blueWins,
+        redWins
+      });
+    }
+
+    res.json({
+      success: true,
+      blueWins,
+      redWins,
+      tiebreakerComplete: !!tiebreakerWinner,
+      tiebreakerWinner
+    });
+  } catch (err) {
+    console.error('POST /api/ctf/:cartridgeId/tiebreaker/match-result error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ctf/:cartridgeId/tiebreaker/start-match - Start a Pong match
+app.post('/api/ctf/:cartridgeId/tiebreaker/start-match', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, match_number } = req.body;
+
+    // Validate class_period
+    const validation = validateClassPeriod(class_period);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    // Get match info
+    const { data: match, error } = await supabase
+      .from('ctf_tiebreaker_matches')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .eq('match_number', match_number)
+      .single();
+
+    if (error) throw error;
+
+    // Update match start time
+    await supabase
+      .from('ctf_tiebreaker_matches')
+      .update({ started_at: new Date().toISOString() })
+      .eq('cartridge_id', cartridgeId)
+      .eq('class_period', class_period)
+      .eq('match_number', match_number);
+
+    // Broadcast match start
+    broadcast({
+      type: 'ctf_tiebreaker_match_start',
+      cartridgeId,
+      classPeriod: class_period,
+      matchNumber: match_number,
+      bluePlayer: match.blue_player,
+      redPlayer: match.red_player
+    });
+
+    res.json({
+      success: true,
+      matchNumber: match_number,
+      bluePlayer: match.blue_player,
+      redPlayer: match.red_player
+    });
+  } catch (err) {
+    console.error('POST /api/ctf/:cartridgeId/tiebreaker/start-match error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2829,6 +3533,162 @@ setInterval(() => {
     });
   }
 }, PRUNE_INTERVAL_MS);
+
+// ============================================
+// CTF SESSION TIMER POLLING
+// ============================================
+
+/**
+ * Check for scheduled sessions that need to start
+ */
+async function checkScheduledSessions() {
+  try {
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+
+    // Find games that are scheduled and should start
+    const { data: games, error } = await supabase
+      .from('ctf_games')
+      .select('*')
+      .eq('session_status', 'scheduled')
+      .lte('session_start_time', currentTime);
+
+    if (error) throw error;
+
+    for (const game of games || []) {
+      // Skip if end time has passed (session was never started)
+      if (game.session_end_time && game.session_end_time <= currentTime) {
+        continue;
+      }
+
+      console.log(`[CTF Session] Auto-starting session for ${game.cartridge_id} period ${game.class_period}`);
+
+      // Reset session points for all players
+      await supabase
+        .from('ctf_players')
+        .update({ session_points: 0, first_point_at: null })
+        .eq('cartridge_id', game.cartridge_id)
+        .eq('class_period', game.class_period);
+
+      // Update game to active
+      await supabase
+        .from('ctf_games')
+        .update({
+          session_status: 'active',
+          session_started_at: now.toISOString(),
+          session_ended_at: null,
+          end_reason: null,
+          winner: null,
+          tiebreaker_winner: null
+        })
+        .eq('id', game.id);
+
+      // Broadcast session started
+      broadcast({
+        type: 'ctf_session_started',
+        cartridgeId: game.cartridge_id,
+        classPeriod: game.class_period,
+        startedAt: now.toISOString(),
+        endsAt: null
+      });
+    }
+  } catch (err) {
+    console.error('[CTF Session] Error checking scheduled sessions:', err);
+  }
+}
+
+/**
+ * Check for active sessions that need to end (timeout)
+ */
+async function checkEndingSessions() {
+  try {
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+
+    // Find games that are active and have passed their end time
+    const { data: games, error } = await supabase
+      .from('ctf_games')
+      .select('*')
+      .eq('session_status', 'active')
+      .not('session_end_time', 'is', null);
+
+    if (error) throw error;
+
+    for (const game of games || []) {
+      // Check if end time has passed
+      if (game.session_end_time > currentTime) {
+        // Check if we need to send warnings
+        const endTimeParts = game.session_end_time.split(':');
+        const endDate = new Date(now);
+        endDate.setHours(parseInt(endTimeParts[0]), parseInt(endTimeParts[1]), 0, 0);
+        const remainingMs = endDate.getTime() - now.getTime();
+        const remainingMinutes = Math.ceil(remainingMs / 60000);
+
+        // Send warnings at 5 and 1 minute marks
+        for (const warnMin of CTF_CONFIG.warningMinutes || [5, 1]) {
+          if (remainingMinutes === warnMin) {
+            broadcast({
+              type: 'ctf_session_warning',
+              cartridgeId: game.cartridge_id,
+              classPeriod: game.class_period,
+              minutesRemaining: warnMin
+            });
+          }
+        }
+        continue;
+      }
+
+      console.log(`[CTF Session] Auto-ending session for ${game.cartridge_id} period ${game.class_period}`);
+
+      // Check if we need tiebreaker
+      const inDeadZone = game.front_position >= CTF_CONFIG.deadZoneMin &&
+                         game.front_position <= CTF_CONFIG.deadZoneMax;
+
+      let newStatus = 'ended';
+      let endReason = 'timeout';
+
+      if (inDeadZone) {
+        newStatus = 'tiebreaker';
+        endReason = null;
+      }
+
+      // Update game state
+      await supabase
+        .from('ctf_games')
+        .update({
+          session_status: newStatus,
+          session_ended_at: now.toISOString(),
+          end_reason: endReason
+        })
+        .eq('id', game.id);
+
+      // Broadcast session ended
+      broadcast({
+        type: 'ctf_session_ended',
+        cartridgeId: game.cartridge_id,
+        classPeriod: game.class_period,
+        reason: endReason || 'tiebreaker_needed',
+        frontPosition: game.front_position,
+        requiresTiebreaker: inDeadZone
+      });
+
+      // If tiebreaker needed, initiate it
+      if (inDeadZone) {
+        await initiateTiebreaker(game.cartridge_id, game.class_period);
+      }
+    }
+  } catch (err) {
+    console.error('[CTF Session] Error checking ending sessions:', err);
+  }
+}
+
+// Start session timer polling (every 10 seconds)
+setInterval(async () => {
+  await checkScheduledSessions();
+  await checkEndingSessions();
+}, CTF_CONFIG.sessionCheckIntervalMs || 10000);
+
+console.log('[CTF Session] Timer polling started');
 
 // ============================================
 // START SERVER

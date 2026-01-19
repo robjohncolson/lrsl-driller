@@ -14,7 +14,7 @@ Current cartridges (12 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v4.0.1 (Server Infrastructure Fix)
+**Current Version**: v4.2.0 (CTF Timed Sessions & Tiebreaker)
 
 ## Development Commands
 
@@ -200,16 +200,34 @@ First team to reach enemy flag WINS
 - **21 positions** (0-20), front line starts at center (10)
 - **20 team points** = 1 position moved
 - Blue wins when front reaches 20, Red wins when front reaches 0
-- **Per-cartridge games**: Each cartridge has its own CTF instance, teacher assigns teams
+- **Per-period games** (v4.2): Each class period (A-G) has its own isolated game per cartridge
+- Teacher assigns students to Blue/Red teams
+
+### Session Management (v4.2)
+- **Session states**: idle → scheduled → active → tiebreaker → ended
+- Teachers can schedule start/end times or manually start/stop
+- Points only accepted during `idle` or `active` states
+- Session-specific point tracking (`session_points`, `first_point_at`)
+
+### Dead Zone Tiebreaker (v4.2)
+- **Dead zone**: Positions 9, 10, 11 (center ±1)
+- If session ends in dead zone, triggers Pong tiebreaker
+- **Champion selection**: Top 3 players per team by velocity (points/minute)
+- **Best of 3**: Pong matches between champions
+- Forfeit handling for missing players
 
 ### Files
-- `shared/ctf.config.js` - Configuration constants
-- `platform/game/ctf-state.js` - State management and API calls
-- `platform/game/ctf-renderer.js` - Canvas rendering of linear lane
-- `platform/game/ctf-panel.js` - UI panel with team rosters, join buttons, teacher controls
-- `railway-server/migrations/009_ctf.sql` - Database schema (ctf_games, ctf_players tables)
+- `shared/ctf.config.js` - Configuration constants (session, tiebreaker, Pong settings)
+- `platform/game/ctf-state.js` - State management, session/tiebreaker API calls
+- `platform/game/ctf-renderer.js` - Canvas rendering with session status overlay
+- `platform/game/ctf-panel.js` - UI panel with period selector, session controls
+- `platform/game/pong-tiebreaker.js` - Minimal Pong game for tiebreaker matches
+- `railway-server/migrations/009_ctf.sql` - Base CTF schema
+- `railway-server/migrations/011_ctf_sessions.sql` - Session/tiebreaker schema additions
 
-### Server Endpoints (8 total)
+### Server Endpoints (16 total)
+
+**Core CTF** (require `?class_period=X` query param):
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | GET | `/api/ctf/:cartridgeId/state` | Get game state |
@@ -221,13 +239,44 @@ First team to reach enemy flag WINS
 | DELETE | `/api/ctf/:cartridgeId/player/:username` | Remove player |
 | GET | `/api/ctf/config` | Get config |
 
+**Session Management** (v4.2):
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| PUT | `/api/ctf/:cartridgeId/session/configure` | Set start/end times |
+| POST | `/api/ctf/:cartridgeId/session/start` | Manual start |
+| POST | `/api/ctf/:cartridgeId/session/stop` | Manual stop |
+| GET | `/api/ctf/:cartridgeId/session/status` | Current state + timer |
+
+**Tiebreaker** (v4.2):
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/ctf/:cartridgeId/tiebreaker/status` | Champion list, ready states |
+| POST | `/api/ctf/:cartridgeId/tiebreaker/ready` | Champion confirms presence |
+| POST | `/api/ctf/:cartridgeId/tiebreaker/start-match` | Start Pong match |
+| POST | `/api/ctf/:cartridgeId/tiebreaker/match-result` | Record Pong outcome |
+
 ### WebSocket Messages
+
+**Core CTF** (all include `classPeriod`):
 - `ctf_front_moved` - Front line position changed
 - `ctf_points` - Points earned by team member
 - `ctf_victory` - Game won
 - `ctf_reset` - Game reset by teacher
 - `ctf_player_joined` - Player assigned to team
 - `ctf_teams_updated` - Team rosters changed
+
+**Session** (v4.2):
+- `ctf_session_configured` - Times set
+- `ctf_session_started` - Session begins
+- `ctf_session_warning` - 5min/1min remaining
+- `ctf_session_ended` - Drilling stops
+
+**Tiebreaker** (v4.2):
+- `ctf_tiebreaker_starting` - Champions selected
+- `ctf_tiebreaker_ready` - Player confirmed ready
+- `ctf_tiebreaker_match_start` - Pong begins
+- `ctf_tiebreaker_match_end` - Pong ends
+- `ctf_tiebreaker_complete` - Final result
 
 ### State Machine Documentation
 See `docs/STATE_MACHINES.md` for complete diagrams of all component state transitions (covering grading, game engine, CTF, WebSocket, AI normalization, AI Feedback Panel, etc.).
@@ -252,6 +301,7 @@ npx vitest run tests/server/ai-grading-v2.0.1.test.js     # v2.0.1 + v2.1.1 serv
 npx vitest run tests/core/ai-feedback-panel-v2.1.test.js  # v2.1 debug logging tests (23 tests)
 npx vitest run tests/server/progress-sync-v2.1.test.js    # v2.1 progress sync tests (37 tests)
 npx vitest run tests/core/game-engine-progression.test.js # v3.2 progression override tests (24 tests)
+npx vitest run tests/server/ctf-sessions.test.js          # v4.2 session and tiebreaker tests
 ```
 
 Test organization:
@@ -272,6 +322,7 @@ railway-server/migrations/004_generic_progress.sql   # v2.1: user_progress table
 railway-server/migrations/008_progression_overrides.sql # v3.2: Teacher-configurable progression overrides table
 railway-server/migrations/009_ctf.sql               # v4.0: CTF tables (ctf_games, ctf_players)
 railway-server/migrations/010_class_periods.sql     # v4.1: class_period column for roster management
+railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, session management, tiebreaker tables
 ```
 
 ## Configuration Files
@@ -282,6 +333,28 @@ railway-server/migrations/010_class_periods.sql     # v4.1: class_period column 
 - `cartridges/registry.json` - Available cartridge listing
 
 ## Version History (Bug Fixes)
+
+**v4.2.0**: CTF Timed Sessions & Tiebreaker
+- **Per-class-period games**: Each period (A-G) has isolated CTF game state per cartridge
+- Students without assigned period see warning message to contact teacher
+- Teachers can switch between periods to view/manage each game
+- All CTF endpoints now require `class_period` query parameter
+- **Timed sessions**: Teachers can schedule start/end times or manually control
+- Session states: idle → scheduled → active → tiebreaker → ended
+- Points only accepted during `idle` or `active` sessions
+- Session-specific tracking: `session_points`, `first_point_at` per player
+- **Dead zone tiebreaker**: If session ends at positions 9-11, triggers Pong tiebreaker
+- Champion selection by velocity (session_points / minutes_since_first_point)
+- Best-of-3 Pong matches between top 3 players per team
+- 30-second ready check with forfeit handling for absent players
+- **Pong implementation**: 400x300 canvas, first to 5 points wins match
+- Blue player authoritative for ball physics (host)
+- Keyboard (W/S, Arrow keys) and touch controls
+- New migration: `railway-server/migrations/011_ctf_sessions.sql`
+- New file: `platform/game/pong-tiebreaker.js`
+- New endpoints: 4 session + 4 tiebreaker endpoints
+- New WebSocket messages: 9 session/tiebreaker message types
+- Added tests in `tests/server/ctf-sessions.test.js`
 
 **v4.1.0**: Teacher Class Roster Management
 - Teachers can now organize students by class periods (A-G)

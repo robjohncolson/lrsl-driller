@@ -3,6 +3,7 @@
  *
  * Main UI component for the Linear CTF game.
  * Combines state management, rendering, and team UI.
+ * Now supports per-period games and timed sessions.
  */
 
 import { CTFState } from './ctf-state.js';
@@ -17,13 +18,21 @@ export class CTFPanel {
     this.renderer = null;
 
     this.isTeacher = false;
+    this.userClassPeriod = null; // User's assigned class period
     this.allUsers = []; // For teacher team assignment
+
+    // Timer interval for countdown
+    this.timerInterval = null;
 
     // Wire up state callbacks
     this.state.onStateChange = () => this._onStateChange();
     this.state.onFrontMoved = (msg) => this._onFrontMoved(msg);
     this.state.onVictory = (winner) => this._onVictory(winner);
     this.state.onTeamsUpdated = () => this._onTeamsUpdated();
+    this.state.onSessionStarted = (msg) => this._onSessionStarted(msg);
+    this.state.onSessionEnded = (msg) => this._onSessionEnded(msg);
+    this.state.onSessionWarning = (min) => this._onSessionWarning(min);
+    this.state.onTiebreakerStarting = (msg) => this._onTiebreakerStarting(msg);
 
     this._render();
   }
@@ -31,9 +40,20 @@ export class CTFPanel {
   /**
    * Initialize for a cartridge
    */
-  async init(cartridgeId, username, isTeacher = false) {
+  async init(cartridgeId, username, isTeacher = false, userClassPeriod = null) {
     this.isTeacher = isTeacher;
-    await this.state.init(cartridgeId, username);
+    this.userClassPeriod = userClassPeriod;
+
+    // For teachers, default to period A; for students, use their assigned period
+    const initialPeriod = isTeacher ? (userClassPeriod || 'A') : userClassPeriod;
+
+    if (!initialPeriod && !isTeacher) {
+      // Show message for students without a period
+      this._showNoPeriodMessage();
+      return null;
+    }
+
+    await this.state.init(cartridgeId, username, initialPeriod);
     this._updateUI();
 
     // Initialize renderer after DOM is ready
@@ -42,6 +62,11 @@ export class CTFPanel {
       this.renderer = new CTFRenderer(canvas);
       this.renderer.render(this.state);
     }
+
+    // Start countdown timer if session is active
+    this._startTimerIfNeeded();
+
+    return this.state;
   }
 
   /**
@@ -65,6 +90,12 @@ export class CTFPanel {
    * Add points from a star (called by app.html on star earned)
    */
   async addPoints(points, starType) {
+    // Check if we can add points
+    if (!this.state.canAddPoints()) {
+      console.log('CTF: Cannot add points - session status:', this.state.sessionStatus);
+      return null;
+    }
+
     const oldPosition = this.state.frontPosition;
     const result = await this.state.addPoints(points, starType);
 
@@ -76,6 +107,23 @@ export class CTFPanel {
   }
 
   /**
+   * Show message for students without assigned class period
+   */
+  _showNoPeriodMessage() {
+    this.container.innerHTML = `
+      <div class="ctf-panel">
+        <div class="ctf-header">
+          <h3>Capture The Flag</h3>
+        </div>
+        <div class="no-period-warning">
+          <p>Please ask your teacher to assign your class period before joining CTF.</p>
+        </div>
+      </div>
+    `;
+    this._addStyles();
+  }
+
+  /**
    * Render the panel HTML
    */
   _render() {
@@ -84,6 +132,20 @@ export class CTFPanel {
         <div class="ctf-header">
           <h3>Capture The Flag</h3>
           <span class="ctf-status" id="ctf-status"></span>
+        </div>
+
+        ${this.isTeacher ? `
+        <div class="period-selector">
+          <label>Class Period:</label>
+          <select id="ctf-period-select">
+            ${CTF_CONFIG.validPeriods.map(p => `<option value="${p}">Period ${p}</option>`).join('')}
+          </select>
+        </div>
+        ` : ''}
+
+        <div class="session-status" id="session-status-bar" style="display: none;">
+          <span class="status-badge" id="session-badge">IDLE</span>
+          <span class="countdown" id="session-countdown"></span>
         </div>
 
         <canvas id="ctf-canvas" style="width: 100%; height: 100px;"></canvas>
@@ -122,10 +184,25 @@ export class CTFPanel {
 
         <div class="ctf-teacher" id="ctf-teacher" style="display: none;">
           <h4>Teacher Controls</h4>
+
+          <div class="session-controls">
+            <h5>Session Timer</h5>
+            <div class="session-time-inputs">
+              <label>Start: <input type="time" id="session-start-time"></label>
+              <label>End: <input type="time" id="session-end-time"></label>
+            </div>
+            <div class="session-buttons">
+              <button id="configure-session">Schedule</button>
+              <button id="start-session-now">Start Now</button>
+              <button id="stop-session">Stop</button>
+            </div>
+          </div>
+
           <div class="teacher-actions">
             <button id="ctf-reset-keep">Reset (Keep Teams)</button>
-            <button id="ctf-reset-clear">Reset (Clear Teams)</button>
+            <button id="ctf-reset-clear">Reset (Clear All)</button>
           </div>
+
           <div class="team-assignment">
             <h5>Assign Teams</h5>
             <select id="user-select" multiple size="8"></select>
@@ -147,12 +224,34 @@ export class CTFPanel {
    * Attach event listeners
    */
   _attachEventListeners() {
+    // Period selector (teacher only)
+    this.container.querySelector('#ctf-period-select')?.addEventListener('change', async (e) => {
+      const period = e.target.value;
+      await this.state.switchPeriod(period);
+      this._updateUI();
+      if (this.renderer) {
+        this.renderer.render(this.state);
+      }
+      this._startTimerIfNeeded();
+    });
+
     // Join buttons
     this.container.querySelector('#join-blue')?.addEventListener('click', () => {
       this._joinTeam('blue');
     });
     this.container.querySelector('#join-red')?.addEventListener('click', () => {
       this._joinTeam('red');
+    });
+
+    // Session controls
+    this.container.querySelector('#configure-session')?.addEventListener('click', () => {
+      this._configureSession();
+    });
+    this.container.querySelector('#start-session-now')?.addEventListener('click', () => {
+      this._startSessionNow();
+    });
+    this.container.querySelector('#stop-session')?.addEventListener('click', () => {
+      this._stopSession();
     });
 
     // Teacher controls
@@ -206,6 +305,70 @@ export class CTFPanel {
       .ctf-status {
         font-size: 12px;
         color: #9ca3af;
+      }
+
+      .period-selector {
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .period-selector label {
+        font-size: 13px;
+      }
+
+      .period-selector select {
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: #374151;
+        color: white;
+        border: 1px solid #4b5563;
+      }
+
+      .session-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+        padding: 8px;
+        background: #374151;
+        border-radius: 4px;
+      }
+
+      .status-badge {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+
+      .status-badge.idle { background: #6b7280; }
+      .status-badge.scheduled { background: #3b82f6; }
+      .status-badge.active { background: #10b981; }
+      .status-badge.tiebreaker { background: #f59e0b; }
+      .status-badge.ended { background: #ef4444; }
+
+      .countdown {
+        font-size: 14px;
+        font-weight: bold;
+      }
+
+      .countdown.warning { color: #f59e0b; animation: pulse 1s infinite; }
+      .countdown.danger { color: #ef4444; animation: pulse 0.5s infinite; }
+
+      .no-period-warning {
+        text-align: center;
+        padding: 20px;
+        background: #374151;
+        border-radius: 4px;
+        border: 2px dashed #f59e0b;
+      }
+
+      .no-period-warning p {
+        margin: 0;
+        color: #f59e0b;
       }
 
       #ctf-canvas {
@@ -345,6 +508,64 @@ export class CTFPanel {
         color: #fbbf24;
       }
 
+      .ctf-teacher h5 {
+        margin: 10px 0 5px 0;
+        font-size: 13px;
+        color: #9ca3af;
+      }
+
+      .session-controls {
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #4b5563;
+      }
+
+      .session-time-inputs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+
+      .session-time-inputs label {
+        font-size: 12px;
+      }
+
+      .session-time-inputs input {
+        padding: 4px;
+        border-radius: 4px;
+        background: #1f2937;
+        color: white;
+        border: 1px solid #4b5563;
+      }
+
+      .session-buttons {
+        display: flex;
+        gap: 8px;
+      }
+
+      .session-buttons button {
+        flex: 1;
+        padding: 6px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        background: #4b5563;
+        color: white;
+      }
+
+      .session-buttons button:hover {
+        background: #6b7280;
+      }
+
+      #start-session-now {
+        background: #10b981;
+      }
+
+      #stop-session {
+        background: #ef4444;
+      }
+
       .teacher-actions {
         display: flex;
         gap: 10px;
@@ -363,11 +584,6 @@ export class CTFPanel {
 
       .teacher-actions button:hover {
         background: #6b7280;
-      }
-
-      .team-assignment h5 {
-        margin: 0 0 5px 0;
-        font-size: 13px;
       }
 
       .team-assignment select {
@@ -432,8 +648,8 @@ export class CTFPanel {
       }
 
       @keyframes pulse {
-        0%, 100% { transform: translate(-50%, -50%) scale(1); }
-        50% { transform: translate(-50%, -50%) scale(1.05); }
+        0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.8; }
       }
     `;
     document.head.appendChild(style);
@@ -452,6 +668,9 @@ export class CTFPanel {
     // Update team lists
     this._updateTeamList('blue', this.state.blueTeam);
     this._updateTeamList('red', this.state.redTeam);
+
+    // Update session status bar
+    this._updateSessionStatusBar();
 
     // Show/hide join section
     const joinSection = this.container.querySelector('#ctf-join');
@@ -478,7 +697,7 @@ export class CTFPanel {
       teacherPanel.style.display = this.isTeacher ? 'block' : 'none';
     }
 
-    // Update status
+    // Update game status
     const statusEl = this.container.querySelector('#ctf-status');
     if (statusEl) {
       if (this.state.winner) {
@@ -494,6 +713,87 @@ export class CTFPanel {
     // Render canvas
     if (this.renderer) {
       this.renderer.render(this.state);
+    }
+  }
+
+  /**
+   * Update session status bar
+   */
+  _updateSessionStatusBar() {
+    const statusBar = this.container.querySelector('#session-status-bar');
+    const badge = this.container.querySelector('#session-badge');
+
+    if (!statusBar || !badge) return;
+
+    const status = this.state.sessionStatus;
+
+    // Show status bar if not idle or if teacher
+    statusBar.style.display = (status !== 'idle' || this.isTeacher) ? 'flex' : 'none';
+
+    // Update badge
+    badge.textContent = status.toUpperCase();
+    badge.className = `status-badge ${status}`;
+  }
+
+  /**
+   * Start countdown timer if session is active
+   */
+  _startTimerIfNeeded() {
+    // Clear existing interval
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+
+    if (this.state.sessionStatus === 'active' && this.state.sessionEndTime) {
+      this.timerInterval = setInterval(() => {
+        this._updateCountdown();
+      }, 1000);
+      this._updateCountdown();
+    }
+  }
+
+  /**
+   * Update countdown display
+   */
+  _updateCountdown() {
+    const countdownEl = this.container.querySelector('#session-countdown');
+    if (!countdownEl) return;
+
+    if (this.state.sessionStatus !== 'active' || !this.state.sessionEndTime) {
+      countdownEl.textContent = '';
+      countdownEl.className = 'countdown';
+      return;
+    }
+
+    const now = new Date();
+    const [hours, minutes] = this.state.sessionEndTime.split(':');
+    const endTime = new Date(now);
+    endTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+    // If end time is before now, it might be next day
+    if (endTime <= now) {
+      endTime.setDate(endTime.getDate() + 1);
+    }
+
+    const remainingMs = endTime.getTime() - now.getTime();
+    const remainingMin = Math.floor(remainingMs / 60000);
+    const remainingSec = Math.floor((remainingMs % 60000) / 1000);
+
+    if (remainingMs <= 0) {
+      countdownEl.textContent = 'Ending...';
+      countdownEl.className = 'countdown danger';
+    } else {
+      countdownEl.textContent = `${remainingMin}:${remainingSec.toString().padStart(2, '0')} remaining`;
+
+      // Warning colors
+      if (remainingMin < 1) {
+        countdownEl.className = 'countdown danger';
+      } else if (remainingMin < 5) {
+        countdownEl.className = 'countdown warning';
+      } else {
+        countdownEl.className = 'countdown';
+      }
     }
   }
 
@@ -521,13 +821,18 @@ export class CTFPanel {
     const select = this.container.querySelector('#user-select');
     if (!select) return;
 
+    // Filter users by current period if viewing a specific period
+    const periodUsers = this.allUsers.filter(u =>
+      !this.state.classPeriod || u.class_period === this.state.classPeriod
+    );
+
     // Get users not yet assigned
     const assignedUsernames = new Set([
       ...this.state.blueTeam.map(p => p.username),
       ...this.state.redTeam.map(p => p.username)
     ]);
 
-    const unassigned = this.allUsers.filter(u => !assignedUsernames.has(u.username));
+    const unassigned = periodUsers.filter(u => !assignedUsernames.has(u.username));
 
     select.innerHTML = unassigned.map(u => `
       <option value="${u.username}">${u.real_name || u.username}</option>
@@ -544,6 +849,58 @@ export class CTFPanel {
     } catch (err) {
       console.error('Failed to join team:', err);
       alert('Failed to join team: ' + err.message);
+    }
+  }
+
+  /**
+   * Configure session times
+   */
+  async _configureSession() {
+    const startInput = this.container.querySelector('#session-start-time');
+    const endInput = this.container.querySelector('#session-end-time');
+
+    if (!startInput?.value || !endInput?.value) {
+      alert('Please set both start and end times');
+      return;
+    }
+
+    try {
+      await this.state.configureSession(startInput.value, endInput.value);
+      this._updateUI();
+    } catch (err) {
+      console.error('Failed to configure session:', err);
+      alert('Failed to configure session: ' + err.message);
+    }
+  }
+
+  /**
+   * Start session immediately
+   */
+  async _startSessionNow() {
+    try {
+      await this.state.startSession();
+      this._updateUI();
+      this._startTimerIfNeeded();
+    } catch (err) {
+      console.error('Failed to start session:', err);
+      alert('Failed to start session: ' + err.message);
+    }
+  }
+
+  /**
+   * Stop current session
+   */
+  async _stopSession() {
+    try {
+      await this.state.stopSession();
+      this._updateUI();
+      if (this.timerInterval) {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+      }
+    } catch (err) {
+      console.error('Failed to stop session:', err);
+      alert('Failed to stop session: ' + err.message);
     }
   }
 
@@ -644,6 +1001,54 @@ export class CTFPanel {
     this._updateUI();
     if (this.isTeacher) {
       this._updateTeacherPanel();
+    }
+  }
+
+  /**
+   * Session started callback
+   */
+  _onSessionStarted(msg) {
+    this._startTimerIfNeeded();
+  }
+
+  /**
+   * Session ended callback
+   */
+  _onSessionEnded(msg) {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+
+    if (msg.requiresTiebreaker) {
+      // Could show a tiebreaker notification here
+      console.log('Tiebreaker required!');
+    }
+  }
+
+  /**
+   * Session warning callback
+   */
+  _onSessionWarning(minutesRemaining) {
+    // Could show a toast notification
+    console.log(`Warning: ${minutesRemaining} minute(s) remaining!`);
+  }
+
+  /**
+   * Tiebreaker starting callback
+   */
+  _onTiebreakerStarting(msg) {
+    console.log('Tiebreaker starting!', msg);
+    // Could show tiebreaker UI here
+  }
+
+  /**
+   * Cleanup on destroy
+   */
+  destroy() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
     }
   }
 }
