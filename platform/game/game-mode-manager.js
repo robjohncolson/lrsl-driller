@@ -178,13 +178,23 @@ export class GameModeManager {
     // Clear container
     this.container.innerHTML = '';
 
+    // Add teacher mode/tiebreaker selector if teacher
+    if (this.isTeacher) {
+      this._renderModeSelector();
+    }
+
+    // Create sub-container for the panel
+    const panelContainer = document.createElement('div');
+    panelContainer.id = 'game-mode-panel-container';
+    this.container.appendChild(panelContainer);
+
     if (mode === 'ctf') {
       // Use existing CTFPanel
       if (!this.panels.ctf) {
-        this.panels.ctf = new CTFPanel(this.container, this.serverUrl);
+        this.panels.ctf = new CTFPanel(panelContainer, this.serverUrl);
       } else {
         // Re-render in new container
-        this.panels.ctf.container = this.container;
+        this.panels.ctf.container = panelContainer;
         this.panels.ctf._render();
       }
 
@@ -203,9 +213,9 @@ export class GameModeManager {
       }
 
       if (!this.panels.koth) {
-        this.panels.koth = new this.KotHPanel(this.container, this.serverUrl);
+        this.panels.koth = new this.KotHPanel(panelContainer, this.serverUrl);
       } else {
-        this.panels.koth.container = this.container;
+        this.panels.koth.container = panelContainer;
         this.panels.koth._render();
       }
 
@@ -219,6 +229,112 @@ export class GameModeManager {
     }
 
     return this.activePanel;
+  }
+
+  /**
+   * Render the game mode and tiebreaker selector (teacher only)
+   */
+  _renderModeSelector() {
+    const selectorDiv = document.createElement('div');
+    selectorDiv.className = 'game-mode-selector';
+    selectorDiv.innerHTML = `
+      <div class="mode-selector-row">
+        <label>
+          Game Mode:
+          <select id="game-mode-select">
+            <option value="ctf" ${this.currentMode === 'ctf' ? 'selected' : ''}>
+              ${GAME_MODE_CONFIG.labels.modes.ctf}
+            </option>
+            <option value="koth" ${this.currentMode === 'koth' ? 'selected' : ''}>
+              ${GAME_MODE_CONFIG.labels.modes.koth}
+            </option>
+          </select>
+        </label>
+        <label>
+          Tiebreaker:
+          <select id="tiebreaker-select">
+            <option value="pong" ${this.currentTiebreakerType === 'pong' ? 'selected' : ''}>
+              ${GAME_MODE_CONFIG.labels.tiebreakers.pong}
+            </option>
+            <option value="quick_calc" ${this.currentTiebreakerType === 'quick_calc' ? 'selected' : ''}>
+              ${GAME_MODE_CONFIG.labels.tiebreakers.quick_calc}
+            </option>
+            <option value="reflex_duel" ${this.currentTiebreakerType === 'reflex_duel' ? 'selected' : ''}>
+              ${GAME_MODE_CONFIG.labels.tiebreakers.reflex_duel}
+            </option>
+          </select>
+        </label>
+      </div>
+    `;
+
+    // Add styles
+    this._addModeSelectorStyles();
+
+    // Add event listeners
+    const modeSelect = selectorDiv.querySelector('#game-mode-select');
+    const tiebreakerSelect = selectorDiv.querySelector('#tiebreaker-select');
+
+    modeSelect.addEventListener('change', (e) => {
+      this.switchMode(e.target.value);
+    });
+
+    tiebreakerSelect.addEventListener('change', (e) => {
+      this.switchTiebreakerType(e.target.value);
+    });
+
+    this.container.appendChild(selectorDiv);
+  }
+
+  /**
+   * Add CSS styles for mode selector
+   */
+  _addModeSelectorStyles() {
+    if (document.getElementById('game-mode-selector-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'game-mode-selector-styles';
+    style.textContent = `
+      .game-mode-selector {
+        background: #374151;
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+      }
+
+      .mode-selector-row {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+      }
+
+      .game-mode-selector label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #d1d5db;
+        font-size: 13px;
+      }
+
+      .game-mode-selector select {
+        background: #1f2937;
+        color: #f9fafb;
+        border: 1px solid #4b5563;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .game-mode-selector select:hover {
+        border-color: #6b7280;
+      }
+
+      .game-mode-selector select:focus {
+        outline: none;
+        border-color: #3b82f6;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   /**

@@ -813,11 +813,12 @@
     import { ClassTime } from './core/class-time.js';
     import { TimeTracker } from './core/time-tracker.js';
     import { CartridgeLoader } from './core/cartridge-loader.js';
-    import { CTFPanel } from './game/ctf-panel.js';
+    import { GameModeManager } from './game/game-mode-manager.js';
     import { calculateWeightedPoints, getPointsBreakdown } from '../shared/scoring.config.js';
     import { createAIFeedbackPanel, updateAIFeedbackPanel, showAIFeedbackError, hideAIFeedbackPanel } from './core/ai-feedback-panel.js';
     import { RosterModal } from './core/roster-modal.js';
-    console.log('[APP] All imports successful, CTFPanel:', typeof CTFPanel);
+    import { GAME_MODE_CONFIG } from '../shared/game-mode.config.js';
+    console.log('[APP] All imports successful, GameModeManager:', typeof GameModeManager);
 
     // ==================== CONFIGURATION ====================
     const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
@@ -919,9 +920,9 @@
         applyTeacherGrades(message);
       },
       onGridMessage: (message) => {
-        // Forward CTF messages to the panel
-        if (message.type?.startsWith('ctf_') && ctfPanel) {
-          ctfPanel.handleMessage(message);
+        // Forward game mode messages (CTF/KotH) to the manager
+        if (gameModeManager && (message.type?.startsWith('ctf_') || message.type?.startsWith('koth_') || message.type === 'game_mode_changed')) {
+          gameModeManager.handleMessage(message);
         }
         // v3.2: Handle progression override changes from teacher
         if (message.type === 'progression_override_changed') {
@@ -955,8 +956,8 @@
     let platform = null;
     let currentCartridgeId = localStorage.getItem('lastCartridgeId') || 'lsrl-interpretation';
     let pendingTeacherReview = null; // Store results for teacher review
-    let ctfPanel = null; // CTF panel instance
-    let ctfEnabled = true; // Feature flag for CTF
+    let gameModeManager = null; // Game mode manager instance (CTF/KotH)
+    let gameModeEnabled = true; // Feature flag for game modes
     let aiFeedbackPanel = null; // v2.0.1: AI feedback panel instance
     let rosterModal = null; // Teacher roster management modal
 
@@ -988,27 +989,27 @@
       }
     }
 
-    // ==================== CTF INTEGRATION ====================
+    // ==================== GAME MODE INTEGRATION ====================
 
     /**
-     * Initialize CTF panel for a user
+     * Initialize game mode manager for a user (CTF/KotH)
      */
-    async function initCTF(username) {
-      console.log('[CTF] initCTF called for', username, 'enabled:', ctfEnabled);
-      if (!ctfEnabled) return;
+    async function initGameMode(username) {
+      console.log('[GameMode] initGameMode called for', username, 'enabled:', gameModeEnabled);
+      if (!gameModeEnabled) return;
 
       try {
         const container = document.getElementById('ctf-container');
         if (!container) {
-          console.error('[CTF] ctf-container not found in DOM!');
+          console.error('[GameMode] ctf-container not found in DOM!');
           return;
         }
 
-        console.log('[CTF] Creating CTFPanel...');
-        ctfPanel = new CTFPanel(container, SERVER_URL);
+        console.log('[GameMode] Creating GameModeManager...');
+        gameModeManager = new GameModeManager(container, SERVER_URL);
 
         // Initialize for current cartridge
-        await ctfPanel.init(currentCartridgeId, username, isTeacher);
+        await gameModeManager.init(currentCartridgeId, username, isTeacher);
 
         // If teacher, fetch all users for team assignment
         if (isTeacher) {
@@ -1016,17 +1017,17 @@
             const response = await fetch(`${SERVER_URL}/api/users`);
             if (response.ok) {
               const users = await response.json();
-              ctfPanel.setAvailableUsers(users);
+              gameModeManager.setAvailableUsers(users);
             }
           } catch (err) {
-            console.warn('[CTF] Failed to fetch users:', err.message);
+            console.warn('[GameMode] Failed to fetch users:', err.message);
           }
         }
 
-        console.log('[CTF] Initialized for', username);
+        console.log('[GameMode] Initialized for', username, 'mode:', gameModeManager.getMode());
       } catch (err) {
-        console.warn('[CTF] Init error:', err.message, err);
-        // CTF is optional - don't break the app
+        console.warn('[GameMode] Init error:', err.message, err);
+        // Game modes are optional - don't break the app
       }
     }
 
@@ -3104,8 +3105,8 @@
     document.addEventListener('platform:starEarned', async (e) => {
       const { starType, modeId } = e.detail || {};
 
-      // Add CTF points for the star earned (with level-weighted scoring)
-      if (ctfPanel && starType) {
+      // Add game mode points for the star earned (with level-weighted scoring)
+      if (gameModeManager && starType) {
         try {
           // Get current level position for weighted scoring
           const gameState = platform.gameEngine.getState();
@@ -3120,9 +3121,9 @@
           const breakdown = getPointsBreakdown(starType, Math.max(0, levelIndex), totalLevels);
           console.log(`[Scoring] ${starType} star at ${breakdown.levelLabel}: ${weightedPoints} pts (${breakdown.levelMultiplier}x multiplier)`);
 
-          await ctfPanel.addPoints(weightedPoints, starType);
+          await gameModeManager.addPoints(weightedPoints, starType);
         } catch (err) {
-          console.warn('[CTF] Failed to add points:', err.message);
+          console.warn('[GameMode] Failed to add points:', err.message);
         }
       }
 
@@ -3944,12 +3945,12 @@
         // Sync local stars with server on return visit
         syncStarsWithServer(userSystem.currentUser.username);
 
-        // Initialize CTF (non-blocking)
-        console.log('[APP] About to call initCTF for:', userSystem.currentUser.username);
-        initCTF(userSystem.currentUser.username).then(() => {
-          console.log('[APP] initCTF promise resolved');
+        // Initialize game mode manager (non-blocking)
+        console.log('[APP] About to call initGameMode for:', userSystem.currentUser.username);
+        initGameMode(userSystem.currentUser.username).then(() => {
+          console.log('[APP] initGameMode promise resolved');
         }).catch(err => {
-          console.error('[APP] initCTF promise rejected:', err);
+          console.error('[APP] initGameMode promise rejected:', err);
         });
       } else {
         usernameModal.show(true); // First visit - cannot close modal
