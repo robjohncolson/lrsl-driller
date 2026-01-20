@@ -88,7 +88,7 @@ app.get('/api/users', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('username, real_name')
+      .select('username, real_name, class_period')
       .eq('user_type', 'student')
       .order('username');
 
