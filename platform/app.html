@@ -1803,6 +1803,52 @@
           return;
         }
 
+        // Close share modal
+        const shareModal = document.getElementById('share-modal');
+        if (!shareModal.classList.contains('hidden')) {
+          shareModal.classList.add('hidden');
+          shareModal.classList.remove('flex');
+          return;
+        }
+
+        // Close cartridge dropdown
+        const cartridgeDropdown = document.getElementById('cartridge-dropdown');
+        if (!cartridgeDropdown.classList.contains('hidden')) {
+          cartridgeDropdown.classList.add('hidden');
+          document.getElementById('cartridge-dropdown-backdrop').classList.add('hidden');
+          return;
+        }
+
+        // Close online users dropdown
+        const onlineDropdown = document.getElementById('online-dropdown');
+        if (onlineDropdown && !onlineDropdown.classList.contains('hidden')) {
+          onlineDropdown.classList.add('hidden');
+          return;
+        }
+
+        // Close CTF/Game Mode sidebar
+        const ctfSidebar = document.getElementById('ctf-sidebar');
+        if (!ctfSidebar.classList.contains('translate-x-full')) {
+          toggleCTFSidebar();
+          return;
+        }
+
+        // Close teacher review panel
+        const reviewPanel = document.getElementById('teacher-review-panel');
+        if (reviewPanel && !reviewPanel.classList.contains('translate-x-full')) {
+          reviewPanel.classList.add('translate-x-full');
+          document.getElementById('review-backdrop').classList.add('hidden');
+          return;
+        }
+
+        // Close time analytics panel
+        const analyticsPanel = document.getElementById('time-analytics-panel');
+        if (analyticsPanel && !analyticsPanel.classList.contains('translate-x-full')) {
+          analyticsPanel.classList.add('translate-x-full');
+          document.getElementById('analytics-backdrop').classList.add('hidden');
+          return;
+        }
+
         // Close leaderboard panel
         const leaderboardPanel = document.getElementById('leaderboard-panel');
         if (!leaderboardPanel.classList.contains('translate-x-full')) {
