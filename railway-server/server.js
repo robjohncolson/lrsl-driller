@@ -2821,10 +2821,17 @@ app.post('/api/ctf/:cartridgeId/session/start', async (req, res) => {
 
     const game = await getOrCreateCTFGame(cartridgeId, class_period);
 
-    // Only allow start from idle or scheduled state
-    if (game.session_status !== 'idle' && game.session_status !== 'scheduled') {
+    // Allow start from idle, scheduled, or ended state
+    // (active and tiebreaker cannot be interrupted)
+    if (game.session_status === 'active') {
       return res.status(400).json({
-        error: 'Session cannot be started from current state',
+        error: 'Session already active',
+        sessionStatus: game.session_status
+      });
+    }
+    if (game.session_status === 'tiebreaker') {
+      return res.status(400).json({
+        error: 'Tiebreaker in progress - wait for completion or reset',
         sessionStatus: game.session_status
       });
     }
@@ -2853,17 +2860,27 @@ app.post('/api/ctf/:cartridgeId/session/start', async (req, res) => {
       .eq('cartridge_id', cartridgeId)
       .eq('class_period', class_period);
 
+    // Build update object - if starting from 'ended', also reset game state
+    const updateData = {
+      session_status: 'active',
+      session_started_at: now.toISOString(),
+      session_ended_at: null,
+      end_reason: null,
+      winner: null,
+      tiebreaker_winner: null
+    };
+
+    // If previous session ended, reset the board for a fresh game
+    if (game.session_status === 'ended') {
+      updateData.front_position = CTF_CONFIG.startPosition;
+      updateData.blue_points = 0;
+      updateData.red_points = 0;
+    }
+
     // Update game state
     const { error } = await supabase
       .from('ctf_games')
-      .update({
-        session_status: 'active',
-        session_started_at: now.toISOString(),
-        session_ended_at: null,
-        end_reason: null,
-        winner: null,
-        tiebreaker_winner: null
-      })
+      .update(updateData)
       .eq('cartridge_id', cartridgeId)
       .eq('class_period', class_period);
 
