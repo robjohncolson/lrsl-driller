@@ -60,6 +60,29 @@
       }
     },
     {
+      "id": "l01b-identity-flashcards",
+      "name": "Level 1b: Identity Flashcards",
+      "unlockedBy": {
+        "gold": 2
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "flashcardAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
       "id": "l02-rewrite-choice",
       "name": "Level 2: Rewrite Using an Identity",
       "unlockedBy": {
@@ -206,6 +229,7 @@
   "hints": {
     "perField": {
       "identityName": "Look for a pattern: a^2−b^2 (difference of squares), (a+b)^2 (square of a sum), a^3−b^3 (difference of cubes), or a^3+b^3 (sum of cubes).",
+      "flashcardAnswer": "Key identities to memorize:\n• Diff of Squares: a²−b²=(a+b)(a−b)\n• Square of Sum: (a+b)²=a²+2ab+b²\n• Square of Diff: (a−b)²=a²−2ab+b²\n• Sum of Cubes: a³+b³=(a+b)(a²−ab+b²)\n• Diff of Cubes: a³−b³=(a−b)(a²+ab+b²)\nTip: In cubes, the middle sign is OPPOSITE the original sign!",
       "rewriteChoice": "Match to the identity:\n• a^2−b^2=(a+b)(a−b)\n• (a+b)^2=a^2+2ab+b^2\n• a^3±b^3=(a±b)(a^2∓ab+b^2)\nWatch the sign on the middle term for cubes!",
       "numericResult": "Try rewriting first:\n• (n+d)(n−d)=n^2−d^2\n• (a±b)^2=a^2±2ab+b^2\n• a^3±b^3=(a±b)(a^2∓ab+b^2)\nThen compute.",
       "factorAnswer": "Step 1: Identify a and b so the expression matches a^2−b^2, a^3−b^3, or a^3+b^3.\nStep 2: Apply the identity.\nTip: Use parentheses for factors and ^ for exponents.",
@@ -233,7 +257,15 @@
         "id": "l01-identity-match",
         "name": "01",
         "unlockedBy": "default",
-        "celebrationMessage": "Nice! You can spot the structure. Next: rewrite using the identity."
+        "celebrationMessage": "Nice! You can spot the structure. Next: memorize the formulas!"
+      },
+      {
+        "id": "l01b-identity-flashcards",
+        "name": "1b",
+        "unlockedBy": {
+          "gold": 2
+        },
+        "celebrationMessage": "Formulas memorized! Now apply them to rewrite expressions."
       },
       {
         "id": "l02-rewrite-choice",

@@ -75,6 +75,128 @@ const level1Scenarios = [
   { expr: "8c^3 + d^3", identity: "Sum of Cubes", why: "(2c)^3 + d^3." }
 ];
 
+// -------- Level 1b: Identity Flashcards (pure memorization) --------
+// Two question types: name→formula and formula→name
+const level1bScenarios = [
+  // Name → Formula (type: "n2f")
+  {
+    type: "n2f",
+    identity: "Difference of Squares",
+    prompt: "What is the formula for Difference of Squares?",
+    correct: "a² − b² = (a + b)(a − b)",
+    wrong: [
+      "a² − b² = (a − b)(a − b)",
+      "a² − b² = (a + b)(a + b)",
+      "a² + b² = (a + b)(a − b)"
+    ]
+  },
+  {
+    type: "n2f",
+    identity: "Square of a Sum",
+    prompt: "What is the formula for Square of a Sum?",
+    correct: "(a + b)² = a² + 2ab + b²",
+    wrong: [
+      "(a + b)² = a² + ab + b²",
+      "(a + b)² = a² + b²",
+      "(a + b)² = a² − 2ab + b²"
+    ]
+  },
+  {
+    type: "n2f",
+    identity: "Square of a Difference",
+    prompt: "What is the formula for Square of a Difference?",
+    correct: "(a − b)² = a² − 2ab + b²",
+    wrong: [
+      "(a − b)² = a² + 2ab + b²",
+      "(a − b)² = a² − ab + b²",
+      "(a − b)² = a² − b²"
+    ]
+  },
+  {
+    type: "n2f",
+    identity: "Sum of Cubes",
+    prompt: "What is the formula for Sum of Cubes?",
+    correct: "a³ + b³ = (a + b)(a² − ab + b²)",
+    wrong: [
+      "a³ + b³ = (a + b)(a² + ab + b²)",
+      "a³ + b³ = (a − b)(a² − ab + b²)",
+      "a³ + b³ = (a + b)³"
+    ]
+  },
+  {
+    type: "n2f",
+    identity: "Difference of Cubes",
+    prompt: "What is the formula for Difference of Cubes?",
+    correct: "a³ − b³ = (a − b)(a² + ab + b²)",
+    wrong: [
+      "a³ − b³ = (a − b)(a² − ab + b²)",
+      "a³ − b³ = (a + b)(a² + ab + b²)",
+      "a³ − b³ = (a − b)³"
+    ]
+  },
+  // Formula → Name (type: "f2n")
+  {
+    type: "f2n",
+    formula: "a² − b² = (a + b)(a − b)",
+    prompt: "Which identity is this: a² − b² = (a + b)(a − b)?",
+    correct: "Difference of Squares",
+    wrong: ["Sum of Squares", "Square of a Difference", "Difference of Cubes"]
+  },
+  {
+    type: "f2n",
+    formula: "(a + b)² = a² + 2ab + b²",
+    prompt: "Which identity is this: (a + b)² = a² + 2ab + b²?",
+    correct: "Square of a Sum",
+    wrong: ["Square of a Difference", "Difference of Squares", "Sum of Cubes"]
+  },
+  {
+    type: "f2n",
+    formula: "(a − b)² = a² − 2ab + b²",
+    prompt: "Which identity is this: (a − b)² = a² − 2ab + b²?",
+    correct: "Square of a Difference",
+    wrong: ["Square of a Sum", "Difference of Squares", "Difference of Cubes"]
+  },
+  {
+    type: "f2n",
+    formula: "a³ + b³ = (a + b)(a² − ab + b²)",
+    prompt: "Which identity is this: a³ + b³ = (a + b)(a² − ab + b²)?",
+    correct: "Sum of Cubes",
+    wrong: ["Difference of Cubes", "Square of a Sum", "Sum of Squares"]
+  },
+  {
+    type: "f2n",
+    formula: "a³ − b³ = (a − b)(a² + ab + b²)",
+    prompt: "Which identity is this: a³ − b³ = (a − b)(a² + ab + b²)?",
+    correct: "Difference of Cubes",
+    wrong: ["Sum of Cubes", "Difference of Squares", "Square of a Difference"]
+  },
+  // "What's the middle term sign?" questions (common error focus)
+  {
+    type: "sign",
+    prompt: "In (a + b)², what is the sign of the middle term (2ab)?",
+    correct: "Positive (+)",
+    wrong: ["Negative (−)", "Zero (no middle term)", "Depends on a and b"]
+  },
+  {
+    type: "sign",
+    prompt: "In (a − b)², what is the sign of the middle term?",
+    correct: "Negative (−2ab)",
+    wrong: ["Positive (+2ab)", "Zero (no middle term)", "Depends on a and b"]
+  },
+  {
+    type: "sign",
+    prompt: "In a³ + b³ = (a + b)(a² __ ab + b²), what goes in the blank?",
+    correct: "Minus (−)",
+    wrong: ["Plus (+)", "Nothing (no ab term)", "Times (×)"]
+  },
+  {
+    type: "sign",
+    prompt: "In a³ − b³ = (a − b)(a² __ ab + b²), what goes in the blank?",
+    correct: "Plus (+)",
+    wrong: ["Minus (−)", "Nothing (no ab term)", "Times (×)"]
+  }
+];
+
 // -------- Level 2: Choose the correct rewrite (factor/expand) --------
 const level2Scenarios = [
   {
@@ -168,17 +290,25 @@ const level2Scenarios = [
 ];
 
 // -------- Level 3: Numeric shortcuts using identities --------
+// Design principle: Only use bases whose squares students know (10, 20, 30, 50, 100)
+// and small offsets (±1 or ±2) so the identity technique is obviously faster.
 const level3Scenarios = [
-  { expr: "41 × 39", answer: 1599, expectedReasoning: "Rewrite as (40+1)(40−1)=40^2−1^2." },
-  { expr: "101 × 99", answer: 9999, expectedReasoning: "Rewrite as (100+1)(100−1)=100^2−1^2." },
-  { expr: "52 × 48", answer: 2496, expectedReasoning: "Rewrite as (50+2)(50−2)=50^2−2^2." },
-  { expr: "63 × 57", answer: 3591, expectedReasoning: "Rewrite as (60+3)(60−3)=60^2−3^2." },
-  { expr: "12^3 + 2^3", answer: 1736, expectedReasoning: "Use a^3+b^3=(a+b)(a^2−ab+b^2) or compute efficiently." },
-  { expr: "9^3 − 4^3", answer: 665, expectedReasoning: "Use a^3−b^3=(a−b)(a^2+ab+b^2) or compute efficiently." },
-  { expr: "(15 + 5)^2", answer: 400, expectedReasoning: "Use (a+b)^2=a^2+2ab+b^2." },
-  { expr: "(20 − 3)^2", answer: 289, expectedReasoning: "Use (a−b)^2=a^2−2ab+b^2." },
-  { expr: "8^3 + 1^3", answer: 513, expectedReasoning: "Use a^3+b^3 or compute." },
-  { expr: "32 × 28", answer: 896, expectedReasoning: "Rewrite as (30+2)(30−2)=30^2−2^2." }
+  // ±1 from easy bases (trivial mental subtraction)
+  { expr: "9 × 11", answer: 99, expectedReasoning: "Rewrite as (10−1)(10+1)=10²−1²=100−1=99." },
+  { expr: "19 × 21", answer: 399, expectedReasoning: "Rewrite as (20−1)(20+1)=20²−1²=400−1=399." },
+  { expr: "29 × 31", answer: 899, expectedReasoning: "Rewrite as (30−1)(30+1)=30²−1²=900−1=899." },
+  { expr: "39 × 41", answer: 1599, expectedReasoning: "Rewrite as (40−1)(40+1)=40²−1²=1600−1=1599." },
+  { expr: "49 × 51", answer: 2499, expectedReasoning: "Rewrite as (50−1)(50+1)=50²−1²=2500−1=2499." },
+  { expr: "99 × 101", answer: 9999, expectedReasoning: "Rewrite as (100−1)(100+1)=100²−1²=10000−1=9999." },
+  { expr: "199 × 201", answer: 39999, expectedReasoning: "Rewrite as (200−1)(200+1)=200²−1²=40000−1=39999." },
+  // ±2 from easy bases (subtract 4)
+  { expr: "48 × 52", answer: 2496, expectedReasoning: "Rewrite as (50−2)(50+2)=50²−2²=2500−4=2496." },
+  { expr: "98 × 102", answer: 9996, expectedReasoning: "Rewrite as (100−2)(100+2)=100²−2²=10000−4=9996." },
+  { expr: "18 × 22", answer: 396, expectedReasoning: "Rewrite as (20−2)(20+2)=20²−2²=400−4=396." },
+  // Perfect square shortcuts (a+b)² or (a−b)²
+  { expr: "21²", answer: 441, expectedReasoning: "(20+1)²=20²+2(20)(1)+1²=400+40+1=441." },
+  { expr: "31²", answer: 961, expectedReasoning: "(30+1)²=30²+2(30)(1)+1²=900+60+1=961." },
+  { expr: "19²", answer: 361, expectedReasoning: "(20−1)²=20²−2(20)(1)+1²=400−40+1=361." }
 ];
 
 // -------- Level 4: Factor polynomials (include complex numbers case) --------
@@ -426,6 +556,32 @@ export function generateProblem(modeId, contextFromFile, mode) {
     context.answers = answers;
 
     scenario = `Which identity matches ${scen.expr}?`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // -------- Level 1b: Flashcards --------
+  if (modeId === "l01b-identity-flashcards") {
+    const scen = drawFromBag("l1b", level1bScenarios);
+    const options = shuffle([scen.correct, ...scen.wrong]);
+
+    context = {
+      levelName: "Level 1b",
+      problemText: "Recall the polynomial identity.",
+      givenText: scen.prompt,
+      flashcardType: scen.type,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3]
+    };
+
+    answers = {
+      flashcardAnswer: { value: scen.correct }
+    };
+
+    context.answers = answers;
+
+    scenario = scen.prompt;
     return { context, graphConfig, answers, scenario };
   }
 

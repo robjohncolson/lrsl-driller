@@ -72,6 +72,19 @@ export function gradeField(fieldId, answer, context) {
     };
   }
 
+  // ----- Level 1b: identity flashcards -----
+  if (fieldId === "flashcardAnswer") {
+    const student = normalize(answer);
+    const exp = normalize(expected);
+    if (student === exp) {
+      return { score: "E", feedback: "Correct! Keep building that recall speed." };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct answer is: ${expected}`
+    };
+  }
+
   // ----- Level 2: rewrite choice -----
   if (fieldId === "rewriteChoice") {
     const student = normalize(answer);
