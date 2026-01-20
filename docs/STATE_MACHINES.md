@@ -1,6 +1,15 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v4.2.0.
+Complete state machine documentation for all components as of v4.3.0.
+
+**v4.3.0 Changes (Game Mode & Tiebreaker Expansion + Escape Key Fix):**
+- Game Mode Manager: Switch between CTF and KotH modes per cartridge/period
+- Teacher UI: Mode and tiebreaker selectors in game panel header
+- New tiebreakers: Quick Calc, Reflex Duel (in addition to existing Pong)
+- Global Escape Key Handler: All modals/panels closeable via Escape key
+- **Bug Fix**: Fixed backdrop IDs in Escape handler (`teacher-review-backdrop`, `time-analytics-backdrop`)
+- New tests: 23 Escape key handler tests in `tests/core/escape-key-handler.test.js`
+- New tests: 26 game mode manager tests in `tests/game/game-mode-manager.test.js`
 
 **v4.2.0 Changes (CTF Timed Sessions & Tiebreaker):**
 - Per-class-period CTF games: Each period (A-G) has isolated game state per cartridge
@@ -9060,8 +9069,99 @@ Example:
     └─────────────────────┘
 ```
 
+### Global Escape Key Handler
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                       GLOBAL ESCAPE KEY HANDLER (v4.3)                           │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    ┌────────────────┐
+    │ Escape Key     │
+    │ Pressed        │
+    └───────┬────────┘
+            │
+            ▼
+    ┌───────────────────────────────────────────────────────────────────────────┐
+    │                     PRIORITY-ORDERED CLOSE SEQUENCE                        │
+    │     (each check returns early if component was open and closed)           │
+    └───────────────────────────────────────────────────────────────────────────┘
+            │
+            ▼
+    ┌───────────────────┐  NOT .hidden?   ┌────────────────────┐
+    │ 1. Share Modal    │───────────────▶ │ Add .hidden class  │── return
+    │    #share-modal   │                 └────────────────────┘
+    └─────────┬─────────┘
+              │ already hidden
+              ▼
+    ┌───────────────────┐  NOT .hidden?   ┌────────────────────┐
+    │ 2. Cartridge      │───────────────▶ │ Add .hidden class  │── return
+    │    Dropdown       │                 └────────────────────┘
+    │    #cartridge-    │
+    │    dropdown       │
+    └─────────┬─────────┘
+              │ already hidden
+              ▼
+    ┌───────────────────┐  NOT .hidden?   ┌────────────────────┐
+    │ 3. Online Users   │───────────────▶ │ Add .hidden class  │── return
+    │    Dropdown       │                 └────────────────────┘
+    │    #online-       │
+    │    dropdown       │
+    └─────────┬─────────┘
+              │ already hidden
+              ▼
+    ┌───────────────────┐  NOT .translate  ┌────────────────────┐
+    │ 4. CTF/Game Mode  │   -x-full?      │ toggleCTFSidebar() │── return
+    │    Sidebar        │────────────────▶│                    │
+    │    #ctf-sidebar   │                 └────────────────────┘
+    └─────────┬─────────┘
+              │ already hidden (has .translate-x-full)
+              ▼
+    ┌───────────────────┐  NOT .translate  ┌────────────────────┐
+    │ 5. Teacher Review │   -x-full?      │ Add .translate-x-  │
+    │    Panel          │────────────────▶│ full to panel      │── return
+    │    #teacher-      │                 │ Add .hidden to     │
+    │    review-panel   │                 │ #teacher-review-   │
+    │                   │                 │ backdrop           │
+    └─────────┬─────────┘                 └────────────────────┘
+              │ already hidden
+              ▼
+    ┌───────────────────┐  NOT .translate  ┌────────────────────┐
+    │ 6. Time Analytics │   -x-full?      │ Add .translate-x-  │
+    │    Panel          │────────────────▶│ full to panel      │── return
+    │    #time-         │                 │ Add .hidden to     │
+    │    analytics-     │                 │ #time-analytics-   │
+    │    panel          │                 │ backdrop           │
+    └─────────┬─────────┘                 └────────────────────┘
+              │ already hidden
+              ▼
+    ┌───────────────────┐  NOT .translate  ┌────────────────────┐
+    │ 7. Leaderboard    │   -x-full?      │ leaderboard.close()│── return
+    │    Panel          │────────────────▶│                    │
+    │    #leaderboard-  │                 └────────────────────┘
+    │    panel          │
+    └─────────┬─────────┘
+              │ already hidden
+              ▼
+    ┌────────────────────┐
+    │ No action taken    │
+    │ (all components    │
+    │ already closed)    │
+    └────────────────────┘
+
+IMPORTANT ELEMENT ID MAPPINGS (v4.3 Bug Fix):
+  Panel ID                  │  Backdrop ID
+  ─────────────────────────┼─────────────────────────
+  teacher-review-panel     │  teacher-review-backdrop
+  time-analytics-panel     │  time-analytics-backdrop
+
+CLASSES USED:
+  • .hidden            - Hides dropdowns and backdrops
+  • .translate-x-full  - Slides panels off-screen (used for slide-out panels)
+```
+
 ---
 
 *Updated to v4.3.0*
 *Last updated: January 2026*
-*Total sections: 122*
+*Total sections: 123*

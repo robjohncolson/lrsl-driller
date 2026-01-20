@@ -365,6 +365,10 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 - Added tests in `tests/game/` directory (game-mode-config, koth, quick-calc, reflex-duel, game-mode-manager)
 - Updated `shared/ctf.config.js` with tiebreakerTypes enum
 - Updated `platform/app.html`: replaced `CTFPanel` with `GameModeManager`, renamed `initCTF()` to `initGameMode()`
+- **Global Escape Key Handler**: All modals/panels closeable via Escape key (accessibility improvement)
+  - Share Modal, Cartridge Dropdown, Online Users Dropdown, CTF Sidebar, Teacher Review Panel, Time Analytics Panel, Leaderboard Panel
+  - **Bug Fix**: Fixed backdrop IDs (`teacher-review-backdrop`, `time-analytics-backdrop`)
+  - Added 23 regression tests in `tests/core/escape-key-handler.test.js`
 
 **v4.2.0**: CTF Timed Sessions & Tiebreaker
 - **Per-class-period games**: Each period (A-G) has isolated CTF game state per cartridge
