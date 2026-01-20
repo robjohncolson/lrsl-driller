@@ -1,6 +1,14 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v4.3.0.
+Complete state machine documentation for all components as of v4.3.1.
+
+**v4.3.1 Changes (New Probability Cartridge):**
+- New cartridge: `apstatu4l1l2` - AP Statistics Unit 4 Lessons 1-2 (Probability Basics)
+- Topics: Random processes, outcomes vs events, independence, gambler's fallacy, streaks, simulation, Law of Large Numbers
+- 11 progressive levels from vocabulary to full simulation design capstone
+- 60+ unique scenarios with shuffle bag system preventing near-repeats
+- New tests: 49 generator tests in `tests/generators/apstatu4l1l2.test.js`
+- New tests: 44 grading tests in `tests/grading/apstatu4l1l2.test.js`
 
 **v4.3.0 Changes (Game Mode & Tiebreaker Expansion + Escape Key Fix):**
 - Game Mode Manager: Switch between CTF and KotH modes per cartridge/period

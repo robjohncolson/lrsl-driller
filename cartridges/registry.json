@@ -83,6 +83,13 @@
       "subject": "AP Statistics",
       "description": "Experimental designs (CRD, block, matched pairs), significance, causation, generalization",
       "shortCode": "INF"
+    },
+    {
+      "id": "apstatu4l1l2",
+      "name": "Probability Basics (4.1-4.2)",
+      "subject": "AP Statistics",
+      "description": "Random processes, outcomes, events, simulation, Law of Large Numbers",
+      "shortCode": "PROB"
     }
   ]
 }

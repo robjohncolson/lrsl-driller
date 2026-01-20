@@ -14,7 +14,7 @@ Current cartridges (12 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v4.3.0 (Game Mode & Tiebreaker Expansion)
+**Current Version**: v4.3.1 (New Probability Cartridge)
 
 ## Development Commands
 
@@ -302,12 +302,14 @@ npx vitest run tests/core/ai-feedback-panel-v2.1.test.js  # v2.1 debug logging t
 npx vitest run tests/server/progress-sync-v2.1.test.js    # v2.1 progress sync tests (37 tests)
 npx vitest run tests/core/game-engine-progression.test.js # v3.2 progression override tests (24 tests)
 npx vitest run tests/server/ctf-sessions.test.js          # v4.2 session and tiebreaker tests
+npx vitest run tests/generators/apstatu4l1l2.test.js      # v4.3.1 probability cartridge generator (49 tests)
+npx vitest run tests/grading/apstatu4l1l2.test.js         # v4.3.1 probability cartridge grading (44 tests)
 ```
 
 Test organization:
 - `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1, game-engine-progression)
-- `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design)
-- `tests/generators/` - Problem generator tests (sampling, experimental-design)
+- `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design, apstatu4l1l2)
+- `tests/generators/` - Problem generator tests (sampling, experimental-design, apstatu4l1l2)
 - `tests/server/` - Railway server API tests (api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
@@ -333,6 +335,16 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 - `cartridges/registry.json` - Available cartridge listing
 
 ## Version History (Bug Fixes)
+
+**v4.3.1**: New Probability Cartridge (apstatu4l1l2)
+- New cartridge: `apstatu4l1l2` - AP Statistics Unit 4 Lessons 1-2 (Probability Basics)
+- Topics covered: Random processes, outcomes vs events, independence/gambler's fallacy, streaks in random data, simulation, Law of Large Numbers
+- 11 progressive levels from vocabulary to full simulation design capstone
+- 60+ unique scenarios across all levels with shuffle bag preventing near-repeats
+- Input types: dropdown, choice, number, text, textarea
+- New tests: 49 generator tests (`tests/generators/apstatu4l1l2.test.js`)
+- New tests: 44 grading tests (`tests/grading/apstatu4l1l2.test.js`)
+- Aligned with AP Statistics Course Framework skills VAR-1.F and UNC-2.A
 
 **v4.3.0**: Game Mode & Tiebreaker Expansion
 - **Modular game mode architecture**: Teachers can now choose between CTF and King of the Hill (KotH) game modes

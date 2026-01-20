@@ -1,0 +1,329 @@
+{
+  "meta": {
+    "id": "apstatu4l1l2",
+    "name": "Probability Basics (4.1-4.2)",
+    "subject": "AP Statistics",
+    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers"
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "VAR-1.F",
+      "UNC-2.A"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      { "label": "Topic", "value": "{{topicId}}" },
+      { "label": "Concept", "value": "{{problemText}}" },
+      { "label": "Scenario", "value": "{{givenText}}" }
+    ]
+  },
+  "modes": [
+    {
+      "id": "l01-random-process",
+      "name": "4.1a: Random Process Definition",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "vocabAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-outcome-event",
+      "name": "4.2a: Outcomes vs Events",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "termType",
+            "type": "choice",
+            "label": "This describes a(n):",
+            "options": ["Outcome", "Event"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-independence",
+      "name": "4.1b: Independence & Gambler's Fallacy",
+      "unlockedBy": { "gold": 2 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "independenceAnswer",
+            "type": "choice",
+            "label": "Is the reasoning correct?",
+            "options": ["Yes, the reasoning is correct", "No, the reasoning is flawed"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-streaks",
+      "name": "4.1c: Streaks in Random Data",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "streakAnswer",
+            "type": "choice",
+            "label": "Is this surprising in truly random data?",
+            "options": ["Yes, this is surprising", "No, this is normal"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-simulation-vocab",
+      "name": "4.2b: Simulation Definition",
+      "unlockedBy": { "gold": 4 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "simVocabAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-lln",
+      "name": "4.2c: Law of Large Numbers",
+      "unlockedBy": { "gold": 5 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "llnAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l07-digit-assignment",
+      "name": "4.2d: Simulation Step 1 - Assign Digits",
+      "unlockedBy": { "gold": 6 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "digitLow",
+            "type": "number",
+            "label": "Lower bound for success (1 to ?):",
+            "min": 1,
+            "max": 100,
+            "step": 1
+          },
+          {
+            "id": "digitHigh",
+            "type": "number",
+            "label": "Upper bound for success (? to 100):",
+            "min": 1,
+            "max": 100,
+            "step": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l08-trial-definition",
+      "name": "4.2e: Simulation Step 2 - Define Trial",
+      "unlockedBy": { "gold": 7 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "trialAnswer",
+            "type": "dropdown",
+            "label": "What constitutes ONE trial?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l09-relative-frequency",
+      "name": "4.2f: Simulation Step 3 - Calculate Probability",
+      "unlockedBy": { "gold": 8 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "probAnswer",
+            "type": "number",
+            "label": "Estimated probability (as percent, e.g., 32):",
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l10-simulation-design",
+      "name": "4.2g: Full Simulation Design",
+      "unlockedBy": { "gold": 9 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "designDigits",
+            "type": "text",
+            "label": "Step 1: Assign digits (e.g., '1-75 success, 76-100 failure'):",
+            "placeholder": "Describe digit assignment..."
+          },
+          {
+            "id": "designTrial",
+            "type": "text",
+            "label": "Step 2: What is one trial and what do you record?",
+            "placeholder": "Describe one trial..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l11-capstone",
+      "name": "4.1-4.2 Capstone",
+      "unlockedBy": { "gold": 10 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capConcept",
+            "type": "dropdown",
+            "label": "Which concept best explains this?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Explain why this concept applies..."
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "vocabAnswer": "A random process is one where all outcomes are known, but individual results are UNPREDICTABLE.",
+      "termType": "OUTCOME = result of ONE trial. EVENT = a COLLECTION of outcomes (can be multiple results grouped together).",
+      "independenceAnswer": "In independent events, past results do NOT affect future probabilities. Each trial has the same probability regardless of what happened before.",
+      "streakAnswer": "Humans tend to think streaks are unusual, but in truly random data, streaks of 5, 6, 7, or even 8+ are actually quite COMMON.",
+      "simVocabAnswer": "Simulation = model random events so that simulated outcomes closely match REAL-WORLD outcomes.",
+      "llnAnswer": "Law of Large Numbers: As trials INCREASE, simulated probability gets CLOSER to the TRUE probability.",
+      "digitLow": "Match the probability! If success is 82%, use digits 1-82 for success (82 out of 100).",
+      "digitHigh": "The upper bound should match the probability. For 25%, use 1-25 (25 out of 100).",
+      "trialAnswer": "One trial = simulating the ENTIRE scenario once. For free throws until miss: generate numbers until failure.",
+      "probAnswer": "Estimated probability = (successes / total trials) × 100. Example: 16/50 = 0.32 = 32%.",
+      "designDigits": "Match digits to the real probability. For 60% success: 1-60 = success, 61-100 = failure.",
+      "designTrial": "Describe what happens in ONE complete simulation and what you COUNT or RECORD.",
+      "capConcept": "Think about which concept (independence, LLN, simulation, random process) best explains the scenario.",
+      "capExplain": "Use key vocabulary: random process, independent, Law of Large Numbers, simulation, empirical probability."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["vocabAnswer", "termType", "llnAnswer"],
+    "tiers": [
+      {
+        "id": "l01-random-process",
+        "name": "4.1a",
+        "unlockedBy": "default",
+        "celebrationMessage": "You understand random processes! Next: outcomes vs events."
+      },
+      {
+        "id": "l02-outcome-event",
+        "name": "4.2a",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Outcomes vs events - got it! Next: independence."
+      },
+      {
+        "id": "l03-independence",
+        "name": "4.1b",
+        "unlockedBy": { "gold": 2 },
+        "celebrationMessage": "You caught the gambler's fallacy! Next: streaks."
+      },
+      {
+        "id": "l04-streaks",
+        "name": "4.1c",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Streaks are normal! Next: simulation basics."
+      },
+      {
+        "id": "l05-simulation-vocab",
+        "name": "4.2b",
+        "unlockedBy": { "gold": 4 },
+        "celebrationMessage": "Simulation understood! Next: Law of Large Numbers."
+      },
+      {
+        "id": "l06-lln",
+        "name": "4.2c",
+        "unlockedBy": { "gold": 5 },
+        "celebrationMessage": "LLN mastered! Now: designing simulations."
+      },
+      {
+        "id": "l07-digit-assignment",
+        "name": "4.2d",
+        "unlockedBy": { "gold": 6 },
+        "celebrationMessage": "Digit assignment down! Next: defining trials."
+      },
+      {
+        "id": "l08-trial-definition",
+        "name": "4.2e",
+        "unlockedBy": { "gold": 7 },
+        "celebrationMessage": "Trials defined! Next: calculating probability."
+      },
+      {
+        "id": "l09-relative-frequency",
+        "name": "4.2f",
+        "unlockedBy": { "gold": 8 },
+        "celebrationMessage": "Probability calculated! Next: full simulation design."
+      },
+      {
+        "id": "l10-simulation-design",
+        "name": "4.2g",
+        "unlockedBy": { "gold": 9 },
+        "celebrationMessage": "You can design simulations! Final capstone next."
+      },
+      {
+        "id": "l11-capstone",
+        "name": "Capstone",
+        "unlockedBy": { "gold": 10 },
+        "celebrationMessage": "Unit 4.1-4.2 COMPLETE! You understand probability and simulation!"
+      }
+    ]
+  }
+}

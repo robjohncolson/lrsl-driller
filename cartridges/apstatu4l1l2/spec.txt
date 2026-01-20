@@ -1,0 +1,65 @@
+
+**CARTRIDGE: U4-SIM**
+
+**Topics:** 4.1 (Randomness), 4.2 (Simulation)  
+**CED Skills:** 3.A (estimate via simulation), 4.B (interpret long-run meaning)
+
+**PURPOSE:**  
+Students practice writing correct simulation plans and interpreting simulation output. Matches the CED emphasis that simulations help students internalize probability before formal rules.
+
+**ITEM MIX (10 items):**
+- **5 "Simulation Plan" prompts** (short written) — design a simulation with all 5 components
+- **3 "Digit Mapping" items** (MC or short answer) — assign digits to match a given probability
+- **2 "Read Simulation Output" items** (MC) — interpret histogram/table from simulation results, use "at least"/"at most" language
+
+**REQUIRED RESPONSE FORMAT (for Simulation Plan items):**
+```
+Random device:
+Mapping:
+Trial:
+Repeat:
+Estimate:
+```
+
+**GRADING RUBRIC (Simulation Plan):**
+- **Full (E):** All 5 labels present AND mapping matches the probability AND trial definition matches the question AND repeat count stated (many/100+)
+- **Partial (P):** Missing 1-2 labels but core idea is correct, OR mapping proportion is slightly off
+- **Incorrect (I):** Not a simulation plan (no random mechanism / no mapping / no repetition)
+
+**GRADING RUBRIC (Digit Mapping):**
+- **Full (E):** Digit proportion exactly matches target probability (e.g., 8 digits for 80%)
+- **Partial (P):** Close but off by one digit
+- **Incorrect (I):** Proportion doesn't match (e.g., using 0-8 for 80% = 9 digits = 90%)
+
+**KEY CONCEPTS TO TEST:**
+- Random device must actually be random (coin, die, random digits, RNG)
+- Mapping proportion must equal the probability (80% = 8 out of 10 digits)
+- Trial = one complete run of the scenario
+- Repeat = many trials (Law of Large Numbers — more trials → closer to true probability)
+- "At most 2" means 0, 1, or 2 (sum those frequencies)
+- "At least 3" means 3 or more (sum those frequencies)
+
+**EXAMPLE PROMPTS:**
+
+*Simulation Plan:*
+> "Describe a simulation to estimate the probability of making exactly 4 free throws out of 5 attempts if you make 80% of your free throws."
+
+*Expected:*
+- Random device: random digits 0-9 (or 1-100)
+- Mapping: 0-7 = make, 8-9 = miss (8 digits = 80%)
+- Trial: 5 digits = one set of 5 free throws
+- Repeat: 200+ trials
+- Estimate: proportion of trials with exactly 4 makes
+
+*Digit Mapping:*
+> "To simulate a 15% chance of rain, which digits should represent 'rain'?"  
+> A) 0-1  B) 0-14  C) 1-15  D) 0-9
+
+*Answer:* A (if using 0-9) or B (if using 00-99). Key: 15% = 15 out of 100 OR approximately 1.5 out of 10.
+
+*Read Output:*
+> [Histogram of simulation results]  
+> "Based on the simulation, what is the probability of at most 2 successes?"
+
+*Answer:* Sum the relative frequencies for 0, 1, and 2.
+
