@@ -195,6 +195,92 @@
     </div>
   </div>
 
+  <!-- Student Detail Modal (Teacher Only) -->
+  <div id="student-detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span id="student-detail-avatar" class="text-3xl">👤</span>
+            <div>
+              <h2 id="student-detail-name" class="text-xl font-bold">Student Name</h2>
+              <p id="student-detail-status" class="text-sm text-white/80">Loading...</p>
+            </div>
+          </div>
+          <button id="student-detail-close" class="p-2 hover:bg-white/20 rounded-full transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div id="student-detail-content" class="flex-1 overflow-y-auto p-6 space-y-6">
+        <!-- Loading State -->
+        <div id="student-detail-loading" class="text-center py-8">
+          <div class="animate-spin w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full mx-auto mb-3"></div>
+          <p class="text-gray-500">Loading student data...</p>
+        </div>
+
+        <!-- Stats Summary -->
+        <div id="student-detail-stats" class="hidden">
+          <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">📊 Overview</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-yellow-50 rounded-lg p-3 text-center">
+              <div id="stat-gold" class="text-2xl font-bold text-yellow-600">0</div>
+              <div class="text-xs text-gray-500">Gold ⭐</div>
+            </div>
+            <div class="bg-gray-100 rounded-lg p-3 text-center">
+              <div id="stat-silver" class="text-2xl font-bold text-gray-500">0</div>
+              <div class="text-xs text-gray-500">Silver 🥈</div>
+            </div>
+            <div class="bg-orange-50 rounded-lg p-3 text-center">
+              <div id="stat-bronze" class="text-2xl font-bold text-orange-600">0</div>
+              <div class="text-xs text-gray-500">Bronze 🥉</div>
+            </div>
+            <div class="bg-blue-50 rounded-lg p-3 text-center">
+              <div id="stat-time" class="text-2xl font-bold text-blue-600">0m</div>
+              <div class="text-xs text-gray-500">Total Time</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div id="student-detail-recent" class="hidden">
+          <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">🕐 Recent Activity</h3>
+          <div id="recent-activity-list" class="space-y-2">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Top Performers (by cartridge) -->
+        <div id="student-detail-cartridges" class="hidden">
+          <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">🎯 Performance by Topic</h3>
+          <div id="cartridge-performance-list" class="space-y-2">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Time Breakdown -->
+        <div id="student-detail-time" class="hidden">
+          <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">⏱️ Time Spent</h3>
+          <div id="time-breakdown-list" class="space-y-2">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="student-detail-error" class="hidden text-center py-8">
+          <div class="text-4xl mb-3">😕</div>
+          <p class="text-gray-500">Could not load student data</p>
+          <p id="student-detail-error-msg" class="text-sm text-red-500 mt-2"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Cartridge Selection Dropdown -->
   <div id="cartridge-dropdown" class="fixed top-14 left-4 z-50 hidden">
     <div class="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden w-72">
@@ -1257,15 +1343,20 @@
       if (users.length === 0) {
         list.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400 italic">No one else online</div>';
       } else {
+        const isTeacher = userSystem.currentUser?.isTeacher;
         list.innerHTML = users.map(username => {
           const isYou = username === userSystem.currentUser?.username;
           const avatar = getAvatarForUsername(username);
+          // Teachers can click on other users to see their details
+          const clickable = isTeacher && !isYou;
           return `
-            <div class="px-3 py-1.5 flex items-center gap-2 ${isYou ? 'bg-purple-50' : 'hover:bg-gray-50'}">
+            <div class="px-3 py-1.5 flex items-center gap-2 ${isYou ? 'bg-purple-50' : 'hover:bg-gray-50'} ${clickable ? 'cursor-pointer' : ''}"
+                 ${clickable ? `onclick="openStudentDetail('${username}')"` : ''}>
               <span class="text-lg">${avatar}</span>
               <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span class="text-sm text-gray-700">${username}</span>
+              <span class="text-sm text-gray-700 ${clickable ? 'hover:text-indigo-600 hover:underline' : ''}">${username}</span>
               ${isYou ? '<span class="text-xs text-purple-600 ml-auto">(you)</span>' : ''}
+              ${clickable ? '<span class="text-xs text-indigo-400 ml-auto">👁️</span>' : ''}
             </div>
           `;
         }).join('');
@@ -1280,6 +1371,210 @@
         dot.className = 'w-2 h-2 bg-gray-400 rounded-full';
       }
     }
+
+    // ========== Student Detail Modal (Teacher Only) ==========
+
+    async function openStudentDetail(username) {
+      const modal = document.getElementById('student-detail-modal');
+      const avatar = getAvatarForUsername(username);
+
+      // Set header info
+      document.getElementById('student-detail-avatar').textContent = avatar;
+      document.getElementById('student-detail-name').textContent = username;
+      document.getElementById('student-detail-status').textContent = 'Online now';
+
+      // Show modal with loading state
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      document.getElementById('student-detail-loading').classList.remove('hidden');
+      document.getElementById('student-detail-stats').classList.add('hidden');
+      document.getElementById('student-detail-recent').classList.add('hidden');
+      document.getElementById('student-detail-cartridges').classList.add('hidden');
+      document.getElementById('student-detail-time').classList.add('hidden');
+      document.getElementById('student-detail-error').classList.add('hidden');
+
+      try {
+        // Fetch progress and time data in parallel
+        const [progressRes, timeRes] = await Promise.all([
+          fetch(`${SERVER_URL}/api/progress/${username}`),
+          fetch(`${SERVER_URL}/api/time-tracking/user/${username}`)
+        ]);
+
+        if (!progressRes.ok || !timeRes.ok) {
+          throw new Error('Failed to fetch student data');
+        }
+
+        const progressData = await progressRes.json();
+        const timeData = await timeRes.json();
+
+        // Hide loading
+        document.getElementById('student-detail-loading').classList.add('hidden');
+
+        // Display the data
+        displayStudentStats(progressData, timeData);
+        displayRecentActivity(progressData);
+        displayCartridgePerformance(progressData);
+        displayTimeBreakdown(timeData);
+
+      } catch (err) {
+        console.error('Error loading student detail:', err);
+        document.getElementById('student-detail-loading').classList.add('hidden');
+        document.getElementById('student-detail-error').classList.remove('hidden');
+        document.getElementById('student-detail-error-msg').textContent = err.message;
+      }
+    }
+
+    function displayStudentStats(progressData, timeData) {
+      // Count stars
+      const stars = { gold: 0, silver: 0, bronze: 0, tin: 0 };
+      progressData.forEach(p => {
+        if (p.star_type && stars.hasOwnProperty(p.star_type)) {
+          stars[p.star_type]++;
+        }
+      });
+
+      document.getElementById('stat-gold').textContent = stars.gold;
+      document.getElementById('stat-silver').textContent = stars.silver;
+      document.getElementById('stat-bronze').textContent = stars.bronze;
+
+      // Format total time
+      const totalMs = timeData.summary?.totalActiveMs || 0;
+      const totalMins = Math.round(totalMs / 60000);
+      document.getElementById('stat-time').textContent = totalMins < 60
+        ? `${totalMins}m`
+        : `${Math.floor(totalMins / 60)}h ${totalMins % 60}m`;
+
+      document.getElementById('student-detail-stats').classList.remove('hidden');
+    }
+
+    function displayRecentActivity(progressData) {
+      const list = document.getElementById('recent-activity-list');
+
+      // Sort by completion date (most recent first) and take top 5
+      const recent = [...progressData]
+        .filter(p => p.completed_at)
+        .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
+        .slice(0, 5);
+
+      if (recent.length === 0) {
+        list.innerHTML = '<div class="text-sm text-gray-400 italic">No recent activity</div>';
+      } else {
+        list.innerHTML = recent.map(p => {
+          const starIcon = p.star_type === 'gold' ? '⭐' : p.star_type === 'silver' ? '🥈' : p.star_type === 'bronze' ? '🥉' : '🔘';
+          const time = new Date(p.completed_at);
+          const timeStr = time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          const dateStr = time.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          return `
+            <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+              <div class="flex items-center gap-2">
+                <span>${starIcon}</span>
+                <span class="text-sm font-medium text-gray-700">${p.scenario_topic || p.cartridge_id || 'Unknown'}</span>
+              </div>
+              <span class="text-xs text-gray-400">${dateStr} ${timeStr}</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('student-detail-recent').classList.remove('hidden');
+    }
+
+    function displayCartridgePerformance(progressData) {
+      const list = document.getElementById('cartridge-performance-list');
+
+      // Group by cartridge and count stars/points
+      const byCartridge = {};
+      progressData.forEach(p => {
+        const cartId = p.cartridge_id || p.scenario_topic || 'unknown';
+        if (!byCartridge[cartId]) {
+          byCartridge[cartId] = { gold: 0, silver: 0, bronze: 0, tin: 0, total: 0, points: 0 };
+        }
+        if (p.star_type) {
+          byCartridge[cartId][p.star_type]++;
+          byCartridge[cartId].total++;
+        }
+        if (p.weighted_points) {
+          byCartridge[cartId].points += p.weighted_points;
+        }
+      });
+
+      // Sort by points (highest first)
+      const sorted = Object.entries(byCartridge)
+        .sort((a, b) => b[1].points - a[1].points);
+
+      if (sorted.length === 0) {
+        list.innerHTML = '<div class="text-sm text-gray-400 italic">No cartridge data yet</div>';
+      } else {
+        const maxPoints = sorted[0][1].points || 1;
+        list.innerHTML = sorted.slice(0, 6).map(([cartId, data]) => {
+          const pct = Math.round((data.points / maxPoints) * 100);
+          return `
+            <div class="bg-gray-50 rounded-lg px-3 py-2">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-medium text-gray-700">${cartId}</span>
+                <span class="text-xs text-gray-500">${data.points.toFixed(1)} pts</span>
+              </div>
+              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style="width: ${pct}%"></div>
+              </div>
+              <div class="flex gap-2 mt-1 text-xs text-gray-400">
+                <span>⭐${data.gold}</span>
+                <span>🥈${data.silver}</span>
+                <span>🥉${data.bronze}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('student-detail-cartridges').classList.remove('hidden');
+    }
+
+    function displayTimeBreakdown(timeData) {
+      const list = document.getElementById('time-breakdown-list');
+
+      // Use session data to show time breakdown
+      const sessions = timeData.sessions || [];
+      const summary = timeData.summary || {};
+
+      // Show summary stats
+      const avgProblemTime = summary.avgProblemTimeMs ? Math.round(summary.avgProblemTimeMs / 1000) : 0;
+      const completionRate = summary.totalProblems > 0
+        ? Math.round((summary.completedProblems / summary.totalProblems) * 100)
+        : 0;
+
+      list.innerHTML = `
+        <div class="grid grid-cols-2 gap-2">
+          <div class="bg-gray-50 rounded-lg px-3 py-2 text-center">
+            <div class="text-lg font-bold text-gray-700">${summary.sessionCount || 0}</div>
+            <div class="text-xs text-gray-500">Sessions</div>
+          </div>
+          <div class="bg-gray-50 rounded-lg px-3 py-2 text-center">
+            <div class="text-lg font-bold text-gray-700">${summary.totalProblems || 0}</div>
+            <div class="text-xs text-gray-500">Problems</div>
+          </div>
+          <div class="bg-gray-50 rounded-lg px-3 py-2 text-center">
+            <div class="text-lg font-bold text-gray-700">${avgProblemTime}s</div>
+            <div class="text-xs text-gray-500">Avg per Problem</div>
+          </div>
+          <div class="bg-gray-50 rounded-lg px-3 py-2 text-center">
+            <div class="text-lg font-bold text-gray-700">${completionRate}%</div>
+            <div class="text-xs text-gray-500">Completion Rate</div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('student-detail-time').classList.remove('hidden');
+    }
+
+    function closeStudentDetail() {
+      const modal = document.getElementById('student-detail-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // Make openStudentDetail available globally for onclick handler
+    window.openStudentDetail = openStudentDetail;
 
     function updatePotentialStar(totalPenalties) {
       // totalPenalties = hints used + retries (wrong answers)
@@ -1811,6 +2106,13 @@
           return;
         }
 
+        // Close student detail modal
+        const studentDetailModal = document.getElementById('student-detail-modal');
+        if (!studentDetailModal.classList.contains('hidden')) {
+          closeStudentDetail();
+          return;
+        }
+
         // Close cartridge dropdown
         const cartridgeDropdown = document.getElementById('cartridge-dropdown');
         if (!cartridgeDropdown.classList.contains('hidden')) {
@@ -1877,6 +2179,16 @@
         const modal = document.getElementById('share-modal');
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+      }
+    });
+
+    // ==================== STUDENT DETAIL MODAL ====================
+    document.getElementById('student-detail-close').addEventListener('click', closeStudentDetail);
+
+    // Close student detail modal on backdrop click
+    document.getElementById('student-detail-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'student-detail-modal') {
+        closeStudentDetail();
       }
     });
 
