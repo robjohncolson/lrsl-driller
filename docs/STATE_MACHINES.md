@@ -9168,8 +9168,306 @@ CLASSES USED:
   • .translate-x-full  - Slides panels off-screen (used for slide-out panels)
 ```
 
+## 110. STUDENT DETAIL MODAL STATE MACHINE (v4.3.2)
+
+Teacher feature to view individual student progress by clicking usernames in the Online Now dropdown.
+
+### Modal Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      STUDENT DETAIL MODAL LIFECYCLE                              │
+│                           platform/app.html                                      │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+  TEACHER CLICKS USERNAME IN ONLINE DROPDOWN
+            │
+            │ openStudentDetail(username)
+            ▼
+    ┌───────────────┐
+    │    CLOSED     │◄────────────────────────────────────────┐
+    │   (.hidden)   │                                         │
+    └───────┬───────┘                                         │
+            │ Remove .hidden, add .flex                       │
+            ▼                                                 │
+    ┌───────────────┐                                         │
+    │   LOADING     │                                         │
+    │   (spinner)   │                                         │
+    └───────┬───────┘                                         │
+            │                                                 │
+            │ Promise.all([                                   │
+            │   fetch(/api/progress/:username),               │
+            │   fetch(/api/time-tracking/user/:username)      │
+            │ ])                                              │
+            ▼                                                 │
+    ┌───────────────────────────────────────────────────┐     │
+    │                 FETCH RESULT                       │     │
+    └───────────────────────┬───────────────────────────┘     │
+                            │                                 │
+              ┌─────────────┴─────────────┐                   │
+              │                           │                   │
+              ▼                           ▼                   │
+    ┌─────────────────┐         ┌─────────────────┐           │
+    │    SUCCESS      │         │     ERROR       │           │
+    │                 │         │                 │           │
+    │ displayStudent  │         │ Show error msg  │           │
+    │ Stats()         │         │ #student-detail │           │
+    │ displayRecent   │         │ -error          │           │
+    │ Activity()      │         │                 │           │
+    │ displayCartridge│         └────────┬────────┘           │
+    │ Performance()   │                  │                    │
+    │ displayTime     │                  │                    │
+    │ Breakdown()     │                  │                    │
+    └────────┬────────┘                  │                    │
+             │                           │                    │
+             └───────────┬───────────────┘                    │
+                         │                                    │
+                         ▼                                    │
+    ┌───────────────────────────────────────────────────┐     │
+    │                  DISPLAYING                        │     │
+    │                                                   │     │
+    │  ┌─────────────────────────────────────────────┐  │     │
+    │  │ Overview: Gold/Silver/Bronze + Total Time   │  │     │
+    │  ├─────────────────────────────────────────────┤  │     │
+    │  │ Recent Activity: Last 5 problems + stars    │  │     │
+    │  ├─────────────────────────────────────────────┤  │     │
+    │  │ Performance by Topic: Points per cartridge  │  │     │
+    │  ├─────────────────────────────────────────────┤  │     │
+    │  │ Time Breakdown: Sessions, avg time, etc.    │  │     │
+    │  └─────────────────────────────────────────────┘  │     │
+    │                                                   │     │
+    └───────────────────────┬───────────────────────────┘     │
+                            │                                 │
+        ┌───────────────────┼───────────────────┐             │
+        │                   │                   │             │
+        ▼                   ▼                   ▼             │
+  ┌───────────┐     ┌───────────────┐    ┌──────────────┐     │
+  │ X Button  │     │ Backdrop      │    │ Escape Key   │     │
+  │  Click    │     │   Click       │    │  Press       │     │
+  └─────┬─────┘     └───────┬───────┘    └──────┬───────┘     │
+        │                   │                   │             │
+        └───────────────────┴───────────────────┘             │
+                            │                                 │
+                            │ closeStudentDetail()            │
+                            │ Add .hidden, remove .flex       │
+                            └─────────────────────────────────┘
+```
+
+### Online Dropdown Click Detection
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     ONLINE DROPDOWN USER CLICK                                   │
+│                     updateOnlineDisplay() function                               │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────┐
+    │ updateOnlineDisplay()   │
+    │ called with users[]     │
+    └────────────┬────────────┘
+                 │
+                 ▼
+    ┌─────────────────────────┐
+    │ Check: isTeacher?       │
+    │ userSystem.currentUser  │
+    │ .isTeacher              │
+    └────────────┬────────────┘
+                 │
+        ┌────────┴────────┐
+        │                 │
+        ▼                 ▼
+  ┌───────────┐     ┌───────────┐
+  │  TEACHER  │     │  STUDENT  │
+  └─────┬─────┘     └─────┬─────┘
+        │                 │
+        ▼                 ▼
+  For each user:    For each user:
+        │                 │
+        ▼                 ▼
+  ┌───────────────┐ ┌───────────────┐
+  │ isYou?        │ │ Show username │
+  │ (same as      │ │ (no click)    │
+  │ current user) │ └───────────────┘
+  └───────┬───────┘
+          │
+   ┌──────┴──────┐
+   │             │
+   ▼             ▼
+┌───────┐   ┌────────────────────────────┐
+│ YES   │   │ NO (other student)         │
+│ (you) │   │                            │
+│       │   │ clickable = true           │
+│ Show  │   │ onclick="openStudentDetail │
+│ "(you)"│  │ ('username')"              │
+│ label │   │ Show 👁️ icon               │
+│       │   │ cursor: pointer            │
+└───────┘   │ hover:underline            │
+            └────────────────────────────┘
+```
+
+### Data Display Sections
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         DATA DISPLAY SECTIONS                                    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │ 1. displayStudentStats(progressData, timeData)                              │
+  │                                                                             │
+  │    progressData.forEach() → count stars by star_type                        │
+  │    timeData.summary.totalActiveMs → format as Xm or Xh Ym                   │
+  │                                                                             │
+  │    ┌─────────┬─────────┬─────────┬─────────┐                                │
+  │    │  Gold   │ Silver  │ Bronze  │  Time   │                                │
+  │    │   ⭐    │   🥈    │   🥉    │   ⏱️    │                                │
+  │    └─────────┴─────────┴─────────┴─────────┘                                │
+  └─────────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │ 2. displayRecentActivity(progressData)                                      │
+  │                                                                             │
+  │    Sort by completed_at DESC → take first 5                                 │
+  │                                                                             │
+  │    ┌─────────────────────────────────────────────────────┐                  │
+  │    │ ⭐ apstatu4l1l2                        Jan 20 10:30 │                  │
+  │    │ 🥈 a2t3l3                              Jan 20 10:15 │                  │
+  │    │ ⭐ sampling                            Jan 20 10:00 │                  │
+  │    └─────────────────────────────────────────────────────┘                  │
+  └─────────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │ 3. displayCartridgePerformance(progressData)                                │
+  │                                                                             │
+  │    Group by cartridge_id → sum weighted_points → sort DESC                  │
+  │                                                                             │
+  │    ┌─────────────────────────────────────────────────────┐                  │
+  │    │ apstatu4l1l2                              23.5 pts  │                  │
+  │    │ ████████████████████████████████████████░░░░░ 100%  │                  │
+  │    │ ⭐5 🥈3 🥉1                                          │                  │
+  │    ├─────────────────────────────────────────────────────┤                  │
+  │    │ a2t3l3                                    18.0 pts  │                  │
+  │    │ ████████████████████████████████░░░░░░░░░░░░░  77%  │                  │
+  │    │ ⭐3 🥈2 🥉2                                          │                  │
+  │    └─────────────────────────────────────────────────────┘                  │
+  └─────────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │ 4. displayTimeBreakdown(timeData)                                           │
+  │                                                                             │
+  │    timeData.summary fields:                                                 │
+  │    - sessionCount: number of sessions                                       │
+  │    - totalProblems: problems attempted                                      │
+  │    - completedProblems: problems completed                                  │
+  │    - avgProblemTimeMs: average time per problem                             │
+  │                                                                             │
+  │    ┌────────────┬────────────┐                                              │
+  │    │  Sessions  │  Problems  │                                              │
+  │    │     12     │     45     │                                              │
+  │    ├────────────┼────────────┤                                              │
+  │    │ Avg/Problem│ Completion │                                              │
+  │    │    35s     │    89%     │                                              │
+  │    └────────────┴────────────┘                                              │
+  └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## 111. CTF SESSION START STATE MACHINE (v4.3.2 Enhancement)
+
+Enhancement to allow starting a new CTF session from the 'ended' state without manual reset.
+
+### Session Start States (Before v4.3.2)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    CTF SESSION START (BEFORE v4.3.2)                             │
+│                    POST /api/ctf/:cartridgeId/session/start                      │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────┐
+    │ POST session/start      │
+    └────────────┬────────────┘
+                 │
+                 ▼
+    ┌─────────────────────────┐
+    │ Check session_status    │
+    └────────────┬────────────┘
+                 │
+    ┌────────────┼────────────┬────────────┬────────────┐
+    │            │            │            │            │
+    ▼            ▼            ▼            ▼            ▼
+┌────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌────────┐
+│ idle   │ │scheduled │ │  active  │ │tiebreaker │ │ ended  │
+│   ✓    │ │    ✓     │ │    ✗     │ │     ✗     │ │   ✗    │ ← BLOCKED!
+│ START  │ │  START   │ │  ERROR   │ │   ERROR   │ │ ERROR  │
+└────────┘ └──────────┘ └──────────┘ └───────────┘ └────────┘
+
+Teacher had to manually RESET before starting new session from 'ended' state.
+```
+
+### Session Start States (After v4.3.2)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    CTF SESSION START (AFTER v4.3.2)                              │
+│                    POST /api/ctf/:cartridgeId/session/start                      │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────┐
+    │ POST session/start      │
+    └────────────┬────────────┘
+                 │
+                 ▼
+    ┌─────────────────────────┐
+    │ Check session_status    │
+    └────────────┬────────────┘
+                 │
+    ┌────────────┼────────────┬────────────┬────────────┐
+    │            │            │            │            │
+    ▼            ▼            ▼            ▼            ▼
+┌────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌────────┐
+│ idle   │ │scheduled │ │  active  │ │tiebreaker │ │ ended  │
+│   ✓    │ │    ✓     │ │    ✗     │ │     ✗     │ │   ✓    │ ← NOW ALLOWED!
+│ START  │ │  START   │ │  ERROR   │ │   ERROR   │ │ START  │
+│        │ │          │ │ "already │ │ "wait or  │ │ +RESET │
+│        │ │          │ │ active"  │ │  reset"   │ │        │
+└────────┘ └──────────┘ └──────────┘ └───────────┘ └───┬────┘
+                                                       │
+                                                       ▼
+                                          ┌────────────────────┐
+                                          │ AUTO-RESET:        │
+                                          │ • front_position   │
+                                          │   = startPosition  │
+                                          │ • blue_points = 0  │
+                                          │ • red_points = 0   │
+                                          └────────────────────┘
+```
+
+### State Transition Matrix (v4.3.2)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    SESSION START STATE TRANSITION MATRIX                         │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+  Current State  │  Can Start?  │  Result                │  Auto-Reset?
+  ───────────────┼──────────────┼────────────────────────┼──────────────
+  idle           │     ✓        │  → active              │     No
+  scheduled      │     ✓        │  → active              │     No
+  active         │     ✗        │  Error: already active │     N/A
+  tiebreaker     │     ✗        │  Error: wait/reset     │     N/A
+  ended          │     ✓        │  → active + reset      │     YES
+
+  AUTO-RESET includes:
+    • Reset session_points for all players to 0
+    • Reset first_point_at to null for all players
+    • Reset front_position to CTF_CONFIG.startPosition (10)
+    • Reset blue_points to 0
+    • Reset red_points to 0
+    • Clear winner and tiebreaker_winner
+```
+
 ---
 
-*Updated to v4.3.0*
+*Updated to v4.3.2*
 *Last updated: January 2026*
-*Total sections: 123*
+*Total sections: 125*

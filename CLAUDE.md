@@ -14,7 +14,7 @@ Current cartridges (12 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v4.3.1 (New Probability Cartridge)
+**Current Version**: v4.3.2 (Teacher Student Detail Modal & CTF Fixes)
 
 ## Development Commands
 
@@ -304,13 +304,15 @@ npx vitest run tests/core/game-engine-progression.test.js # v3.2 progression ove
 npx vitest run tests/server/ctf-sessions.test.js          # v4.2 session and tiebreaker tests
 npx vitest run tests/generators/apstatu4l1l2.test.js      # v4.3.1 probability cartridge generator (49 tests)
 npx vitest run tests/grading/apstatu4l1l2.test.js         # v4.3.1 probability cartridge grading (44 tests)
+npx vitest run tests/core/student-detail-modal.test.js    # v4.3.2 student detail modal tests (52 tests)
+npx vitest run tests/server/ctf-session-start.test.js     # v4.3.2 CTF session start fix tests (30 tests)
 ```
 
 Test organization:
-- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1, game-engine-progression)
+- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1, game-engine-progression, student-detail-modal)
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design, apstatu4l1l2)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design, apstatu4l1l2)
-- `tests/server/` - Railway server API tests (api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality)
+- `tests/server/` - Railway server API tests (api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality, ctf-session-start)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
@@ -335,6 +337,27 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 - `cartridges/registry.json` - Available cartridge listing
 
 ## Version History (Bug Fixes)
+
+**v4.3.2**: Teacher Student Detail Modal & CTF Fixes
+- **Student Detail Modal**: Teachers can now click usernames in "Online Now" to view student progress
+  - Shows gold/silver/bronze star counts and total time spent
+  - Displays recent activity across all cartridges
+  - Shows performance breakdown per cartridge
+  - Time breakdown by session
+  - Eye icon (👁️) indicator on clickable usernames
+  - New tests: 52 regression tests (`tests/core/student-detail-modal.test.js`)
+- **CTF Session Start Fix**: Sessions can now start from 'ended' state with automatic board reset
+  - Previously required manual reset before starting new session
+  - Now auto-resets front position to center (10) and clears team points
+  - New tests: 30 regression tests (`tests/server/ctf-session-start.test.js`)
+- **Algebra 2 Polynomial Identities (a2t3l3) Improvements**:
+  - **Level 1b Flashcards**: New identity memorization level between L1 and L2
+    - 14 flashcard scenarios: name→formula, formula→name, and sign questions
+    - Covers all 5 key identities: Difference of Squares, Square of Sum/Difference, Sum/Difference of Cubes
+  - **Level 3 Head-Friendly Numbers**: Replaced impractical numbers (53×67) with mental-math-friendly scenarios
+    - Uses bases 10, 20, 30, 50, 100, 200 with ±1 or ±2 offsets
+    - Examples: 9×11, 19×21, 49×51, 99×101, 21², 51², 99²
+- **State Machine Documentation**: Added sections 110-111 to `docs/STATE_MACHINES.md`
 
 **v4.3.1**: New Probability Cartridge (apstatu4l1l2)
 - New cartridge: `apstatu4l1l2` - AP Statistics Unit 4 Lessons 1-2 (Probability Basics)
