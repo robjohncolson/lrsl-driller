@@ -41,7 +41,7 @@
     {
       "id": "l02-outcome-event",
       "name": "4.2a: Outcomes vs Events",
-      "unlockedBy": { "gold": 1 },
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -56,7 +56,7 @@
     {
       "id": "l03-independence",
       "name": "4.1b: Independence & Gambler's Fallacy",
-      "unlockedBy": { "gold": 2 },
+      "unlockedBy": { "gold": 6 },
       "layout": {
         "inputs": [
           {
@@ -71,7 +71,7 @@
     {
       "id": "l04-streaks",
       "name": "4.1c: Streaks in Random Data",
-      "unlockedBy": { "gold": 3 },
+      "unlockedBy": { "gold": 9 },
       "layout": {
         "inputs": [
           {
@@ -86,7 +86,7 @@
     {
       "id": "l05-simulation-vocab",
       "name": "4.2b: Simulation Definition",
-      "unlockedBy": { "gold": 4 },
+      "unlockedBy": { "gold": 12 },
       "layout": {
         "inputs": [
           {
@@ -102,7 +102,7 @@
     {
       "id": "l06-lln",
       "name": "4.2c: Law of Large Numbers",
-      "unlockedBy": { "gold": 5 },
+      "unlockedBy": { "gold": 15 },
       "layout": {
         "inputs": [
           {
@@ -118,7 +118,7 @@
     {
       "id": "l07-digit-assignment",
       "name": "4.2d: Simulation Step 1 - Assign Digits",
-      "unlockedBy": { "gold": 6 },
+      "unlockedBy": { "gold": 18 },
       "layout": {
         "inputs": [
           {
@@ -143,7 +143,7 @@
     {
       "id": "l08-trial-definition",
       "name": "4.2e: Simulation Step 2 - Define Trial",
-      "unlockedBy": { "gold": 7 },
+      "unlockedBy": { "gold": 21 },
       "layout": {
         "inputs": [
           {
@@ -159,7 +159,7 @@
     {
       "id": "l09-relative-frequency",
       "name": "4.2f: Simulation Step 3 - Calculate Probability",
-      "unlockedBy": { "gold": 8 },
+      "unlockedBy": { "gold": 24 },
       "layout": {
         "inputs": [
           {
@@ -176,7 +176,7 @@
     {
       "id": "l10-simulation-design",
       "name": "4.2g: Full Simulation Design",
-      "unlockedBy": { "gold": 9 },
+      "unlockedBy": { "gold": 27 },
       "layout": {
         "inputs": [
           {
@@ -197,7 +197,7 @@
     {
       "id": "l11-capstone",
       "name": "4.1-4.2 Capstone",
-      "unlockedBy": { "gold": 10 },
+      "unlockedBy": { "gold": 30 },
       "layout": {
         "inputs": [
           {
@@ -267,61 +267,61 @@
       {
         "id": "l02-outcome-event",
         "name": "4.2a",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Outcomes vs events - got it! Next: independence."
       },
       {
         "id": "l03-independence",
         "name": "4.1b",
-        "unlockedBy": { "gold": 2 },
+        "unlockedBy": { "gold": 6 },
         "celebrationMessage": "You caught the gambler's fallacy! Next: streaks."
       },
       {
         "id": "l04-streaks",
         "name": "4.1c",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": { "gold": 9 },
         "celebrationMessage": "Streaks are normal! Next: simulation basics."
       },
       {
         "id": "l05-simulation-vocab",
         "name": "4.2b",
-        "unlockedBy": { "gold": 4 },
+        "unlockedBy": { "gold": 12 },
         "celebrationMessage": "Simulation understood! Next: Law of Large Numbers."
       },
       {
         "id": "l06-lln",
         "name": "4.2c",
-        "unlockedBy": { "gold": 5 },
+        "unlockedBy": { "gold": 15 },
         "celebrationMessage": "LLN mastered! Now: designing simulations."
       },
       {
         "id": "l07-digit-assignment",
         "name": "4.2d",
-        "unlockedBy": { "gold": 6 },
+        "unlockedBy": { "gold": 18 },
         "celebrationMessage": "Digit assignment down! Next: defining trials."
       },
       {
         "id": "l08-trial-definition",
         "name": "4.2e",
-        "unlockedBy": { "gold": 7 },
+        "unlockedBy": { "gold": 21 },
         "celebrationMessage": "Trials defined! Next: calculating probability."
       },
       {
         "id": "l09-relative-frequency",
         "name": "4.2f",
-        "unlockedBy": { "gold": 8 },
+        "unlockedBy": { "gold": 24 },
         "celebrationMessage": "Probability calculated! Next: full simulation design."
       },
       {
         "id": "l10-simulation-design",
         "name": "4.2g",
-        "unlockedBy": { "gold": 9 },
+        "unlockedBy": { "gold": 27 },
         "celebrationMessage": "You can design simulations! Final capstone next."
       },
       {
         "id": "l11-capstone",
         "name": "Capstone",
-        "unlockedBy": { "gold": 10 },
+        "unlockedBy": { "gold": 30 },
         "celebrationMessage": "Unit 4.1-4.2 COMPLETE! You understand probability and simulation!"
       }
     ]
