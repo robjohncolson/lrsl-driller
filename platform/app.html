@@ -4382,8 +4382,8 @@
 
       await userSystem.init();
 
-      // Check for persisted teacher mode
-      checkTeacherModePersistence();
+      // Check for persisted teacher mode (must await before initGameMode)
+      await checkTeacherModePersistence();
 
       if (userSystem.currentUser) {
         // Show real name if available
