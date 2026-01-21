@@ -1,5 +1,5 @@
-// grading-rules.js - AP Statistics Unit 4 Lessons 1-2-3
-// Topics: Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements
+// grading-rules.js - AP Statistics Unit 4 Lessons 1-5
+// Topics: Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -39,7 +39,8 @@ export function gradeField(fieldId, answer, context) {
     "designDigits",
     "designTrial",
     "capExplain",
-    "mixedExplain"
+    "mixedExplain",
+    "capstone44Explain"
   ]);
 
   if (isBlank(answer)) {
@@ -516,6 +517,256 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should mention the specific probability rule used and explain your reasoning."
+    };
+  }
+
+  // ========== LEVEL 17: Mutually Exclusive Definition ==========
+  if (fieldId === "meDefAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You understand mutually exclusive (disjoint) events."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. Mutually exclusive means the events CANNOT occur at the same time. P(A ∩ B) = 0."
+    };
+  }
+
+  // ========== LEVEL 18: Joint Probability Calculation ==========
+  if (fieldId === "jointProbAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a decimal number (e.g., 0.225)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P(${context.eventA} ∩ ${context.eventB}) = ${context.intersection}/${context.total} = ${expectedVal.toFixed(3)}`
+      };
+    }
+    if (diff <= 0.02) {
+      return {
+        score: "P",
+        feedback: `Close! Remember: P(A ∩ B) = (intersection) / (GRAND total). ${context.intersection}/${context.total} = ${expectedVal.toFixed(3)}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. P(A ∩ B) = ${context.intersection} / ${context.total} = ${expectedVal.toFixed(3)}. Use the GRAND total!`
+    };
+  }
+
+  // ========== LEVEL 19: Identifying Mutually Exclusive Events ==========
+  if (fieldId === "identifyMEAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: context.isME
+          ? "Correct! P(A ∩ B) = 0, so these events ARE mutually exclusive."
+          : "Correct! P(A ∩ B) > 0, so these events are NOT mutually exclusive."
+      };
+    }
+    return {
+      score: "I",
+      feedback: context.isME
+        ? `Incorrect. Since P(A ∩ B) = 0, these events ARE mutually exclusive.`
+        : `Incorrect. Since P(A ∩ B) = ${context.intersection} > 0, they CAN occur together, so NOT mutually exclusive.`
+    };
+  }
+
+  // ========== LEVEL 20: Conditional Probability Definition ==========
+  if (fieldId === "condDefAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You understand conditional probability notation."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. P(B|A) means 'probability of B GIVEN A'. The formula is P(A ∩ B) / P(A)."
+    };
+  }
+
+  // ========== LEVEL 21: Conditional Probability from Tables ==========
+  if (fieldId === "condTableAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.01;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a decimal number (e.g., 0.45)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P(${context.target}|${context.condition}) = ${context.numerator}/${context.denominator} = ${expectedVal.toFixed(3)}`
+      };
+    }
+    if (diff <= 0.03) {
+      return {
+        score: "P",
+        feedback: `Close! Use the total for ${context.condition} as denominator: ${context.numerator}/${context.denominator} = ${expectedVal.toFixed(3)}`
+      };
+    }
+    // Check if they used grand total instead
+    if (context.total && Math.abs(studentVal - context.numerator / context.total) < 0.01) {
+      return {
+        score: "I",
+        feedback: `You used the grand total instead! For conditional probability, use the row/column total: ${context.numerator}/${context.denominator}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. P(${context.target}|${context.condition}) = ${context.numerator}/${context.denominator} = ${expectedVal.toFixed(3)}`
+    };
+  }
+
+  // ========== LEVEL 22: General Multiplication Rule ==========
+  if (fieldId === "multRuleAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.01;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a decimal number (e.g., 0.133)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P(A ∩ B) = P(A) × P(B|A) = ${context.pA} × ${context.pBgivenA} ≈ ${expectedVal.toFixed(3)}`
+      };
+    }
+    if (diff <= 0.03) {
+      return {
+        score: "P",
+        feedback: `Close! ${context.explanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 23: Order Matters P(A|B) vs P(B|A) ==========
+  if (fieldId === "orderAgivenB") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.01;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a decimal number (e.g., 0.45)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P(${context.eventB}|${context.eventA}) = ${context.n_AandB}/${context.n_A} = ${expectedVal.toFixed(3)}`
+      };
+    }
+    // Check if they calculated the other direction
+    if (context.pBgivenA && Math.abs(studentVal - context.pBgivenA) <= tolerance) {
+      return {
+        score: "I",
+        feedback: `That's P(${context.eventA}|${context.eventB}), not P(${context.eventB}|${context.eventA}). Divide by ${context.n_A}, not ${context.n_B}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. P(${context.eventB}|${context.eventA}) = ${context.n_AandB}/${context.n_A} = ${expectedVal.toFixed(3)}`
+    };
+  }
+
+  if (fieldId === "orderBgivenA") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.01;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a decimal number (e.g., 0.43)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P(${context.eventA}|${context.eventB}) = ${context.n_AandB}/${context.n_B} = ${expectedVal.toFixed(3)}`
+      };
+    }
+    // Check if they calculated the other direction
+    if (context.pAgivenB && Math.abs(studentVal - context.pAgivenB) <= tolerance) {
+      return {
+        score: "I",
+        feedback: `That's P(${context.eventB}|${context.eventA}), not P(${context.eventA}|${context.eventB}). Divide by ${context.n_B}, not ${context.n_A}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. P(${context.eventA}|${context.eventB}) = ${context.n_AandB}/${context.n_B} = ${expectedVal.toFixed(3)}`
+    };
+  }
+
+  // ========== LEVEL 24: Mixed 4.4-4.5 Capstone ==========
+  if (fieldId === "capstone44Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation || ""}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation || `The correct answer is: ${expected}`}`
+    };
+  }
+
+  if (fieldId === "capstone44Explain") {
+    // Key vocabulary for Topics 4.4-4.5
+    const meKeywords = ["mutually exclusive", "disjoint", "cannot occur", "together", "intersection", "p(a ∩ b) = 0"];
+    const jointKeywords = ["joint", "both", "intersection", "grand total", "a ∩ b", "and"];
+    const conditionalKeywords = ["conditional", "given", "p(b|a)", "row total", "column total", "|"];
+    const multRuleKeywords = ["multiplication", "p(a) × p(b|a)", "times", "multiply", "rule"];
+    const orderKeywords = ["order", "not equal", "different", "p(a|b)", "p(b|a)", "denominator"];
+
+    // Check for reasoning quality
+    const mentionsME = containsAny(answer, meKeywords);
+    const mentionsJoint = containsAny(answer, jointKeywords);
+    const mentionsConditional = containsAny(answer, conditionalKeywords);
+    const mentionsMultRule = containsAny(answer, multRuleKeywords);
+    const mentionsOrder = containsAny(answer, orderKeywords);
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "means", "shows", "using", "since"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    const conceptMentioned = mentionsME || mentionsJoint || mentionsConditional || mentionsMultRule || mentionsOrder;
+
+    if (conceptMentioned && hasReasoning && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent explanation! You clearly understand the probability concept."
+      };
+    }
+    if (hasSubstance && conceptMentioned) {
+      return {
+        score: "P",
+        feedback: "Good start! Be more specific about WHY this concept applies to the scenario."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should mention the specific concept (ME, joint, conditional, multiplication rule) and explain why it applies."
     };
   }
 

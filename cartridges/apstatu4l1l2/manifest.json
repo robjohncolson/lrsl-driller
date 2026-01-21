@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstatu4l1l2",
-    "name": "Probability Basics (4.1-4.3)",
+    "name": "Probability (4.1-4.5)",
     "subject": "AP Statistics",
-    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements"
+    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability"
   },
   "config": {
     "contextsFile": null,
@@ -11,7 +11,9 @@
       "VAR-1.F",
       "UNC-2.A",
       "VAR-4.A",
-      "VAR-4.B"
+      "VAR-4.B",
+      "VAR-4.C",
+      "VAR-4.D"
     ]
   },
   "display": {
@@ -313,6 +315,152 @@
           }
         ]
       }
+    },
+    {
+      "id": "l17-mutually-exclusive-def",
+      "name": "4.4a: Mutually Exclusive Definition",
+      "unlockedBy": { "gold": 16 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meDefAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l18-joint-probability",
+      "name": "4.4b: Joint Probability",
+      "unlockedBy": { "gold": 17 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "jointProbAnswer",
+            "type": "number",
+            "label": "Calculate P(A ∩ B) as a decimal (e.g., 0.225):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l19-identify-me",
+      "name": "4.4c: Identify Mutually Exclusive",
+      "unlockedBy": { "gold": 18 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "identifyMEAnswer",
+            "type": "choice",
+            "label": "Are these events mutually exclusive?",
+            "options": ["Yes, mutually exclusive", "No, NOT mutually exclusive"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l20-conditional-def",
+      "name": "4.5a: Conditional Probability Definition",
+      "unlockedBy": { "gold": 19 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "condDefAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l21-conditional-table",
+      "name": "4.5b: Conditional Probability from Tables",
+      "unlockedBy": { "gold": 20 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "condTableAnswer",
+            "type": "number",
+            "label": "Calculate the conditional probability as a decimal (e.g., 0.45):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l22-multiplication-rule",
+      "name": "4.5c: General Multiplication Rule",
+      "unlockedBy": { "gold": 21 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "multRuleAnswer",
+            "type": "number",
+            "label": "Calculate P(A ∩ B) using the multiplication rule (as decimal):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l23-order-matters",
+      "name": "4.5d: Order Matters (P(A|B) vs P(B|A))",
+      "unlockedBy": { "gold": 22 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "orderAgivenB",
+            "type": "number",
+            "label": "P({{eventB}} | {{eventA}}) = (decimal, e.g., 0.45):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          },
+          {
+            "id": "orderBgivenA",
+            "type": "number",
+            "label": "P({{eventA}} | {{eventB}}) = (decimal, e.g., 0.43):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l24-mixed-4-4-5",
+      "name": "4.4-4.5 Capstone",
+      "unlockedBy": { "gold": 23 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone44Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone44Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Explain using probability concepts..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -349,7 +497,17 @@
       "complementAnswer": "Complement rule: P(not A) = 1 - P(A). The event and its complement must sum to 1.",
       "atLeastOneAnswer": "Use the complement! P(at least 1) = 1 - P(none). It's easier than adding all the ways to get 1, 2, 3...",
       "mixedAnswer": "Apply the appropriate rule: sample space, complement (1-P), or P(at least 1) = 1 - P(none).",
-      "mixedExplain": "Mention the specific probability rule you used and show your calculation."
+      "mixedExplain": "Mention the specific probability rule you used and show your calculation.",
+      "meDefAnswer": "Mutually exclusive = CANNOT occur at same time. P(A ∩ B) = 0. Also called 'disjoint'.",
+      "jointProbAnswer": "Joint probability: P(A ∩ B) = (count in both) / (GRAND total). Use the total of all observations!",
+      "identifyMEAnswer": "If P(A ∩ B) = 0 exactly, they ARE mutually exclusive. Any value > 0 means NOT mutually exclusive.",
+      "condDefAnswer": "P(B|A) = probability of B GIVEN A. Formula: P(A ∩ B) / P(A). The | means 'given'.",
+      "condTableAnswer": "For P(B|A): numerator = count in both A and B, denominator = total for A (the condition). NOT grand total!",
+      "multRuleAnswer": "Multiplication rule: P(A ∩ B) = P(A) × P(B|A). Multiply the first probability by the conditional probability.",
+      "orderAgivenB": "P(B|A) = (count in both) / (total for A). Different from P(A|B) which divides by total for B!",
+      "orderBgivenA": "P(A|B) = (count in both) / (total for B). Same numerator as P(B|A), but different denominator!",
+      "capstone44Answer": "Review: ME means P(A∩B)=0, Joint uses grand total, Conditional uses row/column total, Order matters in P(A|B).",
+      "capstone44Explain": "Explain which concept (mutually exclusive, joint probability, conditional, multiplication rule) applies and why."
     },
     "penalty": {
       "0": "gold",
@@ -456,7 +614,55 @@
         "id": "l16-mixed-4-3",
         "name": "4.3 Mixed",
         "unlockedBy": { "gold": 15 },
-        "celebrationMessage": "UNIT 4.1-4.3 COMPLETE! You've mastered probability basics!"
+        "celebrationMessage": "Topics 4.1-4.3 complete! Now onto mutually exclusive events..."
+      },
+      {
+        "id": "l17-mutually-exclusive-def",
+        "name": "4.4a",
+        "unlockedBy": { "gold": 16 },
+        "celebrationMessage": "Mutually exclusive understood! Next: joint probability."
+      },
+      {
+        "id": "l18-joint-probability",
+        "name": "4.4b",
+        "unlockedBy": { "gold": 17 },
+        "celebrationMessage": "Joint probability mastered! Next: identifying mutually exclusive events."
+      },
+      {
+        "id": "l19-identify-me",
+        "name": "4.4c",
+        "unlockedBy": { "gold": 18 },
+        "celebrationMessage": "You can identify ME events! Now onto conditional probability..."
+      },
+      {
+        "id": "l20-conditional-def",
+        "name": "4.5a",
+        "unlockedBy": { "gold": 19 },
+        "celebrationMessage": "Conditional probability notation learned! Next: tables."
+      },
+      {
+        "id": "l21-conditional-table",
+        "name": "4.5b",
+        "unlockedBy": { "gold": 20 },
+        "celebrationMessage": "Tables conquered! Next: multiplication rule."
+      },
+      {
+        "id": "l22-multiplication-rule",
+        "name": "4.5c",
+        "unlockedBy": { "gold": 21 },
+        "celebrationMessage": "Multiplication rule mastered! Next: order matters."
+      },
+      {
+        "id": "l23-order-matters",
+        "name": "4.5d",
+        "unlockedBy": { "gold": 22 },
+        "celebrationMessage": "You understand that order matters! Final capstone next."
+      },
+      {
+        "id": "l24-mixed-4-4-5",
+        "name": "4.4-4.5 Capstone",
+        "unlockedBy": { "gold": 23 },
+        "celebrationMessage": "UNIT 4.1-4.5 COMPLETE! You've mastered probability!"
       }
     ]
   }

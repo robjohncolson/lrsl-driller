@@ -808,6 +808,604 @@ const atLeastOneScenarios = [
   }
 ];
 
+// ============ TOPIC 4.4 SCENARIO BANKS ============
+
+// Level 17: Mutually Exclusive Definition
+const mutuallyExclusiveDefScenarios = [
+  {
+    question: "What does it mean for two events to be MUTUALLY EXCLUSIVE?",
+    answer: "They cannot occur at the same time",
+    options: [
+      "They cannot occur at the same time",
+      "They always occur together",
+      "They have the same probability",
+      "One causes the other to happen"
+    ]
+  },
+  {
+    question: "Another term for 'mutually exclusive' events is:",
+    answer: "Disjoint",
+    options: ["Disjoint", "Independent", "Conditional", "Complementary"]
+  },
+  {
+    question: "If two events are mutually exclusive, then P(A ∩ B) equals:",
+    answer: "0",
+    options: ["0", "1", "P(A) + P(B)", "P(A) × P(B)"]
+  },
+  {
+    question: "Which statement is TRUE about mutually exclusive events?",
+    answer: "Their intersection is empty (no common outcomes)",
+    options: [
+      "Their intersection is empty (no common outcomes)",
+      "They must have equal probabilities",
+      "One event causes the other",
+      "They always happen at the same time"
+    ]
+  },
+  {
+    question: "In a Venn diagram, mutually exclusive events are shown as:",
+    answer: "Two circles that do NOT overlap",
+    options: [
+      "Two circles that do NOT overlap",
+      "Two circles that completely overlap",
+      "One circle inside the other",
+      "Two identical circles"
+    ]
+  },
+  {
+    question: "Being a freshman AND being a sophomore at the same school is:",
+    answer: "Impossible - these events are mutually exclusive",
+    options: [
+      "Impossible - these events are mutually exclusive",
+      "Possible but unlikely",
+      "Always true",
+      "Depends on the school"
+    ]
+  },
+  {
+    question: "The symbol ∩ in probability represents:",
+    answer: "The intersection (AND) - both events occur",
+    options: [
+      "The intersection (AND) - both events occur",
+      "The union (OR) - at least one event occurs",
+      "The complement (NOT) - event doesn't occur",
+      "The probability of the first event"
+    ]
+  },
+  {
+    question: "P(A ∩ B) is called the:",
+    answer: "Joint probability",
+    options: ["Joint probability", "Marginal probability", "Conditional probability", "Complement probability"]
+  }
+];
+
+// Level 18: Joint Probability Calculation
+const jointProbabilityScenarios = [
+  {
+    desc: "A survey of 200 students asked about favorite subject and grade level.",
+    table: { name: "School Survey", totalStudents: 200, rows: ["Freshman", "Sophomore"], cols: ["Math", "English"], data: [[45, 55], [60, 40]] },
+    eventA: "Freshman",
+    eventB: "Math",
+    intersection: 45,
+    total: 200,
+    answer: 0.225
+  },
+  {
+    desc: "433 students were asked about superpowers and status preferences.",
+    table: { name: "Super Status!", totalStudents: 433, rows: ["Fly", "Freeze Time", "Invisibility"], cols: ["Famous", "Happy", "Rich"], data: [[5, 48, 22], [3, 63, 26], [3, 62, 22]] },
+    eventA: "Fly",
+    eventB: "Happy",
+    intersection: 48,
+    total: 433,
+    answer: 0.111
+  },
+  {
+    desc: "300 employees were surveyed about department and years of experience.",
+    table: { name: "Employee Survey", totalStudents: 300, rows: ["Sales", "Engineering", "Marketing"], cols: ["<5 years", "5+ years"], data: [[40, 35], [55, 70], [45, 55]] },
+    eventA: "Engineering",
+    eventB: "5+ years",
+    intersection: 70,
+    total: 300,
+    answer: 0.233
+  },
+  {
+    desc: "150 customers rated their satisfaction and purchase frequency.",
+    table: { name: "Customer Survey", totalStudents: 150, rows: ["Satisfied", "Neutral", "Dissatisfied"], cols: ["Frequent", "Occasional", "Rare"], data: [[25, 30, 10], [15, 20, 15], [5, 10, 20]] },
+    eventA: "Satisfied",
+    eventB: "Frequent",
+    intersection: 25,
+    total: 150,
+    answer: 0.167
+  },
+  {
+    desc: "400 voters were polled about age group and candidate preference.",
+    table: { name: "Voter Poll", totalStudents: 400, rows: ["18-30", "31-50", "51+"], cols: ["Candidate A", "Candidate B"], data: [[60, 50], [80, 70], [65, 75]] },
+    eventA: "18-30",
+    eventB: "Candidate A",
+    intersection: 60,
+    total: 400,
+    answer: 0.150
+  },
+  {
+    desc: "250 patients were categorized by treatment type and recovery speed.",
+    table: { name: "Patient Study", totalStudents: 250, rows: ["Treatment A", "Treatment B"], cols: ["Fast Recovery", "Slow Recovery"], data: [[80, 45], [70, 55]] },
+    eventA: "Treatment A",
+    eventB: "Fast Recovery",
+    intersection: 80,
+    total: 250,
+    answer: 0.320
+  },
+  {
+    desc: "180 students were surveyed about study habits and test performance.",
+    table: { name: "Study Survey", totalStudents: 180, rows: ["Studies Daily", "Studies Weekly", "Rarely Studies"], cols: ["Passed", "Failed"], data: [[55, 5], [40, 20], [20, 40]] },
+    eventA: "Studies Daily",
+    eventB: "Passed",
+    intersection: 55,
+    total: 180,
+    answer: 0.306
+  },
+  {
+    desc: "360 athletes were tracked by sport and injury status this season.",
+    table: { name: "Athlete Data", totalStudents: 360, rows: ["Basketball", "Football", "Soccer"], cols: ["Injured", "Not Injured"], data: [[25, 95], [40, 80], [20, 100]] },
+    eventA: "Football",
+    eventB: "Injured",
+    intersection: 40,
+    total: 360,
+    answer: 0.111
+  }
+];
+
+// Level 19: Identifying Mutually Exclusive Events
+const identifyMEScenarios = [
+  {
+    desc: "In a survey, P(Famous ∩ Telepathy) = 0",
+    intersection: 0,
+    isME: true,
+    explanation: "Since the intersection probability is 0, no students chose both Famous AND Telepathy. These events are mutually exclusive."
+  },
+  {
+    desc: "In a study, P(Happy ∩ Freeze Time) = 0.145",
+    intersection: 0.145,
+    isME: false,
+    explanation: "Since P(A ∩ B) > 0, some people are both Happy AND chose Freeze Time. These events are NOT mutually exclusive."
+  },
+  {
+    desc: "For a die roll, P(Even ∩ Odd) = 0",
+    intersection: 0,
+    isME: true,
+    explanation: "A number cannot be both even AND odd. These events are mutually exclusive."
+  },
+  {
+    desc: "For a die roll, P(Even ∩ Prime) = 1/6",
+    intersection: 0.167,
+    isME: false,
+    explanation: "The number 2 is both even AND prime, so P(Even ∩ Prime) = 1/6 > 0. Not mutually exclusive."
+  },
+  {
+    desc: "In a class, P(Freshman ∩ Sophomore) = 0",
+    intersection: 0,
+    isME: true,
+    explanation: "A student cannot be both a freshman AND a sophomore simultaneously. These are mutually exclusive."
+  },
+  {
+    desc: "In a survey, P(Math Lover ∩ Freshman) = 0.225",
+    intersection: 0.225,
+    isME: false,
+    explanation: "Some freshmen love math! Since the intersection is greater than 0, these events are NOT mutually exclusive."
+  },
+  {
+    desc: "For a single card draw, P(Heart ∩ Spade) = 0",
+    intersection: 0,
+    isME: true,
+    explanation: "A single card cannot be both a heart AND a spade. These are mutually exclusive."
+  },
+  {
+    desc: "For a single card draw, P(Red ∩ Face Card) = 6/52",
+    intersection: 0.115,
+    isME: false,
+    explanation: "There are 6 red face cards (J, Q, K of hearts and diamonds). Since P > 0, not mutually exclusive."
+  },
+  {
+    desc: "At a school, P(Plays Sports ∩ In Band) = 0.08",
+    intersection: 0.08,
+    isME: false,
+    explanation: "Some students both play sports AND are in band. Since P > 0, these events are NOT mutually exclusive."
+  },
+  {
+    desc: "In a hospital, P(Has Flu ∩ Has COVID) = 0.001",
+    intersection: 0.001,
+    isME: false,
+    explanation: "Even though rare, some patients have BOTH infections. Since P > 0 (not exactly 0), these are NOT mutually exclusive."
+  }
+];
+
+// ============ TOPIC 4.5 SCENARIO BANKS ============
+
+// Level 20: Conditional Probability Definition
+const conditionalDefScenarios = [
+  {
+    question: "What does P(B|A) represent?",
+    answer: "The probability of B given that A has occurred",
+    options: [
+      "The probability of B given that A has occurred",
+      "The probability of A and B both occurring",
+      "The probability of A or B occurring",
+      "The probability of A given that B has occurred"
+    ]
+  },
+  {
+    question: "The notation P(B|A) is read as:",
+    answer: "The probability of B given A",
+    options: [
+      "The probability of B given A",
+      "The probability of B and A",
+      "The probability of B or A",
+      "The probability of B minus A"
+    ]
+  },
+  {
+    question: "The formula for conditional probability is:",
+    answer: "P(B|A) = P(A ∩ B) / P(A)",
+    options: [
+      "P(B|A) = P(A ∩ B) / P(A)",
+      "P(B|A) = P(A ∩ B) / P(B)",
+      "P(B|A) = P(A) × P(B)",
+      "P(B|A) = P(A) + P(B)"
+    ]
+  },
+  {
+    question: "In conditional probability P(B|A), what does the vertical bar | mean?",
+    answer: "'Given' or 'knowing that'",
+    options: [
+      "'Given' or 'knowing that'",
+      "'And' (intersection)",
+      "'Or' (union)",
+      "'Divided by'"
+    ]
+  },
+  {
+    question: "When calculating P(B|A), we are restricting our sample space to:",
+    answer: "Only the outcomes where A has occurred",
+    options: [
+      "Only the outcomes where A has occurred",
+      "All possible outcomes",
+      "Only the outcomes where B has occurred",
+      "Outcomes where neither A nor B occurred"
+    ]
+  },
+  {
+    question: "If we know event A happened, we use conditional probability because:",
+    answer: "The probability of B may change based on this new information",
+    options: [
+      "The probability of B may change based on this new information",
+      "The probability of B always stays the same",
+      "We can ignore event A completely",
+      "Events A and B must be independent"
+    ]
+  },
+  {
+    question: "The general multiplication rule states:",
+    answer: "P(A ∩ B) = P(A) × P(B|A)",
+    options: [
+      "P(A ∩ B) = P(A) × P(B|A)",
+      "P(A ∩ B) = P(A) + P(B|A)",
+      "P(A ∩ B) = P(A) / P(B|A)",
+      "P(A ∩ B) = P(A) - P(B|A)"
+    ]
+  },
+  {
+    question: "P(A|B) and P(B|A) are:",
+    answer: "Generally NOT equal - order matters!",
+    options: [
+      "Generally NOT equal - order matters!",
+      "Always equal to each other",
+      "Always equal to P(A ∩ B)",
+      "Always equal to 0.5"
+    ]
+  }
+];
+
+// Level 21: Conditional Probability from Two-Way Tables
+const conditionalTableScenarios = [
+  {
+    desc: "Using the school survey: P(Math | Freshman) = ?",
+    table: { rows: ["Freshman", "Sophomore"], cols: ["Math", "English"], data: [[45, 55], [60, 40]], rowTotals: [100, 100], colTotals: [105, 95], total: 200 },
+    condition: "Freshman",
+    target: "Math",
+    numerator: 45,
+    denominator: 100,
+    answer: 0.45
+  },
+  {
+    desc: "Using the school survey: P(Math | Sophomore) = ?",
+    table: { rows: ["Freshman", "Sophomore"], cols: ["Math", "English"], data: [[45, 55], [60, 40]], rowTotals: [100, 100], colTotals: [105, 95], total: 200 },
+    condition: "Sophomore",
+    target: "Math",
+    numerator: 60,
+    denominator: 100,
+    answer: 0.60
+  },
+  {
+    desc: "Using the Super Status! data: P(Rich | Fly) = ?",
+    table: { rows: ["Fly", "Freeze Time", "Invisibility"], cols: ["Famous", "Happy", "Rich"], data: [[5, 48, 22], [3, 63, 26], [3, 62, 22]], rowTotals: [89, 101, 98], total: 433 },
+    condition: "Fly",
+    target: "Rich",
+    numerator: 22,
+    denominator: 89,
+    answer: 0.247
+  },
+  {
+    desc: "Using the Super Status! data: P(Fly | Rich) = ?",
+    table: { rows: ["Fly", "Freeze Time", "Invisibility"], cols: ["Famous", "Happy", "Rich"], data: [[5, 48, 22], [3, 63, 26], [3, 62, 22]], colTotals: [15, 265, 102], total: 433 },
+    condition: "Rich",
+    target: "Fly",
+    numerator: 22,
+    denominator: 102,
+    answer: 0.216
+  },
+  {
+    desc: "Using employee data: P(5+ years | Engineering) = ?",
+    table: { rows: ["Sales", "Engineering", "Marketing"], cols: ["<5 years", "5+ years"], data: [[40, 35], [55, 70], [45, 55]], rowTotals: [75, 125, 100], total: 300 },
+    condition: "Engineering",
+    target: "5+ years",
+    numerator: 70,
+    denominator: 125,
+    answer: 0.56
+  },
+  {
+    desc: "Using customer data: P(Satisfied | Frequent) = ?",
+    table: { rows: ["Satisfied", "Neutral", "Dissatisfied"], cols: ["Frequent", "Occasional", "Rare"], data: [[25, 30, 10], [15, 20, 15], [5, 10, 20]], colTotals: [45, 60, 45], total: 150 },
+    condition: "Frequent",
+    target: "Satisfied",
+    numerator: 25,
+    denominator: 45,
+    answer: 0.556
+  },
+  {
+    desc: "Using study data: P(Passed | Studies Daily) = ?",
+    table: { rows: ["Studies Daily", "Studies Weekly", "Rarely Studies"], cols: ["Passed", "Failed"], data: [[55, 5], [40, 20], [20, 40]], rowTotals: [60, 60, 60], total: 180 },
+    condition: "Studies Daily",
+    target: "Passed",
+    numerator: 55,
+    denominator: 60,
+    answer: 0.917
+  },
+  {
+    desc: "Using study data: P(Studies Daily | Passed) = ?",
+    table: { rows: ["Studies Daily", "Studies Weekly", "Rarely Studies"], cols: ["Passed", "Failed"], data: [[55, 5], [40, 20], [20, 40]], colTotals: [115, 65], total: 180 },
+    condition: "Passed",
+    target: "Studies Daily",
+    numerator: 55,
+    denominator: 115,
+    answer: 0.478
+  }
+];
+
+// Level 22: General Multiplication Rule
+const multiplicationRuleScenarios = [
+  {
+    desc: "A bag has 10 marbles (4 red, 6 blue). You draw 2 marbles WITHOUT replacement. Find P(both red).",
+    pA: 0.4,
+    pBgivenA: 0.333,
+    answer: 0.133,
+    explanation: "P(1st red) = 4/10. Given 1st red, P(2nd red) = 3/9. So P(both) = (4/10)(3/9) = 12/90 ≈ 0.133"
+  },
+  {
+    desc: "A deck has 52 cards. Draw 2 cards WITHOUT replacement. Find P(both are aces).",
+    pA: 0.077,
+    pBgivenA: 0.059,
+    answer: 0.005,
+    explanation: "P(1st ace) = 4/52. Given 1st ace, P(2nd ace) = 3/51. So P(both) = (4/52)(3/51) ≈ 0.005"
+  },
+  {
+    desc: "80% of students passed the midterm. Of those who passed, 90% also passed the final. Find P(passed both).",
+    pA: 0.8,
+    pBgivenA: 0.9,
+    answer: 0.72,
+    explanation: "P(passed midterm) = 0.80. P(passed final | passed midterm) = 0.90. P(both) = (0.80)(0.90) = 0.72"
+  },
+  {
+    desc: "In a factory, 95% of products pass inspection 1. Of those, 98% pass inspection 2. Find P(passes both).",
+    pA: 0.95,
+    pBgivenA: 0.98,
+    answer: 0.931,
+    explanation: "P(pass 1) = 0.95. P(pass 2 | pass 1) = 0.98. P(both) = (0.95)(0.98) = 0.931"
+  },
+  {
+    desc: "A jar has 8 red and 12 blue candies. Pick 2 WITHOUT replacement. Find P(both blue).",
+    pA: 0.6,
+    pBgivenA: 0.579,
+    answer: 0.347,
+    explanation: "P(1st blue) = 12/20 = 0.6. Given 1st blue, P(2nd blue) = 11/19. P(both) = (12/20)(11/19) ≈ 0.347"
+  },
+  {
+    desc: "70% of applicants have experience. Of those, 60% get interviews. Find P(experience AND interview).",
+    pA: 0.7,
+    pBgivenA: 0.6,
+    answer: 0.42,
+    explanation: "P(experience) = 0.70. P(interview | experience) = 0.60. P(both) = (0.70)(0.60) = 0.42"
+  },
+  {
+    desc: "A bag has 5 red, 5 blue marbles. Draw 2 WITHOUT replacement. Find P(1st red AND 2nd blue).",
+    pA: 0.5,
+    pBgivenA: 0.556,
+    answer: 0.278,
+    explanation: "P(1st red) = 5/10 = 0.5. Given 1st red, P(2nd blue) = 5/9. P(red then blue) = (5/10)(5/9) ≈ 0.278"
+  },
+  {
+    desc: "60% of emails are spam. Of spam emails, 85% are caught by the filter. Find P(spam AND caught).",
+    pA: 0.6,
+    pBgivenA: 0.85,
+    answer: 0.51,
+    explanation: "P(spam) = 0.60. P(caught | spam) = 0.85. P(spam and caught) = (0.60)(0.85) = 0.51"
+  }
+];
+
+// Level 23: Order Matters - P(A|B) vs P(B|A)
+const orderMattersScenarios = [
+  {
+    desc: "Compare: P(Math | Freshman) vs P(Freshman | Math) from a school survey where 45 students are both Freshman AND like Math, 100 total Freshmen, 105 total Math lovers, 200 total students.",
+    pAgivenB: 0.45,
+    pBgivenA: 0.429,
+    eventA: "Freshman",
+    eventB: "Math",
+    n_AandB: 45,
+    n_A: 100,
+    n_B: 105,
+    total: 200
+  },
+  {
+    desc: "Compare: P(Rich | Fly) vs P(Fly | Rich) from Super Status! where 22 students chose both Fly AND Rich, 89 chose Fly, 102 chose Rich, 433 total.",
+    pAgivenB: 0.247,
+    pBgivenA: 0.216,
+    eventA: "Fly",
+    eventB: "Rich",
+    n_AandB: 22,
+    n_A: 89,
+    n_B: 102,
+    total: 433
+  },
+  {
+    desc: "Compare: P(Passed | Studies Daily) vs P(Studies Daily | Passed) where 55 students both study daily AND passed, 60 study daily, 115 passed, 180 total.",
+    pAgivenB: 0.917,
+    pBgivenA: 0.478,
+    eventA: "Studies Daily",
+    eventB: "Passed",
+    n_AandB: 55,
+    n_A: 60,
+    n_B: 115,
+    total: 180
+  },
+  {
+    desc: "Compare: P(Satisfied | Frequent) vs P(Frequent | Satisfied) where 25 are both, 45 are Frequent, 65 are Satisfied, 150 total.",
+    pAgivenB: 0.556,
+    pBgivenA: 0.385,
+    eventA: "Frequent",
+    eventB: "Satisfied",
+    n_AandB: 25,
+    n_A: 45,
+    n_B: 65,
+    total: 150
+  },
+  {
+    desc: "Compare: P(Engineering | 5+ years) vs P(5+ years | Engineering) where 70 are both, 160 have 5+ years, 125 are in Engineering, 300 total.",
+    pAgivenB: 0.438,
+    pBgivenA: 0.56,
+    eventA: "5+ years",
+    eventB: "Engineering",
+    n_AandB: 70,
+    n_A: 160,
+    n_B: 125,
+    total: 300
+  },
+  {
+    desc: "Compare: P(Injured | Football) vs P(Football | Injured) where 40 football players are injured, 120 play football, 85 total injured, 360 athletes.",
+    pAgivenB: 0.333,
+    pBgivenA: 0.471,
+    eventA: "Football",
+    eventB: "Injured",
+    n_AandB: 40,
+    n_A: 120,
+    n_B: 85,
+    total: 360
+  }
+];
+
+// Level 24: Mixed 4.4-4.5 Capstone
+const mixed44_45Scenarios = [
+  {
+    desc: "If P(A ∩ B) = 0, what can we conclude about events A and B?",
+    answer: "A and B are mutually exclusive (disjoint)",
+    options: [
+      "A and B are mutually exclusive (disjoint)",
+      "A and B are independent",
+      "P(A) = 0",
+      "P(B|A) = 1"
+    ],
+    concept: "Mutually exclusive definition",
+    explanation: "When P(A ∩ B) = 0, no outcomes are in both events, meaning they cannot occur together - the definition of mutually exclusive."
+  },
+  {
+    desc: "To find P(B|A), the correct denominator is:",
+    answer: "The total for event A (the condition)",
+    options: [
+      "The total for event A (the condition)",
+      "The grand total of all outcomes",
+      "The total for event B",
+      "P(A ∩ B)"
+    ],
+    concept: "Conditional probability formula",
+    explanation: "P(B|A) = P(A ∩ B) / P(A). The denominator is P(A), the condition that we know has occurred."
+  },
+  {
+    desc: "P(A|B) = 0.6 and P(B|A) = 0.4. What can we conclude?",
+    answer: "This is possible - order matters in conditional probability",
+    options: [
+      "This is possible - order matters in conditional probability",
+      "This is impossible - they must be equal",
+      "One of these must be wrong",
+      "The events must be independent"
+    ],
+    concept: "Order matters",
+    explanation: "P(A|B) and P(B|A) are generally NOT equal. The probability depends on which event is the condition."
+  },
+  {
+    desc: "Two events have a small but non-zero intersection. Are they mutually exclusive?",
+    answer: "No - mutually exclusive requires P(A ∩ B) = 0 exactly",
+    options: [
+      "No - mutually exclusive requires P(A ∩ B) = 0 exactly",
+      "Yes - a small intersection counts as mutually exclusive",
+      "Yes - if P < 0.05, it's mutually exclusive",
+      "It depends on the sample size"
+    ],
+    concept: "Mutually exclusive vs. small probability",
+    explanation: "Mutually exclusive means P(A ∩ B) = 0 EXACTLY. Any non-zero intersection means the events CAN occur together."
+  },
+  {
+    desc: "P(A) = 0.5, P(B|A) = 0.6. Find P(A ∩ B) using the multiplication rule.",
+    answer: "0.30",
+    options: ["0.30", "1.10", "0.83", "0.20"],
+    concept: "Multiplication rule",
+    explanation: "P(A ∩ B) = P(A) × P(B|A) = 0.5 × 0.6 = 0.30"
+  },
+  {
+    desc: "In a two-way table, the joint probability uses which total?",
+    answer: "The grand total (all observations)",
+    options: [
+      "The grand total (all observations)",
+      "The row total",
+      "The column total",
+      "The cell count only"
+    ],
+    concept: "Joint vs conditional probability",
+    explanation: "Joint probability P(A ∩ B) = (cell count) / (grand total). Conditional probability uses the row or column total."
+  },
+  {
+    desc: "A bag has 4 red and 6 blue marbles. Drawing WITHOUT replacement, what is P(2nd red | 1st red)?",
+    answer: "3/9 or about 0.333",
+    options: [
+      "3/9 or about 0.333",
+      "4/10 or 0.4",
+      "4/9 or about 0.444",
+      "3/10 or 0.3"
+    ],
+    concept: "Conditional probability without replacement",
+    explanation: "After drawing a red, 3 red remain out of 9 total. So P(2nd red | 1st red) = 3/9 ≈ 0.333"
+  },
+  {
+    desc: "Which correctly calculates P(A ∩ B) from a two-way table?",
+    answer: "(Number in cell A and B) / (Grand total)",
+    options: [
+      "(Number in cell A and B) / (Grand total)",
+      "(Number in cell A and B) / (Row total)",
+      "(Row total) × (Column total)",
+      "(Number in cell A and B) / (Column total)"
+    ],
+    concept: "Joint probability from tables",
+    explanation: "P(A ∩ B) = (intersection count) / (grand total). This is different from conditional probability."
+  }
+];
+
 // Level 16: Mixed 4.3 Practice
 const mixed43Scenarios = [
   {
@@ -1280,6 +1878,205 @@ export function generateProblem(modeId, contextFromFile, mode) {
     answers = {
       mixedAnswer: { value: scen.answer },
       mixedExplain: { value: scen.explanation }
+    };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 17: Mutually Exclusive Definition ==========
+  if (modeId === "l17-mutually-exclusive-def") {
+    const scen = drawFromBag('meDef', mutuallyExclusiveDefScenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.4a",
+      problemText: "**VAR-4.C:** Mutually Exclusive (Disjoint) Events\n\n" +
+                   "Two events are **mutually exclusive** (also called **disjoint**) if:\n" +
+                   "• They CANNOT occur at the same time\n" +
+                   "• Their intersection is empty: P(A ∩ B) = 0\n\n" +
+                   "Example: Being a freshman AND sophomore at the same school",
+      givenText: scen.question,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3]
+    };
+    answers = { meDefAnswer: { value: scen.answer } };
+    scenario = scen.question;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 18: Joint Probability Calculation ==========
+  if (modeId === "l18-joint-probability") {
+    const scen = drawFromBag('jointProb', jointProbabilityScenarios);
+
+    // Build a two-way table display string
+    const tableRows = scen.table.rows.map((row, i) =>
+      `${row}: ${scen.table.data[i].join(', ')}`
+    ).join('\n');
+
+    context = {
+      topicId: "4.4b",
+      problemText: "**VAR-4.C:** Joint Probability P(A ∩ B)\n\n" +
+                   "**Joint probability** = probability that BOTH events occur\n\n" +
+                   "Formula from a two-way table:\n" +
+                   "P(A ∩ B) = (count in both A AND B) / (grand total)\n\n" +
+                   "⚠️ Use the GRAND TOTAL as the denominator!",
+      givenText: `${scen.desc}\n\nFind P(${scen.eventA} ∩ ${scen.eventB})\n\nData: ${scen.intersection} students are ${scen.eventA} AND ${scen.eventB}\nTotal: ${scen.total} students`,
+      eventA: scen.eventA,
+      eventB: scen.eventB,
+      intersection: scen.intersection,
+      total: scen.total
+    };
+    answers = { jointProbAnswer: { value: scen.answer, tolerance: 0.005 } };
+    scenario = `${scen.desc} Find P(${scen.eventA} ∩ ${scen.eventB})`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 19: Identifying Mutually Exclusive Events ==========
+  if (modeId === "l19-identify-me") {
+    const scen = drawFromBag('identifyME', identifyMEScenarios);
+
+    context = {
+      topicId: "4.4c",
+      problemText: "**VAR-4.C:** Identifying Mutually Exclusive Events\n\n" +
+                   "To check if events are mutually exclusive:\n" +
+                   "• Look at P(A ∩ B) - the intersection probability\n" +
+                   "• If P(A ∩ B) = 0 → Events ARE mutually exclusive\n" +
+                   "• If P(A ∩ B) > 0 → Events are NOT mutually exclusive\n\n" +
+                   "Any non-zero intersection means they CAN occur together!",
+      givenText: scen.desc,
+      intersection: scen.intersection,
+      isME: scen.isME,
+      explanation: scen.explanation
+    };
+    answers = { identifyMEAnswer: { value: scen.isME ? "Yes, mutually exclusive" : "No, NOT mutually exclusive" } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 20: Conditional Probability Definition ==========
+  if (modeId === "l20-conditional-def") {
+    const scen = drawFromBag('condDef', conditionalDefScenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.5a",
+      problemText: "**VAR-4.D:** Conditional Probability\n\n" +
+                   "**P(B|A)** = \"Probability of B GIVEN A\"\n\n" +
+                   "Formula: P(B|A) = P(A ∩ B) / P(A)\n\n" +
+                   "The | symbol means \"given\" or \"knowing that\"\n" +
+                   "We restrict our sample space to only outcomes where A occurred.",
+      givenText: scen.question,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3]
+    };
+    answers = { condDefAnswer: { value: scen.answer } };
+    scenario = scen.question;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 21: Conditional Probability from Two-Way Tables ==========
+  if (modeId === "l21-conditional-table") {
+    const scen = drawFromBag('condTable', conditionalTableScenarios);
+
+    context = {
+      topicId: "4.5b",
+      problemText: "**VAR-4.D:** Conditional Probability from Tables\n\n" +
+                   "To find P(B|A) from a two-way table:\n" +
+                   "1. Find the ROW or COLUMN for the condition (A)\n" +
+                   "2. Numerator: count in both A AND B\n" +
+                   "3. Denominator: total for A (the condition)\n\n" +
+                   "⚠️ Use the ROW/COLUMN total, NOT the grand total!",
+      givenText: `${scen.desc}\n\nCondition: ${scen.condition}\nTarget: ${scen.target}\nCount(${scen.condition} ∩ ${scen.target}): ${scen.numerator}\nTotal ${scen.condition}: ${scen.denominator}`,
+      condition: scen.condition,
+      target: scen.target,
+      numerator: scen.numerator,
+      denominator: scen.denominator
+    };
+    answers = { condTableAnswer: { value: scen.answer, tolerance: 0.01 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 22: General Multiplication Rule ==========
+  if (modeId === "l22-multiplication-rule") {
+    const scen = drawFromBag('multRule', multiplicationRuleScenarios);
+
+    context = {
+      topicId: "4.5c",
+      problemText: "**VAR-4.D:** General Multiplication Rule\n\n" +
+                   "**P(A ∩ B) = P(A) × P(B|A)**\n\n" +
+                   "This works for ANY two events!\n" +
+                   "• P(A) = probability of first event\n" +
+                   "• P(B|A) = probability of second GIVEN the first occurred\n\n" +
+                   "For 'without replacement' problems, the second probability changes!",
+      givenText: scen.desc,
+      pA: scen.pA,
+      pBgivenA: scen.pBgivenA,
+      explanation: scen.explanation
+    };
+    answers = { multRuleAnswer: { value: scen.answer, tolerance: 0.01 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 23: Order Matters P(A|B) vs P(B|A) ==========
+  if (modeId === "l23-order-matters") {
+    const scen = drawFromBag('orderMatters', orderMattersScenarios);
+
+    context = {
+      topicId: "4.5d",
+      problemText: "**VAR-4.D:** Order Matters in Conditional Probability!\n\n" +
+                   "P(A|B) ≠ P(B|A) in general!\n\n" +
+                   "• P(A|B) = P(A ∩ B) / P(B) → divide by total B\n" +
+                   "• P(B|A) = P(A ∩ B) / P(A) → divide by total A\n\n" +
+                   "Same numerator, DIFFERENT denominators!",
+      givenText: scen.desc,
+      eventA: scen.eventA,
+      eventB: scen.eventB,
+      n_AandB: scen.n_AandB,
+      n_A: scen.n_A,
+      n_B: scen.n_B,
+      total: scen.total,
+      pAgivenB: scen.pAgivenB,
+      pBgivenA: scen.pBgivenA
+    };
+    answers = {
+      orderAgivenB: { value: scen.pAgivenB, tolerance: 0.01 },
+      orderBgivenA: { value: scen.pBgivenA, tolerance: 0.01 }
+    };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 24: Mixed 4.4-4.5 Capstone ==========
+  if (modeId === "l24-mixed-4-4-5") {
+    const scen = drawFromBag('mixed44_45', mixed44_45Scenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.4-4.5",
+      problemText: "**Topics 4.4-4.5 Mixed Practice**\n\n" +
+                   "Key Concepts:\n" +
+                   "• Mutually exclusive: P(A ∩ B) = 0 (cannot occur together)\n" +
+                   "• Joint probability: P(A ∩ B) = intersection / grand total\n" +
+                   "• Conditional: P(B|A) = intersection / total for A\n" +
+                   "• Multiplication rule: P(A ∩ B) = P(A) × P(B|A)\n" +
+                   "• Order matters: P(A|B) ≠ P(B|A) generally",
+      givenText: scen.desc,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      concept: scen.concept,
+      explanation: scen.explanation
+    };
+    answers = {
+      capstone44Answer: { value: scen.answer },
+      capstone44Explain: { value: scen.explanation }
     };
     scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
