@@ -4495,6 +4495,122 @@ app.post('/api/roster/bulk-assign', async (req, res) => {
   }
 });
 
+// ============================================
+// PROGRESSION OVERRIDES ENDPOINTS (Teacher Only)
+// ============================================
+
+// GET /api/progression-overrides/:cartridgeId - Get all overrides for a cartridge
+app.get('/api/progression-overrides/:cartridgeId', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const gameId = req.query.gameId || 'default';
+
+    const { data, error } = await supabase
+      .from('progression_overrides')
+      .select('mode_id, gold_required')
+      .eq('game_id', gameId)
+      .eq('cartridge_id', cartridgeId);
+
+    if (error) throw error;
+
+    // Convert array to object keyed by mode_id
+    const overrides = {};
+    for (const row of (data || [])) {
+      overrides[row.mode_id] = row.gold_required;
+    }
+
+    res.json({ overrides });
+  } catch (err) {
+    console.error('GET /api/progression-overrides/:cartridgeId error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/progression-overrides/:cartridgeId/:modeId - Save an override for a specific level
+app.put('/api/progression-overrides/:cartridgeId/:modeId', async (req, res) => {
+  try {
+    const { cartridgeId, modeId } = req.params;
+    const { goldRequired, password, gameId = 'default', username } = req.body;
+
+    // Verify teacher password
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    // Validate goldRequired
+    if (typeof goldRequired !== 'number' || goldRequired < 1 || goldRequired > 10) {
+      return res.status(400).json({ error: 'goldRequired must be a number between 1 and 10' });
+    }
+
+    // Upsert the override
+    const { data, error } = await supabase
+      .from('progression_overrides')
+      .upsert({
+        game_id: gameId,
+        cartridge_id: cartridgeId,
+        mode_id: modeId,
+        gold_required: goldRequired,
+        updated_by: username || null,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'game_id,cartridge_id,mode_id'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Broadcast the change via WebSocket
+    broadcast({
+      type: 'progression_override_changed',
+      cartridgeId,
+      modeId,
+      goldRequired,
+      gameId
+    });
+
+    res.json({ success: true, override: data });
+  } catch (err) {
+    console.error('PUT /api/progression-overrides/:cartridgeId/:modeId error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/progression-overrides/:cartridgeId/:modeId - Remove an override
+app.delete('/api/progression-overrides/:cartridgeId/:modeId', async (req, res) => {
+  try {
+    const { cartridgeId, modeId } = req.params;
+    const { password, gameId = 'default' } = req.body;
+
+    // Verify teacher password
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    const { error } = await supabase
+      .from('progression_overrides')
+      .delete()
+      .eq('game_id', gameId)
+      .eq('cartridge_id', cartridgeId)
+      .eq('mode_id', modeId);
+
+    if (error) throw error;
+
+    // Broadcast the removal via WebSocket
+    broadcast({
+      type: 'progression_override_removed',
+      cartridgeId,
+      modeId,
+      gameId
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/progression-overrides/:cartridgeId/:modeId error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 function getOnlineUsers() {
   const users = [];
   for (const [, data] of clients) {
