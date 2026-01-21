@@ -1104,7 +1104,10 @@
             const response = await fetch(`${SERVER_URL}/api/users`);
             if (response.ok) {
               const users = await response.json();
+              console.log('[GameMode] Fetched', users.length, 'users from /api/users');
               gameModeManager.setAvailableUsers(users);
+            } else {
+              console.warn('[GameMode] /api/users returned status:', response.status);
             }
           } catch (err) {
             console.warn('[GameMode] Failed to fetch users:', err.message);
@@ -1112,6 +1115,7 @@
         }
 
         // Pass current online users (WebSocket may have received presence_snapshot before gameModeManager existed)
+        console.log('[GameMode] WebSocket online users:', wsClient.onlineUsers);
         if (wsClient.onlineUsers && wsClient.onlineUsers.length > 0) {
           gameModeManager.setOnlineUsers(wsClient.onlineUsers);
         }

@@ -832,33 +832,38 @@ export class CTFPanel {
     const select = this.container.querySelector('#user-select');
     if (!select) return;
 
-    // Filter users by current period if viewing a specific period
-    let filteredUsers = this.allUsers.filter(u =>
-      !this.state.classPeriod || u.class_period === this.state.classPeriod
-    );
-
-    // Filter to only online users if we have online data
-    if (this.onlineUsernames.size > 0) {
-      filteredUsers = filteredUsers.filter(u => this.onlineUsernames.has(u.username));
-    }
-
-    // Get users not yet assigned
+    // Get users not yet assigned to a team
     const assignedUsernames = new Set([
       ...this.state.blueTeam.map(p => p.username),
       ...this.state.redTeam.map(p => p.username)
     ]);
 
-    const unassigned = filteredUsers.filter(u => !assignedUsernames.has(u.username));
+    // Start with all users not assigned
+    let availableUsers = this.allUsers.filter(u => !assignedUsernames.has(u.username));
 
-    select.innerHTML = unassigned.map(u => `
-      <option value="${u.username}">${u.real_name || u.username} 🟢</option>
-    `).join('');
+    // Filter to only online users if we have online data
+    if (this.onlineUsernames.size > 0) {
+      availableUsers = availableUsers.filter(u => this.onlineUsernames.has(u.username));
+    }
+
+    // For display, show period if user is in different period than current view
+    const currentPeriod = this.state.classPeriod;
+
+    select.innerHTML = availableUsers.map(u => {
+      const periodNote = u.class_period && u.class_period !== currentPeriod
+        ? ` [${u.class_period}]`
+        : '';
+      return `<option value="${u.username}">${u.real_name || u.username}${periodNote} 🟢</option>`;
+    }).join('');
 
     // Show count of online users
     const countLabel = this.container.querySelector('#online-user-count');
     if (countLabel) {
-      countLabel.textContent = `(${unassigned.length} online)`;
+      countLabel.textContent = `(${availableUsers.length} online)`;
     }
+
+    // Debug: log what we're working with
+    console.log('[CTF Panel] allUsers:', this.allUsers.length, 'online:', this.onlineUsernames.size, 'available:', availableUsers.length);
   }
 
   /**
