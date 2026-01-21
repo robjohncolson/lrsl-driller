@@ -1046,6 +1046,7 @@
     let gameModeEnabled = true; // Feature flag for game modes
     let aiFeedbackPanel = null; // v2.0.1: AI feedback panel instance
     let rosterModal = null; // Teacher roster management modal
+    let requestedStartLevel = null; // URL-requested level (e.g., ?level=l12-sample-space or ?start=12)
 
     /**
      * Sync local star counts with server to fix any discrepancies
@@ -3327,7 +3328,29 @@
       const activeTabClass = 'mode-tab mode-tab-active snap-start';
       const lockedTabClass = 'mode-tab mode-tab-locked snap-start';
 
+      // Track lesson groups for dividers (extracts "4.1", "4.2", "4.3" from names like "4.1a: ...")
+      let lastLessonGroup = null;
+
+      // Helper to extract lesson group from mode name (e.g., "4.1a: Title" -> "4.1")
+      function getLessonGroup(modeName) {
+        const match = modeName.match(/^(\d+\.\d+)/);
+        return match ? match[1] : null;
+      }
+
       modes.forEach((mode, i) => {
+        // Check if we need a lesson group divider
+        const lessonGroup = getLessonGroup(mode.name);
+        if (lessonGroup && lessonGroup !== lastLessonGroup) {
+          // Add a divider with lesson label
+          const divider = document.createElement('div');
+          divider.className = 'flex items-center gap-2 px-2 snap-start';
+          divider.innerHTML = `
+            <span class="text-xs text-gray-400 font-medium whitespace-nowrap">§${lessonGroup}</span>
+            <span class="w-px h-4 bg-gray-600"></span>
+          `;
+          tabsContainer.appendChild(divider);
+          lastLessonGroup = lessonGroup;
+        }
         // Check if mode is unlocked using the game engine's sequential unlock logic
         // Teachers bypass all locks
         const studentUnlocked = gameState.unlockedTiers.includes(mode.id);
@@ -3793,6 +3816,46 @@
         // Render mode tabs (call the reusable function)
         renderModeTabs();
 
+        // Handle URL-requested level (?level=l12-sample-space or ?start=12)
+        if (requestedStartLevel) {
+          const modes = platform.currentCartridge.manifest.modes;
+          const gameState = platform.gameEngine.getState();
+          let targetMode = null;
+          let targetIndex = -1;
+
+          // Find the target mode by ID or index
+          if (requestedStartLevel.type === 'id') {
+            targetIndex = modes.findIndex(m => m.id === requestedStartLevel.value);
+            if (targetIndex >= 0) targetMode = modes[targetIndex];
+          } else if (requestedStartLevel.type === 'index') {
+            targetIndex = requestedStartLevel.value;
+            if (targetIndex >= 0 && targetIndex < modes.length) {
+              targetMode = modes[targetIndex];
+            }
+          }
+
+          if (targetMode) {
+            const studentUnlocked = gameState.unlockedTiers.includes(targetMode.id);
+            const canAccess = isTeacher || studentUnlocked;
+
+            if (canAccess) {
+              console.log(`[App] Jumping to URL-requested level: ${targetMode.id}`);
+              platform.setMode(targetMode.id);
+              renderModeTabs(); // Re-render to show active tab
+            } else {
+              console.log(`[App] Level ${targetMode.id} is locked for student`);
+              // Show a brief message that the level is locked
+              const scenarioEl = document.getElementById('scenario-text');
+              scenarioEl.innerHTML = `<div class="text-amber-400 mb-4">⚠️ Level "${targetMode.name}" is locked. Complete earlier levels first to unlock it.</div>`;
+            }
+          } else {
+            console.warn(`[App] URL-requested level not found: ${JSON.stringify(requestedStartLevel)}`);
+          }
+
+          // Clear the request so it doesn't apply on future cartridge changes
+          requestedStartLevel = null;
+        }
+
         console.log('[App] Calling platform.loadProblem()...');
         await platform.loadProblem();
         console.log('[App] Problem loaded:', {
@@ -4223,8 +4286,11 @@
 
       // Check URL parameters for cartridge selection
       // Supports: ?cartridge=sampling or ?c=sampling or ?c=exp (aliases)
+      // Also supports: ?level=l12-sample-space or ?start=12 (level index)
       const urlParams = new URLSearchParams(window.location.search);
       let urlCartridge = urlParams.get('cartridge') || urlParams.get('c');
+      const urlLevel = urlParams.get('level');
+      const urlStart = urlParams.get('start');
 
       // Short aliases for easy URLs (e.g., ?c=exp instead of ?c=apstats-u3l5-experimental-design)
       const cartridgeAliases = {
@@ -4245,7 +4311,10 @@
         'pascal': 'a2t3l3',
         'samp': 'sampling',
         'dat': 'sampling',
-        'mit': 'mit-6-0001-lec1'
+        'mit': 'mit-6-0001-lec1',
+        'prob': 'apstatu4l1l2',
+        'apstatu4': 'apstatu4l1l2',
+        'probability': 'apstatu4l1l2'
       };
 
       // Resolve alias to full cartridge ID
@@ -4283,6 +4352,19 @@
           const displayName = option.querySelector('.font-semibold')?.textContent || initialCartridge;
           document.getElementById('current-cartridge-name').textContent = displayName;
           document.getElementById('cartridge-select').value = initialCartridge;
+        }
+      }
+
+      // Store requested level from URL (applied after cartridge loads)
+      // Supports: ?level=l12-sample-space (mode ID) or ?start=12 (0-based index)
+      if (urlLevel) {
+        requestedStartLevel = { type: 'id', value: urlLevel };
+        console.log(`[App] Level from URL (by ID): ${urlLevel}`);
+      } else if (urlStart) {
+        const startIndex = parseInt(urlStart, 10);
+        if (!isNaN(startIndex) && startIndex >= 0) {
+          requestedStartLevel = { type: 'index', value: startIndex };
+          console.log(`[App] Level from URL (by index): ${startIndex}`);
         }
       }
 
