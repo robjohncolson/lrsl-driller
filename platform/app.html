@@ -3836,17 +3836,29 @@
 
           if (targetMode) {
             const studentUnlocked = gameState.unlockedTiers.includes(targetMode.id);
-            const canAccess = isTeacher || studentUnlocked;
 
-            if (canAccess) {
-              console.log(`[App] Jumping to URL-requested level: ${targetMode.id}`);
-              platform.setMode(targetMode.id);
-              renderModeTabs(); // Re-render to show active tab
-            } else {
-              console.log(`[App] Level ${targetMode.id} is locked for student`);
-              // Show a brief message that the level is locked
-              const scenarioEl = document.getElementById('scenario-text');
-              scenarioEl.innerHTML = `<div class="text-amber-400 mb-4">⚠️ Level "${targetMode.name}" is locked. Complete earlier levels first to unlock it.</div>`;
+            // URL deep links always allow access to the requested level
+            console.log(`[App] Jumping to URL-requested level: ${targetMode.id}`);
+            platform.setMode(targetMode.id);
+            renderModeTabs(); // Re-render to show active tab
+
+            // Show notification for students accessing normally-locked levels
+            if (!isTeacher && !studentUnlocked) {
+              console.log(`[App] Student accessing locked level ${targetMode.id} via URL`);
+              // Show a toast notification (non-blocking)
+              const toast = document.createElement('div');
+              toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-amber-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 max-w-md text-center';
+              toast.innerHTML = `
+                <div class="font-medium">📍 Direct Link Access</div>
+                <div class="text-sm mt-1">Level "${targetMode.name}" is normally locked. Complete earlier levels to unlock it in the main progression.</div>
+              `;
+              document.body.appendChild(toast);
+              // Auto-dismiss after 5 seconds
+              setTimeout(() => {
+                toast.style.transition = 'opacity 0.5s';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 500);
+              }, 5000);
             }
           } else {
             console.warn(`[App] URL-requested level not found: ${JSON.stringify(requestedStartLevel)}`);
