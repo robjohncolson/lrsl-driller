@@ -1,6 +1,8 @@
 /**
- * AP Statistics Unit 4 Lessons 1-2-3 Generator Tests
+ * AP Statistics Unit 4 Lessons 1-5 Generator Tests
  * Tests problem generation for probability and simulation concepts
+ * Topics: Random processes, simulation, sample space, probability rules,
+ *         mutually exclusive events, conditional probability
  */
 import { describe, it, expect } from 'vitest';
 import { generateProblem } from '../../cartridges/apstatu4l1l2/generator.js';
@@ -364,6 +366,309 @@ describe('AP Stats U4 L1-L2-L3 Generator', () => {
     it('includes explanation in context', () => {
       const problem = generateProblem('l16-mixed-4-3', {}, {});
       expect(problem.context).toHaveProperty('explanation');
+    });
+  });
+
+  // ========== TOPIC 4.4 TESTS (Mutually Exclusive Events) ==========
+  describe('L17 - Mutually Exclusive Definition', () => {
+    it('generates ME definition question', () => {
+      const problem = generateProblem('l17-mutually-exclusive-def', {}, {});
+      expect(problem.answers).toHaveProperty('meDefAnswer');
+    });
+
+    it('provides dropdown options', () => {
+      const problem = generateProblem('l17-mutually-exclusive-def', {}, {});
+      expect(problem.context).toHaveProperty('optA');
+      expect(problem.context).toHaveProperty('optB');
+      expect(problem.context).toHaveProperty('optC');
+      expect(problem.context).toHaveProperty('optD');
+    });
+
+    it('topicId is 4.4a', () => {
+      const problem = generateProblem('l17-mutually-exclusive-def', {}, {});
+      expect(problem.context.topicId).toBe('4.4a');
+    });
+
+    it('problemText mentions mutually exclusive', () => {
+      const problem = generateProblem('l17-mutually-exclusive-def', {}, {});
+      expect(problem.context.problemText.toLowerCase()).toContain('mutually exclusive');
+    });
+
+    it('correct answer is one of the options', () => {
+      const problem = generateProblem('l17-mutually-exclusive-def', {}, {});
+      const options = [problem.context.optA, problem.context.optB, problem.context.optC, problem.context.optD];
+      expect(options).toContain(problem.answers.meDefAnswer.value);
+    });
+  });
+
+  describe('L18 - Joint Probability', () => {
+    it('generates joint probability calculation problem', () => {
+      const problem = generateProblem('l18-joint-probability', {}, {});
+      expect(problem.answers).toHaveProperty('jointProbAnswer');
+    });
+
+    it('answer is numeric between 0 and 1', () => {
+      const problem = generateProblem('l18-joint-probability', {}, {});
+      const value = problem.answers.jointProbAnswer.value;
+      expect(typeof value).toBe('number');
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1);
+    });
+
+    it('includes intersection and total in context', () => {
+      const problem = generateProblem('l18-joint-probability', {}, {});
+      expect(problem.context).toHaveProperty('intersection');
+      expect(problem.context).toHaveProperty('total');
+    });
+
+    it('answer equals intersection / total', () => {
+      const problem = generateProblem('l18-joint-probability', {}, {});
+      const expected = problem.context.intersection / problem.context.total;
+      expect(Math.abs(problem.answers.jointProbAnswer.value - expected)).toBeLessThan(0.005);
+    });
+
+    it('includes eventA and eventB in context', () => {
+      const problem = generateProblem('l18-joint-probability', {}, {});
+      expect(problem.context).toHaveProperty('eventA');
+      expect(problem.context).toHaveProperty('eventB');
+    });
+
+    it('includes tolerance for grading', () => {
+      const problem = generateProblem('l18-joint-probability', {}, {});
+      expect(problem.answers.jointProbAnswer).toHaveProperty('tolerance');
+    });
+  });
+
+  describe('L19 - Identify Mutually Exclusive', () => {
+    it('generates ME identification problem', () => {
+      const problem = generateProblem('l19-identify-me', {}, {});
+      expect(problem.answers).toHaveProperty('identifyMEAnswer');
+    });
+
+    it('answer is valid ME choice', () => {
+      const problem = generateProblem('l19-identify-me', {}, {});
+      const value = problem.answers.identifyMEAnswer.value;
+      expect(['Yes, mutually exclusive', 'No, NOT mutually exclusive']).toContain(value);
+    });
+
+    it('includes isME flag in context', () => {
+      const problem = generateProblem('l19-identify-me', {}, {});
+      expect(problem.context).toHaveProperty('isME');
+      expect(typeof problem.context.isME).toBe('boolean');
+    });
+
+    it('answer matches isME flag', () => {
+      const problem = generateProblem('l19-identify-me', {}, {});
+      if (problem.context.isME) {
+        expect(problem.answers.identifyMEAnswer.value).toBe('Yes, mutually exclusive');
+      } else {
+        expect(problem.answers.identifyMEAnswer.value).toBe('No, NOT mutually exclusive');
+      }
+    });
+
+    it('includes explanation in context', () => {
+      const problem = generateProblem('l19-identify-me', {}, {});
+      expect(problem.context).toHaveProperty('explanation');
+    });
+  });
+
+  // ========== TOPIC 4.5 TESTS (Conditional Probability) ==========
+  describe('L20 - Conditional Probability Definition', () => {
+    it('generates conditional probability definition question', () => {
+      const problem = generateProblem('l20-conditional-def', {}, {});
+      expect(problem.answers).toHaveProperty('condDefAnswer');
+    });
+
+    it('provides dropdown options', () => {
+      const problem = generateProblem('l20-conditional-def', {}, {});
+      expect(problem.context).toHaveProperty('optA');
+      expect(problem.context).toHaveProperty('optB');
+      expect(problem.context).toHaveProperty('optC');
+      expect(problem.context).toHaveProperty('optD');
+    });
+
+    it('topicId is 4.5a', () => {
+      const problem = generateProblem('l20-conditional-def', {}, {});
+      expect(problem.context.topicId).toBe('4.5a');
+    });
+
+    it('problemText mentions conditional probability', () => {
+      const problem = generateProblem('l20-conditional-def', {}, {});
+      expect(problem.context.problemText.toLowerCase()).toContain('conditional');
+    });
+  });
+
+  describe('L21 - Conditional Probability from Tables', () => {
+    it('generates conditional probability calculation problem', () => {
+      const problem = generateProblem('l21-conditional-table', {}, {});
+      expect(problem.answers).toHaveProperty('condTableAnswer');
+    });
+
+    it('answer is numeric between 0 and 1', () => {
+      const problem = generateProblem('l21-conditional-table', {}, {});
+      const value = problem.answers.condTableAnswer.value;
+      expect(typeof value).toBe('number');
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1);
+    });
+
+    it('includes numerator and denominator in context', () => {
+      const problem = generateProblem('l21-conditional-table', {}, {});
+      expect(problem.context).toHaveProperty('numerator');
+      expect(problem.context).toHaveProperty('denominator');
+    });
+
+    it('answer equals numerator / denominator', () => {
+      const problem = generateProblem('l21-conditional-table', {}, {});
+      const expected = problem.context.numerator / problem.context.denominator;
+      expect(Math.abs(problem.answers.condTableAnswer.value - expected)).toBeLessThan(0.01);
+    });
+
+    it('includes condition and target in context', () => {
+      const problem = generateProblem('l21-conditional-table', {}, {});
+      expect(problem.context).toHaveProperty('condition');
+      expect(problem.context).toHaveProperty('target');
+    });
+  });
+
+  describe('L22 - General Multiplication Rule', () => {
+    it('generates multiplication rule problem', () => {
+      const problem = generateProblem('l22-multiplication-rule', {}, {});
+      expect(problem.answers).toHaveProperty('multRuleAnswer');
+    });
+
+    it('answer is numeric between 0 and 1', () => {
+      const problem = generateProblem('l22-multiplication-rule', {}, {});
+      const value = problem.answers.multRuleAnswer.value;
+      expect(typeof value).toBe('number');
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1);
+    });
+
+    it('includes pA and pBgivenA in context', () => {
+      const problem = generateProblem('l22-multiplication-rule', {}, {});
+      expect(problem.context).toHaveProperty('pA');
+      expect(problem.context).toHaveProperty('pBgivenA');
+    });
+
+    it('includes explanation in context', () => {
+      const problem = generateProblem('l22-multiplication-rule', {}, {});
+      expect(problem.context).toHaveProperty('explanation');
+    });
+  });
+
+  describe('L23 - Order Matters (P(A|B) vs P(B|A))', () => {
+    it('generates order matters problem with two answers', () => {
+      const problem = generateProblem('l23-order-matters', {}, {});
+      expect(problem.answers).toHaveProperty('orderAgivenB');
+      expect(problem.answers).toHaveProperty('orderBgivenA');
+    });
+
+    it('both answers are numeric between 0 and 1', () => {
+      const problem = generateProblem('l23-order-matters', {}, {});
+      const val1 = problem.answers.orderAgivenB.value;
+      const val2 = problem.answers.orderBgivenA.value;
+      expect(typeof val1).toBe('number');
+      expect(typeof val2).toBe('number');
+      expect(val1).toBeGreaterThanOrEqual(0);
+      expect(val1).toBeLessThanOrEqual(1);
+      expect(val2).toBeGreaterThanOrEqual(0);
+      expect(val2).toBeLessThanOrEqual(1);
+    });
+
+    it('includes n_AandB, n_A, and n_B in context', () => {
+      const problem = generateProblem('l23-order-matters', {}, {});
+      expect(problem.context).toHaveProperty('n_AandB');
+      expect(problem.context).toHaveProperty('n_A');
+      expect(problem.context).toHaveProperty('n_B');
+    });
+
+    it('answers are generally different (order matters!)', () => {
+      // Generate multiple problems to find one where they differ
+      let foundDifferent = false;
+      for (let i = 0; i < 10; i++) {
+        const problem = generateProblem('l23-order-matters', {}, {});
+        if (Math.abs(problem.answers.orderAgivenB.value - problem.answers.orderBgivenA.value) > 0.01) {
+          foundDifferent = true;
+          break;
+        }
+      }
+      expect(foundDifferent).toBe(true);
+    });
+
+    it('includes eventA and eventB in context', () => {
+      const problem = generateProblem('l23-order-matters', {}, {});
+      expect(problem.context).toHaveProperty('eventA');
+      expect(problem.context).toHaveProperty('eventB');
+    });
+  });
+
+  describe('L24 - Mixed 4.4-4.5 Capstone', () => {
+    it('generates capstone problem', () => {
+      const problem = generateProblem('l24-mixed-4-4-5', {}, {});
+      expect(problem.answers).toHaveProperty('capstone44Answer');
+      expect(problem.answers).toHaveProperty('capstone44Explain');
+    });
+
+    it('provides dropdown options', () => {
+      const problem = generateProblem('l24-mixed-4-4-5', {}, {});
+      expect(problem.context).toHaveProperty('optA');
+      expect(problem.context).toHaveProperty('optB');
+      expect(problem.context).toHaveProperty('optC');
+      expect(problem.context).toHaveProperty('optD');
+    });
+
+    it('topicId is 4.4-4.5', () => {
+      const problem = generateProblem('l24-mixed-4-4-5', {}, {});
+      expect(problem.context.topicId).toBe('4.4-4.5');
+    });
+
+    it('includes concept and explanation in context', () => {
+      const problem = generateProblem('l24-mixed-4-4-5', {}, {});
+      expect(problem.context).toHaveProperty('concept');
+      expect(problem.context).toHaveProperty('explanation');
+    });
+  });
+
+  // ========== TOPIC 4.4-4.5 UNIQUENESS TESTS ==========
+  describe('Topic 4.4-4.5 Problem Uniqueness', () => {
+    it('generates different ME definition scenarios', () => {
+      const scenarios = new Set();
+      for (let i = 0; i < 10; i++) {
+        const problem = generateProblem('l17-mutually-exclusive-def', {}, {});
+        scenarios.add(problem.context.givenText);
+      }
+      expect(scenarios.size).toBeGreaterThan(1);
+    });
+
+    it('generates different joint probability scenarios', () => {
+      const scenarios = new Set();
+      for (let i = 0; i < 10; i++) {
+        const problem = generateProblem('l18-joint-probability', {}, {});
+        scenarios.add(problem.context.eventA + problem.context.eventB);
+      }
+      expect(scenarios.size).toBeGreaterThan(1);
+    });
+
+    it('generates both ME and non-ME scenarios for L19', () => {
+      let hasME = false;
+      let hasNotME = false;
+      for (let i = 0; i < 15; i++) {
+        const problem = generateProblem('l19-identify-me', {}, {});
+        if (problem.context.isME) hasME = true;
+        else hasNotME = true;
+      }
+      expect(hasME).toBe(true);
+      expect(hasNotME).toBe(true);
+    });
+
+    it('generates different conditional probability scenarios', () => {
+      const scenarios = new Set();
+      for (let i = 0; i < 10; i++) {
+        const problem = generateProblem('l21-conditional-table', {}, {});
+        scenarios.add(problem.context.condition + problem.context.target);
+      }
+      expect(scenarios.size).toBeGreaterThan(1);
     });
   });
 

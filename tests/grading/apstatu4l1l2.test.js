@@ -650,6 +650,512 @@ describe('AP Stats U4 L1-L2-L3 Grading Rules', () => {
     });
   });
 
+  // ========== TOPIC 4.4 TESTS (Mutually Exclusive Events) ==========
+  describe('Mutually Exclusive Definition (L17)', () => {
+    describe('meDefAnswer', () => {
+      it('grades correct ME definition as E', () => {
+        const result = gradeField('meDefAnswer',
+          'They cannot occur at the same time',
+          { meDefAnswer: { value: 'They cannot occur at the same time' } }
+        );
+        expect(result.score).toBe('E');
+        expect(result.feedback.toLowerCase()).toContain('mutually exclusive');
+      });
+
+      it('is case insensitive', () => {
+        const result = gradeField('meDefAnswer',
+          'THEY CANNOT OCCUR AT THE SAME TIME',
+          { meDefAnswer: { value: 'They cannot occur at the same time' } }
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades incorrect answer as I with feedback', () => {
+        const result = gradeField('meDefAnswer',
+          'They always occur together',
+          { meDefAnswer: { value: 'They cannot occur at the same time' } }
+        );
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('P(A ∩ B) = 0');
+      });
+    });
+  });
+
+  describe('Joint Probability (L18)', () => {
+    describe('jointProbAnswer', () => {
+      it('grades exact answer as E', () => {
+        const result = gradeField('jointProbAnswer', '0.225', {
+          jointProbAnswer: { value: 0.225, tolerance: 0.005 },
+          eventA: 'Female',
+          eventB: 'Junior',
+          intersection: 45,
+          total: 200
+        });
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('45');
+        expect(result.feedback).toContain('200');
+      });
+
+      it('grades answer within tolerance as E', () => {
+        const result = gradeField('jointProbAnswer', '0.224', {
+          jointProbAnswer: { value: 0.225, tolerance: 0.005 },
+          eventA: 'Female',
+          eventB: 'Junior',
+          intersection: 45,
+          total: 200
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for close answer', () => {
+        const result = gradeField('jointProbAnswer', '0.24', {
+          jointProbAnswer: { value: 0.225, tolerance: 0.005 },
+          eventA: 'Female',
+          eventB: 'Junior',
+          intersection: 45,
+          total: 200
+        });
+        expect(result.score).toBe('P');
+        expect(result.feedback).toContain('GRAND total');
+      });
+
+      it('grades wrong answer as I with formula', () => {
+        const result = gradeField('jointProbAnswer', '0.5', {
+          jointProbAnswer: { value: 0.225, tolerance: 0.005 },
+          eventA: 'Female',
+          eventB: 'Junior',
+          intersection: 45,
+          total: 200
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('45');
+        expect(result.feedback).toContain('200');
+      });
+
+      it('handles non-numeric input', () => {
+        const result = gradeField('jointProbAnswer', 'not a number', {
+          jointProbAnswer: { value: 0.225 },
+          intersection: 45,
+          total: 200
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('decimal');
+      });
+    });
+  });
+
+  describe('Identify Mutually Exclusive (L19)', () => {
+    describe('identifyMEAnswer', () => {
+      it('grades correct ME identification as E', () => {
+        const result = gradeField('identifyMEAnswer',
+          'Yes, they are mutually exclusive',
+          { identifyMEAnswer: { value: 'Yes, they are mutually exclusive' }, isME: true }
+        );
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('P(A ∩ B) = 0');
+      });
+
+      it('grades correct NOT ME identification as E', () => {
+        const result = gradeField('identifyMEAnswer',
+          'No, they are NOT mutually exclusive',
+          { identifyMEAnswer: { value: 'No, they are NOT mutually exclusive' }, isME: false, intersection: 25 }
+        );
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('P(A ∩ B) > 0');
+      });
+
+      it('grades wrong ME identification as I', () => {
+        const result = gradeField('identifyMEAnswer',
+          'No, they are NOT mutually exclusive',
+          { identifyMEAnswer: { value: 'Yes, they are mutually exclusive' }, isME: true }
+        );
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('ARE mutually exclusive');
+      });
+
+      it('grades wrong NOT ME identification as I with intersection', () => {
+        const result = gradeField('identifyMEAnswer',
+          'Yes, they are mutually exclusive',
+          { identifyMEAnswer: { value: 'No, they are NOT mutually exclusive' }, isME: false, intersection: 25 }
+        );
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('25');
+        expect(result.feedback).toContain('CAN occur together');
+      });
+    });
+  });
+
+  // ========== TOPIC 4.5 TESTS (Conditional Probability) ==========
+  describe('Conditional Probability Definition (L20)', () => {
+    describe('condDefAnswer', () => {
+      it('grades correct definition as E', () => {
+        const result = gradeField('condDefAnswer',
+          'The probability of B occurring given that A has already occurred',
+          { condDefAnswer: { value: 'The probability of B occurring given that A has already occurred' } }
+        );
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('conditional probability');
+      });
+
+      it('is case insensitive', () => {
+        const result = gradeField('condDefAnswer',
+          'THE PROBABILITY OF B OCCURRING GIVEN THAT A HAS ALREADY OCCURRED',
+          { condDefAnswer: { value: 'The probability of B occurring given that A has already occurred' } }
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades incorrect answer as I with formula', () => {
+        const result = gradeField('condDefAnswer',
+          'The probability of A and B happening together',
+          { condDefAnswer: { value: 'The probability of B occurring given that A has already occurred' } }
+        );
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('P(B|A)');
+        expect(result.feedback).toContain('P(A ∩ B) / P(A)');
+      });
+    });
+  });
+
+  describe('Conditional Probability from Tables (L21)', () => {
+    describe('condTableAnswer', () => {
+      it('grades exact answer as E', () => {
+        const result = gradeField('condTableAnswer', '0.45', {
+          condTableAnswer: { value: 0.45, tolerance: 0.01 },
+          target: 'Pass',
+          condition: 'Studied',
+          numerator: 36,
+          denominator: 80,
+          total: 200
+        });
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('36');
+        expect(result.feedback).toContain('80');
+      });
+
+      it('grades answer within tolerance as E', () => {
+        const result = gradeField('condTableAnswer', '0.455', {
+          condTableAnswer: { value: 0.45, tolerance: 0.01 },
+          target: 'Pass',
+          condition: 'Studied',
+          numerator: 36,
+          denominator: 80
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for close answer', () => {
+        const result = gradeField('condTableAnswer', '0.47', {
+          condTableAnswer: { value: 0.45, tolerance: 0.01 },
+          target: 'Pass',
+          condition: 'Studied',
+          numerator: 36,
+          denominator: 80
+        });
+        expect(result.score).toBe('P');
+      });
+
+      it('detects when student used grand total instead of row/col total', () => {
+        // If answer would be 36/200 = 0.18 instead of 36/80 = 0.45
+        const result = gradeField('condTableAnswer', '0.18', {
+          condTableAnswer: { value: 0.45, tolerance: 0.01 },
+          target: 'Pass',
+          condition: 'Studied',
+          numerator: 36,
+          denominator: 80,
+          total: 200
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('grand total');
+      });
+
+      it('grades wrong answer as I with formula', () => {
+        const result = gradeField('condTableAnswer', '0.7', {
+          condTableAnswer: { value: 0.45, tolerance: 0.01 },
+          target: 'Pass',
+          condition: 'Studied',
+          numerator: 36,
+          denominator: 80
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('36');
+        expect(result.feedback).toContain('80');
+      });
+
+      it('handles non-numeric input', () => {
+        const result = gradeField('condTableAnswer', 'forty-five', {
+          condTableAnswer: { value: 0.45 }
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('decimal');
+      });
+    });
+  });
+
+  describe('General Multiplication Rule (L22)', () => {
+    describe('multRuleAnswer', () => {
+      it('grades exact answer as E', () => {
+        const result = gradeField('multRuleAnswer', '0.133', {
+          multRuleAnswer: { value: 0.133, tolerance: 0.01 },
+          pA: 0.4,
+          pBgivenA: '11/33',
+          explanation: 'P(A ∩ B) = 0.4 × 11/33 = 0.133'
+        });
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('P(A) × P(B|A)');
+      });
+
+      it('grades answer within tolerance as E', () => {
+        const result = gradeField('multRuleAnswer', '0.14', {
+          multRuleAnswer: { value: 0.133, tolerance: 0.01 },
+          pA: 0.4,
+          pBgivenA: '11/33',
+          explanation: 'Calculation...'
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for somewhat close', () => {
+        const result = gradeField('multRuleAnswer', '0.15', {
+          multRuleAnswer: { value: 0.133, tolerance: 0.01 },
+          pA: 0.4,
+          pBgivenA: '11/33',
+          explanation: 'Remember to use the general multiplication rule.'
+        });
+        expect(result.score).toBe('P');
+      });
+
+      it('grades wrong answer as I with explanation', () => {
+        const result = gradeField('multRuleAnswer', '0.5', {
+          multRuleAnswer: { value: 0.133, tolerance: 0.01 },
+          pA: 0.4,
+          pBgivenA: '11/33',
+          explanation: 'P(A ∩ B) = 0.4 × 11/33 = 0.133'
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('0.4 × 11/33');
+      });
+
+      it('handles non-numeric input', () => {
+        const result = gradeField('multRuleAnswer', 'point one three', {
+          multRuleAnswer: { value: 0.133 }
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('decimal');
+      });
+    });
+  });
+
+  describe('Order Matters (L23)', () => {
+    describe('orderAgivenB', () => {
+      it('grades correct P(B|A) as E', () => {
+        const result = gradeField('orderAgivenB', '0.45', {
+          orderAgivenB: { value: 0.45, tolerance: 0.01 },
+          eventA: 'Male',
+          eventB: 'Senior',
+          n_A: 100,
+          n_B: 80,
+          n_AandB: 45
+        });
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('45');
+        expect(result.feedback).toContain('100');
+      });
+
+      it('grades answer within tolerance as E', () => {
+        const result = gradeField('orderAgivenB', '0.455', {
+          orderAgivenB: { value: 0.45, tolerance: 0.01 },
+          eventA: 'Male',
+          eventB: 'Senior',
+          n_A: 100,
+          n_AandB: 45
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('detects swapped direction calculation', () => {
+        const result = gradeField('orderAgivenB', '0.5625', {
+          orderAgivenB: { value: 0.45, tolerance: 0.01 },
+          eventA: 'Male',
+          eventB: 'Senior',
+          n_A: 100,
+          n_B: 80,
+          n_AandB: 45,
+          pBgivenA: 0.5625
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('not');
+      });
+
+      it('grades wrong answer as I with formula', () => {
+        const result = gradeField('orderAgivenB', '0.7', {
+          orderAgivenB: { value: 0.45, tolerance: 0.01 },
+          eventA: 'Male',
+          eventB: 'Senior',
+          n_A: 100,
+          n_AandB: 45
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('45');
+        expect(result.feedback).toContain('100');
+      });
+
+      it('handles non-numeric input', () => {
+        const result = gradeField('orderAgivenB', 'zero point four five', {
+          orderAgivenB: { value: 0.45 }
+        });
+        expect(result.score).toBe('I');
+      });
+    });
+
+    describe('orderBgivenA', () => {
+      it('grades correct P(A|B) as E', () => {
+        const result = gradeField('orderBgivenA', '0.5625', {
+          orderBgivenA: { value: 0.5625, tolerance: 0.01 },
+          eventA: 'Male',
+          eventB: 'Senior',
+          n_A: 100,
+          n_B: 80,
+          n_AandB: 45
+        });
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('45');
+        expect(result.feedback).toContain('80');
+      });
+
+      it('detects swapped direction calculation', () => {
+        const result = gradeField('orderBgivenA', '0.45', {
+          orderBgivenA: { value: 0.5625, tolerance: 0.01 },
+          eventA: 'Male',
+          eventB: 'Senior',
+          n_A: 100,
+          n_B: 80,
+          n_AandB: 45,
+          pAgivenB: 0.45
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('not');
+      });
+
+      it('grades wrong answer as I with formula', () => {
+        const result = gradeField('orderBgivenA', '0.3', {
+          orderBgivenA: { value: 0.5625, tolerance: 0.01 },
+          eventA: 'Male',
+          eventB: 'Senior',
+          n_B: 80,
+          n_AandB: 45
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('45');
+        expect(result.feedback).toContain('80');
+      });
+    });
+  });
+
+  describe('Mixed 4.4-4.5 Capstone (L24)', () => {
+    describe('capstone44Answer', () => {
+      it('grades correct answer as E', () => {
+        const result = gradeField('capstone44Answer',
+          '0.45',
+          { capstone44Answer: { value: '0.45' }, explanation: 'Using conditional probability.' }
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades incorrect answer as I with explanation', () => {
+        const result = gradeField('capstone44Answer',
+          '0.25',
+          { capstone44Answer: { value: '0.45' }, explanation: 'Remember to use the row total as denominator.' }
+        );
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('row total');
+      });
+    });
+
+    describe('capstone44Explain', () => {
+      it('grades complete ME explanation as E', () => {
+        const result = gradeField('capstone44Explain',
+          'These events are mutually exclusive because they cannot occur at the same time. Since P(A ∩ B) = 0, we know they are disjoint events that have no overlap.',
+          {}
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades complete conditional explanation as E', () => {
+        const result = gradeField('capstone44Explain',
+          'I used conditional probability because we need to find P(B|A). The formula is P(A ∩ B)/P(A), which means we divide the intersection by the row total.',
+          {}
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades complete multiplication rule explanation as E', () => {
+        const result = gradeField('capstone44Explain',
+          'This problem requires the general multiplication rule because we need P(A and B). Since P(A ∩ B) = P(A) × P(B|A), we multiply the first probability times the conditional.',
+          {}
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades order matters explanation as E', () => {
+        const result = gradeField('capstone44Explain',
+          'P(A|B) is not equal to P(B|A) because they have different denominators. Order matters in conditional probability since we divide by different totals.',
+          {}
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for keywords without full reasoning', () => {
+        const result = gradeField('capstone44Explain',
+          'The events are mutually exclusive. They cannot happen together. The intersection probability is zero.',
+          {}
+        );
+        expect(result.score).toBe('P');
+      });
+
+      it('grades vague explanation as I', () => {
+        const result = gradeField('capstone44Explain',
+          'I calculated the probability.',
+          {}
+        );
+        expect(result.score).toBe('I');
+      });
+
+      it('grades short explanation without keywords as I', () => {
+        const result = gradeField('capstone44Explain',
+          'The answer is correct.',
+          {}
+        );
+        expect(result.score).toBe('I');
+      });
+    });
+  });
+
+  // ========== TOPIC 4.4-4.5 BLANK HANDLING ==========
+  describe('Topic 4.4-4.5 Blank Handling', () => {
+    it('rejects blank meDefAnswer', () => {
+      const result = gradeField('meDefAnswer', '', { meDefAnswer: { value: 'Test' } });
+      expect(result.score).toBe('I');
+      expect(result.feedback).toContain('select');
+    });
+
+    it('rejects blank jointProbAnswer', () => {
+      const result = gradeField('jointProbAnswer', '', { jointProbAnswer: { value: 0.25 } });
+      expect(result.score).toBe('I');
+    });
+
+    it('rejects blank condTableAnswer', () => {
+      const result = gradeField('condTableAnswer', '', { condTableAnswer: { value: 0.45 } });
+      expect(result.score).toBe('I');
+    });
+
+    it('rejects blank capstone44Explain with appropriate message', () => {
+      const result = gradeField('capstone44Explain', '', {});
+      expect(result.score).toBe('I');
+      expect(result.feedback).toContain('response');
+    });
+  });
+
   // ========== TOPIC 4.3 BLANK HANDLING ==========
   describe('Topic 4.3 Blank Handling', () => {
     it('rejects blank sampleSpaceAnswer', () => {
