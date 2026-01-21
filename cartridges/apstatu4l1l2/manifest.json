@@ -43,7 +43,7 @@
     {
       "id": "l02-outcome-event",
       "name": "4.2a: Outcomes vs Events",
-      "unlockedBy": { "gold": 3 },
+      "unlockedBy": { "gold": 1 },
       "layout": {
         "inputs": [
           {
@@ -58,7 +58,7 @@
     {
       "id": "l03-independence",
       "name": "4.1b: Independence & Gambler's Fallacy",
-      "unlockedBy": { "gold": 6 },
+      "unlockedBy": { "gold": 2 },
       "layout": {
         "inputs": [
           {
@@ -73,7 +73,7 @@
     {
       "id": "l04-streaks",
       "name": "4.1c: Streaks in Random Data",
-      "unlockedBy": { "gold": 9 },
+      "unlockedBy": { "gold": 3 },
       "layout": {
         "inputs": [
           {
@@ -88,7 +88,7 @@
     {
       "id": "l05-simulation-vocab",
       "name": "4.2b: Simulation Definition",
-      "unlockedBy": { "gold": 12 },
+      "unlockedBy": { "gold": 4 },
       "layout": {
         "inputs": [
           {
@@ -104,7 +104,7 @@
     {
       "id": "l06-lln",
       "name": "4.2c: Law of Large Numbers",
-      "unlockedBy": { "gold": 15 },
+      "unlockedBy": { "gold": 5 },
       "layout": {
         "inputs": [
           {
@@ -120,7 +120,7 @@
     {
       "id": "l07-digit-assignment",
       "name": "4.2d: Simulation Step 1 - Assign Digits",
-      "unlockedBy": { "gold": 18 },
+      "unlockedBy": { "gold": 6 },
       "layout": {
         "inputs": [
           {
@@ -145,7 +145,7 @@
     {
       "id": "l08-trial-definition",
       "name": "4.2e: Simulation Step 2 - Define Trial",
-      "unlockedBy": { "gold": 21 },
+      "unlockedBy": { "gold": 7 },
       "layout": {
         "inputs": [
           {
@@ -161,7 +161,7 @@
     {
       "id": "l09-relative-frequency",
       "name": "4.2f: Simulation Step 3 - Calculate Probability",
-      "unlockedBy": { "gold": 24 },
+      "unlockedBy": { "gold": 8 },
       "layout": {
         "inputs": [
           {
@@ -178,7 +178,7 @@
     {
       "id": "l10-simulation-design",
       "name": "4.2g: Full Simulation Design",
-      "unlockedBy": { "gold": 27 },
+      "unlockedBy": { "gold": 9 },
       "layout": {
         "inputs": [
           {
@@ -199,7 +199,7 @@
     {
       "id": "l11-capstone",
       "name": "4.1-4.2 Capstone",
-      "unlockedBy": { "gold": 30 },
+      "unlockedBy": { "gold": 10 },
       "layout": {
         "inputs": [
           {
@@ -222,7 +222,7 @@
     {
       "id": "l12-sample-space",
       "name": "4.3a: Sample Space",
-      "unlockedBy": { "gold": 33 },
+      "unlockedBy": { "gold": 11 },
       "layout": {
         "inputs": [
           {
@@ -238,7 +238,7 @@
     {
       "id": "l13-valid-probability",
       "name": "4.3b: Valid Probability Model",
-      "unlockedBy": { "gold": 36 },
+      "unlockedBy": { "gold": 12 },
       "layout": {
         "inputs": [
           {
@@ -260,7 +260,7 @@
     {
       "id": "l14-complement-rule",
       "name": "4.3c: Complement Rule",
-      "unlockedBy": { "gold": 39 },
+      "unlockedBy": { "gold": 13 },
       "layout": {
         "inputs": [
           {
@@ -277,7 +277,7 @@
     {
       "id": "l15-at-least-one",
       "name": "4.3d: At Least One",
-      "unlockedBy": { "gold": 42 },
+      "unlockedBy": { "gold": 14 },
       "layout": {
         "inputs": [
           {
@@ -294,7 +294,7 @@
     {
       "id": "l16-mixed-4-3",
       "name": "4.3 Mixed Practice",
-      "unlockedBy": { "gold": 45 },
+      "unlockedBy": { "gold": 15 },
       "layout": {
         "inputs": [
           {
@@ -371,91 +371,91 @@
       {
         "id": "l02-outcome-event",
         "name": "4.2a",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Outcomes vs events - got it! Next: independence."
       },
       {
         "id": "l03-independence",
         "name": "4.1b",
-        "unlockedBy": { "gold": 6 },
+        "unlockedBy": { "gold": 2 },
         "celebrationMessage": "You caught the gambler's fallacy! Next: streaks."
       },
       {
         "id": "l04-streaks",
         "name": "4.1c",
-        "unlockedBy": { "gold": 9 },
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Streaks are normal! Next: simulation basics."
       },
       {
         "id": "l05-simulation-vocab",
         "name": "4.2b",
-        "unlockedBy": { "gold": 12 },
+        "unlockedBy": { "gold": 4 },
         "celebrationMessage": "Simulation understood! Next: Law of Large Numbers."
       },
       {
         "id": "l06-lln",
         "name": "4.2c",
-        "unlockedBy": { "gold": 15 },
+        "unlockedBy": { "gold": 5 },
         "celebrationMessage": "LLN mastered! Now: designing simulations."
       },
       {
         "id": "l07-digit-assignment",
         "name": "4.2d",
-        "unlockedBy": { "gold": 18 },
+        "unlockedBy": { "gold": 6 },
         "celebrationMessage": "Digit assignment down! Next: defining trials."
       },
       {
         "id": "l08-trial-definition",
         "name": "4.2e",
-        "unlockedBy": { "gold": 21 },
+        "unlockedBy": { "gold": 7 },
         "celebrationMessage": "Trials defined! Next: calculating probability."
       },
       {
         "id": "l09-relative-frequency",
         "name": "4.2f",
-        "unlockedBy": { "gold": 24 },
+        "unlockedBy": { "gold": 8 },
         "celebrationMessage": "Probability calculated! Next: full simulation design."
       },
       {
         "id": "l10-simulation-design",
         "name": "4.2g",
-        "unlockedBy": { "gold": 27 },
+        "unlockedBy": { "gold": 9 },
         "celebrationMessage": "You can design simulations! Final capstone next."
       },
       {
         "id": "l11-capstone",
         "name": "Capstone",
-        "unlockedBy": { "gold": 30 },
+        "unlockedBy": { "gold": 10 },
         "celebrationMessage": "Unit 4.1-4.2 COMPLETE! Now onto probability rules..."
       },
       {
         "id": "l12-sample-space",
         "name": "4.3a",
-        "unlockedBy": { "gold": 33 },
+        "unlockedBy": { "gold": 11 },
         "celebrationMessage": "Sample spaces mastered! Next: valid probability models."
       },
       {
         "id": "l13-valid-probability",
         "name": "4.3b",
-        "unlockedBy": { "gold": 36 },
+        "unlockedBy": { "gold": 12 },
         "celebrationMessage": "You can check probability models! Next: complement rule."
       },
       {
         "id": "l14-complement-rule",
         "name": "4.3c",
-        "unlockedBy": { "gold": 39 },
+        "unlockedBy": { "gold": 13 },
         "celebrationMessage": "Complement rule down! Next: 'at least one' problems."
       },
       {
         "id": "l15-at-least-one",
         "name": "4.3d",
-        "unlockedBy": { "gold": 42 },
+        "unlockedBy": { "gold": 14 },
         "celebrationMessage": "At least one - conquered! Final challenge: mixed practice."
       },
       {
         "id": "l16-mixed-4-3",
         "name": "4.3 Mixed",
-        "unlockedBy": { "gold": 45 },
+        "unlockedBy": { "gold": 15 },
         "celebrationMessage": "UNIT 4.1-4.3 COMPLETE! You've mastered probability basics!"
       }
     ]
