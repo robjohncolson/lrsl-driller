@@ -20,6 +20,7 @@ export class CTFPanel {
     this.isTeacher = false;
     this.userClassPeriod = null; // User's assigned class period
     this.allUsers = []; // For teacher team assignment
+    this.onlineUsernames = new Set(); // Online users (for filtering)
 
     // Timer interval for countdown
     this.timerInterval = null;
@@ -74,6 +75,16 @@ export class CTFPanel {
    */
   setAvailableUsers(users) {
     this.allUsers = users;
+    if (this.isTeacher) {
+      this._updateTeacherPanel();
+    }
+  }
+
+  /**
+   * Set online users (for filtering available users to only online ones)
+   */
+  setOnlineUsers(usernames) {
+    this.onlineUsernames = new Set(usernames || []);
     if (this.isTeacher) {
       this._updateTeacherPanel();
     }
@@ -822,9 +833,14 @@ export class CTFPanel {
     if (!select) return;
 
     // Filter users by current period if viewing a specific period
-    const periodUsers = this.allUsers.filter(u =>
+    let filteredUsers = this.allUsers.filter(u =>
       !this.state.classPeriod || u.class_period === this.state.classPeriod
     );
+
+    // Filter to only online users if we have online data
+    if (this.onlineUsernames.size > 0) {
+      filteredUsers = filteredUsers.filter(u => this.onlineUsernames.has(u.username));
+    }
 
     // Get users not yet assigned
     const assignedUsernames = new Set([
@@ -832,11 +848,17 @@ export class CTFPanel {
       ...this.state.redTeam.map(p => p.username)
     ]);
 
-    const unassigned = periodUsers.filter(u => !assignedUsernames.has(u.username));
+    const unassigned = filteredUsers.filter(u => !assignedUsernames.has(u.username));
 
     select.innerHTML = unassigned.map(u => `
-      <option value="${u.username}">${u.real_name || u.username}</option>
+      <option value="${u.username}">${u.real_name || u.username} 🟢</option>
     `).join('');
+
+    // Show count of online users
+    const countLabel = this.container.querySelector('#online-user-count');
+    if (countLabel) {
+      countLabel.textContent = `(${unassigned.length} online)`;
+    }
   }
 
   /**

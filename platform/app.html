@@ -1111,6 +1111,11 @@
           }
         }
 
+        // Pass current online users (WebSocket may have received presence_snapshot before gameModeManager existed)
+        if (wsClient.onlineUsers && wsClient.onlineUsers.length > 0) {
+          gameModeManager.setOnlineUsers(wsClient.onlineUsers);
+        }
+
         console.log('[GameMode] Initialized for', username, 'mode:', gameModeManager.getMode());
       } catch (err) {
         console.warn('[GameMode] Init error:', err.message, err);
@@ -1340,6 +1345,12 @@
 
     function updateOnlineDisplay(users) {
       document.getElementById('online-count').textContent = users.length;
+
+      // Update game mode manager with online users for team assignment filtering
+      if (gameModeManager) {
+        gameModeManager.setOnlineUsers(users);
+      }
+
       const list = document.getElementById('online-list');
       if (users.length === 0) {
         list.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400 italic">No one else online</div>';

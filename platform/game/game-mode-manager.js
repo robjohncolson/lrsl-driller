@@ -390,6 +390,15 @@ export class GameModeManager {
   }
 
   /**
+   * Set online users (delegates to active panel for filtering)
+   */
+  setOnlineUsers(usernames) {
+    if (this.activePanel && typeof this.activePanel.setOnlineUsers === 'function') {
+      this.activePanel.setOnlineUsers(usernames);
+    }
+  }
+
+  /**
    * Get current game mode
    */
   getMode() {
