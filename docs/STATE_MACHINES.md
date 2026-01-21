@@ -9468,6 +9468,161 @@ Teacher had to manually RESET before starting new session from 'ended' state.
 
 ---
 
-*Updated to v4.3.2*
+## 112. URL DEEP LINKING STATE MACHINE (v4.3.3)
+
+URL parameters allow direct navigation to specific levels within a cartridge.
+
+### Supported Parameters
+```
+?cartridge=<id>     Cartridge to load (supports aliases: prob, apstatu4, probability → apstatu4l1l2)
+?level=<mode-id>    Jump to level by mode ID (e.g., l12-sample-space)
+?start=<index>      Jump to level by 0-based index (e.g., 11 for 12th level)
+```
+
+### State Flow
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     URL DEEP LINKING STATE MACHINE (v4.3.3)                      │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌─────────────┐         ┌─────────────────┐         ┌──────────────────────┐  │
+│  │   URL has   │  YES    │  Parse level    │         │   Find target mode   │  │
+│  │ level/start ├────────►│  parameter      ├────────►│   in manifest        │  │
+│  │  parameter  │         │                 │         │                      │  │
+│  └──────┬──────┘         └─────────────────┘         └──────────┬───────────┘  │
+│         │ NO                                                     │              │
+│         │                                                        ▼              │
+│         │                                         ┌──────────────────────────┐  │
+│         │                                         │    Mode found?           │  │
+│         │                                         └──────────┬───────────────┘  │
+│         │                                                    │                  │
+│         │                              YES ┌─────────────────┴────┐ NO          │
+│         │                                  │                      │             │
+│         │                                  ▼                      ▼             │
+│         │                     ┌──────────────────────┐  ┌──────────────────┐   │
+│         │                     │  Navigate to level   │  │  Log warning,    │   │
+│         │                     │  (setMode + render)  │  │  use default     │   │
+│         │                     └──────────┬───────────┘  └──────────────────┘   │
+│         │                                │                                      │
+│         │                                ▼                                      │
+│         │                     ┌──────────────────────┐                          │
+│         │                     │  Is student on       │                          │
+│         │                     │  locked level?       │                          │
+│         │                     └──────────┬───────────┘                          │
+│         │                                │                                      │
+│         │            YES ┌───────────────┴────────────┐ NO                      │
+│         │                │                            │                         │
+│         │                ▼                            ▼                         │
+│         │   ┌──────────────────────┐    ┌──────────────────────┐               │
+│         │   │  Show toast:         │    │  Proceed normally    │               │
+│         │   │  "Direct Link Access │    │  (no notification)   │               │
+│         │   │   - level locked"    │    │                      │               │
+│         │   └──────────────────────┘    └──────────────────────┘               │
+│         │                                                                       │
+│         ▼                                                                       │
+│  ┌─────────────┐                                                                │
+│  │  Load       │                                                                │
+│  │  default    │                                                                │
+│  │  level      │                                                                │
+│  └─────────────┘                                                                │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Access Rules
+```
+  User Type  │  Unlocked Level  │  Locked Level
+  ───────────┼──────────────────┼───────────────────────────
+  Teacher    │  Direct access   │  Direct access (no toast)
+  Student    │  Direct access   │  Direct access + toast notification
+```
+
+### Toast Notification (Students on Locked Levels)
+- Appears at top-center of screen
+- Shows level name and explains it's normally locked
+- Auto-dismisses after 5 seconds with fade animation
+- Non-blocking: student can still work on the level
+
+### Example URLs
+```
+# By level ID
+https://example.com/platform/app.html?cartridge=apstatu4l1l2&level=l12-sample-space
+
+# By index (0-based)
+https://example.com/platform/app.html?cartridge=apstatu4l1l2&start=11
+
+# With cartridge alias
+https://example.com/platform/app.html?cartridge=prob&level=l20-conditional-def
+```
+
+---
+
+## 113. PROBABILITY CARTRIDGE LEVEL MAP (v4.3.3)
+
+Reference table for `apstatu4l1l2` cartridge deep linking.
+
+### Topic 4.1-4.2: Random Processes & Simulation
+```
+  Index │  Level ID                  │  Name                              │  Topic
+  ──────┼────────────────────────────┼────────────────────────────────────┼────────
+    0   │  l01-random-process        │  4.1a: Random Process Definition   │  4.1
+    1   │  l02-outcome-event         │  4.2a: Outcomes vs Events          │  4.2
+    2   │  l03-independence          │  4.1b: Independence & Gambler's    │  4.1
+    3   │  l04-streaks               │  4.1c: Streaks in Random Data      │  4.1
+    4   │  l05-simulation-vocab      │  4.2b: Simulation Definition       │  4.2
+    5   │  l06-lln                   │  4.2c: Law of Large Numbers        │  4.2
+    6   │  l07-digit-assignment      │  4.2d: Assign Digits               │  4.2
+    7   │  l08-trial-definition      │  4.2e: Define Trial                │  4.2
+    8   │  l09-relative-frequency    │  4.2f: Calculate Probability       │  4.2
+    9   │  l10-simulation-design     │  4.2g: Full Simulation Design      │  4.2
+   10   │  l11-capstone              │  4.1-4.2 Capstone                  │  4.1-4.2
+```
+
+### Topic 4.3: Sample Space & Probability Rules
+```
+  Index │  Level ID                  │  Name                              │  Topic
+  ──────┼────────────────────────────┼────────────────────────────────────┼────────
+   11   │  l12-sample-space          │  4.3a: Sample Space                │  4.3
+   12   │  l13-valid-probability     │  4.3b: Valid Probability Model     │  4.3
+   13   │  l14-complement-rule       │  4.3c: Complement Rule             │  4.3
+   14   │  l15-at-least-one          │  4.3d: At Least One                │  4.3
+   15   │  l16-mixed-4-3             │  4.3 Mixed Practice                │  4.3
+```
+
+### Topic 4.4: Mutually Exclusive Events (VAR-4.C)
+```
+  Index │  Level ID                  │  Name                              │  Topic
+  ──────┼────────────────────────────┼────────────────────────────────────┼────────
+   16   │  l17-mutually-exclusive-def│  4.4a: Mutually Exclusive Definition│  4.4
+   17   │  l18-joint-probability     │  4.4b: Joint Probability           │  4.4
+   18   │  l19-identify-me           │  4.4c: Identify Mutually Exclusive │  4.4
+```
+
+### Topic 4.5: Conditional Probability (VAR-4.D)
+```
+  Index │  Level ID                  │  Name                              │  Topic
+  ──────┼────────────────────────────┼────────────────────────────────────┼────────
+   19   │  l20-conditional-def       │  4.5a: Conditional Probability Def │  4.5
+   20   │  l21-conditional-table     │  4.5b: Conditional from Tables     │  4.5
+   21   │  l22-multiplication-rule   │  4.5c: General Multiplication Rule │  4.5
+   22   │  l23-order-matters         │  4.5d: Order Matters P(A|B)≠P(B|A) │  4.5
+   23   │  l24-mixed-4-4-5           │  4.4-4.5 Capstone                  │  4.4-4.5
+```
+
+### Quick Reference Deep Links
+```
+# Jump to Topic 4.3 (Sample Space)
+?cartridge=apstatu4l1l2&level=l12-sample-space   OR   ?cartridge=prob&start=11
+
+# Jump to Topic 4.4 (Mutually Exclusive)
+?cartridge=apstatu4l1l2&level=l17-mutually-exclusive-def   OR   ?cartridge=prob&start=16
+
+# Jump to Topic 4.5 (Conditional Probability)
+?cartridge=apstatu4l1l2&level=l20-conditional-def   OR   ?cartridge=prob&start=19
+```
+
+---
+
+*Updated to v4.3.3*
 *Last updated: January 2026*
-*Total sections: 125*
+*Total sections: 127*

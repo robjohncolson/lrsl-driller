@@ -14,7 +14,7 @@ Current cartridges (12 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v4.3.2 (Teacher Student Detail Modal & CTF Fixes)
+**Current Version**: v4.3.3 (Probability Cartridge Extended to 4.5 + Deep Linking Fix)
 
 ## Development Commands
 
@@ -338,6 +338,25 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 
 ## Version History (Bug Fixes)
 
+**v4.3.3**: Probability Cartridge Extended to 4.5 + Deep Linking Fix
+- **apstatu4l1l2 Extended**: Now covers Topics 4.1-4.5 (was 4.1-4.3)
+  - 8 new levels (L17-L24) covering mutually exclusive events and conditional probability
+  - L17 (4.4a): Mutually Exclusive Definition (VAR-4.C)
+  - L18 (4.4b): Joint Probability Calculation from two-way tables
+  - L19 (4.4c): Identify Mutually Exclusive Events
+  - L20 (4.5a): Conditional Probability Definition (VAR-4.D)
+  - L21 (4.5b): Conditional Probability from Tables
+  - L22 (4.5c): General Multiplication Rule
+  - L23 (4.5d): Order Matters (P(A|B) vs P(B|A))
+  - L24 (4.4-4.5 Capstone): Mixed practice with explanations
+  - Content based on Super Status!, school surveys, employee data, and marble examples
+  - 24 total levels now in cartridge
+- **URL Deep Linking Fix**: `?level=` and `?start=` parameters now always navigate to requested level
+  - Teachers: Direct access without notification
+  - Students: Access any level via URL with toast notification if normally locked
+  - Example: `?cartridge=apstatu4l1l2&level=l12-sample-space` jumps to Topic 4.3
+- **Lesson Group Dividers**: Mode tabs now show visual dividers between lesson groups (e.g., §4.1, §4.2, §4.3)
+
 **v4.3.2**: Teacher Student Detail Modal & CTF Fixes
 - **Student Detail Modal**: Teachers can now click usernames in "Online Now" to view student progress
   - Shows gold/silver/bronze star counts and total time spent
@@ -362,7 +381,7 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 **v4.3.1**: New Probability Cartridge (apstatu4l1l2)
 - New cartridge: `apstatu4l1l2` - AP Statistics Unit 4 Lessons 1-2 (Probability Basics)
 - Topics covered: Random processes, outcomes vs events, independence/gambler's fallacy, streaks in random data, simulation, Law of Large Numbers
-- 11 progressive levels from vocabulary to full simulation design capstone
+- 11 progressive levels from vocabulary to full simulation design capstone (later extended to 24 levels in v4.3.3)
 - 60+ unique scenarios across all levels with shuffle bag preventing near-repeats
 - Input types: dropdown, choice, number, text, textarea
 - New tests: 49 generator tests (`tests/generators/apstatu4l1l2.test.js`)
