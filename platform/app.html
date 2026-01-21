@@ -3837,9 +3837,9 @@
           if (targetMode) {
             const studentUnlocked = gameState.unlockedTiers.includes(targetMode.id);
 
-            // URL deep links always allow access to the requested level
-            console.log(`[App] Jumping to URL-requested level: ${targetMode.id}`);
-            platform.setMode(targetMode.id);
+            // URL deep links always allow access to the requested level (force=true bypasses lock check)
+            console.log(`[App] Jumping to URL-requested level: ${targetMode.id} (force=true)`);
+            platform.setMode(targetMode.id, true); // force=true for URL deep links
             renderModeTabs(); // Re-render to show active tab
 
             // Show notification for students accessing normally-locked levels

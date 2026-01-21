@@ -135,29 +135,34 @@ export class Platform {
 
   /**
    * Set current mode
+   * @param {string} modeId - The mode ID to switch to
+   * @param {boolean} force - If true, bypass unlock check (for URL deep links, teacher access)
    */
-  setMode(modeId) {
+  setMode(modeId, force = false) {
     const mode = this.cartridgeLoader.getMode(modeId);
     if (!mode) {
       console.warn(`Mode "${modeId}" not found`);
       return false;
     }
 
-    // Check if mode is unlocked
-    const state = this.gameEngine.getState();
-    const isUnlocked = mode.unlockedBy === 'default' ||
-      state.unlockedTiers.includes(modeId) ||
-      (mode.unlockedBy?.gold && state.starCounts.gold >= mode.unlockedBy.gold);
+    // Check if mode is unlocked (skip check if force=true)
+    if (!force) {
+      const state = this.gameEngine.getState();
+      const isUnlocked = mode.unlockedBy === 'default' ||
+        state.unlockedTiers.includes(modeId) ||
+        (mode.unlockedBy?.gold && state.starCounts.gold >= mode.unlockedBy.gold);
 
-    if (!isUnlocked) {
-      console.warn(`Mode "${modeId}" is locked`);
-      return false;
+      if (!isUnlocked) {
+        console.warn(`Mode "${modeId}" is locked`);
+        return false;
+      }
     }
 
     this.currentMode = modeId;
     // Save to game engine so it persists across refreshes
     this.gameEngine.setTier(modeId);
     this.onStateChange(this.getState());
+    console.log(`[Platform] Mode set to: ${modeId}${force ? ' (forced)' : ''}`);
     return true;
   }
 
