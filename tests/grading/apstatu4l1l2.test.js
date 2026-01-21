@@ -1,11 +1,11 @@
 /**
- * AP Statistics Unit 4 Lessons 1-2 Grading Tests
+ * AP Statistics Unit 4 Lessons 1-2-3 Grading Tests
  * Tests for probability and simulation concepts grading rules
  */
 import { describe, it, expect } from 'vitest';
 import { gradeField } from '../../cartridges/apstatu4l1l2/grading-rules.js';
 
-describe('AP Stats U4 L1-L2 Grading Rules', () => {
+describe('AP Stats U4 L1-L2-L3 Grading Rules', () => {
   // ========== EXACT MATCH TESTS ==========
   describe('Exact Match Fields', () => {
     describe('vocabAnswer (L01 - Random Process)', () => {
@@ -398,6 +398,274 @@ describe('AP Stats U4 L1-L2 Grading Rules', () => {
         );
         expect(result.score).toBe('I');
       });
+    });
+  });
+
+  // ========== TOPIC 4.3 TESTS ==========
+  describe('Sample Space (L12)', () => {
+    describe('sampleSpaceAnswer', () => {
+      it('grades correct sample space as E', () => {
+        const result = gradeField('sampleSpaceAnswer',
+          '{H, T}',
+          { sampleSpaceAnswer: { value: '{H, T}' }, explanation: 'Coin has two outcomes.' }
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('is case insensitive', () => {
+        const result = gradeField('sampleSpaceAnswer',
+          '{h, t}',
+          { sampleSpaceAnswer: { value: '{H, T}' } }
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades incorrect answer as I', () => {
+        const result = gradeField('sampleSpaceAnswer',
+          '{1, 2, 3}',
+          { sampleSpaceAnswer: { value: '{H, T}' } }
+        );
+        expect(result.score).toBe('I');
+      });
+
+      it('includes explanation in feedback when provided', () => {
+        const result = gradeField('sampleSpaceAnswer',
+          '{H, T}',
+          { sampleSpaceAnswer: { value: '{H, T}' }, explanation: 'A coin has exactly two outcomes.' }
+        );
+        expect(result.feedback).toContain('two outcomes');
+      });
+    });
+  });
+
+  describe('Valid Probability Model (L13)', () => {
+    describe('validProbChoice', () => {
+      it('grades correct identification of valid model as E', () => {
+        const result = gradeField('validProbChoice',
+          'Yes, it is valid',
+          { validProbChoice: { value: 'Yes, it is valid' }, isValid: true }
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades correct identification of invalid model as E', () => {
+        const result = gradeField('validProbChoice',
+          'No, it is NOT valid',
+          { validProbChoice: { value: 'No, it is NOT valid' }, isValid: false, reason: 'Probabilities sum to 1.3' }
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades incorrect identification as I with reason', () => {
+        const result = gradeField('validProbChoice',
+          'Yes, it is valid',
+          { validProbChoice: { value: 'No, it is NOT valid' }, isValid: false, reason: 'Has negative probability' }
+        );
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('negative');
+      });
+    });
+
+    describe('validProbReason', () => {
+      it('grades correct reason as E', () => {
+        const result = gradeField('validProbReason',
+          'All probabilities are 0-1 and sum to 1',
+          { validProbReason: { value: 'All probabilities are 0-1 and sum to 1' } }
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades incorrect reason as I', () => {
+        const result = gradeField('validProbReason',
+          'Probabilities sum to 1',
+          { validProbReason: { value: 'Contains negative probability' } }
+        );
+        expect(result.score).toBe('I');
+      });
+    });
+  });
+
+  describe('Complement Rule (L14)', () => {
+    describe('complementAnswer', () => {
+      it('grades exact answer as E', () => {
+        const result = gradeField('complementAnswer', '0.65', {
+          complementAnswer: { value: 0.65 },
+          givenProb: 0.35,
+          complementEvent: 'not A'
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for close answer', () => {
+        const result = gradeField('complementAnswer', '0.64', {
+          complementAnswer: { value: 0.65 },
+          givenProb: 0.35,
+          complementEvent: 'not A'
+        });
+        expect(result.score).toBe('P');
+      });
+
+      it('grades wrong answer as I with formula', () => {
+        const result = gradeField('complementAnswer', '0.35', {
+          complementAnswer: { value: 0.65 },
+          givenProb: 0.35,
+          complementEvent: 'not A'
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('1 - P(A)');
+      });
+
+      it('handles non-numeric input', () => {
+        const result = gradeField('complementAnswer', 'sixty-five', {
+          complementAnswer: { value: 0.65 },
+          givenProb: 0.35
+        });
+        expect(result.score).toBe('I');
+      });
+
+      it('includes complementEvent in feedback', () => {
+        const result = gradeField('complementAnswer', '0.65', {
+          complementAnswer: { value: 0.65 },
+          givenProb: 0.35,
+          complementEvent: 'not raining'
+        });
+        expect(result.feedback).toContain('not raining');
+      });
+    });
+  });
+
+  describe('At Least One (L15)', () => {
+    describe('atLeastOneAnswer', () => {
+      it('grades exact answer as E', () => {
+        const result = gradeField('atLeastOneAnswer', '0.875', {
+          atLeastOneAnswer: { value: 0.875, tolerance: 0.005 },
+          pNone: 0.125
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('grades answer within tolerance as E', () => {
+        const result = gradeField('atLeastOneAnswer', '0.876', {
+          atLeastOneAnswer: { value: 0.875, tolerance: 0.005 },
+          pNone: 0.125
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for somewhat close', () => {
+        const result = gradeField('atLeastOneAnswer', '0.86', {
+          atLeastOneAnswer: { value: 0.875, tolerance: 0.005 },
+          pNone: 0.125
+        });
+        expect(result.score).toBe('P');
+      });
+
+      it('grades probability > 1 as I with specific feedback', () => {
+        const result = gradeField('atLeastOneAnswer', '1.5', {
+          atLeastOneAnswer: { value: 0.875, tolerance: 0.005 },
+          pNone: 0.125
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback.toLowerCase()).toContain('exceed 1');
+      });
+
+      it('grades wrong answer as I with complement approach', () => {
+        const result = gradeField('atLeastOneAnswer', '0.5', {
+          atLeastOneAnswer: { value: 0.875, tolerance: 0.005 },
+          pNone: 0.125
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('1 - P(none)');
+      });
+    });
+  });
+
+  describe('Mixed 4.3 Practice (L16)', () => {
+    describe('mixedAnswer', () => {
+      it('grades correct answer as E', () => {
+        const result = gradeField('mixedAnswer',
+          '0.875',
+          { mixedAnswer: { value: '0.875' }, explanation: 'Using complement rule.' }
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades incorrect answer as I', () => {
+        const result = gradeField('mixedAnswer',
+          '0.5',
+          { mixedAnswer: { value: '0.875' }, explanation: 'The answer uses complement.' }
+        );
+        expect(result.score).toBe('I');
+      });
+    });
+
+    describe('mixedExplain', () => {
+      it('grades complete explanation with sample space keywords as E', () => {
+        const result = gradeField('mixedExplain',
+          'The sample space includes all possible outcomes. Since there are 36 total outcomes and 6 favorable, the probability is 6/36.',
+          {}
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades explanation with complement keywords as E', () => {
+        const result = gradeField('mixedExplain',
+          'I used the complement rule because P(not A) = 1 - P(A). Since P(A) = 0.3, P(not A) = 0.7.',
+          {}
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades explanation with at-least-one keywords as E', () => {
+        const result = gradeField('mixedExplain',
+          'Since we want at least one success, I calculated P(none) first and subtracted from 1 using the complement approach.',
+          {}
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for keywords without full reasoning', () => {
+        const result = gradeField('mixedExplain',
+          'The sample space has all outcomes. The answer is found by counting favorable divided by total.',
+          {}
+        );
+        expect(result.score).toBe('P');
+      });
+
+      it('grades vague explanation as I', () => {
+        const result = gradeField('mixedExplain',
+          'I calculated the probability.',
+          {}
+        );
+        expect(result.score).toBe('I');
+      });
+
+      it('grades short explanation without keywords as I', () => {
+        const result = gradeField('mixedExplain',
+          'The answer is 0.5.',
+          {}
+        );
+        expect(result.score).toBe('I');
+      });
+    });
+  });
+
+  // ========== TOPIC 4.3 BLANK HANDLING ==========
+  describe('Topic 4.3 Blank Handling', () => {
+    it('rejects blank sampleSpaceAnswer', () => {
+      const result = gradeField('sampleSpaceAnswer', '', { sampleSpaceAnswer: { value: '{H, T}' } });
+      expect(result.score).toBe('I');
+    });
+
+    it('rejects blank complementAnswer', () => {
+      const result = gradeField('complementAnswer', '', { complementAnswer: { value: 0.65 } });
+      expect(result.score).toBe('I');
+    });
+
+    it('rejects blank mixedExplain with appropriate message', () => {
+      const result = gradeField('mixedExplain', '', {});
+      expect(result.score).toBe('I');
+      expect(result.feedback).toContain('response');
     });
   });
 

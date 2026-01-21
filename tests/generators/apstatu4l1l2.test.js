@@ -1,11 +1,11 @@
 /**
- * AP Statistics Unit 4 Lessons 1-2 Generator Tests
+ * AP Statistics Unit 4 Lessons 1-2-3 Generator Tests
  * Tests problem generation for probability and simulation concepts
  */
 import { describe, it, expect } from 'vitest';
 import { generateProblem } from '../../cartridges/apstatu4l1l2/generator.js';
 
-describe('AP Stats U4 L1-L2 Generator', () => {
+describe('AP Stats U4 L1-L2-L3 Generator', () => {
   // ========== BASIC STRUCTURE TESTS ==========
   describe('Problem Structure', () => {
     it('generates problem with required fields', () => {
@@ -221,6 +221,182 @@ describe('AP Stats U4 L1-L2 Generator', () => {
     it('includes expected explanation', () => {
       const problem = generateProblem('l11-capstone', {}, {});
       expect(problem.context).toHaveProperty('expectedExplanation');
+    });
+  });
+
+  // ========== TOPIC 4.3 TESTS ==========
+  describe('L12 - Sample Space Identification', () => {
+    it('generates sample space question', () => {
+      const problem = generateProblem('l12-sample-space', {}, {});
+      expect(problem.answers).toHaveProperty('sampleSpaceAnswer');
+    });
+
+    it('provides dropdown options', () => {
+      const problem = generateProblem('l12-sample-space', {}, {});
+      expect(problem.context).toHaveProperty('optA');
+      expect(problem.context).toHaveProperty('optB');
+      expect(problem.context).toHaveProperty('optC');
+      expect(problem.context).toHaveProperty('optD');
+    });
+
+    it('includes explanation in context', () => {
+      const problem = generateProblem('l12-sample-space', {}, {});
+      expect(problem.context).toHaveProperty('explanation');
+    });
+
+    it('problemText mentions sample space', () => {
+      const problem = generateProblem('l12-sample-space', {}, {});
+      expect(problem.context.problemText.toLowerCase()).toContain('sample space');
+    });
+
+    it('correct answer is one of the options', () => {
+      const problem = generateProblem('l12-sample-space', {}, {});
+      const options = [problem.context.optA, problem.context.optB, problem.context.optC, problem.context.optD];
+      expect(options).toContain(problem.answers.sampleSpaceAnswer.value);
+    });
+  });
+
+  describe('L13 - Valid Probability Model', () => {
+    it('generates valid probability check question', () => {
+      const problem = generateProblem('l13-valid-probability', {}, {});
+      expect(problem.answers).toHaveProperty('validProbChoice');
+      expect(problem.answers).toHaveProperty('validProbReason');
+    });
+
+    it('includes isValid flag in context', () => {
+      const problem = generateProblem('l13-valid-probability', {}, {});
+      expect(problem.context).toHaveProperty('isValid');
+      expect(typeof problem.context.isValid).toBe('boolean');
+    });
+
+    it('includes reason in context', () => {
+      const problem = generateProblem('l13-valid-probability', {}, {});
+      expect(problem.context).toHaveProperty('reason');
+    });
+
+    it('answer matches isValid flag', () => {
+      const problem = generateProblem('l13-valid-probability', {}, {});
+      if (problem.context.isValid) {
+        expect(problem.answers.validProbChoice.value).toBe('Yes, it is valid');
+      } else {
+        expect(problem.answers.validProbChoice.value).toBe('No, it is NOT valid');
+      }
+    });
+  });
+
+  describe('L14 - Complement Rule', () => {
+    it('generates complement calculation problem', () => {
+      const problem = generateProblem('l14-complement-rule', {}, {});
+      expect(problem.answers).toHaveProperty('complementAnswer');
+    });
+
+    it('answer is numeric between 0 and 1', () => {
+      const problem = generateProblem('l14-complement-rule', {}, {});
+      const value = problem.answers.complementAnswer.value;
+      expect(typeof value).toBe('number');
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1);
+    });
+
+    it('includes givenProb in context', () => {
+      const problem = generateProblem('l14-complement-rule', {}, {});
+      expect(problem.context).toHaveProperty('givenProb');
+    });
+
+    it('answer equals 1 - givenProb', () => {
+      const problem = generateProblem('l14-complement-rule', {}, {});
+      const expected = 1 - problem.context.givenProb;
+      expect(Math.abs(problem.answers.complementAnswer.value - expected)).toBeLessThan(0.001);
+    });
+
+    it('includes complementEvent label', () => {
+      const problem = generateProblem('l14-complement-rule', {}, {});
+      expect(problem.context).toHaveProperty('complementEvent');
+    });
+  });
+
+  describe('L15 - At Least One', () => {
+    it('generates at least one probability problem', () => {
+      const problem = generateProblem('l15-at-least-one', {}, {});
+      expect(problem.answers).toHaveProperty('atLeastOneAnswer');
+    });
+
+    it('answer is numeric between 0 and 1', () => {
+      const problem = generateProblem('l15-at-least-one', {}, {});
+      const value = problem.answers.atLeastOneAnswer.value;
+      expect(typeof value).toBe('number');
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1);
+    });
+
+    it('includes pNone in context', () => {
+      const problem = generateProblem('l15-at-least-one', {}, {});
+      expect(problem.context).toHaveProperty('pNone');
+    });
+
+    it('answer equals 1 - pNone', () => {
+      const problem = generateProblem('l15-at-least-one', {}, {});
+      const expected = 1 - problem.context.pNone;
+      expect(Math.abs(problem.answers.atLeastOneAnswer.value - expected)).toBeLessThan(0.001);
+    });
+
+    it('includes tolerance for grading', () => {
+      const problem = generateProblem('l15-at-least-one', {}, {});
+      expect(problem.answers.atLeastOneAnswer).toHaveProperty('tolerance');
+    });
+  });
+
+  describe('L16 - Mixed 4.3 Practice', () => {
+    it('generates mixed practice problem', () => {
+      const problem = generateProblem('l16-mixed-4-3', {}, {});
+      expect(problem.answers).toHaveProperty('mixedAnswer');
+      expect(problem.answers).toHaveProperty('mixedExplain');
+    });
+
+    it('provides dropdown options', () => {
+      const problem = generateProblem('l16-mixed-4-3', {}, {});
+      expect(problem.context).toHaveProperty('optA');
+      expect(problem.context).toHaveProperty('optB');
+      expect(problem.context).toHaveProperty('optC');
+      expect(problem.context).toHaveProperty('optD');
+    });
+
+    it('includes explanation in context', () => {
+      const problem = generateProblem('l16-mixed-4-3', {}, {});
+      expect(problem.context).toHaveProperty('explanation');
+    });
+  });
+
+  // ========== TOPIC 4.3 UNIQUENESS TESTS ==========
+  describe('Topic 4.3 Problem Uniqueness', () => {
+    it('generates different sample space scenarios', () => {
+      const scenarios = new Set();
+      for (let i = 0; i < 10; i++) {
+        const problem = generateProblem('l12-sample-space', {}, {});
+        scenarios.add(problem.context.givenText);
+      }
+      expect(scenarios.size).toBeGreaterThan(1);
+    });
+
+    it('generates different complement scenarios', () => {
+      const scenarios = new Set();
+      for (let i = 0; i < 10; i++) {
+        const problem = generateProblem('l14-complement-rule', {}, {});
+        scenarios.add(problem.context.givenText);
+      }
+      expect(scenarios.size).toBeGreaterThan(1);
+    });
+
+    it('generates both valid and invalid probability models', () => {
+      let hasValid = false;
+      let hasInvalid = false;
+      for (let i = 0; i < 15; i++) {
+        const problem = generateProblem('l13-valid-probability', {}, {});
+        if (problem.context.isValid) hasValid = true;
+        else hasInvalid = true;
+      }
+      expect(hasValid).toBe(true);
+      expect(hasInvalid).toBe(true);
     });
   });
 

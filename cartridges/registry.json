@@ -86,9 +86,9 @@
     },
     {
       "id": "apstatu4l1l2",
-      "name": "Probability Basics (4.1-4.2)",
+      "name": "Probability Basics (4.1-4.3)",
       "subject": "AP Statistics",
-      "description": "Random processes, outcomes, events, simulation, Law of Large Numbers",
+      "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements",
       "shortCode": "PROB"
     }
   ]

@@ -552,6 +552,322 @@ const simulationDesignScenarios = [
   }
 ];
 
+// ============ TOPIC 4.3 SCENARIO BANKS ============
+
+// Level 12: Sample Space Identification
+const sampleSpaceScenarios = [
+  {
+    desc: "Flip a single coin.",
+    answer: "{H, T}",
+    options: ["{H, T}", "{Heads}", "{H, T, HT}", "{1, 2}"],
+    explanation: "A coin has exactly two possible outcomes: Heads (H) or Tails (T)."
+  },
+  {
+    desc: "Roll a single six-sided die.",
+    answer: "{1, 2, 3, 4, 5, 6}",
+    options: ["{1, 2, 3, 4, 5, 6}", "{1, 6}", "{2, 3, 4, 5}", "{even, odd}"],
+    explanation: "A die can land on any of the six faces: 1, 2, 3, 4, 5, or 6."
+  },
+  {
+    desc: "Flip two coins and record the sequence.",
+    answer: "{HH, HT, TH, TT}",
+    options: ["{HH, HT, TH, TT}", "{HH, TT}", "{H, T}", "{0, 1, 2}"],
+    explanation: "Order matters: HT (heads then tails) is different from TH (tails then heads)."
+  },
+  {
+    desc: "Randomly select a vowel from the English alphabet.",
+    answer: "{A, E, I, O, U}",
+    options: ["{A, E, I, O, U}", "{A, E, I, O, U, Y}", "{vowel, consonant}", "{A, B, C, D, E}"],
+    explanation: "The standard vowels are A, E, I, O, and U."
+  },
+  {
+    desc: "Roll a die and record whether the result is even or odd.",
+    answer: "{Even, Odd}",
+    options: ["{Even, Odd}", "{1, 2, 3, 4, 5, 6}", "{2, 4, 6}", "{1, 3, 5}"],
+    explanation: "When we only record even/odd, those are our two possible outcomes."
+  },
+  {
+    desc: "Draw a card from a standard deck and record the suit.",
+    answer: "{Hearts, Diamonds, Clubs, Spades}",
+    options: ["{Hearts, Diamonds, Clubs, Spades}", "{Red, Black}", "{Ace, 2, 3, ..., King}", "{1, 2, 3, ..., 52}"],
+    explanation: "The four suits are Hearts, Diamonds, Clubs, and Spades."
+  },
+  {
+    desc: "A traffic light is observed. Record its color.",
+    answer: "{Red, Yellow, Green}",
+    options: ["{Red, Yellow, Green}", "{Stop, Go}", "{Red, Green}", "{On, Off}"],
+    explanation: "Traffic lights cycle through three colors: Red, Yellow, and Green."
+  },
+  {
+    desc: "Spin a spinner divided into 4 equal sections: A, B, C, D.",
+    answer: "{A, B, C, D}",
+    options: ["{A, B, C, D}", "{1, 2, 3, 4}", "{A, D}", "{A, B}"],
+    explanation: "The spinner can land on any of the four sections."
+  },
+  {
+    desc: "Flip three coins and record the sequence.",
+    answer: "{HHH, HHT, HTH, HTT, THH, THT, TTH, TTT}",
+    options: ["{HHH, HHT, HTH, HTT, THH, THT, TTH, TTT}", "{HHH, TTT}", "{0, 1, 2, 3}", "{H, T}"],
+    explanation: "With 3 coins, there are 2³ = 8 possible sequences."
+  },
+  {
+    desc: "Count the number of heads when flipping two coins.",
+    answer: "{0, 1, 2}",
+    options: ["{0, 1, 2}", "{HH, HT, TH, TT}", "{H, T}", "{1, 2}"],
+    explanation: "We could get 0 heads (TT), 1 head (HT or TH), or 2 heads (HH)."
+  }
+];
+
+// Level 13: Valid Probability Model
+const validProbabilityScenarios = [
+  {
+    desc: "P(A) = 0.3, P(B) = 0.5, P(C) = 0.2",
+    valid: true,
+    reason: "All between 0-1 and sum to 1.0",
+    options: ["All between 0-1 and sum to 1.0", "Sum is not 1", "Contains negative probability", "Probability exceeds 1"]
+  },
+  {
+    desc: "P(A) = 0.4, P(B) = 0.4, P(C) = 0.3",
+    valid: false,
+    reason: "Sum is 1.1, not 1",
+    options: ["Sum is 1.1, not 1", "All between 0-1 and sum to 1.0", "Contains negative probability", "All values equal"]
+  },
+  {
+    desc: "P(A) = 0.5, P(B) = -0.1, P(C) = 0.6",
+    valid: false,
+    reason: "Contains negative probability (-0.1)",
+    options: ["Contains negative probability (-0.1)", "Sum is not 1", "All between 0-1 and sum to 1.0", "Probability exceeds 1"]
+  },
+  {
+    desc: "P(A) = 0.2, P(B) = 0.3, P(C) = 0.4, P(D) = 0.1",
+    valid: true,
+    reason: "All between 0-1 and sum to 1.0",
+    options: ["All between 0-1 and sum to 1.0", "Sum is not 1", "Too many outcomes", "Contains zero probability"]
+  },
+  {
+    desc: "P(A) = 1.2, P(B) = 0.3, P(C) = -0.5",
+    valid: false,
+    reason: "P(A) > 1 and P(C) < 0",
+    options: ["P(A) > 1 and P(C) < 0", "All between 0-1 and sum to 1.0", "Sum is not 1", "Only two problems"]
+  },
+  {
+    desc: "P(A) = 0.25, P(B) = 0.25, P(C) = 0.25, P(D) = 0.25",
+    valid: true,
+    reason: "All between 0-1 and sum to 1.0",
+    options: ["All between 0-1 and sum to 1.0", "All probabilities must be different", "Sum is not 1", "Contains zero probability"]
+  },
+  {
+    desc: "P(A) = 0.6, P(B) = 0.3",
+    valid: false,
+    reason: "Sum is 0.9, not 1",
+    options: ["Sum is 0.9, not 1", "All between 0-1 and sum to 1.0", "Not enough outcomes", "Probabilities too high"]
+  },
+  {
+    desc: "P(A) = 0, P(B) = 0.7, P(C) = 0.3",
+    valid: true,
+    reason: "All between 0-1 and sum to 1.0",
+    options: ["All between 0-1 and sum to 1.0", "P(A) = 0 is not allowed", "Sum is not 1", "Must have positive probabilities"]
+  },
+  {
+    desc: "P(A) = 0.333, P(B) = 0.333, P(C) = 0.334",
+    valid: true,
+    reason: "All between 0-1 and sum to 1.0",
+    options: ["All between 0-1 and sum to 1.0", "Sum is not exactly 1", "Contains repeating decimals", "Probabilities not equal"]
+  },
+  {
+    desc: "P(A) = 0.5, P(B) = 0.5, P(C) = 0.5",
+    valid: false,
+    reason: "Sum is 1.5, not 1",
+    options: ["Sum is 1.5, not 1", "All between 0-1 and sum to 1.0", "Too many equal values", "Contains no zero"]
+  }
+];
+
+// Level 14: Complement Rule
+const complementScenarios = [
+  {
+    desc: "P(rain) = 0.35. Find P(no rain).",
+    given: 0.35,
+    answer: 0.65,
+    eventName: "rain",
+    complementName: "no rain"
+  },
+  {
+    desc: "P(pass the test) = 0.82. Find P(fail the test).",
+    given: 0.82,
+    answer: 0.18,
+    eventName: "pass",
+    complementName: "fail"
+  },
+  {
+    desc: "P(defective item) = 0.08. Find P(non-defective item).",
+    given: 0.08,
+    answer: 0.92,
+    eventName: "defective",
+    complementName: "non-defective"
+  },
+  {
+    desc: "P(win the game) = 0.45. Find P(not win the game).",
+    given: 0.45,
+    answer: 0.55,
+    eventName: "win",
+    complementName: "not win"
+  },
+  {
+    desc: "P(sunny day) = 0.7. Find P(not sunny).",
+    given: 0.7,
+    answer: 0.3,
+    eventName: "sunny",
+    complementName: "not sunny"
+  },
+  {
+    desc: "P(drawing a heart) = 0.25. Find P(not drawing a heart).",
+    given: 0.25,
+    answer: 0.75,
+    eventName: "heart",
+    complementName: "not a heart"
+  },
+  {
+    desc: "P(rolling a 6) = 1/6 ≈ 0.167. Find P(not rolling a 6).",
+    given: 0.167,
+    answer: 0.833,
+    eventName: "rolling a 6",
+    complementName: "not rolling a 6"
+  },
+  {
+    desc: "P(student is left-handed) = 0.10. Find P(student is right-handed or ambidextrous).",
+    given: 0.10,
+    answer: 0.90,
+    eventName: "left-handed",
+    complementName: "not left-handed"
+  },
+  {
+    desc: "P(flight on time) = 0.78. Find P(flight delayed).",
+    given: 0.78,
+    answer: 0.22,
+    eventName: "on time",
+    complementName: "delayed"
+  },
+  {
+    desc: "P(correct answer by guessing on 4-option MC) = 0.25. Find P(incorrect).",
+    given: 0.25,
+    answer: 0.75,
+    eventName: "correct",
+    complementName: "incorrect"
+  }
+];
+
+// Level 15: "At Least One" Problems
+const atLeastOneScenarios = [
+  {
+    desc: "A coin is flipped 3 times. P(heads on each flip) = 0.5. Find P(at least one heads).",
+    pNone: 0.125,  // 0.5^3
+    answer: 0.875,
+    explanation: "P(no heads) = 0.5³ = 0.125, so P(at least 1 heads) = 1 - 0.125 = 0.875"
+  },
+  {
+    desc: "Roll a die 2 times. P(6 on each roll) = 1/6. Find P(at least one 6).",
+    pNone: 0.694,  // (5/6)^2
+    answer: 0.306,
+    explanation: "P(no 6's) = (5/6)² ≈ 0.694, so P(at least one 6) = 1 - 0.694 ≈ 0.306"
+  },
+  {
+    desc: "A basketball player makes 80% of free throws. In 4 shots, find P(at least one make).",
+    pNone: 0.0016,  // 0.2^4
+    answer: 0.9984,
+    explanation: "P(miss all 4) = 0.2⁴ = 0.0016, so P(at least 1 make) = 1 - 0.0016 = 0.9984"
+  },
+  {
+    desc: "P(defective) = 0.05. In a batch of 3 items, find P(at least one defective).",
+    pNone: 0.857,  // 0.95^3
+    answer: 0.143,
+    explanation: "P(none defective) = 0.95³ ≈ 0.857, so P(at least 1 defective) = 1 - 0.857 ≈ 0.143"
+  },
+  {
+    desc: "P(win a raffle) = 0.1. If you enter 5 times, find P(at least one win).",
+    pNone: 0.590,  // 0.9^5
+    answer: 0.410,
+    explanation: "P(no wins) = 0.9⁵ ≈ 0.590, so P(at least 1 win) = 1 - 0.590 ≈ 0.410"
+  },
+  {
+    desc: "A fair coin is flipped 5 times. Find P(at least one tails).",
+    pNone: 0.031,  // 0.5^5
+    answer: 0.969,
+    explanation: "P(all heads) = 0.5⁵ ≈ 0.031, so P(at least 1 tails) = 1 - 0.031 ≈ 0.969"
+  },
+  {
+    desc: "P(server crash on any day) = 0.02. Find P(at least one crash in 10 days).",
+    pNone: 0.817,  // 0.98^10
+    answer: 0.183,
+    explanation: "P(no crashes) = 0.98¹⁰ ≈ 0.817, so P(at least 1 crash) = 1 - 0.817 ≈ 0.183"
+  },
+  {
+    desc: "P(correct answer by guessing) = 0.25. On 4 questions, find P(at least one correct).",
+    pNone: 0.316,  // 0.75^4
+    answer: 0.684,
+    explanation: "P(all wrong) = 0.75⁴ ≈ 0.316, so P(at least 1 correct) = 1 - 0.316 ≈ 0.684"
+  }
+];
+
+// Level 16: Mixed 4.3 Practice
+const mixed43Scenarios = [
+  {
+    desc: "If P(A) = 0.6, what is P(A')? (Complement)",
+    answer: "0.4",
+    options: ["0.4", "0.6", "1.4", "0.36"],
+    concept: "Complement rule",
+    explanation: "P(A') = 1 - P(A) = 1 - 0.6 = 0.4"
+  },
+  {
+    desc: "A valid probability distribution must have probabilities that sum to:",
+    answer: "1",
+    options: ["1", "0", "100", "Any positive number"],
+    concept: "Valid probability model",
+    explanation: "The sum of all probabilities in a valid distribution must equal 1."
+  },
+  {
+    desc: "What is the sample space for rolling a die and noting if the result is prime?",
+    answer: "{Prime, Not Prime}",
+    options: ["{Prime, Not Prime}", "{2, 3, 5}", "{1, 2, 3, 4, 5, 6}", "{Yes, No, Maybe}"],
+    concept: "Sample space",
+    explanation: "We only record whether it's prime or not, so those are our two outcomes."
+  },
+  {
+    desc: "P(at least one) is BEST calculated using:",
+    answer: "1 - P(none)",
+    options: ["1 - P(none)", "P(one) + P(two) + ...", "P(all)", "1 / total outcomes"],
+    concept: "At least one strategy",
+    explanation: "The complement approach: P(at least 1) = 1 - P(none) is usually easier."
+  },
+  {
+    desc: "If all probabilities are between 0 and 1 but sum to 0.95, is it a valid probability model?",
+    answer: "No, sum must equal 1",
+    options: ["No, sum must equal 1", "Yes, it's close enough", "Yes, all values are valid", "Only if rounded"],
+    concept: "Valid probability model",
+    explanation: "Both conditions must be met: each prob 0-1 AND sum to exactly 1."
+  },
+  {
+    desc: "P(not A) = 0.7. What is P(A)?",
+    answer: "0.3",
+    options: ["0.3", "0.7", "1.7", "-0.3"],
+    concept: "Complement rule (reverse)",
+    explanation: "P(A) = 1 - P(not A) = 1 - 0.7 = 0.3"
+  },
+  {
+    desc: "Flip 2 coins. How many outcomes are in the sample space (recording sequence)?",
+    answer: "4",
+    options: ["4", "2", "3", "6"],
+    concept: "Sample space counting",
+    explanation: "The outcomes are {HH, HT, TH, TT} = 4 outcomes."
+  },
+  {
+    desc: "Why use P(at least 1) = 1 - P(none) instead of adding all positive cases?",
+    answer: "It's usually simpler—only one probability to calculate",
+    options: ["It's usually simpler—only one probability to calculate", "The other method is wrong", "They give different answers", "The complement is always larger"],
+    concept: "At least one efficiency",
+    explanation: "Adding P(1) + P(2) + ... can be tedious. The complement only needs P(none)."
+  }
+];
+
 // Level 11: Capstone Scenarios
 const capstoneScenarios = [
   {
@@ -841,6 +1157,129 @@ export function generateProblem(modeId, contextFromFile, mode) {
     answers = {
       capConcept: { value: scen.concept },
       capExplain: { value: scen.explanation }
+    };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 12: Sample Space ==========
+  if (modeId === "l12-sample-space") {
+    const scen = drawFromBag('sampleSpace', sampleSpaceScenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.3a",
+      problemText: "**VAR-4.A:** Sample Space\n\n" +
+                   "The **sample space** (S) is the set of ALL possible non-overlapping outcomes.\n\n" +
+                   "Examples:\n" +
+                   "• Flip coin: S = {H, T}\n" +
+                   "• Roll die: S = {1, 2, 3, 4, 5, 6}\n" +
+                   "• Two coins (sequence): S = {HH, HT, TH, TT}",
+      givenText: scen.desc,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      explanation: scen.explanation
+    };
+    answers = { sampleSpaceAnswer: { value: scen.answer } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 13: Valid Probability Model ==========
+  if (modeId === "l13-valid-probability") {
+    const scen = drawFromBag('validProb', validProbabilityScenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.3b",
+      problemText: "**VAR-4.A:** Valid Probability Model\n\n" +
+                   "A valid probability distribution must satisfy TWO conditions:\n" +
+                   "1. **Each** probability is between 0 and 1 (inclusive)\n" +
+                   "2. **All** probabilities sum to exactly 1\n\n" +
+                   "Check BOTH conditions!",
+      givenText: scen.desc,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      isValid: scen.valid,
+      reason: scen.reason
+    };
+    answers = {
+      validProbChoice: { value: scen.valid ? "Yes, it is valid" : "No, it is NOT valid" },
+      validProbReason: { value: scen.reason }
+    };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 14: Complement Rule ==========
+  if (modeId === "l14-complement-rule") {
+    const scen = drawFromBag('complement', complementScenarios);
+
+    context = {
+      topicId: "4.3c",
+      problemText: "**VAR-4.A:** Complement Rule\n\n" +
+                   "The **complement** of event A is \"not A\" (written A' or Aᶜ).\n\n" +
+                   "**Formula:** P(A') = 1 - P(A)\n\n" +
+                   "The event and its complement ALWAYS sum to 1.",
+      givenText: scen.desc,
+      givenProb: scen.given,
+      eventName: scen.eventName,
+      complementEvent: scen.complementName
+    };
+    answers = { complementAnswer: { value: scen.answer, tolerance: 0.01 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 15: At Least One ==========
+  if (modeId === "l15-at-least-one") {
+    const scen = drawFromBag('atLeastOne', atLeastOneScenarios);
+
+    context = {
+      topicId: "4.3d",
+      problemText: "**VAR-4.A:** \"At Least One\" Problems\n\n" +
+                   "Use the complement approach:\n" +
+                   "**P(at least 1) = 1 - P(none)**\n\n" +
+                   "This is easier than adding P(1) + P(2) + P(3) + ...\n\n" +
+                   "For independent trials:\n" +
+                   "P(none in n trials) = (1 - p)ⁿ",
+      givenText: scen.desc,
+      pNone: scen.pNone,
+      expectedExplanation: scen.explanation
+    };
+    answers = { atLeastOneAnswer: { value: scen.answer, tolerance: 0.01 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 16: Mixed 4.3 Practice ==========
+  if (modeId === "l16-mixed-4-3") {
+    const scen = drawFromBag('mixed43', mixed43Scenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.3",
+      problemText: "**Topic 4.3 Mixed Practice**\n\n" +
+                   "Apply these probability rules:\n" +
+                   "• Sample space: all possible outcomes\n" +
+                   "• Valid model: each prob 0-1, sum = 1\n" +
+                   "• Complement: P(not A) = 1 - P(A)\n" +
+                   "• At least one: P(≥1) = 1 - P(none)",
+      givenText: scen.desc,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      concept: scen.concept,
+      explanation: scen.explanation
+    };
+    answers = {
+      mixedAnswer: { value: scen.answer },
+      mixedExplain: { value: scen.explanation }
     };
     scenario = scen.desc;
     return { context, graphConfig, answers, scenario };

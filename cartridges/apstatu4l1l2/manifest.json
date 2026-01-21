@@ -1,15 +1,17 @@
 {
   "meta": {
     "id": "apstatu4l1l2",
-    "name": "Probability Basics (4.1-4.2)",
+    "name": "Probability Basics (4.1-4.3)",
     "subject": "AP Statistics",
-    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers"
+    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements"
   },
   "config": {
     "contextsFile": null,
     "skills": [
       "VAR-1.F",
-      "UNC-2.A"
+      "UNC-2.A",
+      "VAR-4.A",
+      "VAR-4.B"
     ]
   },
   "display": {
@@ -216,6 +218,101 @@
           }
         ]
       }
+    },
+    {
+      "id": "l12-sample-space",
+      "name": "4.3a: Sample Space",
+      "unlockedBy": { "gold": 33 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "sampleSpaceAnswer",
+            "type": "dropdown",
+            "label": "What is the sample space?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l13-valid-probability",
+      "name": "4.3b: Valid Probability Model",
+      "unlockedBy": { "gold": 36 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "validProbChoice",
+            "type": "choice",
+            "label": "Is this a valid probability model?",
+            "options": ["Yes, it is valid", "No, it is NOT valid"]
+          },
+          {
+            "id": "validProbReason",
+            "type": "dropdown",
+            "label": "Select the reason:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l14-complement-rule",
+      "name": "4.3c: Complement Rule",
+      "unlockedBy": { "gold": 39 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "complementAnswer",
+            "type": "number",
+            "label": "Calculate the probability (as decimal, e.g., 0.65):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l15-at-least-one",
+      "name": "4.3d: At Least One",
+      "unlockedBy": { "gold": 42 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "atLeastOneAnswer",
+            "type": "number",
+            "label": "P(at least one) = (as decimal, e.g., 0.784):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l16-mixed-4-3",
+      "name": "4.3 Mixed Practice",
+      "unlockedBy": { "gold": 45 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "mixedAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "mixedExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Explain using probability rules..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -245,7 +342,14 @@
       "designDigits": "Match digits to the real probability. For 60% success: 1-60 = success, 61-100 = failure.",
       "designTrial": "Describe what happens in ONE complete simulation and what you COUNT or RECORD.",
       "capConcept": "Think about which concept (independence, LLN, simulation, random process) best explains the scenario.",
-      "capExplain": "Use key vocabulary: random process, independent, Law of Large Numbers, simulation, empirical probability."
+      "capExplain": "Use key vocabulary: random process, independent, Law of Large Numbers, simulation, empirical probability.",
+      "sampleSpaceAnswer": "List ALL possible outcomes. For coins: {HH, HT, TH, TT}. For dice: {1,2,3,4,5,6}. Order matters when sequence is recorded!",
+      "validProbChoice": "Two conditions: (1) Each probability between 0 and 1, (2) All probabilities sum to exactly 1.",
+      "validProbReason": "Check BOTH: Are all probabilities 0-1? Do they add to 1? If either fails, it's invalid.",
+      "complementAnswer": "Complement rule: P(not A) = 1 - P(A). The event and its complement must sum to 1.",
+      "atLeastOneAnswer": "Use the complement! P(at least 1) = 1 - P(none). It's easier than adding all the ways to get 1, 2, 3...",
+      "mixedAnswer": "Apply the appropriate rule: sample space, complement (1-P), or P(at least 1) = 1 - P(none).",
+      "mixedExplain": "Mention the specific probability rule you used and show your calculation."
     },
     "penalty": {
       "0": "gold",
@@ -322,7 +426,37 @@
         "id": "l11-capstone",
         "name": "Capstone",
         "unlockedBy": { "gold": 30 },
-        "celebrationMessage": "Unit 4.1-4.2 COMPLETE! You understand probability and simulation!"
+        "celebrationMessage": "Unit 4.1-4.2 COMPLETE! Now onto probability rules..."
+      },
+      {
+        "id": "l12-sample-space",
+        "name": "4.3a",
+        "unlockedBy": { "gold": 33 },
+        "celebrationMessage": "Sample spaces mastered! Next: valid probability models."
+      },
+      {
+        "id": "l13-valid-probability",
+        "name": "4.3b",
+        "unlockedBy": { "gold": 36 },
+        "celebrationMessage": "You can check probability models! Next: complement rule."
+      },
+      {
+        "id": "l14-complement-rule",
+        "name": "4.3c",
+        "unlockedBy": { "gold": 39 },
+        "celebrationMessage": "Complement rule down! Next: 'at least one' problems."
+      },
+      {
+        "id": "l15-at-least-one",
+        "name": "4.3d",
+        "unlockedBy": { "gold": 42 },
+        "celebrationMessage": "At least one - conquered! Final challenge: mixed practice."
+      },
+      {
+        "id": "l16-mixed-4-3",
+        "name": "4.3 Mixed",
+        "unlockedBy": { "gold": 45 },
+        "celebrationMessage": "UNIT 4.1-4.3 COMPLETE! You've mastered probability basics!"
       }
     ]
   }

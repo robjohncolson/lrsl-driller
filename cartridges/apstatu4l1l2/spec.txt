@@ -1,65 +1,143 @@
+Extend apstatu4l1l2 Cartridge to Include Topic 4.3
+Overview
+Extend the existing apstatu4l1l2 drill cartridge to include Topic 4.3 content. The cartridge should be renamed to apstatu4l1l2l3 or keep the same ID with expanded content.
+Source Materials Provided
 
-**CARTRIDGE: U4-SIM**
+u4_lesson1-2-3_live.html — Updated follow-along worksheet
+u4_l1_l2_blooket.csv — Existing Blooket (reference for vocab style)
+Video transcripts for 4.1, 4.2, 4.3
+Slide descriptions for 4.1, 4.2, 4.3
+Unit 4 Framework document
 
-**Topics:** 4.1 (Randomness), 4.2 (Simulation)  
-**CED Skills:** 3.A (estimate via simulation), 4.B (interpret long-run meaning)
+Topic 4.3 Content: Probability Definitions & Basic Rules
+Key Concepts:
 
-**PURPOSE:**  
-Students practice writing correct simulation plans and interpreting simulation output. Matches the CED emphasis that simulations help students internalize probability before formal rules.
+Sample space (S) — set of all possible outcomes
+Probability of an event: 0 ≤ P(A) ≤ 1
+P(S) = 1 (something must happen)
+Complement rule: P(A^c) = 1 - P(A)
+"At least one" = 1 - P(none)
+Equally likely outcomes: P(A) = (favorable outcomes) / (total outcomes)
 
-**ITEM MIX (10 items):**
-- **5 "Simulation Plan" prompts** (short written) — design a simulation with all 5 components
-- **3 "Digit Mapping" items** (MC or short answer) — assign digits to match a given probability
-- **2 "Read Simulation Output" items** (MC) — interpret histogram/table from simulation results, use "at least"/"at most" language
+Vocabulary to drill:
 
-**REQUIRED RESPONSE FORMAT (for Simulation Plan items):**
+Sample space
+Complement (A^c or A')
+Probability model
+Legitimate probability distribution (all probabilities 0-1, sum to 1)
+
+New Levels to Add (L12-L16 or similar)
+Level: Sample Space Identification
+
+Type: Multiple choice or short answer
+Prompt: "List/identify the sample space for [scenario]"
+Examples:
+
+Rolling a die: {1, 2, 3, 4, 5, 6}
+Flipping 2 coins: {HH, HT, TH, TT}
+
+
+
+Level: Valid Probability Check
+
+Type: Choice (Yes/No with justification)
+Prompt: "Is this a valid probability model? Why or why not?"
+Grading: Must identify if probabilities are 0-1 AND sum to 1
+Common errors: Probabilities sum to more/less than 1, negative probability
+
+Level: Complement Rule
+
+Type: Number input
+Prompt: "If P(A) = 0.35, find P(A^c)"
+Answer: 0.65
+Variation: "P(not raining) = 0.7, find P(raining)"
+
+Level: "At Least One" Problems
+
+Type: Number input with work
+Prompt: "Find the probability of at least one success in [scenario]"
+Key insight: P(at least 1) = 1 - P(none)
+Common setup: Multiple independent trials
+
+Level: Equally Likely Outcomes
+
+Type: Number input (as fraction or decimal)
+Prompt: "If all outcomes equally likely, find P([event])"
+Formula: favorable / total
+
+Grading Rules to Add
+javascript// Sample space - check for completeness
+if (fieldId === "sampleSpace") {
+  // Check if student listed all outcomes
+  // Partial credit for missing 1-2 outcomes
+}
+
+// Valid probability check
+if (fieldId === "validProb") {
+  // E: Correct answer + mentions BOTH conditions (0-1 range AND sum to 1)
+  // P: Correct answer but incomplete justification
+  // I: Wrong answer or no justification
+}
+
+// Complement calculation
+if (fieldId === "complement") {
+  // E: Correct value (1 - given)
+  // P: Within 0.02 tolerance (rounding)
+  // I: Wrong calculation
+}
+
+// At least one
+if (fieldId === "atLeastOne") {
+  // E: Uses 1 - P(none) correctly
+  // P: Right approach, arithmetic error
+  // I: Tries to add probabilities instead of using complement
+}
 ```
-Random device:
-Mapping:
-Trial:
-Repeat:
-Estimate:
+
+## AI Grader Additions
+
+Add to `ai-grader-prompt.txt`:
 ```
+### For "validProb" (valid probability distribution):
+- E: Correctly identifies valid/invalid AND explains BOTH conditions:
+  (1) Each probability is between 0 and 1
+  (2) All probabilities sum to exactly 1
+- P: Correct answer but only mentions one condition
+- I: Wrong answer or no valid reasoning
 
-**GRADING RUBRIC (Simulation Plan):**
-- **Full (E):** All 5 labels present AND mapping matches the probability AND trial definition matches the question AND repeat count stated (many/100+)
-- **Partial (P):** Missing 1-2 labels but core idea is correct, OR mapping proportion is slightly off
-- **Incorrect (I):** Not a simulation plan (no random mechanism / no mapping / no repetition)
+### For "atLeastOne" (at least one probability):
+- E: Uses complement approach: P(at least 1) = 1 - P(none)
+- P: Correct setup but calculation error
+- I: Tries to add individual probabilities without using complement
+Hints to Add
+json{
+  "sampleSpace": "List ALL possible outcomes. For coins: {HH, HT, TH, TT}. Don't forget order matters!",
+  "validProb": "Two conditions: (1) Each probability between 0 and 1, (2) All probabilities sum to exactly 1.",
+  "complement": "Complement rule: P(not A) = 1 - P(A). The event and its complement must sum to 1.",
+  "atLeastOne": "Use the complement! P(at least 1) = 1 - P(none). It's easier than adding all the ways to get 1, 2, 3..."
+}
+Progression
 
-**GRADING RUBRIC (Digit Mapping):**
-- **Full (E):** Digit proportion exactly matches target probability (e.g., 8 digits for 80%)
-- **Partial (P):** Close but off by one digit
-- **Incorrect (I):** Proportion doesn't match (e.g., using 0-8 for 80% = 9 digits = 90%)
+Existing L01-L11: 4.1-4.2 content (keep as-is)
+New L12: Sample Space Identification (unlocks at 3 gold)
+New L13: Valid Probability Check (unlocks at 4 gold)
+New L14: Complement Rule (unlocks at 5 gold)
+New L15: "At Least One" Problems (unlocks at 6 gold)
+New L16: Mixed 4.3 Practice (unlocks at 7 gold)
 
-**KEY CONCEPTS TO TEST:**
-- Random device must actually be random (coin, die, random digits, RNG)
-- Mapping proportion must equal the probability (80% = 8 out of 10 digits)
-- Trial = one complete run of the scenario
-- Repeat = many trials (Law of Large Numbers — more trials → closer to true probability)
-- "At most 2" means 0, 1, or 2 (sum those frequencies)
-- "At least 3" means 3 or more (sum those frequencies)
+Deliverables
 
-**EXAMPLE PROMPTS:**
+Updated manifest.json with new modes (L12-L16)
+Updated generator.js with new problem generators
+Updated grading-rules.js with new field handlers
+Updated ai-grader-prompt.txt with new rubrics
+(Optional) Update cartridge ID to apstatu4l1l2l3 and registry
 
-*Simulation Plan:*
-> "Describe a simulation to estimate the probability of making exactly 4 free throws out of 5 attempts if you make 80% of your free throws."
+Testing Checklist
 
-*Expected:*
-- Random device: random digits 0-9 (or 1-100)
-- Mapping: 0-7 = make, 8-9 = miss (8 digits = 80%)
-- Trial: 5 digits = one set of 5 free throws
-- Repeat: 200+ trials
-- Estimate: proportion of trials with exactly 4 makes
-
-*Digit Mapping:*
-> "To simulate a 15% chance of rain, which digits should represent 'rain'?"  
-> A) 0-1  B) 0-14  C) 1-15  D) 0-9
-
-*Answer:* A (if using 0-9) or B (if using 00-99). Key: 15% = 15 out of 100 OR approximately 1.5 out of 10.
-
-*Read Output:*
-> [Histogram of simulation results]  
-> "Based on the simulation, what is the probability of at most 2 successes?"
-
-*Answer:* Sum the relative frequencies for 0, 1, and 2.
-
+ L12 loads and generates sample space problems
+ L13 correctly grades valid/invalid probability distributions
+ L14 complement calculations grade correctly
+ L15 "at least one" problems accept complement approach
+ Progression unlocks work (L12 available after 3 gold)
+ Hints display correctly for new fields
