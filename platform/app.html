@@ -1095,8 +1095,8 @@
         console.log('[GameMode] Creating GameModeManager...');
         gameModeManager = new GameModeManager(container, SERVER_URL);
 
-        // Initialize for current cartridge
-        await gameModeManager.init(currentCartridgeId, username, isTeacher);
+        // Initialize for current cartridge (pass teacherPassword for API auth)
+        await gameModeManager.init(currentCartridgeId, username, isTeacher, null, teacherPassword);
 
         // If teacher, fetch all users for team assignment
         if (isTeacher) {

@@ -18,6 +18,7 @@ export class GameModeManager {
     this.username = null;
     this.isTeacher = false;
     this.userClassPeriod = null;
+    this.teacherPassword = null;
 
     // Current mode
     this.currentMode = GAME_MODE_CONFIG.defaults.gameMode;
@@ -43,11 +44,12 @@ export class GameModeManager {
   /**
    * Initialize for a cartridge
    */
-  async init(cartridgeId, username, isTeacher = false, userClassPeriod = null) {
+  async init(cartridgeId, username, isTeacher = false, userClassPeriod = null, teacherPassword = null) {
     this.cartridgeId = cartridgeId;
     this.username = username;
     this.isTeacher = isTeacher;
     this.userClassPeriod = userClassPeriod;
+    this.teacherPassword = teacherPassword;
 
     // Fetch current game mode settings from server
     try {
@@ -96,9 +98,14 @@ export class GameModeManager {
       throw new Error('Class period required to save settings');
     }
 
+    const headers = { 'Content-Type': 'application/json' };
+    if (this.teacherPassword) {
+      headers['x-teacher-password'] = this.teacherPassword;
+    }
+
     const response = await fetch(`${this.serverUrl}/api/game-mode/${this.cartridgeId}/settings?class_period=${period}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         game_mode: gameMode,
         tiebreaker_type: tiebreakerType
