@@ -1,5 +1,5 @@
-// grading-rules.js - AP Statistics Unit 4 Lessons 1-5
-// Topics: Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability
+// grading-rules.js - AP Statistics Unit 4 Lessons 1-6
+// Topics: Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -40,7 +40,8 @@ export function gradeField(fieldId, answer, context) {
     "designTrial",
     "capExplain",
     "mixedExplain",
-    "capstone44Explain"
+    "capstone44Explain",
+    "capstone46Explain"
   ]);
 
   if (isBlank(answer)) {
@@ -767,6 +768,234 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should mention the specific concept (ME, joint, conditional, multiplication rule) and explain why it applies."
+    };
+  }
+
+  // ========== LEVEL 25: Independent Events Definition ==========
+  if (fieldId === "indepDefAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You understand the definition of independent events."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. Independent events: knowing one occurred doesn't change the other's probability. P(A|B) = P(A) or P(A ∩ B) = P(A) × P(B)."
+    };
+  }
+
+  // ========== LEVEL 26: Check Independence - Conditional Method ==========
+  if (fieldId === "checkIndepCondAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: context.isIndep
+          ? "Correct! P(A|B) = P(A), so knowing B doesn't change A's probability - they are independent."
+          : "Correct! P(A|B) ≠ P(A), so knowing B changes A's probability - they are NOT independent."
+      };
+    }
+    return {
+      score: "I",
+      feedback: context.isIndep
+        ? `Incorrect. P(A|B) = ${context.pAgivenB} equals P(A) = ${context.pA}, so they ARE independent.`
+        : `Incorrect. P(A|B) = ${context.pAgivenB} ≠ ${context.pA} = P(A), so they are NOT independent.`
+    };
+  }
+
+  // ========== LEVEL 27: Check Independence - Multiplication Method ==========
+  if (fieldId === "pAB_calc") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a decimal number (e.g., 0.24)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P(A) × P(B) = ${context.pA} × ${context.pB} = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.02) {
+      return {
+        score: "P",
+        feedback: `Close! P(A) × P(B) = ${context.pA} × ${context.pB} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. P(A) × P(B) = ${context.pA} × ${context.pB} = ${expectedVal}`
+    };
+  }
+
+  if (fieldId === "checkIndepMultAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: context.isIndep
+          ? `Correct! P(A) × P(B) = ${context.pA_times_pB} equals P(A ∩ B) = ${context.pAB}, so they ARE independent.`
+          : `Correct! P(A) × P(B) = ${context.pA_times_pB} ≠ P(A ∩ B) = ${context.pAB}, so they are NOT independent.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: context.isIndep
+        ? `Incorrect. P(A) × P(B) = ${context.pA_times_pB} equals P(A ∩ B) = ${context.pAB}. Equal, so they ARE independent.`
+        : `Incorrect. P(A) × P(B) = ${context.pA_times_pB} ≠ P(A ∩ B) = ${context.pAB}. Not equal, so NOT independent.`
+    };
+  }
+
+  // ========== LEVEL 28: Multiplication Rule for Independent Events ==========
+  if (fieldId === "multIndepAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a decimal number (e.g., 0.12)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P(A and B) = ${context.pA} × ${context.pB} = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.02) {
+      return {
+        score: "P",
+        feedback: `Close! For independent events: P(A and B) = P(A) × P(B) = ${context.pA} × ${context.pB} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. For independent events: P(A and B) = P(A) × P(B) = ${context.pA} × ${context.pB} = ${expectedVal}`
+    };
+  }
+
+  // ========== LEVEL 29: Addition Rule Definition ==========
+  if (fieldId === "addRuleDefAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You understand the Addition Rule for unions."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. Addition Rule: P(A or B) = P(A) + P(B) - P(A ∩ B). Subtract intersection to avoid double counting!"
+    };
+  }
+
+  // ========== LEVEL 30: Calculate Union ==========
+  if (fieldId === "unionAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.01;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a decimal number (e.g., 0.75)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      if (context.isME) {
+        return {
+          score: "E",
+          feedback: `Correct! For ME events: P(A ∪ B) = P(A) + P(B) = ${context.pA} + ${context.pB} = ${expectedVal}`
+        };
+      }
+      return {
+        score: "E",
+        feedback: `Correct! P(A ∪ B) = P(A) + P(B) - P(A ∩ B) = ${context.pA} + ${context.pB} - ${context.pAB} = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.03) {
+      return {
+        score: "P",
+        feedback: `Close! ${context.explanation}`
+      };
+    }
+    // Check if student just added without subtracting
+    if (!context.isME && Math.abs(studentVal - (context.pA + context.pB)) < 0.01) {
+      return {
+        score: "I",
+        feedback: "You forgot to subtract P(A ∩ B)! P(A or B) = P(A) + P(B) - P(A ∩ B) to avoid double counting."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 31: Independent vs Mutually Exclusive ==========
+  if (fieldId === "indepVsMeAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 32: Mixed 4.6 Capstone ==========
+  if (fieldId === "capstone46Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation || ""}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation || `The correct answer is: ${expected}`}`
+    };
+  }
+
+  if (fieldId === "capstone46Explain") {
+    // Key vocabulary for Topic 4.6
+    const indepKeywords = ["independent", "p(a|b) = p(a)", "doesn't change", "doesn't affect", "same probability"];
+    const multIndepKeywords = ["p(a) × p(b)", "multiply", "p(a ∩ b) = p(a)×p(b)", "product"];
+    const additionKeywords = ["addition", "union", "p(a or b)", "p(a ∪ b)", "subtract", "double count"];
+    const meKeywords = ["mutually exclusive", "disjoint", "cannot occur together", "p(a ∩ b) = 0"];
+    const distinctionKeywords = ["not the same", "different", "can occur together", "cannot occur together", "≠"];
+
+    // Check for reasoning quality
+    const mentionsIndep = containsAny(answer, indepKeywords);
+    const mentionsMultIndep = containsAny(answer, multIndepKeywords);
+    const mentionsAddition = containsAny(answer, additionKeywords);
+    const mentionsME = containsAny(answer, meKeywords);
+    const mentionsDistinction = containsAny(answer, distinctionKeywords);
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "means", "shows", "using"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    const conceptMentioned = mentionsIndep || mentionsMultIndep || mentionsAddition || mentionsME || mentionsDistinction;
+
+    if (conceptMentioned && hasReasoning && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent explanation! You clearly understand independence and union concepts."
+      };
+    }
+    if (hasSubstance && conceptMentioned) {
+      return {
+        score: "P",
+        feedback: "Good start! Be more specific about WHY this concept applies and show your reasoning."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should mention key concepts (independent, multiplication rule, addition rule, ME distinction) and explain why they apply."
     };
   }
 

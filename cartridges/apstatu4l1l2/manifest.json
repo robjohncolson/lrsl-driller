@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstatu4l1l2",
-    "name": "Probability (4.1-4.5)",
+    "name": "Probability (4.1-4.6)",
     "subject": "AP Statistics",
-    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability"
+    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions"
   },
   "config": {
     "contextsFile": null,
@@ -13,7 +13,8 @@
       "VAR-4.A",
       "VAR-4.B",
       "VAR-4.C",
-      "VAR-4.D"
+      "VAR-4.D",
+      "VAR-4.E"
     ]
   },
   "display": {
@@ -461,6 +462,148 @@
           }
         ]
       }
+    },
+    {
+      "id": "l25-independent-def",
+      "name": "4.6a: Independent Events Definition",
+      "unlockedBy": { "gold": 24 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "indepDefAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l26-check-indep-conditional",
+      "name": "4.6b: Check Independence (Conditional)",
+      "unlockedBy": { "gold": 25 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "checkIndepCondAnswer",
+            "type": "choice",
+            "label": "Are these events independent?",
+            "options": ["Yes, they are independent", "No, they are NOT independent"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l27-check-indep-mult",
+      "name": "4.6c: Check Independence (Multiplication)",
+      "unlockedBy": { "gold": 26 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pAB_calc",
+            "type": "number",
+            "label": "Calculate P(A) × P(B) = (as decimal, e.g., 0.24):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          },
+          {
+            "id": "checkIndepMultAnswer",
+            "type": "choice",
+            "label": "Are these events independent?",
+            "options": ["Yes, they are independent", "No, they are NOT independent"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l28-mult-rule-indep",
+      "name": "4.6d: Multiplication Rule (Independent)",
+      "unlockedBy": { "gold": 27 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "multIndepAnswer",
+            "type": "number",
+            "label": "P(A and B) = P(A) × P(B) = (as decimal, e.g., 0.12):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l29-addition-rule-def",
+      "name": "4.6e: Addition Rule Definition",
+      "unlockedBy": { "gold": 28 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "addRuleDefAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l30-calculate-union",
+      "name": "4.6f: Calculate Union",
+      "unlockedBy": { "gold": 29 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "unionAnswer",
+            "type": "number",
+            "label": "P(A or B) = (as decimal, e.g., 0.75):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l31-indep-vs-me",
+      "name": "4.6g: Independent vs Mutually Exclusive",
+      "unlockedBy": { "gold": 30 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "indepVsMeAnswer",
+            "type": "choice",
+            "label": "What is the relationship between these events?",
+            "options": ["Independent but NOT mutually exclusive", "Mutually exclusive but NOT independent", "Both independent AND mutually exclusive", "Neither independent NOR mutually exclusive"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l32-mixed-4-6",
+      "name": "4.6 Capstone",
+      "unlockedBy": { "gold": 31 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone46Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone46Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Explain using independence and union concepts..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -507,7 +650,17 @@
       "orderAgivenB": "P(B|A) = (count in both) / (total for A). Different from P(A|B) which divides by total for B!",
       "orderBgivenA": "P(A|B) = (count in both) / (total for B). Same numerator as P(B|A), but different denominator!",
       "capstone44Answer": "Review: ME means P(A∩B)=0, Joint uses grand total, Conditional uses row/column total, Order matters in P(A|B).",
-      "capstone44Explain": "Explain which concept (mutually exclusive, joint probability, conditional, multiplication rule) applies and why."
+      "capstone44Explain": "Explain which concept (mutually exclusive, joint probability, conditional, multiplication rule) applies and why.",
+      "indepDefAnswer": "Independent events: knowing one occurred doesn't change the other's probability. P(A|B) = P(A) or P(A∩B) = P(A)×P(B).",
+      "checkIndepCondAnswer": "Check if P(A|B) = P(A). If knowing B doesn't change A's probability, they are independent.",
+      "pAB_calc": "Multiply P(A) × P(B). If this equals P(A ∩ B), the events are independent.",
+      "checkIndepMultAnswer": "Compare P(A) × P(B) with P(A ∩ B). If they're equal, events are independent. If not, they're dependent.",
+      "multIndepAnswer": "For INDEPENDENT events only: P(A and B) = P(A) × P(B). Just multiply the individual probabilities!",
+      "addRuleDefAnswer": "Addition Rule: P(A or B) = P(A) + P(B) - P(A ∩ B). Subtract the intersection to avoid double counting!",
+      "unionAnswer": "Use: P(A or B) = P(A) + P(B) - P(A ∩ B). For mutually exclusive events, P(A ∩ B) = 0, so just add!",
+      "indepVsMeAnswer": "Independent: P(A∩B) = P(A)×P(B), can occur together. Mutually exclusive: P(A∩B) = 0, CANNOT occur together. These are DIFFERENT concepts!",
+      "capstone46Answer": "Review: Independent means P(A|B)=P(A). Addition rule subtracts intersection. Independent events CAN occur together!",
+      "capstone46Explain": "Explain using independence criteria or addition rule formula. Distinguish independent from mutually exclusive!"
     },
     "penalty": {
       "0": "gold",
@@ -662,7 +815,55 @@
         "id": "l24-mixed-4-4-5",
         "name": "4.4-4.5 Capstone",
         "unlockedBy": { "gold": 23 },
-        "celebrationMessage": "UNIT 4.1-4.5 COMPLETE! You've mastered probability!"
+        "celebrationMessage": "Topics 4.4-4.5 complete! Now onto independent events and unions..."
+      },
+      {
+        "id": "l25-independent-def",
+        "name": "4.6a",
+        "unlockedBy": { "gold": 24 },
+        "celebrationMessage": "Independence defined! Next: checking independence with conditionals."
+      },
+      {
+        "id": "l26-check-indep-conditional",
+        "name": "4.6b",
+        "unlockedBy": { "gold": 25 },
+        "celebrationMessage": "Conditional method down! Next: multiplication method."
+      },
+      {
+        "id": "l27-check-indep-mult",
+        "name": "4.6c",
+        "unlockedBy": { "gold": 26 },
+        "celebrationMessage": "Both methods mastered! Next: calculating with independent events."
+      },
+      {
+        "id": "l28-mult-rule-indep",
+        "name": "4.6d",
+        "unlockedBy": { "gold": 27 },
+        "celebrationMessage": "Multiplication for independent events done! Next: addition rule."
+      },
+      {
+        "id": "l29-addition-rule-def",
+        "name": "4.6e",
+        "unlockedBy": { "gold": 28 },
+        "celebrationMessage": "Addition rule learned! Next: calculating unions."
+      },
+      {
+        "id": "l30-calculate-union",
+        "name": "4.6f",
+        "unlockedBy": { "gold": 29 },
+        "celebrationMessage": "Unions calculated! Next: independent vs mutually exclusive."
+      },
+      {
+        "id": "l31-indep-vs-me",
+        "name": "4.6g",
+        "unlockedBy": { "gold": 30 },
+        "celebrationMessage": "Key distinction mastered! Final capstone next."
+      },
+      {
+        "id": "l32-mixed-4-6",
+        "name": "4.6 Capstone",
+        "unlockedBy": { "gold": 31 },
+        "celebrationMessage": "UNIT 4.1-4.6 COMPLETE! You've mastered all probability topics!"
       }
     ]
   }

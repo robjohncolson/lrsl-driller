@@ -1,5 +1,5 @@
-// generator.js - AP Statistics Unit 4 Lessons 1-2: Probability & Simulation
-// Topics: Random processes, outcomes, events, simulation, Law of Large Numbers
+// generator.js - AP Statistics Unit 4 Lessons 1-6: Probability & Simulation
+// Topics: Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -1466,6 +1466,553 @@ const mixed43Scenarios = [
   }
 ];
 
+// ============ TOPIC 4.6 SCENARIO BANKS ============
+
+// Level 25: Independent Events Definition
+const independentDefScenarios = [
+  {
+    question: "What does it mean for two events to be INDEPENDENT?",
+    answer: "Knowing one event occurred doesn't change the probability of the other",
+    options: [
+      "Knowing one event occurred doesn't change the probability of the other",
+      "The events cannot occur at the same time",
+      "The events always occur together",
+      "The events have the same probability"
+    ]
+  },
+  {
+    question: "Events A and B are independent if:",
+    answer: "P(A|B) = P(A)",
+    options: [
+      "P(A|B) = P(A)",
+      "P(A ∩ B) = 0",
+      "P(A) + P(B) = 1",
+      "P(A|B) = P(B|A)"
+    ]
+  },
+  {
+    question: "An equivalent definition of independence is:",
+    answer: "P(A ∩ B) = P(A) × P(B)",
+    options: [
+      "P(A ∩ B) = P(A) × P(B)",
+      "P(A ∩ B) = 0",
+      "P(A ∪ B) = P(A) + P(B)",
+      "P(A ∩ B) = P(A) / P(B)"
+    ]
+  },
+  {
+    question: "Which scenario describes INDEPENDENT events?",
+    answer: "Flipping a coin twice - each flip is 50% regardless of the first flip",
+    options: [
+      "Flipping a coin twice - each flip is 50% regardless of the first flip",
+      "Drawing cards WITHOUT replacement - second draw depends on first",
+      "Choosing a freshman and a sophomore from the same student",
+      "Rolling a sum of 7 on two dice that add up to 7"
+    ]
+  },
+  {
+    question: "If P(A) = 0.4 and A and B are independent, then P(A|B) equals:",
+    answer: "0.4",
+    options: ["0.4", "0", "1", "Cannot determine without P(B)"]
+  },
+  {
+    question: "Which is TRUE about independent events?",
+    answer: "Independent events CAN occur at the same time",
+    options: [
+      "Independent events CAN occur at the same time",
+      "Independent events CANNOT occur at the same time",
+      "Independent events must have P(A ∩ B) = 0",
+      "Independent events always have P(A) = P(B)"
+    ]
+  },
+  {
+    question: "Drawing marbles WITH replacement results in:",
+    answer: "Independent draws - each draw has the same probability",
+    options: [
+      "Independent draws - each draw has the same probability",
+      "Dependent draws - probabilities change",
+      "Mutually exclusive draws",
+      "Cannot determine"
+    ]
+  },
+  {
+    question: "For independent events, P(B|A) equals:",
+    answer: "P(B) - knowing A doesn't change B's probability",
+    options: [
+      "P(B) - knowing A doesn't change B's probability",
+      "P(A ∩ B) / P(B)",
+      "0 because they can't happen together",
+      "P(A) because the events are the same"
+    ]
+  }
+];
+
+// Level 26: Check Independence - Conditional Method
+const checkIndepCondScenarios = [
+  {
+    desc: "A survey shows P(Happy) = 0.60 and P(Happy | Freeze Time) = 0.62. Are Happy and Freeze Time independent?",
+    pA: 0.60,
+    pAgivenB: 0.62,
+    isIndep: false,
+    explanation: "P(Happy|Freeze Time) = 0.62 ≠ 0.60 = P(Happy). Since knowing 'Freeze Time' changes the probability of 'Happy', they are NOT independent."
+  },
+  {
+    desc: "For a die roll: P(Even) = 0.5 and P(Even | Greater than 2) = 0.5. Are these events independent?",
+    pA: 0.5,
+    pAgivenB: 0.5,
+    isIndep: true,
+    explanation: "P(Even|>2) = 0.5 = P(Even). Knowing the number is greater than 2 doesn't change the probability of it being even."
+  },
+  {
+    desc: "At a school: P(Plays Sports) = 0.45 and P(Plays Sports | In Band) = 0.32. Are these independent?",
+    pA: 0.45,
+    pAgivenB: 0.32,
+    isIndep: false,
+    explanation: "P(Plays Sports|In Band) = 0.32 ≠ 0.45 = P(Plays Sports). Knowing a student is in Band changes the probability they play sports."
+  },
+  {
+    desc: "Coin flips: P(Heads on flip 2) = 0.5 and P(Heads on flip 2 | Heads on flip 1) = 0.5. Independent?",
+    pA: 0.5,
+    pAgivenB: 0.5,
+    isIndep: true,
+    explanation: "P(H2|H1) = 0.5 = P(H2). The first flip doesn't affect the second flip - they are independent."
+  },
+  {
+    desc: "Weather: P(Rain tomorrow) = 0.30 and P(Rain tomorrow | Rain today) = 0.55. Are these independent?",
+    pA: 0.30,
+    pAgivenB: 0.55,
+    isIndep: false,
+    explanation: "P(Rain tomorrow|Rain today) = 0.55 ≠ 0.30. Knowing it rained today affects the probability of rain tomorrow - NOT independent."
+  },
+  {
+    desc: "From What's the News: P(Uses Internet) = 0.72 and P(Uses Internet | College Grad) = 0.72. Independent?",
+    pA: 0.72,
+    pAgivenB: 0.72,
+    isIndep: true,
+    explanation: "P(Internet|College) = 0.72 = P(Internet). Education level doesn't change internet usage probability in this data - independent."
+  },
+  {
+    desc: "Study habits: P(Passed) = 0.64 and P(Passed | Studies Daily) = 0.92. Are these independent?",
+    pA: 0.64,
+    pAgivenB: 0.92,
+    isIndep: false,
+    explanation: "P(Passed|Studies Daily) = 0.92 ≠ 0.64 = P(Passed). Studying daily greatly increases passing probability - NOT independent."
+  },
+  {
+    desc: "Dice: P(Die 1 is 6) = 1/6 and P(Die 1 is 6 | Die 2 is 6) = 1/6. Are these independent?",
+    pA: 0.167,
+    pAgivenB: 0.167,
+    isIndep: true,
+    explanation: "P(Die1=6|Die2=6) = 1/6 = P(Die1=6). What happens on Die 2 doesn't affect Die 1 - independent."
+  }
+];
+
+// Level 27: Check Independence - Multiplication Method
+const checkIndepMultScenarios = [
+  {
+    desc: "Given: P(E) = 0.4, P(F) = 0.6, P(E ∩ F) = 0.25. Are E and F independent?",
+    pA: 0.4,
+    pB: 0.6,
+    pAB: 0.25,
+    pA_times_pB: 0.24,
+    isIndep: false,
+    explanation: "P(E) × P(F) = 0.4 × 0.6 = 0.24 ≠ 0.25 = P(E ∩ F). Since these aren't equal, E and F are NOT independent."
+  },
+  {
+    desc: "Given: P(A) = 0.5, P(B) = 0.3, P(A ∩ B) = 0.15. Are A and B independent?",
+    pA: 0.5,
+    pB: 0.3,
+    pAB: 0.15,
+    pA_times_pB: 0.15,
+    isIndep: true,
+    explanation: "P(A) × P(B) = 0.5 × 0.3 = 0.15 = P(A ∩ B). These are equal, so A and B ARE independent."
+  },
+  {
+    desc: "Given: P(Math) = 0.525, P(Freshman) = 0.5, P(Math ∩ Freshman) = 0.225. Are Math and Freshman independent?",
+    pA: 0.525,
+    pB: 0.5,
+    pAB: 0.225,
+    pA_times_pB: 0.2625,
+    isIndep: false,
+    explanation: "P(Math) × P(Freshman) = 0.525 × 0.5 = 0.2625 ≠ 0.225. Not equal, so NOT independent."
+  },
+  {
+    desc: "Given: P(Odd) = 0.5, P(Prime) = 0.5 for a die. P(Odd ∩ Prime) = 0.333. Independent?",
+    pA: 0.5,
+    pB: 0.5,
+    pAB: 0.333,
+    pA_times_pB: 0.25,
+    isIndep: false,
+    explanation: "P(Odd) × P(Prime) = 0.5 × 0.5 = 0.25 ≠ 0.333. Odd and Prime on a die are NOT independent."
+  },
+  {
+    desc: "Given: P(Red marble 1st) = 0.4, P(Red marble 2nd WITH replacement) = 0.4, P(Both Red) = 0.16. Independent?",
+    pA: 0.4,
+    pB: 0.4,
+    pAB: 0.16,
+    pA_times_pB: 0.16,
+    isIndep: true,
+    explanation: "P(R1) × P(R2) = 0.4 × 0.4 = 0.16 = P(Both Red). With replacement, draws ARE independent."
+  },
+  {
+    desc: "Given: P(Rain) = 0.2, P(Traffic) = 0.3, P(Rain ∩ Traffic) = 0.09. Are Rain and Traffic independent?",
+    pA: 0.2,
+    pB: 0.3,
+    pAB: 0.09,
+    pA_times_pB: 0.06,
+    isIndep: false,
+    explanation: "P(Rain) × P(Traffic) = 0.2 × 0.3 = 0.06 ≠ 0.09. Rain and Traffic are NOT independent (rain causes more traffic)."
+  },
+  {
+    desc: "Given: P(Heads flip 1) = 0.5, P(Heads flip 2) = 0.5, P(Both Heads) = 0.25. Independent?",
+    pA: 0.5,
+    pB: 0.5,
+    pAB: 0.25,
+    pA_times_pB: 0.25,
+    isIndep: true,
+    explanation: "P(H1) × P(H2) = 0.5 × 0.5 = 0.25 = P(Both Heads). Coin flips ARE independent."
+  },
+  {
+    desc: "Given: P(Defect A) = 0.05, P(Defect B) = 0.08, P(Both Defects) = 0.004. Independent?",
+    pA: 0.05,
+    pB: 0.08,
+    pAB: 0.004,
+    pA_times_pB: 0.004,
+    isIndep: true,
+    explanation: "P(A) × P(B) = 0.05 × 0.08 = 0.004 = P(A ∩ B). These defects ARE independent."
+  }
+];
+
+// Level 28: Multiplication Rule for Independent Events
+const multIndepScenarios = [
+  {
+    desc: "A bag has 4 red and 6 blue marbles. You draw 2 marbles WITH replacement. Find P(both red).",
+    pA: 0.4,
+    pB: 0.4,
+    answer: 0.16,
+    explanation: "With replacement, draws are independent. P(both red) = 0.4 × 0.4 = 0.16"
+  },
+  {
+    desc: "A coin is flipped 3 times. Find P(all heads).",
+    pA: 0.5,
+    pB: 0.5,
+    pC: 0.5,
+    answer: 0.125,
+    explanation: "Coin flips are independent. P(HHH) = 0.5 × 0.5 × 0.5 = 0.125"
+  },
+  {
+    desc: "Two dice are rolled. Find P(both show 6).",
+    pA: 0.167,
+    pB: 0.167,
+    answer: 0.028,
+    explanation: "Dice rolls are independent. P(both 6) = (1/6) × (1/6) = 1/36 ≈ 0.028"
+  },
+  {
+    desc: "P(student passes math) = 0.8 and P(student passes English) = 0.75. If these are independent, find P(passes both).",
+    pA: 0.8,
+    pB: 0.75,
+    answer: 0.6,
+    explanation: "If independent: P(both) = 0.8 × 0.75 = 0.6"
+  },
+  {
+    desc: "A machine has two independent components. P(A works) = 0.95, P(B works) = 0.90. Find P(both work).",
+    pA: 0.95,
+    pB: 0.90,
+    answer: 0.855,
+    explanation: "Independent: P(both work) = 0.95 × 0.90 = 0.855"
+  },
+  {
+    desc: "Two spinners: P(blue on spinner 1) = 0.3, P(blue on spinner 2) = 0.5. Find P(both blue).",
+    pA: 0.3,
+    pB: 0.5,
+    answer: 0.15,
+    explanation: "Spinner results are independent. P(both blue) = 0.3 × 0.5 = 0.15"
+  },
+  {
+    desc: "A basketball player makes 70% of free throws. Find P(makes both shots), assuming independence.",
+    pA: 0.7,
+    pB: 0.7,
+    answer: 0.49,
+    explanation: "If independent: P(makes both) = 0.7 × 0.7 = 0.49"
+  },
+  {
+    desc: "P(rain today) = 0.3 and P(rain tomorrow) = 0.4, assuming independence. Find P(rain both days).",
+    pA: 0.3,
+    pB: 0.4,
+    answer: 0.12,
+    explanation: "If independent: P(both rainy) = 0.3 × 0.4 = 0.12"
+  }
+];
+
+// Level 29: Addition Rule Definition
+const additionRuleDefScenarios = [
+  {
+    question: "The Addition Rule states:",
+    answer: "P(A or B) = P(A) + P(B) - P(A ∩ B)",
+    options: [
+      "P(A or B) = P(A) + P(B) - P(A ∩ B)",
+      "P(A or B) = P(A) × P(B)",
+      "P(A or B) = P(A) + P(B)",
+      "P(A or B) = P(A) - P(B)"
+    ]
+  },
+  {
+    question: "Why do we subtract P(A ∩ B) in the Addition Rule?",
+    answer: "To avoid counting the intersection twice",
+    options: [
+      "To avoid counting the intersection twice",
+      "Because A and B are mutually exclusive",
+      "To make the probability smaller",
+      "Because P(A ∩ B) is always negative"
+    ]
+  },
+  {
+    question: "For MUTUALLY EXCLUSIVE events, the Addition Rule simplifies to:",
+    answer: "P(A or B) = P(A) + P(B)",
+    options: [
+      "P(A or B) = P(A) + P(B)",
+      "P(A or B) = P(A) × P(B)",
+      "P(A or B) = P(A) + P(B) - P(A ∩ B)",
+      "P(A or B) = 1"
+    ]
+  },
+  {
+    question: "The symbol ∪ in probability represents:",
+    answer: "Union (OR) - at least one event occurs",
+    options: [
+      "Union (OR) - at least one event occurs",
+      "Intersection (AND) - both events occur",
+      "Complement (NOT) - event doesn't occur",
+      "Independent events"
+    ]
+  },
+  {
+    question: "P(A ∪ B) means the probability that:",
+    answer: "A occurs, B occurs, or both occur",
+    options: [
+      "A occurs, B occurs, or both occur",
+      "Both A and B occur",
+      "Neither A nor B occurs",
+      "A occurs but B doesn't"
+    ]
+  },
+  {
+    question: "If P(A) = 0.5, P(B) = 0.4, and P(A ∩ B) = 0.2, then P(A or B) equals:",
+    answer: "0.7",
+    options: ["0.7", "0.9", "0.2", "0.1"]
+  },
+  {
+    question: "If events A and B are mutually exclusive with P(A) = 0.3 and P(B) = 0.4, then P(A or B) equals:",
+    answer: "0.7",
+    options: ["0.7", "0.12", "0.0", "1.0"]
+  },
+  {
+    question: "The Addition Rule is used to find:",
+    answer: "The probability that at least one of two events occurs",
+    options: [
+      "The probability that at least one of two events occurs",
+      "The probability that both events occur",
+      "The probability that neither event occurs",
+      "The probability of independent events"
+    ]
+  }
+];
+
+// Level 30: Calculate Union
+const calculateUnionScenarios = [
+  {
+    desc: "P(A) = 0.5, P(B) = 0.4, P(A ∩ B) = 0.2. Find P(A or B).",
+    pA: 0.5,
+    pB: 0.4,
+    pAB: 0.2,
+    answer: 0.7,
+    isME: false,
+    explanation: "P(A ∪ B) = P(A) + P(B) - P(A ∩ B) = 0.5 + 0.4 - 0.2 = 0.7"
+  },
+  {
+    desc: "P(Rain) = 0.3, P(Cloudy) = 0.6, P(Rain ∩ Cloudy) = 0.25. Find P(Rain or Cloudy).",
+    pA: 0.3,
+    pB: 0.6,
+    pAB: 0.25,
+    answer: 0.65,
+    isME: false,
+    explanation: "P(Rain ∪ Cloudy) = 0.3 + 0.6 - 0.25 = 0.65"
+  },
+  {
+    desc: "Events A and B are mutually exclusive. P(A) = 0.35, P(B) = 0.45. Find P(A or B).",
+    pA: 0.35,
+    pB: 0.45,
+    pAB: 0,
+    answer: 0.80,
+    isME: true,
+    explanation: "Mutually exclusive: P(A ∪ B) = P(A) + P(B) = 0.35 + 0.45 = 0.80"
+  },
+  {
+    desc: "For a die: P(Even) = 0.5, P(Greater than 4) = 0.333, P(Even ∩ >4) = 0.167. Find P(Even or >4).",
+    pA: 0.5,
+    pB: 0.333,
+    pAB: 0.167,
+    answer: 0.667,
+    isME: false,
+    explanation: "P(Even ∪ >4) = 0.5 + 0.333 - 0.167 = 0.667 (outcomes: 2,4,5,6)"
+  },
+  {
+    desc: "P(Freshman) = 0.25, P(Senior) = 0.30. These are mutually exclusive. Find P(Freshman or Senior).",
+    pA: 0.25,
+    pB: 0.30,
+    pAB: 0,
+    answer: 0.55,
+    isME: true,
+    explanation: "Mutually exclusive: P(Fresh ∪ Senior) = 0.25 + 0.30 = 0.55"
+  },
+  {
+    desc: "P(Math) = 0.525, P(Female) = 0.48, P(Math ∩ Female) = 0.26. Find P(Math or Female).",
+    pA: 0.525,
+    pB: 0.48,
+    pAB: 0.26,
+    answer: 0.745,
+    isME: false,
+    explanation: "P(Math ∪ Female) = 0.525 + 0.48 - 0.26 = 0.745"
+  },
+  {
+    desc: "Card draw: P(Heart) = 0.25, P(Face Card) = 0.231, P(Heart ∩ Face) = 0.058. Find P(Heart or Face Card).",
+    pA: 0.25,
+    pB: 0.231,
+    pAB: 0.058,
+    answer: 0.423,
+    isME: false,
+    explanation: "P(Heart ∪ Face) = 0.25 + 0.231 - 0.058 = 0.423"
+  },
+  {
+    desc: "P(Red ball) = 0.4, P(Blue ball) = 0.35. These are mutually exclusive (one ball). Find P(Red or Blue).",
+    pA: 0.4,
+    pB: 0.35,
+    pAB: 0,
+    answer: 0.75,
+    isME: true,
+    explanation: "One ball can't be both colors: P(Red ∪ Blue) = 0.4 + 0.35 = 0.75"
+  }
+];
+
+// Level 31: Independent vs Mutually Exclusive
+const indepVsMEScenarios = [
+  {
+    desc: "Flipping two coins: Event A = Heads on coin 1, Event B = Heads on coin 2. P(A ∩ B) = 0.25, P(A) = 0.5, P(B) = 0.5.",
+    relationship: "Independent but NOT mutually exclusive",
+    explanation: "P(A)×P(B) = 0.25 = P(A ∩ B), so independent. P(A ∩ B) > 0, so NOT mutually exclusive. They CAN and DO occur together."
+  },
+  {
+    desc: "Rolling a die: Event A = Rolling a 1, Event B = Rolling a 6. P(A ∩ B) = 0.",
+    relationship: "Mutually exclusive but NOT independent",
+    explanation: "P(A ∩ B) = 0, so mutually exclusive. But P(A|B) = 0 ≠ 1/6 = P(A), so NOT independent."
+  },
+  {
+    desc: "Drawing a card: Event A = Red card, Event B = Heart. P(A) = 0.5, P(B) = 0.25, P(A ∩ B) = 0.25.",
+    relationship: "Neither independent NOR mutually exclusive",
+    explanation: "P(A)×P(B) = 0.125 ≠ 0.25, so NOT independent. P(A ∩ B) = 0.25 > 0, so NOT mutually exclusive."
+  },
+  {
+    desc: "Two machines: P(A fails) = 0.1, P(B fails) = 0.1, P(both fail) = 0.01. Failures are independent.",
+    relationship: "Independent but NOT mutually exclusive",
+    explanation: "P(A)×P(B) = 0.01 = P(A ∩ B), confirming independence. P(A ∩ B) > 0, so they CAN both fail (not ME)."
+  },
+  {
+    desc: "Student grades: Event A = Getting an A, Event B = Getting a B. P(A ∩ B) = 0.",
+    relationship: "Mutually exclusive but NOT independent",
+    explanation: "Can't get both A and B on same assignment (ME). But knowing you got A means B probability becomes 0 (not independent)."
+  },
+  {
+    desc: "Spinners: P(Red on S1) = 0.3, P(Blue on S2) = 0.4, P(Red on S1 AND Blue on S2) = 0.12.",
+    relationship: "Independent but NOT mutually exclusive",
+    explanation: "P(R)×P(B) = 0.12 = P(R ∩ B), so independent. P(R ∩ B) > 0, so can occur together (not ME)."
+  },
+  {
+    desc: "Weather: P(Sunny) = 0.6, P(Rainy) = 0.3, P(Sunny ∩ Rainy) = 0.",
+    relationship: "Mutually exclusive but NOT independent",
+    explanation: "Can't be both sunny and rainy (ME). But P(Sunny|Rainy) = 0 ≠ 0.6 = P(Sunny), so NOT independent."
+  },
+  {
+    desc: "Survey: P(Happy) = 0.4, P(Rich preference) = 0.3, P(Happy ∩ Rich) = 0.12.",
+    relationship: "Independent but NOT mutually exclusive",
+    explanation: "P(Happy)×P(Rich) = 0.12 = P(Happy ∩ Rich), so independent. They can be both (not ME)."
+  }
+];
+
+// Level 32: Mixed 4.6 Capstone
+const mixed46Scenarios = [
+  {
+    desc: "If P(A) = 0.3, P(B) = 0.5, and A and B are INDEPENDENT, what is P(A ∩ B)?",
+    answer: "0.15",
+    options: ["0.15", "0.80", "0", "0.65"],
+    concept: "Multiplication rule for independent events",
+    explanation: "For independent events: P(A ∩ B) = P(A) × P(B) = 0.3 × 0.5 = 0.15"
+  },
+  {
+    desc: "Events A and B are mutually exclusive with P(A) = 0.4 and P(B) = 0.35. What is P(A or B)?",
+    answer: "0.75",
+    options: ["0.75", "0.14", "0.05", "1.0"],
+    concept: "Addition rule for mutually exclusive events",
+    explanation: "Mutually exclusive means P(A ∩ B) = 0, so P(A ∪ B) = P(A) + P(B) = 0.4 + 0.35 = 0.75"
+  },
+  {
+    desc: "Can two events be BOTH independent AND mutually exclusive (assuming both have non-zero probability)?",
+    answer: "No - mutually exclusive events with P > 0 are always dependent",
+    options: [
+      "No - mutually exclusive events with P > 0 are always dependent",
+      "Yes - these concepts are the same",
+      "Yes - they're unrelated concepts",
+      "Only if P(A) = P(B)"
+    ],
+    concept: "Independent vs mutually exclusive distinction",
+    explanation: "If ME, then P(A ∩ B) = 0. If independent, P(A ∩ B) = P(A)×P(B). Both can only be true if P(A)=0 or P(B)=0."
+  },
+  {
+    desc: "P(A) = 0.6, P(B) = 0.5, P(A ∩ B) = 0.2. What is P(A or B)?",
+    answer: "0.9",
+    options: ["0.9", "1.1", "0.3", "0.7"],
+    concept: "General addition rule",
+    explanation: "P(A ∪ B) = P(A) + P(B) - P(A ∩ B) = 0.6 + 0.5 - 0.2 = 0.9"
+  },
+  {
+    desc: "If P(A|B) = P(A), what can you conclude about events A and B?",
+    answer: "A and B are independent",
+    options: [
+      "A and B are independent",
+      "A and B are mutually exclusive",
+      "A and B are complementary",
+      "P(A ∩ B) = 0"
+    ],
+    concept: "Definition of independence",
+    explanation: "P(A|B) = P(A) is the definition of independence. Knowing B doesn't change A's probability."
+  },
+  {
+    desc: "A coin is flipped 4 times. What is P(at least one heads)?",
+    answer: "0.9375 (using complement: 1 - 0.5⁴)",
+    options: ["0.9375 (using complement: 1 - 0.5⁴)", "0.5", "0.25", "0.0625"],
+    concept: "At least one with independent events",
+    explanation: "P(at least 1 H) = 1 - P(no H) = 1 - (0.5)⁴ = 1 - 0.0625 = 0.9375"
+  },
+  {
+    desc: "Which is the key difference between independent and mutually exclusive events?",
+    answer: "Independent events CAN occur together; mutually exclusive events CANNOT",
+    options: [
+      "Independent events CAN occur together; mutually exclusive events CANNOT",
+      "They are the same concept with different names",
+      "Independent events cannot occur together",
+      "Mutually exclusive events always occur together"
+    ],
+    concept: "Distinguishing independent from mutually exclusive",
+    explanation: "Independent: occurrence of one doesn't affect the other's probability. ME: they cannot both occur."
+  },
+  {
+    desc: "P(A) = 0.4, P(B) = 0.5. If A and B are independent, what is P(B|A)?",
+    answer: "0.5 - independence means P(B|A) = P(B)",
+    options: ["0.5 - independence means P(B|A) = P(B)", "0.4", "0.2", "0.9"],
+    concept: "Conditional probability with independence",
+    explanation: "For independent events, P(B|A) = P(B). Knowing A occurred doesn't change B's probability."
+  }
+];
+
 // Level 11: Capstone Scenarios
 const capstoneScenarios = [
   {
@@ -2077,6 +2624,200 @@ export function generateProblem(modeId, contextFromFile, mode) {
     answers = {
       capstone44Answer: { value: scen.answer },
       capstone44Explain: { value: scen.explanation }
+    };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 25: Independent Events Definition ==========
+  if (modeId === "l25-independent-def") {
+    const scen = drawFromBag('indepDef', independentDefScenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.6a",
+      problemText: "**VAR-4.E:** Independent Events\n\n" +
+                   "Events A and B are **independent** if:\n" +
+                   "• Knowing one occurred doesn't change the other's probability\n" +
+                   "• P(A|B) = P(A) (or equivalently P(B|A) = P(B))\n" +
+                   "• P(A ∩ B) = P(A) × P(B)\n\n" +
+                   "⚠️ Independent ≠ Mutually Exclusive!",
+      givenText: scen.question,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3]
+    };
+    answers = { indepDefAnswer: { value: scen.answer } };
+    scenario = scen.question;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 26: Check Independence - Conditional Method ==========
+  if (modeId === "l26-check-indep-conditional") {
+    const scen = drawFromBag('checkIndepCond', checkIndepCondScenarios);
+
+    context = {
+      topicId: "4.6b",
+      problemText: "**VAR-4.E:** Checking Independence (Conditional Method)\n\n" +
+                   "To check if A and B are independent:\n" +
+                   "Compare P(A|B) with P(A)\n\n" +
+                   "• If P(A|B) = P(A) → Independent\n" +
+                   "• If P(A|B) ≠ P(A) → NOT Independent (Dependent)\n\n" +
+                   "Knowing B shouldn't change A's probability!",
+      givenText: `${scen.desc}\n\nP(A) = ${scen.pA}\nP(A|B) = ${scen.pAgivenB}`,
+      pA: scen.pA,
+      pAgivenB: scen.pAgivenB,
+      isIndep: scen.isIndep,
+      explanation: scen.explanation
+    };
+    answers = { checkIndepCondAnswer: { value: scen.isIndep ? "Yes, they are independent" : "No, they are NOT independent" } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 27: Check Independence - Multiplication Method ==========
+  if (modeId === "l27-check-indep-mult") {
+    const scen = drawFromBag('checkIndepMult', checkIndepMultScenarios);
+
+    context = {
+      topicId: "4.6c",
+      problemText: "**VAR-4.E:** Checking Independence (Multiplication Method)\n\n" +
+                   "To check if A and B are independent:\n" +
+                   "Calculate P(A) × P(B) and compare with P(A ∩ B)\n\n" +
+                   "• If P(A) × P(B) = P(A ∩ B) → Independent\n" +
+                   "• If P(A) × P(B) ≠ P(A ∩ B) → NOT Independent",
+      givenText: `${scen.desc}\n\nP(A) = ${scen.pA}, P(B) = ${scen.pB}, P(A ∩ B) = ${scen.pAB}`,
+      pA: scen.pA,
+      pB: scen.pB,
+      pAB: scen.pAB,
+      pA_times_pB: scen.pA_times_pB,
+      isIndep: scen.isIndep,
+      explanation: scen.explanation
+    };
+    answers = {
+      pAB_calc: { value: scen.pA_times_pB, tolerance: 0.005 },
+      checkIndepMultAnswer: { value: scen.isIndep ? "Yes, they are independent" : "No, they are NOT independent" }
+    };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 28: Multiplication Rule for Independent Events ==========
+  if (modeId === "l28-mult-rule-indep") {
+    const scen = drawFromBag('multIndep', multIndepScenarios);
+
+    context = {
+      topicId: "4.6d",
+      problemText: "**VAR-4.E:** Multiplication Rule for Independent Events\n\n" +
+                   "For **independent** events:\n" +
+                   "**P(A and B) = P(A) × P(B)**\n\n" +
+                   "This simplified rule only works when events are independent!\n" +
+                   "Examples: coin flips, dice rolls, draws WITH replacement",
+      givenText: scen.desc,
+      pA: scen.pA,
+      pB: scen.pB,
+      explanation: scen.explanation
+    };
+    answers = { multIndepAnswer: { value: scen.answer, tolerance: 0.005 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 29: Addition Rule Definition ==========
+  if (modeId === "l29-addition-rule-def") {
+    const scen = drawFromBag('addRuleDef', additionRuleDefScenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.6e",
+      problemText: "**VAR-4.E:** Addition Rule (Union)\n\n" +
+                   "**P(A or B) = P(A) + P(B) - P(A ∩ B)**\n\n" +
+                   "We subtract P(A ∩ B) to avoid double-counting!\n\n" +
+                   "For **mutually exclusive** events (P(A ∩ B) = 0):\n" +
+                   "P(A or B) = P(A) + P(B)",
+      givenText: scen.question,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3]
+    };
+    answers = { addRuleDefAnswer: { value: scen.answer } };
+    scenario = scen.question;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 30: Calculate Union ==========
+  if (modeId === "l30-calculate-union") {
+    const scen = drawFromBag('calcUnion', calculateUnionScenarios);
+
+    const meNote = scen.isME ? "\n\n(Note: These events are mutually exclusive)" : "";
+
+    context = {
+      topicId: "4.6f",
+      problemText: "**VAR-4.E:** Calculating P(A or B)\n\n" +
+                   "General Addition Rule:\n" +
+                   "**P(A ∪ B) = P(A) + P(B) - P(A ∩ B)**\n\n" +
+                   "If mutually exclusive (P(A ∩ B) = 0):\n" +
+                   "P(A ∪ B) = P(A) + P(B)",
+      givenText: scen.desc + meNote,
+      pA: scen.pA,
+      pB: scen.pB,
+      pAB: scen.pAB,
+      isME: scen.isME,
+      explanation: scen.explanation
+    };
+    answers = { unionAnswer: { value: scen.answer, tolerance: 0.01 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 31: Independent vs Mutually Exclusive ==========
+  if (modeId === "l31-indep-vs-me") {
+    const scen = drawFromBag('indepVsME', indepVsMEScenarios);
+
+    context = {
+      topicId: "4.6g",
+      problemText: "**VAR-4.E:** Independent vs Mutually Exclusive\n\n" +
+                   "**Independent**: P(A ∩ B) = P(A) × P(B)\n" +
+                   "• Events CAN occur together\n" +
+                   "• Knowing one doesn't change the other's probability\n\n" +
+                   "**Mutually Exclusive**: P(A ∩ B) = 0\n" +
+                   "• Events CANNOT occur together\n" +
+                   "• These are always DEPENDENT (knowing one affects the other!)",
+      givenText: scen.desc,
+      explanation: scen.explanation
+    };
+    answers = { indepVsMeAnswer: { value: scen.relationship } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 32: Mixed 4.6 Capstone ==========
+  if (modeId === "l32-mixed-4-6") {
+    const scen = drawFromBag('mixed46', mixed46Scenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.6",
+      problemText: "**Topic 4.6 Mixed Practice**\n\n" +
+                   "Key Concepts:\n" +
+                   "• Independent: P(A|B) = P(A), or P(A ∩ B) = P(A)×P(B)\n" +
+                   "• For independent: P(A and B) = P(A) × P(B)\n" +
+                   "• Addition Rule: P(A or B) = P(A) + P(B) - P(A ∩ B)\n" +
+                   "• ME simplifies to: P(A or B) = P(A) + P(B)\n" +
+                   "• Independent ≠ Mutually Exclusive!",
+      givenText: scen.desc,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      concept: scen.concept,
+      explanation: scen.explanation
+    };
+    answers = {
+      capstone46Answer: { value: scen.answer },
+      capstone46Explain: { value: scen.explanation }
     };
     scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
