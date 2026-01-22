@@ -37,6 +37,10 @@ export class GameModeManager {
     this.onModeChange = null;
     this.onTiebreakerTypeChange = null;
 
+    // v4.3.4: Store user data to pass when switching modes
+    this._allUsers = [];
+    this._onlineUsernames = [];
+
     // Lazy-load KotHPanel to avoid circular dependencies
     this.KotHPanel = null;
   }
@@ -214,6 +218,8 @@ export class GameModeManager {
         this.userClassPeriod,
         this.teacherPassword
       );
+      // v4.3.4: Pass stored user data to newly activated panel
+      this._passUserDataToPanel();
     } else if (mode === 'koth') {
       // Lazy-load KotHPanel
       if (!this.KotHPanel) {
@@ -237,9 +243,26 @@ export class GameModeManager {
         this.userClassPeriod,
         this.teacherPassword
       );
+      // v4.3.4: Pass stored user data to newly activated panel
+      this._passUserDataToPanel();
     }
 
     return this.activePanel;
+  }
+
+  /**
+   * Pass stored user data to the active panel
+   * v4.3.4: Helper for mode switching
+   */
+  _passUserDataToPanel() {
+    if (this.activePanel) {
+      if (this._allUsers.length > 0 && typeof this.activePanel.setAvailableUsers === 'function') {
+        this.activePanel.setAvailableUsers(this._allUsers);
+      }
+      if (this._onlineUsernames.length > 0 && typeof this.activePanel.setOnlineUsers === 'function') {
+        this.activePanel.setOnlineUsers(this._onlineUsernames);
+      }
+    }
   }
 
   /**
@@ -386,8 +409,10 @@ export class GameModeManager {
 
   /**
    * Set available users for team assignment (delegates to active panel)
+   * v4.3.4: Also stores data for mode switching
    */
   setAvailableUsers(users) {
+    this._allUsers = users || [];
     if (this.activePanel && typeof this.activePanel.setAvailableUsers === 'function') {
       this.activePanel.setAvailableUsers(users);
     }
@@ -395,8 +420,10 @@ export class GameModeManager {
 
   /**
    * Set online users (delegates to active panel for filtering)
+   * v4.3.4: Also stores data for mode switching
    */
   setOnlineUsers(usernames) {
+    this._onlineUsernames = usernames || [];
     if (this.activePanel && typeof this.activePanel.setOnlineUsers === 'function') {
       this.activePanel.setOnlineUsers(usernames);
     }

@@ -21,6 +21,7 @@ export class KotHPanel {
     this.userClassPeriod = null;
     this.teacherPassword = null; // v4.3.4: For authenticated teacher actions
     this.allUsers = [];
+    this.onlineUsernames = new Set(); // v4.3.4: Online users (for filtering)
 
     // Timer intervals
     this.timerInterval = null;
@@ -74,6 +75,17 @@ export class KotHPanel {
    */
   setAvailableUsers(users) {
     this.allUsers = users;
+    if (this.isTeacher) {
+      this._updateTeacherPanel();
+    }
+  }
+
+  /**
+   * Set online users (for filtering available users to only online ones)
+   * v4.3.4: Added to match CTFPanel interface
+   */
+  setOnlineUsers(usernames) {
+    this.onlineUsernames = new Set(usernames || []);
     if (this.isTeacher) {
       this._updateTeacherPanel();
     }
