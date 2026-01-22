@@ -19,6 +19,7 @@ export class CTFPanel {
 
     this.isTeacher = false;
     this.userClassPeriod = null; // User's assigned class period
+    this.teacherPassword = null; // v4.3.4: For authenticated teacher actions
     this.allUsers = []; // For teacher team assignment
     this.onlineUsernames = new Set(); // Online users (for filtering)
 
@@ -40,10 +41,12 @@ export class CTFPanel {
 
   /**
    * Initialize for a cartridge
+   * v4.3.4: Added teacherPassword parameter for authenticated teacher actions
    */
-  async init(cartridgeId, username, isTeacher = false, userClassPeriod = null) {
+  async init(cartridgeId, username, isTeacher = false, userClassPeriod = null, teacherPassword = null) {
     this.isTeacher = isTeacher;
     this.userClassPeriod = userClassPeriod;
+    this.teacherPassword = teacherPassword;
 
     // For teachers, default to period A; for students, use their assigned period
     const initialPeriod = isTeacher ? (userClassPeriod || 'A') : userClassPeriod;
@@ -54,7 +57,7 @@ export class CTFPanel {
       return null;
     }
 
-    await this.state.init(cartridgeId, username, initialPeriod);
+    await this.state.init(cartridgeId, username, initialPeriod, teacherPassword);
     this._updateUI();
 
     // Initialize renderer after DOM is ready

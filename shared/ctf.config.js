@@ -13,7 +13,10 @@ export const CTF_CONFIG = {
   redFlag: 20,              // Red flag at position 20
 
   // Points required to move front line 1 position
-  pointsPerMove: 20,
+  // v4.3.4: Now dynamic - server calculates based on player count
+  // Formula: max(minPointsPerMove, totalPlayers)
+  pointsPerMove: 20, // default fallback
+  minPointsPerMove: 2, // minimum for small games
 
   // Star point values (same as weighted scoring, simplified)
   starPoints: {

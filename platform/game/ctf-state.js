@@ -13,6 +13,7 @@ export class CTFState {
     this.cartridgeId = null;
     this.username = null;
     this.classPeriod = null;
+    this.teacherPassword = null; // v4.3.4: For authenticated teacher actions
 
     // Game state
     this.frontPosition = CTF_CONFIG.startPosition;
@@ -22,6 +23,10 @@ export class CTFState {
     this.blueTeam = [];
     this.redTeam = [];
     this.userTeam = null;
+
+    // v4.3.4: Server config with dynamic pointsPerMove
+    this.config = { ...CTF_CONFIG };
+    this.totalPlayers = 0;
 
     // Session state
     this.sessionStatus = 'idle';
@@ -51,11 +56,13 @@ export class CTFState {
 
   /**
    * Initialize state for a cartridge and class period
+   * v4.3.4: Added teacherPassword parameter for authenticated actions
    */
-  async init(cartridgeId, username, classPeriod) {
+  async init(cartridgeId, username, classPeriod, teacherPassword = null) {
     this.cartridgeId = cartridgeId;
     this.username = username;
     this.classPeriod = classPeriod;
+    this.teacherPassword = teacherPassword;
 
     if (!classPeriod) {
       console.warn('CTFState: No class period provided');
@@ -198,15 +205,21 @@ export class CTFState {
 
   /**
    * Reset game (teacher only)
+   * v4.3.4: Now includes teacher password for authentication
    */
   async resetGame(preserveTeams = true) {
     if (!this.classPeriod) {
       throw new Error('class_period is required');
     }
 
+    const headers = { 'Content-Type': 'application/json' };
+    if (this.teacherPassword) {
+      headers['x-teacher-password'] = this.teacherPassword;
+    }
+
     const response = await fetch(`${this.serverUrl}/api/ctf/${this.cartridgeId}/reset`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         preserveTeams,
         class_period: this.classPeriod
@@ -686,6 +699,14 @@ export class CTFState {
     this.redTeam = state.redTeam || [];
     this.userTeam = state.userTeam;
 
+    // v4.3.4: Store server config with dynamic pointsPerMove
+    if (state.config) {
+      this.config = state.config;
+    }
+    if (state.totalPlayers !== undefined) {
+      this.totalPlayers = state.totalPlayers;
+    }
+
     // Session state
     this.sessionStatus = state.sessionStatus || 'idle';
     this.sessionStartTime = state.sessionStartTime;
@@ -733,21 +754,25 @@ export class CTFState {
 
   /**
    * Get progress to next position move
+   * v4.3.4: Uses dynamic pointsPerMove from server config
    */
   getProgressToNextMove() {
     // How many points does each team need to move the front line one more position?
-    const blueRemainder = this.bluePoints % CTF_CONFIG.pointsPerMove;
-    const redRemainder = this.redPoints % CTF_CONFIG.pointsPerMove;
+    const ppm = this.config?.pointsPerMove || CTF_CONFIG.pointsPerMove;
+    const blueRemainder = this.bluePoints % ppm;
+    const redRemainder = this.redPoints % ppm;
 
     return {
       blue: {
         current: blueRemainder,
-        needed: CTF_CONFIG.pointsPerMove - blueRemainder
+        needed: ppm - blueRemainder
       },
       red: {
         current: redRemainder,
-        needed: CTF_CONFIG.pointsPerMove - redRemainder
-      }
+        needed: ppm - redRemainder
+      },
+      pointsPerMove: ppm,
+      totalPlayers: this.totalPlayers
     };
   }
 

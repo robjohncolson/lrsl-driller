@@ -206,11 +206,13 @@ export class GameModeManager {
       }
 
       this.activePanel = this.panels.ctf;
+      // v4.3.4: Pass teacherPassword for authenticated actions
       await this.activePanel.init(
         this.cartridgeId,
         this.username,
         this.isTeacher,
-        this.userClassPeriod
+        this.userClassPeriod,
+        this.teacherPassword
       );
     } else if (mode === 'koth') {
       // Lazy-load KotHPanel
@@ -227,11 +229,13 @@ export class GameModeManager {
       }
 
       this.activePanel = this.panels.koth;
+      // v4.3.4: Pass teacherPassword for authenticated actions
       await this.activePanel.init(
         this.cartridgeId,
         this.username,
         this.isTeacher,
-        this.userClassPeriod
+        this.userClassPeriod,
+        this.teacherPassword
       );
     }
 

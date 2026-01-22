@@ -2165,7 +2165,9 @@ const CTF_CONFIG = {
   startPosition: 10,
   blueFlag: 0,
   redFlag: 20,
-  pointsPerMove: 20,
+  // v4.3.4: pointsPerMove is now dynamic based on player count - use calculatePointsPerMove()
+  pointsPerMove: 20, // default fallback
+  minPointsPerMove: 2, // minimum points needed to move (for small games)
   starPoints: { gold: 4, silver: 3, bronze: 2, tin: 1 },
   // v4.2: Session and tiebreaker settings
   validPeriods: ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
@@ -2177,6 +2179,17 @@ const CTF_CONFIG = {
   warningMinutes: [5, 1],
   readyCheckTimeoutMs: 30000
 };
+
+/**
+ * v4.3.4: Calculate pointsPerMove based on total player count
+ * Formula: max(minPointsPerMove, totalPlayers)
+ * - 2 players: 2 points to move
+ * - 4 players: 4 points to move
+ * - 10 players: 10 points to move
+ */
+function calculatePointsPerMove(totalPlayers) {
+  return Math.max(CTF_CONFIG.minPointsPerMove, totalPlayers || CTF_CONFIG.minPointsPerMove);
+}
 
 /**
  * Validate class_period parameter
@@ -2246,10 +2259,12 @@ async function getCTFPlayers(cartridgeId, classPeriod) {
 /**
  * Calculate front line position based on points
  * Returns new position and whether a team won
+ * v4.3.4: Now takes pointsPerMove as a parameter for dynamic scaling
  */
-function calculateFrontPosition(bluePoints, redPoints) {
-  const blueAdvance = Math.floor(bluePoints / CTF_CONFIG.pointsPerMove);
-  const redAdvance = Math.floor(redPoints / CTF_CONFIG.pointsPerMove);
+function calculateFrontPosition(bluePoints, redPoints, pointsPerMove) {
+  const ppm = pointsPerMove || CTF_CONFIG.pointsPerMove;
+  const blueAdvance = Math.floor(bluePoints / ppm);
+  const redAdvance = Math.floor(redPoints / ppm);
   const netPosition = CTF_CONFIG.startPosition + blueAdvance - redAdvance;
 
   // Clamp to lane bounds
@@ -2285,6 +2300,10 @@ app.get('/api/ctf/:cartridgeId/state', async (req, res) => {
     const blueTeam = players.filter(p => p.team === 'blue');
     const redTeam = players.filter(p => p.team === 'red');
 
+    // v4.3.4: Calculate dynamic pointsPerMove based on total player count
+    const totalPlayers = players.length;
+    const dynamicPointsPerMove = calculatePointsPerMove(totalPlayers);
+
     // Find current user's team
     let userTeam = null;
     if (username) {
@@ -2310,7 +2329,9 @@ app.get('/api/ctf/:cartridgeId/state', async (req, res) => {
       sessionEndedAt: game.session_ended_at,
       endReason: game.end_reason,
       tiebreakerWinner: game.tiebreaker_winner,
-      config: CTF_CONFIG
+      // v4.3.4: Include dynamic pointsPerMove in config
+      config: { ...CTF_CONFIG, pointsPerMove: dynamicPointsPerMove },
+      totalPlayers // Include for transparency
     });
   } catch (err) {
     console.error('GET /api/ctf/:cartridgeId/state error:', err);
@@ -2410,20 +2431,15 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
       });
     }
 
-    // Get player's team
-    const { data: player, error: playerError } = await supabase
-      .from('ctf_players')
-      .select('team, points_contributed, session_points, first_point_at')
-      .eq('cartridge_id', cartridgeId)
-      .eq('class_period', class_period)
-      .eq('username', username)
-      .single();
+    // Get all players to calculate dynamic pointsPerMove
+    const players = await getCTFPlayers(cartridgeId, class_period);
+    const totalPlayers = players.length;
+    const dynamicPointsPerMove = calculatePointsPerMove(totalPlayers);
 
-    if (playerError) {
-      if (playerError.code === 'PGRST116') {
-        return res.status(400).json({ error: 'Player not assigned to a team' });
-      }
-      throw playerError;
+    // Get player's team
+    const player = players.find(p => p.username === username);
+    if (!player) {
+      return res.status(400).json({ error: 'Player not assigned to a team' });
     }
 
     // Check if game already won
@@ -2464,8 +2480,8 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
     const bluePoints = player.team === 'blue' ? newTeamPoints : game.blue_points;
     const redPoints = player.team === 'red' ? newTeamPoints : game.red_points;
 
-    // Calculate new front position
-    const { position: newPosition, winner } = calculateFrontPosition(bluePoints, redPoints);
+    // Calculate new front position with dynamic pointsPerMove
+    const { position: newPosition, winner } = calculateFrontPosition(bluePoints, redPoints, dynamicPointsPerMove);
 
     // Update game state
     const gameUpdate = {
@@ -2533,7 +2549,10 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
       redPoints,
       winner,
       playerPoints: newPlayerPoints,
-      sessionPoints: newSessionPoints
+      sessionPoints: newSessionPoints,
+      // v4.3.4: Include dynamic pointsPerMove
+      pointsPerMove: dynamicPointsPerMove,
+      totalPlayers
     });
   } catch (err) {
     console.error('POST /api/ctf/:cartridgeId/points error:', err);

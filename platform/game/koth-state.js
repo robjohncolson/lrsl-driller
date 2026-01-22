@@ -14,6 +14,7 @@ export class KotHState {
     this.cartridgeId = null;
     this.username = null;
     this.classPeriod = null;
+    this.teacherPassword = null; // v4.3.4: For authenticated teacher actions
 
     // Game state
     this.blueBankedSeconds = 0;
@@ -51,11 +52,13 @@ export class KotHState {
 
   /**
    * Initialize state for a cartridge and class period
+   * v4.3.4: Added teacherPassword parameter for authenticated actions
    */
-  async init(cartridgeId, username, classPeriod) {
+  async init(cartridgeId, username, classPeriod, teacherPassword = null) {
     this.cartridgeId = cartridgeId;
     this.username = username;
     this.classPeriod = classPeriod;
+    this.teacherPassword = teacherPassword;
 
     if (!classPeriod) {
       console.warn('KotHState: No class period provided');
@@ -196,15 +199,21 @@ export class KotHState {
 
   /**
    * Reset game (teacher only)
+   * v4.3.4: Now includes teacher password for authentication
    */
   async resetGame(preserveTeams = true) {
     if (!this.classPeriod) {
       throw new Error('class_period is required');
     }
 
+    const headers = { 'Content-Type': 'application/json' };
+    if (this.teacherPassword) {
+      headers['x-teacher-password'] = this.teacherPassword;
+    }
+
     const response = await fetch(`${this.serverUrl}/api/koth/${this.cartridgeId}/reset`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         preserveTeams,
         class_period: this.classPeriod

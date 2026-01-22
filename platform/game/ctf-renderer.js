@@ -46,11 +46,14 @@ export class CTFRenderer {
 
   /**
    * Render the CTF lane
+   * v4.3.4: Uses dynamic pointsPerMove from state.config
    */
   render(state) {
     const { ctx, width, height } = this;
-    const { frontPosition, winner, bluePoints, redPoints, sessionStatus } = state;
-    const { colors, laneLength, blueFlag, redFlag, pointsPerMove } = CTF_CONFIG;
+    const { frontPosition, winner, bluePoints, redPoints, sessionStatus, config } = state;
+    // v4.3.4: Use dynamic pointsPerMove from state config, fallback to CTF_CONFIG
+    const { colors, laneLength, blueFlag, redFlag } = CTF_CONFIG;
+    const pointsPerMove = config?.pointsPerMove || CTF_CONFIG.pointsPerMove;
 
     // Update session status from state
     this.sessionStatus = sessionStatus || 'idle';

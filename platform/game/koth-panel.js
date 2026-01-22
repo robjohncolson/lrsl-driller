@@ -19,6 +19,7 @@ export class KotHPanel {
 
     this.isTeacher = false;
     this.userClassPeriod = null;
+    this.teacherPassword = null; // v4.3.4: For authenticated teacher actions
     this.allUsers = [];
 
     // Timer intervals
@@ -37,10 +38,12 @@ export class KotHPanel {
 
   /**
    * Initialize for a cartridge
+   * v4.3.4: Added teacherPassword parameter for authenticated teacher actions
    */
-  async init(cartridgeId, username, isTeacher = false, userClassPeriod = null) {
+  async init(cartridgeId, username, isTeacher = false, userClassPeriod = null, teacherPassword = null) {
     this.isTeacher = isTeacher;
     this.userClassPeriod = userClassPeriod;
+    this.teacherPassword = teacherPassword;
 
     const initialPeriod = isTeacher ? (userClassPeriod || 'A') : userClassPeriod;
 
@@ -49,7 +52,7 @@ export class KotHPanel {
       return null;
     }
 
-    await this.state.init(cartridgeId, username, initialPeriod);
+    await this.state.init(cartridgeId, username, initialPeriod, teacherPassword);
     this._updateUI();
 
     // Initialize renderer after DOM is ready
