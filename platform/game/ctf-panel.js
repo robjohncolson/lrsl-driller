@@ -218,7 +218,7 @@ export class CTFPanel {
           </div>
 
           <div class="team-assignment">
-            <h5>Assign Teams</h5>
+            <h5>Assign Teams <span id="online-user-count" style="font-weight: normal; color: #9ca3af; font-size: 12px;"></span></h5>
             <select id="user-select" multiple size="8"></select>
             <div class="assign-buttons">
               <button id="assign-blue">→ Blue</button>

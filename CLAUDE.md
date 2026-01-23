@@ -14,7 +14,7 @@ Current cartridges (12 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v4.3.3 (Probability Cartridge Extended to 4.5 + Deep Linking Fix)
+**Current Version**: v4.3.4 (Points Integer Fix & KotH Online Users)
 
 ## Development Commands
 
@@ -337,6 +337,18 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 - `cartridges/registry.json` - Available cartridge listing
 
 ## Version History (Bug Fixes)
+
+**v4.3.4**: Points Integer Fix & KotH Online Users
+- **CTF/KotH Points Integer Fix**: Weighted scoring produces decimals (e.g., 1.5 for silver star at level 1 with 0.5x multiplier)
+  - Database columns (`points_contributed`, `session_points`, team points) are INTEGER type
+  - Added `Math.round(points)` to both `/api/ctf/:cartridgeId/points` and `/api/koth/:cartridgeId/points` endpoints
+  - Fixes error: "invalid input syntax for type integer: '1.5'"
+  - New tests: 14 regression tests (`tests/server/points-integer.test.js`)
+- **KotH Online Users Parity**: KotH panel now filters team assignment list by online users, matching CTF behavior
+  - Shows green dot (🟢) indicator for online users
+  - Shows period badge for users from different periods
+  - Added "(X online)" count display to both CTF and KotH panels
+  - New tests: 17 regression tests (`tests/game/koth-online-users.test.js`)
 
 **v4.3.3**: Probability Cartridge Extended to 4.5 + Deep Linking Fix
 - **apstatu4l1l2 Extended**: Now covers Topics 4.1-4.5 (was 4.1-4.3)

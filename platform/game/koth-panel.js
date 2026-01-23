@@ -212,7 +212,7 @@ export class KotHPanel {
           </div>
 
           <div class="team-assignment">
-            <h5>Assign Teams</h5>
+            <h5>Assign Teams <span id="online-user-count" style="font-weight: normal; color: #9ca3af; font-size: 12px;"></span></h5>
             <select id="user-select" multiple size="8"></select>
             <div class="assign-buttons">
               <button id="assign-blue">\u2192 Blue</button>
@@ -699,20 +699,38 @@ export class KotHPanel {
     const select = this.container.querySelector('#user-select');
     if (!select) return;
 
-    const periodUsers = this.allUsers.filter(u =>
-      !this.state.classPeriod || u.class_period === this.state.classPeriod
-    );
-
+    // Get users not yet assigned to a team
     const assignedUsernames = new Set([
       ...this.state.blueTeam.map(p => p.username),
       ...this.state.redTeam.map(p => p.username)
     ]);
 
-    const unassigned = periodUsers.filter(u => !assignedUsernames.has(u.username));
+    // Start with all users not assigned
+    let availableUsers = this.allUsers.filter(u => !assignedUsernames.has(u.username));
 
-    select.innerHTML = unassigned.map(u => `
-      <option value="${u.username}">${u.real_name || u.username}</option>
-    `).join('');
+    // Filter to only online users if we have online data
+    if (this.onlineUsernames.size > 0) {
+      availableUsers = availableUsers.filter(u => this.onlineUsernames.has(u.username));
+    }
+
+    // For display, show period if user is in different period than current view
+    const currentPeriod = this.state.classPeriod;
+
+    select.innerHTML = availableUsers.map(u => {
+      const periodNote = u.class_period && u.class_period !== currentPeriod
+        ? ` [${u.class_period}]`
+        : '';
+      return `<option value="${u.username}">${u.real_name || u.username}${periodNote} 🟢</option>`;
+    }).join('');
+
+    // Show count of online users
+    const countLabel = this.container.querySelector('#online-user-count');
+    if (countLabel) {
+      countLabel.textContent = `(${availableUsers.length} online)`;
+    }
+
+    // Debug: log what we're working with
+    console.log('[KotH Panel] allUsers:', this.allUsers.length, 'online:', this.onlineUsernames.size, 'available:', availableUsers.length);
   }
 
   /**

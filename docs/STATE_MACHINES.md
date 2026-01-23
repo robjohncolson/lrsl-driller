@@ -1,6 +1,13 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v4.3.1.
+Complete state machine documentation for all components as of v4.3.4.
+
+**v4.3.4 Changes (Points Integer Fix & KotH Online Users):**
+- **CTF/KotH Points Integer Fix**: Weighted scoring produces decimals (e.g., 1.5 for silver at level 1 with 0.5x multiplier). Database columns expect integers. Added `Math.round(points)` to both CTF and KotH points endpoints.
+- **KotH Online Users Parity**: KotH panel now filters team assignment list by online users, matching CTF behavior. Shows green dot indicator and period badges.
+- **Online User Count Display**: Added "(X online)" count display to both CTF and KotH team assignment panels.
+- New tests: 14 points integer rounding tests in `tests/server/points-integer.test.js`
+- New tests: 17 KotH online users tests in `tests/game/koth-online-users.test.js`
 
 **v4.3.1 Changes (New Probability Cartridge):**
 - New cartridge: `apstatu4l1l2` - AP Statistics Unit 4 Lessons 1-2 (Probability Basics)

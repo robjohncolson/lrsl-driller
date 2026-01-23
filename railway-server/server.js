@@ -2411,6 +2411,9 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
       return res.status(400).json({ error: 'Username and points required' });
     }
 
+    // Round points to integer (weighted scoring can produce decimals like 1.5)
+    const pointsInt = Math.round(points);
+
     // Validate class_period
     const validation = validateClassPeriod(class_period);
     if (!validation.valid) {
@@ -2453,8 +2456,8 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
     }
 
     // Update player's points (both all-time and session)
-    const newPlayerPoints = (player.points_contributed || 0) + points;
-    const newSessionPoints = (player.session_points || 0) + points;
+    const newPlayerPoints = (player.points_contributed || 0) + pointsInt;
+    const newSessionPoints = (player.session_points || 0) + pointsInt;
     const playerUpdate = {
       points_contributed: newPlayerPoints,
       session_points: newSessionPoints
@@ -2475,7 +2478,7 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
     // Update team points in game
     const teamPointsField = player.team === 'blue' ? 'blue_points' : 'red_points';
     const currentTeamPoints = player.team === 'blue' ? game.blue_points : game.red_points;
-    const newTeamPoints = currentTeamPoints + points;
+    const newTeamPoints = currentTeamPoints + pointsInt;
 
     const bluePoints = player.team === 'blue' ? newTeamPoints : game.blue_points;
     const redPoints = player.team === 'red' ? newTeamPoints : game.red_points;
@@ -2513,7 +2516,7 @@ app.post('/api/ctf/:cartridgeId/points', async (req, res) => {
       classPeriod: class_period,
       username,
       team: player.team,
-      points,
+      points: pointsInt,
       starType,
       newTeamPoints,
       frontPosition: newPosition
@@ -3695,6 +3698,9 @@ app.post('/api/koth/:cartridgeId/points', async (req, res) => {
       return res.status(400).json({ error: 'Username and points required' });
     }
 
+    // Round points to integer (weighted scoring can produce decimals like 1.5)
+    const pointsInt = Math.round(points);
+
     const validation = validateClassPeriod(class_period);
     if (!validation.valid) {
       return res.status(400).json({ error: validation.error });
@@ -3728,7 +3734,7 @@ app.post('/api/koth/:cartridgeId/points', async (req, res) => {
         class_period,
         username,
         team: player.team,
-        points,
+        points: pointsInt,
         star_type: starType
       });
 
@@ -3739,8 +3745,8 @@ app.post('/api/koth/:cartridgeId/points', async (req, res) => {
     const { error: updateError } = await supabase
       .from('koth_players')
       .update({
-        session_points: player.session_points + points,
-        total_points: player.total_points + points,
+        session_points: player.session_points + pointsInt,
+        total_points: player.total_points + pointsInt,
         first_point_at: player.first_point_at || now
       })
       .eq('id', player.id);
@@ -3779,7 +3785,7 @@ app.post('/api/koth/:cartridgeId/points', async (req, res) => {
       classPeriod: class_period,
       username,
       team: player.team,
-      points,
+      points: pointsInt,
       blueTotal,
       redTotal
     });
