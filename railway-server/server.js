@@ -4744,6 +4744,522 @@ app.get('/api/ghost/:cartridgeId/leaderboard', async (req, res) => {
   }
 });
 
+// ============================================
+// GHOST BATTLE ENDPOINTS (Phase 6)
+// ============================================
+
+// Battle configuration
+const BATTLE_CONFIG = {
+  problemCount: 10,
+  distribution: { easy: 3, medium: 4, hard: 3 },
+  timeVariance: 0.2,
+  difficultyModifier: 0.3,
+  quickBonus: 0.7,
+  incorrectPenalty: 1.5,
+  minimumTime: 5
+};
+
+const ELO_CONFIG = {
+  initialRating: 1200,
+  kFactor: 32,
+  kFactorNew: 40,
+  newGhostThreshold: 10
+};
+
+// Seeded RNG for reproducible battles
+class SeededRNG {
+  constructor(seed) {
+    this.state = seed;
+  }
+  next() {
+    let t = this.state += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+  range(min, max) { return min + this.next() * (max - min); }
+  randInt(min, max) { return Math.floor(this.range(min, max + 1)); }
+  shuffle(arr) {
+    const result = [...arr];
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = this.randInt(0, i);
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+  }
+  fork() { return new SeededRNG(Math.floor(this.next() * 4294967296)); }
+}
+
+// Simple sigmoid for probability outputs
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+
+// Lightweight forward pass for battle simulation (no TensorFlow needed)
+function ghostPredict(weights, inputs) {
+  // Architecture: 10 -> 16 -> 16 -> 4
+  // weights: [kernel1(10x16), bias1(16), kernel2(16x16), bias2(16), kernel3(16x4), bias3(4)]
+  let layer = inputs;
+
+  // Layer 1: 10 -> 16, ReLU
+  let hidden1 = new Array(16).fill(0);
+  for (let i = 0; i < 16; i++) {
+    for (let j = 0; j < 10; j++) {
+      hidden1[i] += layer[j] * weights[0][j * 16 + i];
+    }
+    hidden1[i] = Math.max(0, hidden1[i] + weights[1][i]); // ReLU
+  }
+
+  // Layer 2: 16 -> 16, ReLU
+  let hidden2 = new Array(16).fill(0);
+  for (let i = 0; i < 16; i++) {
+    for (let j = 0; j < 16; j++) {
+      hidden2[i] += hidden1[j] * weights[2][j * 16 + i];
+    }
+    hidden2[i] = Math.max(0, hidden2[i] + weights[3][i]); // ReLU
+  }
+
+  // Layer 3: 16 -> 4, linear
+  let output = new Array(4).fill(0);
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 16; j++) {
+      output[i] += hidden2[j] * weights[4][j * 4 + i];
+    }
+    output[i] += weights[5][i];
+  }
+
+  return {
+    time: Math.max(0, output[0]) * 60,
+    correctProb: sigmoid(output[1]),
+    hintProb: sigmoid(output[2]),
+    quickProb: sigmoid(output[3])
+  };
+}
+
+// Generate battle problem sequence
+function generateBattleSequence(rng) {
+  const difficulties = [];
+  for (let i = 0; i < BATTLE_CONFIG.distribution.easy; i++)
+    difficulties.push(rng.range(0.0, 0.33));
+  for (let i = 0; i < BATTLE_CONFIG.distribution.medium; i++)
+    difficulties.push(rng.range(0.33, 0.66));
+  for (let i = 0; i < BATTLE_CONFIG.distribution.hard; i++)
+    difficulties.push(rng.range(0.66, 1.0));
+
+  return rng.shuffle(difficulties).map((difficulty, index) => ({
+    index,
+    difficulty,
+    inputs: [
+      difficulty, rng.range(0.0, 0.5), rng.range(0.0, 0.4), rng.range(0.7, 1.0),
+      1.0, rng.range(0.0, 0.3), 0.0, rng.range(0.7, 1.0), 0.5, difficulty
+    ]
+  }));
+}
+
+// Resolve single problem
+function resolveProblem(prediction, difficulty, rng) {
+  const isCorrect = rng.next() < prediction.correctProb;
+  let actualTime = prediction.time * (1 + (rng.next() * 2 - 1) * BATTLE_CONFIG.timeVariance);
+  actualTime *= (1 + difficulty * BATTLE_CONFIG.difficultyModifier);
+  if (rng.next() < prediction.quickProb) actualTime *= BATTLE_CONFIG.quickBonus;
+  if (!isCorrect) actualTime *= BATTLE_CONFIG.incorrectPenalty;
+  return { time: Math.max(BATTLE_CONFIG.minimumTime, actualTime), correct: isCorrect };
+}
+
+// Run ghost through battle
+function runGhostThrough(weights, problems, rng) {
+  const timeline = [];
+  let totalTime = 0, correctCount = 0;
+
+  for (const problem of problems) {
+    const prediction = ghostPredict(weights, problem.inputs);
+    const result = resolveProblem(prediction, problem.difficulty, rng);
+    timeline.push({ index: problem.index, prediction, result });
+    totalTime += result.time;
+    if (result.correct) correctCount++;
+  }
+
+  return { totalTime, correctCount, timeline };
+}
+
+// Simulate full battle
+function simulateBattle(weights1, weights2, seed) {
+  const rng = new SeededRNG(seed);
+  const problems = generateBattleSequence(rng);
+  const results1 = runGhostThrough(weights1, problems, rng.fork());
+  const results2 = runGhostThrough(weights2, problems, rng.fork());
+
+  let winner;
+  if (results1.correctCount !== results2.correctCount) {
+    winner = results1.correctCount > results2.correctCount ? 1 : 2;
+  } else if (Math.abs(results1.totalTime - results2.totalTime) > 1) {
+    winner = results1.totalTime < results2.totalTime ? 1 : 2;
+  } else {
+    winner = 0;
+  }
+
+  return {
+    seed, problems,
+    challenger: { totalTime: results1.totalTime, correctCount: results1.correctCount, timeline: results1.timeline },
+    defender: { totalTime: results2.totalTime, correctCount: results2.correctCount, timeline: results2.timeline },
+    winner,
+    margin: Math.abs(results1.totalTime - results2.totalTime)
+  };
+}
+
+// Elo calculations
+function calculateExpected(ratingA, ratingB) {
+  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+}
+
+function updateRatings(ratingA, ratingB, winner, battlesA = 10, battlesB = 10) {
+  const kA = battlesA < ELO_CONFIG.newGhostThreshold ? ELO_CONFIG.kFactorNew : ELO_CONFIG.kFactor;
+  const kB = battlesB < ELO_CONFIG.newGhostThreshold ? ELO_CONFIG.kFactorNew : ELO_CONFIG.kFactor;
+  const expectedA = calculateExpected(ratingA, ratingB);
+
+  let scoreA, scoreB;
+  if (winner === 1) { scoreA = 1; scoreB = 0; }
+  else if (winner === 2) { scoreA = 0; scoreB = 1; }
+  else { scoreA = 0.5; scoreB = 0.5; }
+
+  return {
+    newRatingA: ratingA + Math.round(kA * (scoreA - expectedA)),
+    newRatingB: ratingB + Math.round(kB * (scoreB - (1 - expectedA)))
+  };
+}
+
+// POST /api/ghost/:cartridgeId/battle/challenge - Start a battle
+app.post('/api/ghost/:cartridgeId/battle/challenge', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { username, opponentUsername, challengeType = 'random' } = req.body;
+
+    if (!username) {
+      return res.status(400).json({ error: 'Username required' });
+    }
+
+    // Get challenger's ghost profile
+    const { data: challenger, error: challengerErr } = await supabase
+      .from('ghost_profiles')
+      .select('username, weights')
+      .eq('cartridge_id', cartridgeId)
+      .eq('username', username)
+      .single();
+
+    if (challengerErr || !challenger) {
+      return res.status(404).json({ error: 'Challenger ghost not found' });
+    }
+
+    // Find opponent
+    let defender;
+    if (opponentUsername) {
+      const { data: defenderData, error: defenderErr } = await supabase
+        .from('ghost_profiles')
+        .select('username, weights')
+        .eq('cartridge_id', cartridgeId)
+        .eq('username', opponentUsername)
+        .single();
+
+      if (defenderErr || !defenderData) {
+        return res.status(404).json({ error: 'Opponent ghost not found' });
+      }
+      defender = defenderData;
+    } else {
+      // Random matchmaking
+      const { data: candidates } = await supabase
+        .from('ghost_profiles')
+        .select('username, weights')
+        .eq('cartridge_id', cartridgeId)
+        .neq('username', username)
+        .limit(20);
+
+      if (!candidates || candidates.length === 0) {
+        return res.status(404).json({ error: 'No opponents available' });
+      }
+      defender = candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    // Get or create ratings
+    const { data: challengerRating } = await supabase
+      .from('ghost_ratings')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('username', username)
+      .single();
+
+    const { data: defenderRating } = await supabase
+      .from('ghost_ratings')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('username', defender.username)
+      .single();
+
+    const ratingA = challengerRating?.rating || ELO_CONFIG.initialRating;
+    const ratingB = defenderRating?.rating || ELO_CONFIG.initialRating;
+    const battlesA = challengerRating?.battles_fought || 0;
+    const battlesB = defenderRating?.battles_fought || 0;
+
+    // Run battle simulation
+    const seed = Date.now();
+    const battleResult = simulateBattle(challenger.weights, defender.weights, seed);
+
+    // Calculate new ratings
+    const { newRatingA, newRatingB } = updateRatings(ratingA, ratingB, battleResult.winner, battlesA, battlesB);
+
+    // Store battle record
+    const battleLog = {
+      seed: battleResult.seed,
+      problems: battleResult.problems.map((p, i) => ({
+        difficulty: p.difficulty,
+        challenger: battleResult.challenger.timeline[i],
+        defender: battleResult.defender.timeline[i]
+      }))
+    };
+
+    const { data: battle, error: battleErr } = await supabase
+      .from('ghost_battles')
+      .insert({
+        cartridge_id: cartridgeId,
+        challenger_username: username,
+        defender_username: defender.username,
+        challenge_type: challengeType,
+        seed,
+        winner: battleResult.winner === 1 ? username : battleResult.winner === 2 ? defender.username : null,
+        winner_side: battleResult.winner,
+        challenger_time: battleResult.challenger.totalTime,
+        challenger_correct: battleResult.challenger.correctCount,
+        defender_time: battleResult.defender.totalTime,
+        defender_correct: battleResult.defender.correctCount,
+        margin: battleResult.margin,
+        challenger_rating_before: ratingA,
+        defender_rating_before: ratingB,
+        challenger_rating_after: newRatingA,
+        defender_rating_after: newRatingB,
+        battle_log: battleLog
+      })
+      .select()
+      .single();
+
+    if (battleErr) throw battleErr;
+
+    // Update challenger rating
+    await supabase
+      .from('ghost_ratings')
+      .upsert({
+        username,
+        cartridge_id: cartridgeId,
+        rating: newRatingA,
+        battles_fought: battlesA + 1,
+        wins: (challengerRating?.wins || 0) + (battleResult.winner === 1 ? 1 : 0),
+        losses: (challengerRating?.losses || 0) + (battleResult.winner === 2 ? 1 : 0),
+        draws: (challengerRating?.draws || 0) + (battleResult.winner === 0 ? 1 : 0),
+        current_streak: battleResult.winner === 1 ? Math.max(1, (challengerRating?.current_streak || 0) + 1) :
+                        battleResult.winner === 2 ? Math.min(-1, (challengerRating?.current_streak || 0) - 1) : 0,
+        best_streak: Math.max(challengerRating?.best_streak || 0,
+                              battleResult.winner === 1 ? (challengerRating?.current_streak || 0) + 1 : 0),
+        last_battle_at: new Date().toISOString()
+      }, { onConflict: 'username,cartridge_id' });
+
+    // Update defender rating
+    await supabase
+      .from('ghost_ratings')
+      .upsert({
+        username: defender.username,
+        cartridge_id: cartridgeId,
+        rating: newRatingB,
+        battles_fought: battlesB + 1,
+        wins: (defenderRating?.wins || 0) + (battleResult.winner === 2 ? 1 : 0),
+        losses: (defenderRating?.losses || 0) + (battleResult.winner === 1 ? 1 : 0),
+        draws: (defenderRating?.draws || 0) + (battleResult.winner === 0 ? 1 : 0),
+        current_streak: battleResult.winner === 2 ? Math.max(1, (defenderRating?.current_streak || 0) + 1) :
+                        battleResult.winner === 1 ? Math.min(-1, (defenderRating?.current_streak || 0) - 1) : 0,
+        best_streak: Math.max(defenderRating?.best_streak || 0,
+                              battleResult.winner === 2 ? (defenderRating?.current_streak || 0) + 1 : 0),
+        last_battle_at: new Date().toISOString()
+      }, { onConflict: 'username,cartridge_id' });
+
+    // Broadcast battle result
+    broadcast({
+      type: 'ghost_battle_complete',
+      battleId: battle.id,
+      cartridgeId,
+      challenger: username,
+      defender: defender.username,
+      winner: battle.winner,
+      winnerSide: battleResult.winner,
+      challengerStats: {
+        time: battleResult.challenger.totalTime,
+        correct: battleResult.challenger.correctCount,
+        ratingChange: newRatingA - ratingA
+      },
+      defenderStats: {
+        time: battleResult.defender.totalTime,
+        correct: battleResult.defender.correctCount,
+        ratingChange: newRatingB - ratingB
+      }
+    });
+
+    res.json({
+      battleId: battle.id,
+      status: 'complete',
+      result: {
+        winner: battle.winner,
+        winnerSide: battleResult.winner,
+        challenger: {
+          username,
+          time: battleResult.challenger.totalTime,
+          correct: battleResult.challenger.correctCount,
+          ratingBefore: ratingA,
+          ratingAfter: newRatingA
+        },
+        defender: {
+          username: defender.username,
+          time: battleResult.defender.totalTime,
+          correct: battleResult.defender.correctCount,
+          ratingBefore: ratingB,
+          ratingAfter: newRatingB
+        },
+        margin: battleResult.margin
+      }
+    });
+  } catch (err) {
+    console.error('POST /api/ghost/:cartridgeId/battle/challenge error:', err);
+    res.status(500).json({ error: 'Battle failed' });
+  }
+});
+
+// GET /api/ghost/:cartridgeId/battle/:battleId - Get battle details
+app.get('/api/ghost/:cartridgeId/battle/:battleId', async (req, res) => {
+  try {
+    const { cartridgeId, battleId } = req.params;
+
+    const { data: battle, error } = await supabase
+      .from('ghost_battles')
+      .select('*')
+      .eq('id', battleId)
+      .eq('cartridge_id', cartridgeId)
+      .single();
+
+    if (error || !battle) {
+      return res.status(404).json({ error: 'Battle not found' });
+    }
+
+    res.json(battle);
+  } catch (err) {
+    console.error('GET /api/ghost/:cartridgeId/battle/:battleId error:', err);
+    res.status(500).json({ error: 'Load failed' });
+  }
+});
+
+// GET /api/ghost/:cartridgeId/battle/history/:username - Get user's battle history
+app.get('/api/ghost/:cartridgeId/battle/history/:username', async (req, res) => {
+  try {
+    const { cartridgeId, username } = req.params;
+    const { limit = 20, offset = 0 } = req.query;
+
+    const { data: battles, error, count } = await supabase
+      .from('ghost_battles')
+      .select('id, challenger_username, defender_username, winner, winner_side, challenger_time, challenger_correct, defender_time, defender_correct, margin, challenger_rating_before, defender_rating_before, challenger_rating_after, defender_rating_after, created_at', { count: 'exact' })
+      .eq('cartridge_id', cartridgeId)
+      .or(`challenger_username.eq.${username},defender_username.eq.${username}`)
+      .order('created_at', { ascending: false })
+      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+
+    if (error) throw error;
+
+    res.json({ battles: battles || [], total: count || 0 });
+  } catch (err) {
+    console.error('GET /api/ghost/:cartridgeId/battle/history/:username error:', err);
+    res.status(500).json({ error: 'Load failed' });
+  }
+});
+
+// GET /api/ghost/:cartridgeId/battle/rating/:username - Get user's rating
+app.get('/api/ghost/:cartridgeId/battle/rating/:username', async (req, res) => {
+  try {
+    const { cartridgeId, username } = req.params;
+
+    const { data: rating, error } = await supabase
+      .from('ghost_ratings')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('username', username)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    const ratingData = rating || {
+      username,
+      cartridge_id: cartridgeId,
+      rating: ELO_CONFIG.initialRating,
+      battles_fought: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      current_streak: 0,
+      best_streak: 0
+    };
+
+    // Calculate tier
+    let tier;
+    if (ratingData.rating < 1000) tier = { name: 'Bronze', icon: 'bronze' };
+    else if (ratingData.rating < 1200) tier = { name: 'Silver', icon: 'silver' };
+    else if (ratingData.rating < 1400) tier = { name: 'Gold', icon: 'gold' };
+    else if (ratingData.rating < 1600) tier = { name: 'Platinum', icon: 'platinum' };
+    else tier = { name: 'Diamond', icon: 'diamond' };
+
+    res.json({ ...ratingData, tier });
+  } catch (err) {
+    console.error('GET /api/ghost/:cartridgeId/battle/rating/:username error:', err);
+    res.status(500).json({ error: 'Load failed' });
+  }
+});
+
+// GET /api/ghost/:cartridgeId/battle/leaderboard - Get battle ratings leaderboard
+app.get('/api/ghost/:cartridgeId/battle/leaderboard', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period, limit = 50 } = req.query;
+
+    let query = supabase
+      .from('ghost_ratings')
+      .select('username, rating, battles_fought, wins, losses, draws, current_streak, best_streak')
+      .eq('cartridge_id', cartridgeId)
+      .order('rating', { ascending: false })
+      .limit(parseInt(limit));
+
+    // Filter by class period if provided
+    if (class_period) {
+      const { data: periodUsers } = await supabase
+        .from('class_roster')
+        .select('username')
+        .eq('class_period', class_period);
+
+      if (periodUsers && periodUsers.length > 0) {
+        query = query.in('username', periodUsers.map(u => u.username));
+      }
+    }
+
+    const { data: rankings, error } = await query;
+
+    if (error) throw error;
+
+    // Add tier to each ranking
+    const rankingsWithTier = (rankings || []).map(r => {
+      let tier;
+      if (r.rating < 1000) tier = { name: 'Bronze', icon: 'bronze' };
+      else if (r.rating < 1200) tier = { name: 'Silver', icon: 'silver' };
+      else if (r.rating < 1400) tier = { name: 'Gold', icon: 'gold' };
+      else if (r.rating < 1600) tier = { name: 'Platinum', icon: 'platinum' };
+      else tier = { name: 'Diamond', icon: 'diamond' };
+      return { ...r, tier };
+    });
+
+    res.json({ rankings: rankingsWithTier });
+  } catch (err) {
+    console.error('GET /api/ghost/:cartridgeId/battle/leaderboard error:', err);
+    res.status(500).json({ error: 'Load failed' });
+  }
+});
+
 function getOnlineUsers() {
   const users = [];
   for (const [, data] of clients) {

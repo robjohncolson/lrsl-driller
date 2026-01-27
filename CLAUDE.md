@@ -80,7 +80,9 @@ When modifying grading behavior, the `onGradingComplete` callback at ~line 3095 
 - `/api/progress/cartridge-sync` - v2.1: Sync aggregate star counts per cartridge to `user_progress` table
 - `/api/ctf/:cartridgeId/*` - CTF game state (state, join, points, reset, leaderboard, assign-teams, player removal)
 - `/api/roster` - Teacher roster management (GET all students, PUT update student, POST bulk-assign)
-- WebSocket broadcasts: star earned, user online/offline, class time events, CTF updates (front moved, points, victory, reset, player joined)
+- `/api/ghost/:cartridgeId/*` - Ghost profile management (sync, get, leaderboard)
+- `/api/ghost/:cartridgeId/battle/*` - v4.6: Ghost battles (challenge, history, rating, leaderboard)
+- WebSocket broadcasts: star earned, user online/offline, class time events, CTF updates (front moved, points, victory, reset, player joined), ghost_battle_complete (v4.6)
 
 ### Grading Flow
 
@@ -309,13 +311,15 @@ npx vitest run tests/server/ctf-session-start.test.js     # v4.3.2 CTF session s
 npx vitest run tests/core/ghost-network.test.js           # v4.4.0 ghost neural network tests (16 tests)
 npx vitest run tests/core/ghost-engine.test.js            # v4.4.0 ghost engine tests (50 tests)
 npx vitest run tests/server/ghost-api.test.js             # v4.4.0 ghost API contract tests (26 tests)
+npx vitest run tests/core/ghost-battle-engine.test.js     # v4.6.0 ghost battle engine tests (63 tests)
+npx vitest run tests/server/ghost-battle-api.test.js      # v4.6.0 ghost battle API contract tests (37 tests)
 ```
 
 Test organization:
-- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1, game-engine-progression, student-detail-modal, ghost-network, ghost-engine)
+- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1, game-engine-progression, student-detail-modal, ghost-network, ghost-engine, ghost-battle-engine)
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design, apstatu4l1l2)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design, apstatu4l1l2)
-- `tests/server/` - Railway server API tests (api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality, ctf-session-start, ghost-api)
+- `tests/server/` - Railway server API tests (api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality, ctf-session-start, ghost-api, ghost-battle-api)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
@@ -331,6 +335,7 @@ railway-server/migrations/009_ctf.sql               # v4.0: CTF tables (ctf_game
 railway-server/migrations/010_class_periods.sql     # v4.1: class_period column for roster management
 railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, session management, tiebreaker tables
 railway-server/migrations/013_ghost_profiles.sql   # v4.4: Ghost behavioral AI profiles table
+railway-server/migrations/014_ghost_battles.sql   # v4.6: Ghost battle history and ratings tables
 ```
 
 ## Configuration Files
@@ -369,6 +374,63 @@ https://your-domain.com/platform/app.html?cartridge=CARTRIDGE_ID&level=LEVEL_ID
 - **Students**: Can access any level via URL; if normally locked, shows toast notification
 
 ## Version History (Bug Fixes)
+
+**v4.6.0**: Ghost System Phase 6 (Battle Simulation Engine)
+- **Ghost vs Ghost Battles**: Asynchronous competitions where two ghosts race through simulated problem sequences
+  - Server-side battle simulation using lightweight neural network forward pass (no TensorFlow required)
+  - Seeded RNG for reproducible battles (same seed = same results)
+  - 10 problems per battle with difficulty distribution: 3 easy, 4 medium, 3 hard
+- **Stochastic Resolution Algorithm**:
+  - Ghost network predictions determine solve probability and time
+  - 20% time variance, difficulty modifier, quick-answer bonus, incorrect penalty
+  - Winner determined by: (1) most correct answers, (2) fastest time as tiebreaker
+  - Draw declared if within 1 second and same correct count
+- **Elo-Style Rating System**:
+  - Initial rating: 1200, K-factor: 32 (40 for new ghosts with <10 battles)
+  - Rating tiers: Bronze (<1000), Silver (1000-1199), Gold (1200-1399), Platinum (1400-1599), Diamond (1600+)
+  - Streak tracking (current and best win streak)
+- **Challenge System**:
+  - Challenge types: random, specific, rematch, leaderboard
+  - Cooldowns: none for random, 1hr for specific, 10min for rematch
+  - Matchmaking prefers opponents within 200 Elo points
+- **New API Endpoints**:
+  - `POST /api/ghost/:cartridgeId/battle/challenge` - Start a battle (random or specific opponent)
+  - `GET /api/ghost/:cartridgeId/battle/:battleId` - Get battle details with full timeline
+  - `GET /api/ghost/:cartridgeId/battle/history/:username` - Paginated battle history
+  - `GET /api/ghost/:cartridgeId/battle/rating/:username` - User's rating with tier
+  - `GET /api/ghost/:cartridgeId/battle/leaderboard` - Battle ratings leaderboard
+- **WebSocket Broadcasts**: `ghost_battle_complete` message to both participants with results
+- **New Files**:
+  - `platform/core/ghost-battle-engine.js` - Client-side battle utilities and types
+  - `railway-server/migrations/014_ghost_battles.sql` - Battle history and ratings tables
+  - `ghost-phase6-battle-spec.md` - Full technical specification
+- **New Tests**: 100 tests across 2 files
+  - `tests/core/ghost-battle-engine.test.js` (63 tests)
+  - `tests/server/ghost-battle-api.test.js` (37 tests)
+- **Database Tables**:
+  - `ghost_battles` - Battle history with full timeline, ratings before/after
+  - `ghost_ratings` - Per-user per-cartridge Elo ratings and stats
+
+**v4.5.0**: Ghost System Phase 3 (3D Maze Generator)
+- **3D Maze Visualization**: Cartridge progression now visualizable as a Tron-esque 3D navigable space
+  - Each level/mode becomes a glowing hexagonal platform
+  - `unlockedBy` relationships become curved bridge edges
+  - Linear progressions become corridors, branching points become intersections
+- **Manifest Parsing** (`ghost-maze-generator.js`):
+  - `parseManifest()` - Builds directed graph from manifest modes
+  - `positionNodes()` - Hierarchical layout with tier-based Y positioning
+  - `calculateProgress()` - Determines unlock/completed/current state per node
+  - `findPathToNode()` - Traces path from root to any level
+  - `getMazeStats()` - Provides graph statistics (nodes, edges, tiers, capstones)
+- **Three.js Renderer** (`ghost-maze-renderer.js`):
+  - Tron-aesthetic with glowing grid, translucent platforms, particle effects
+  - Node states: locked (gray), unlocked (blue), completed (green), current (yellow glow)
+  - Bridge rendering with bezier curves
+  - OrbitControls for camera rotation/zoom
+  - Click-to-navigate: click node to jump to that level
+- **Dependencies**: Three.js loaded via CDN (lazy-loaded when maze requested)
+- **New Files**: `ghost-maze-generator.js`, `ghost-maze-renderer.js`, `ghost-phase3-maze-spec.md`
+- **New Tests**: 30 tests in `tests/core/ghost-maze-generator.test.js`
 
 **v4.4.0**: Ghost System Phase 1 (Behavioral AI Companion)
 - **Ghost Profile Infrastructure**: Students now train neural network "ghosts" that learn their behavioral patterns
