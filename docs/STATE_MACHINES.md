@@ -1,6 +1,45 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v4.3.5.
+Complete state machine documentation for all components as of v4.7.0.
+
+**v4.7.0 Changes (Ghost Visualization Complete):**
+- **Ghost System Phases 4, 5, 7**: Complete visualization suite
+- Phase 4: Single ghost animation along bezier curves, celebration particles
+- Phase 5: Multi-ghost class view with clustering, heat maps, tooltips
+- Phase 7: Canvas-based battle replay with timeline scrubbing
+- New sections: 128-134 covering all Ghost System state machines
+- Ghost visual properties: color from proficiency, opacity from interactions
+- Class view clustering: up to 50 ghosts with ring arrangement at nodes
+- Battle replay: keyboard shortcuts, speed controls, winner announcement
+- New tests: 157 tests across ghost-visualization, ghost-landscape, ghost-battle-viz
+- Total test count: 1682 tests
+
+**v4.6.0 Changes (Ghost Battle Simulation Engine):**
+- Ghost-vs-ghost asynchronous battles with seeded RNG for reproducibility
+- 10 problems per battle (3 easy, 4 medium, 3 hard distribution)
+- Stochastic resolution: 20% time variance, difficulty modifier, quick bonus
+- Elo rating system: initial 1200, K=32 (40 for new ghosts)
+- Rating tiers: Bronze/Silver/Gold/Platinum/Diamond
+- Challenge types: random, specific, rematch, leaderboard (with cooldowns)
+- New migration: `014_ghost_battles.sql` (ghost_battles, ghost_ratings tables)
+- New tests: 100 tests (63 engine + 37 API)
+
+**v4.5.0 Changes (Ghost 3D Maze Generator):**
+- Cartridge progression visualized as Tron-esque 3D navigable space
+- Manifest parsing: modes→nodes, unlockedBy→edges, tier calculation via BFS
+- Three.js renderer with hexagonal platforms, curved bridges, particle effects
+- Node states: locked (gray), unlocked (cyan), completed (green), current (yellow)
+- OrbitControls for camera, click-to-navigate functionality
+- New files: ghost-maze-generator.js, ghost-maze-renderer.js
+- New tests: 40 tests in ghost-maze-generator.test.js
+
+**v4.4.0 Changes (Ghost System Phase 1 - Neural Network):**
+- TensorFlow.js neural network (10→16→16→4 architecture)
+- Input: 10 normalized features (level progress, time, streak, accuracy, etc.)
+- Output: 4 predictions (time, correct prob, hint prob, quick prob)
+- Ghost engine: interaction tracking, training buffer, server sync
+- New files: ghost-engine.js, ghost-network.js
+- New tests: 92 tests (50 engine + 16 network + 26 API)
 
 **v4.3.5 Changes (Probability Cartridge Extended to 4.8):**
 - **apstatu4l1l2 Extended**: Now covers Topics 4.1-4.8 (was 4.1-4.6)
@@ -9639,6 +9678,464 @@ Reference table for `apstatu4l1l2` cartridge deep linking.
 
 ---
 
-*Updated to v4.3.3*
+## 128. Ghost System Overview (v4.4.0 - v4.7.0)
+
+The Ghost System is a behavioral AI companion that learns from student drill interactions. It consists of multiple phases:
+
+| Phase | Version | Component | Description |
+|-------|---------|-----------|-------------|
+| 1 | v4.4.0 | Neural Network | TensorFlow.js network learns student patterns |
+| 3 | v4.5.0 | 3D Maze Generator | Cartridge progression as navigable 3D space |
+| 4 | v4.7.0 | Single Ghost Viz | Animated ghost movement through maze |
+| 5 | v4.7.0 | Multi-Ghost Landscape | Class view showing all students' ghosts |
+| 6 | v4.6.0 | Battle Engine | Asynchronous ghost-vs-ghost competitions |
+| 7 | v4.7.0 | Battle Visualization | Canvas-based battle replay system |
+
+---
+
+## 129. Ghost Network State Machine (v4.4.0)
+
+Neural network forward pass for ghost behavior prediction.
+
+```
+                                    ┌─────────────────────────────────────┐
+                                    │         GHOST NETWORK               │
+                                    │    (TensorFlow.js 10→16→16→4)       │
+                                    └─────────────────────────────────────┘
+                                                     │
+                    ┌────────────────────────────────┼────────────────────────────────┐
+                    ▼                                ▼                                ▼
+            ┌───────────────┐               ┌───────────────┐               ┌───────────────┐
+            │   UNLOADED    │               │    LOADING    │               │    LOADED     │
+            │               │──loadWeights()─▶│   weights...  │──success────▶│    ready      │
+            │ weights=null  │               │               │               │ weights=Array │
+            └───────────────┘               └───────────────┘               └───────────────┘
+                    ▲                                │                                │
+                    │                                │ error                          │
+                    │                                ▼                                │
+                    │                       ┌───────────────┐                        │
+                    │◀──────────────────────│    ERROR      │                        │
+                    │         reset()       │               │                        │
+                    │                       └───────────────┘                        │
+                    │                                                                │
+                    │◀────────────────────────dispose()──────────────────────────────┘
+```
+
+### Input Vector (10 features, normalized 0-1)
+```
+  Index │ Feature              │ Description
+  ──────┼──────────────────────┼─────────────────────────────────
+    0   │ level_progress       │ Current level / total levels
+    1   │ time_in_session      │ Minutes / 60 (capped)
+    2   │ current_streak       │ Streak / 10 (capped)
+    3   │ recent_accuracy      │ Last 10 problems accuracy
+    4   │ hints_remaining      │ Hints / max hints
+    5   │ problems_this_session│ Count / 50 (capped)
+    6   │ retry_count          │ Retries / 5 (capped)
+    7   │ session_accuracy     │ Session correct / total
+    8   │ time_of_day          │ Hour / 24
+    9   │ level_tier           │ Tier / max tier
+```
+
+### Output Vector (4 predictions)
+```
+  Index │ Output               │ Description
+  ──────┼──────────────────────┼─────────────────────────────────
+    0   │ predicted_time       │ Expected seconds to answer
+    1   │ correct_probability  │ Likelihood of correct answer
+    2   │ hint_probability     │ Likelihood of using hint
+    3   │ quick_probability    │ Likelihood of fast answer
+```
+
+---
+
+## 130. Ghost Engine State Machine (v4.4.0)
+
+Manages ghost profile lifecycle, interaction tracking, and network training.
+
+```
+                         ┌─────────────────────────────────────┐
+                         │          GHOST ENGINE               │
+                         └─────────────────────────────────────┘
+                                          │
+           ┌──────────────────────────────┼──────────────────────────────┐
+           ▼                              ▼                              ▼
+   ┌───────────────┐              ┌───────────────┐              ┌───────────────┐
+   │   NO_PROFILE  │──loadGhost()─▶│   LOADING     │──success────▶│    READY      │
+   │               │              │               │              │               │
+   │  profile=null │              │  fetching...  │              │ profile loaded│
+   └───────────────┘              └───────────────┘              └───────────────┘
+           ▲                              │                              │
+           │                              │ 404                          │ recordInteraction()
+           │                              ▼                              ▼
+           │                      ┌───────────────┐              ┌───────────────┐
+           │                      │   NEW_GHOST   │              │   RECORDING   │
+           │                      │               │──save()─────▶│  buffer++     │
+           │                      │ create default│              └───────────────┘
+           │                      └───────────────┘                      │
+           │                                                             │ buffer >= 5
+           │                                                             ▼
+           │                                                     ┌───────────────┐
+           │◀──────────────────dispose()─────────────────────────│   TRAINING    │
+           │                                                     │               │
+           │                                                     │ network.fit() │
+           │                                                     └───────────────┘
+           │                                                             │
+           │                                                             │ complete
+           │                                                             ▼
+           │                                                     ┌───────────────┐
+           │◀────────────────────────────────────────────────────│   SYNCING     │
+                                                                 │               │
+                                                                 │ POST /api/ghost│
+                                                                 └───────────────┘
+```
+
+### Interaction Record Structure
+```javascript
+{
+  timestamp: Date.now(),
+  level_id: "l01-random-process",
+  input_vector: [0.1, 0.2, ...],  // 10 normalized values
+  actual_time: 15.3,              // seconds
+  was_correct: true,
+  used_hint: false,
+  was_quick: true                 // < median time
+}
+```
+
+---
+
+## 131. Ghost Maze Generator State Machine (v4.5.0)
+
+Parses cartridge manifest into 3D maze graph structure.
+
+```
+                        ┌─────────────────────────────────────┐
+                        │       MAZE GENERATOR                │
+                        │   parseManifest(manifest)           │
+                        └─────────────────────────────────────┘
+                                         │
+    ┌────────────────────────────────────┼────────────────────────────────────┐
+    ▼                                    ▼                                    ▼
+┌───────────────┐                ┌───────────────┐                ┌───────────────┐
+│  PARSE_MODES  │                │  BUILD_EDGES  │                │ CALCULATE_TIERS│
+│               │──forEach mode──▶│               │──forEach edge──▶│               │
+│ modes→nodes   │                │ unlockedBy→   │                │ BFS from root │
+│               │                │   edges       │                │ tier = depth  │
+└───────────────┘                └───────────────┘                └───────────────┘
+                                                                          │
+    ┌─────────────────────────────────────────────────────────────────────┘
+    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                           POSITION_NODES                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ For each tier:                                                      │ │
+│  │   - Count nodes at tier                                             │ │
+│  │   - Spread horizontally: x = (index - count/2) * HORIZONTAL_SPACING │ │
+│  │   - Stack vertically: y = tier * TIER_HEIGHT                        │ │
+│  │   - Random z offset for visual interest                             │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────────────┘
+                                         │
+                                         ▼
+                              ┌───────────────────┐
+                              │      OUTPUT       │
+                              │ { nodes, edges,   │
+                              │   tiers, stats }  │
+                              └───────────────────┘
+```
+
+### Node State Calculation
+```
+                    ┌─────────────────────────────────────────┐
+                    │         calculateProgress()             │
+                    └─────────────────────────────────────────┘
+                                       │
+         ┌─────────────────────────────┼─────────────────────────────┐
+         ▼                             ▼                             ▼
+ ┌───────────────┐            ┌───────────────┐            ┌───────────────┐
+ │    LOCKED     │            │   UNLOCKED    │            │   COMPLETED   │
+ │               │            │               │            │               │
+ │ prerequisites │            │ can attempt   │            │ has gold star │
+ │ not met       │            │ this level    │            │               │
+ │ color: gray   │            │ color: cyan   │            │ color: green  │
+ └───────────────┘            └───────────────┘            └───────────────┘
+         │                             │                             │
+         │                             ▼                             │
+         │                    ┌───────────────┐                      │
+         │                    │    CURRENT    │                      │
+         │                    │               │                      │
+         │                    │ active level  │                      │
+         │                    │ color: yellow │                      │
+         │                    │ + glow effect │                      │
+         │                    └───────────────┘                      │
+         │                                                           │
+         └───────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 132. Ghost Maze Renderer State Machine (v4.5.0 - v4.7.0)
+
+Three.js 3D visualization with ghost animation and class view.
+
+```
+                         ┌─────────────────────────────────────┐
+                         │       MAZE RENDERER                 │
+                         │        (Three.js)                   │
+                         └─────────────────────────────────────┘
+                                          │
+           ┌──────────────────────────────┼──────────────────────────────┐
+           ▼                              ▼                              ▼
+   ┌───────────────┐              ┌───────────────┐              ┌───────────────┐
+   │  UNINITIALIZED│──init()─────▶│  INITIALIZING │──complete───▶│     READY     │
+   │               │              │               │              │               │
+   │  no scene     │              │ create scene, │              │ render loop   │
+   │               │              │ camera, grid  │              │ running       │
+   └───────────────┘              └───────────────┘              └───────────────┘
+                                                                          │
+                    ┌─────────────────────────────────────────────────────┤
+                    │                                                     │
+                    ▼                                                     ▼
+           ┌───────────────┐                                     ┌───────────────┐
+           │  SINGLE_GHOST │◀──────setClassViewMode(false)───────│  CLASS_VIEW   │
+           │     MODE      │                                     │     MODE      │
+           │               │──────setClassViewMode(true)────────▶│               │
+           │ updateGhost() │                                     │showAllGhosts()│
+           │ animateGhostTo│                                     │ clustering    │
+           │ celebrateGhost│                                     │ tooltips      │
+           └───────────────┘                                     └───────────────┘
+                    │                                                     │
+                    │                                                     │
+                    ▼                                                     │
+           ┌───────────────┐                                              │
+           │   ANIMATING   │                                              │
+           │               │                                              │
+           │ ghost moving  │                                              │
+           │ along bezier  │                                              │
+           │ curve (2000ms)│                                              │
+           └───────────────┘                                              │
+                    │                                                     │
+                    │ complete                                            │
+                    ▼                                                     │
+           ┌───────────────┐                                              │
+           │  CELEBRATING  │                                              │
+           │               │                                              │
+           │ 24 particles  │                                              │
+           │ burst (1500ms)│                                              │
+           └───────────────┘                                              │
+                    │                                                     │
+                    ▼                                                     │
+           ┌───────────────┐                                              │
+           │   DISPOSED    │◀──────────────dispose()──────────────────────┘
+           │               │
+           │ cleanup all   │
+           │ Three.js      │
+           └───────────────┘
+```
+
+### Ghost Visual Properties
+```
+  Proficiency Score │  Color           │  Hex
+  ──────────────────┼──────────────────┼─────────
+  0% - 20%          │  White           │  #FFFFFF
+  20% - 40%         │  Yellow          │  #FFD700
+  40% - 60%         │  Orange          │  #FF8C00
+  60% - 80%         │  Red             │  #FF4444
+  80% - 100%        │  Indigo          │  #4B0082
+
+  Interactions      │  Opacity
+  ──────────────────┼──────────
+  0                 │  0.1
+  1-25              │  0.1 - 0.35
+  26-50             │  0.35 - 0.6
+  51-75             │  0.6 - 0.85
+  76-100+           │  0.85 - 1.0
+```
+
+### Class View Clustering Algorithm
+```
+  Ghost Count │  Arrangement           │  Glow Intensity
+  ────────────┼────────────────────────┼─────────────────
+  1           │  Centered on node      │  1.2x
+  2-6         │  Single ring           │  1.2x - 1.5x
+  7-12        │  2 rings stacked       │  1.5x - 1.8x
+  13-18       │  3 rings stacked       │  1.8x
+  19+         │  Additional rings      │  2.0x (max)
+```
+
+---
+
+## 133. Ghost Battle Engine State Machine (v4.6.0)
+
+Asynchronous ghost-vs-ghost battle simulation.
+
+```
+                         ┌─────────────────────────────────────┐
+                         │       BATTLE ENGINE                 │
+                         │   POST /api/ghost/:id/battle/       │
+                         └─────────────────────────────────────┘
+                                          │
+           ┌──────────────────────────────┼──────────────────────────────┐
+           ▼                              ▼                              ▼
+   ┌───────────────┐              ┌───────────────┐              ┌───────────────┐
+   │   CHALLENGE   │              │  MATCHMAKING  │              │   SIMULATE    │
+   │   RECEIVED    │──random?────▶│               │──found──────▶│               │
+   │               │              │ find opponent │              │ run battle    │
+   │ validate user │              │ within ±200   │              │ simulation    │
+   └───────────────┘              │ Elo points    │              └───────────────┘
+           │                      └───────────────┘                      │
+           │ specific                     │                              │
+           ▼                              │ no match                     │
+   ┌───────────────┐                      ▼                              │
+   │ LOAD_OPPONENT │              ┌───────────────┐                      │
+   │               │              │    ERROR      │                      │
+   │ fetch ghost   │              │               │                      │
+   │ by username   │              │ no opponents  │                      │
+   └───────────────┘              │ available     │                      │
+           │                      └───────────────┘                      │
+           │ found                                                       │
+           ▼                                                             │
+   ┌───────────────────────────────────────────────────────────────────┐│
+   │                    BATTLE SIMULATION                              ││
+   │  ┌─────────────────────────────────────────────────────────────┐  ││
+   │  │ For each of 10 problems (3 easy, 4 medium, 3 hard):         │  ││
+   │  │   1. Generate problem input vector                          │  ││
+   │  │   2. Run ghost1 network forward pass → prediction           │  ││
+   │  │   3. Run ghost2 network forward pass → prediction           │  ││
+   │  │   4. Resolve stochastically:                                │  ││
+   │  │      - correct = random() < correctProb                     │  ││
+   │  │      - time = baseTime ± 20% variance                       │  ││
+   │  │      - if quick triggered: time *= 0.7                      │  ││
+   │  │      - if incorrect: time *= 1.5                            │  ││
+   │  │   5. Record to timeline                                     │  ││
+   │  └─────────────────────────────────────────────────────────────┘  ││
+   └───────────────────────────────────────────────────────────────────┘│
+                                          │                              │
+                                          ▼                              │
+                               ┌───────────────┐                         │
+                               │  DETERMINE    │◀────────────────────────┘
+                               │   WINNER      │
+                               │               │
+                               │ 1. more correct│
+                               │ 2. faster time │
+                               │ 3. draw (<1s)  │
+                               └───────────────┘
+                                          │
+           ┌──────────────────────────────┼──────────────────────────────┐
+           ▼                              ▼                              ▼
+   ┌───────────────┐              ┌───────────────┐              ┌───────────────┐
+   │ UPDATE_RATINGS│              │  STORE_BATTLE │              │  BROADCAST    │
+   │               │              │               │              │               │
+   │ Elo formula   │              │ ghost_battles │              │ WebSocket     │
+   │ K=32 (or 40)  │              │ table         │              │ ghost_battle_ │
+   │               │              │               │              │ complete      │
+   └───────────────┘              └───────────────┘              └───────────────┘
+```
+
+### Elo Rating Tiers
+```
+  Rating Range │  Tier Name  │  K-Factor
+  ─────────────┼─────────────┼───────────
+  < 1000       │  Bronze     │  40 (new)
+  1000 - 1199  │  Silver     │  40 (new)
+  1200 - 1399  │  Gold       │  32
+  1400 - 1599  │  Platinum   │  32
+  1600+        │  Diamond    │  32
+```
+
+### Challenge Cooldowns
+```
+  Challenge Type │  Cooldown
+  ───────────────┼───────────
+  random         │  None
+  specific       │  1 hour
+  rematch        │  10 minutes
+  leaderboard    │  30 minutes
+```
+
+---
+
+## 134. Ghost Battle Visualization State Machine (v4.7.0)
+
+Canvas-based battle replay system.
+
+```
+                         ┌─────────────────────────────────────┐
+                         │       BATTLE VIZ                    │
+                         │    (Canvas 2D Replay)               │
+                         └─────────────────────────────────────┘
+                                          │
+           ┌──────────────────────────────┼──────────────────────────────┐
+           ▼                              ▼                              ▼
+   ┌───────────────┐              ┌───────────────┐              ┌───────────────┐
+   │    HIDDEN     │──show()─────▶│   LOADING     │──loaded─────▶│    READY      │
+   │               │              │               │              │               │
+   │ panel hidden  │              │ loadBattle()  │              │ paused at 0   │
+   │               │              │ parse timeline│              │               │
+   └───────────────┘              └───────────────┘              └───────────────┘
+           ▲                                                             │
+           │                                                             │ play()
+           │                                                             ▼
+           │                                                     ┌───────────────┐
+           │                              ┌──────pause()─────────│   PLAYING     │
+           │                              │                      │               │
+           │                              ▼                      │ requestAnim   │
+           │                      ┌───────────────┐              │ Frame loop    │
+           │                      │    PAUSED     │──play()─────▶│               │
+           │                      │               │              │ time advancing│
+           │                      │ frozen at     │              └───────────────┘
+           │                      │ current time  │                      │
+           │                      └───────────────┘                      │
+           │                              │                              │ time >= duration
+           │                              │                              ▼
+           │                              │                      ┌───────────────┐
+           │                              │◀─────reset()─────────│   COMPLETE    │
+           │                              │                      │               │
+           │                              │                      │ show winner   │
+           │                              │                      │ rating change │
+           │                              │                      └───────────────┘
+           │                              │                              │
+           │◀─────────────────────hide()──┴──────────────────────────────┘
+```
+
+### Replay UI Components
+```
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                         BATTLE REPLAY                                   │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  ┌───────────────────────────────────────────────────────────────────┐  │
+  │  │                     RACE TRACK CANVAS                             │  │
+  │  │  ┌─────────────────────────────────────────────────────────────┐  │  │
+  │  │  │ @alice (1350)  ●━━━━━━━━━━━━━━━━━━━━●○○○○○○○○○○             │  │  │
+  │  │  │                ▲                    ▲                        │  │  │
+  │  │  │              ghost              correct   remaining          │  │  │
+  │  │  │              sphere             problems  problems           │  │  │
+  │  │  ├─────────────────────────────────────────────────────────────┤  │  │
+  │  │  │ @bob (1280)    ●━━━━━━━━━━━━━━●○○○○○○○○○○○○                 │  │  │
+  │  │  └─────────────────────────────────────────────────────────────┘  │  │
+  │  └───────────────────────────────────────────────────────────────────┘  │
+  │                                                                         │
+  │  [ ⏮ ] [ ▶ ] [ ⏭ ]    ━━━━━━━━━●━━━━━━━━━━    1:23 / 4:15    [1x][2x] │
+  │   reset play  skip      timeline scrubber       elapsed/total   speed   │
+  └─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Keyboard Shortcuts
+```
+  Key      │  Action
+  ─────────┼──────────────────
+  Space    │  Toggle play/pause
+  1        │  1x speed
+  2        │  2x speed
+  4        │  4x speed
+  S        │  Skip to end
+  R        │  Reset to start
+  Escape   │  Close panel
+```
+
+---
+
+*Updated to v4.7.0*
 *Last updated: January 2026*
-*Total sections: 127*
+*Total sections: 134*
