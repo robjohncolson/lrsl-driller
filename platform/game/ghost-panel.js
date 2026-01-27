@@ -73,18 +73,18 @@ export class GhostPanel {
     // Add escape key listener
     document.addEventListener('keydown', this._handleEscapeKey);
 
-    // Initialize maze renderer if "My Ghost" tab is active and not yet initialized
-    if (this.activeTab === 'my-ghost' && !this.mazeInitialized && !this.mazeError) {
-      this._initMazeRenderer();
-    }
+    // Delay initialization until CSS transition completes and container has dimensions
+    setTimeout(() => {
+      // Initialize maze renderer if "My Ghost" tab is active and not yet initialized
+      if (this.activeTab === 'my-ghost' && !this.mazeInitialized && !this.mazeError) {
+        this._initMazeRenderer();
+      }
 
-    // Handle resize when panel becomes visible
-    if (this.mazeRenderer) {
-      // Trigger resize after CSS transition completes
-      setTimeout(() => {
+      // Handle resize when panel becomes visible
+      if (this.mazeRenderer) {
         this.mazeRenderer._handleResize();
-      }, 350); // Match the 0.3s transition duration + buffer
-    }
+      }
+    }, 350); // Match the 0.3s transition duration + buffer
   }
 
   /**
