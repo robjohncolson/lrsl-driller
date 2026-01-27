@@ -69,6 +69,14 @@ const GHOST_CELEBRATION_DURATION = 1500; // Celebration effect duration (ms)
 const GHOST_PARTICLE_COUNT = 24;         // Celebration particle count
 const GHOST_EDGE_SAG = 1.5;              // Edge curve sag amount
 
+// Phase 5: Multi-ghost landscape constants
+const CLUSTER_RADIUS = 1.2;              // Radius for ghost circular arrangement
+const VERTICAL_SPACING = 0.4;            // Additional height per row in cluster
+const GHOSTS_PER_RING = 6;               // Max ghosts per ring before stacking
+const CLASS_VIEW_GHOST_SCALE = 0.625;    // Ghost size in class view (0.5/0.8)
+const CLASS_VIEW_OPACITY_FACTOR = 0.8;   // Opacity reduction in class view
+const MAX_DISPLAYED_GHOSTS = 50;         // Performance cap for class view
+
 /**
  * MazeRenderer class - orchestrates the 3D maze visualization
  */
@@ -127,9 +135,17 @@ export class MazeRenderer {
       particles: []
     };
 
+    // Phase 5: Class view state
+    this.classViewMode = false;
+    this.classGhosts = [];           // Array of {profile, mesh, label}
+    this.ghostsByNode = new Map();   // Map<nodeId, profile[]>
+    this.selectedGhost = null;       // Currently focused ghost username
+    this.ghostTooltip = null;        // DOM element for tooltip
+
     // Event handlers (bound for removal)
     this._onResize = this._handleResize.bind(this);
     this._onClick = this._handleClick.bind(this);
+    this._onMouseMove = this._handleMouseMove.bind(this);
   }
 
   /**
@@ -178,6 +194,7 @@ export class MazeRenderer {
     // Event listeners
     window.addEventListener('resize', this._onResize);
     this.renderer.domElement.addEventListener('click', this._onClick);
+    this.renderer.domElement.addEventListener('mousemove', this._onMouseMove);
 
     // Start animation loop
     this._animate();
@@ -1074,37 +1091,470 @@ export class MazeRenderer {
   }
 
   /**
-   * Show all ghosts for leaderboard view
+   * Show all ghosts for leaderboard/class view (Phase 5 enhanced)
    * @param {Array} ghostProfiles - Array of ghost profiles
+   * @param {Object} options - Display options
+   * @param {boolean} options.showLabels - Show username labels (default: true)
+   * @param {boolean} options.heatmap - Show node heat map glow (default: true)
    */
-  showAllGhosts(ghostProfiles) {
+  showAllGhosts(ghostProfiles, options = {}) {
     if (!ghostProfiles || !this.ghostGroup) return;
 
+    const { showLabels = true, heatmap = true } = options;
+
     // Clear existing ghosts
+    this._clearClassGhosts();
+
+    // Limit ghost count for performance
+    const displayedProfiles = ghostProfiles.slice(0, MAX_DISPLAYED_GHOSTS);
+
+    // Group ghosts by their current level/node
+    this.ghostsByNode = new Map();
+    for (const profile of displayedProfiles) {
+      const nodeId = profile.currentLevel || this._getFirstNodeId();
+      if (!this.ghostsByNode.has(nodeId)) {
+        this.ghostsByNode.set(nodeId, []);
+      }
+      this.ghostsByNode.get(nodeId).push(profile);
+    }
+
+    // Create ghost meshes with clustering
+    for (const [nodeId, profiles] of this.ghostsByNode) {
+      const node = this.nodes.get(nodeId);
+      if (!node || !node.position) continue;
+
+      // Calculate clustered positions
+      const positions = calculateClusterPositions(profiles, node.position);
+
+      profiles.forEach((profile, index) => {
+        const ghost = this._createClassViewGhostMesh(profile);
+        ghost.position.set(positions[index].x, positions[index].y, positions[index].z);
+        this.ghostGroup.add(ghost);
+
+        // Create label if enabled
+        let label = null;
+        if (showLabels) {
+          label = this._createGhostLabel(profile.username);
+          label.position.set(positions[index].x, positions[index].y + 1.2, positions[index].z);
+          this.ghostGroup.add(label);
+        }
+
+        this.classGhosts.push({ profile, mesh: ghost, label });
+      });
+    }
+
+    // Update node glow for heat map effect
+    if (heatmap) {
+      this.updateNodeGlow(this.ghostsByNode);
+    }
+
+    this.ghostMesh = null; // No single ghost tracked
+    this.classViewMode = true;
+
+    console.log(`[MazeRenderer] Class view: showing ${displayedProfiles.length} ghosts`);
+  }
+
+  /**
+   * Clear all class view ghosts and labels
+   * @private
+   */
+  _clearClassGhosts() {
+    // Clear existing ghosts from group
     while (this.ghostGroup.children.length > 0) {
       const child = this.ghostGroup.children[0];
       this.ghostGroup.remove(child);
       this._disposeMesh(child);
     }
 
-    // Add all ghosts
-    ghostProfiles.forEach((profile, index) => {
-      const ghost = this._createGhostMesh(profile);
+    // Clear tracking arrays
+    this.classGhosts = [];
+    this.ghostsByNode.clear();
+  }
 
-      const node = this.nodes.get(profile.currentLevel);
-      if (node && node.position) {
-        // Offset slightly if multiple ghosts on same node
-        ghost.position.set(
-          node.position.x + (index % 3 - 1) * 0.5,
-          node.position.y + 2 + Math.floor(index / 3) * 0.5,
-          node.position.z + (Math.floor(index / 3) % 3 - 1) * 0.5
-        );
-      }
+  /**
+   * Create a ghost mesh scaled for class view
+   * @param {Object} profile - Ghost profile
+   * @returns {THREE.Group}
+   * @private
+   */
+  _createClassViewGhostMesh(profile) {
+    const group = new THREE.Group();
 
-      this.ghostGroup.add(ghost);
+    // Get color from profile
+    const colorKey = `ghost${this._capitalize(profile.color || 'white')}`;
+    const color = TRON_COLORS[colorKey] || TRON_COLORS.ghostWhite;
+    const opacity = (profile.opacity || 0.5) * CLASS_VIEW_OPACITY_FACTOR;
+
+    // Core sphere (scaled down)
+    const coreRadius = 0.8 * CLASS_VIEW_GHOST_SCALE;
+    const geometry = new THREE.SphereGeometry(coreRadius, 24, 24);
+    const material = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity
+    });
+    const core = new THREE.Mesh(geometry, material);
+    group.add(core);
+
+    // Outer glow (scaled down)
+    const glowRadius = 1.2 * CLASS_VIEW_GHOST_SCALE;
+    const glowGeometry = new THREE.SphereGeometry(glowRadius, 24, 24);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: opacity * 0.3,
+      side: THREE.BackSide
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    group.add(glow);
+
+    group.userData = {
+      type: 'ghost',
+      username: profile.username,
+      profile: profile
+    };
+
+    return group;
+  }
+
+  /**
+   * Create a text label for ghost username
+   * @param {string} username - Username to display
+   * @returns {THREE.Sprite}
+   * @private
+   */
+  _createGhostLabel(username) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    canvas.width = 128;
+    canvas.height = 32;
+
+    // Semi-transparent background
+    context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    context.roundRect(0, 0, canvas.width, canvas.height, 4);
+    context.fill();
+
+    // Text
+    context.font = 'Bold 14px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillStyle = '#ffffff';
+    context.fillText(this._truncateName(username, 12), canvas.width / 2, canvas.height / 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true
     });
 
-    this.ghostMesh = null; // No single ghost tracked
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(2, 0.5, 1);
+    sprite.userData = { type: 'label', username };
+
+    return sprite;
+  }
+
+  /**
+   * Update node glow intensity based on ghost clustering
+   * @param {Map} ghostsByNode - Map of nodeId to ghost array
+   */
+  updateNodeGlow(ghostsByNode) {
+    if (!this.nodeGroup) return;
+
+    this.nodeGroup.children.forEach(nodeGroup => {
+      const nodeId = nodeGroup.userData?.nodeId;
+      if (!nodeId) return;
+
+      const ghostCount = ghostsByNode.get(nodeId)?.length || 0;
+      const intensity = calculateNodeGlowIntensity(ghostCount);
+
+      // Update ring material intensity
+      nodeGroup.traverse(child => {
+        if (child.material && child.userData?.type !== 'label') {
+          if (child.material.emissiveIntensity !== undefined) {
+            child.material.emissiveIntensity = (child.material._baseEmissiveIntensity || 0.3) * intensity;
+          }
+          if (child.material.opacity !== undefined && child.geometry?.type === 'TorusGeometry') {
+            child.material.opacity = Math.min(0.8 * intensity, 1.0);
+          }
+        }
+      });
+    });
+  }
+
+  /**
+   * Focus camera on a specific ghost
+   * @param {string} username - Username of ghost to focus on
+   * @param {number} duration - Animation duration in ms (default: 1000)
+   * @returns {Object|null} Ghost profile if found
+   */
+  focusOnGhost(username, duration = 1000) {
+    const ghostEntry = this.classGhosts.find(g => g.profile.username === username);
+    if (!ghostEntry) {
+      console.warn(`[MazeRenderer] Ghost not found: ${username}`);
+      return null;
+    }
+
+    this.selectedGhost = username;
+    const position = ghostEntry.mesh.position;
+
+    const targetPosition = new THREE.Vector3(position.x, position.y, position.z);
+    const cameraOffset = new THREE.Vector3(6, 4, 6);
+    const targetCameraPos = targetPosition.clone().add(cameraOffset);
+
+    if (!this.controls) {
+      this.camera.position.copy(targetCameraPos);
+      this.camera.lookAt(targetPosition);
+      return ghostEntry.profile;
+    }
+
+    // Animate camera
+    const startPos = this.camera.position.clone();
+    const startTarget = this.controls.target.clone();
+    const startTime = performance.now();
+
+    const animateCamera = () => {
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = this._easeOutCubic(progress);
+
+      this.camera.position.lerpVectors(startPos, targetCameraPos, eased);
+      this.controls.target.lerpVectors(startTarget, targetPosition, eased);
+
+      if (progress < 1 && !this.isDisposed) {
+        requestAnimationFrame(animateCamera);
+      }
+    };
+
+    animateCamera();
+
+    // Pulse effect on selected ghost
+    this._pulseGhost(ghostEntry.mesh);
+
+    console.log(`[MazeRenderer] Focused on ghost: ${username}`);
+    return ghostEntry.profile;
+  }
+
+  /**
+   * Apply pulse effect to ghost mesh
+   * @param {THREE.Group} ghostMesh - Ghost mesh to pulse
+   * @private
+   */
+  _pulseGhost(ghostMesh) {
+    if (!ghostMesh || !ghostMesh.children[0]) return;
+
+    const core = ghostMesh.children[0];
+    const originalOpacity = core.material.opacity;
+    const startTime = performance.now();
+    const pulseDuration = 500;
+
+    const doPulse = () => {
+      const elapsed = performance.now() - startTime;
+      const progress = elapsed / pulseDuration;
+
+      if (progress < 1) {
+        const pulse = Math.sin(progress * Math.PI * 2) * 0.3;
+        core.material.opacity = Math.min(originalOpacity + pulse, 1.0);
+        requestAnimationFrame(doPulse);
+      } else {
+        core.material.opacity = originalOpacity;
+      }
+    };
+
+    doPulse();
+  }
+
+  /**
+   * Get ghost at screen position (for click/hover handling)
+   * @param {number} screenX - Screen X coordinate
+   * @param {number} screenY - Screen Y coordinate
+   * @returns {Object|null} Ghost profile or null
+   */
+  getGhostAtPosition(screenX, screenY) {
+    if (!this.camera || !this.ghostGroup || !this.classViewMode) return null;
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    mouse.x = ((screenX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((screenY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, this.camera);
+
+    const intersects = raycaster.intersectObjects(this.ghostGroup.children, true);
+
+    for (const intersect of intersects) {
+      let object = intersect.object;
+      // Walk up to find ghost group
+      while (object && object.userData?.type !== 'ghost') {
+        object = object.parent;
+      }
+      if (object && object.userData?.profile) {
+        return object.userData.profile;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Toggle class view mode
+   * @param {boolean} enabled - Enable class view mode
+   */
+  setClassViewMode(enabled) {
+    this.classViewMode = enabled;
+
+    if (enabled) {
+      // Set overview camera position
+      this._setOverviewCamera();
+    } else {
+      // Clear class view and restore single ghost mode
+      this._clearClassGhosts();
+      if (this.ghostProfile) {
+        this.updateGhost(this.ghostProfile);
+      }
+    }
+
+    console.log(`[MazeRenderer] Class view mode: ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Set camera to overview position to see entire maze
+   * @private
+   */
+  _setOverviewCamera() {
+    const camera = calculateOverviewCamera(this.nodes);
+
+    const targetPosition = new THREE.Vector3(camera.target.x, camera.target.y, camera.target.z);
+    const targetCameraPos = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z);
+
+    if (!this.controls) {
+      this.camera.position.copy(targetCameraPos);
+      this.camera.lookAt(targetPosition);
+      return;
+    }
+
+    // Animate to overview position
+    const startPos = this.camera.position.clone();
+    const startTarget = this.controls.target.clone();
+    const startTime = performance.now();
+    const duration = 1500;
+
+    const animateCamera = () => {
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = this._easeOutCubic(progress);
+
+      this.camera.position.lerpVectors(startPos, targetCameraPos, eased);
+      this.controls.target.lerpVectors(startTarget, targetPosition, eased);
+
+      if (progress < 1 && !this.isDisposed) {
+        requestAnimationFrame(animateCamera);
+      }
+    };
+
+    animateCamera();
+  }
+
+  /**
+   * Get first node ID (fallback for ghosts without currentLevel)
+   * @returns {string|null}
+   * @private
+   */
+  _getFirstNodeId() {
+    if (!this.nodes || this.nodes.size === 0) return null;
+    return this.nodes.keys().next().value;
+  }
+
+  /**
+   * Handle mouse move for tooltip (Phase 5)
+   * @param {MouseEvent} event
+   * @private
+   */
+  _handleMouseMove(event) {
+    if (!this.classViewMode) return;
+
+    const ghost = this.getGhostAtPosition(event.clientX, event.clientY);
+
+    if (ghost) {
+      this._showGhostTooltip(ghost, event.clientX, event.clientY);
+    } else {
+      this._hideGhostTooltip();
+    }
+  }
+
+  /**
+   * Show tooltip for ghost
+   * @param {Object} profile - Ghost profile
+   * @param {number} x - Screen X
+   * @param {number} y - Screen Y
+   * @private
+   */
+  _showGhostTooltip(profile, x, y) {
+    if (!this.ghostTooltip) {
+      this.ghostTooltip = document.createElement('div');
+      this.ghostTooltip.className = 'ghost-tooltip';
+      this.ghostTooltip.style.cssText = `
+        position: fixed;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 10000;
+        border: 1px solid rgba(68, 136, 255, 0.5);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      `;
+      document.body.appendChild(this.ghostTooltip);
+    }
+
+    const proficiencyPercent = ((profile.proficiency_score || 0) * 100).toFixed(0);
+    const lastActive = profile.updated_at ? this._formatTimeAgo(profile.updated_at) : 'Unknown';
+
+    this.ghostTooltip.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 4px;">@${profile.username}</div>
+      <div>Proficiency: ${proficiencyPercent}%</div>
+      <div>Interactions: ${profile.total_interactions || 0}</div>
+      <div>Level: ${profile.currentLevel || 'N/A'}</div>
+      <div style="color: #888; font-size: 11px;">Last active: ${lastActive}</div>
+    `;
+
+    this.ghostTooltip.style.left = `${x + 15}px`;
+    this.ghostTooltip.style.top = `${y + 15}px`;
+    this.ghostTooltip.style.display = 'block';
+  }
+
+  /**
+   * Hide ghost tooltip
+   * @private
+   */
+  _hideGhostTooltip() {
+    if (this.ghostTooltip) {
+      this.ghostTooltip.style.display = 'none';
+    }
+  }
+
+  /**
+   * Format timestamp as time ago
+   * @param {string} timestamp - ISO timestamp
+   * @returns {string}
+   * @private
+   */
+  _formatTimeAgo(timestamp) {
+    const now = new Date();
+    const then = new Date(timestamp);
+    const diffMs = now - then;
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
   }
 
   /**
@@ -1189,7 +1639,18 @@ export class MazeRenderer {
     window.removeEventListener('resize', this._onResize);
     if (this.renderer) {
       this.renderer.domElement.removeEventListener('click', this._onClick);
+      this.renderer.domElement.removeEventListener('mousemove', this._onMouseMove);
     }
+
+    // Remove tooltip
+    if (this.ghostTooltip && this.ghostTooltip.parentElement) {
+      this.ghostTooltip.remove();
+      this.ghostTooltip = null;
+    }
+
+    // Clear class view state
+    this.classGhosts = [];
+    this.ghostsByNode.clear();
 
     // Dispose scene objects
     if (this.scene) {
@@ -1310,3 +1771,160 @@ export function easeInOutCubic(t) {
 
 // Export TRON_COLORS for testing
 export { TRON_COLORS };
+
+// ============== Phase 5: Multi-Ghost Landscape Helper Functions ==============
+
+/**
+ * Calculate clustered positions for ghosts at same node
+ * @param {Array} ghosts - Ghosts at this node
+ * @param {Object} nodePosition - Base node position {x, y, z}
+ * @returns {Array} Array of adjusted positions
+ */
+export function calculateClusterPositions(ghosts, nodePosition) {
+  const count = ghosts.length;
+  const positions = [];
+
+  for (let i = 0; i < count; i++) {
+    const ring = Math.floor(i / GHOSTS_PER_RING);
+    const indexInRing = i % GHOSTS_PER_RING;
+    const ringCount = Math.min(count - ring * GHOSTS_PER_RING, GHOSTS_PER_RING);
+
+    // Single ghost is centered
+    if (count === 1) {
+      positions.push({
+        x: nodePosition.x,
+        y: nodePosition.y + GHOST_HEIGHT_OFFSET,
+        z: nodePosition.z
+      });
+      continue;
+    }
+
+    const angle = (indexInRing / ringCount) * Math.PI * 2;
+    const radius = CLUSTER_RADIUS * (1 + ring * 0.5);
+
+    positions.push({
+      x: nodePosition.x + Math.cos(angle) * radius,
+      y: nodePosition.y + GHOST_HEIGHT_OFFSET + ring * VERTICAL_SPACING,
+      z: nodePosition.z + Math.sin(angle) * radius
+    });
+  }
+
+  return positions;
+}
+
+/**
+ * Calculate node glow intensity based on ghost count
+ * @param {number} ghostCount - Number of ghosts at this node
+ * @returns {number} Intensity multiplier (1.0 - 2.0)
+ */
+export function calculateNodeGlowIntensity(ghostCount) {
+  if (ghostCount === 0) return 1.0;
+  if (ghostCount <= 2) return 1.2;
+  if (ghostCount <= 5) return 1.5;
+  if (ghostCount <= 10) return 1.8;
+  return 2.0;
+}
+
+/**
+ * Calculate overview camera position to see entire maze
+ * @param {Map} nodes - All nodes in maze
+ * @returns {Object} Camera position and target {position: {x,y,z}, target: {x,y,z}}
+ */
+export function calculateOverviewCamera(nodes) {
+  if (!nodes || nodes.size === 0) {
+    return {
+      position: { x: 30, y: 25, z: 30 },
+      target: { x: 0, y: 8, z: 0 }
+    };
+  }
+
+  // Find bounding box of all nodes
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+
+  for (const node of nodes.values()) {
+    if (!node.position) continue;
+    minX = Math.min(minX, node.position.x);
+    maxX = Math.max(maxX, node.position.x);
+    minY = Math.min(minY, node.position.y);
+    maxY = Math.max(maxY, node.position.y);
+    minZ = Math.min(minZ, node.position.z);
+    maxZ = Math.max(maxZ, node.position.z);
+  }
+
+  // Handle edge case where no nodes have positions
+  if (minX === Infinity) {
+    return {
+      position: { x: 30, y: 25, z: 30 },
+      target: { x: 0, y: 8, z: 0 }
+    };
+  }
+
+  // Calculate center
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const centerZ = (minZ + maxZ) / 2;
+
+  // Calculate max span for camera distance
+  const spanX = maxX - minX;
+  const spanY = maxY - minY;
+  const spanZ = maxZ - minZ;
+  const maxSpan = Math.max(spanX, spanY, spanZ, 20); // Minimum 20 units
+
+  // Position camera at 45-degree angle, far enough to see everything
+  const distance = maxSpan * 1.5;
+
+  return {
+    position: {
+      x: centerX + distance * 0.7,
+      y: centerY + distance * 0.5,
+      z: centerZ + distance * 0.7
+    },
+    target: { x: centerX, y: centerY, z: centerZ }
+  };
+}
+
+/**
+ * Parse ghost leaderboard data and add currentLevel based on proficiency
+ * @param {Array} ghosts - Raw ghost data from API
+ * @param {Map} nodes - Maze nodes to map progress to
+ * @returns {Array} Enhanced ghost profiles with currentLevel
+ */
+export function parseLeaderboardData(ghosts, nodes) {
+  if (!ghosts || !Array.isArray(ghosts)) return [];
+  if (!nodes || nodes.size === 0) return ghosts;
+
+  // Get sorted node IDs by tier (progression order)
+  const nodeArray = Array.from(nodes.values())
+    .filter(n => n.position)
+    .sort((a, b) => a.tier - b.tier);
+
+  return ghosts.map(ghost => {
+    // If ghost already has currentLevel, use it
+    if (ghost.currentLevel && nodes.has(ghost.currentLevel)) {
+      return ghost;
+    }
+
+    // Estimate current level based on proficiency score
+    const proficiency = ghost.proficiency_score || 0;
+    const estimatedIndex = Math.floor(proficiency * (nodeArray.length - 1));
+    const clampedIndex = Math.max(0, Math.min(estimatedIndex, nodeArray.length - 1));
+
+    return {
+      ...ghost,
+      currentLevel: nodeArray[clampedIndex]?.id || nodeArray[0]?.id
+    };
+  });
+}
+
+// Export constants for testing
+export {
+  CLUSTER_RADIUS,
+  VERTICAL_SPACING,
+  GHOSTS_PER_RING,
+  CLASS_VIEW_GHOST_SCALE,
+  CLASS_VIEW_OPACITY_FACTOR,
+  MAX_DISPLAYED_GHOSTS,
+  GHOST_HEIGHT_OFFSET
+};
