@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <!-- TensorFlow.js for Ghost neural network -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
   <!-- Tailwind safelist for Grid Wars panel (hidden, just ensures classes are compiled) -->
@@ -904,11 +906,86 @@
     import { createAIFeedbackPanel, updateAIFeedbackPanel, showAIFeedbackError, hideAIFeedbackPanel } from './core/ai-feedback-panel.js';
     import { RosterModal } from './core/roster-modal.js';
     import { GAME_MODE_CONFIG } from '../shared/game-mode.config.js';
+    import * as GhostEngine from './core/ghost-engine.js';
     console.log('[APP] All imports successful, GameModeManager:', typeof GameModeManager);
 
     // ==================== CONFIGURATION ====================
     const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
     const CLIENT_VERSION = '0.0.1';
+
+    // ==================== GHOST SYSTEM ====================
+    // Initialize Ghost Engine with TensorFlow.js (loaded via CDN)
+    if (window.tf) {
+      GhostEngine.init(window.tf, SERVER_URL);
+      console.log('[Ghost] TensorFlow.js initialized, version:', window.tf.version.tfjs);
+    } else {
+      console.warn('[Ghost] TensorFlow.js not loaded - ghost features disabled');
+    }
+
+    // Ghost session tracking
+    let ghostSessionStart = Date.now();
+    let ghostProblemsThisSession = 0;
+    let ghostSessionCorrect = 0;
+    let ghostProblemHistory = [];  // Recent correctness history
+
+    /**
+     * Record ghost interaction after grading
+     * @param {Object} result - Grading result
+     * @param {Object} state - Game engine state
+     */
+    async function recordGhostInteraction(result, state) {
+      if (!GhostEngine.isInitialized() || !userSystem.currentUser) return;
+
+      try {
+        const modes = platform.cartridgeLoader?.getModes() || [];
+        const currentModeId = platform.currentMode;
+        const levelIndex = modes.findIndex(m => m.id === currentModeId);
+        const totalLevels = modes.length;
+
+        // Calculate recent accuracy from history (last 5)
+        const recentHistory = ghostProblemHistory.slice(-5);
+        const recentAccuracy = recentHistory.length > 0
+          ? recentHistory.filter(x => x).length / recentHistory.length
+          : 0.5;
+
+        // Get session duration in minutes
+        const sessionMinutes = (Date.now() - ghostSessionStart) / 60000;
+
+        // Determine level tier (0=early, 1=mid, 2=late)
+        const levelTier = totalLevels > 0
+          ? Math.floor((levelIndex / totalLevels) * 3)
+          : 0;
+
+        // Get problem timing from time tracker
+        const timeStats = timeTracker.getStats();
+        const timeToAnswerMs = timeStats.currentProblem?.activeTimeMs || 10000;
+
+        const interactionData = {
+          levelId: currentModeId,
+          levelIndex,
+          totalLevels,
+          topicId: platform.currentProblem?.context?.topicId || '',
+          levelTier,
+          timeToAnswerMs,
+          sessionMinutes,
+          correct: result.allCorrect,
+          score: result.allCorrect ? 'E' : 'I',
+          hintsUsed: state.hintsUsed || 0,
+          hintsRemaining: 3 - (state.hintsUsed || 0),
+          currentStreak: state.streaks?.[currentModeId] || 0,
+          recentAccuracy,
+          problemsThisSession: ghostProblemsThisSession,
+          sessionAccuracy: ghostProblemsThisSession > 0
+            ? ghostSessionCorrect / ghostProblemsThisSession
+            : 0.5,
+          retryCount: state.totalPenalties || 0
+        };
+
+        await GhostEngine.recordInteraction(interactionData);
+      } catch (err) {
+        console.warn('[Ghost] Failed to record interaction:', err);
+      }
+    }
 
     // ==================== VERSION CHECK ====================
     async function checkForUpdates() {
@@ -3566,6 +3643,22 @@
 
     async function loadCartridge(cartridgeId) {
       try {
+        // Re-initialize ghost for new cartridge (non-blocking)
+        if (userSystem.currentUser && window.tf) {
+          ghostSessionStart = Date.now();
+          ghostProblemsThisSession = 0;
+          ghostSessionCorrect = 0;
+          ghostProblemHistory = [];
+
+          GhostEngine.initGhost(userSystem.currentUser.username, cartridgeId)
+            .then(profile => {
+              if (profile) {
+                console.log(`[Ghost] Switched to: ${profile.color} ghost (${profile.total_interactions} interactions)`);
+              }
+            })
+            .catch(err => console.warn('[Ghost] Re-init failed:', err));
+        }
+
         platform = new Platform({
           graphContainer: '#graph-container',
           inputsContainer: '#input-container',
@@ -3593,6 +3686,16 @@
 
             // Update grading status display
             updateGradingStatus(results);
+
+            // v4.4: Ghost behavioral tracking
+            // Update session tracking and record interaction
+            ghostProblemsThisSession++;
+            if (results.allCorrect) ghostSessionCorrect++;
+            ghostProblemHistory.push(results.allCorrect);
+            if (ghostProblemHistory.length > 10) ghostProblemHistory.shift(); // Keep last 10
+
+            const gameState = platform.getState();
+            recordGhostInteraction(results, gameState.game || {});
 
             // v2.0.1: Update AI feedback panel
             // v2.1: Enhanced logging for AI flow debugging
@@ -4407,6 +4510,18 @@
         wsClient.connect(userSystem.currentUser.username);
         leaderboard.setCurrentUser(userSystem.currentUser.username);
         timeTracker.start(userSystem.currentUser.username);
+
+        // Initialize ghost for this user/cartridge
+        if (window.tf && GhostEngine.isInitialized !== undefined) {
+          GhostEngine.initGhost(userSystem.currentUser.username, currentCartridgeId)
+            .then(profile => {
+              if (profile) {
+                console.log(`[Ghost] Ready: ${profile.color} ghost, ${profile.total_interactions} interactions, ${(profile.proficiency_score * 100).toFixed(0)}% proficiency`);
+              }
+            })
+            .catch(err => console.warn('[Ghost] Init failed:', err));
+        }
+
         await loadCartridge(currentCartridgeId);
 
         // Sync local stars with server on return visit

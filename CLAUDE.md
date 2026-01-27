@@ -14,7 +14,7 @@ Current cartridges (12 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v4.3.5 (Probability Cartridge Extended to 4.8)
+**Current Version**: v4.4.0 (Ghost System Phase 1)
 
 ## Development Commands
 
@@ -53,7 +53,7 @@ When modifying grading behavior, the `onGradingComplete` callback at ~line 3095 
 
 **Platform (Console)** - `platform/` - topic-agnostic orchestrator:
 - `platform.js` - Main orchestrator, loads cartridges, coordinates engines
-- `core/` - Engines: game-engine (streaks/stars), grading-engine (dual grading), graph-engine (canvas plots), input-renderer (dynamic forms), cartridge-loader, shuffle-bag, user-system, websocket-client, time-tracker, celebration, leaderboard, sound-engine, ai-feedback-panel (v2.0.1)
+- `core/` - Engines: game-engine (streaks/stars), grading-engine (dual grading), graph-engine (canvas plots), input-renderer (dynamic forms), cartridge-loader, shuffle-bag, user-system, websocket-client, time-tracker, celebration, leaderboard, sound-engine, ai-feedback-panel (v2.0.1), ghost-engine (v4.4.0), ghost-network (v4.4.0)
 - `game/` - CTF (Capture The Flag): ctf-state, ctf-renderer, ctf-panel
 - `core/radical-*.js` - Algebra 2 radicals: visualizer, game, prime game, complex game
 
@@ -306,13 +306,16 @@ npx vitest run tests/generators/apstatu4l1l2.test.js      # v4.3.5 probability c
 npx vitest run tests/grading/apstatu4l1l2.test.js         # v4.3.5 probability cartridge grading (169 tests)
 npx vitest run tests/core/student-detail-modal.test.js    # v4.3.2 student detail modal tests (52 tests)
 npx vitest run tests/server/ctf-session-start.test.js     # v4.3.2 CTF session start fix tests (30 tests)
+npx vitest run tests/core/ghost-network.test.js           # v4.4.0 ghost neural network tests (16 tests)
+npx vitest run tests/core/ghost-engine.test.js            # v4.4.0 ghost engine tests (50 tests)
+npx vitest run tests/server/ghost-api.test.js             # v4.4.0 ghost API contract tests (26 tests)
 ```
 
 Test organization:
-- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1, game-engine-progression, student-detail-modal)
+- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1, game-engine-progression, student-detail-modal, ghost-network, ghost-engine)
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design, apstatu4l1l2)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design, apstatu4l1l2)
-- `tests/server/` - Railway server API tests (api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality, ctf-session-start)
+- `tests/server/` - Railway server API tests (api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality, ctf-session-start, ghost-api)
 
 Manual testing: `npm run dev` → http://localhost:5173/platform/app.html, select cartridge, check browser console.
 
@@ -327,6 +330,7 @@ railway-server/migrations/008_progression_overrides.sql # v3.2: Teacher-configur
 railway-server/migrations/009_ctf.sql               # v4.0: CTF tables (ctf_games, ctf_players)
 railway-server/migrations/010_class_periods.sql     # v4.1: class_period column for roster management
 railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, session management, tiebreaker tables
+railway-server/migrations/013_ghost_profiles.sql   # v4.4: Ghost behavioral AI profiles table
 ```
 
 ## Configuration Files
@@ -365,6 +369,42 @@ https://your-domain.com/platform/app.html?cartridge=CARTRIDGE_ID&level=LEVEL_ID
 - **Students**: Can access any level via URL; if normally locked, shows toast notification
 
 ## Version History (Bug Fixes)
+
+**v4.4.0**: Ghost System Phase 1 (Behavioral AI Companion)
+- **Ghost Profile Infrastructure**: Students now train neural network "ghosts" that learn their behavioral patterns
+  - Each student has one ghost per cartridge (username + cartridge_id)
+  - Ghost learns from every graded interaction, not just correct answers
+- **Neural Network Architecture** (TensorFlow.js):
+  - 10 input features: level progress, session time, streak, accuracy, hints, problems, retries, time of day, level tier
+  - 16-16 hidden neurons (ReLU activation)
+  - 4 output predictions: response time, correct probability, hint probability, quick answer probability
+  - 516 total parameters, ~2KB storage as Float32
+- **Visual Properties** (for future visualization phases):
+  - **Color = Proficiency**: white (0-20%), yellow (20-40%), orange (40-60%), red (60-80%), indigo (80-100%)
+  - **Opacity = Engagement**: 0.1 (new) to 1.0 (100+ interactions)
+- **Experience Replay Buffer**: Last 50 interactions stored for stable training, batch size of 8
+- **Server Sync**: Ghost profiles sync to Supabase with version-based conflict resolution
+  - Debounced sync (2 second delay after last interaction)
+  - localStorage persistence as fallback
+- **New Files**:
+  - `platform/core/ghost-network.js` - TensorFlow.js model definition
+  - `platform/core/ghost-engine.js` - Main orchestrator (init, record, sync)
+  - `railway-server/migrations/013_ghost_profiles.sql` - Database schema
+- **New API Endpoints**:
+  - `POST /api/ghost/:cartridgeId/sync` - Upsert ghost profile
+  - `GET /api/ghost/:cartridgeId/:username` - Retrieve ghost profile
+  - `GET /api/ghost/:cartridgeId/leaderboard` - Get all ghosts for landscape view (supports class_period filter)
+- **app.html Integration**:
+  - TensorFlow.js loaded via CDN (`@tensorflow/tfjs@4.17.0`)
+  - Ghost initialized on user login and cartridge switch
+  - Interaction recorded after every grading (correct or incorrect)
+  - Session tracking: problems attempted, accuracy, problem history
+- **New Tests**: 66 tests across 3 files
+  - `tests/core/ghost-network.test.js` (16 tests)
+  - `tests/core/ghost-engine.test.js` (50 tests)
+  - `tests/server/ghost-api.test.js` (26 tests)
+- **Documentation**: `ghost-system-spec.md` (design philosophy), `ghost-phase1-technical-spec.md` (implementation details)
+- **Future Phases**: 3D maze visualization (Three.js), ghost battles, class landscape view
 
 **v4.3.5**: Probability Cartridge Extended to 4.8 (Random Variables & Distributions)
 - **apstatu4l1l2 Extended**: Now covers Topics 4.1-4.8 (was 4.1-4.6)

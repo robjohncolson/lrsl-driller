@@ -4636,6 +4636,114 @@ app.delete('/api/progression-overrides/:cartridgeId/:modeId', async (req, res) =
   }
 });
 
+// ============================================
+// GHOST PROFILE ENDPOINTS (Phase 1)
+// ============================================
+
+// POST /api/ghost/:cartridgeId/sync - Upsert ghost profile
+app.post('/api/ghost/:cartridgeId/sync', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const {
+      username, weights, buffer, total_interactions,
+      proficiency_score, color, opacity, version
+    } = req.body;
+
+    if (!username || !weights) {
+      return res.status(400).json({ error: 'Missing required fields: username and weights' });
+    }
+
+    const { data, error } = await supabase
+      .from('ghost_profiles')
+      .upsert({
+        username,
+        cartridge_id: cartridgeId,
+        weights,
+        buffer,
+        total_interactions,
+        proficiency_score,
+        color,
+        opacity,
+        version
+      }, {
+        onConflict: 'username,cartridge_id',
+        ignoreDuplicates: false
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, profile: data });
+  } catch (err) {
+    console.error('POST /api/ghost/:cartridgeId/sync error:', err);
+    res.status(500).json({ error: 'Sync failed' });
+  }
+});
+
+// GET /api/ghost/:cartridgeId/:username - Retrieve ghost profile
+app.get('/api/ghost/:cartridgeId/:username', async (req, res) => {
+  try {
+    const { cartridgeId, username } = req.params;
+
+    const { data, error } = await supabase
+      .from('ghost_profiles')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('username', username)
+      .single();
+
+    // PGRST116 = no rows returned (not an error)
+    if (error && error.code !== 'PGRST116') throw error;
+
+    if (!data) {
+      return res.status(404).json({ error: 'Ghost not found' });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error('GET /api/ghost/:cartridgeId/:username error:', err);
+    res.status(500).json({ error: 'Load failed' });
+  }
+});
+
+// GET /api/ghost/:cartridgeId/leaderboard - Get all ghosts for landscape view
+app.get('/api/ghost/:cartridgeId/leaderboard', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { class_period } = req.query;
+
+    let query = supabase
+      .from('ghost_profiles')
+      .select('username, total_interactions, proficiency_score, color, opacity, updated_at')
+      .eq('cartridge_id', cartridgeId)
+      .order('proficiency_score', { ascending: false });
+
+    // If class_period is provided, filter by joining with users table
+    if (class_period) {
+      // Get usernames for this period first
+      const { data: periodUsers } = await supabase
+        .from('users')
+        .select('username')
+        .eq('class_period', class_period);
+
+      if (periodUsers && periodUsers.length > 0) {
+        const usernames = periodUsers.map(u => u.username);
+        query = query.in('username', usernames);
+      }
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    res.json({ ghosts: data || [] });
+  } catch (err) {
+    console.error('GET /api/ghost/:cartridgeId/leaderboard error:', err);
+    res.status(500).json({ error: 'Load failed' });
+  }
+});
+
 function getOnlineUsers() {
   const users = [];
   for (const [, data] of clients) {
