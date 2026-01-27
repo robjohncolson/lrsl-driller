@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstatu4l1l2",
-    "name": "Probability (4.1-4.6)",
+    "name": "Probability (4.1-4.8)",
     "subject": "AP Statistics",
-    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions"
+    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions, random variables, probability distributions, mean, standard deviation"
   },
   "config": {
     "contextsFile": null,
@@ -14,7 +14,11 @@
       "VAR-4.B",
       "VAR-4.C",
       "VAR-4.D",
-      "VAR-4.E"
+      "VAR-4.E",
+      "VAR-5.A",
+      "VAR-5.B",
+      "VAR-5.C",
+      "VAR-5.D"
     ]
   },
   "display": {
@@ -604,6 +608,132 @@
           }
         ]
       }
+    },
+    {
+      "id": "l33-random-var-def",
+      "name": "4.7a: Random Variable Definition",
+      "unlockedBy": { "gold": 32 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "rvDefAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l34-discrete-continuous",
+      "name": "4.7b: Discrete vs Continuous",
+      "unlockedBy": { "gold": 33 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "discContAnswer",
+            "type": "choice",
+            "label": "Is this random variable discrete or continuous?",
+            "options": ["Discrete", "Continuous"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l35-valid-prob-dist",
+      "name": "4.7c: Valid Probability Distribution",
+      "unlockedBy": { "gold": 34 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "validDistAnswer",
+            "type": "choice",
+            "label": "Is this a valid probability distribution?",
+            "options": ["Yes, valid", "No, invalid"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l36-prob-from-dist",
+      "name": "4.7d: Probability from Distribution",
+      "unlockedBy": { "gold": 35 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "probDistAnswer",
+            "type": "number",
+            "label": "Calculate the probability (as decimal, e.g., 0.53):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l37-describe-dist",
+      "name": "4.7e: Describe Distribution",
+      "unlockedBy": { "gold": 36 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "shapeAnswer",
+            "type": "dropdown",
+            "label": "What is the shape of this distribution?",
+            "options": ["Skewed right", "Skewed left", "Symmetric (bell-shaped)", "Uniform (symmetric)", "Symmetric (triangular)", "Extremely skewed right"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l38-mean-formula",
+      "name": "4.8a: Mean (Expected Value)",
+      "unlockedBy": { "gold": 37 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meanAnswer",
+            "type": "number",
+            "label": "Calculate the mean μ = Σ[x·P(x)]:",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l39-std-dev-formula",
+      "name": "4.8b: Standard Deviation",
+      "unlockedBy": { "gold": 38 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "stdDevAnswer",
+            "type": "number",
+            "label": "Calculate the standard deviation σ:",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l40-interpret-params",
+      "name": "4.7-4.8 Capstone",
+      "unlockedBy": { "gold": 39 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "interpretAnswer",
+            "type": "dropdown",
+            "label": "Select the correct interpretation:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -660,7 +790,15 @@
       "unionAnswer": "Use: P(A or B) = P(A) + P(B) - P(A ∩ B). For mutually exclusive events, P(A ∩ B) = 0, so just add!",
       "indepVsMeAnswer": "Independent: P(A∩B) = P(A)×P(B), can occur together. Mutually exclusive: P(A∩B) = 0, CANNOT occur together. These are DIFFERENT concepts!",
       "capstone46Answer": "Review: Independent means P(A|B)=P(A). Addition rule subtracts intersection. Independent events CAN occur together!",
-      "capstone46Explain": "Explain using independence criteria or addition rule formula. Distinguish independent from mutually exclusive!"
+      "capstone46Explain": "Explain using independence criteria or addition rule formula. Distinguish independent from mutually exclusive!",
+      "rvDefAnswer": "Random variables are NUMERICAL outcomes of random behavior. Always use capital letters (X, Y, W) and define what is being measured.",
+      "discContAnswer": "DISCRETE = countable values with gaps (counts like 0,1,2,3). CONTINUOUS = infinite values in an interval (measurements like time, length).",
+      "validDistAnswer": "Check TWO things: (1) Each P(X) is between 0 and 1, (2) All probabilities sum to exactly 1.",
+      "probDistAnswer": "ADD the probabilities for all X values in the specified range. P(X ≤ 3) = P(0) + P(1) + P(2) + P(3).",
+      "shapeAnswer": "Look at where probability is concentrated. Right-skewed = tail extends right. Left-skewed = tail extends left. Uniform = all equal.",
+      "meanAnswer": "μ = Σ[x·P(x)]. Multiply EACH x value by its probability, then add ALL products together.",
+      "stdDevAnswer": "σ = √[Σ(x-μ)²·P(x)]. Find deviations from mean, square them, multiply by P(x), sum, then square root.",
+      "interpretAnswer": "Mean = long-run average. Standard deviation = typical variation from mean. Always include context and units!"
     },
     "penalty": {
       "0": "gold",
@@ -863,7 +1001,55 @@
         "id": "l32-mixed-4-6",
         "name": "4.6 Capstone",
         "unlockedBy": { "gold": 31 },
-        "celebrationMessage": "UNIT 4.1-4.6 COMPLETE! You've mastered all probability topics!"
+        "celebrationMessage": "Topics 4.1-4.6 complete! Now onto random variables..."
+      },
+      {
+        "id": "l33-random-var-def",
+        "name": "4.7a",
+        "unlockedBy": { "gold": 32 },
+        "celebrationMessage": "Random variables defined! Next: discrete vs continuous."
+      },
+      {
+        "id": "l34-discrete-continuous",
+        "name": "4.7b",
+        "unlockedBy": { "gold": 33 },
+        "celebrationMessage": "Discrete vs continuous mastered! Next: valid distributions."
+      },
+      {
+        "id": "l35-valid-prob-dist",
+        "name": "4.7c",
+        "unlockedBy": { "gold": 34 },
+        "celebrationMessage": "Validity checks down! Next: calculating from distributions."
+      },
+      {
+        "id": "l36-prob-from-dist",
+        "name": "4.7d",
+        "unlockedBy": { "gold": 35 },
+        "celebrationMessage": "Probability calculations done! Next: describing distributions."
+      },
+      {
+        "id": "l37-describe-dist",
+        "name": "4.7e",
+        "unlockedBy": { "gold": 36 },
+        "celebrationMessage": "Distribution descriptions mastered! Now onto expected value..."
+      },
+      {
+        "id": "l38-mean-formula",
+        "name": "4.8a",
+        "unlockedBy": { "gold": 37 },
+        "celebrationMessage": "Expected value calculated! Next: standard deviation."
+      },
+      {
+        "id": "l39-std-dev-formula",
+        "name": "4.8b",
+        "unlockedBy": { "gold": 38 },
+        "celebrationMessage": "Standard deviation mastered! Final capstone next."
+      },
+      {
+        "id": "l40-interpret-params",
+        "name": "4.7-4.8 Capstone",
+        "unlockedBy": { "gold": 39 },
+        "celebrationMessage": "UNIT 4.1-4.8 COMPLETE! You've mastered probability AND random variables!"
       }
     ]
   }

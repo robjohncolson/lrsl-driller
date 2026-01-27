@@ -86,9 +86,9 @@
     },
     {
       "id": "apstatu4l1l2",
-      "name": "Probability Basics (4.1-4.3)",
+      "name": "Probability & Random Variables (4.1-4.8)",
       "subject": "AP Statistics",
-      "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements",
+      "description": "Random processes, simulation, probability rules, conditional probability, independence, unions, random variables, probability distributions, mean, standard deviation",
       "shortCode": "PROB"
     }
   ]

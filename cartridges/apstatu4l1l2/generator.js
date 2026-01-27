@@ -1,5 +1,5 @@
-// generator.js - AP Statistics Unit 4 Lessons 1-6: Probability & Simulation
-// Topics: Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions
+// generator.js - AP Statistics Unit 4 Lessons 1-8: Probability, Random Variables & Distributions
+// Topics: Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions, random variables, probability distributions, mean, standard deviation
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -2013,6 +2013,489 @@ const mixed46Scenarios = [
   }
 ];
 
+// ============ TOPIC 4.7-4.8 SCENARIOS ============
+
+// Level 33: Random Variable Definition
+const randomVarDefScenarios = [
+  {
+    question: "What is a RANDOM VARIABLE?",
+    answer: "A numerical outcome of random behavior",
+    options: [
+      "A numerical outcome of random behavior",
+      "A variable that is always unpredictable",
+      "The sample space of an experiment",
+      "A variable that can only be 0 or 1"
+    ]
+  },
+  {
+    question: "Which of the following is a correctly defined random variable?",
+    answer: "X = the number of heads in 10 coin flips",
+    options: [
+      "X = the number of heads in 10 coin flips",
+      "X = the coin flip results",
+      "X = heads or tails",
+      "X = whether you win or lose"
+    ]
+  },
+  {
+    question: "Random variables are always represented by:",
+    answer: "Capital letters (like X, Y, W)",
+    options: [
+      "Capital letters (like X, Y, W)",
+      "Lowercase letters (like x, y, w)",
+      "Greek letters (like μ, σ)",
+      "Numbers only"
+    ]
+  },
+  {
+    question: "If X = time (minutes) to run a mile, X is a random variable because:",
+    answer: "The exact time varies randomly for each person selected",
+    options: [
+      "The exact time varies randomly for each person selected",
+      "Time is always measured in minutes",
+      "Everyone runs at different speeds",
+      "Running is a physical activity"
+    ]
+  },
+  {
+    question: "Which is NOT a random variable?",
+    answer: "The constant π = 3.14159...",
+    options: [
+      "The constant π = 3.14159...",
+      "Number of students absent today",
+      "Time until next earthquake",
+      "Height of a randomly selected person"
+    ]
+  },
+  {
+    question: "Y = the number of pups in a randomly selected prairie dog litter. This is a random variable because:",
+    answer: "The number varies unpredictably from litter to litter",
+    options: [
+      "The number varies unpredictably from litter to litter",
+      "Prairie dogs have different numbers of pups",
+      "We defined it with a capital letter",
+      "Litter size can be counted"
+    ]
+  }
+];
+
+// Level 34: Discrete vs Continuous
+const discreteVsContinuousScenarios = [
+  {
+    desc: "X = the number of children in a randomly selected household",
+    type: "Discrete",
+    explanation: "You can only have whole numbers of children (0, 1, 2, 3...). There are spaces between values - you can't have 2.7 children."
+  },
+  {
+    desc: "W = the time (minutes) it takes a randomly selected person to run a mile",
+    type: "Continuous",
+    explanation: "Time is measured on a continuous scale. Between any two times (like 5 min and 6 min), there are infinite possible values."
+  },
+  {
+    desc: "L = the length (cm) of a randomly selected person's index finger",
+    type: "Continuous",
+    explanation: "Length is a measurement that can take any value in an interval. There's no 'gap' between possible lengths."
+  },
+  {
+    desc: "Y = the number of dogs with a location chip out of 10 randomly selected dogs",
+    type: "Discrete",
+    explanation: "Counts of dogs must be whole numbers: 0, 1, 2, ..., 10. You can list all possible values."
+  },
+  {
+    desc: "T = the temperature (°F) at noon tomorrow",
+    type: "Continuous",
+    explanation: "Temperature can be any value in a range - 72.3°F, 72.31°F, etc. Infinite possible values between any two temperatures."
+  },
+  {
+    desc: "N = the number of text messages you receive today",
+    type: "Discrete",
+    explanation: "You can count text messages: 0, 1, 2, 3... You can't receive 5.5 messages."
+  },
+  {
+    desc: "H = the height (inches) of a randomly selected basketball player",
+    type: "Continuous",
+    explanation: "Height is a continuous measurement. A player could be 75.234 inches tall - infinite precision possible."
+  },
+  {
+    desc: "S = the sum of two rolled dice",
+    type: "Discrete",
+    explanation: "The sum can only be 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, or 12. Countable, specific values with gaps between them."
+  },
+  {
+    desc: "G = the amount of gas (gallons) needed to fill a randomly selected car's tank",
+    type: "Continuous",
+    explanation: "Volume is continuous - you could need 12.347 gallons. Any value in a range is possible."
+  },
+  {
+    desc: "R = the number of red lights you hit on your commute",
+    type: "Discrete",
+    explanation: "Counting red lights: 0, 1, 2, 3... You can't hit 2.5 red lights."
+  }
+];
+
+// Level 35: Valid Probability Distribution for Random Variables
+const validProbDistScenarios = [
+  {
+    table: { x: [1, 2, 3, 4], p: [0.15, 0.40, 0.30, 0.15] },
+    isValid: true,
+    reason: "All probabilities 0-1 and sum to 1",
+    explanation: "Each P(X) is between 0 and 1. Sum = 0.15 + 0.40 + 0.30 + 0.15 = 1.00 ✓"
+  },
+  {
+    table: { x: [0, 1, 2, 3], p: [0.20, 0.35, 0.30, 0.20] },
+    isValid: false,
+    reason: "Probabilities sum to 1.05, not 1",
+    explanation: "Sum = 0.20 + 0.35 + 0.30 + 0.20 = 1.05 ≠ 1. Probabilities must sum to exactly 1."
+  },
+  {
+    table: { x: [1, 2, 3, 4, 5], p: [0.10, 0.20, 0.35, 0.20, 0.15] },
+    isValid: true,
+    reason: "All probabilities 0-1 and sum to 1",
+    explanation: "Each P(X) is between 0 and 1. Sum = 0.10 + 0.20 + 0.35 + 0.20 + 0.15 = 1.00 ✓"
+  },
+  {
+    table: { x: [0, 1, 2], p: [0.50, 0.60, -0.10] },
+    isValid: false,
+    reason: "Probability cannot be negative",
+    explanation: "P(X=2) = -0.10 is invalid. All probabilities must be between 0 and 1, inclusive."
+  },
+  {
+    table: { x: [1, 2, 3, 4, 5, 6, 7], p: [0.15, 0.38, 0.27, 0.11, 0.05, 0.03, 0.01] },
+    isValid: true,
+    reason: "All probabilities 0-1 and sum to 1",
+    explanation: "This is the prairie dog pups distribution. Sum = 1.00 ✓"
+  },
+  {
+    table: { x: [1, 2, 3], p: [0.30, 0.40, 0.20] },
+    isValid: false,
+    reason: "Probabilities sum to 0.90, not 1",
+    explanation: "Sum = 0.30 + 0.40 + 0.20 = 0.90 ≠ 1. Missing 0.10 probability somewhere."
+  },
+  {
+    table: { x: [0, 1, 2, 3, 4, 5, 6], p: [0.03, 0.03, 0.05, 0.18, 0.31, 0.28, 0.12] },
+    isValid: true,
+    reason: "All probabilities 0-1 and sum to 1",
+    explanation: "This is the thermostat distribution. Sum = 1.00 ✓"
+  },
+  {
+    table: { x: [1, 2, 3, 4], p: [0.25, 1.20, 0.30, 0.25] },
+    isValid: false,
+    reason: "Probability 1.20 exceeds maximum of 1",
+    explanation: "P(X=2) = 1.20 > 1 is invalid. No probability can exceed 1."
+  }
+];
+
+// Level 36: Probability from Distribution Table
+const probFromDistScenarios = [
+  {
+    desc: "Prairie dog pups: X = number of pups. Distribution: P(1)=0.15, P(2)=0.38, P(3)=0.27, P(4)=0.11, P(5)=0.05, P(6)=0.03, P(7)=0.01",
+    question: "Find P(X ≤ 2)",
+    calculation: "0.15 + 0.38",
+    answer: 0.53,
+    explanation: "P(X ≤ 2) = P(1) + P(2) = 0.15 + 0.38 = 0.53"
+  },
+  {
+    desc: "Prairie dog pups: X = number of pups. Distribution: P(1)=0.15, P(2)=0.38, P(3)=0.27, P(4)=0.11, P(5)=0.05, P(6)=0.03, P(7)=0.01",
+    question: "Find P(X ≥ 5)",
+    calculation: "0.05 + 0.03 + 0.01",
+    answer: 0.09,
+    explanation: "P(X ≥ 5) = P(5) + P(6) + P(7) = 0.05 + 0.03 + 0.01 = 0.09"
+  },
+  {
+    desc: "Thermostat settings: X = degrees below 78°. P(0)=0.03, P(1)=0.03, P(2)=0.05, P(3)=0.18, P(4)=0.31, P(5)=0.28, P(6)=0.12",
+    question: "Find P(X ≥ 4) - probability thermostat is at 74° or lower",
+    calculation: "0.31 + 0.28 + 0.12",
+    answer: 0.71,
+    explanation: "P(X ≥ 4) = P(4) + P(5) + P(6) = 0.31 + 0.28 + 0.12 = 0.71"
+  },
+  {
+    desc: "Thermostat settings: X = degrees below 78°. P(0)=0.03, P(1)=0.03, P(2)=0.05, P(3)=0.18, P(4)=0.31, P(5)=0.28, P(6)=0.12",
+    question: "Find P(X < 3) - probability thermostat is above 75°",
+    calculation: "0.03 + 0.03 + 0.05",
+    answer: 0.11,
+    explanation: "P(X < 3) = P(0) + P(1) + P(2) = 0.03 + 0.03 + 0.05 = 0.11"
+  },
+  {
+    desc: "Roll two dice. X = sum. P(2)=1/36, P(3)=2/36, P(4)=3/36, P(5)=4/36, P(6)=5/36, P(7)=6/36, P(8)=5/36, P(9)=4/36, P(10)=3/36, P(11)=2/36, P(12)=1/36",
+    question: "Find P(X ≥ 10)",
+    calculation: "3/36 + 2/36 + 1/36",
+    answer: 0.167,
+    explanation: "P(X ≥ 10) = P(10) + P(11) + P(12) = 3/36 + 2/36 + 1/36 = 6/36 ≈ 0.167"
+  },
+  {
+    desc: "Roll two dice. X = sum. P(2)=1/36, P(3)=2/36, ..., P(7)=6/36, ..., P(12)=1/36",
+    question: "Find P(X = 7 or X = 11)",
+    calculation: "6/36 + 2/36",
+    answer: 0.222,
+    explanation: "P(7 or 11) = P(7) + P(11) = 6/36 + 2/36 = 8/36 ≈ 0.222"
+  },
+  {
+    desc: "Prairie dog pups: X = number of pups. Distribution: P(1)=0.15, P(2)=0.38, P(3)=0.27, P(4)=0.11, P(5)=0.05, P(6)=0.03, P(7)=0.01",
+    question: "Find P(2 ≤ X ≤ 4)",
+    calculation: "0.38 + 0.27 + 0.11",
+    answer: 0.76,
+    explanation: "P(2 ≤ X ≤ 4) = P(2) + P(3) + P(4) = 0.38 + 0.27 + 0.11 = 0.76"
+  },
+  {
+    desc: "Thermostat settings: X = degrees below 78°. P(0)=0.03, P(1)=0.03, P(2)=0.05, P(3)=0.18, P(4)=0.31, P(5)=0.28, P(6)=0.12",
+    question: "Find P(3 ≤ X ≤ 5)",
+    calculation: "0.18 + 0.31 + 0.28",
+    answer: 0.77,
+    explanation: "P(3 ≤ X ≤ 5) = P(3) + P(4) + P(5) = 0.18 + 0.31 + 0.28 = 0.77"
+  }
+];
+
+// Level 37: Describe Distribution (Shape, Center, Spread)
+const describeDistScenarios = [
+  {
+    name: "Prairie dog pups",
+    dist: "P(1)=0.15, P(2)=0.38, P(3)=0.27, P(4)=0.11, P(5)=0.05, P(6)=0.03, P(7)=0.01",
+    shape: "Skewed right",
+    center: "Median is 2 pups",
+    spread: "Range is 6 pups (7-1)",
+    shapeExplanation: "Most probability is concentrated at low values (1-3 pups), with a tail extending toward higher values (4-7 pups)."
+  },
+  {
+    name: "Thermostat settings (X = degrees below 78°)",
+    dist: "P(0)=0.03, P(1)=0.03, P(2)=0.05, P(3)=0.18, P(4)=0.31, P(5)=0.28, P(6)=0.12",
+    shape: "Skewed left",
+    center: "Median is 4 (74°F)",
+    spread: "Range is 6 degrees",
+    shapeExplanation: "Most probability is at higher X values (4-6), with a tail extending toward lower values (0-2)."
+  },
+  {
+    name: "Fair die roll",
+    dist: "P(1)=P(2)=P(3)=P(4)=P(5)=P(6)=1/6",
+    shape: "Uniform (symmetric)",
+    center: "Median is 3.5",
+    spread: "Range is 5 (6-1)",
+    shapeExplanation: "All outcomes are equally likely, creating a flat/uniform distribution. No skewness."
+  },
+  {
+    name: "Number of heads in 4 coin flips",
+    dist: "P(0)=0.0625, P(1)=0.25, P(2)=0.375, P(3)=0.25, P(4)=0.0625",
+    shape: "Symmetric (bell-shaped)",
+    center: "Median is 2 heads",
+    spread: "Range is 4 (4-0)",
+    shapeExplanation: "The distribution is symmetric around 2 heads. P(0)=P(4) and P(1)=P(3)."
+  },
+  {
+    name: "Insurance claims",
+    dist: "P(no claim)=0.99, P(theft)=0.0097, P(fire)=0.0003",
+    shape: "Extremely skewed right",
+    center: "Mode is 'no claim'",
+    spread: "Wide range in outcomes",
+    shapeExplanation: "Almost all probability (99%) is at 'no claim', with rare but important events in the right tail."
+  },
+  {
+    name: "Sum of two dice",
+    dist: "P(2)=1/36, ..., P(7)=6/36, ..., P(12)=1/36",
+    shape: "Symmetric (triangular)",
+    center: "Median is 7",
+    spread: "Range is 10 (12-2)",
+    shapeExplanation: "The distribution is symmetric around 7, with equal probabilities for sums equidistant from 7."
+  }
+];
+
+// Level 38: Mean (Expected Value) Formula
+const meanFormulaScenarios = [
+  {
+    desc: "Prairie dog pups: X = number of pups. Distribution: P(1)=0.15, P(2)=0.38, P(3)=0.27, P(4)=0.11, P(5)=0.05, P(6)=0.03, P(7)=0.01",
+    formula: "μ = Σ[x·P(x)]",
+    calculation: "1(0.15) + 2(0.38) + 3(0.27) + 4(0.11) + 5(0.05) + 6(0.03) + 7(0.01)",
+    answer: 2.66,
+    interpretation: "In the long run, the average number of pups per litter will be about 2.66."
+  },
+  {
+    desc: "Fair die: X = roll outcome. P(1)=P(2)=...=P(6)=1/6",
+    formula: "μ = Σ[x·P(x)]",
+    calculation: "1(1/6) + 2(1/6) + 3(1/6) + 4(1/6) + 5(1/6) + 6(1/6)",
+    answer: 3.5,
+    interpretation: "The expected value of a die roll is 3.5 (the long-run average)."
+  },
+  {
+    desc: "Renter's insurance profit: X = company profit. P($150)=0.99, P(-$2850)=0.0097, P(-$24850)=0.0003",
+    formula: "μ = Σ[x·P(x)]",
+    calculation: "150(0.99) + (-2850)(0.0097) + (-24850)(0.0003)",
+    answer: 113.40,
+    interpretation: "On average, the insurance company profits $113.40 per policy in the long run."
+  },
+  {
+    desc: "Number of heads in 2 coin flips: P(0)=0.25, P(1)=0.50, P(2)=0.25",
+    formula: "μ = Σ[x·P(x)]",
+    calculation: "0(0.25) + 1(0.50) + 2(0.25)",
+    answer: 1.0,
+    interpretation: "On average, you expect 1 head in 2 coin flips."
+  },
+  {
+    desc: "Game: Win $10 with P=0.2, win $5 with P=0.3, lose $3 with P=0.5",
+    formula: "μ = Σ[x·P(x)]",
+    calculation: "10(0.2) + 5(0.3) + (-3)(0.5)",
+    answer: 2.0,
+    interpretation: "Expected value is $2.00 per game (a favorable game on average)."
+  },
+  {
+    desc: "Lottery: Win $1000 with P=0.001, win $10 with P=0.05, lose $5 with P=0.949",
+    formula: "μ = Σ[x·P(x)]",
+    calculation: "1000(0.001) + 10(0.05) + (-5)(0.949)",
+    answer: -3.245,
+    interpretation: "Expected value is -$3.25 per ticket (unfavorable - you lose money on average)."
+  },
+  {
+    desc: "Quiz score: X = points. P(0)=0.05, P(1)=0.10, P(2)=0.25, P(3)=0.35, P(4)=0.25",
+    formula: "μ = Σ[x·P(x)]",
+    calculation: "0(0.05) + 1(0.10) + 2(0.25) + 3(0.35) + 4(0.25)",
+    answer: 2.65,
+    interpretation: "The expected quiz score is 2.65 points out of 4."
+  }
+];
+
+// Level 39: Standard Deviation Formula
+const stdDevFormulaScenarios = [
+  {
+    desc: "Prairie dog pups: X = number of pups. μ = 2.66. Distribution: P(1)=0.15, P(2)=0.38, P(3)=0.27, P(4)=0.11, P(5)=0.05, P(6)=0.03, P(7)=0.01",
+    formula: "σ = √[Σ(x-μ)²·P(x)]",
+    mean: 2.66,
+    answer: 1.27,
+    interpretation: "The number of pups typically varies from the mean by about 1.27 pups."
+  },
+  {
+    desc: "Fair die: X = roll outcome. μ = 3.5. P(1)=P(2)=...=P(6)=1/6",
+    formula: "σ = √[Σ(x-μ)²·P(x)]",
+    mean: 3.5,
+    answer: 1.71,
+    interpretation: "Die rolls typically vary from 3.5 by about 1.71."
+  },
+  {
+    desc: "Number of heads in 2 flips: μ = 1.0. P(0)=0.25, P(1)=0.50, P(2)=0.25",
+    formula: "σ = √[Σ(x-μ)²·P(x)]",
+    mean: 1.0,
+    answer: 0.71,
+    interpretation: "The number of heads typically varies from 1 by about 0.71."
+  },
+  {
+    desc: "Game winnings: μ = $2.00. Win $10 (P=0.2), win $5 (P=0.3), lose $3 (P=0.5)",
+    formula: "σ = √[Σ(x-μ)²·P(x)]",
+    mean: 2.0,
+    answer: 5.15,
+    interpretation: "Individual game results typically vary from $2 by about $5.15."
+  },
+  {
+    desc: "Quiz scores: μ = 2.65. P(0)=0.05, P(1)=0.10, P(2)=0.25, P(3)=0.35, P(4)=0.25",
+    formula: "σ = √[Σ(x-μ)²·P(x)]",
+    mean: 2.65,
+    answer: 1.09,
+    interpretation: "Quiz scores typically vary from 2.65 by about 1.09 points."
+  },
+  {
+    desc: "Number of defects: μ = 0.35. P(0)=0.70, P(1)=0.25, P(2)=0.05",
+    formula: "σ = √[Σ(x-μ)²·P(x)]",
+    mean: 0.35,
+    answer: 0.57,
+    interpretation: "The number of defects typically varies from 0.35 by about 0.57."
+  }
+];
+
+// Level 40: Interpret Parameters in Context (Capstone)
+const interpretParamsScenarios = [
+  {
+    desc: "The expected number of customers per hour at a coffee shop is μ = 45 with σ = 8.",
+    question: "Interpret what μ = 45 means in context.",
+    answer: "In the long run, the coffee shop averages about 45 customers per hour",
+    options: [
+      "In the long run, the coffee shop averages about 45 customers per hour",
+      "Exactly 45 customers come every hour",
+      "The shop can serve a maximum of 45 customers",
+      "Most hours have between 37 and 53 customers"
+    ],
+    concept: "Mean interpretation"
+  },
+  {
+    desc: "For renter's insurance policies: μ = $113.40 profit per policy.",
+    question: "What does the expected value tell the insurance company?",
+    answer: "On average across many policies, the company profits $113.40 per policy",
+    options: [
+      "On average across many policies, the company profits $113.40 per policy",
+      "Every policy earns exactly $113.40",
+      "The company will never lose money",
+      "Most policies result in $113.40 profit"
+    ],
+    concept: "Expected value in business"
+  },
+  {
+    desc: "Prairie dog litters have μ = 2.66 pups and σ = 1.27 pups.",
+    question: "Interpret σ = 1.27 in context.",
+    answer: "Litter sizes typically vary from the mean of 2.66 by about 1.27 pups",
+    options: [
+      "Litter sizes typically vary from the mean of 2.66 by about 1.27 pups",
+      "All litters have between 1.39 and 3.93 pups",
+      "The smallest possible litter is 1.27 pups",
+      "Exactly 1.27 pups are born each time"
+    ],
+    concept: "Standard deviation interpretation"
+  },
+  {
+    desc: "A game has expected value μ = -$2.50.",
+    question: "Should you play this game? Why?",
+    answer: "No - negative expected value means you lose $2.50 on average per game",
+    options: [
+      "No - negative expected value means you lose $2.50 on average per game",
+      "Yes - negative signs don't matter in expected value",
+      "Yes - you might still win individual games",
+      "Need more information about standard deviation"
+    ],
+    concept: "Decision making with expected value"
+  },
+  {
+    desc: "Machine A has μ = 100 parts/hour, σ = 5. Machine B has μ = 100 parts/hour, σ = 15.",
+    question: "Which machine is more consistent?",
+    answer: "Machine A - smaller σ means less variability in production",
+    options: [
+      "Machine A - smaller σ means less variability in production",
+      "Machine B - larger σ means more production",
+      "They're equally consistent - same mean",
+      "Cannot compare without more information"
+    ],
+    concept: "Comparing variability"
+  },
+  {
+    desc: "Quiz scores: μ = 3.2 out of 5 points, σ = 0.8 points.",
+    question: "What does σ = 0.8 tell us about student performance?",
+    answer: "Students' scores typically differ from the average (3.2) by about 0.8 points",
+    options: [
+      "Students' scores typically differ from the average (3.2) by about 0.8 points",
+      "The lowest score is 0.8 points",
+      "Exactly 80% of students scored above average",
+      "The quiz was worth 0.8 points total"
+    ],
+    concept: "Standard deviation in education"
+  },
+  {
+    desc: "Expected number of defects per product: μ = 0.02",
+    question: "How should we interpret this expected value less than 1?",
+    answer: "Over many products, there's an average of 0.02 defects each (2 defects per 100 products)",
+    options: [
+      "Over many products, there's an average of 0.02 defects each (2 defects per 100 products)",
+      "Every product has 0.02 of a defect",
+      "It's impossible to have 0.02 defects",
+      "2% of defects are serious"
+    ],
+    concept: "Expected value less than 1"
+  },
+  {
+    desc: "Wait time at a restaurant: μ = 12 minutes, σ = 4 minutes.",
+    question: "A customer waited 22 minutes. Is this unusual?",
+    answer: "Yes - 22 is more than 2 standard deviations above the mean (12 + 2×4 = 20)",
+    options: [
+      "Yes - 22 is more than 2 standard deviations above the mean (12 + 2×4 = 20)",
+      "No - any wait time is possible",
+      "No - 22 is close to 12",
+      "Cannot tell without more data"
+    ],
+    concept: "Unusual values and standard deviation"
+  }
+];
+
 // Level 11: Capstone Scenarios
 const capstoneScenarios = [
   {
@@ -2820,6 +3303,186 @@ export function generateProblem(modeId, contextFromFile, mode) {
       capstone46Explain: { value: scen.explanation }
     };
     scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 33: Random Variable Definition ==========
+  if (modeId === "l33-random-var-def") {
+    const scen = drawFromBag('randomVarDef', randomVarDefScenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.7a",
+      problemText: "**VAR-5.A:** Random Variables\n\n" +
+                   "A **random variable** assigns a NUMERICAL value to outcomes of random behavior.\n\n" +
+                   "• Always labeled with CAPITAL letters (X, Y, W, etc.)\n" +
+                   "• The value is determined by CHANCE\n" +
+                   "• Must be NUMERICAL (numbers, not categories)",
+      givenText: scen.question,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3]
+    };
+    answers = { rvDefAnswer: { value: scen.answer } };
+    scenario = scen.question;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 34: Discrete vs Continuous ==========
+  if (modeId === "l34-discrete-continuous") {
+    const scen = drawFromBag('discreteVsCont', discreteVsContinuousScenarios);
+
+    context = {
+      topicId: "4.7b",
+      problemText: "**VAR-5.A:** Discrete vs Continuous Random Variables\n\n" +
+                   "**DISCRETE**: Countable number of values\n" +
+                   "• Gaps/spaces between possible values\n" +
+                   "• Examples: counts, whole numbers\n\n" +
+                   "**CONTINUOUS**: Infinite values in an interval\n" +
+                   "• No gaps between possible values\n" +
+                   "• Examples: measurements (time, length, weight)",
+      givenText: scen.desc,
+      explanation: scen.explanation
+    };
+    answers = { discContAnswer: { value: scen.type } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 35: Valid Probability Distribution ==========
+  if (modeId === "l35-valid-prob-dist") {
+    const scen = drawFromBag('validProbDist', validProbDistScenarios);
+
+    const tableDisplay = `X: ${scen.table.x.join(', ')}\nP(X): ${scen.table.p.join(', ')}`;
+    const sum = scen.table.p.reduce((a, b) => a + b, 0).toFixed(2);
+
+    context = {
+      topicId: "4.7c",
+      problemText: "**VAR-5.A:** Valid Probability Distribution\n\n" +
+                   "A valid probability distribution must satisfy TWO conditions:\n" +
+                   "1. **Each** probability is between 0 and 1 (inclusive)\n" +
+                   "2. **All** probabilities sum to exactly 1\n\n" +
+                   "Check BOTH conditions!",
+      givenText: `Is this a valid probability distribution?\n\n${tableDisplay}\n\nSum of probabilities: ${sum}`,
+      tableX: scen.table.x,
+      tableP: scen.table.p,
+      isValid: scen.isValid,
+      reason: scen.reason
+    };
+    answers = { validDistAnswer: { value: scen.isValid ? "Yes, valid" : "No, invalid" } };
+    scenario = tableDisplay;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 36: Probability from Distribution ==========
+  if (modeId === "l36-prob-from-dist") {
+    const scen = drawFromBag('probFromDist', probFromDistScenarios);
+
+    context = {
+      topicId: "4.7d",
+      problemText: "**VAR-5.A:** Calculating Probability from a Distribution\n\n" +
+                   "To find probabilities, ADD the P(X) values for all X in the range:\n\n" +
+                   "• P(X ≤ k) = P(X=0) + P(X=1) + ... + P(X=k)\n" +
+                   "• P(X ≥ k) = P(X=k) + P(X=k+1) + ...\n" +
+                   "• P(a ≤ X ≤ b) = add all P(X) from a to b",
+      givenText: `${scen.desc}\n\n**Question:** ${scen.question}`,
+      calculation: scen.calculation,
+      explanation: scen.explanation
+    };
+    answers = { probDistAnswer: { value: scen.answer, tolerance: 0.01 } };
+    scenario = scen.question;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 37: Describe Distribution ==========
+  if (modeId === "l37-describe-dist") {
+    const scen = drawFromBag('describeDist', describeDistScenarios);
+
+    context = {
+      topicId: "4.7e",
+      problemText: "**VAR-5.B:** Describing a Probability Distribution\n\n" +
+                   "Describe using **shape, center, and spread**:\n\n" +
+                   "**Shape**: Symmetric, skewed left, skewed right, uniform\n" +
+                   "**Center**: Mean (μ) or median\n" +
+                   "**Spread**: Standard deviation (σ) or range",
+      givenText: `${scen.name}\n\nDistribution: ${scen.dist}`,
+      distName: scen.name,
+      expectedShape: scen.shape,
+      expectedCenter: scen.center,
+      expectedSpread: scen.spread,
+      shapeExplanation: scen.shapeExplanation
+    };
+    answers = { shapeAnswer: { value: scen.shape } };
+    scenario = scen.name;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 38: Mean (Expected Value) ==========
+  if (modeId === "l38-mean-formula") {
+    const scen = drawFromBag('meanFormula', meanFormulaScenarios);
+
+    context = {
+      topicId: "4.8a",
+      problemText: "**VAR-5.C:** Mean (Expected Value) of a Discrete Random Variable\n\n" +
+                   "**Formula:** μ = Σ[x · P(x)]\n\n" +
+                   "• Multiply each value by its probability\n" +
+                   "• Add all the products together\n" +
+                   "• The result is the 'long-run average'",
+      givenText: `${scen.desc}\n\nCalculation: ${scen.calculation}`,
+      formula: scen.formula,
+      calculation: scen.calculation,
+      interpretation: scen.interpretation
+    };
+    answers = { meanAnswer: { value: scen.answer, tolerance: 0.1 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 39: Standard Deviation ==========
+  if (modeId === "l39-std-dev-formula") {
+    const scen = drawFromBag('stdDevFormula', stdDevFormulaScenarios);
+
+    context = {
+      topicId: "4.8b",
+      problemText: "**VAR-5.C:** Standard Deviation of a Discrete Random Variable\n\n" +
+                   "**Formula:** σ = √[Σ(x - μ)² · P(x)]\n\n" +
+                   "Steps:\n" +
+                   "1. Find each deviation: (x - μ)\n" +
+                   "2. Square each deviation: (x - μ)²\n" +
+                   "3. Multiply by probability: (x - μ)² · P(x)\n" +
+                   "4. Sum all products and take square root",
+      givenText: `${scen.desc}\n\nMean: μ = ${scen.mean}`,
+      formula: scen.formula,
+      mean: scen.mean,
+      interpretation: scen.interpretation
+    };
+    answers = { stdDevAnswer: { value: scen.answer, tolerance: 0.05 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 40: Interpret Parameters (Capstone) ==========
+  if (modeId === "l40-interpret-params") {
+    const scen = drawFromBag('interpretParams', interpretParamsScenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.7-4.8",
+      problemText: "**VAR-5.D:** Interpreting Parameters in Context\n\n" +
+                   "**Mean (μ):** Long-run average value\n" +
+                   "• Use context and units in interpretation!\n\n" +
+                   "**Standard Deviation (σ):** Typical deviation from mean\n" +
+                   "• Describes how spread out values are",
+      givenText: `${scen.desc}\n\n**Question:** ${scen.question}`,
+      concept: scen.concept,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3]
+    };
+    answers = { interpretAnswer: { value: scen.answer } };
+    scenario = scen.question;
     return { context, graphConfig, answers, scenario };
   }
 

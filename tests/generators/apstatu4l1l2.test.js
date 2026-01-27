@@ -1,8 +1,9 @@
 /**
- * AP Statistics Unit 4 Lessons 1-5 Generator Tests
- * Tests problem generation for probability and simulation concepts
+ * AP Statistics Unit 4 Lessons 1-8 Generator Tests
+ * Tests problem generation for probability, random variables, and distributions
  * Topics: Random processes, simulation, sample space, probability rules,
- *         mutually exclusive events, conditional probability
+ *         mutually exclusive events, conditional probability, independent events,
+ *         unions, random variables, probability distributions, mean, standard deviation
  */
 import { describe, it, expect } from 'vitest';
 import { generateProblem } from '../../cartridges/apstatu4l1l2/generator.js';
@@ -767,6 +768,270 @@ describe('AP Stats U4 L1-L2-L3 Generator', () => {
       const problem = generateProblem('l07-digit-assignment', {}, {});
       const text = problem.context.givenText.toLowerCase();
       expect(text).toMatch(/\d+%|\d+\/\d+|percent|chance|probability/);
+    });
+  });
+
+  // ========== TOPIC 4.7-4.8 TESTS ==========
+  describe('L33 - Random Variable Definition', () => {
+    it('generates random variable definition question', () => {
+      const problem = generateProblem('l33-random-var-def', {}, {});
+      expect(problem.context).toHaveProperty('topicId', '4.7a');
+      expect(problem.context.problemText).toContain('random variable');
+    });
+
+    it('provides dropdown options', () => {
+      const problem = generateProblem('l33-random-var-def', {}, {});
+      expect(problem.context).toHaveProperty('optA');
+      expect(problem.context).toHaveProperty('optB');
+      expect(problem.context).toHaveProperty('optC');
+      expect(problem.context).toHaveProperty('optD');
+    });
+
+    it('provides correct answer', () => {
+      const problem = generateProblem('l33-random-var-def', {}, {});
+      expect(problem.answers).toHaveProperty('rvDefAnswer');
+      expect(problem.answers.rvDefAnswer).toHaveProperty('value');
+    });
+
+    it('correct answer is one of the options', () => {
+      const problem = generateProblem('l33-random-var-def', {}, {});
+      const options = [problem.context.optA, problem.context.optB, problem.context.optC, problem.context.optD];
+      expect(options).toContain(problem.answers.rvDefAnswer.value);
+    });
+  });
+
+  describe('L34 - Discrete vs Continuous', () => {
+    it('generates discrete/continuous question', () => {
+      const problem = generateProblem('l34-discrete-continuous', {}, {});
+      expect(problem.context).toHaveProperty('topicId', '4.7b');
+      expect(problem.context.problemText).toContain('Discrete');
+      expect(problem.context.problemText).toContain('Continuous');
+    });
+
+    it('answer is valid Discrete/Continuous choice', () => {
+      const problem = generateProblem('l34-discrete-continuous', {}, {});
+      expect(problem.answers).toHaveProperty('discContAnswer');
+      expect(['Discrete', 'Continuous']).toContain(problem.answers.discContAnswer.value);
+    });
+
+    it('includes explanation in context', () => {
+      const problem = generateProblem('l34-discrete-continuous', {}, {});
+      expect(problem.context).toHaveProperty('explanation');
+      expect(problem.context.explanation).toBeTruthy();
+    });
+
+    it('generates both discrete and continuous scenarios', () => {
+      const types = new Set();
+      for (let i = 0; i < 20; i++) {
+        const problem = generateProblem('l34-discrete-continuous', {}, {});
+        types.add(problem.answers.discContAnswer.value);
+      }
+      expect(types.has('Discrete')).toBe(true);
+      expect(types.has('Continuous')).toBe(true);
+    });
+  });
+
+  describe('L35 - Valid Probability Distribution', () => {
+    it('generates valid distribution check question', () => {
+      const problem = generateProblem('l35-valid-prob-dist', {}, {});
+      expect(problem.context).toHaveProperty('topicId', '4.7c');
+    });
+
+    it('includes table data in context', () => {
+      const problem = generateProblem('l35-valid-prob-dist', {}, {});
+      expect(problem.context).toHaveProperty('tableX');
+      expect(problem.context).toHaveProperty('tableP');
+      expect(problem.context.tableX.length).toBeGreaterThan(0);
+      expect(problem.context.tableP.length).toBeGreaterThan(0);
+    });
+
+    it('includes isValid and reason in context', () => {
+      const problem = generateProblem('l35-valid-prob-dist', {}, {});
+      expect(problem.context).toHaveProperty('isValid');
+      expect(problem.context).toHaveProperty('reason');
+      expect(typeof problem.context.isValid).toBe('boolean');
+    });
+
+    it('answer matches isValid flag', () => {
+      const problem = generateProblem('l35-valid-prob-dist', {}, {});
+      const expected = problem.context.isValid ? 'Yes, valid' : 'No, invalid';
+      expect(problem.answers.validDistAnswer.value).toBe(expected);
+    });
+
+    it('generates both valid and invalid distributions', () => {
+      const validities = new Set();
+      for (let i = 0; i < 20; i++) {
+        const problem = generateProblem('l35-valid-prob-dist', {}, {});
+        validities.add(problem.context.isValid);
+      }
+      expect(validities.has(true)).toBe(true);
+      expect(validities.has(false)).toBe(true);
+    });
+  });
+
+  describe('L36 - Probability from Distribution', () => {
+    it('generates probability calculation problem', () => {
+      const problem = generateProblem('l36-prob-from-dist', {}, {});
+      expect(problem.context).toHaveProperty('topicId', '4.7d');
+    });
+
+    it('answer is numeric between 0 and 1', () => {
+      const problem = generateProblem('l36-prob-from-dist', {}, {});
+      expect(problem.answers).toHaveProperty('probDistAnswer');
+      const value = problem.answers.probDistAnswer.value;
+      expect(typeof value).toBe('number');
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1);
+    });
+
+    it('includes calculation and explanation in context', () => {
+      const problem = generateProblem('l36-prob-from-dist', {}, {});
+      expect(problem.context).toHaveProperty('calculation');
+      expect(problem.context).toHaveProperty('explanation');
+    });
+
+    it('includes tolerance for grading', () => {
+      const problem = generateProblem('l36-prob-from-dist', {}, {});
+      expect(problem.answers.probDistAnswer).toHaveProperty('tolerance');
+    });
+  });
+
+  describe('L37 - Describe Distribution', () => {
+    it('generates distribution description question', () => {
+      const problem = generateProblem('l37-describe-dist', {}, {});
+      expect(problem.context).toHaveProperty('topicId', '4.7e');
+    });
+
+    it('includes distribution name and data', () => {
+      const problem = generateProblem('l37-describe-dist', {}, {});
+      expect(problem.context).toHaveProperty('distName');
+      expect(problem.context.givenText).toBeTruthy();
+    });
+
+    it('provides shape answer', () => {
+      const problem = generateProblem('l37-describe-dist', {}, {});
+      expect(problem.answers).toHaveProperty('shapeAnswer');
+      const value = problem.answers.shapeAnswer.value;
+      expect(value).toMatch(/skewed|symmetric|uniform/i);
+    });
+
+    it('includes shape explanation', () => {
+      const problem = generateProblem('l37-describe-dist', {}, {});
+      expect(problem.context).toHaveProperty('shapeExplanation');
+      expect(problem.context.shapeExplanation).toBeTruthy();
+    });
+  });
+
+  describe('L38 - Mean (Expected Value)', () => {
+    it('generates mean calculation problem', () => {
+      const problem = generateProblem('l38-mean-formula', {}, {});
+      expect(problem.context).toHaveProperty('topicId', '4.8a');
+      expect(problem.context.problemText).toContain('Mean');
+    });
+
+    it('provides numeric answer', () => {
+      const problem = generateProblem('l38-mean-formula', {}, {});
+      expect(problem.answers).toHaveProperty('meanAnswer');
+      expect(typeof problem.answers.meanAnswer.value).toBe('number');
+    });
+
+    it('includes calculation and interpretation', () => {
+      const problem = generateProblem('l38-mean-formula', {}, {});
+      expect(problem.context).toHaveProperty('calculation');
+      expect(problem.context).toHaveProperty('interpretation');
+    });
+
+    it('includes tolerance for grading', () => {
+      const problem = generateProblem('l38-mean-formula', {}, {});
+      expect(problem.answers.meanAnswer).toHaveProperty('tolerance');
+    });
+  });
+
+  describe('L39 - Standard Deviation', () => {
+    it('generates standard deviation calculation problem', () => {
+      const problem = generateProblem('l39-std-dev-formula', {}, {});
+      expect(problem.context).toHaveProperty('topicId', '4.8b');
+      expect(problem.context.problemText).toContain('Standard Deviation');
+    });
+
+    it('provides numeric answer', () => {
+      const problem = generateProblem('l39-std-dev-formula', {}, {});
+      expect(problem.answers).toHaveProperty('stdDevAnswer');
+      const value = problem.answers.stdDevAnswer.value;
+      expect(typeof value).toBe('number');
+      expect(value).toBeGreaterThanOrEqual(0);
+    });
+
+    it('includes mean in context', () => {
+      const problem = generateProblem('l39-std-dev-formula', {}, {});
+      expect(problem.context).toHaveProperty('mean');
+      expect(typeof problem.context.mean).toBe('number');
+    });
+
+    it('includes interpretation', () => {
+      const problem = generateProblem('l39-std-dev-formula', {}, {});
+      expect(problem.context).toHaveProperty('interpretation');
+      expect(problem.context.interpretation).toBeTruthy();
+    });
+
+    it('includes tolerance for grading', () => {
+      const problem = generateProblem('l39-std-dev-formula', {}, {});
+      expect(problem.answers.stdDevAnswer).toHaveProperty('tolerance');
+    });
+  });
+
+  describe('L40 - Interpret Parameters (Capstone)', () => {
+    it('generates interpretation problem', () => {
+      const problem = generateProblem('l40-interpret-params', {}, {});
+      expect(problem.context).toHaveProperty('topicId', '4.7-4.8');
+    });
+
+    it('provides dropdown options', () => {
+      const problem = generateProblem('l40-interpret-params', {}, {});
+      expect(problem.context).toHaveProperty('optA');
+      expect(problem.context).toHaveProperty('optB');
+      expect(problem.context).toHaveProperty('optC');
+      expect(problem.context).toHaveProperty('optD');
+    });
+
+    it('includes concept type in context', () => {
+      const problem = generateProblem('l40-interpret-params', {}, {});
+      expect(problem.context).toHaveProperty('concept');
+    });
+
+    it('correct answer is one of the options', () => {
+      const problem = generateProblem('l40-interpret-params', {}, {});
+      const options = [problem.context.optA, problem.context.optB, problem.context.optC, problem.context.optD];
+      expect(options).toContain(problem.answers.interpretAnswer.value);
+    });
+  });
+
+  describe('Topic 4.7-4.8 Problem Uniqueness', () => {
+    it('generates different random variable definition scenarios', () => {
+      const questions = new Set();
+      for (let i = 0; i < 10; i++) {
+        const problem = generateProblem('l33-random-var-def', {}, {});
+        questions.add(problem.context.givenText);
+      }
+      expect(questions.size).toBeGreaterThan(1);
+    });
+
+    it('generates different probability distribution scenarios', () => {
+      const scenarios = new Set();
+      for (let i = 0; i < 10; i++) {
+        const problem = generateProblem('l36-prob-from-dist', {}, {});
+        scenarios.add(problem.scenario);
+      }
+      expect(scenarios.size).toBeGreaterThan(1);
+    });
+
+    it('generates different mean calculation scenarios', () => {
+      const descriptions = new Set();
+      for (let i = 0; i < 10; i++) {
+        const problem = generateProblem('l38-mean-formula', {}, {});
+        descriptions.add(problem.context.givenText);
+      }
+      expect(descriptions.size).toBeGreaterThan(1);
     });
   });
 });

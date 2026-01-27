@@ -1,5 +1,5 @@
-// grading-rules.js - AP Statistics Unit 4 Lessons 1-6
-// Topics: Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions
+// grading-rules.js - AP Statistics Unit 4 Lessons 1-8
+// Topics: Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions, random variables, probability distributions, mean, standard deviation
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -996,6 +996,185 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should mention key concepts (independent, multiplication rule, addition rule, ME distinction) and explain why they apply."
+    };
+  }
+
+  // ========== LEVEL 33: Random Variable Definition ==========
+  if (fieldId === "rvDefAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You understand what a random variable is."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. A random variable assigns a NUMERICAL value to outcomes of random behavior. It must be defined with a capital letter (X, Y, etc.)."
+    };
+  }
+
+  // ========== LEVEL 34: Discrete vs Continuous ==========
+  if (fieldId === "discContAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: expected === "Discrete"
+          ? "Correct! Discrete random variables have countable values with gaps between them (like counts: 0, 1, 2, 3...)."
+          : "Correct! Continuous random variables can take ANY value in an interval (like measurements)."
+      };
+    }
+    return {
+      score: "I",
+      feedback: expected === "Discrete"
+        ? "Incorrect. This is DISCRETE - you can count the possible values and there are gaps between them."
+        : "Incorrect. This is CONTINUOUS - it can take any value in an interval (infinite precision possible)."
+    };
+  }
+
+  // ========== LEVEL 35: Valid Probability Distribution ==========
+  if (fieldId === "validDistAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: context.isValid
+          ? "Correct! All probabilities are between 0 and 1, and they sum to exactly 1."
+          : `Correct! ${context.reason}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: context.isValid
+        ? "Incorrect. This IS a valid distribution - check that each P(X) is 0-1 and the sum equals 1."
+        : `Incorrect. This is NOT valid: ${context.reason}`
+    };
+  }
+
+  // ========== LEVEL 36: Probability from Distribution ==========
+  if (fieldId === "probDistAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.01;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a decimal number (e.g., 0.53)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation}`
+      };
+    }
+    if (diff <= 0.05) {
+      return {
+        score: "P",
+        feedback: `Close! ${context.explanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 37: Describe Distribution (Shape) ==========
+  if (fieldId === "shapeAnswer") {
+    // Normalize both answers for comparison
+    const studentShapeNorm = studentNorm.replace(/[\s\-()]/g, '');
+    const expectedShapeNorm = expectedNorm.replace(/[\s\-()]/g, '');
+
+    if (studentShapeNorm === expectedShapeNorm ||
+        (studentNorm.includes("skewed") && expectedNorm.includes("skewed") &&
+         studentNorm.includes(expectedNorm.includes("right") ? "right" : "left"))) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.shapeExplanation}`
+      };
+    }
+    // Check for partial credit on symmetric vs skewed
+    if ((studentNorm.includes("symmetric") && expectedNorm.includes("symmetric")) ||
+        (studentNorm.includes("skewed") && expectedNorm.includes("skewed"))) {
+      return {
+        score: "P",
+        feedback: `You correctly identified it as ${studentNorm.includes("symmetric") ? "symmetric" : "skewed"}, but the specific shape is: ${expected}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The shape is ${expected}. ${context.shapeExplanation}`
+    };
+  }
+
+  // ========== LEVEL 38: Mean (Expected Value) ==========
+  if (fieldId === "meanAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.1;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number (e.g., 2.66)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! μ = ${expectedVal}. ${context.interpretation}`
+      };
+    }
+    if (diff <= tolerance * 2) {
+      return {
+        score: "P",
+        feedback: `Close! μ = Σ[x·P(x)] = ${expectedVal}. ${context.interpretation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. μ = Σ[x·P(x)] = ${expectedVal}. Multiply each x by its probability, then add all products.`
+    };
+  }
+
+  // ========== LEVEL 39: Standard Deviation ==========
+  if (fieldId === "stdDevAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.05;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number (e.g., 1.27)." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! σ = ${expectedVal}. ${context.interpretation}`
+      };
+    }
+    if (diff <= tolerance * 3) {
+      return {
+        score: "P",
+        feedback: `Close! σ = √[Σ(x-μ)²·P(x)] = ${expectedVal}. ${context.interpretation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. σ = √[Σ(x-μ)²·P(x)] = ${expectedVal}. Find deviations from μ, square them, multiply by P(x), sum, then take square root.`
+    };
+  }
+
+  // ========== LEVEL 40: Interpret Parameters ==========
+  if (fieldId === "interpretAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.concept === "Mean interpretation" ? "You understand how to interpret expected value in context." : "You understand how to interpret parameters."}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct interpretation is: ${expected}`
     };
   }
 

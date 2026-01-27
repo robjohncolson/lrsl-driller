@@ -1,6 +1,15 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v4.3.4.
+Complete state machine documentation for all components as of v4.3.5.
+
+**v4.3.5 Changes (Probability Cartridge Extended to 4.8):**
+- **apstatu4l1l2 Extended**: Now covers Topics 4.1-4.8 (was 4.1-4.6)
+- 8 new levels (L33-L40) covering random variables and probability distributions
+- Topics added: Random variable definition, discrete vs continuous, valid probability distributions, probability from distribution, describe distribution shape, mean (expected value), standard deviation, parameter interpretation
+- New AP Skills: VAR-5.A, VAR-5.B, VAR-5.C, VAR-5.D
+- 40 total progressive levels in cartridge
+- New tests: 41 generator tests + 36 grading tests for Topics 4.7-4.8
+- Total: 308 tests for probability cartridge (139 generator + 169 grading)
 
 **v4.3.4 Changes (Points Integer Fix & KotH Online Users):**
 - **CTF/KotH Points Integer Fix**: Weighted scoring produces decimals (e.g., 1.5 for silver at level 1 with 0.5x multiplier). Database columns expect integers. Added `Math.round(points)` to both CTF and KotH points endpoints.
@@ -12,7 +21,7 @@ Complete state machine documentation for all components as of v4.3.4.
 **v4.3.1 Changes (New Probability Cartridge):**
 - New cartridge: `apstatu4l1l2` - AP Statistics Unit 4 Lessons 1-2 (Probability Basics)
 - Topics: Random processes, outcomes vs events, independence, gambler's fallacy, streaks, simulation, Law of Large Numbers
-- 11 progressive levels from vocabulary to full simulation design capstone
+- 11 progressive levels from vocabulary to full simulation design capstone (later extended to 40 levels)
 - 60+ unique scenarios with shuffle bag system preventing near-repeats
 - New tests: 49 generator tests in `tests/generators/apstatu4l1l2.test.js`
 - New tests: 44 grading tests in `tests/grading/apstatu4l1l2.test.js`

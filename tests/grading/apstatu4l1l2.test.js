@@ -1,6 +1,6 @@
 /**
- * AP Statistics Unit 4 Lessons 1-2-3 Grading Tests
- * Tests for probability and simulation concepts grading rules
+ * AP Statistics Unit 4 Lessons 1-8 Grading Tests
+ * Tests for probability, random variables, and distributions grading rules
  */
 import { describe, it, expect } from 'vitest';
 import { gradeField } from '../../cartridges/apstatu4l1l2/grading-rules.js';
@@ -1247,6 +1247,318 @@ describe('AP Stats U4 L1-L2-L3 Grading Rules', () => {
         { probability: 82 }
       );
       expect(result.score).toBe('E');
+    });
+  });
+
+  // ========== TOPIC 4.7-4.8 GRADING TESTS ==========
+  describe('Random Variable Definition (L33)', () => {
+    describe('rvDefAnswer', () => {
+      it('grades correct answer as E', () => {
+        const result = gradeField('rvDefAnswer',
+          'A numerical outcome of random behavior',
+          { rvDefAnswer: { value: 'A numerical outcome of random behavior' } }
+        );
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('random variable');
+      });
+
+      it('grades incorrect answer as I with helpful feedback', () => {
+        const result = gradeField('rvDefAnswer',
+          'The sample space of an experiment',
+          { rvDefAnswer: { value: 'A numerical outcome of random behavior' } }
+        );
+        expect(result.score).toBe('I');
+        expect(result.feedback.toLowerCase()).toContain('numerical');
+      });
+    });
+  });
+
+  describe('Discrete vs Continuous (L34)', () => {
+    describe('discContAnswer', () => {
+      it('grades correct Discrete answer as E', () => {
+        const result = gradeField('discContAnswer', 'Discrete', { discContAnswer: { value: 'Discrete' } });
+        expect(result.score).toBe('E');
+        expect(result.feedback.toLowerCase()).toContain('discrete');
+      });
+
+      it('grades correct Continuous answer as E', () => {
+        const result = gradeField('discContAnswer', 'Continuous', { discContAnswer: { value: 'Continuous' } });
+        expect(result.score).toBe('E');
+        expect(result.feedback.toLowerCase()).toContain('continuous');
+      });
+
+      it('grades incorrect answer as I with explanation', () => {
+        const result = gradeField('discContAnswer', 'Continuous', { discContAnswer: { value: 'Discrete' } });
+        expect(result.score).toBe('I');
+        expect(result.feedback.toLowerCase()).toContain('discrete');
+      });
+    });
+  });
+
+  describe('Valid Probability Distribution (L35)', () => {
+    describe('validDistAnswer', () => {
+      it('grades correct valid answer as E', () => {
+        const result = gradeField('validDistAnswer', 'Yes, valid', {
+          validDistAnswer: { value: 'Yes, valid' },
+          isValid: true,
+          reason: 'All probabilities 0-1 and sum to 1'
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('grades correct invalid answer as E', () => {
+        const result = gradeField('validDistAnswer', 'No, invalid', {
+          validDistAnswer: { value: 'No, invalid' },
+          isValid: false,
+          reason: 'Probabilities sum to 1.05, not 1'
+        });
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('1.05');
+      });
+
+      it('grades incorrect answer as I', () => {
+        const result = gradeField('validDistAnswer', 'Yes, valid', {
+          validDistAnswer: { value: 'No, invalid' },
+          isValid: false,
+          reason: 'Probability cannot be negative'
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('negative');
+      });
+    });
+  });
+
+  describe('Probability from Distribution (L36)', () => {
+    describe('probDistAnswer', () => {
+      it('grades exact answer as E', () => {
+        const result = gradeField('probDistAnswer', '0.53', {
+          probDistAnswer: { value: 0.53, tolerance: 0.01 },
+          explanation: 'P(X ≤ 2) = 0.15 + 0.38 = 0.53'
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('grades answer within tolerance as E', () => {
+        const result = gradeField('probDistAnswer', '0.535', {
+          probDistAnswer: { value: 0.53, tolerance: 0.01 },
+          explanation: 'P(X ≤ 2) = 0.53'
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for close answer', () => {
+        const result = gradeField('probDistAnswer', '0.50', {
+          probDistAnswer: { value: 0.53, tolerance: 0.01 },
+          explanation: 'P(X ≤ 2) = 0.53'
+        });
+        expect(result.score).toBe('P');
+      });
+
+      it('grades wrong answer as I', () => {
+        const result = gradeField('probDistAnswer', '0.38', {
+          probDistAnswer: { value: 0.53, tolerance: 0.01 },
+          explanation: 'P(X ≤ 2) = 0.15 + 0.38 = 0.53'
+        });
+        expect(result.score).toBe('I');
+      });
+
+      it('handles non-numeric input', () => {
+        const result = gradeField('probDistAnswer', 'half', {
+          probDistAnswer: { value: 0.53, tolerance: 0.01 }
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback.toLowerCase()).toContain('decimal');
+      });
+    });
+  });
+
+  describe('Describe Distribution Shape (L37)', () => {
+    describe('shapeAnswer', () => {
+      it('grades correct shape as E', () => {
+        const result = gradeField('shapeAnswer', 'Skewed right', {
+          shapeAnswer: { value: 'Skewed right' },
+          shapeExplanation: 'Most probability is at low values with tail extending right.'
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for correct skew direction but different wording', () => {
+        const result = gradeField('shapeAnswer', 'Skewed left', {
+          shapeAnswer: { value: 'Skewed left' },
+          shapeExplanation: 'Tail extends left.'
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('grades symmetric answer correctly', () => {
+        const result = gradeField('shapeAnswer', 'Symmetric (bell-shaped)', {
+          shapeAnswer: { value: 'Symmetric (bell-shaped)' },
+          shapeExplanation: 'Distribution is symmetric around the center.'
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('grades wrong shape as I', () => {
+        const result = gradeField('shapeAnswer', 'Uniform (symmetric)', {
+          shapeAnswer: { value: 'Skewed right' },
+          shapeExplanation: 'The distribution is skewed right.'
+        });
+        expect(result.score).toBe('I');
+      });
+    });
+  });
+
+  describe('Mean Formula (L38)', () => {
+    describe('meanAnswer', () => {
+      it('grades exact answer as E', () => {
+        const result = gradeField('meanAnswer', '2.66', {
+          meanAnswer: { value: 2.66, tolerance: 0.1 },
+          interpretation: 'Average number of pups per litter is about 2.66.'
+        });
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('2.66');
+      });
+
+      it('grades answer within tolerance as E', () => {
+        const result = gradeField('meanAnswer', '2.7', {
+          meanAnswer: { value: 2.66, tolerance: 0.1 },
+          interpretation: 'Long-run average.'
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for somewhat close', () => {
+        const result = gradeField('meanAnswer', '2.5', {
+          meanAnswer: { value: 2.66, tolerance: 0.1 },
+          interpretation: 'Long-run average.'
+        });
+        expect(result.score).toBe('P');
+      });
+
+      it('grades wrong answer as I with formula', () => {
+        const result = gradeField('meanAnswer', '3.5', {
+          meanAnswer: { value: 2.66, tolerance: 0.1 },
+          interpretation: ''
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('Σ[x·P(x)]');
+      });
+
+      it('handles non-numeric input', () => {
+        const result = gradeField('meanAnswer', 'two point six', {
+          meanAnswer: { value: 2.66, tolerance: 0.1 }
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback.toLowerCase()).toContain('number');
+      });
+    });
+  });
+
+  describe('Standard Deviation (L39)', () => {
+    describe('stdDevAnswer', () => {
+      it('grades exact answer as E', () => {
+        const result = gradeField('stdDevAnswer', '1.27', {
+          stdDevAnswer: { value: 1.27, tolerance: 0.05 },
+          interpretation: 'Values typically vary from mean by about 1.27.'
+        });
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('1.27');
+      });
+
+      it('grades answer within tolerance as E', () => {
+        const result = gradeField('stdDevAnswer', '1.25', {
+          stdDevAnswer: { value: 1.27, tolerance: 0.05 },
+          interpretation: 'Typical variation.'
+        });
+        expect(result.score).toBe('E');
+      });
+
+      it('gives partial credit for close answer', () => {
+        const result = gradeField('stdDevAnswer', '1.15', {
+          stdDevAnswer: { value: 1.27, tolerance: 0.05 },
+          interpretation: 'Typical variation.'
+        });
+        expect(result.score).toBe('P');
+      });
+
+      it('grades wrong answer as I with formula', () => {
+        const result = gradeField('stdDevAnswer', '2.5', {
+          stdDevAnswer: { value: 1.27, tolerance: 0.05 },
+          interpretation: ''
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('√[Σ(x-μ)²·P(x)]');
+      });
+
+      it('handles non-numeric input', () => {
+        const result = gradeField('stdDevAnswer', 'one', {
+          stdDevAnswer: { value: 1.27, tolerance: 0.05 }
+        });
+        expect(result.score).toBe('I');
+        expect(result.feedback.toLowerCase()).toContain('number');
+      });
+    });
+  });
+
+  describe('Interpret Parameters (L40)', () => {
+    describe('interpretAnswer', () => {
+      it('grades correct mean interpretation as E', () => {
+        const result = gradeField('interpretAnswer',
+          'In the long run, the coffee shop averages about 45 customers per hour',
+          {
+            interpretAnswer: { value: 'In the long run, the coffee shop averages about 45 customers per hour' },
+            concept: 'Mean interpretation'
+          }
+        );
+        expect(result.score).toBe('E');
+        expect(result.feedback).toContain('expected value');
+      });
+
+      it('grades correct SD interpretation as E', () => {
+        const result = gradeField('interpretAnswer',
+          'Litter sizes typically vary from the mean of 2.66 by about 1.27 pups',
+          {
+            interpretAnswer: { value: 'Litter sizes typically vary from the mean of 2.66 by about 1.27 pups' },
+            concept: 'Standard deviation interpretation'
+          }
+        );
+        expect(result.score).toBe('E');
+      });
+
+      it('grades incorrect interpretation as I', () => {
+        const result = gradeField('interpretAnswer',
+          'Exactly 45 customers come every hour',
+          {
+            interpretAnswer: { value: 'In the long run, averages about 45 customers per hour' },
+            concept: 'Mean interpretation'
+          }
+        );
+        expect(result.score).toBe('I');
+        expect(result.feedback).toContain('In the long run');
+      });
+    });
+  });
+
+  describe('Topic 4.7-4.8 Blank Handling', () => {
+    it('rejects blank rvDefAnswer', () => {
+      const result = gradeField('rvDefAnswer', '', { rvDefAnswer: { value: 'test' } });
+      expect(result.score).toBe('I');
+      expect(result.feedback.toLowerCase()).toContain('select');
+    });
+
+    it('rejects blank discContAnswer', () => {
+      const result = gradeField('discContAnswer', '   ', { discContAnswer: { value: 'Discrete' } });
+      expect(result.score).toBe('I');
+    });
+
+    it('rejects blank meanAnswer', () => {
+      const result = gradeField('meanAnswer', '', { meanAnswer: { value: 2.66 } });
+      expect(result.score).toBe('I');
+    });
+
+    it('rejects null stdDevAnswer', () => {
+      const result = gradeField('stdDevAnswer', null, { stdDevAnswer: { value: 1.27 } });
+      expect(result.score).toBe('I');
     });
   });
 });

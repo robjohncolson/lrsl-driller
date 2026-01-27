@@ -14,7 +14,7 @@ Current cartridges (12 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v4.3.4 (Points Integer Fix & KotH Online Users)
+**Current Version**: v4.3.5 (Probability Cartridge Extended to 4.8)
 
 ## Development Commands
 
@@ -302,8 +302,8 @@ npx vitest run tests/core/ai-feedback-panel-v2.1.test.js  # v2.1 debug logging t
 npx vitest run tests/server/progress-sync-v2.1.test.js    # v2.1 progress sync tests (37 tests)
 npx vitest run tests/core/game-engine-progression.test.js # v3.2 progression override tests (24 tests)
 npx vitest run tests/server/ctf-sessions.test.js          # v4.2 session and tiebreaker tests
-npx vitest run tests/generators/apstatu4l1l2.test.js      # v4.3.1 probability cartridge generator (49 tests)
-npx vitest run tests/grading/apstatu4l1l2.test.js         # v4.3.1 probability cartridge grading (44 tests)
+npx vitest run tests/generators/apstatu4l1l2.test.js      # v4.3.5 probability cartridge generator (139 tests)
+npx vitest run tests/grading/apstatu4l1l2.test.js         # v4.3.5 probability cartridge grading (169 tests)
 npx vitest run tests/core/student-detail-modal.test.js    # v4.3.2 student detail modal tests (52 tests)
 npx vitest run tests/server/ctf-session-start.test.js     # v4.3.2 CTF session start fix tests (30 tests)
 ```
@@ -336,7 +336,52 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 - `railway-server/prompt-utils.js` - Prompt template `{{placeholder}}` interpolation
 - `cartridges/registry.json` - Available cartridge listing
 
+## URL Deep Linking
+
+The platform supports direct navigation via URL parameters:
+
+```
+https://your-domain.com/platform/app.html?cartridge=CARTRIDGE_ID&level=LEVEL_ID
+```
+
+**Parameters:**
+- `cartridge` - The cartridge ID from `registry.json` (e.g., `apstatu4l1l2`)
+- `level` or `start` - The mode/level ID to navigate to (e.g., `l33-random-var-def`)
+
+**Examples:**
+```
+# Load probability cartridge at Topic 4.7 (Random Variables)
+?cartridge=apstatu4l1l2&level=l33-random-var-def
+
+# Load probability cartridge at Topic 4.8 (Mean/SD)
+?cartridge=apstatu4l1l2&level=l38-mean-formula
+
+# Load probability cartridge at capstone level
+?cartridge=apstatu4l1l2&level=l40-interpret-params
+```
+
+**Behavior:**
+- **Teachers**: Direct access to any level without notification
+- **Students**: Can access any level via URL; if normally locked, shows toast notification
+
 ## Version History (Bug Fixes)
+
+**v4.3.5**: Probability Cartridge Extended to 4.8 (Random Variables & Distributions)
+- **apstatu4l1l2 Extended**: Now covers Topics 4.1-4.8 (was 4.1-4.6)
+  - 8 new levels (L33-L40) covering random variables and probability distributions
+  - L33 (4.7a): Random Variable Definition - numerical outcomes, capital letter notation (VAR-5.A)
+  - L34 (4.7b): Discrete vs Continuous - identify type based on countable vs measurable
+  - L35 (4.7c): Valid Probability Distribution - check conditions (0≤P≤1, sum=1)
+  - L36 (4.7d): Probability from Distribution - calculate P(X≤k), P(X≥k), P(a≤X≤b)
+  - L37 (4.7e): Describe Distribution - shape (skewed, symmetric, uniform)
+  - L38 (4.8a): Mean (Expected Value) - μ = Σ[x·P(x)] formula (VAR-5.C)
+  - L39 (4.8b): Standard Deviation - σ = √[Σ(x-μ)²·P(x)] formula
+  - L40 (4.7-4.8 Capstone): Interpret Parameters in Context (VAR-5.D)
+  - Content based on prairie dog pups, thermostat settings, insurance, dice, and coins
+  - 40 total levels now in cartridge
+- **New Skills Covered**: VAR-5.A (represent distributions), VAR-5.B (interpret distributions), VAR-5.C (calculate parameters), VAR-5.D (interpret parameters)
+- **New Tests**: 41 generator tests + 36 grading tests for Topics 4.7-4.8
+- **Total Tests**: 308 tests for probability cartridge (139 generator + 169 grading)
 
 **v4.3.4**: Points Integer Fix & KotH Online Users
 - **CTF/KotH Points Integer Fix**: Weighted scoring produces decimals (e.g., 1.5 for silver star at level 1 with 0.5x multiplier)
@@ -362,7 +407,7 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
   - L23 (4.5d): Order Matters (P(A|B) vs P(B|A))
   - L24 (4.4-4.5 Capstone): Mixed practice with explanations
   - Content based on Super Status!, school surveys, employee data, and marble examples
-  - 24 total levels now in cartridge
+  - 24 total levels now in cartridge (later extended to 40 levels in v4.3.5)
 - **URL Deep Linking Fix**: `?level=` and `?start=` parameters now always navigate to requested level
   - Teachers: Direct access without notification
   - Students: Access any level via URL with toast notification if normally locked
@@ -393,7 +438,7 @@ railway-server/migrations/011_ctf_sessions.sql      # v4.2: Per-period games, se
 **v4.3.1**: New Probability Cartridge (apstatu4l1l2)
 - New cartridge: `apstatu4l1l2` - AP Statistics Unit 4 Lessons 1-2 (Probability Basics)
 - Topics covered: Random processes, outcomes vs events, independence/gambler's fallacy, streaks in random data, simulation, Law of Large Numbers
-- 11 progressive levels from vocabulary to full simulation design capstone (later extended to 24 levels in v4.3.3)
+- 11 progressive levels from vocabulary to full simulation design capstone (later extended to 40 levels in v4.3.5)
 - 60+ unique scenarios across all levels with shuffle bag preventing near-repeats
 - Input types: dropdown, choice, number, text, textarea
 - New tests: 49 generator tests (`tests/generators/apstatu4l1l2.test.js`)
