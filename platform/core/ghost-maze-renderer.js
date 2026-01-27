@@ -60,6 +60,15 @@ const QUALITY_PRESETS = {
   }
 };
 
+// Ghost animation constants
+const GHOST_HEIGHT_OFFSET = 2;           // Height above node platform
+const GHOST_BOB_SPEED = 0.002;           // Bobbing animation speed
+const GHOST_BOB_AMPLITUDE = 0.005;       // Bobbing amplitude
+const GHOST_MOVEMENT_DURATION = 2000;    // Movement animation duration (ms)
+const GHOST_CELEBRATION_DURATION = 1500; // Celebration effect duration (ms)
+const GHOST_PARTICLE_COUNT = 24;         // Celebration particle count
+const GHOST_EDGE_SAG = 1.5;              // Edge curve sag amount
+
 /**
  * MazeRenderer class - orchestrates the 3D maze visualization
  */
@@ -96,6 +105,27 @@ export class MazeRenderer {
     this.animationId = null;
     this.isDisposed = false;
     this.ghostMesh = null;
+    this.ghostProfile = null;
+    this.ghostCurrentNodeId = null;
+
+    // Ghost animation state
+    this.ghostAnimation = {
+      isAnimating: false,
+      startTime: 0,
+      duration: GHOST_MOVEMENT_DURATION,
+      curve: null,
+      fromNodeId: null,
+      toNodeId: null,
+      baseY: 0  // Base Y position for bobbing during animation
+    };
+
+    // Ghost celebration state
+    this.ghostCelebration = {
+      isActive: false,
+      startTime: 0,
+      type: null,
+      particles: []
+    };
 
     // Event handlers (bound for removal)
     this._onResize = this._handleResize.bind(this);
@@ -528,13 +558,140 @@ export class MazeRenderer {
   }
 
   /**
-   * Animate ghost bobbing
+   * Animate ghost (bobbing, movement, celebration)
    */
   _animateGhost() {
     if (!this.ghostMesh) return;
 
-    const time = performance.now() * 0.002;
-    this.ghostMesh.position.y += Math.sin(time) * 0.005;
+    const now = performance.now();
+
+    // Handle movement animation
+    if (this.ghostAnimation.isAnimating) {
+      this._updateGhostMovement(now);
+    } else {
+      // Apply idle bobbing when not moving
+      const time = now * GHOST_BOB_SPEED;
+      const baseY = this.ghostAnimation.baseY || this.ghostMesh.position.y;
+      this.ghostMesh.position.y = baseY + Math.sin(time) * GHOST_BOB_AMPLITUDE * 100;
+    }
+
+    // Handle celebration animation
+    if (this.ghostCelebration.isActive) {
+      this._updateGhostCelebration(now);
+    }
+  }
+
+  /**
+   * Update ghost movement along bezier curve
+   * @param {number} now - Current timestamp
+   */
+  _updateGhostMovement(now) {
+    const { startTime, duration, curve } = this.ghostAnimation;
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Ease-in-out cubic easing
+    const eased = this._easeInOutCubic(progress);
+
+    // Get position along curve
+    if (curve) {
+      const point = curve.getPoint(eased);
+      this.ghostMesh.position.set(point.x, point.y + GHOST_HEIGHT_OFFSET, point.z);
+      this.ghostAnimation.baseY = point.y + GHOST_HEIGHT_OFFSET;
+    }
+
+    // Check if animation complete
+    if (progress >= 1) {
+      this.ghostAnimation.isAnimating = false;
+      this.ghostCurrentNodeId = this.ghostAnimation.toNodeId;
+
+      // Snap to final position
+      const toNode = this.nodes.get(this.ghostAnimation.toNodeId);
+      if (toNode && toNode.position) {
+        this.ghostMesh.position.set(
+          toNode.position.x,
+          toNode.position.y + GHOST_HEIGHT_OFFSET,
+          toNode.position.z
+        );
+        this.ghostAnimation.baseY = toNode.position.y + GHOST_HEIGHT_OFFSET;
+      }
+
+      console.log(`[MazeRenderer] Ghost arrived at node: ${this.ghostAnimation.toNodeId}`);
+    }
+  }
+
+  /**
+   * Update ghost celebration effects
+   * @param {number} now - Current timestamp
+   */
+  _updateGhostCelebration(now) {
+    const { startTime, particles } = this.ghostCelebration;
+    const elapsed = now - startTime;
+    const progress = elapsed / GHOST_CELEBRATION_DURATION;
+
+    if (progress >= 1) {
+      // Clean up celebration
+      this._cleanupCelebrationParticles();
+      this.ghostCelebration.isActive = false;
+      return;
+    }
+
+    // Update glow pulse on ghost core
+    if (this.ghostMesh && this.ghostMesh.children[0]) {
+      const core = this.ghostMesh.children[0];
+      const pulseIntensity = 0.5 + Math.sin(elapsed * 0.02) * 0.3;
+      if (core.material) {
+        core.material.opacity = Math.min(1, (this.ghostProfile?.opacity || 0.5) + pulseIntensity * 0.3);
+      }
+    }
+
+    // Update particle positions (expand outward and fade)
+    particles.forEach((particle, index) => {
+      if (particle && particle.userData) {
+        const velocity = particle.userData.velocity;
+        const fadeProgress = progress;
+
+        // Move outward
+        particle.position.x += velocity.x * 0.016; // ~60fps
+        particle.position.y += velocity.y * 0.016;
+        particle.position.z += velocity.z * 0.016;
+
+        // Fade out
+        if (particle.material) {
+          particle.material.opacity = (1 - fadeProgress) * 0.8;
+        }
+      }
+    });
+  }
+
+  /**
+   * Clean up celebration particles from scene
+   */
+  _cleanupCelebrationParticles() {
+    const { particles } = this.ghostCelebration;
+    particles.forEach(particle => {
+      if (particle) {
+        this.ghostGroup.remove(particle);
+        this._disposeMesh(particle);
+      }
+    });
+    this.ghostCelebration.particles = [];
+
+    // Reset ghost opacity
+    if (this.ghostMesh && this.ghostMesh.children[0] && this.ghostProfile) {
+      this.ghostMesh.children[0].material.opacity = this.ghostProfile.opacity || 0.5;
+    }
+  }
+
+  /**
+   * Ease-in-out cubic function
+   * @param {number} t - Progress 0-1
+   * @returns {number}
+   */
+  _easeInOutCubic(t) {
+    return t < 0.5
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
   /**
@@ -654,6 +811,9 @@ export class MazeRenderer {
   updateGhost(ghostProfile) {
     if (!ghostProfile || !this.ghostGroup) return;
 
+    // Store profile for reference
+    this.ghostProfile = ghostProfile;
+
     // Remove existing ghost
     if (this.ghostMesh) {
       this.ghostGroup.remove(this.ghostMesh);
@@ -665,14 +825,200 @@ export class MazeRenderer {
     this.ghostGroup.add(this.ghostMesh);
 
     // Position at current level
-    const currentNode = this.nodes.get(ghostProfile.currentLevel);
+    const currentNodeId = ghostProfile.currentLevel;
+    this.ghostCurrentNodeId = currentNodeId;
+    const currentNode = this.nodes.get(currentNodeId);
+
     if (currentNode && currentNode.position) {
       this.ghostMesh.position.set(
         currentNode.position.x,
-        currentNode.position.y + 2,
+        currentNode.position.y + GHOST_HEIGHT_OFFSET,
         currentNode.position.z
       );
+      this.ghostAnimation.baseY = currentNode.position.y + GHOST_HEIGHT_OFFSET;
     }
+
+    console.log(`[MazeRenderer] Ghost updated: ${ghostProfile.color} (${(ghostProfile.opacity * 100).toFixed(0)}% opacity) at ${currentNodeId || 'unknown'}`);
+  }
+
+  /**
+   * Animate ghost movement to a new node
+   * @param {string} toNodeId - Target node ID
+   * @param {string} fromNodeId - Source node ID (optional, uses current if omitted)
+   * @param {number} duration - Animation duration in ms (default: 2000)
+   * @returns {Promise<void>} Resolves when animation completes
+   */
+  animateGhostTo(toNodeId, fromNodeId = null, duration = GHOST_MOVEMENT_DURATION) {
+    return new Promise((resolve) => {
+      if (!this.ghostMesh || !this.nodes) {
+        console.warn('[MazeRenderer] Cannot animate ghost - not initialized');
+        resolve();
+        return;
+      }
+
+      // Use current position if no fromNodeId specified
+      const actualFromId = fromNodeId || this.ghostCurrentNodeId;
+      const fromNode = actualFromId ? this.nodes.get(actualFromId) : null;
+      const toNode = this.nodes.get(toNodeId);
+
+      if (!toNode || !toNode.position) {
+        console.warn(`[MazeRenderer] Target node not found: ${toNodeId}`);
+        resolve();
+        return;
+      }
+
+      // If no valid from position, just teleport
+      if (!fromNode || !fromNode.position) {
+        this.ghostMesh.position.set(
+          toNode.position.x,
+          toNode.position.y + GHOST_HEIGHT_OFFSET,
+          toNode.position.z
+        );
+        this.ghostCurrentNodeId = toNodeId;
+        this.ghostAnimation.baseY = toNode.position.y + GHOST_HEIGHT_OFFSET;
+        console.log(`[MazeRenderer] Ghost teleported to: ${toNodeId}`);
+        resolve();
+        return;
+      }
+
+      // Create bezier curve for movement path (matches edge geometry)
+      const fromPos = new THREE.Vector3(
+        fromNode.position.x,
+        fromNode.position.y,
+        fromNode.position.z
+      );
+      const toPos = new THREE.Vector3(
+        toNode.position.x,
+        toNode.position.y,
+        toNode.position.z
+      );
+
+      // Calculate midpoint with sag (catenary effect matching bridges)
+      const mid = fromPos.clone().lerp(toPos, 0.5);
+      mid.y -= GHOST_EDGE_SAG;
+
+      // Create quadratic bezier curve
+      const curve = new THREE.QuadraticBezierCurve3(fromPos, mid, toPos);
+
+      // Set up animation state
+      this.ghostAnimation = {
+        isAnimating: true,
+        startTime: performance.now(),
+        duration,
+        curve,
+        fromNodeId: actualFromId,
+        toNodeId,
+        baseY: fromNode.position.y + GHOST_HEIGHT_OFFSET
+      };
+
+      console.log(`[MazeRenderer] Ghost moving: ${actualFromId} -> ${toNodeId}`);
+
+      // Resolve when animation completes
+      const checkComplete = () => {
+        if (!this.ghostAnimation.isAnimating) {
+          resolve();
+        } else if (!this.isDisposed) {
+          requestAnimationFrame(checkComplete);
+        } else {
+          resolve();
+        }
+      };
+      requestAnimationFrame(checkComplete);
+    });
+  }
+
+  /**
+   * Trigger celebration animation on ghost
+   * @param {string} type - 'gold' | 'silver' | 'bronze' | 'tin'
+   */
+  celebrateGhost(type = 'gold') {
+    if (!this.ghostMesh || !this.ghostGroup) {
+      console.warn('[MazeRenderer] Cannot celebrate - ghost not initialized');
+      return;
+    }
+
+    // Clean up any existing celebration
+    if (this.ghostCelebration.isActive) {
+      this._cleanupCelebrationParticles();
+    }
+
+    // Get ghost color for particles
+    const colorKey = `ghost${this._capitalize(this.ghostProfile?.color || 'white')}`;
+    const particleColor = TRON_COLORS[colorKey] || TRON_COLORS.ghostWhite;
+
+    // Create celebration particles
+    const particles = [];
+    const ghostPos = this.ghostMesh.position.clone();
+
+    for (let i = 0; i < GHOST_PARTICLE_COUNT; i++) {
+      // Create small sphere particle
+      const geometry = new THREE.SphereGeometry(0.15, 8, 8);
+      const material = new THREE.MeshBasicMaterial({
+        color: type === 'gold' ? 0xffdd00 : particleColor,
+        transparent: true,
+        opacity: 0.8
+      });
+      const particle = new THREE.Mesh(geometry, material);
+
+      // Position at ghost center
+      particle.position.copy(ghostPos);
+
+      // Calculate radial velocity
+      const angle = (i / GHOST_PARTICLE_COUNT) * Math.PI * 2;
+      const elevationAngle = (Math.random() - 0.5) * Math.PI * 0.5;
+      const speed = 2 + Math.random() * 2;
+
+      particle.userData = {
+        velocity: {
+          x: Math.cos(angle) * Math.cos(elevationAngle) * speed,
+          y: Math.sin(elevationAngle) * speed + 1, // Slight upward bias
+          z: Math.sin(angle) * Math.cos(elevationAngle) * speed
+        }
+      };
+
+      particles.push(particle);
+      this.ghostGroup.add(particle);
+    }
+
+    // Set celebration state
+    this.ghostCelebration = {
+      isActive: true,
+      startTime: performance.now(),
+      type,
+      particles
+    };
+
+    console.log(`[MazeRenderer] Ghost celebrating: ${type} star!`);
+  }
+
+  /**
+   * Get current ghost position
+   * @returns {{x: number, y: number, z: number} | null}
+   */
+  getGhostPosition() {
+    if (!this.ghostMesh) return null;
+
+    return {
+      x: this.ghostMesh.position.x,
+      y: this.ghostMesh.position.y,
+      z: this.ghostMesh.position.z
+    };
+  }
+
+  /**
+   * Get the current node ID where the ghost is located
+   * @returns {string | null}
+   */
+  getGhostNodeId() {
+    return this.ghostCurrentNodeId;
+  }
+
+  /**
+   * Check if ghost is currently animating
+   * @returns {boolean}
+   */
+  isGhostAnimating() {
+    return this.ghostAnimation.isAnimating;
   }
 
   /**
@@ -885,3 +1231,82 @@ export class MazeRenderer {
     console.log('[MazeRenderer] Disposed');
   }
 }
+
+// ============== Exported Helper Functions ==============
+
+/**
+ * Get the hex color code for a ghost based on proficiency color name
+ * @param {string} colorName - Color name (white, yellow, orange, red, indigo)
+ * @returns {number} Hex color code
+ */
+export function getGhostColorHex(colorName) {
+  const colorKey = `ghost${colorName.charAt(0).toUpperCase() + colorName.slice(1)}`;
+  return TRON_COLORS[colorKey] || TRON_COLORS.ghostWhite;
+}
+
+/**
+ * Calculate ghost color from proficiency score
+ * Mirrors GhostEngine.calculateColor() logic for visualization
+ * @param {number} proficiency - Proficiency score 0-1
+ * @returns {string} Color name
+ */
+export function calculateGhostColor(proficiency) {
+  if (proficiency < 0.2) return 'white';
+  if (proficiency < 0.4) return 'yellow';
+  if (proficiency < 0.6) return 'orange';
+  if (proficiency < 0.8) return 'red';
+  return 'indigo';
+}
+
+/**
+ * Calculate ghost opacity from interaction count
+ * Mirrors GhostEngine.calculateOpacity() logic for visualization
+ * @param {number} interactions - Total interaction count
+ * @returns {number} Opacity 0.1-1.0
+ */
+export function calculateGhostOpacity(interactions) {
+  const OPACITY_THRESHOLD = 100;
+  return Math.min(0.1 + (interactions / OPACITY_THRESHOLD) * 0.9, 1.0);
+}
+
+/**
+ * Interpolate position along a movement path
+ * Used for calculating ghost position during movement animation
+ * @param {Object} fromPos - Starting position {x, y, z}
+ * @param {Object} toPos - Ending position {x, y, z}
+ * @param {number} t - Progress 0-1
+ * @param {number} sag - Curve sag amount (default 1.5)
+ * @returns {{x: number, y: number, z: number}} Interpolated position
+ */
+export function interpolateMovementPath(fromPos, toPos, t, sag = GHOST_EDGE_SAG) {
+  // Calculate midpoint with sag
+  const midX = (fromPos.x + toPos.x) / 2;
+  const midY = (fromPos.y + toPos.y) / 2 - sag;
+  const midZ = (fromPos.z + toPos.z) / 2;
+
+  // Quadratic bezier interpolation
+  const oneMinusT = 1 - t;
+  const tSquared = t * t;
+  const oneMinusTSquared = oneMinusT * oneMinusT;
+  const twoTOneMinusT = 2 * t * oneMinusT;
+
+  return {
+    x: oneMinusTSquared * fromPos.x + twoTOneMinusT * midX + tSquared * toPos.x,
+    y: oneMinusTSquared * fromPos.y + twoTOneMinusT * midY + tSquared * toPos.y,
+    z: oneMinusTSquared * fromPos.z + twoTOneMinusT * midZ + tSquared * toPos.z
+  };
+}
+
+/**
+ * Ease-in-out cubic easing function
+ * @param {number} t - Progress 0-1
+ * @returns {number} Eased progress 0-1
+ */
+export function easeInOutCubic(t) {
+  return t < 0.5
+    ? 4 * t * t * t
+    : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+// Export TRON_COLORS for testing
+export { TRON_COLORS };
