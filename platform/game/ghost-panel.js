@@ -1452,6 +1452,12 @@ export class GhostPanel {
       container.addEventListener('maze-ready', () => {
         console.log('[GhostPanel] Maze renderer ready');
 
+        // Remove loading indicator now that maze is ready
+        const loadingDiv = container.querySelector('.ghost-maze-loading');
+        if (loadingDiv) {
+          loadingDiv.remove();
+        }
+
         // Update ghost position if we have a profile
         if (this.ghostProfile) {
           this.mazeRenderer.updateGhost(this.ghostProfile);
