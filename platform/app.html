@@ -111,6 +111,11 @@
           <span class="text-base">🚩</span>
         </button>
 
+        <!-- Ghost Toggle -->
+        <button id="ghost-btn" class="p-1.5 hover:bg-purple-100 text-purple-600 rounded-lg transition-colors relative" title="Ghost Mode">
+          <span class="text-base">👻</span>
+        </button>
+
         <!-- Leaderboard (icon only) -->
         <button id="leaderboard-btn" class="p-1.5 hover:bg-yellow-100 text-yellow-600 rounded-lg transition-colors" title="Leaderboard">
           <span class="text-base">🏆</span>
@@ -910,6 +915,7 @@
     import { RosterModal } from './core/roster-modal.js';
     import { GAME_MODE_CONFIG } from '../shared/game-mode.config.js';
     import * as GhostEngine from './core/ghost-engine.js';
+    import { GhostPanel, createGhostButton } from './game/ghost-panel.js';
     console.log('[APP] All imports successful, GameModeManager:', typeof GameModeManager);
 
     // ==================== CONFIGURATION ====================
@@ -1116,6 +1122,22 @@
             }
           }
         }
+        // Handle ghost battle completion messages
+        if (message.type === 'ghost_battle_complete') {
+          console.log('[App] Ghost battle completed:', message);
+          // Show toast notification for battle result
+          const won = message.winner === userSystem.currentUser?.username;
+          const opponent = message.challenger === userSystem.currentUser?.username
+            ? message.defender
+            : message.challenger;
+          if (won) {
+            celebration.showToast(`Victory against ${opponent}'s ghost!`, 'success', 4000);
+          } else if (message.winner === null) {
+            celebration.showToast(`Draw against ${opponent}'s ghost`, 'info', 4000);
+          } else {
+            celebration.showToast(`${opponent}'s ghost won the battle`, 'warning', 4000);
+          }
+        }
       }
     });
 
@@ -1127,6 +1149,7 @@
     let aiFeedbackPanel = null; // v2.0.1: AI feedback panel instance
     let rosterModal = null; // Teacher roster management modal
     let requestedStartLevel = null; // URL-requested level (e.g., ?level=l12-sample-space or ?start=12)
+    let ghostPanel = null; // Ghost panel instance for ghost mode features
 
     /**
      * Sync local star counts with server to fix any discrepancies
@@ -1231,6 +1254,87 @@
     // CTF sidebar toggle event listeners
     document.getElementById('ctf-btn').addEventListener('click', toggleCTFSidebar);
     document.getElementById('ctf-backdrop').addEventListener('click', toggleCTFSidebar);
+
+    // ==================== GHOST PANEL INTEGRATION ====================
+
+    /**
+     * Initialize Ghost Panel for the current user
+     */
+    function initGhostPanel() {
+      if (ghostPanel) {
+        // Dispose existing panel before creating new one
+        ghostPanel.dispose();
+        ghostPanel = null;
+      }
+
+      // Create container for ghost panel
+      let ghostPanelContainer = document.getElementById('ghost-panel-container');
+      if (!ghostPanelContainer) {
+        ghostPanelContainer = document.createElement('div');
+        ghostPanelContainer.id = 'ghost-panel-container';
+        document.body.appendChild(ghostPanelContainer);
+      }
+
+      const manifest = platform?.currentCartridge?.manifest;
+      const playerProgress = platform?.gameEngine?.getState()?.starsPerMode || {};
+
+      ghostPanel = new GhostPanel({
+        container: ghostPanelContainer,
+        serverUrl: SERVER_URL,
+        username: userSystem.currentUser?.username,
+        isTeacher: isTeacher,
+        manifest: manifest,
+        playerProgress: playerProgress,
+        classPeriod: userSystem.currentUser?.class_period,
+        onClose: () => {
+          const btn = document.getElementById('ghost-btn');
+          if (btn) btn.classList.remove('bg-purple-200');
+        }
+      });
+
+      // Update with current ghost profile if available
+      const profile = GhostEngine.getProfile();
+      if (profile) {
+        ghostPanel.updateGhostProfile(profile);
+      }
+
+      console.log('[GhostPanel] Initialized for user:', userSystem.currentUser?.username);
+    }
+
+    /**
+     * Toggle Ghost Panel visibility
+     */
+    function toggleGhostPanel() {
+      if (!ghostPanel) {
+        initGhostPanel();
+      }
+
+      const btn = document.getElementById('ghost-btn');
+      if (ghostPanel.isVisible) {
+        ghostPanel.hide();
+        if (btn) btn.classList.remove('bg-purple-200');
+      } else {
+        ghostPanel.show();
+        if (btn) btn.classList.add('bg-purple-200');
+      }
+    }
+
+    /**
+     * Update Ghost Panel when cartridge changes
+     */
+    function updateGhostPanelForCartridge() {
+      if (!ghostPanel) return;
+
+      const manifest = platform?.currentCartridge?.manifest;
+      const playerProgress = platform?.gameEngine?.getState()?.starsPerMode || {};
+
+      // Recreate panel with new manifest (simplest approach for now)
+      ghostPanel.dispose();
+      initGhostPanel();
+    }
+
+    // Ghost panel toggle event listener
+    document.getElementById('ghost-btn').addEventListener('click', toggleGhostPanel);
 
     // Helper to get best available topic name for notifications/logging
     function getCurrentTopicName() {
@@ -2060,6 +2164,13 @@
 
         // Sync local stars with server to fix any discrepancies
         syncStarsWithServer(existingSelect.value);
+
+        // Initialize Ghost Panel for the signed-in user
+        try {
+          initGhostPanel();
+        } catch (err) {
+          console.warn('[Ghost Panel] Init failed after sign-in:', err);
+        }
       },
 
       async register() {
@@ -2096,6 +2207,13 @@
 
         // Sync local stars with server (likely empty for new users)
         syncStarsWithServer(username);
+
+        // Initialize Ghost Panel for the new user
+        try {
+          initGhostPanel();
+        } catch (err) {
+          console.warn('[Ghost Panel] Init failed after registration:', err);
+        }
       }
     };
 
@@ -2228,6 +2346,14 @@
         const ctfSidebar = document.getElementById('ctf-sidebar');
         if (!ctfSidebar.classList.contains('translate-x-full')) {
           toggleCTFSidebar();
+          return;
+        }
+
+        // Close Ghost panel
+        if (ghostPanel && ghostPanel.isVisible) {
+          ghostPanel.hide();
+          const ghostBtn = document.getElementById('ghost-btn');
+          if (ghostBtn) ghostBtn.classList.remove('bg-purple-200');
           return;
         }
 
@@ -3700,6 +3826,16 @@
             const gameState = platform.getState();
             recordGhostInteraction(results, gameState.game || {});
 
+            // Update Ghost Panel with latest profile (non-blocking)
+            if (ghostPanel) {
+              const profile = GhostEngine.getProfile();
+              if (profile) {
+                ghostPanel.updateGhostProfile(profile);
+              }
+              // Also update player progress
+              ghostPanel.updatePlayerProgress(gameState.game?.starsPerMode || {});
+            }
+
             // v2.0.1: Update AI feedback panel
             // v2.1: Enhanced logging for AI flow debugging
             console.log('[AI Panel] Grading method:', results._gradingMethod);
@@ -3999,6 +4135,11 @@
         updateScenarioDisplay();
 
         currentCartridgeId = cartridgeId;
+
+        // Update Ghost Panel with new cartridge manifest
+        if (ghostPanel && userSystem.currentUser) {
+          updateGhostPanelForCartridge();
+        }
 
       } catch (err) {
         console.error('Failed to load cartridge:', err);
@@ -4537,6 +4678,14 @@
         }).catch(err => {
           console.error('[APP] initGameMode promise rejected:', err);
         });
+
+        // Initialize Ghost Panel (non-blocking)
+        try {
+          initGhostPanel();
+          console.log('[APP] Ghost Panel initialized');
+        } catch (err) {
+          console.warn('[APP] Ghost Panel init failed:', err);
+        }
       } else {
         usernameModal.show(true); // First visit - cannot close modal
       }
