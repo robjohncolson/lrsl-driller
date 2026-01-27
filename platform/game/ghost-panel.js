@@ -545,6 +545,7 @@ export class GhostPanel {
     if (canvas.parentElement !== myGhostContainer) {
       myGhostContainer.innerHTML = ''; // Clear loading placeholder
       myGhostContainer.appendChild(canvas);
+      this._clearMazeOverlays(myGhostContainer);
 
       // Trigger resize after moving
       setTimeout(() => {
@@ -1452,11 +1453,8 @@ export class GhostPanel {
       container.addEventListener('maze-ready', () => {
         console.log('[GhostPanel] Maze renderer ready');
 
-        // Remove loading indicator now that maze is ready
-        const loadingDiv = container.querySelector('.ghost-maze-loading');
-        if (loadingDiv) {
-          loadingDiv.remove();
-        }
+        // Remove loading indicators now that maze is ready
+        this._clearMazeOverlays(container);
 
         // Update ghost position if we have a profile
         if (this.ghostProfile) {
@@ -1502,6 +1500,16 @@ export class GhostPanel {
         <p>${message || 'Please try reloading the page.'}</p>
       </div>
     `;
+  }
+
+  /**
+   * Remove any loading overlays covering the maze canvas.
+   * @param {HTMLElement} container
+   */
+  _clearMazeOverlays(container) {
+    if (!container) return;
+    container.querySelectorAll('.ghost-maze-loading, .ghost-class-loading').forEach(el => el.remove());
+    container.querySelectorAll('.ghost-loading-spinner').forEach(el => el.remove());
   }
 
   /**

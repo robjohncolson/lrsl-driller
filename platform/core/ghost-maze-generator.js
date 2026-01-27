@@ -187,12 +187,17 @@ export function positionNodes(nodes, tiers, options = {}) {
 
     tierNodes.forEach((node, index) => {
       if (count === 1) {
-        // Center single node on Y-axis
+        // Spread linear progressions along Z with a gentle X wobble
+        const xOffset = Math.sin(tier * 0.6) * (nodeSpread * 0.6);
         node.position = {
-          x: 0,
+          x: xOffset,
           y: tier * tierHeight,
-          z: 0
+          z: -(tier * nodeSpread)
         };
+
+        if (tier === 0 || tier === sortedTiers.length - 1) {
+          // no-op: keep key tiers but avoid over-logging in production
+        }
       } else {
         // Distribute around a circle
         const angle = (index / count) * Math.PI * 2 - Math.PI / 2; // Start from top

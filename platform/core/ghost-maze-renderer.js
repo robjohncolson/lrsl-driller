@@ -190,6 +190,7 @@ export class MazeRenderer {
     this._buildGrid();
     this._buildNodes();
     this._buildEdges();
+    this._frameScene();
 
     // Event listeners
     window.addEventListener('resize', this._onResize);
@@ -239,6 +240,7 @@ export class MazeRenderer {
     this.ghostGroup = new THREE.Group();
     this.ghostGroup.name = 'ghosts';
     this.scene.add(this.ghostGroup);
+
   }
 
   /**
@@ -253,6 +255,15 @@ export class MazeRenderer {
     const cameraDistance = Math.max(30, stats.maxTier * 10);
     this.camera.position.set(cameraDistance, cameraDistance * 0.8, cameraDistance);
     this.camera.lookAt(0, stats.maxTier * 4, 0);
+
+    if (this.scene && this.scene.fog) {
+      const targetVisibility = 0.4;
+      const lookAt = new THREE.Vector3(0, stats.maxTier * 4, 0);
+      const distance = this.camera.position.distanceTo(lookAt);
+      const density = Math.sqrt(-Math.log(targetVisibility)) / Math.max(distance, 1);
+      this.scene.fog.density = Math.min(0.02, Math.max(0.0015, density));
+
+    }
   }
 
   /**
@@ -266,6 +277,9 @@ export class MazeRenderer {
       alpha: true
     });
 
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.4;
+
     this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
@@ -276,6 +290,7 @@ export class MazeRenderer {
     }
 
     this.container.appendChild(this.renderer.domElement);
+
   }
 
   /**
@@ -303,19 +318,20 @@ export class MazeRenderer {
    */
   _initLighting() {
     // Ambient light (dim)
-    const ambient = new THREE.AmbientLight(0x111122, 0.4);
+    const ambient = new THREE.AmbientLight(0x222244, 0.9);
     this.scene.add(ambient);
 
     // Overhead spot for depth
-    const spotLight = new THREE.SpotLight(0x4488ff, 0.3);
+    const spotLight = new THREE.SpotLight(0x66aaff, 0.8);
     spotLight.position.set(0, 100, 0);
     spotLight.angle = Math.PI / 4;
     spotLight.penumbra = 0.5;
     this.scene.add(spotLight);
 
     // Hemisphere light for color variation
-    const hemi = new THREE.HemisphereLight(0x4488ff, 0x002244, 0.2);
+    const hemi = new THREE.HemisphereLight(0x66aaff, 0x112244, 0.6);
     this.scene.add(hemi);
+
   }
 
   /**
@@ -340,6 +356,7 @@ export class MazeRenderer {
    */
   _buildNodes() {
     const preset = QUALITY_PRESETS[this.quality];
+    let firstNodePosition = null;
 
     for (const node of this.nodes.values()) {
       const progress = this.progressMap.get(node.id) || {
@@ -350,7 +367,45 @@ export class MazeRenderer {
 
       const nodeMesh = this._createNodeMesh(node, progress, preset);
       this.nodeGroup.add(nodeMesh);
+
+      if (!firstNodePosition && node.position) {
+        firstNodePosition = { x: node.position.x, y: node.position.y, z: node.position.z };
+      }
     }
+
+    let cameraToFirstNode = null;
+    if (firstNodePosition && this.camera && this.scene?.fog?.density != null) {
+      const dx = this.camera.position.x - firstNodePosition.x;
+      const dy = this.camera.position.y - firstNodePosition.y;
+      const dz = this.camera.position.z - firstNodePosition.z;
+      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const density = this.scene.fog.density;
+      const fogVisibility = Math.exp(-(density * density) * (distance * distance));
+      cameraToFirstNode = { distance, density, fogVisibility };
+    }
+
+    let nodeBounds = null;
+    let frustumIntersects = null;
+    if (this.nodeGroup && this.camera) {
+      const bounds = new THREE.Box3().setFromObject(this.nodeGroup);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      bounds.getSize(size);
+      bounds.getCenter(center);
+      this.camera.updateMatrixWorld();
+      this.camera.updateProjectionMatrix();
+      const frustum = new THREE.Frustum();
+      const projView = new THREE.Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+      frustum.setFromProjectionMatrix(projView);
+      frustumIntersects = frustum.intersectsBox(bounds);
+      nodeBounds = {
+        min: { x: bounds.min.x, y: bounds.min.y, z: bounds.min.z },
+        max: { x: bounds.max.x, y: bounds.max.y, z: bounds.max.z },
+        size: { x: size.x, y: size.y, z: size.z },
+        center: { x: center.x, y: center.y, z: center.z }
+      };
+    }
+
   }
 
   /**
@@ -385,7 +440,7 @@ export class MazeRenderer {
     }
 
     // Hexagonal platform
-    const geometry = new THREE.CylinderGeometry(2, 2, 0.5, preset.nodeSegments);
+    const geometry = new THREE.CylinderGeometry(3, 3, 0.7, preset.nodeSegments);
     const material = new THREE.MeshStandardMaterial({
       color,
       emissive,
@@ -398,7 +453,7 @@ export class MazeRenderer {
     group.add(platform);
 
     // Edge glow ring
-    const ringGeometry = new THREE.TorusGeometry(2.1, 0.08, 4, preset.nodeSegments);
+    const ringGeometry = new THREE.TorusGeometry(3.2, 0.12, 6, preset.nodeSegments);
     const ringMaterial = new THREE.MeshBasicMaterial({
       color: emissive,
       transparent: true,
@@ -483,18 +538,56 @@ export class MazeRenderer {
    */
   _buildEdges() {
     const preset = QUALITY_PRESETS[this.quality];
+    let skippedEdges = 0;
 
     for (const edge of this.edges) {
       const fromNode = this.nodes.get(edge.from);
       const toNode = this.nodes.get(edge.to);
 
       if (!fromNode || !toNode || !fromNode.position || !toNode.position) {
+        skippedEdges += 1;
         continue;
       }
 
       const edgeMesh = this._createEdgeMesh(fromNode, toNode, edge, preset);
       this.edgeGroup.add(edgeMesh);
     }
+
+  }
+
+  /**
+   * Frame the scene to ensure geometry is visible.
+   */
+  _frameScene() {
+    if (!this.nodeGroup || !this.camera) return;
+
+    const bounds = new THREE.Box3().setFromObject(this.nodeGroup);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    bounds.getSize(size);
+    bounds.getCenter(center);
+
+    const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+    const fov = THREE.MathUtils.degToRad(this.camera.fov);
+    const distance = Math.max(20, sphere.radius / Math.sin(fov / 2)) * 1.15;
+    const scaledCenter = center.clone();
+    this.camera.position.set(
+      scaledCenter.x + distance,
+      scaledCenter.y + distance * 0.6,
+      scaledCenter.z + distance
+    );
+    this.camera.near = Math.max(0.1, distance / 100);
+    this.camera.far = Math.max(500, distance * 10);
+    this.camera.updateProjectionMatrix();
+    this.camera.lookAt(scaledCenter);
+
+    if (this.scene && this.scene.fog) {
+      const targetVisibility = 0.6;
+      const camDistance = this.camera.position.distanceTo(scaledCenter);
+      const density = Math.sqrt(-Math.log(targetVisibility)) / Math.max(camDistance, 1);
+      this.scene.fog.density = Math.min(0.02, Math.max(0.0015, density));
+    }
+
   }
 
   /**
@@ -517,7 +610,7 @@ export class MazeRenderer {
     const curve = new THREE.QuadraticBezierCurve3(fromPos, mid, toPos);
 
     // Tube geometry along curve
-    const tubeGeometry = new THREE.TubeGeometry(curve, preset.edgeSegments, 0.08, 4, false);
+    const tubeGeometry = new THREE.TubeGeometry(curve, preset.edgeSegments, 0.14, 6, false);
 
     // Material with glow
     const color = edge.goldRequired ? TRON_COLORS.edgeGold : TRON_COLORS.edgeDefault;
@@ -558,6 +651,7 @@ export class MazeRenderer {
 
     // Render
     this.renderer.render(this.scene, this.camera);
+
   }
 
   /**
