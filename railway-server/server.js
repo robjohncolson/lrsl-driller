@@ -4681,33 +4681,8 @@ app.post('/api/ghost/:cartridgeId/sync', async (req, res) => {
   }
 });
 
-// GET /api/ghost/:cartridgeId/:username - Retrieve ghost profile
-app.get('/api/ghost/:cartridgeId/:username', async (req, res) => {
-  try {
-    const { cartridgeId, username } = req.params;
-
-    const { data, error } = await supabase
-      .from('ghost_profiles')
-      .select('*')
-      .eq('cartridge_id', cartridgeId)
-      .eq('username', username)
-      .single();
-
-    // PGRST116 = no rows returned (not an error)
-    if (error && error.code !== 'PGRST116') throw error;
-
-    if (!data) {
-      return res.status(404).json({ error: 'Ghost not found' });
-    }
-
-    res.json(data);
-  } catch (err) {
-    console.error('GET /api/ghost/:cartridgeId/:username error:', err);
-    res.status(500).json({ error: 'Load failed' });
-  }
-});
-
 // GET /api/ghost/:cartridgeId/leaderboard - Get all ghosts for landscape view
+// NOTE: This route MUST come before /:username to avoid matching 'leaderboard' as a username
 app.get('/api/ghost/:cartridgeId/leaderboard', async (req, res) => {
   try {
     const { cartridgeId } = req.params;
@@ -4740,6 +4715,33 @@ app.get('/api/ghost/:cartridgeId/leaderboard', async (req, res) => {
     res.json({ ghosts: data || [] });
   } catch (err) {
     console.error('GET /api/ghost/:cartridgeId/leaderboard error:', err);
+    res.status(500).json({ error: 'Load failed' });
+  }
+});
+
+// GET /api/ghost/:cartridgeId/:username - Retrieve ghost profile
+// NOTE: This route MUST come after /leaderboard to avoid matching 'leaderboard' as a username
+app.get('/api/ghost/:cartridgeId/:username', async (req, res) => {
+  try {
+    const { cartridgeId, username } = req.params;
+
+    const { data, error } = await supabase
+      .from('ghost_profiles')
+      .select('*')
+      .eq('cartridge_id', cartridgeId)
+      .eq('username', username)
+      .single();
+
+    // PGRST116 = no rows returned (not an error)
+    if (error && error.code !== 'PGRST116') throw error;
+
+    if (!data) {
+      return res.status(404).json({ error: 'Ghost not found' });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error('GET /api/ghost/:cartridgeId/:username error:', err);
     res.status(500).json({ error: 'Load failed' });
   }
 });
@@ -5126,29 +5128,6 @@ app.post('/api/ghost/:cartridgeId/battle/challenge', async (req, res) => {
   }
 });
 
-// GET /api/ghost/:cartridgeId/battle/:battleId - Get battle details
-app.get('/api/ghost/:cartridgeId/battle/:battleId', async (req, res) => {
-  try {
-    const { cartridgeId, battleId } = req.params;
-
-    const { data: battle, error } = await supabase
-      .from('ghost_battles')
-      .select('*')
-      .eq('id', battleId)
-      .eq('cartridge_id', cartridgeId)
-      .single();
-
-    if (error || !battle) {
-      return res.status(404).json({ error: 'Battle not found' });
-    }
-
-    res.json(battle);
-  } catch (err) {
-    console.error('GET /api/ghost/:cartridgeId/battle/:battleId error:', err);
-    res.status(500).json({ error: 'Load failed' });
-  }
-});
-
 // GET /api/ghost/:cartridgeId/battle/history/:username - Get user's battle history
 app.get('/api/ghost/:cartridgeId/battle/history/:username', async (req, res) => {
   try {
@@ -5256,6 +5235,30 @@ app.get('/api/ghost/:cartridgeId/battle/leaderboard', async (req, res) => {
     res.json({ rankings: rankingsWithTier });
   } catch (err) {
     console.error('GET /api/ghost/:cartridgeId/battle/leaderboard error:', err);
+    res.status(500).json({ error: 'Load failed' });
+  }
+});
+
+// GET /api/ghost/:cartridgeId/battle/:battleId - Get battle details
+// NOTE: This route MUST come after /leaderboard, /history, /rating to avoid matching those as battleId
+app.get('/api/ghost/:cartridgeId/battle/:battleId', async (req, res) => {
+  try {
+    const { cartridgeId, battleId } = req.params;
+
+    const { data: battle, error } = await supabase
+      .from('ghost_battles')
+      .select('*')
+      .eq('id', battleId)
+      .eq('cartridge_id', cartridgeId)
+      .single();
+
+    if (error || !battle) {
+      return res.status(404).json({ error: 'Battle not found' });
+    }
+
+    res.json(battle);
+  } catch (err) {
+    console.error('GET /api/ghost/:cartridgeId/battle/:battleId error:', err);
     res.status(500).json({ error: 'Load failed' });
   }
 });
