@@ -14,7 +14,7 @@ Current cartridges (12 total) are listed in `cartridges/registry.json` and span 
 - `platform/app.html` - Main modular platform (requires dev server) - **primary development target**
 - `index.html` - Legacy standalone (works with file:// protocol, LSRL-specific only)
 
-**Current Version**: v4.4.0 (Ghost System Phase 1)
+**Current Version**: v4.7.0 (Ghost Visualization Complete)
 
 ## Development Commands
 
@@ -53,7 +53,7 @@ When modifying grading behavior, the `onGradingComplete` callback at ~line 3095 
 
 **Platform (Console)** - `platform/` - topic-agnostic orchestrator:
 - `platform.js` - Main orchestrator, loads cartridges, coordinates engines
-- `core/` - Engines: game-engine (streaks/stars), grading-engine (dual grading), graph-engine (canvas plots), input-renderer (dynamic forms), cartridge-loader, shuffle-bag, user-system, websocket-client, time-tracker, celebration, leaderboard, sound-engine, ai-feedback-panel (v2.0.1), ghost-engine (v4.4.0), ghost-network (v4.4.0)
+- `core/` - Engines: game-engine (streaks/stars), grading-engine (dual grading), graph-engine (canvas plots), input-renderer (dynamic forms), cartridge-loader, shuffle-bag, user-system, websocket-client, time-tracker, celebration, leaderboard, sound-engine, ai-feedback-panel (v2.0.1), ghost-engine (v4.4.0), ghost-network (v4.4.0), ghost-maze-generator (v4.5.0), ghost-maze-renderer (v4.5.0-v4.7.0), ghost-battle-engine (v4.6.0), ghost-battle-viz (v4.7.0)
 - `game/` - CTF (Capture The Flag): ctf-state, ctf-renderer, ctf-panel
 - `core/radical-*.js` - Algebra 2 radicals: visualizer, game, prime game, complex game
 
@@ -313,10 +313,14 @@ npx vitest run tests/core/ghost-engine.test.js            # v4.4.0 ghost engine 
 npx vitest run tests/server/ghost-api.test.js             # v4.4.0 ghost API contract tests (26 tests)
 npx vitest run tests/core/ghost-battle-engine.test.js     # v4.6.0 ghost battle engine tests (63 tests)
 npx vitest run tests/server/ghost-battle-api.test.js      # v4.6.0 ghost battle API contract tests (37 tests)
+npx vitest run tests/core/ghost-maze-generator.test.js    # v4.5.0 maze generator tests (40 tests)
+npx vitest run tests/core/ghost-visualization.test.js     # v4.7.0 ghost animation tests (51 tests)
+npx vitest run tests/core/ghost-landscape.test.js         # v4.7.0 multi-ghost class view tests (46 tests)
+npx vitest run tests/core/ghost-battle-viz.test.js        # v4.7.0 battle replay visualization tests (60 tests)
 ```
 
 Test organization:
-- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1, game-engine-progression, student-detail-modal, ghost-network, ghost-engine, ghost-battle-engine)
+- `tests/core/` - Platform engine tests (game-engine, shuffle-bag, celebration, leaderboard, version, scoring-config, ai-feedback-panel, ai-feedback-panel-v2.1, game-engine-progression, student-detail-modal, ghost-network, ghost-engine, ghost-battle-engine, ghost-maze-generator, ghost-visualization, ghost-landscape, ghost-battle-viz)
 - `tests/grading/` - Cartridge grading rule tests (sampling, residuals, experimental-design, apstatu4l1l2)
 - `tests/generators/` - Problem generator tests (sampling, experimental-design, apstatu4l1l2)
 - `tests/server/` - Railway server API tests (api, prompt-utils, ai-grading-v2.0.1, progress-sync-v2.1, code-quality, ctf-session-start, ghost-api, ghost-battle-api)
@@ -374,6 +378,38 @@ https://your-domain.com/platform/app.html?cartridge=CARTRIDGE_ID&level=LEVEL_ID
 - **Students**: Can access any level via URL; if normally locked, shows toast notification
 
 ## Version History (Bug Fixes)
+
+**v4.7.0**: Ghost Visualization Complete (Phases 4, 5, 7)
+- **Phase 4: Single Ghost Visualization** - Animated ghost navigation through 3D maze
+  - Ghost movement along bezier curves between nodes (2-second transitions)
+  - Celebration particle effects when completing a level (24 particles, 1.5s duration)
+  - Smooth camera following during ghost movement
+  - Ghost mesh with proficiency-based color (white→yellow→orange→red→indigo)
+  - Ghost opacity reflects interaction count (0.1 at 0, 1.0 at 100+ interactions)
+- **Phase 5: Multi-Ghost Landscape (Class View)** - View all students' ghosts simultaneously
+  - `showAllGhosts()` displays up to 50 ghosts with clustering at same nodes
+  - `calculateClusterPositions()` arranges ghosts in rings (6 per ring, stacking vertically)
+  - `calculateNodeGlowIntensity()` creates heat map effect (1.0x-2.0x based on ghost count)
+  - `focusOnGhost(username)` animates camera to specific ghost with pulse effect
+  - Hover tooltips show ghost details (username, proficiency %, interactions, level, last active)
+  - `parseLeaderboardData()` maps proficiency scores to estimated level positions
+  - Ghost labels via Canvas-based text sprites
+- **Phase 7: Battle Visualization** - Canvas-based race track replay system
+  - `BattleViz` class for rendering battle replays on 2D canvas
+  - Horizontal race track with progress bars for each ghost
+  - Timeline scrubbing (click to jump, playback controls)
+  - Problem-by-problem breakdown with predictions vs actual results
+  - Speed controls (0.5x, 1x, 2x, pause)
+  - Color-coded results: correct (green), incorrect (red)
+  - Winner announcement with rating change display
+- **New Files**:
+  - `platform/core/ghost-battle-viz.js` - Battle replay visualization
+  - `ghost-phase4-viz-spec.md`, `ghost-phase5-landscape-spec.md`, `ghost-phase7-battle-viz-spec.md`
+- **New Tests**: 157 tests across 3 files
+  - `tests/core/ghost-visualization.test.js` (51 tests) - Phase 4
+  - `tests/core/ghost-landscape.test.js` (46 tests) - Phase 5
+  - `tests/core/ghost-battle-viz.test.js` (60 tests) - Phase 7
+- **Total Test Count**: 1682 tests (all passing)
 
 **v4.6.0**: Ghost System Phase 6 (Battle Simulation Engine)
 - **Ghost vs Ghost Battles**: Asynchronous competitions where two ghosts race through simulated problem sequences
