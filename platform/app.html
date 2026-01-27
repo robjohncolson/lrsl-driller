@@ -1293,7 +1293,7 @@
       });
 
       // Update with current ghost profile if available
-      const profile = GhostEngine.getProfile();
+      const profile = GhostEngine.getGhostProfile();
       if (profile) {
         ghostPanel.updateGhostProfile(profile);
       }
@@ -3828,7 +3828,7 @@
 
             // Update Ghost Panel with latest profile (non-blocking)
             if (ghostPanel) {
-              const profile = GhostEngine.getProfile();
+              const profile = GhostEngine.getGhostProfile();
               if (profile) {
                 ghostPanel.updateGhostProfile(profile);
               }
