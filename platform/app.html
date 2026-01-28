@@ -11,9 +11,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <!-- TensorFlow.js for Ghost neural network -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
-  <!-- Three.js for Ghost 3D Maze visualization (r159 - last version with legacy examples/js/) -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.159.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Three.js for Ghost 3D Maze visualization - now bundled via npm (see package.json) -->
 </head>
 <body class="bg-gray-100 min-h-screen">
   <!-- Tailwind safelist for Grid Wars panel (hidden, just ensures classes are compiled) -->
@@ -106,8 +104,8 @@
           </div>
         </div>
 
-        <!-- CTF Toggle -->
-        <button id="ctf-btn" class="p-1.5 hover:bg-green-100 text-green-600 rounded-lg transition-colors relative" title="Capture The Flag">
+        <!-- CTF Toggle (DEPRECATED - hidden) -->
+        <button id="ctf-btn" class="hidden p-1.5 hover:bg-green-100 text-green-600 rounded-lg transition-colors relative" title="Capture The Flag">
           <span class="text-base">🚩</span>
         </button>
 
@@ -116,8 +114,8 @@
           <span class="text-base">👻</span>
         </button>
 
-        <!-- Leaderboard (icon only) -->
-        <button id="leaderboard-btn" class="p-1.5 hover:bg-yellow-100 text-yellow-600 rounded-lg transition-colors" title="Leaderboard">
+        <!-- Leaderboard (DEPRECATED - hidden) -->
+        <button id="leaderboard-btn" class="hidden p-1.5 hover:bg-yellow-100 text-yellow-600 rounded-lg transition-colors" title="Leaderboard">
           <span class="text-base">🏆</span>
         </button>
 
@@ -368,6 +366,39 @@
 
         <!-- Info Panel -->
         <div id="info-panel" class="flex flex-wrap gap-2 text-sm"></div>
+      </div>
+
+      <!-- Animation Panel - shows concept videos alongside problems -->
+      <div id="animation-card" class="bg-white rounded-xl shadow-lg p-3 flex-shrink-0 hidden">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+            <span>🎬</span> Concept Animation
+          </span>
+          <button id="animation-toggle-btn" class="text-xs text-purple-600 hover:text-purple-800 font-medium" title="Show/Hide animation">
+            Hide
+          </button>
+        </div>
+        <div id="animation-container" class="relative rounded-lg overflow-hidden bg-black">
+          <video id="animation-video" class="w-full" loop muted playsinline>
+            <source id="animation-source" src="" type="video/mp4">
+          </video>
+          <div id="animation-controls" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 flex items-center gap-2">
+            <button id="animation-play-btn" class="text-white hover:text-purple-300 transition-colors" title="Play/Pause">
+              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path id="play-icon" d="M8 5v14l11-7z"/>
+                <path id="pause-icon" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" class="hidden"/>
+              </svg>
+            </button>
+            <div class="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
+              <div id="animation-progress" class="h-full bg-purple-500 transition-all" style="width: 0%"></div>
+            </div>
+            <button id="animation-restart-btn" class="text-white hover:text-purple-300 transition-colors" title="Restart">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Graph Container - flex-1 to fill remaining space -->
@@ -916,6 +947,7 @@
     import { GAME_MODE_CONFIG } from '../shared/game-mode.config.js';
     import * as GhostEngine from './core/ghost-engine.js';
     import { GhostPanel, createGhostButton } from './game/ghost-panel.js';
+    import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';
     console.log('[APP] All imports successful, GameModeManager:', typeof GameModeManager);
 
     // ==================== CONFIGURATION ====================
@@ -1336,6 +1368,113 @@
     // Ghost panel toggle event listener
     document.getElementById('ghost-btn').addEventListener('click', toggleGhostPanel);
 
+    // ==================== GHOST ORBITS INTEGRATION ====================
+
+    let ghostOrbitsController = null;
+    let lastSessionGolds = parseInt(localStorage.getItem('ghostOrbits_lastSessionGolds') || '0');
+
+    /**
+     * Initialize Ghost Orbits controller
+     */
+    function initGhostOrbits() {
+      if (ghostOrbitsController) {
+        ghostOrbitsController.dispose();
+        ghostOrbitsController = null;
+      }
+
+      const profile = GhostEngine.getGhostProfile();
+      if (!profile) {
+        console.warn('[GhostOrbits] No ghost profile available');
+        return null;
+      }
+
+      ghostOrbitsController = new GhostOrbitsController({
+        container: document.body,
+        username: userSystem.currentUser?.username,
+        cartridgeId: currentCartridgeId,
+        periodId: userSystem.currentUser?.class_period,
+        ghostProfile: profile,
+        serverUrl: SERVER_URL,
+        onExit: () => {
+          console.log('[GhostOrbits] Exited arena');
+        },
+        onStateChange: (state) => {
+          console.log('[GhostOrbits] State:', state);
+        }
+      });
+
+      return ghostOrbitsController;
+    }
+
+    /**
+     * Check if player can enter Ghost Orbits arena
+     */
+    function canEnterGhostOrbits() {
+      const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
+      return currentGolds > lastSessionGolds;
+    }
+
+    /**
+     * Launch Ghost Orbits arena
+     */
+    async function launchGhostOrbits() {
+      console.log('[GhostOrbits] launchGhostOrbits called');
+      if (!canEnterGhostOrbits()) {
+        console.log('[GhostOrbits] Not unlocked - need more gold stars');
+        return false;
+      }
+
+      console.log('[GhostOrbits] Unlock check passed');
+
+      if (!ghostOrbitsController) {
+        console.log('[GhostOrbits] Creating controller...');
+        initGhostOrbits();
+      }
+
+      if (ghostOrbitsController) {
+        try {
+          console.log('[GhostOrbits] Calling init()...');
+          await ghostOrbitsController.init();
+
+          // Update controller's gold count from DOM (so isUnlocked() works)
+          const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
+          ghostOrbitsController.updateGoldCount(currentGolds);
+          console.log('[GhostOrbits] Updated gold count:', currentGolds, 'lastSession:', ghostOrbitsController.lastSessionGolds);
+
+          console.log('[GhostOrbits] init() complete, calling enterArena()...');
+          await ghostOrbitsController.enterArena();
+          console.log('[GhostOrbits] enterArena() complete');
+          return true;
+        } catch (error) {
+          console.error('[GhostOrbits] Launch failed:', error);
+          return false;
+        }
+      }
+      return false;
+    }
+
+    /**
+     * Notify Ghost Orbits when a gold star is earned (for rejoin)
+     */
+    function notifyGhostOrbitsGoldStar() {
+      if (ghostOrbitsController && ghostOrbitsController.state === OrbitsGameState.ELIMINATED) {
+        ghostOrbitsController.handleStarEarned();
+      }
+    }
+
+    /**
+     * Update last session golds when leaving arena
+     */
+    function updateGhostOrbitsSession() {
+      const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
+      lastSessionGolds = currentGolds;
+      localStorage.setItem('ghostOrbits_lastSessionGolds', currentGolds.toString());
+    }
+
+    // Expose Ghost Orbits launcher globally for ghost panel integration
+    window.launchGhostOrbits = launchGhostOrbits;
+    window.canEnterGhostOrbits = canEnterGhostOrbits;
+
     // Helper to get best available topic name for notifications/logging
     function getCurrentTopicName() {
       // Try: explicit topic > mode name > cartridge name > cartridge ID > 'Practice'
@@ -1507,6 +1646,11 @@
       document.getElementById('silver-count').textContent = stars.silver || 0;
       document.getElementById('bronze-count').textContent = stars.bronze || 0;
       document.getElementById('tin-count').textContent = stars.tin || 0;
+
+      // Update Ghost Panel's arena button state when gold stars change
+      if (ghostPanel?.updateOrbitsButtonState) {
+        ghostPanel.updateOrbitsButtonState();
+      }
     }
 
     function updateStreaksDisplay(streaks) {
@@ -3732,6 +3876,11 @@
       // Re-render mode tabs to check for newly unlocked modes
       renderModeTabs();
 
+      // Notify Ghost Orbits of gold star for potential rejoin
+      if (starType === 'gold') {
+        notifyGhostOrbitsGoldStar();
+      }
+
       // Check if student has mastered current level (10 gold stars)
       if (starType === 'gold' && modeId) {
         const gameState = platform.gameEngine.getState();
@@ -4187,6 +4336,40 @@
         rightPane.classList.add('lg:w-2/3');
       }
 
+      // Show/hide animation panel based on current mode's animation config
+      const animationCard = document.getElementById('animation-card');
+      const mode = platform.cartridgeLoader?.getMode(platform.currentMode);
+      const animationPath = mode?.animation;
+
+      if (animationPath && animationCard) {
+        const cartridgeId = platform.currentCartridge?.manifest?.meta?.id;
+        const fullPath = `/cartridges/${cartridgeId}/${animationPath}`;
+
+        const video = document.getElementById('animation-video');
+        const source = document.getElementById('animation-source');
+
+        // Only update if path changed
+        if (source.getAttribute('src') !== fullPath) {
+          source.setAttribute('src', fullPath);
+          video.load();
+          video.play().catch(() => {}); // Autoplay (muted videos can autoplay)
+        }
+
+        animationCard.classList.remove('hidden');
+
+        // Adjust layout when animation is shown (similar to graph)
+        if (!hasGraph) {
+          leftPane.classList.remove('lg:w-1/3');
+          leftPane.classList.add('lg:w-1/2');
+          rightPane.classList.remove('lg:w-2/3');
+          rightPane.classList.add('lg:w-1/2');
+        }
+      } else if (animationCard) {
+        animationCard.classList.add('hidden');
+        const video = document.getElementById('animation-video');
+        if (video) video.pause();
+      }
+
       // Render "given" values if present (for calculation-type cartridges)
       const infoPanel = document.getElementById('info-panel');
       if (problem.given && infoPanel) {
@@ -4353,6 +4536,78 @@
     // Wire up teacher progression control buttons
     document.getElementById('save-gold-req-btn')?.addEventListener('click', saveProgressionOverride);
     document.getElementById('reset-gold-req-btn')?.addEventListener('click', resetProgressionOverride);
+
+    // ==================== ANIMATION CONTROLS ====================
+    (function initAnimationControls() {
+      const video = document.getElementById('animation-video');
+      const playBtn = document.getElementById('animation-play-btn');
+      const restartBtn = document.getElementById('animation-restart-btn');
+      const toggleBtn = document.getElementById('animation-toggle-btn');
+      const progressBar = document.getElementById('animation-progress');
+      const playIcon = document.getElementById('play-icon');
+      const pauseIcon = document.getElementById('pause-icon');
+      const animationContainer = document.getElementById('animation-container');
+
+      if (!video || !playBtn) return;
+
+      // Play/Pause toggle
+      playBtn.addEventListener('click', () => {
+        if (video.paused) {
+          video.play();
+        } else {
+          video.pause();
+        }
+      });
+
+      // Update play/pause icons
+      video.addEventListener('play', () => {
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+      });
+
+      video.addEventListener('pause', () => {
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+      });
+
+      // Restart button
+      restartBtn?.addEventListener('click', () => {
+        video.currentTime = 0;
+        video.play();
+      });
+
+      // Progress bar update
+      video.addEventListener('timeupdate', () => {
+        if (video.duration) {
+          const percent = (video.currentTime / video.duration) * 100;
+          progressBar.style.width = `${percent}%`;
+        }
+      });
+
+      // Hide/Show toggle
+      let animationHidden = false;
+      toggleBtn?.addEventListener('click', () => {
+        animationHidden = !animationHidden;
+        if (animationHidden) {
+          animationContainer.classList.add('hidden');
+          toggleBtn.textContent = 'Show';
+          video.pause();
+        } else {
+          animationContainer.classList.remove('hidden');
+          toggleBtn.textContent = 'Hide';
+          video.play().catch(() => {});
+        }
+      });
+
+      // Click on video to toggle play/pause
+      video.addEventListener('click', () => {
+        if (video.paused) {
+          video.play();
+        } else {
+          video.pause();
+        }
+      });
+    })();
 
     // ==================== ACTION BUTTONS ====================
     document.getElementById('btn-grade').addEventListener('click', async () => {

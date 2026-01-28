@@ -6,9 +6,11 @@
  * Supports "My Ghost", "Battle", and "Class View" (teacher only) tabs.
  */
 
+import * as THREE from 'three';
 import { MazeRenderer, parseLeaderboardData } from '../core/ghost-maze-renderer.js';
 import { getRatingTier, ELO_CONFIG } from '../core/ghost-battle-engine.js';
 import { BattleViz } from '../core/ghost-battle-viz.js';
+import { generateFractalPattern, calculateGhostProperties, getPropertyRanges, normalizeProperty } from '../core/ghost-orbits-nn-mapper.js';
 
 export class GhostPanel {
   /**
@@ -32,11 +34,15 @@ export class GhostPanel {
     this.activeTab = 'my-ghost';
     this.ghostProfile = null;
 
-    // 3D Maze renderer state
+    // 3D Maze renderer state (used for Class View only now)
     this.mazeRenderer = null;
     this.mazeInitialized = false;
     this.mazeError = null;
     this.playerProgress = options.playerProgress || null;
+
+    // Fractal pattern state (My Ghost tab)
+    this.fractalCanvas = null;
+    this.ghostProperties = null;
 
     // Class view state (teacher only)
     this.classGhosts = [];
@@ -75,15 +81,18 @@ export class GhostPanel {
 
     // Delay initialization until CSS transition completes and container has dimensions
     setTimeout(() => {
-      // Initialize maze renderer if "My Ghost" tab is active and not yet initialized
-      if (this.activeTab === 'my-ghost' && !this.mazeInitialized && !this.mazeError) {
-        this._initMazeRenderer();
+      // Initialize fractal display if "My Ghost" tab is active
+      if (this.activeTab === 'my-ghost') {
+        this._initFractalDisplay();
       }
 
       // Handle resize when panel becomes visible
       if (this.mazeRenderer) {
         this.mazeRenderer._handleResize();
       }
+
+      // Update Ghost Orbits button state
+      this._updateOrbitsButton();
     }, 350); // Match the 0.3s transition duration + buffer
   }
 
@@ -127,9 +136,9 @@ export class GhostPanel {
     this.activeTab = tabName;
     this._updateTabs();
 
-    // Lazy-load maze renderer when "My Ghost" tab is first activated
-    if (tabName === 'my-ghost' && !this.mazeInitialized && !this.mazeError) {
-      this._initMazeRenderer();
+    // Initialize fractal display when "My Ghost" tab is activated
+    if (tabName === 'my-ghost') {
+      this._initFractalDisplay();
     }
 
     // Load battle data when Battle tab is activated
@@ -228,39 +237,127 @@ export class GhostPanel {
 
         <div class="ghost-panel-content">
           <div class="ghost-tab-content" data-tab-content="my-ghost">
-            <!-- 3D Maze Visualization Container -->
-            <div class="ghost-maze-container" id="ghost-maze-container">
-              <div class="ghost-maze-loading">
-                <div class="ghost-placeholder-icon">👻</div>
-                <p>Loading 3D visualization...</p>
+            <!-- Fractal Pattern Display -->
+            <div class="ghost-fractal-container" id="ghost-fractal-container">
+              <div class="ghost-fractal-display">
+                <canvas id="ghost-fractal-canvas" width="128" height="128"></canvas>
+                <div class="ghost-fractal-glow"></div>
+              </div>
+              <div class="ghost-fractal-label">Your Ghost's DNA</div>
+            </div>
+
+            <!-- Ghost Properties Bars -->
+            <div class="ghost-properties-panel" id="ghost-properties-panel">
+              <div class="ghost-property-row">
+                <div class="ghost-property-icon">⚖️</div>
+                <div class="ghost-property-info">
+                  <div class="ghost-property-header">
+                    <span class="ghost-property-name">Mass</span>
+                    <span class="ghost-property-value" id="prop-mass">1.0x</span>
+                  </div>
+                  <div class="ghost-property-bar">
+                    <div class="ghost-property-fill" id="prop-mass-bar" style="width: 50%"></div>
+                  </div>
+                  <div class="ghost-property-explain">
+                    <span class="explain-learn">Accuracy → </span>
+                    <span class="explain-play">Absorb smaller ghosts</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ghost-property-row">
+                <div class="ghost-property-icon">🚀</div>
+                <div class="ghost-property-info">
+                  <div class="ghost-property-header">
+                    <span class="ghost-property-name">Thrust</span>
+                    <span class="ghost-property-value" id="prop-thrust">1.0x</span>
+                  </div>
+                  <div class="ghost-property-bar">
+                    <div class="ghost-property-fill" id="prop-thrust-bar" style="width: 50%"></div>
+                  </div>
+                  <div class="ghost-property-explain">
+                    <span class="explain-learn">Quick answers → </span>
+                    <span class="explain-play">More speed per energy</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ghost-property-row">
+                <div class="ghost-property-icon">✨</div>
+                <div class="ghost-property-info">
+                  <div class="ghost-property-header">
+                    <span class="ghost-property-name">Trail</span>
+                    <span class="ghost-property-value" id="prop-trail">1.0x</span>
+                  </div>
+                  <div class="ghost-property-bar">
+                    <div class="ghost-property-fill" id="prop-trail-bar" style="width: 50%"></div>
+                  </div>
+                  <div class="ghost-property-explain">
+                    <span class="explain-learn">Independence → </span>
+                    <span class="explain-play">Longer territory trails</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ghost-property-row">
+                <div class="ghost-property-icon">⚡</div>
+                <div class="ghost-property-info">
+                  <div class="ghost-property-header">
+                    <span class="ghost-property-name">Energy</span>
+                    <span class="ghost-property-value" id="prop-energy">1.0x</span>
+                  </div>
+                  <div class="ghost-property-bar">
+                    <div class="ghost-property-fill" id="prop-energy-bar" style="width: 50%"></div>
+                  </div>
+                  <div class="ghost-property-explain">
+                    <span class="explain-learn">Fast solving → </span>
+                    <span class="explain-play">Quicker energy recovery</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ghost-property-row">
+                <div class="ghost-property-icon">🌊</div>
+                <div class="ghost-property-info">
+                  <div class="ghost-property-header">
+                    <span class="ghost-property-name">Width</span>
+                    <span class="ghost-property-value" id="prop-width">1.0x</span>
+                  </div>
+                  <div class="ghost-property-bar">
+                    <div class="ghost-property-fill" id="prop-width-bar" style="width: 50%"></div>
+                  </div>
+                  <div class="ghost-property-explain">
+                    <span class="explain-learn">Accuracy → </span>
+                    <span class="explain-play">Wider territory claim</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <!-- Ghost Stats Display -->
-            <div class="ghost-stats-panel">
-              <div class="ghost-stat">
-                <span class="ghost-stat-label">Proficiency</span>
+            <!-- Ghost Orbits Arena Entry -->
+            <div class="ghost-orbits-entry">
+              <button class="ghost-orbits-btn locked" id="ghost-orbits-enter-btn" disabled>
+                <span class="ghost-orbits-icon">🔒</span>
+                <span class="ghost-orbits-text">Enter Arena</span>
+              </button>
+              <p class="ghost-orbits-hint" id="ghost-orbits-hint">
+                Earn gold stars to unlock the arena!
+              </p>
+            </div>
+
+            <!-- Stats summary at bottom -->
+            <div class="ghost-stats-summary">
+              <div class="ghost-stat-mini">
                 <span class="ghost-stat-value" id="ghost-proficiency">--%</span>
+                <span class="ghost-stat-label">Proficiency</span>
               </div>
-              <div class="ghost-stat">
-                <span class="ghost-stat-label">Interactions</span>
+              <div class="ghost-stat-mini">
                 <span class="ghost-stat-value" id="ghost-interactions">--</span>
+                <span class="ghost-stat-label">Interactions</span>
               </div>
-              <div class="ghost-stat">
-                <span class="ghost-stat-label">Current Level</span>
-                <span class="ghost-stat-value ghost-stat-level" id="ghost-current-level">--</span>
-              </div>
-            </div>
-
-            <!-- Legacy stats for backward compatibility -->
-            <div class="ghost-stats hidden">
-              <div class="ghost-stat">
-                <span class="ghost-stat-label">Problems Solved</span>
-                <span class="ghost-stat-value" id="ghost-problems-solved">--</span>
-              </div>
-              <div class="ghost-stat">
-                <span class="ghost-stat-label">Ghost Level</span>
-                <span class="ghost-stat-value" id="ghost-level">--</span>
+              <div class="ghost-stat-mini">
+                <span class="ghost-stat-value" id="ghost-current-level">--</span>
+                <span class="ghost-stat-label">Level</span>
               </div>
             </div>
           </div>
@@ -391,6 +488,77 @@ export class GhostPanel {
         this.setActiveTab(tabName);
       });
     });
+
+    // Ghost Orbits arena entry button
+    const orbitsBtn = this.container.querySelector('#ghost-orbits-enter-btn');
+    if (orbitsBtn) {
+      orbitsBtn.addEventListener('click', async () => {
+        if (window.canEnterGhostOrbits?.()) {
+          if (window.launchGhostOrbits) {
+            this.hide();
+            await window.launchGhostOrbits();
+          }
+        } else {
+          // Show message explaining why they can't enter
+          const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
+          const lastSessionGolds = parseInt(localStorage.getItem('ghostOrbits_lastSessionGolds') || '0');
+          const needed = lastSessionGolds + 1;
+          alert(`You need ${needed} gold star${needed > 1 ? 's' : ''} to enter the arena.\nYou currently have ${currentGolds} gold star${currentGolds !== 1 ? 's' : ''}.\n\nKeep practicing to earn more gold stars!`);
+        }
+      });
+
+      // Check unlock status when panel shows
+      this._updateOrbitsButton();
+    }
+  }
+
+  /**
+   * Update Ghost Orbits button state based on unlock condition
+   * @public - Can be called externally when gold stars change
+   */
+  updateOrbitsButtonState() {
+    const btn = this.container.querySelector('#ghost-orbits-enter-btn');
+    const hint = this.container.querySelector('#ghost-orbits-hint');
+    const icon = btn?.querySelector('.ghost-orbits-icon');
+
+    if (!btn || !hint) return;
+
+    const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
+    const lastSessionGolds = parseInt(localStorage.getItem('ghostOrbits_lastSessionGolds') || '0');
+    const canEnter = currentGolds > lastSessionGolds;
+
+    console.log(`[GhostPanel] Orbits button state: currentGolds=${currentGolds}, lastSession=${lastSessionGolds}, canEnter=${canEnter}`);
+
+    if (canEnter) {
+      btn.disabled = false;
+      btn.removeAttribute('disabled');
+      btn.classList.add('unlocked');
+      btn.classList.remove('locked');
+      if (icon) icon.textContent = '🌀';
+      hint.textContent = 'Arena unlocked! Enter to compete.';
+      hint.classList.add('unlocked');
+    } else {
+      btn.disabled = true;
+      btn.setAttribute('disabled', 'disabled');
+      btn.classList.remove('unlocked');
+      btn.classList.add('locked');
+      if (icon) icon.textContent = '🔒';
+      // Show helpful message about what's needed
+      const needed = lastSessionGolds + 1 - currentGolds;
+      if (needed > 0) {
+        hint.textContent = `Earn ${needed} more gold star${needed > 1 ? 's' : ''} to unlock! (Need: ${lastSessionGolds + 1}, Have: ${currentGolds})`;
+      } else {
+        hint.textContent = 'Earn gold stars to unlock the arena!';
+      }
+      hint.classList.remove('unlocked');
+    }
+  }
+
+  /**
+   * @deprecated Use updateOrbitsButtonState() instead
+   */
+  _updateOrbitsButton() {
+    this.updateOrbitsButtonState();
   }
 
   /**
@@ -485,6 +653,205 @@ export class GhostPanel {
 
     if (levelEl && this.ghostProfile.level !== undefined) {
       levelEl.textContent = this.ghostProfile.level;
+    }
+
+    // Update fractal and properties if displayed
+    this._updateFractalDisplay();
+  }
+
+  /**
+   * Initialize the fractal display in the My Ghost tab
+   */
+  _initFractalDisplay() {
+    const canvas = this.container.querySelector('#ghost-fractal-canvas');
+    if (!canvas) return;
+
+    this.fractalCanvas = canvas;
+
+    // Generate initial fractal from ghost profile if available
+    this._updateFractalDisplay();
+  }
+
+  /**
+   * Update the fractal display and property bars
+   */
+  _updateFractalDisplay() {
+    if (!this.fractalCanvas) return;
+
+    const ctx = this.fractalCanvas.getContext('2d');
+    const canvas = this.fractalCanvas;
+
+    // Get weights from ghost profile or generate placeholder
+    let pattern = null;
+    let properties = null;
+
+    if (this.ghostProfile) {
+      // Derive NN outputs from proficiency
+      const proficiency = (this.ghostProfile.proficiency_score || this.ghostProfile.proficiency || 0);
+      // Handle both 0-1 and 0-100 scales
+      const profNorm = proficiency > 1 ? proficiency / 100 : proficiency;
+
+      // Simulate NN output based on proficiency
+      const nnOutput = {
+        correctProb: 0.3 + profNorm * 0.5,
+        quickProb: 0.2 + profNorm * 0.5,
+        hintProb: 0.4 - profNorm * 0.3,
+        time: 60 - profNorm * 40
+      };
+
+      properties = calculateGhostProperties(nnOutput);
+      this.ghostProperties = properties;
+
+      // Generate fractal from weights if available, otherwise use a hash of username
+      if (this.ghostProfile.weights) {
+        pattern = generateFractalPattern(this.ghostProfile.weights);
+      } else {
+        // Create deterministic "weights" from username for consistent pattern
+        const fakeWeights = this._generateFakeWeights(this.username || 'ghost');
+        pattern = generateFractalPattern(fakeWeights);
+      }
+    } else {
+      // Default properties when no profile
+      properties = {
+        mass: 1.0,
+        thrustEfficiency: 1.0,
+        trailDuration: 1.0,
+        energyRegen: 1.0,
+        trailWidth: 1.0
+      };
+      this.ghostProperties = properties;
+
+      // Generate placeholder pattern
+      const fakeWeights = this._generateFakeWeights(this.username || 'ghost');
+      pattern = generateFractalPattern(fakeWeights);
+    }
+
+    // Draw fractal pattern
+    if (pattern) {
+      // Create ImageData from pattern
+      const imageData = new ImageData(
+        new Uint8ClampedArray(pattern.data),
+        pattern.width,
+        pattern.height
+      );
+
+      // Scale up to canvas size
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = pattern.width;
+      tempCanvas.height = pattern.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.putImageData(imageData, 0, 0);
+
+      // Apply ghost color tint
+      const ghostColor = this._getGhostColorFromProfile();
+      tempCtx.globalCompositeOperation = 'source-atop';
+      tempCtx.fillStyle = ghostColor;
+      tempCtx.fillRect(0, 0, pattern.width, pattern.height);
+
+      // Clear and draw scaled pattern
+      ctx.fillStyle = '#0a0a12';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+    }
+
+    // Update property bars
+    this._updatePropertyBars(properties);
+  }
+
+  /**
+   * Generate fake weights from a string (for consistent patterns without real NN)
+   * @param {string} str - String to hash into weights
+   * @returns {number[]} Array of fake weights
+   */
+  _generateFakeWeights(str) {
+    const weights = [];
+    let hash = 0;
+
+    // Simple string hash
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+
+    // Generate 100 fake weights from hash
+    for (let i = 0; i < 100; i++) {
+      hash = Math.imul(hash ^ (hash >>> 15), 1 | hash);
+      hash = hash + Math.imul(hash ^ (hash >>> 7), 61 | hash) ^ hash;
+      weights.push(((hash ^ (hash >>> 14)) >>> 0) / 4294967296 * 2 - 1);
+    }
+
+    return weights;
+  }
+
+  /**
+   * Get ghost color based on profile level/interactions
+   * @returns {string} Hex color
+   */
+  _getGhostColorFromProfile() {
+    if (!this.ghostProfile) return '#4488ff';
+
+    const interactions = this.ghostProfile.total_interactions || this.ghostProfile.interactions || 0;
+    const level = Math.min(Math.floor(interactions / 20), 20);
+    const tierIndex = Math.min(Math.floor(level / 3), 4);
+
+    const tiers = ['#4488ff', '#00ff88', '#ffdd00', '#ff8844', '#ff44ff'];
+    return tiers[tierIndex];
+  }
+
+  /**
+   * Update property bar displays
+   * @param {Object} properties - Ghost properties object
+   */
+  _updatePropertyBars(properties) {
+    if (!properties) return;
+
+    const ranges = getPropertyRanges();
+
+    // Mass
+    const massValue = this.container.querySelector('#prop-mass');
+    const massBar = this.container.querySelector('#prop-mass-bar');
+    if (massValue && massBar) {
+      massValue.textContent = `${properties.mass.toFixed(1)}x`;
+      const massPercent = normalizeProperty('mass', properties.mass) * 100;
+      massBar.style.width = `${massPercent}%`;
+    }
+
+    // Thrust efficiency
+    const thrustValue = this.container.querySelector('#prop-thrust');
+    const thrustBar = this.container.querySelector('#prop-thrust-bar');
+    if (thrustValue && thrustBar) {
+      thrustValue.textContent = `${properties.thrustEfficiency.toFixed(1)}x`;
+      const thrustPercent = normalizeProperty('thrustEfficiency', properties.thrustEfficiency) * 100;
+      thrustBar.style.width = `${thrustPercent}%`;
+    }
+
+    // Trail duration
+    const trailValue = this.container.querySelector('#prop-trail');
+    const trailBar = this.container.querySelector('#prop-trail-bar');
+    if (trailValue && trailBar) {
+      trailValue.textContent = `${properties.trailDuration.toFixed(1)}x`;
+      const trailPercent = normalizeProperty('trailDuration', properties.trailDuration) * 100;
+      trailBar.style.width = `${trailPercent}%`;
+    }
+
+    // Energy regen
+    const energyValue = this.container.querySelector('#prop-energy');
+    const energyBar = this.container.querySelector('#prop-energy-bar');
+    if (energyValue && energyBar) {
+      energyValue.textContent = `${properties.energyRegen.toFixed(1)}x`;
+      const energyPercent = normalizeProperty('energyRegen', properties.energyRegen) * 100;
+      energyBar.style.width = `${energyPercent}%`;
+    }
+
+    // Trail width
+    const widthValue = this.container.querySelector('#prop-width');
+    const widthBar = this.container.querySelector('#prop-width-bar');
+    if (widthValue && widthBar) {
+      widthValue.textContent = `${properties.trailWidth.toFixed(1)}x`;
+      const widthPercent = normalizeProperty('trailWidth', properties.trailWidth) * 100;
+      widthBar.style.width = `${widthPercent}%`;
     }
   }
 
@@ -1728,7 +2095,167 @@ export class GhostPanel {
         font-size: 13px;
       }
 
-      /* 3D Maze Container */
+      /* Fractal Pattern Display (My Ghost tab) */
+      .ghost-fractal-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .ghost-fractal-display {
+        position: relative;
+        width: 128px;
+        height: 128px;
+        border-radius: 50%;
+        overflow: hidden;
+        background: #0a0a12;
+        border: 2px solid #00d4ff44;
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+      }
+
+      .ghost-fractal-display canvas {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+      }
+
+      .ghost-fractal-glow {
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        right: -4px;
+        bottom: -4px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        background: linear-gradient(45deg, #00d4ff22, #ff44ff22, #00ff8822) border-box;
+        mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        animation: fractal-rotate 8s linear infinite;
+        pointer-events: none;
+      }
+
+      @keyframes fractal-rotate {
+        to { transform: rotate(360deg); }
+      }
+
+      .ghost-fractal-label {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      /* Ghost Properties Panel */
+      .ghost-properties-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      .ghost-property-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 8px 12px;
+        background: #161b22;
+        border: 1px solid #00d4ff22;
+        border-radius: 8px;
+      }
+
+      .ghost-property-icon {
+        font-size: 16px;
+        line-height: 1;
+        margin-top: 2px;
+      }
+
+      .ghost-property-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .ghost-property-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 4px;
+      }
+
+      .ghost-property-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: #f9fafb;
+      }
+
+      .ghost-property-value {
+        font-size: 12px;
+        font-weight: 700;
+        color: #00d4ff;
+        font-family: monospace;
+      }
+
+      .ghost-property-bar {
+        height: 4px;
+        background: #0a0a12;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-bottom: 4px;
+      }
+
+      .ghost-property-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #00d4ff, #00ff88);
+        border-radius: 2px;
+        transition: width 0.3s ease;
+      }
+
+      .ghost-property-explain {
+        font-size: 10px;
+        line-height: 1.3;
+      }
+
+      .explain-learn {
+        color: #9ca3af;
+      }
+
+      .explain-play {
+        color: #00ff88;
+      }
+
+      /* Stats Summary (bottom of My Ghost tab) */
+      .ghost-stats-summary {
+        display: flex;
+        justify-content: space-around;
+        padding: 12px;
+        background: #161b22;
+        border: 1px solid #00d4ff22;
+        border-radius: 8px;
+        margin-top: 12px;
+      }
+
+      .ghost-stat-mini {
+        text-align: center;
+      }
+
+      .ghost-stat-mini .ghost-stat-value {
+        display: block;
+        font-size: 18px;
+        font-weight: 700;
+        color: #00d4ff;
+      }
+
+      .ghost-stat-mini .ghost-stat-label {
+        display: block;
+        font-size: 10px;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 2px;
+      }
+
+      /* 3D Maze Container (Class View only) */
       .ghost-maze-container {
         width: 100%;
         height: 300px;
@@ -1787,7 +2314,7 @@ export class GhostPanel {
         to { transform: rotate(360deg); }
       }
 
-      /* Stats Panel below 3D view */
+      /* Legacy Stats Panel */
       .ghost-stats-panel {
         display: flex;
         gap: 12px;
@@ -1808,6 +2335,82 @@ export class GhostPanel {
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 100px;
+      }
+
+      /* Ghost Orbits Arena Entry */
+      .ghost-orbits-entry {
+        margin-top: 16px;
+        padding: 16px;
+        background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+        border: 1px solid #00d4ff33;
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      .ghost-orbits-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #2d1f3d 0%, #1a1f2e 100%);
+        border: 2px solid #8844ff55;
+        border-radius: 8px;
+        color: #9ca3af;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: not-allowed;
+        transition: all 0.3s ease;
+      }
+
+      .ghost-orbits-btn:disabled,
+      .ghost-orbits-btn.locked {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: linear-gradient(135deg, #1a1a2e 0%, #0d0d1a 100%) !important;
+        border-color: #333 !important;
+        color: #555 !important;
+        animation: none !important;
+        box-shadow: none !important;
+      }
+
+      .ghost-orbits-btn.locked:hover {
+        transform: none !important;
+        box-shadow: none !important;
+      }
+
+      .ghost-orbits-btn.unlocked {
+        background: linear-gradient(135deg, #4a2d6d 0%, #2d1f3d 100%);
+        border-color: #8844ff;
+        color: #ffffff;
+        cursor: pointer;
+        animation: orbits-pulse 2s ease-in-out infinite;
+      }
+
+      .ghost-orbits-btn.unlocked:hover {
+        background: linear-gradient(135deg, #5a3d7d 0%, #3d2f4d 100%);
+        transform: scale(1.02);
+        box-shadow: 0 0 20px rgba(136, 68, 255, 0.4);
+      }
+
+      @keyframes orbits-pulse {
+        0%, 100% { box-shadow: 0 0 10px rgba(136, 68, 255, 0.3); }
+        50% { box-shadow: 0 0 20px rgba(136, 68, 255, 0.5); }
+      }
+
+      .ghost-orbits-icon {
+        font-size: 20px;
+      }
+
+      .ghost-orbits-hint {
+        margin: 8px 0 0 0;
+        font-size: 12px;
+        color: #9ca3af;
+      }
+
+      .ghost-orbits-hint.unlocked {
+        color: #00ff88;
       }
 
       /* Scrollbar styling */
