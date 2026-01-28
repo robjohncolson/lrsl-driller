@@ -8,6 +8,9 @@
  * - Ghosts are luminous spheres at their current position
  */
 
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
 import {
   parseManifest,
   positionNodes,
@@ -62,8 +65,9 @@ const QUALITY_PRESETS = {
 
 // Ghost animation constants
 const GHOST_HEIGHT_OFFSET = 2;           // Height above node platform
-const GHOST_BOB_SPEED = 0.002;           // Bobbing animation speed
-const GHOST_BOB_AMPLITUDE = 0.005;       // Bobbing amplitude
+const GHOST_BOB_SPEED = 0.003;           // Pulsation speed
+const GHOST_BOB_AMPLITUDE = 0.001;       // Minimal vertical movement (nearly static)
+const GHOST_PULSE_SCALE = 0.15;          // Scale pulsation amount (0.85 - 1.15)
 const GHOST_MOVEMENT_DURATION = 2000;    // Movement animation duration (ms)
 const GHOST_CELEBRATION_DURATION = 1500; // Celebration effect duration (ms)
 const GHOST_PARTICLE_COUNT = 24;         // Celebration particle count
@@ -153,13 +157,6 @@ export class MazeRenderer {
    * @returns {Promise<void>}
    */
   async init() {
-    // Check for Three.js
-    if (typeof THREE === 'undefined') {
-      console.error('[MazeRenderer] Three.js not loaded');
-      this._dispatchError(new Error('Three.js not available'));
-      return;
-    }
-
     // Check for WebGL support
     if (!this._detectWebGL()) {
       console.warn('[MazeRenderer] WebGL not supported, using fallback');
@@ -175,6 +172,9 @@ export class MazeRenderer {
 
     // Position nodes in 3D space
     positionNodes(this.nodes, this.tiers);
+
+    // Flatten to 2D tower layout (all nodes at z=0, centered on x)
+    this._flattenToTower();
 
     // Calculate progress state
     this.progressMap = calculateProgress(this.nodes, this.playerProgress);
@@ -244,25 +244,36 @@ export class MazeRenderer {
   }
 
   /**
-   * Initialize the camera
+   * Initialize the camera (orthographic for 2D-like view)
    */
   _initCamera() {
-    const aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 500);
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    const aspect = width / height;
 
-    // Position camera to see the maze
+    // Calculate view size based on number of levels
     const stats = getMazeStats(this.nodes, this.edges, this.tiers);
-    const cameraDistance = Math.max(30, stats.maxTier * 10);
-    this.camera.position.set(cameraDistance, cameraDistance * 0.8, cameraDistance);
-    this.camera.lookAt(0, stats.maxTier * 4, 0);
+    const viewHeight = Math.max(40, (stats.maxTier + 1) * 10);
+    const viewWidth = viewHeight * aspect;
 
+    // Orthographic camera for 2D-like side view
+    this.camera = new THREE.OrthographicCamera(
+      -viewWidth / 2,   // left
+      viewWidth / 2,    // right
+      viewHeight / 2,   // top
+      -viewHeight / 2,  // bottom
+      0.1,              // near
+      500               // far
+    );
+
+    // Position camera to look at the tower from the side
+    const centerY = (stats.maxTier * 8) / 2;
+    this.camera.position.set(50, centerY, 0);
+    this.camera.lookAt(0, centerY, 0);
+
+    // Reduce fog for clearer 2D view
     if (this.scene && this.scene.fog) {
-      const targetVisibility = 0.4;
-      const lookAt = new THREE.Vector3(0, stats.maxTier * 4, 0);
-      const distance = this.camera.position.distanceTo(lookAt);
-      const density = Math.sqrt(-Math.log(targetVisibility)) / Math.max(distance, 1);
-      this.scene.fog.density = Math.min(0.02, Math.max(0.0015, density));
-
+      this.scene.fog.density = 0.005;
     }
   }
 
@@ -294,23 +305,42 @@ export class MazeRenderer {
   }
 
   /**
-   * Initialize OrbitControls
+   * Initialize OrbitControls (locked for 2D-like view)
    */
   _initControls() {
-    // Check for OrbitControls
-    if (typeof THREE.OrbitControls === 'undefined') {
-      console.warn('[MazeRenderer] OrbitControls not available');
-      return;
-    }
-
-    this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
-    this.controls.minDistance = 10;
-    this.controls.maxDistance = 150;
-    this.controls.maxPolarAngle = Math.PI * 0.85;
-    this.controls.autoRotate = false;
-    this.controls.autoRotateSpeed = 0.5;
+
+    // Lock rotation for 2D-like view
+    this.controls.enableRotate = false;
+
+    // Allow zoom and vertical pan only
+    this.controls.enableZoom = true;
+    this.controls.enablePan = true;
+    this.controls.screenSpacePanning = true;
+
+    // Zoom limits for orthographic
+    this.controls.minZoom = 0.5;
+    this.controls.maxZoom = 3;
+  }
+
+  /**
+   * Flatten node positions to a 2D tower layout
+   * All nodes at z=0, stacked vertically by tier
+   */
+  _flattenToTower() {
+    if (!this.nodes) return;
+
+    for (const node of this.nodes.values()) {
+      if (node.position) {
+        // Keep Y (vertical tier position), flatten X and Z
+        node.position.x = 0;
+        node.position.z = 0;
+      }
+    }
+
+    console.log('[MazeRenderer] Flattened to 2D tower layout');
   }
 
   /**
@@ -335,20 +365,11 @@ export class MazeRenderer {
   }
 
   /**
-   * Build the ground grid
+   * Build background elements for 2D tower view
    */
   _buildGrid() {
-    const stats = getMazeStats(this.nodes, this.edges, this.tiers);
-    const gridSize = Math.max(100, stats.maxTier * 20);
-
-    const gridHelper = new THREE.GridHelper(
-      gridSize,
-      gridSize / 2,
-      TRON_COLORS.grid,
-      TRON_COLORS.gridSecondary
-    );
-    gridHelper.position.y = -2;
-    this.scene.add(gridHelper);
+    // Skip grid for cleaner 2D tower look
+    // The node platforms and edges provide enough visual structure
   }
 
   /**
@@ -567,27 +588,39 @@ export class MazeRenderer {
     bounds.getSize(size);
     bounds.getCenter(center);
 
-    const sphere = bounds.getBoundingSphere(new THREE.Sphere());
-    const fov = THREE.MathUtils.degToRad(this.camera.fov);
-    const distance = Math.max(20, sphere.radius / Math.sin(fov / 2)) * 1.15;
-    const scaledCenter = center.clone();
-    this.camera.position.set(
-      scaledCenter.x + distance,
-      scaledCenter.y + distance * 0.6,
-      scaledCenter.z + distance
-    );
-    this.camera.near = Math.max(0.1, distance / 100);
-    this.camera.far = Math.max(500, distance * 10);
-    this.camera.updateProjectionMatrix();
-    this.camera.lookAt(scaledCenter);
+    // For orthographic camera - fit content with generous padding
+    const padding = 15;
+    const viewHeight = Math.max(size.y + padding * 2, 50);
+    const aspect = this.container.clientWidth / this.container.clientHeight;
+    const viewWidth = viewHeight * aspect;
 
-    if (this.scene && this.scene.fog) {
-      const targetVisibility = 0.6;
-      const camDistance = this.camera.position.distanceTo(scaledCenter);
-      const density = Math.sqrt(-Math.log(targetVisibility)) / Math.max(camDistance, 1);
-      this.scene.fog.density = Math.min(0.02, Math.max(0.0015, density));
+    this.camera.left = -viewWidth / 2;
+    this.camera.right = viewWidth / 2;
+    this.camera.top = viewHeight / 2;
+    this.camera.bottom = -viewHeight / 2;
+
+    // Offset the view so bottom of tower is near bottom of screen
+    const verticalOffset = -padding / 2;
+    this.camera.top += verticalOffset;
+    this.camera.bottom += verticalOffset;
+
+    this.camera.updateProjectionMatrix();
+
+    // Position camera to look at center from the side (positive X looking toward origin)
+    this.camera.position.set(80, center.y, 0);
+    this.camera.lookAt(0, center.y, 0);
+
+    // Update controls target
+    if (this.controls) {
+      this.controls.target.set(0, center.y, 0);
     }
 
+    // Disable fog for clearer 2D view
+    if (this.scene && this.scene.fog) {
+      this.scene.fog.density = 0;
+    }
+
+    console.log('[MazeRenderer] Framed scene - center:', center.y.toFixed(1), 'height:', viewHeight.toFixed(1));
   }
 
   /**
@@ -669,7 +702,7 @@ export class MazeRenderer {
   }
 
   /**
-   * Animate ghost (bobbing, movement, celebration)
+   * Animate ghost (pulsation, movement, celebration)
    */
   _animateGhost() {
     if (!this.ghostMesh) return;
@@ -680,10 +713,16 @@ export class MazeRenderer {
     if (this.ghostAnimation.isAnimating) {
       this._updateGhostMovement(now);
     } else {
-      // Apply idle bobbing when not moving
+      // Apply idle pulsation when not moving
       const time = now * GHOST_BOB_SPEED;
+
+      // Minimal vertical movement
       const baseY = this.ghostAnimation.baseY || this.ghostMesh.position.y;
       this.ghostMesh.position.y = baseY + Math.sin(time) * GHOST_BOB_AMPLITUDE * 100;
+
+      // Scale pulsation (breathing effect)
+      const scale = 1 + Math.sin(time * 1.5) * GHOST_PULSE_SCALE;
+      this.ghostMesh.scale.setScalar(scale);
     }
 
     // Handle celebration animation
@@ -813,8 +852,13 @@ export class MazeRenderer {
 
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
+    const aspect = width / height;
 
-    this.camera.aspect = width / height;
+    // Update orthographic camera bounds
+    const viewHeight = this.camera.top - this.camera.bottom;
+    const viewWidth = viewHeight * aspect;
+    this.camera.left = -viewWidth / 2;
+    this.camera.right = viewWidth / 2;
     this.camera.updateProjectionMatrix();
 
     this.renderer.setSize(width, height);

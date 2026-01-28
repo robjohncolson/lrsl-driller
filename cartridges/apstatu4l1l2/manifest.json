@@ -51,6 +51,7 @@
       "id": "l02-outcome-event",
       "name": "4.2a: Outcomes vs Events",
       "unlockedBy": { "gold": 1 },
+      "animation": "assets/OutcomeVsEvent.mp4",
       "layout": {
         "inputs": [
           {
@@ -66,6 +67,7 @@
       "id": "l03-independence",
       "name": "4.1b: Independence & Gambler's Fallacy",
       "unlockedBy": { "gold": 2 },
+      "animation": "assets/GamblersFallacy.mp4",
       "layout": {
         "inputs": [
           {
@@ -81,6 +83,7 @@
       "id": "l04-streaks",
       "name": "4.1c: Streaks in Random Data",
       "unlockedBy": { "gold": 3 },
+      "animation": "assets/StreaksAreNormal.mp4",
       "layout": {
         "inputs": [
           {
@@ -96,6 +99,7 @@
       "id": "l05-simulation-vocab",
       "name": "4.2b: Simulation Definition",
       "unlockedBy": { "gold": 4 },
+      "animation": "assets/SimulationDefinition.mp4",
       "layout": {
         "inputs": [
           {
@@ -112,6 +116,7 @@
       "id": "l06-lln",
       "name": "4.2c: Law of Large Numbers",
       "unlockedBy": { "gold": 5 },
+      "animation": "assets/LawOfLargeNumbers.mp4",
       "layout": {
         "inputs": [
           {
@@ -169,6 +174,7 @@
       "id": "l09-relative-frequency",
       "name": "4.2f: Simulation Step 3 - Calculate Probability",
       "unlockedBy": { "gold": 8 },
+      "animation": "assets/RelativeFrequency.mp4",
       "layout": {
         "inputs": [
           {
@@ -230,6 +236,7 @@
       "id": "l12-sample-space",
       "name": "4.3a: Sample Space",
       "unlockedBy": { "gold": 11 },
+      "animation": "assets/SampleSpaceIntro.mp4",
       "layout": {
         "inputs": [
           {
@@ -246,6 +253,7 @@
       "id": "l13-valid-probability",
       "name": "4.3b: Valid Probability Model",
       "unlockedBy": { "gold": 12 },
+      "animation": "assets/SampleSpaceEnumeration.mp4",
       "layout": {
         "inputs": [
           {
@@ -325,6 +333,7 @@
       "id": "l17-mutually-exclusive-def",
       "name": "4.4a: Mutually Exclusive Definition",
       "unlockedBy": { "gold": 16 },
+      "animation": "assets/MutuallyExclusiveDef.mp4",
       "layout": {
         "inputs": [
           {
@@ -341,6 +350,7 @@
       "id": "l18-joint-probability",
       "name": "4.4b: Joint Probability",
       "unlockedBy": { "gold": 17 },
+      "animation": "assets/JointProbability.mp4",
       "layout": {
         "inputs": [
           {
@@ -373,6 +383,7 @@
       "id": "l20-conditional-def",
       "name": "4.5a: Conditional Probability Definition",
       "unlockedBy": { "gold": 19 },
+      "animation": "assets/ConditionalProbabilityRestriction.mp4",
       "layout": {
         "inputs": [
           {
@@ -389,6 +400,7 @@
       "id": "l21-conditional-table",
       "name": "4.5b: Conditional Probability from Tables",
       "unlockedBy": { "gold": 20 },
+      "animation": "assets/ConditionalProbabilityRestriction.mp4",
       "layout": {
         "inputs": [
           {
@@ -406,6 +418,7 @@
       "id": "l22-multiplication-rule",
       "name": "4.5c: General Multiplication Rule",
       "unlockedBy": { "gold": 21 },
+      "animation": "assets/ConditionalProbabilityRestriction.mp4",
       "layout": {
         "inputs": [
           {
@@ -423,6 +436,7 @@
       "id": "l23-order-matters",
       "name": "4.5d: Order Matters (P(A|B) vs P(B|A))",
       "unlockedBy": { "gold": 22 },
+      "animation": "assets/ConditionalProbabilityRestriction.mp4",
       "layout": {
         "inputs": [
           {
@@ -471,6 +485,7 @@
       "id": "l25-independent-def",
       "name": "4.6a: Independent Events Definition",
       "unlockedBy": { "gold": 24 },
+      "animation": "assets/IndependentEventsDef.mp4",
       "layout": {
         "inputs": [
           {
@@ -487,6 +502,7 @@
       "id": "l26-check-indep-conditional",
       "name": "4.6b: Check Independence (Conditional)",
       "unlockedBy": { "gold": 25 },
+      "animation": "assets/IndependentVsMutuallyExclusive.mp4",
       "layout": {
         "inputs": [
           {
@@ -502,6 +518,7 @@
       "id": "l27-check-indep-mult",
       "name": "4.6c: Check Independence (Multiplication)",
       "unlockedBy": { "gold": 26 },
+      "animation": "assets/IndependentVsMutuallyExclusive.mp4",
       "layout": {
         "inputs": [
           {
@@ -542,6 +559,7 @@
       "id": "l29-addition-rule-def",
       "name": "4.6e: Addition Rule Definition",
       "unlockedBy": { "gold": 28 },
+      "animation": "assets/AdditionRuleDef.mp4",
       "layout": {
         "inputs": [
           {
@@ -558,6 +576,7 @@
       "id": "l30-calculate-union",
       "name": "4.6f: Calculate Union",
       "unlockedBy": { "gold": 29 },
+      "animation": "assets/AdditionRuleVennDiagram.mp4",
       "layout": {
         "inputs": [
           {
@@ -575,6 +594,7 @@
       "id": "l31-indep-vs-me",
       "name": "4.6g: Independent vs Mutually Exclusive",
       "unlockedBy": { "gold": 30 },
+      "animation": "assets/IndependentVsMutuallyExclusive.mp4",
       "layout": {
         "inputs": [
           {
@@ -629,6 +649,7 @@
       "id": "l34-discrete-continuous",
       "name": "4.7b: Discrete vs Continuous",
       "unlockedBy": { "gold": 33 },
+      "animation": "assets/DiscreteContinuous.mp4",
       "layout": {
         "inputs": [
           {
@@ -644,6 +665,7 @@
       "id": "l35-valid-prob-dist",
       "name": "4.7c: Valid Probability Distribution",
       "unlockedBy": { "gold": 34 },
+      "animation": "assets/ValidProbDistribution.mp4",
       "layout": {
         "inputs": [
           {
@@ -659,6 +681,7 @@
       "id": "l36-prob-from-dist",
       "name": "4.7d: Probability from Distribution",
       "unlockedBy": { "gold": 35 },
+      "animation": "assets/ProbabilityDistributionMetrics.mp4",
       "layout": {
         "inputs": [
           {
@@ -676,6 +699,7 @@
       "id": "l37-describe-dist",
       "name": "4.7e: Describe Distribution",
       "unlockedBy": { "gold": 36 },
+      "animation": "assets/DescribeDistribution.mp4",
       "layout": {
         "inputs": [
           {
@@ -692,6 +716,7 @@
       "id": "l38-mean-formula",
       "name": "4.8a: Mean (Expected Value)",
       "unlockedBy": { "gold": 37 },
+      "animation": "assets/ProbabilityDistributionMetrics.mp4",
       "layout": {
         "inputs": [
           {
@@ -707,6 +732,7 @@
       "id": "l39-std-dev-formula",
       "name": "4.8b: Standard Deviation",
       "unlockedBy": { "gold": 38 },
+      "animation": "assets/ProbabilityDistributionMetrics.mp4",
       "layout": {
         "inputs": [
           {

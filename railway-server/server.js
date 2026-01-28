@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { WebSocketServer } = require('ws');
 const http = require('http');
 const { buildCartridgePrompt } = require('./prompt-utils.js');
+const { ArenaManager, ARENA_CONFIG, RoundState } = require('./ghost-orbits-manager.js');
 
 // ============================================
 // CONFIGURATION
@@ -60,6 +61,26 @@ function broadcast(message) {
     }
   }
 }
+
+// Broadcast to clients in a specific arena (Ghost Orbits)
+function broadcastToArena(cartridgeId, periodId, message) {
+  const payload = JSON.stringify(message);
+  for (const [ws, data] of clients) {
+    if (ws.readyState === 1 && data.orbitsArena === `${cartridgeId}:${periodId}`) {
+      ws.send(payload);
+    }
+  }
+}
+
+// ============================================
+// GHOST ORBITS ARENA MANAGER
+// ============================================
+const ghostOrbitsManager = new ArenaManager((message) => {
+  // Broadcast to all clients in the arena
+  broadcastToArena(message.cartridgeId, message.periodId, message);
+});
+
+console.log('[Ghost Orbits] Arena manager initialized');
 
 // ============================================
 // VERSION - Update this when deploying new versions
@@ -5275,7 +5296,7 @@ function getOnlineUsers() {
 
 wss.on('connection', (ws) => {
   console.log('WebSocket client connected');
-  clients.set(ws, { username: null, lastHeartbeat: Date.now(), gameId: null });
+  clients.set(ws, { username: null, lastHeartbeat: Date.now(), gameId: null, orbitsArena: null });
 
   ws.on('message', (data) => {
     try {
@@ -5290,7 +5311,8 @@ wss.on('connection', (ws) => {
           clients.set(ws, {
             username: message.username,
             lastHeartbeat: Date.now(),
-            gameId: message.gameId || client?.gameId || null
+            gameId: message.gameId || client?.gameId || null,
+            orbitsArena: client?.orbitsArena || null  // Preserve Ghost Orbits arena
           });
 
           // Broadcast user online if new
@@ -5340,6 +5362,106 @@ wss.on('connection', (ws) => {
             goalReached: message.goalReached
           });
           break;
+
+        // ============================================
+        // GHOST ORBITS ARENA MESSAGES
+        // ============================================
+
+        case 'join_arena': {
+          // Client joins Ghost Orbits arena
+          const joinClient = clients.get(ws);
+          const { cartridgeId, periodId, ghostProfile } = message;
+
+          if (!joinClient?.username || !cartridgeId || !periodId) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              code: 'INVALID_JOIN',
+              message: 'Missing username, cartridgeId, or periodId'
+            }));
+            break;
+          }
+
+          console.log(`[Ghost Orbits] ${joinClient.username} joining ${cartridgeId}:${periodId}`);
+
+          // Track which arena this client is in
+          joinClient.orbitsArena = `${cartridgeId}:${periodId}`;
+
+          // Add player to arena
+          const joinResult = ghostOrbitsManager.handleJoinArena(
+            joinClient.username,
+            cartridgeId,
+            periodId,
+            ghostProfile
+          );
+
+          // Send current arena state to joining client
+          const arenaState = ghostOrbitsManager.getArenaState(cartridgeId, periodId);
+          if (arenaState) {
+            ws.send(JSON.stringify({
+              type: 'arena_state',
+              ...arenaState
+            }));
+          }
+          break;
+        }
+
+        case 'leave_arena': {
+          // Client leaves Ghost Orbits arena
+          const leaveClient = clients.get(ws);
+          const { cartridgeId: leaveCartridgeId, periodId: leavePeriodId } = message;
+
+          if (!leaveClient?.username) break;
+
+          console.log(`[Ghost Orbits] ${leaveClient.username} leaving arena`);
+
+          ghostOrbitsManager.handleLeaveArena(
+            leaveClient.username,
+            leaveCartridgeId || leaveClient.orbitsArena?.split(':')[0],
+            leavePeriodId || leaveClient.orbitsArena?.split(':')[1]
+          );
+
+          // Clear arena tracking
+          delete leaveClient.orbitsArena;
+          break;
+        }
+
+        case 'input': {
+          // Client sends game input (thrust direction)
+          const inputClient = clients.get(ws);
+
+          if (!inputClient?.username || !inputClient.orbitsArena) break;
+
+          const [inputCartridgeId, inputPeriodId] = inputClient.orbitsArena.split(':');
+          const { direction, thrust } = message;
+
+          ghostOrbitsManager.handleInput(
+            inputClient.username,
+            inputCartridgeId,
+            inputPeriodId,
+            direction || { x: 0, y: 0 },
+            thrust || false
+          );
+          break;
+        }
+
+        case 'earned_star': {
+          // Client earned a star (for Ghost Orbits rejoin)
+          const starClient = clients.get(ws);
+          const { cartridgeId: starCartridgeId, periodId: starPeriodId } = message;
+
+          if (!starClient?.username) break;
+
+          // If client is in an arena, notify for potential rejoin
+          const arenaId = starCartridgeId && starPeriodId
+            ? `${starCartridgeId}:${starPeriodId}`
+            : starClient.orbitsArena;
+
+          if (arenaId) {
+            const [cId, pId] = arenaId.split(':');
+            ghostOrbitsManager.handleEarnedStar(starClient.username, cId, pId);
+          }
+          break;
+        }
       }
     } catch (err) {
       console.error('WebSocket message error:', err);
@@ -5360,6 +5482,12 @@ wss.on('connection', (ws) => {
 
       if (!stillConnected) {
         broadcast({ type: 'user_offline', username: client.username });
+
+        // Handle Ghost Orbits arena leave
+        if (client.orbitsArena) {
+          const [cartridgeId, periodId] = client.orbitsArena.split(':');
+          ghostOrbitsManager.handleLeaveArena(client.username, cartridgeId, periodId);
+        }
       }
     }
     clients.delete(ws);
@@ -5550,6 +5678,111 @@ setInterval(async () => {
 }, CTF_CONFIG.sessionCheckIntervalMs || 10000);
 
 console.log('[CTF Session] Timer polling started');
+
+// ============================================
+// GHOST ORBITS REST ENDPOINTS
+// ============================================
+
+// GET /api/ghost-orbits/config - Get arena configuration
+app.get('/api/ghost-orbits/config', (req, res) => {
+  res.json({
+    ...ARENA_CONFIG,
+    roundStates: RoundState
+  });
+});
+
+// GET /api/ghost-orbits/arenas - Get list of active arenas
+app.get('/api/ghost-orbits/arenas', (req, res) => {
+  const arenas = ghostOrbitsManager.getActiveArenas();
+  res.json({ arenas });
+});
+
+// GET /api/ghost-orbits/:cartridgeId/:periodId/state - Get arena state
+app.get('/api/ghost-orbits/:cartridgeId/:periodId/state', (req, res) => {
+  const { cartridgeId, periodId } = req.params;
+  const state = ghostOrbitsManager.getArenaState(cartridgeId, periodId);
+
+  if (!state) {
+    return res.status(404).json({ error: 'Arena not found' });
+  }
+
+  res.json(state);
+});
+
+// POST /api/ghost-orbits/:cartridgeId/:periodId/join - Join arena via REST
+app.post('/api/ghost-orbits/:cartridgeId/:periodId/join', async (req, res) => {
+  try {
+    const { cartridgeId, periodId } = req.params;
+    const { username, ghostProfile } = req.body;
+
+    if (!username) {
+      return res.status(400).json({ error: 'Username required' });
+    }
+
+    const result = ghostOrbitsManager.handleJoinArena(
+      username,
+      cartridgeId,
+      periodId,
+      ghostProfile
+    );
+
+    const state = ghostOrbitsManager.getArenaState(cartridgeId, periodId);
+
+    res.json({
+      success: true,
+      ...result,
+      state
+    });
+  } catch (err) {
+    console.error('POST /api/ghost-orbits/:cartridgeId/:periodId/join error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ghost-orbits/:cartridgeId/:periodId/leave - Leave arena via REST
+app.post('/api/ghost-orbits/:cartridgeId/:periodId/leave', (req, res) => {
+  const { cartridgeId, periodId } = req.params;
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Username required' });
+  }
+
+  ghostOrbitsManager.handleLeaveArena(username, cartridgeId, periodId);
+
+  res.json({ success: true });
+});
+
+// POST /api/ghost-orbits/:cartridgeId/:periodId/earned-star - Notify star earned for rejoin
+app.post('/api/ghost-orbits/:cartridgeId/:periodId/earned-star', (req, res) => {
+  const { cartridgeId, periodId } = req.params;
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Username required' });
+  }
+
+  ghostOrbitsManager.handleEarnedStar(username, cartridgeId, periodId);
+
+  res.json({ success: true });
+});
+
+// DELETE /api/ghost-orbits/:cartridgeId/:periodId - Destroy arena (teacher only)
+app.delete('/api/ghost-orbits/:cartridgeId/:periodId', (req, res) => {
+  const password = req.headers['x-teacher-password'];
+
+  if (password !== TEACHER_PASSWORD) {
+    return res.status(401).json({ error: 'Teacher authentication required' });
+  }
+
+  const { cartridgeId, periodId } = req.params;
+
+  ghostOrbitsManager.destroyArena(cartridgeId, periodId);
+
+  res.json({ success: true });
+});
+
+console.log('[Ghost Orbits] REST endpoints registered');
 
 // ============================================
 // START SERVER

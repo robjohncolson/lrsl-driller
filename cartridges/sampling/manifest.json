@@ -99,6 +99,7 @@
       "unlockedBy": {
         "gold": 3
       },
+      "animation": "assets/RandomSelectionVsAssignment.mp4",
       "layout": {
         "inputs": [
           {
@@ -125,6 +126,7 @@
       "unlockedBy": {
         "gold": 4
       },
+      "animation": "assets/RandomSelectionVsAssignment.mp4",
       "layout": {
         "inputs": [
           {
@@ -151,6 +153,7 @@
       "unlockedBy": {
         "gold": 5
       },
+      "animation": "assets/RandomSelectionVsAssignment.mp4",
       "layout": {
         "inputs": [
           {
@@ -180,6 +183,7 @@
       "unlockedBy": {
         "gold": 6
       },
+      "animation": "assets/SimpleRandomSampleDefinition.mp4",
       "layout": {
         "inputs": [
           {
@@ -203,6 +207,7 @@
       "unlockedBy": {
         "gold": 7
       },
+      "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
         "inputs": [
           {
@@ -225,6 +230,7 @@
       "unlockedBy": {
         "gold": 8
       },
+      "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
         "inputs": [
           {
@@ -247,6 +253,7 @@
       "unlockedBy": {
         "gold": 9
       },
+      "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
         "inputs": [
           {
@@ -299,6 +306,7 @@
       "unlockedBy": {
         "gold": 11
       },
+      "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
         "inputs": [
           {
@@ -322,6 +330,7 @@
       "unlockedBy": {
         "gold": 12
       },
+      "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
         "inputs": [
           {
@@ -439,6 +448,7 @@
       "unlockedBy": {
         "gold": 15
       },
+      "animation": "assets/SamplingBiasTypes.mp4",
       "layout": {
         "inputs": [
           {
@@ -468,6 +478,7 @@
       "unlockedBy": {
         "gold": 16
       },
+      "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
         "inputs": [
           {
@@ -497,6 +508,7 @@
       "unlockedBy": {
         "gold": 17
       },
+      "animation": "assets/LargeVsRepresentativeSample.mp4",
       "layout": {
         "inputs": [
           {

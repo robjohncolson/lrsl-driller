@@ -43,6 +43,7 @@
       "id": "l01-identity-match",
       "name": "Level 1: Identify the Identity",
       "unlockedBy": "default",
+      "animation": "assets/IdentityMatch.mp4",
       "layout": {
         "inputs": [
           {
@@ -65,6 +66,7 @@
       "unlockedBy": {
         "gold": 2
       },
+      "animation": "assets/IdentityFlashcards.mp4",
       "layout": {
         "inputs": [
           {
@@ -88,6 +90,7 @@
       "unlockedBy": {
         "gold": 2
       },
+      "animation": "assets/RewriteIdentity.mp4",
       "layout": {
         "inputs": [
           {
@@ -111,6 +114,7 @@
       "unlockedBy": {
         "gold": 2
       },
+      "animation": "assets/NumericShortcuts.mp4",
       "layout": {
         "inputs": [
           {
@@ -130,6 +134,7 @@
       "unlockedBy": {
         "gold": 3
       },
+      "animation": "assets/FactorPolynomials.mp4",
       "layout": {
         "inputs": [
           {
@@ -143,10 +148,11 @@
     },
     {
       "id": "l05-pascal-patterns",
-      "name": "Level 5: Pascal’s Triangle & Binomial Coefficients",
+      "name": "Level 5: Pascal's Triangle & Binomial Coefficients",
       "unlockedBy": {
         "gold": 3
       },
+      "animation": "assets/PascalPatterns.mp4",
       "layout": {
         "inputs": [
           {
@@ -173,6 +179,7 @@
       "unlockedBy": {
         "gold": 3
       },
+      "animation": "assets/BinomialTermFinder.mp4",
       "layout": {
         "inputs": [
           {
