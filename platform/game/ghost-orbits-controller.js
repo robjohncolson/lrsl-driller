@@ -2573,10 +2573,9 @@ export class GhostOrbitsController {
     if (!this.isUnlocked()) {
       console.warn('[GhostOrbits] Cannot rematch - not enough stars');
       // Show message to player
-      if (this.panel?.showMessage) {
-        this.panel.showMessage('Need more gold stars to rematch!', 'warning');
-      }
-      alert('You need to earn more gold stars to rematch! Return to practice and earn a gold star.');
+      alert('You need to earn more gold stars to rematch!\nReturning to practice - earn a gold star and click the Arena button again.');
+      // Close the overlay and return to practice
+      this.exitArena();
       return;
     }
 

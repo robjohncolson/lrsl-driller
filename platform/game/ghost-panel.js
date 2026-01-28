@@ -501,7 +501,7 @@ export class GhostPanel {
         } else {
           // Show message explaining why they can't enter
           const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-          const lastSessionGolds = parseInt(localStorage.getItem('ghostOrbits_lastSessionGolds') || '0');
+          const lastSessionGolds = this._getLastSessionGolds();
           const needed = lastSessionGolds + 1;
           alert(`You need ${needed} gold star${needed > 1 ? 's' : ''} to enter the arena.\nYou currently have ${currentGolds} gold star${currentGolds !== 1 ? 's' : ''}.\n\nKeep practicing to earn more gold stars!`);
         }
@@ -510,6 +510,15 @@ export class GhostPanel {
       // Check unlock status when panel shows
       this._updateOrbitsButton();
     }
+  }
+
+  /**
+   * Get last session gold count for current cartridge
+   * @private
+   */
+  _getLastSessionGolds() {
+    const cartridgeId = this.manifest?.meta?.id || 'unknown';
+    return parseInt(localStorage.getItem(`ghostOrbits_lastGolds_${cartridgeId}`) || '0');
   }
 
   /**
@@ -524,7 +533,7 @@ export class GhostPanel {
     if (!btn || !hint) return;
 
     const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-    const lastSessionGolds = parseInt(localStorage.getItem('ghostOrbits_lastSessionGolds') || '0');
+    const lastSessionGolds = this._getLastSessionGolds();
     const canEnter = currentGolds > lastSessionGolds;
 
     console.log(`[GhostPanel] Orbits button state: currentGolds=${currentGolds}, lastSession=${lastSessionGolds}, canEnter=${canEnter}`);

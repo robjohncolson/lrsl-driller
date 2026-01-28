@@ -1371,7 +1371,21 @@
     // ==================== GHOST ORBITS INTEGRATION ====================
 
     let ghostOrbitsController = null;
-    let lastSessionGolds = parseInt(localStorage.getItem('ghostOrbits_lastSessionGolds') || '0');
+    // Note: lastSessionGolds is loaded per-cartridge in getLastSessionGolds()
+
+    /**
+     * Get the localStorage key for last session golds (cartridge-specific)
+     */
+    function getGhostOrbitsGoldsKey() {
+      return `ghostOrbits_lastGolds_${currentCartridgeId}`;
+    }
+
+    /**
+     * Get last session's gold count for current cartridge
+     */
+    function getLastSessionGolds() {
+      return parseInt(localStorage.getItem(getGhostOrbitsGoldsKey()) || '0');
+    }
 
     /**
      * Initialize Ghost Orbits controller
@@ -1411,7 +1425,7 @@
      */
     function canEnterGhostOrbits() {
       const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-      return currentGolds > lastSessionGolds;
+      return currentGolds > getLastSessionGolds();
     }
 
     /**
@@ -1467,8 +1481,7 @@
      */
     function updateGhostOrbitsSession() {
       const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-      lastSessionGolds = currentGolds;
-      localStorage.setItem('ghostOrbits_lastSessionGolds', currentGolds.toString());
+      localStorage.setItem(getGhostOrbitsGoldsKey(), currentGolds.toString());
     }
 
     // Expose Ghost Orbits launcher globally for ghost panel integration
