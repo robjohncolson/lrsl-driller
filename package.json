@@ -11,7 +11,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@tensorflow/tfjs": "^4.17.0"
+    "@tensorflow/tfjs": "^4.17.0",
+    "three": "^0.159.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
