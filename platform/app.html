@@ -1331,12 +1331,20 @@
         return null;
       }
 
+      // Get current star counts and calculate points
+      const state = platform.getState();
+      const starCounts = state.game?.starCounts || { gold: 0, silver: 0, bronze: 0, tin: 0 };
+      const goldStars = starCounts.gold || 0;
+      const points = getWeightedScore(starCounts);
+
       ghostOrbitsController = new GhostOrbitsController({
         container: document.body,
         username: userSystem.currentUser?.username,
         cartridgeId: currentCartridgeId,
         periodId: userSystem.currentUser?.class_period,
         ghostProfile: profile,
+        goldStars: goldStars,
+        points: points,
         serverUrl: SERVER_URL,
         onExit: () => {
           console.log('[GhostOrbits] Exited arena');

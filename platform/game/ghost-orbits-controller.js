@@ -61,6 +61,8 @@ export class GhostOrbitsController {
    * @param {string} options.cartridgeId - Current cartridge ID
    * @param {string} options.periodId - Class period ID
    * @param {Object} options.ghostProfile - Player's ghost profile from NN
+   * @param {number} options.goldStars - Player's current gold star count
+   * @param {number} options.points - Player's current total points
    * @param {string} options.serverUrl - WebSocket server URL
    * @param {Function} [options.onExit] - Callback when player exits arena
    * @param {Function} [options.onStateChange] - Callback when game state changes
@@ -72,6 +74,8 @@ export class GhostOrbitsController {
     this.cartridgeId = options.cartridgeId;
     this.periodId = options.periodId;
     this.ghostProfile = options.ghostProfile;
+    this.goldStars = options.goldStars || 0;
+    this.points = options.points || 0;
     this.serverUrl = options.serverUrl || this._getDefaultServerUrl();
 
     // Callbacks
@@ -142,6 +146,18 @@ export class GhostOrbitsController {
    */
   updateGoldCount(golds) {
     this.currentGolds = golds;
+    this.goldStars = golds;
+  }
+
+  /**
+   * Update gold stars and points for arena entry
+   * @param {number} goldStars - Current gold star count
+   * @param {number} points - Current total points
+   */
+  updateStats(goldStars, points) {
+    this.goldStars = goldStars;
+    this.points = points;
+    this.currentGolds = goldStars;
   }
 
   /**
@@ -249,11 +265,13 @@ export class GhostOrbitsController {
       // Small delay to ensure identify is processed
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Then send join message
+      // Then send join message with required entry data
       this._sendMessage({
         type: 'global_arena_join',
         username: this.username,
-        ghostProfile: this.ghostProfile
+        goldStars: this.goldStars,
+        points: this.points,
+        ghostProperties: this.ghostProfile
       });
 
       console.log('[GhostOrbits] Connected to arena');
@@ -665,6 +683,10 @@ export class GhostOrbitsController {
           this._handleRoundEnd(message);
           break;
 
+        case 'arena_entry_failed':
+          this._handleEntryFailed(message);
+          break;
+
         case 'error':
           this._handleServerError(message);
           break;
@@ -686,6 +708,24 @@ export class GhostOrbitsController {
     console.log('[GhostOrbits] Joined arena:', message);
     this.playerId = message.playerId;
 
+    // Update local stats with server-returned values (after bet deduction)
+    if (typeof message.newGoldStars === 'number') {
+      this.goldStars = message.newGoldStars;
+      this.currentGolds = message.newGoldStars;
+    }
+    if (typeof message.newPoints === 'number') {
+      this.points = message.newPoints;
+    }
+
+    // Store bet amount for display
+    this.currentBet = message.bet || 0;
+    this.currentPot = message.pot || 0;
+
+    // Update panel with pot info
+    if (this.panel) {
+      this.panel.updatePot(this.currentPot);
+    }
+
     // Apply initial full state
     if (message.gameState) {
       this.applyServerState(message.gameState);
@@ -697,6 +737,26 @@ export class GhostOrbitsController {
     } else {
       this._setState(GameState.WAITING);
     }
+  }
+
+  /**
+   * Handle arena_entry_failed message (server rejected join)
+   * @param {Object} message
+   * @private
+   */
+  _handleEntryFailed(message) {
+    console.error('[GhostOrbits] Entry failed:', message.error);
+
+    // Show error to user
+    if (this.panel) {
+      this.panel.showError(message.error || 'Failed to enter arena');
+    }
+
+    // Clean up and return to idle state
+    this._disconnectWebSocket();
+    this._disableInput();
+    this._hideOverlay();
+    this._setState(GameState.IDLE);
   }
 
   /**

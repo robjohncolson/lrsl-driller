@@ -530,6 +530,45 @@ export class GhostOrbitsPanel {
   }
 
   /**
+   * Show error message and close button
+   * @param {string} errorMessage - Error message to display
+   */
+  showError(errorMessage) {
+    this.currentView = 'error';
+    this._renderErrorView(errorMessage);
+  }
+
+  /**
+   * Render error view
+   * @param {string} message - Error message
+   * @private
+   */
+  _renderErrorView(message) {
+    if (!this.overlayElement) return;
+
+    this.overlayElement.innerHTML = `
+      <div class="orbits-error-view">
+        <div class="error-content">
+          <div class="error-icon">!</div>
+          <h2 class="error-title">Entry Failed</h2>
+          <p class="error-message">${message}</p>
+          <button class="error-close-btn" id="error-close-btn">Close</button>
+        </div>
+      </div>
+    `;
+
+    this.overlayElement.classList.add('visible');
+
+    // Attach close listener
+    const closeBtn = this.overlayElement.querySelector('#error-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        this.onClose();
+      });
+    }
+  }
+
+  /**
    * Show waiting/lobby state with player count
    * @param {number} playerCount - Number of players in arena
    */
@@ -2769,6 +2808,72 @@ export class GhostOrbitsPanel {
       .connecting-cancel-btn:hover {
         background: rgba(136, 170, 204, 0.1);
         border-color: #88aacc;
+      }
+
+      /* -------------------------------------------
+         ERROR VIEW
+         ------------------------------------------- */
+
+      .orbits-error-view {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        background:
+          radial-gradient(circle at center, rgba(255, 68, 68, 0.08) 0%, transparent 60%),
+          linear-gradient(rgba(68, 34, 34, 0.2) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(68, 34, 34, 0.2) 1px, transparent 1px);
+        background-size: 100% 100%, 40px 40px, 40px 40px;
+      }
+
+      .error-content {
+        text-align: center;
+        max-width: 400px;
+      }
+
+      .error-icon {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(255, 68, 68, 0.5);
+        border-radius: 50%;
+        margin: 0 auto 24px auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        font-weight: bold;
+        color: #ff4444;
+      }
+
+      .error-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #ff6666;
+        margin: 0 0 12px 0;
+      }
+
+      .error-message {
+        font-size: 16px;
+        color: #cc8888;
+        margin: 0 0 24px 0;
+      }
+
+      .error-close-btn {
+        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        background: transparent;
+        border: 1px solid #ff444444;
+        border-radius: 6px;
+        color: #ff6666;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .error-close-btn:hover {
+        background: rgba(255, 68, 68, 0.1);
+        border-color: #ff4444;
       }
 
       /* -------------------------------------------
