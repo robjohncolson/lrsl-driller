@@ -87,7 +87,7 @@
       "id": "l03-standard-form-rewrite",
       "name": "Level 3: Choose the Standard Form",
       "unlockedBy": {
-        "gold": 2
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -110,7 +110,7 @@
       "id": "l04-degree-of-term",
       "name": "Level 4: Degree of a Term",
       "unlockedBy": {
-        "gold": 3
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -129,7 +129,7 @@
       "id": "l05-degree-and-terms",
       "name": "Level 5: Degree & Number of Terms",
       "unlockedBy": {
-        "gold": 4
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -156,7 +156,7 @@
       "id": "l06-leading-coefficient",
       "name": "Level 6: Leading Coefficient",
       "unlockedBy": {
-        "gold": 5
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -173,7 +173,7 @@
       "id": "l07-missing-term",
       "name": "Level 7: Missing Term (0 Coefficient)",
       "unlockedBy": {
-        "gold": 6
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -190,7 +190,7 @@
       "id": "l08-function-notation",
       "name": "Level 8: Evaluate f(x)",
       "unlockedBy": {
-        "gold": 7
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -207,7 +207,7 @@
       "id": "l085-quadrants-visual",
       "name": "Level 8.5: Quadrants from a Graph",
       "unlockedBy": {
-        "gold": 8
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -228,7 +228,7 @@
       "id": "l09-xn-quadrants",
       "name": "Level 9: Graphs of f(x)=xⁿ",
       "unlockedBy": {
-        "gold": 9
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -251,7 +251,7 @@
       "id": "l10-end-behavior-from-leading",
       "name": "Level 10: End Behavior from Leading Term",
       "unlockedBy": {
-        "gold": 10
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -274,7 +274,7 @@
       "id": "l11-end-behavior-from-polynomial",
       "name": "Level 11: End Behavior from a Polynomial",
       "unlockedBy": {
-        "gold": 11
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -297,7 +297,7 @@
       "id": "l12-increasing-decreasing",
       "name": "Level 12: Increasing/Decreasing from a Table",
       "unlockedBy": {
-        "gold": 12
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -319,7 +319,7 @@
       "id": "l13-average-rate",
       "name": "Level 13: Average Rate of Change",
       "unlockedBy": {
-        "gold": 13
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -336,7 +336,7 @@
       "id": "l14-zeros-from-graph",
       "name": "Level 14: Zeros (x-intercepts) from a Graph",
       "unlockedBy": {
-        "gold": 14
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -353,7 +353,7 @@
       "id": "l15-turning-points-from-graph",
       "name": "Level 15: Turning Points from a Graph",
       "unlockedBy": {
-        "gold": 15
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -372,7 +372,7 @@
       "id": "l16-from-verbal",
       "name": "Level 16: From Verbal Description → x-intercepts",
       "unlockedBy": {
-        "gold": 16
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -389,7 +389,7 @@
       "id": "l17-real-world-domain",
       "name": "Level 17: Real-World Model (Domain/Intercepts)",
       "unlockedBy": {
-        "gold": 17
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -409,7 +409,7 @@
       "id": "l18-capstone",
       "name": "Level 18: Concept Summary Check",
       "unlockedBy": {
-        "gold": 18
+        "gold": 3
       },
       "layout": {
         "inputs": [
@@ -542,7 +542,7 @@
         "id": "l03-standard-form-rewrite",
         "name": "03",
         "unlockedBy": {
-          "gold": 2
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -550,7 +550,7 @@
         "id": "l04-degree-of-term",
         "name": "04",
         "unlockedBy": {
-          "gold": 3
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -558,7 +558,7 @@
         "id": "l05-degree-and-terms",
         "name": "05",
         "unlockedBy": {
-          "gold": 4
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -566,7 +566,7 @@
         "id": "l06-leading-coefficient",
         "name": "06",
         "unlockedBy": {
-          "gold": 5
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -574,7 +574,7 @@
         "id": "l07-missing-term",
         "name": "07",
         "unlockedBy": {
-          "gold": 6
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -582,7 +582,7 @@
         "id": "l08-function-notation",
         "name": "08",
         "unlockedBy": {
-          "gold": 7
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -590,7 +590,7 @@
         "id": "l085-quadrants-visual",
         "name": "8.5",
         "unlockedBy": {
-          "gold": 8
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -598,7 +598,7 @@
         "id": "l09-xn-quadrants",
         "name": "09",
         "unlockedBy": {
-          "gold": 9
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -606,7 +606,7 @@
         "id": "l10-end-behavior-from-leading",
         "name": "10",
         "unlockedBy": {
-          "gold": 10
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -614,7 +614,7 @@
         "id": "l11-end-behavior-from-polynomial",
         "name": "11",
         "unlockedBy": {
-          "gold": 11
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -622,7 +622,7 @@
         "id": "l12-increasing-decreasing",
         "name": "12",
         "unlockedBy": {
-          "gold": 12
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -630,7 +630,7 @@
         "id": "l13-average-rate",
         "name": "13",
         "unlockedBy": {
-          "gold": 13
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -638,7 +638,7 @@
         "id": "l14-zeros-from-graph",
         "name": "14",
         "unlockedBy": {
-          "gold": 14
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -646,7 +646,7 @@
         "id": "l15-turning-points-from-graph",
         "name": "15",
         "unlockedBy": {
-          "gold": 15
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -654,7 +654,7 @@
         "id": "l16-from-verbal",
         "name": "16",
         "unlockedBy": {
-          "gold": 16
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -662,7 +662,7 @@
         "id": "l17-real-world-domain",
         "name": "17",
         "unlockedBy": {
-          "gold": 17
+          "gold": 1
         },
         "celebrationMessage": "Nice! Next level."
       },
@@ -670,7 +670,7 @@
         "id": "l18-capstone",
         "name": "18",
         "unlockedBy": {
-          "gold": 18
+          "gold": 3
         },
         "celebrationMessage": "Capstone complete!"
       }

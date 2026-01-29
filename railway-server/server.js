@@ -2389,6 +2389,40 @@ app.delete('/api/progression-overrides/:cartridgeId/:modeId', async (req, res) =
   }
 });
 
+// DELETE /api/progression-overrides/:cartridgeId - Remove ALL overrides for a cartridge
+app.delete('/api/progression-overrides/:cartridgeId', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+    const { password, gameId = 'default' } = req.body;
+
+    // Verify teacher password
+    if (password !== TEACHER_PASSWORD) {
+      return res.status(401).json({ error: 'Teacher authentication required' });
+    }
+
+    // Delete all overrides for this cartridge
+    const { error } = await supabase
+      .from('progression_overrides')
+      .delete()
+      .eq('cartridge_id', cartridgeId)
+      .eq('game_id', gameId);
+
+    if (error) throw error;
+
+    // Broadcast to connected clients
+    broadcastToCartridge(cartridgeId, {
+      type: 'progression_overrides_cleared',
+      cartridgeId
+    });
+
+    console.log(`[Progression] Cleared all overrides for ${cartridgeId}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/progression-overrides/:cartridgeId error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ============================================
 // GHOST PROFILE ENDPOINTS (Phase 1)
 // ============================================

@@ -8,12 +8,14 @@
     "skill": "Interpret slope, y-intercept, and correlation coefficient in context",
     "description": "Students write contextual interpretations of regression output"
   },
-
   "config": {
     "contextsFile": "contexts.json",
-    "skills": ["slope", "intercept", "correlation"]
+    "skills": [
+      "slope",
+      "intercept",
+      "correlation"
+    ]
   },
-
   "display": {
     "showGraph": true,
     "graphType": "scatterplot",
@@ -23,13 +25,24 @@
       "showR": true
     },
     "infoPanel": [
-      { "label": "x-variable", "value": "{{xVar}} ({{xUnits}})" },
-      { "label": "y-variable", "value": "{{yVar}} ({{yUnits}})" },
-      { "label": "Equation", "value": "ŷ = {{intercept}} + {{slope}}x" },
-      { "label": "Correlation", "value": "r = {{r}}" }
+      {
+        "label": "x-variable",
+        "value": "{{xVar}} ({{xUnits}})"
+      },
+      {
+        "label": "y-variable",
+        "value": "{{yVar}} ({{yUnits}})"
+      },
+      {
+        "label": "Equation",
+        "value": "ŷ = {{intercept}} + {{slope}}x"
+      },
+      {
+        "label": "Correlation",
+        "value": "r = {{r}}"
+      }
     ]
   },
-
   "modes": [
     {
       "id": "three-part",
@@ -65,7 +78,9 @@
     {
       "id": "paragraph",
       "name": "Full Paragraph",
-      "unlockedBy": { "gold": 7 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "graph": "scatterplot-with-line",
         "inputs": [
@@ -80,12 +95,15 @@
       }
     }
   ],
-
   "grading": {
     "rubricFile": "grading-rules.js",
     "aiPromptFile": "ai-grader-prompt.txt",
     "scoring": {
-      "scale": ["E", "P", "I"],
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
       "meanings": {
         "E": "Essentially Correct - all key elements present",
         "P": "Partially Correct - some key elements missing",
@@ -94,10 +112,14 @@
     },
     "composite": {
       "rule": "all-E-for-star",
-      "starTiers": ["gold", "silver", "bronze", "tin"]
+      "starTiers": [
+        "gold",
+        "silver",
+        "bronze",
+        "tin"
+      ]
     }
   },
-
   "hints": {
     "perField": {
       "slope": "<strong>Sentence Frame:</strong><br>\"For every increase of 1 <em>[x-unit]</em>, the <strong>predicted</strong> <em>[y-variable]</em> increases/decreases by <em>[slope]</em> <em>[y-units]</em>, <strong>on average</strong>.\"<br><br><strong>Key elements:</strong> prediction language, direction, slope value, both variables, units, \"on average\"",
@@ -112,10 +134,13 @@
       "3": "tin"
     }
   },
-
   "progression": {
     "streaksPerField": true,
-    "streakFields": ["slope", "intercept", "correlation"],
+    "streakFields": [
+      "slope",
+      "intercept",
+      "correlation"
+    ],
     "tiers": [
       {
         "id": "three-part",
@@ -125,7 +150,9 @@
       {
         "id": "paragraph",
         "name": "Paragraph Mode",
-        "unlockedBy": { "gold": 7 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Paragraph Mode Unlocked! You've earned 7 gold stars."
       }
     ]

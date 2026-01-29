@@ -82,9 +82,6 @@
           <span class="text-base">📝</span>
           <span id="header-review-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center" style="display: none;">0</span>
         </button>
-        <button id="class-time-btn" style="display: none;" class="p-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors" title="Class Time">
-          <span class="text-base">🔔</span>
-        </button>
         <button id="time-analytics-btn" style="display: none;" class="p-1.5 bg-teal-100 hover:bg-teal-200 text-teal-700 rounded-lg transition-colors" title="Time Analytics">
           <span class="text-base">⏱️</span>
         </button>
@@ -314,33 +311,6 @@
   </div>
   <div id="cartridge-dropdown-backdrop" class="fixed inset-0 z-40 hidden"></div>
 
-  <!-- Class Time Banner (hidden by default) -->
-  <div id="class-time-banner" class="hidden bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white py-2 px-4 shadow-lg">
-    <div class="max-w-6xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="text-2xl animate-pulse">🔔</span>
-        <div>
-          <span class="font-bold">CLASS TIME ACTIVE</span>
-          <span id="class-time-timer" class="ml-2 font-mono bg-white/20 px-2 py-0.5 rounded">00:00</span>
-        </div>
-      </div>
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2">
-          <span class="text-sm">Goal:</span>
-          <div class="w-32 h-4 bg-white/30 rounded-full overflow-hidden">
-            <div id="class-goal-bar" class="h-full bg-yellow-400 transition-all duration-500" style="width: 0%"></div>
-          </div>
-          <span class="text-sm font-bold">
-            <span id="class-stars-earned">0</span>/<span id="class-goal-target">3</span> ⭐
-          </span>
-        </div>
-        <button id="end-class-time-btn" class="hidden bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors">
-          End Class
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Main Content - Split Pane Layout -->
   <main id="main-content" class="max-w-6xl mx-auto px-4 min-h-[calc(100vh-48px)] flex flex-col lg:flex-row gap-4 py-4">
     <!-- Left Pane: Question (fixed, never scrolls) -->
@@ -420,6 +390,10 @@
               <button id="reset-gold-req-btn" title="Reset to manifest default"
                       class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm rounded font-medium transition-colors">
                 Reset
+              </button>
+              <button id="reset-all-overrides-btn" title="Reset ALL overrides to manifest defaults"
+                      class="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-sm rounded font-medium transition-colors">
+                Reset All
               </button>
             </div>
             <span id="progression-override-status" class="text-xs text-purple-600 hidden">(Override active)</span>
@@ -1863,13 +1837,9 @@
       document.getElementById('potential-star').textContent = tiers[Math.min(totalPenalties, 4)];
     }
 
-    function showClassTimeBanner() {
-      document.getElementById('class-time-banner').classList.remove('hidden');
-    }
-
-    function hideClassTimeBanner() {
-      document.getElementById('class-time-banner').classList.add('hidden');
-    }
+    // Class time banner removed - functions kept as no-ops for WS compatibility
+    function showClassTimeBanner() {}
+    function hideClassTimeBanner() {}
 
     function capitalize(str) {
       return str.charAt(0).toUpperCase() + str.slice(1);
@@ -2712,12 +2682,10 @@
 
       document.getElementById('teacher-badge').classList.remove('hidden');
 
-      const classTimeBtn = document.getElementById('class-time-btn');
       const reviewBtn = document.getElementById('teacher-review-btn');
       const timeAnalyticsBtn = document.getElementById('time-analytics-btn');
       const rosterBtn = document.getElementById('roster-btn');
 
-      if (classTimeBtn) classTimeBtn.style.display = 'flex';
       if (reviewBtn) reviewBtn.style.display = 'flex';
       if (timeAnalyticsBtn) timeAnalyticsBtn.style.display = 'flex';
       if (rosterBtn) rosterBtn.style.display = 'flex';
@@ -2828,24 +2796,6 @@
         document.getElementById('username-error').textContent = 'Could not verify password. Try again.';
         document.getElementById('username-error').classList.remove('hidden');
       }
-    });
-
-    // Class Time button (teacher only)
-    document.getElementById('class-time-btn').addEventListener('click', () => {
-      if (!classTime.isActive()) {
-        const goal = prompt('How many stars should students earn?', '3');
-        if (goal && !isNaN(goal)) {
-          classTime.setGoal(parseInt(goal));
-          classTime.start(true);
-          showClassTimeBanner();
-          document.getElementById('end-class-time-btn').classList.remove('hidden');
-        }
-      }
-    });
-
-    document.getElementById('end-class-time-btn').addEventListener('click', () => {
-      classTime.end(true);
-      hideClassTimeBanner();
     });
 
     // ==================== LEADERBOARD ====================
@@ -3645,16 +3595,6 @@
       document.getElementById('review-filter-pending').className = 'review-filter-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600';
       loadPendingReviews();
     });
-
-    // ==================== CLASS TIME ====================
-    classTime.onTimerUpdate = (time) => {
-      document.getElementById('class-time-timer').textContent = time;
-    };
-
-    classTime.onStarEarned = ({ total, goal, progress }) => {
-      document.getElementById('class-stars-earned').textContent = total;
-      document.getElementById('class-goal-bar').style.width = `${progress}%`;
-    };
 
     // ==================== LOAD CARTRIDGE ====================
     // Helper to get server provider preference from localStorage
@@ -4512,9 +4452,59 @@
       }
     }
 
+    // Reset ALL progression overrides for the current cartridge
+    async function resetAllProgressionOverrides() {
+      if (!currentCartridgeId) return;
+
+      const modes = platform.currentCartridge?.manifest?.modes;
+      if (!modes?.length) return;
+
+      // Check which modes have overrides
+      const modesWithOverrides = modes.filter(m => platform.gameEngine.hasOverride(m.id));
+      if (modesWithOverrides.length === 0) {
+        celebration.showToast('No overrides to reset', 'info');
+        return;
+      }
+
+      if (!confirm(`Reset ${modesWithOverrides.length} progression override(s) to manifest defaults?`)) {
+        return;
+      }
+
+      try {
+        const gameId = 'default';
+        let resetCount = 0;
+
+        // Delete each override individually (works with existing server endpoint)
+        for (const mode of modesWithOverrides) {
+          const resp = await fetch(`${SERVER_URL}/api/progression-overrides/${currentCartridgeId}/${mode.id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              password: teacherPassword,
+              gameId
+            })
+          });
+
+          if (resp.ok) {
+            platform.gameEngine.removeOverride(mode.id);
+            resetCount++;
+          }
+        }
+
+        renderModeTabs();
+        updateTeacherProgressionControls();
+
+        celebration.showToast(`Reset ${resetCount} override(s) to manifest defaults`, 'success');
+      } catch (err) {
+        console.error('[Progression] Reset all error:', err);
+        celebration.showToast('Failed to reset progression overrides', 'error');
+      }
+    }
+
     // Wire up teacher progression control buttons
     document.getElementById('save-gold-req-btn')?.addEventListener('click', saveProgressionOverride);
     document.getElementById('reset-gold-req-btn')?.addEventListener('click', resetProgressionOverride);
+    document.getElementById('reset-all-overrides-btn')?.addEventListener('click', resetAllProgressionOverrides);
 
     // ==================== ANIMATION CONTROLS ====================
     (function initAnimationControls() {

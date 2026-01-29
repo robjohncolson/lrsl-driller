@@ -77,7 +77,7 @@
       "id": "l03-obs-vs-exp",
       "name": "3.2b: Observational vs Experiment",
       "unlockedBy": {
-        "gold": 2
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -95,9 +95,9 @@
     },
     {
       "id": "l04-random-selection",
-      "name": "3.2c: Random Selection \u2192 Generalize",
+      "name": "3.2c: Random Selection → Generalize",
       "unlockedBy": {
-        "gold": 3
+        "gold": 1
       },
       "animation": "assets/RandomSelectionVsAssignment.mp4",
       "layout": {
@@ -122,9 +122,9 @@
     },
     {
       "id": "l05-random-assignment",
-      "name": "3.2d: Random Assignment \u2192 Causation",
+      "name": "3.2d: Random Assignment → Causation",
       "unlockedBy": {
-        "gold": 4
+        "gold": 1
       },
       "animation": "assets/RandomSelectionVsAssignment.mp4",
       "layout": {
@@ -151,7 +151,7 @@
       "id": "l06-scope-of-inference",
       "name": "3.2e: Scope of Inference (2x2)",
       "unlockedBy": {
-        "gold": 5
+        "gold": 1
       },
       "animation": "assets/RandomSelectionVsAssignment.mp4",
       "layout": {
@@ -181,7 +181,7 @@
       "id": "l07-srs-definition",
       "name": "3.3a: Simple Random Sample (SRS)",
       "unlockedBy": {
-        "gold": 6
+        "gold": 1
       },
       "animation": "assets/SimpleRandomSampleDefinition.mp4",
       "layout": {
@@ -205,7 +205,7 @@
       "id": "l08-stratified-definition",
       "name": "3.3b: Stratified Random Sample",
       "unlockedBy": {
-        "gold": 7
+        "gold": 1
       },
       "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
@@ -228,7 +228,7 @@
       "id": "l09-cluster-definition",
       "name": "3.3c: Cluster Random Sample",
       "unlockedBy": {
-        "gold": 8
+        "gold": 1
       },
       "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
@@ -251,7 +251,7 @@
       "id": "l10-strat-vs-cluster",
       "name": "3.3d: Stratified vs Cluster",
       "unlockedBy": {
-        "gold": 9
+        "gold": 1
       },
       "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
@@ -281,7 +281,7 @@
       "id": "l11-systematic-census",
       "name": "3.3e: Systematic & Census",
       "unlockedBy": {
-        "gold": 10
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -304,7 +304,7 @@
       "id": "l12-identify-method",
       "name": "3.3f: Identify the Method",
       "unlockedBy": {
-        "gold": 11
+        "gold": 1
       },
       "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
@@ -328,7 +328,7 @@
       "id": "l13-why-method",
       "name": "3.3g: Why This Method?",
       "unlockedBy": {
-        "gold": 12
+        "gold": 1
       },
       "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
@@ -358,7 +358,7 @@
       "id": "l14-capstone-sampling",
       "name": "3.3 Capstone: Sampling Methods",
       "unlockedBy": {
-        "gold": 13
+        "gold": 3
       },
       "layout": {
         "inputs": [
@@ -396,7 +396,7 @@
       "id": "l15-capstone-full",
       "name": "Unit 3.1-3.3 Capstone",
       "unlockedBy": {
-        "gold": 14
+        "gold": 3
       },
       "layout": {
         "inputs": [
@@ -446,7 +446,7 @@
       "id": "l16-sampling-bias",
       "name": "3.4a: Sampling Biases",
       "unlockedBy": {
-        "gold": 15
+        "gold": 1
       },
       "animation": "assets/SamplingBiasTypes.mp4",
       "layout": {
@@ -476,7 +476,7 @@
       "id": "l17-method-tradeoffs",
       "name": "3.4b: Choosing a Sampling Method",
       "unlockedBy": {
-        "gold": 16
+        "gold": 1
       },
       "animation": "assets/StratifiedVsCluster.mp4",
       "layout": {
@@ -506,7 +506,7 @@
       "id": "l18-large-sample",
       "name": "3.4c: Large Sample vs Representative Sample",
       "unlockedBy": {
-        "gold": 17
+        "gold": 1
       },
       "animation": "assets/LargeVsRepresentativeSample.mp4",
       "layout": {
@@ -555,9 +555,9 @@
       "whyGeneralize": "Random selection gives every member of the population a chance to be in the sample, making the sample representative.",
       "canCause": "Can we say X CAUSED Y? Only if treatments were RANDOMLY ASSIGNED (which is only possible in experiments).",
       "whyCause": "Random assignment balances confounding variables across groups, so differences can be attributed to the treatment.",
-      "generalize": "RANDOM SELECTION from population \u2192 can generalize. No random selection \u2192 can only describe those in the study.",
-      "causation": "RANDOM ASSIGNMENT of treatments \u2192 can establish causation. No random assignment (observational) \u2192 only association.",
-      "srsKey": "SRS: every GROUP of n individuals has equal chance. Not just every individual\u2014every possible combination!",
+      "generalize": "RANDOM SELECTION from population → can generalize. No random selection → can only describe those in the study.",
+      "causation": "RANDOM ASSIGNMENT of treatments → can establish causation. No random assignment (observational) → only association.",
+      "srsKey": "SRS: every GROUP of n individuals has equal chance. Not just every individual—every possible combination!",
       "stratKey": "Stratified: divide into homogeneous groups (strata), then take an SRS FROM EACH stratum.",
       "clusterKey": "Cluster: divide into groups (clusters), randomly select SOME clusters, then sample ALL individuals in selected clusters.",
       "stratFeature": "Stratified: uses ALL groups, takes SOME from each, works best with HOMOGENEOUS groups (similar within).",
@@ -567,12 +567,12 @@
       "methodId2": "Look for key phrases: 'from each' often means stratified. 'All in selected' often means cluster.",
       "advantage": "SRS: simple, unbiased. Stratified: ensures representation, reduces variability. Cluster: practical, cheaper. Systematic: easy to implement.",
       "capMethod": "First identify: Was it random? If so, how were individuals or groups selected?",
-      "capGeneralize": "Was the sample randomly selected from the population? If yes \u2192 can generalize. If no \u2192 cannot generalize.",
+      "capGeneralize": "Was the sample randomly selected from the population? If yes → can generalize. If no → cannot generalize.",
       "capWhy": "Random selection allows generalization because every member had a chance to be selected.",
       "studyType2": "Were treatments assigned by the researcher (experiment) or did they just observe existing conditions (observational)?",
       "capMethod2": "Identify the method of selection (for samples) or assignment (for experiments).",
-      "capGen2": "Random selection from population \u2192 generalizable. Convenience/volunteer \u2192 not generalizable.",
-      "capCause2": "Random assignment \u2192 causation possible. No random assignment \u2192 only association (even in experiments!).",
+      "capGen2": "Random selection from population → generalizable. Convenience/volunteer → not generalizable.",
+      "capCause2": "Random assignment → causation possible. No random assignment → only association (even in experiments!).",
       "biasType": "Identify the main bias: Voluntary response (people choose to respond), Undercoverage (some groups left out), Nonresponse (selected people don't respond), Response bias (question wording or lying/misreporting).",
       "biasExplain": "Explain HOW the method could skew results. Who is overrepresented or underrepresented? Or how could the wording/method change answers?",
       "methodChoice": "Pick the method that fits the situation: Stratified = sample from EACH group (better representation/precision). Cluster = select SOME groups and take all (cheaper/easier). Systematic = random start then every kth (easy). SRS = random from a complete list with no grouping.",
@@ -614,7 +614,7 @@
         "id": "l03-obs-vs-exp",
         "name": "3.2b",
         "unlockedBy": {
-          "gold": 2
+          "gold": 1
         },
         "celebrationMessage": "Key distinction! Next: random selection."
       },
@@ -622,23 +622,23 @@
         "id": "l04-random-selection",
         "name": "3.2c",
         "unlockedBy": {
-          "gold": 3
+          "gold": 1
         },
-        "celebrationMessage": "Random selection \u2192 generalize! Next: random assignment."
+        "celebrationMessage": "Random selection → generalize! Next: random assignment."
       },
       {
         "id": "l05-random-assignment",
         "name": "3.2d",
         "unlockedBy": {
-          "gold": 4
+          "gold": 1
         },
-        "celebrationMessage": "Random assignment \u2192 causation! Next: putting it together."
+        "celebrationMessage": "Random assignment → causation! Next: putting it together."
       },
       {
         "id": "l06-scope-of-inference",
         "name": "3.2e",
         "unlockedBy": {
-          "gold": 5
+          "gold": 1
         },
         "celebrationMessage": "You've mastered the 2x2! Now: sampling methods."
       },
@@ -646,7 +646,7 @@
         "id": "l07-srs-definition",
         "name": "3.3a",
         "unlockedBy": {
-          "gold": 6
+          "gold": 1
         },
         "celebrationMessage": "SRS mastered! Next: stratified."
       },
@@ -654,7 +654,7 @@
         "id": "l08-stratified-definition",
         "name": "3.3b",
         "unlockedBy": {
-          "gold": 7
+          "gold": 1
         },
         "celebrationMessage": "Stratified = from each! Next: cluster."
       },
@@ -662,7 +662,7 @@
         "id": "l09-cluster-definition",
         "name": "3.3c",
         "unlockedBy": {
-          "gold": 8
+          "gold": 1
         },
         "celebrationMessage": "Cluster = entire groups! Next: comparing them."
       },
@@ -670,7 +670,7 @@
         "id": "l10-strat-vs-cluster",
         "name": "3.3d",
         "unlockedBy": {
-          "gold": 9
+          "gold": 1
         },
         "celebrationMessage": "Key distinction! Next: systematic & census."
       },
@@ -678,7 +678,7 @@
         "id": "l11-systematic-census",
         "name": "3.3e",
         "unlockedBy": {
-          "gold": 10
+          "gold": 1
         },
         "celebrationMessage": "All methods learned! Time to practice."
       },
@@ -686,7 +686,7 @@
         "id": "l12-identify-method",
         "name": "3.3f",
         "unlockedBy": {
-          "gold": 11
+          "gold": 1
         },
         "celebrationMessage": "Nice identification! Next: advantages."
       },
@@ -694,7 +694,7 @@
         "id": "l13-why-method",
         "name": "3.3g",
         "unlockedBy": {
-          "gold": 12
+          "gold": 1
         },
         "celebrationMessage": "Strategic thinking! Sampling capstone next."
       },
@@ -702,7 +702,7 @@
         "id": "l14-capstone-sampling",
         "name": "3.3Cap",
         "unlockedBy": {
-          "gold": 13
+          "gold": 3
         },
         "celebrationMessage": "Sampling mastered! Final capstone."
       },
@@ -710,7 +710,7 @@
         "id": "l15-capstone-full",
         "name": "3.1-3.3 Capstone",
         "unlockedBy": {
-          "gold": 14
+          "gold": 3
         },
         "celebrationMessage": "Awesome work! Next: sampling biases and how to spot them."
       },
@@ -718,7 +718,7 @@
         "id": "l16-sampling-bias",
         "name": "3.4a",
         "unlockedBy": {
-          "gold": 15
+          "gold": 1
         },
         "celebrationMessage": "Bias spotted! Next: choosing the best sampling method."
       },
@@ -726,7 +726,7 @@
         "id": "l17-method-tradeoffs",
         "name": "3.4b",
         "unlockedBy": {
-          "gold": 16
+          "gold": 1
         },
         "celebrationMessage": "Great choices! Next: big sample vs representative sample."
       },
@@ -734,7 +734,7 @@
         "id": "l18-large-sample",
         "name": "3.4c",
         "unlockedBy": {
-          "gold": 17
+          "gold": 1
         },
         "celebrationMessage": "Unit 3 sampling COMPLETE! You can identify methods, bias, and scope of inference."
       }

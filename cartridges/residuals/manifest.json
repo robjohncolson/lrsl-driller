@@ -8,12 +8,14 @@
     "skill": "Calculate, interpret, and analyze residuals",
     "description": "Students work with residuals: calculation, interpretation, and pattern analysis"
   },
-
   "config": {
     "contextsFile": "contexts.json",
-    "skills": ["calculate", "interpret", "analyze"]
+    "skills": [
+      "calculate",
+      "interpret",
+      "analyze"
+    ]
   },
-
   "display": {
     "showGraph": true,
     "graphType": "dual",
@@ -24,13 +26,24 @@
       "highlightPoint": true
     },
     "infoPanel": [
-      { "label": "Topic", "value": "{{topic}}" },
-      { "label": "Equation", "value": "ŷ = {{intercept}} + {{slope}}x" },
-      { "label": "Selected Point", "value": "({{selectedX}}, {{selectedY}})" },
-      { "label": "Predicted", "value": "ŷ = {{predictedY}}" }
+      {
+        "label": "Topic",
+        "value": "{{topic}}"
+      },
+      {
+        "label": "Equation",
+        "value": "ŷ = {{intercept}} + {{slope}}x"
+      },
+      {
+        "label": "Selected Point",
+        "value": "({{selectedX}}, {{selectedY}})"
+      },
+      {
+        "label": "Predicted",
+        "value": "ŷ = {{predictedY}}"
+      }
     ]
   },
-
   "modes": [
     {
       "id": "calculate",
@@ -61,7 +74,9 @@
     {
       "id": "interpret",
       "name": "Interpret Residual",
-      "unlockedBy": { "gold": 5 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "graph": "scatterplot-with-highlight",
         "inputs": [
@@ -69,7 +84,10 @@
             "id": "overUnder",
             "label": "Overprediction or Underprediction?",
             "type": "choice",
-            "options": ["Overprediction", "Underprediction"]
+            "options": [
+              "Overprediction",
+              "Underprediction"
+            ]
           },
           {
             "id": "interpretation",
@@ -84,7 +102,9 @@
     {
       "id": "analyze",
       "name": "Analyze Pattern",
-      "unlockedBy": { "gold": 10 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "graph": "residual-plot",
         "inputs": [
@@ -92,13 +112,21 @@
             "id": "pattern",
             "label": "Pattern in Residual Plot",
             "type": "choice",
-            "options": ["Random scatter", "Curved pattern", "Fan shape", "Clusters"]
+            "options": [
+              "Random scatter",
+              "Curved pattern",
+              "Fan shape",
+              "Clusters"
+            ]
           },
           {
             "id": "appropriate",
             "label": "Is the linear model appropriate?",
             "type": "choice",
-            "options": ["Yes", "No"]
+            "options": [
+              "Yes",
+              "No"
+            ]
           },
           {
             "id": "explanation",
@@ -111,12 +139,15 @@
       }
     }
   ],
-
   "grading": {
     "rubricFile": "grading-rules.js",
     "aiPromptFile": "ai-grader-prompt.txt",
     "scoring": {
-      "scale": ["E", "P", "I"],
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
       "meanings": {
         "E": "Essentially Correct - accurate calculation/interpretation",
         "P": "Partially Correct - minor errors or incomplete explanation",
@@ -125,10 +156,14 @@
     },
     "composite": {
       "rule": "all-E-for-star",
-      "starTiers": ["gold", "silver", "bronze", "tin"]
+      "starTiers": [
+        "gold",
+        "silver",
+        "bronze",
+        "tin"
+      ]
     }
   },
-
   "hints": {
     "perField": {
       "predicted": "Substitute x = {{selectedX}} into the equation: ŷ = {{intercept}} + {{slope}}({{selectedX}})",
@@ -146,10 +181,11 @@
       "3": "tin"
     }
   },
-
   "progression": {
     "streaksPerField": false,
-    "streakFields": ["problem"],
+    "streakFields": [
+      "problem"
+    ],
     "tiers": [
       {
         "id": "calculate",
@@ -159,13 +195,17 @@
       {
         "id": "interpret",
         "name": "Interpret Mode",
-        "unlockedBy": { "gold": 5 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Interpret Mode Unlocked! You can now practice interpreting residuals."
       },
       {
         "id": "analyze",
         "name": "Analyze Mode",
-        "unlockedBy": { "gold": 10 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Analyze Mode Unlocked! Now master residual plot analysis."
       }
     ]

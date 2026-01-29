@@ -25,9 +25,18 @@
     "showGraph": false,
     "graphType": null,
     "infoPanel": [
-      { "label": "Topic", "value": "{{topicId}}" },
-      { "label": "Concept", "value": "{{problemText}}" },
-      { "label": "Scenario", "value": "{{givenText}}" }
+      {
+        "label": "Topic",
+        "value": "{{topicId}}"
+      },
+      {
+        "label": "Concept",
+        "value": "{{problemText}}"
+      },
+      {
+        "label": "Scenario",
+        "value": "{{givenText}}"
+      }
     ]
   },
   "modes": [
@@ -41,7 +50,12 @@
             "id": "vocabAnswer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -50,7 +64,9 @@
     {
       "id": "l02-outcome-event",
       "name": "4.2a: Outcomes vs Events",
-      "unlockedBy": { "gold": 1 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/OutcomeVsEvent.mp4",
       "layout": {
         "inputs": [
@@ -58,7 +74,10 @@
             "id": "termType",
             "type": "choice",
             "label": "This describes a(n):",
-            "options": ["Outcome", "Event"]
+            "options": [
+              "Outcome",
+              "Event"
+            ]
           }
         ]
       }
@@ -66,7 +85,9 @@
     {
       "id": "l03-independence",
       "name": "4.1b: Independence & Gambler's Fallacy",
-      "unlockedBy": { "gold": 2 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/GamblersFallacy.mp4",
       "layout": {
         "inputs": [
@@ -74,7 +95,10 @@
             "id": "independenceAnswer",
             "type": "choice",
             "label": "Is the reasoning correct?",
-            "options": ["Yes, the reasoning is correct", "No, the reasoning is flawed"]
+            "options": [
+              "Yes, the reasoning is correct",
+              "No, the reasoning is flawed"
+            ]
           }
         ]
       }
@@ -82,7 +106,9 @@
     {
       "id": "l04-streaks",
       "name": "4.1c: Streaks in Random Data",
-      "unlockedBy": { "gold": 3 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/StreaksAreNormal.mp4",
       "layout": {
         "inputs": [
@@ -90,7 +116,10 @@
             "id": "streakAnswer",
             "type": "choice",
             "label": "Is this surprising in truly random data?",
-            "options": ["Yes, this is surprising", "No, this is normal"]
+            "options": [
+              "Yes, this is surprising",
+              "No, this is normal"
+            ]
           }
         ]
       }
@@ -98,7 +127,9 @@
     {
       "id": "l05-simulation-vocab",
       "name": "4.2b: Simulation Definition",
-      "unlockedBy": { "gold": 4 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/SimulationDefinition.mp4",
       "layout": {
         "inputs": [
@@ -106,7 +137,12 @@
             "id": "simVocabAnswer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -115,7 +151,9 @@
     {
       "id": "l06-lln",
       "name": "4.2c: Law of Large Numbers",
-      "unlockedBy": { "gold": 5 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/LawOfLargeNumbers.mp4",
       "layout": {
         "inputs": [
@@ -123,7 +161,12 @@
             "id": "llnAnswer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -132,7 +175,9 @@
     {
       "id": "l07-digit-assignment",
       "name": "4.2d: Simulation Step 1 - Assign Digits",
-      "unlockedBy": { "gold": 6 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
@@ -157,14 +202,21 @@
     {
       "id": "l08-trial-definition",
       "name": "4.2e: Simulation Step 2 - Define Trial",
-      "unlockedBy": { "gold": 7 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
             "id": "trialAnswer",
             "type": "dropdown",
             "label": "What constitutes ONE trial?",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -173,7 +225,9 @@
     {
       "id": "l09-relative-frequency",
       "name": "4.2f: Simulation Step 3 - Calculate Probability",
-      "unlockedBy": { "gold": 8 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/RelativeFrequency.mp4",
       "layout": {
         "inputs": [
@@ -191,7 +245,9 @@
     {
       "id": "l10-simulation-design",
       "name": "4.2g: Full Simulation Design",
-      "unlockedBy": { "gold": 9 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
@@ -212,14 +268,21 @@
     {
       "id": "l11-capstone",
       "name": "4.1-4.2 Capstone",
-      "unlockedBy": { "gold": 10 },
+      "unlockedBy": {
+        "gold": 3
+      },
       "layout": {
         "inputs": [
           {
             "id": "capConcept",
             "type": "dropdown",
             "label": "Which concept best explains this?",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           },
           {
@@ -235,7 +298,9 @@
     {
       "id": "l12-sample-space",
       "name": "4.3a: Sample Space",
-      "unlockedBy": { "gold": 11 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/SampleSpaceIntro.mp4",
       "layout": {
         "inputs": [
@@ -243,7 +308,12 @@
             "id": "sampleSpaceAnswer",
             "type": "dropdown",
             "label": "What is the sample space?",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -252,7 +322,9 @@
     {
       "id": "l13-valid-probability",
       "name": "4.3b: Valid Probability Model",
-      "unlockedBy": { "gold": 12 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/SampleSpaceEnumeration.mp4",
       "layout": {
         "inputs": [
@@ -260,13 +332,21 @@
             "id": "validProbChoice",
             "type": "choice",
             "label": "Is this a valid probability model?",
-            "options": ["Yes, it is valid", "No, it is NOT valid"]
+            "options": [
+              "Yes, it is valid",
+              "No, it is NOT valid"
+            ]
           },
           {
             "id": "validProbReason",
             "type": "dropdown",
             "label": "Select the reason:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -275,7 +355,9 @@
     {
       "id": "l14-complement-rule",
       "name": "4.3c: Complement Rule",
-      "unlockedBy": { "gold": 13 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
@@ -292,7 +374,9 @@
     {
       "id": "l15-at-least-one",
       "name": "4.3d: At Least One",
-      "unlockedBy": { "gold": 14 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
@@ -309,14 +393,21 @@
     {
       "id": "l16-mixed-4-3",
       "name": "4.3 Mixed Practice",
-      "unlockedBy": { "gold": 15 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
             "id": "mixedAnswer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           },
           {
@@ -332,7 +423,9 @@
     {
       "id": "l17-mutually-exclusive-def",
       "name": "4.4a: Mutually Exclusive Definition",
-      "unlockedBy": { "gold": 16 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/MutuallyExclusiveDef.mp4",
       "layout": {
         "inputs": [
@@ -340,7 +433,12 @@
             "id": "meDefAnswer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -349,7 +447,9 @@
     {
       "id": "l18-joint-probability",
       "name": "4.4b: Joint Probability",
-      "unlockedBy": { "gold": 17 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/JointProbability.mp4",
       "layout": {
         "inputs": [
@@ -367,14 +467,19 @@
     {
       "id": "l19-identify-me",
       "name": "4.4c: Identify Mutually Exclusive",
-      "unlockedBy": { "gold": 18 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
             "id": "identifyMEAnswer",
             "type": "choice",
             "label": "Are these events mutually exclusive?",
-            "options": ["Yes, mutually exclusive", "No, NOT mutually exclusive"]
+            "options": [
+              "Yes, mutually exclusive",
+              "No, NOT mutually exclusive"
+            ]
           }
         ]
       }
@@ -382,7 +487,9 @@
     {
       "id": "l20-conditional-def",
       "name": "4.5a: Conditional Probability Definition",
-      "unlockedBy": { "gold": 19 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/ConditionalProbabilityRestriction.mp4",
       "layout": {
         "inputs": [
@@ -390,7 +497,12 @@
             "id": "condDefAnswer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -399,7 +511,9 @@
     {
       "id": "l21-conditional-table",
       "name": "4.5b: Conditional Probability from Tables",
-      "unlockedBy": { "gold": 20 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/ConditionalProbabilityRestriction.mp4",
       "layout": {
         "inputs": [
@@ -417,7 +531,9 @@
     {
       "id": "l22-multiplication-rule",
       "name": "4.5c: General Multiplication Rule",
-      "unlockedBy": { "gold": 21 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/ConditionalProbabilityRestriction.mp4",
       "layout": {
         "inputs": [
@@ -435,7 +551,9 @@
     {
       "id": "l23-order-matters",
       "name": "4.5d: Order Matters (P(A|B) vs P(B|A))",
-      "unlockedBy": { "gold": 22 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/ConditionalProbabilityRestriction.mp4",
       "layout": {
         "inputs": [
@@ -461,14 +579,21 @@
     {
       "id": "l24-mixed-4-4-5",
       "name": "4.4-4.5 Capstone",
-      "unlockedBy": { "gold": 23 },
+      "unlockedBy": {
+        "gold": 3
+      },
       "layout": {
         "inputs": [
           {
             "id": "capstone44Answer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           },
           {
@@ -484,7 +609,9 @@
     {
       "id": "l25-independent-def",
       "name": "4.6a: Independent Events Definition",
-      "unlockedBy": { "gold": 24 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/IndependentEventsDef.mp4",
       "layout": {
         "inputs": [
@@ -492,7 +619,12 @@
             "id": "indepDefAnswer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -501,7 +633,9 @@
     {
       "id": "l26-check-indep-conditional",
       "name": "4.6b: Check Independence (Conditional)",
-      "unlockedBy": { "gold": 25 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/IndependentVsMutuallyExclusive.mp4",
       "layout": {
         "inputs": [
@@ -509,7 +643,10 @@
             "id": "checkIndepCondAnswer",
             "type": "choice",
             "label": "Are these events independent?",
-            "options": ["Yes, they are independent", "No, they are NOT independent"]
+            "options": [
+              "Yes, they are independent",
+              "No, they are NOT independent"
+            ]
           }
         ]
       }
@@ -517,7 +654,9 @@
     {
       "id": "l27-check-indep-mult",
       "name": "4.6c: Check Independence (Multiplication)",
-      "unlockedBy": { "gold": 26 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/IndependentVsMutuallyExclusive.mp4",
       "layout": {
         "inputs": [
@@ -533,7 +672,10 @@
             "id": "checkIndepMultAnswer",
             "type": "choice",
             "label": "Are these events independent?",
-            "options": ["Yes, they are independent", "No, they are NOT independent"]
+            "options": [
+              "Yes, they are independent",
+              "No, they are NOT independent"
+            ]
           }
         ]
       }
@@ -541,7 +683,9 @@
     {
       "id": "l28-mult-rule-indep",
       "name": "4.6d: Multiplication Rule (Independent)",
-      "unlockedBy": { "gold": 27 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
@@ -558,7 +702,9 @@
     {
       "id": "l29-addition-rule-def",
       "name": "4.6e: Addition Rule Definition",
-      "unlockedBy": { "gold": 28 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/AdditionRuleDef.mp4",
       "layout": {
         "inputs": [
@@ -566,7 +712,12 @@
             "id": "addRuleDefAnswer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -575,7 +726,9 @@
     {
       "id": "l30-calculate-union",
       "name": "4.6f: Calculate Union",
-      "unlockedBy": { "gold": 29 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/AdditionRuleVennDiagram.mp4",
       "layout": {
         "inputs": [
@@ -593,7 +746,9 @@
     {
       "id": "l31-indep-vs-me",
       "name": "4.6g: Independent vs Mutually Exclusive",
-      "unlockedBy": { "gold": 30 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/IndependentVsMutuallyExclusive.mp4",
       "layout": {
         "inputs": [
@@ -601,7 +756,12 @@
             "id": "indepVsMeAnswer",
             "type": "choice",
             "label": "What is the relationship between these events?",
-            "options": ["Independent but NOT mutually exclusive", "Mutually exclusive but NOT independent", "Both independent AND mutually exclusive", "Neither independent NOR mutually exclusive"]
+            "options": [
+              "Independent but NOT mutually exclusive",
+              "Mutually exclusive but NOT independent",
+              "Both independent AND mutually exclusive",
+              "Neither independent NOR mutually exclusive"
+            ]
           }
         ]
       }
@@ -609,14 +769,21 @@
     {
       "id": "l32-mixed-4-6",
       "name": "4.6 Capstone",
-      "unlockedBy": { "gold": 31 },
+      "unlockedBy": {
+        "gold": 3
+      },
       "layout": {
         "inputs": [
           {
             "id": "capstone46Answer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           },
           {
@@ -632,14 +799,21 @@
     {
       "id": "l33-random-var-def",
       "name": "4.7a: Random Variable Definition",
-      "unlockedBy": { "gold": 32 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
             "id": "rvDefAnswer",
             "type": "dropdown",
             "label": "Select the correct answer:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -648,7 +822,9 @@
     {
       "id": "l34-discrete-continuous",
       "name": "4.7b: Discrete vs Continuous",
-      "unlockedBy": { "gold": 33 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/DiscreteContinuous.mp4",
       "layout": {
         "inputs": [
@@ -656,7 +832,10 @@
             "id": "discContAnswer",
             "type": "choice",
             "label": "Is this random variable discrete or continuous?",
-            "options": ["Discrete", "Continuous"]
+            "options": [
+              "Discrete",
+              "Continuous"
+            ]
           }
         ]
       }
@@ -664,7 +843,9 @@
     {
       "id": "l35-valid-prob-dist",
       "name": "4.7c: Valid Probability Distribution",
-      "unlockedBy": { "gold": 34 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/ValidProbDistribution.mp4",
       "layout": {
         "inputs": [
@@ -672,7 +853,10 @@
             "id": "validDistAnswer",
             "type": "choice",
             "label": "Is this a valid probability distribution?",
-            "options": ["Yes, valid", "No, invalid"]
+            "options": [
+              "Yes, valid",
+              "No, invalid"
+            ]
           }
         ]
       }
@@ -680,7 +864,9 @@
     {
       "id": "l36-prob-from-dist",
       "name": "4.7d: Probability from Distribution",
-      "unlockedBy": { "gold": 35 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/ProbabilityDistributionMetrics.mp4",
       "layout": {
         "inputs": [
@@ -698,7 +884,9 @@
     {
       "id": "l37-describe-dist",
       "name": "4.7e: Describe Distribution",
-      "unlockedBy": { "gold": 36 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/DescribeDistribution.mp4",
       "layout": {
         "inputs": [
@@ -706,7 +894,14 @@
             "id": "shapeAnswer",
             "type": "dropdown",
             "label": "What is the shape of this distribution?",
-            "options": ["Skewed right", "Skewed left", "Symmetric (bell-shaped)", "Uniform (symmetric)", "Symmetric (triangular)", "Extremely skewed right"],
+            "options": [
+              "Skewed right",
+              "Skewed left",
+              "Symmetric (bell-shaped)",
+              "Uniform (symmetric)",
+              "Symmetric (triangular)",
+              "Extremely skewed right"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -715,7 +910,9 @@
     {
       "id": "l38-mean-formula",
       "name": "4.8a: Mean (Expected Value)",
-      "unlockedBy": { "gold": 37 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/ProbabilityDistributionMetrics.mp4",
       "layout": {
         "inputs": [
@@ -731,7 +928,9 @@
     {
       "id": "l39-std-dev-formula",
       "name": "4.8b: Standard Deviation",
-      "unlockedBy": { "gold": 38 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "animation": "assets/ProbabilityDistributionMetrics.mp4",
       "layout": {
         "inputs": [
@@ -748,14 +947,21 @@
     {
       "id": "l40-interpret-params",
       "name": "4.7-4.8 Capstone",
-      "unlockedBy": { "gold": 39 },
+      "unlockedBy": {
+        "gold": 3
+      },
       "layout": {
         "inputs": [
           {
             "id": "interpretAnswer",
             "type": "dropdown",
             "label": "Select the correct interpretation:",
-            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
             "placeholder": "Choose..."
           }
         ]
@@ -766,7 +972,11 @@
     "rubricFile": "grading-rules.js",
     "aiPromptFile": "ai-grader-prompt.txt",
     "scoring": {
-      "scale": ["E", "P", "I"],
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
       "meanings": {
         "E": "Essentially Correct",
         "P": "Partially Correct",
@@ -835,7 +1045,11 @@
   },
   "progression": {
     "streaksPerField": false,
-    "streakFields": ["vocabAnswer", "termType", "llnAnswer"],
+    "streakFields": [
+      "vocabAnswer",
+      "termType",
+      "llnAnswer"
+    ],
     "tiers": [
       {
         "id": "l01-random-process",
@@ -846,235 +1060,313 @@
       {
         "id": "l02-outcome-event",
         "name": "4.2a",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Outcomes vs events - got it! Next: independence."
       },
       {
         "id": "l03-independence",
         "name": "4.1b",
-        "unlockedBy": { "gold": 2 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You caught the gambler's fallacy! Next: streaks."
       },
       {
         "id": "l04-streaks",
         "name": "4.1c",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Streaks are normal! Next: simulation basics."
       },
       {
         "id": "l05-simulation-vocab",
         "name": "4.2b",
-        "unlockedBy": { "gold": 4 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Simulation understood! Next: Law of Large Numbers."
       },
       {
         "id": "l06-lln",
         "name": "4.2c",
-        "unlockedBy": { "gold": 5 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "LLN mastered! Now: designing simulations."
       },
       {
         "id": "l07-digit-assignment",
         "name": "4.2d",
-        "unlockedBy": { "gold": 6 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Digit assignment down! Next: defining trials."
       },
       {
         "id": "l08-trial-definition",
         "name": "4.2e",
-        "unlockedBy": { "gold": 7 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Trials defined! Next: calculating probability."
       },
       {
         "id": "l09-relative-frequency",
         "name": "4.2f",
-        "unlockedBy": { "gold": 8 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Probability calculated! Next: full simulation design."
       },
       {
         "id": "l10-simulation-design",
         "name": "4.2g",
-        "unlockedBy": { "gold": 9 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can design simulations! Final capstone next."
       },
       {
         "id": "l11-capstone",
         "name": "Capstone",
-        "unlockedBy": { "gold": 10 },
+        "unlockedBy": {
+          "gold": 3
+        },
         "celebrationMessage": "Unit 4.1-4.2 COMPLETE! Now onto probability rules..."
       },
       {
         "id": "l12-sample-space",
         "name": "4.3a",
-        "unlockedBy": { "gold": 11 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Sample spaces mastered! Next: valid probability models."
       },
       {
         "id": "l13-valid-probability",
         "name": "4.3b",
-        "unlockedBy": { "gold": 12 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can check probability models! Next: complement rule."
       },
       {
         "id": "l14-complement-rule",
         "name": "4.3c",
-        "unlockedBy": { "gold": 13 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Complement rule down! Next: 'at least one' problems."
       },
       {
         "id": "l15-at-least-one",
         "name": "4.3d",
-        "unlockedBy": { "gold": 14 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "At least one - conquered! Final challenge: mixed practice."
       },
       {
         "id": "l16-mixed-4-3",
         "name": "4.3 Mixed",
-        "unlockedBy": { "gold": 15 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Topics 4.1-4.3 complete! Now onto mutually exclusive events..."
       },
       {
         "id": "l17-mutually-exclusive-def",
         "name": "4.4a",
-        "unlockedBy": { "gold": 16 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Mutually exclusive understood! Next: joint probability."
       },
       {
         "id": "l18-joint-probability",
         "name": "4.4b",
-        "unlockedBy": { "gold": 17 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Joint probability mastered! Next: identifying mutually exclusive events."
       },
       {
         "id": "l19-identify-me",
         "name": "4.4c",
-        "unlockedBy": { "gold": 18 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can identify ME events! Now onto conditional probability..."
       },
       {
         "id": "l20-conditional-def",
         "name": "4.5a",
-        "unlockedBy": { "gold": 19 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Conditional probability notation learned! Next: tables."
       },
       {
         "id": "l21-conditional-table",
         "name": "4.5b",
-        "unlockedBy": { "gold": 20 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Tables conquered! Next: multiplication rule."
       },
       {
         "id": "l22-multiplication-rule",
         "name": "4.5c",
-        "unlockedBy": { "gold": 21 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Multiplication rule mastered! Next: order matters."
       },
       {
         "id": "l23-order-matters",
         "name": "4.5d",
-        "unlockedBy": { "gold": 22 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You understand that order matters! Final capstone next."
       },
       {
         "id": "l24-mixed-4-4-5",
         "name": "4.4-4.5 Capstone",
-        "unlockedBy": { "gold": 23 },
+        "unlockedBy": {
+          "gold": 3
+        },
         "celebrationMessage": "Topics 4.4-4.5 complete! Now onto independent events and unions..."
       },
       {
         "id": "l25-independent-def",
         "name": "4.6a",
-        "unlockedBy": { "gold": 24 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Independence defined! Next: checking independence with conditionals."
       },
       {
         "id": "l26-check-indep-conditional",
         "name": "4.6b",
-        "unlockedBy": { "gold": 25 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Conditional method down! Next: multiplication method."
       },
       {
         "id": "l27-check-indep-mult",
         "name": "4.6c",
-        "unlockedBy": { "gold": 26 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Both methods mastered! Next: calculating with independent events."
       },
       {
         "id": "l28-mult-rule-indep",
         "name": "4.6d",
-        "unlockedBy": { "gold": 27 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Multiplication for independent events done! Next: addition rule."
       },
       {
         "id": "l29-addition-rule-def",
         "name": "4.6e",
-        "unlockedBy": { "gold": 28 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Addition rule learned! Next: calculating unions."
       },
       {
         "id": "l30-calculate-union",
         "name": "4.6f",
-        "unlockedBy": { "gold": 29 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Unions calculated! Next: independent vs mutually exclusive."
       },
       {
         "id": "l31-indep-vs-me",
         "name": "4.6g",
-        "unlockedBy": { "gold": 30 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Key distinction mastered! Final capstone next."
       },
       {
         "id": "l32-mixed-4-6",
         "name": "4.6 Capstone",
-        "unlockedBy": { "gold": 31 },
+        "unlockedBy": {
+          "gold": 3
+        },
         "celebrationMessage": "Topics 4.1-4.6 complete! Now onto random variables..."
       },
       {
         "id": "l33-random-var-def",
         "name": "4.7a",
-        "unlockedBy": { "gold": 32 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Random variables defined! Next: discrete vs continuous."
       },
       {
         "id": "l34-discrete-continuous",
         "name": "4.7b",
-        "unlockedBy": { "gold": 33 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Discrete vs continuous mastered! Next: valid distributions."
       },
       {
         "id": "l35-valid-prob-dist",
         "name": "4.7c",
-        "unlockedBy": { "gold": 34 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Validity checks down! Next: calculating from distributions."
       },
       {
         "id": "l36-prob-from-dist",
         "name": "4.7d",
-        "unlockedBy": { "gold": 35 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Probability calculations done! Next: describing distributions."
       },
       {
         "id": "l37-describe-dist",
         "name": "4.7e",
-        "unlockedBy": { "gold": 36 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Distribution descriptions mastered! Now onto expected value..."
       },
       {
         "id": "l38-mean-formula",
         "name": "4.8a",
-        "unlockedBy": { "gold": 37 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Expected value calculated! Next: standard deviation."
       },
       {
         "id": "l39-std-dev-formula",
         "name": "4.8b",
-        "unlockedBy": { "gold": 38 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Standard deviation mastered! Final capstone next."
       },
       {
         "id": "l40-interpret-params",
         "name": "4.7-4.8 Capstone",
-        "unlockedBy": { "gold": 39 },
+        "unlockedBy": {
+          "gold": 3
+        },
         "celebrationMessage": "UNIT 4.1-4.8 COMPLETE! You've mastered probability AND random variables!"
       }
     ]

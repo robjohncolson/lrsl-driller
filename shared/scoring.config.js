@@ -44,7 +44,7 @@ const SCORING_CONFIG = {
   },
 
   // Unlock requirements
-  goldToUnlock: 3  // Gold stars needed to unlock next level
+  goldToUnlock: 1  // Gold stars needed to unlock next level (default, manifests can override)
 };
 
 /**

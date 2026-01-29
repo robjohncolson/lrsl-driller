@@ -10,7 +10,14 @@
   },
   "config": {
     "contextsFile": "contexts.json",
-    "skills": ["zscore-calculation", "slope-calculation", "intercept-calculation", "standard-deviation", "full-lsrl", "zscore-comparison"]
+    "skills": [
+      "zscore-calculation",
+      "slope-calculation",
+      "intercept-calculation",
+      "standard-deviation",
+      "full-lsrl",
+      "zscore-comparison"
+    ]
   },
   "display": {
     "showGraph": true,
@@ -24,8 +31,14 @@
       "stdDev": "s = √[Σ(xᵢ − x̄)² / (n − 1)]"
     },
     "infoPanel": [
-      { "label": "Mode", "value": "{{modeName}}" },
-      { "label": "Problem", "value": "{{problemNumber}} of {{totalProblems}}" }
+      {
+        "label": "Mode",
+        "value": "{{modeName}}"
+      },
+      {
+        "label": "Problem",
+        "value": "{{problemNumber}} of {{totalProblems}}"
+      }
     ]
   },
   "modes": [
@@ -38,9 +51,21 @@
       "graphType": "normal-curve",
       "layout": {
         "given": [
-          { "id": "x", "label": "x (value)", "format": "decimal1" },
-          { "id": "mean", "label": "μ (mean)", "format": "decimal1" },
-          { "id": "sd", "label": "σ (std dev)", "format": "decimal1" }
+          {
+            "id": "x",
+            "label": "x (value)",
+            "format": "decimal1"
+          },
+          {
+            "id": "mean",
+            "label": "μ (mean)",
+            "format": "decimal1"
+          },
+          {
+            "id": "sd",
+            "label": "σ (std dev)",
+            "format": "decimal1"
+          }
         ],
         "inputs": [
           {
@@ -58,16 +83,30 @@
     {
       "id": "find-raw",
       "name": "Find Raw Value from Z",
-      "unlockedBy": { "gold": 2 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "description": "Given a z-score, mean, and standard deviation, find the original value",
       "celebrationMessage": "📊 Find Raw Value Unlocked! Work the formula backwards.",
       "showGraph": true,
       "graphType": "normal-curve",
       "layout": {
         "given": [
-          { "id": "zscore", "label": "z", "format": "decimal2" },
-          { "id": "mean", "label": "μ (mean)", "format": "decimal1" },
-          { "id": "sd", "label": "σ (std dev)", "format": "decimal1" }
+          {
+            "id": "zscore",
+            "label": "z",
+            "format": "decimal2"
+          },
+          {
+            "id": "mean",
+            "label": "μ (mean)",
+            "format": "decimal1"
+          },
+          {
+            "id": "sd",
+            "label": "σ (std dev)",
+            "format": "decimal1"
+          }
         ],
         "inputs": [
           {
@@ -85,17 +124,43 @@
     {
       "id": "compare-zscores",
       "name": "Compare Z-Scores",
-      "unlockedBy": { "gold": 4 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "description": "Compare two values from different distributions using z-scores",
       "celebrationMessage": "🎯 Compare Z-Scores Unlocked! Master of standardization.",
       "layout": {
         "given": [
-          { "id": "x1", "label": "Value A", "format": "decimal1" },
-          { "id": "mean1", "label": "Mean A", "format": "decimal1" },
-          { "id": "sd1", "label": "Std Dev A", "format": "decimal1" },
-          { "id": "x2", "label": "Value B", "format": "decimal1" },
-          { "id": "mean2", "label": "Mean B", "format": "decimal1" },
-          { "id": "sd2", "label": "Std Dev B", "format": "decimal1" }
+          {
+            "id": "x1",
+            "label": "Value A",
+            "format": "decimal1"
+          },
+          {
+            "id": "mean1",
+            "label": "Mean A",
+            "format": "decimal1"
+          },
+          {
+            "id": "sd1",
+            "label": "Std Dev A",
+            "format": "decimal1"
+          },
+          {
+            "id": "x2",
+            "label": "Value B",
+            "format": "decimal1"
+          },
+          {
+            "id": "mean2",
+            "label": "Mean B",
+            "format": "decimal1"
+          },
+          {
+            "id": "sd2",
+            "label": "Std Dev B",
+            "format": "decimal1"
+          }
         ],
         "inputs": [
           {
@@ -121,9 +186,18 @@
             "label": "Which is more extreme?",
             "type": "select",
             "options": [
-              { "value": "A", "label": "A is more extreme" },
-              { "value": "B", "label": "B is more extreme" },
-              { "value": "same", "label": "They are equally extreme" }
+              {
+                "value": "A",
+                "label": "A is more extreme"
+              },
+              {
+                "value": "B",
+                "label": "B is more extreme"
+              },
+              {
+                "value": "same",
+                "label": "They are equally extreme"
+              }
             ],
             "order": 3
           }
@@ -139,9 +213,21 @@
       "graphType": "scatterplot",
       "layout": {
         "given": [
-          { "id": "r", "label": "r", "format": "decimal3" },
-          { "id": "sx", "label": "sₓ", "format": "decimal2" },
-          { "id": "sy", "label": "sᵧ", "format": "decimal2" }
+          {
+            "id": "r",
+            "label": "r",
+            "format": "decimal3"
+          },
+          {
+            "id": "sx",
+            "label": "sₓ",
+            "format": "decimal2"
+          },
+          {
+            "id": "sy",
+            "label": "sᵧ",
+            "format": "decimal2"
+          }
         ],
         "inputs": [
           {
@@ -165,9 +251,21 @@
       "graphType": "scatterplot",
       "layout": {
         "given": [
-          { "id": "xBar", "label": "x̄", "format": "decimal2" },
-          { "id": "yBar", "label": "ȳ", "format": "decimal2" },
-          { "id": "b", "label": "b", "format": "decimal3" }
+          {
+            "id": "xBar",
+            "label": "x̄",
+            "format": "decimal2"
+          },
+          {
+            "id": "yBar",
+            "label": "ȳ",
+            "format": "decimal2"
+          },
+          {
+            "id": "b",
+            "label": "b",
+            "format": "decimal3"
+          }
         ],
         "inputs": [
           {
@@ -185,17 +283,39 @@
     {
       "id": "full-lsrl",
       "name": "Full LSRL Equation",
-      "unlockedBy": { "gold": 7 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "description": "Given summary statistics, find both b and a",
       "celebrationMessage": "🎉 Full LSRL Mode Unlocked! You've mastered the individual formulas.",
       "showGraph": false,
       "layout": {
         "given": [
-          { "id": "r", "label": "r", "format": "decimal3" },
-          { "id": "sx", "label": "sₓ", "format": "decimal2" },
-          { "id": "sy", "label": "sᵧ", "format": "decimal2" },
-          { "id": "xBar", "label": "x̄", "format": "decimal2" },
-          { "id": "yBar", "label": "ȳ", "format": "decimal2" }
+          {
+            "id": "r",
+            "label": "r",
+            "format": "decimal3"
+          },
+          {
+            "id": "sx",
+            "label": "sₓ",
+            "format": "decimal2"
+          },
+          {
+            "id": "sy",
+            "label": "sᵧ",
+            "format": "decimal2"
+          },
+          {
+            "id": "xBar",
+            "label": "x̄",
+            "format": "decimal2"
+          },
+          {
+            "id": "yBar",
+            "label": "ȳ",
+            "format": "decimal2"
+          }
         ],
         "inputs": [
           {
@@ -226,14 +346,25 @@
     {
       "id": "std-dev",
       "name": "Standard Deviation",
-      "unlockedBy": { "gold": 5 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "description": "Step-by-step: calculate sample standard deviation",
       "celebrationMessage": "📊 Standard Deviation Mode Unlocked!",
       "showGraph": false,
       "layout": {
         "given": [
-          { "id": "dataset", "label": "Data", "format": "array", "display": "inline" },
-          { "id": "n", "label": "n", "format": "integer" }
+          {
+            "id": "dataset",
+            "label": "Data",
+            "format": "array",
+            "display": "inline"
+          },
+          {
+            "id": "n",
+            "label": "n",
+            "format": "integer"
+          }
         ],
         "inputs": [
           {
@@ -307,7 +438,11 @@
       "showGraph": false,
       "layout": {
         "given": [
-          { "id": "r", "label": "r", "format": "decimal3" }
+          {
+            "id": "r",
+            "label": "r",
+            "format": "decimal3"
+          }
         ],
         "inputs": [
           {
@@ -315,9 +450,18 @@
             "label": "The slope b will be:",
             "type": "multiple-choice",
             "options": [
-              { "id": "positive", "label": "Positive (+)" },
-              { "id": "negative", "label": "Negative (−)" },
-              { "id": "zero", "label": "Zero (0)" }
+              {
+                "id": "positive",
+                "label": "Positive (+)"
+              },
+              {
+                "id": "negative",
+                "label": "Negative (−)"
+              },
+              {
+                "id": "zero",
+                "label": "Zero (0)"
+              }
             ]
           }
         ]
@@ -326,15 +470,29 @@
     {
       "id": "ratio-check",
       "name": "Ratio Reasoning",
-      "unlockedBy": { "gold": 3 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "description": "Understand how sᵧ/sₓ affects the slope",
       "celebrationMessage": "🧠 Ratio Reasoning Unlocked!",
       "showGraph": false,
       "layout": {
         "given": [
-          { "id": "r", "label": "r", "format": "decimal3" },
-          { "id": "sx", "label": "sₓ", "format": "decimal2" },
-          { "id": "sy", "label": "sᵧ", "format": "decimal2" }
+          {
+            "id": "r",
+            "label": "r",
+            "format": "decimal3"
+          },
+          {
+            "id": "sx",
+            "label": "sₓ",
+            "format": "decimal2"
+          },
+          {
+            "id": "sy",
+            "label": "sᵧ",
+            "format": "decimal2"
+          }
         ],
         "inputs": [
           {
@@ -350,10 +508,22 @@
             "label": "The relationship:",
             "type": "multiple-choice",
             "options": [
-              { "id": "r", "label": "b = r" },
-              { "id": "2r", "label": "b = 2r" },
-              { "id": "r/2", "label": "b = r/2" },
-              { "id": "3r", "label": "b = 3r" }
+              {
+                "id": "r",
+                "label": "b = r"
+              },
+              {
+                "id": "2r",
+                "label": "b = 2r"
+              },
+              {
+                "id": "r/2",
+                "label": "b = r/2"
+              },
+              {
+                "id": "3r",
+                "label": "b = 3r"
+              }
             ]
           }
         ]
@@ -364,7 +534,11 @@
     "rubricFile": "grading-rules.js",
     "aiPromptFile": "ai-grader-prompt.txt",
     "scoring": {
-      "scale": ["E", "P", "I"],
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
       "meanings": {
         "E": "Essentially Correct - within acceptable tolerance",
         "P": "Partially Correct - minor rounding/arithmetic error",
@@ -372,13 +546,27 @@
       }
     },
     "tolerances": {
-      "tight": { "absolute": 0.01, "relative": 0.01 },
-      "standard": { "absolute": 0.05, "relative": 0.02 },
-      "loose": { "absolute": 0.1, "relative": 0.05 }
+      "tight": {
+        "absolute": 0.01,
+        "relative": 0.01
+      },
+      "standard": {
+        "absolute": 0.05,
+        "relative": 0.02
+      },
+      "loose": {
+        "absolute": 0.1,
+        "relative": 0.05
+      }
     },
     "composite": {
       "rule": "all-E-for-star",
-      "starTiers": ["gold", "silver", "bronze", "tin"]
+      "starTiers": [
+        "gold",
+        "silver",
+        "bronze",
+        "tin"
+      ]
     }
   },
   "hints": {
@@ -433,31 +621,41 @@
       {
         "id": "find-raw",
         "name": "Find Raw Value from Z",
-        "unlockedBy": { "gold": 2 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "📊 Find Raw Value Unlocked! Work the formula backwards."
       },
       {
         "id": "ratio-check",
         "name": "Ratio Reasoning",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "🧠 Ratio Reasoning Unlocked! You're seeing the deeper patterns."
       },
       {
         "id": "compare-zscores",
         "name": "Compare Z-Scores",
-        "unlockedBy": { "gold": 4 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "🎯 Compare Z-Scores Unlocked! Master of standardization."
       },
       {
         "id": "std-dev",
         "name": "Standard Deviation",
-        "unlockedBy": { "gold": 5 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "📊 Standard Deviation Mode Unlocked! Time to measure spread."
       },
       {
         "id": "full-lsrl",
         "name": "Full LSRL Equation",
-        "unlockedBy": { "gold": 7 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "🎉 Full LSRL Mode Unlocked! Put it all together."
       }
     ]

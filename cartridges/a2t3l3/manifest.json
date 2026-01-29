@@ -64,7 +64,7 @@
       "id": "l01b-identity-flashcards",
       "name": "Level 1b: Identity Flashcards",
       "unlockedBy": {
-        "gold": 2
+        "gold": 1
       },
       "animation": "assets/IdentityFlashcards.mp4",
       "layout": {
@@ -88,7 +88,7 @@
       "id": "l02-rewrite-choice",
       "name": "Level 2: Rewrite Using an Identity",
       "unlockedBy": {
-        "gold": 2
+        "gold": 1
       },
       "animation": "assets/RewriteIdentity.mp4",
       "layout": {
@@ -112,7 +112,7 @@
       "id": "l03-numeric-shortcuts",
       "name": "Level 3: Numeric Shortcuts with Identities",
       "unlockedBy": {
-        "gold": 2
+        "gold": 1
       },
       "animation": "assets/NumericShortcuts.mp4",
       "layout": {
@@ -132,7 +132,7 @@
       "id": "l04-factor-polynomials",
       "name": "Level 4: Factor (and Extend to Complex Numbers)",
       "unlockedBy": {
-        "gold": 3
+        "gold": 1
       },
       "animation": "assets/FactorPolynomials.mp4",
       "layout": {
@@ -150,7 +150,7 @@
       "id": "l05-pascal-patterns",
       "name": "Level 5: Pascal's Triangle & Binomial Coefficients",
       "unlockedBy": {
-        "gold": 3
+        "gold": 1
       },
       "animation": "assets/PascalPatterns.mp4",
       "layout": {
@@ -177,7 +177,7 @@
       "id": "l06-binomial-term-error",
       "name": "Level 6: Binomial Term Finder (Error Analysis)",
       "unlockedBy": {
-        "gold": 3
+        "gold": 1
       },
       "animation": "assets/BinomialTermFinder.mp4",
       "layout": {
@@ -270,7 +270,7 @@
         "id": "l01b-identity-flashcards",
         "name": "1b",
         "unlockedBy": {
-          "gold": 2
+          "gold": 1
         },
         "celebrationMessage": "Formulas memorized! Now apply them to rewrite expressions."
       },
@@ -278,7 +278,7 @@
         "id": "l02-rewrite-choice",
         "name": "02",
         "unlockedBy": {
-          "gold": 2
+          "gold": 1
         },
         "celebrationMessage": "Great! Now let's use identities to compute quickly."
       },
@@ -286,7 +286,7 @@
         "id": "l03-numeric-shortcuts",
         "name": "03",
         "unlockedBy": {
-          "gold": 2
+          "gold": 1
         },
         "celebrationMessage": "Solid number sense. Next: factor polynomials with identities."
       },
@@ -294,7 +294,7 @@
         "id": "l04-factor-polynomials",
         "name": "04",
         "unlockedBy": {
-          "gold": 3
+          "gold": 1
         },
         "celebrationMessage": "Factoring unlocked! Next: Pascal’s Triangle and binomial coefficients."
       },
@@ -302,7 +302,7 @@
         "id": "l05-pascal-patterns",
         "name": "05",
         "unlockedBy": {
-          "gold": 3
+          "gold": 1
         },
         "celebrationMessage": "You’ve got the coefficients and patterns. Final level: term-finding + error analysis."
       },
@@ -310,7 +310,7 @@
         "id": "l06-binomial-term-error",
         "name": "06",
         "unlockedBy": {
-          "gold": 3
+          "gold": 1
         },
         "celebrationMessage": "Capstone complete! You can use structure, coefficients, and reasoning to avoid common errors."
       }

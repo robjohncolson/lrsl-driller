@@ -1,14 +1,14 @@
 {
   "meta": {
     "id": "mit-6-0001-lec1",
-    "name": "MIT 6.0001 Lecture 1 \u2014 What is Computation?",
+    "name": "MIT 6.0001 Lecture 1 — What is Computation?",
     "subject": "Computer Science / Python",
     "description": "Drills core ideas from MIT 6.0001 Lecture 1: computation, declarative vs imperative knowledge, what an algorithm needs, language aspects (syntax/static semantics/semantics), and Python basics (types, casting, operators, printing, bindings)."
   },
   "modes": [
     {
       "id": "L01-computation-basics",
-      "name": "Level 1 \u2014 Computation Basics",
+      "name": "Level 1 — Computation Basics",
       "unlockedBy": "default",
       "layout": {
         "inputs": [
@@ -39,9 +39,9 @@
     },
     {
       "id": "L02-knowledge-algorithms",
-      "name": "Level 2 \u2014 Knowledge & Algorithms",
+      "name": "Level 2 — Knowledge & Algorithms",
       "unlockedBy": {
-        "gold": 3
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -70,9 +70,9 @@
     },
     {
       "id": "L03-language-aspects-errors",
-      "name": "Level 3 \u2014 Language Aspects & Error Types",
+      "name": "Level 3 — Language Aspects & Error Types",
       "unlockedBy": {
-        "gold": 6
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -103,9 +103,9 @@
     },
     {
       "id": "L04-python-basics-drill",
-      "name": "Level 4 \u2014 Python Basics Drill",
+      "name": "Level 4 — Python Basics Drill",
       "unlockedBy": {
-        "gold": 9
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -165,19 +165,19 @@
       {
         "id": "L02-knowledge-algorithms",
         "unlockedBy": {
-          "gold": 3
+          "gold": 1
         }
       },
       {
         "id": "L03-language-aspects-errors",
         "unlockedBy": {
-          "gold": 6
+          "gold": 1
         }
       },
       {
         "id": "L04-python-basics-drill",
         "unlockedBy": {
-          "gold": 9
+          "gold": 1
         }
       }
     ]

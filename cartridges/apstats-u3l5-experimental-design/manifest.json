@@ -25,7 +25,7 @@
       "id": "L02",
       "name": "Level 2 - Scenario Check",
       "unlockedBy": {
-        "gold": 3
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -41,7 +41,7 @@
           {
             "id": "justification",
             "type": "textarea",
-            "label": "Justification (1\u20133 sentences)",
+            "label": "Justification (1–3 sentences)",
             "placeholder": "Use experiment vocabulary (random assignment, comparison/control, replication, confounding, etc.)",
             "rows": 3
           }
@@ -52,7 +52,7 @@
       "id": "L03",
       "name": "Level 3 - Free Response",
       "unlockedBy": {
-        "gold": 6
+        "gold": 1
       },
       "layout": {
         "inputs": [
@@ -73,10 +73,10 @@
   },
   "hints": {
     "perField": {
-      "answer": "Focus on Topic 3.5 vocabulary: experimental units, explanatory (factor) vs response variable, treatments, confounding. For MCQ-style prompts, type the letter A\u2013E.",
+      "answer": "Focus on Topic 3.5 vocabulary: experimental units, explanatory (factor) vs response variable, treatments, confounding. For MCQ-style prompts, type the letter A–E.",
       "decision": "Choose **Yes** only if the design supports the claim being asked (e.g., causation requires random assignment + comparison). Otherwise choose **No**.",
       "justification": "Support your decision with a specific design principle: comparison/control group, random assignment, replication, and/or control of confounding variables. Use the words *random assignment* (not random selection) when talking about causation.",
-      "response": "Include key elements of experimental design: treatments, experimental units, random assignment, what response is measured, and how confounding is controlled. If asked about random selection vs assignment: selection \u2192 generalize; assignment \u2192 causation."
+      "response": "Include key elements of experimental design: treatments, experimental units, random assignment, what response is measured, and how confounding is controlled. If asked about random selection vs assignment: selection → generalize; assignment → causation."
     }
   },
   "progression": {
@@ -94,13 +94,13 @@
       {
         "id": "L02",
         "unlockedBy": {
-          "gold": 3
+          "gold": 1
         }
       },
       {
         "id": "L03",
         "unlockedBy": {
-          "gold": 6
+          "gold": 1
         }
       }
     ]

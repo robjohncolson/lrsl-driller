@@ -7,20 +7,25 @@
     "skill": "Simplify radical expressions",
     "description": "Learn to simplify radicals by visualizing perfect square factors"
   },
-
   "config": {
     "sharedContexts": null,
-    "skills": ["simplify-radicals"]
+    "skills": [
+      "simplify-radicals"
+    ]
   },
-
   "display": {
     "showGraph": false,
     "infoPanel": [
-      { "label": "Problem Type", "value": "{{problemType}}" },
-      { "label": "Expression", "value": "{{expression}}" }
+      {
+        "label": "Problem Type",
+        "value": "{{problemType}}"
+      },
+      {
+        "label": "Expression",
+        "value": "{{expression}}"
+      }
     ]
   },
-
   "modes": [
     {
       "id": "simplify-radicals",
@@ -39,7 +44,9 @@
     {
       "id": "simplify-radicals-hard",
       "name": "Level 2: Prime Factorization",
-      "unlockedBy": { "gold": 25 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
@@ -53,7 +60,9 @@
     {
       "id": "simplify-radicals-typed",
       "name": "Level 3: No Scaffolding",
-      "unlockedBy": { "gold": 40 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
@@ -61,7 +70,20 @@
             "type": "dropdown",
             "label": "Simplify √{{radicand}} — Coefficient (number outside √):",
             "placeholder": "Select coefficient...",
-            "options": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12"
+            ]
           },
           {
             "id": "typed-radicand",
@@ -75,7 +97,9 @@
     {
       "id": "simplify-radicals-complex",
       "name": "Level 4: Complex Numbers",
-      "unlockedBy": { "gold": 55 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
@@ -89,7 +113,9 @@
     {
       "id": "simplify-radicals-complex-typed",
       "name": "Level 5: Complex No Scaffolding",
-      "unlockedBy": { "gold": 70 },
+      "unlockedBy": {
+        "gold": 1
+      },
       "layout": {
         "inputs": [
           {
@@ -97,14 +123,30 @@
             "type": "dropdown",
             "label": "Simplify √{{radicand}} — Does the answer have i?",
             "placeholder": "Select...",
-            "options": ["No (positive radicand)", "Yes (negative radicand)"]
+            "options": [
+              "No (positive radicand)",
+              "Yes (negative radicand)"
+            ]
           },
           {
             "id": "typed-complex-coefficient",
             "type": "dropdown",
             "label": "Coefficient (number outside √):",
             "placeholder": "Select coefficient...",
-            "options": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12"
+            ]
           },
           {
             "id": "typed-complex-radicand",
@@ -116,12 +158,15 @@
       }
     }
   ],
-
   "grading": {
     "rubricFile": "grading-rules.js",
     "aiPromptFile": null,
     "scoring": {
-      "scale": ["E", "P", "I"],
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
       "meanings": {
         "E": "Essentially Correct - fully simplified",
         "P": "Partially Correct - could simplify further",
@@ -130,10 +175,14 @@
     },
     "composite": {
       "rule": "all-E-for-star",
-      "starTiers": ["gold", "silver", "bronze", "tin"]
+      "starTiers": [
+        "gold",
+        "silver",
+        "bronze",
+        "tin"
+      ]
     }
   },
-
   "hints": {
     "perField": {
       "visual-radical": "Group unit squares into 2×2, 3×3, or larger perfect squares. Each side length comes out of the radical!"
@@ -145,10 +194,11 @@
       "3": "tin"
     }
   },
-
   "progression": {
     "streaksPerField": false,
-    "streakFields": ["problem"],
+    "streakFields": [
+      "problem"
+    ],
     "tiers": [
       {
         "id": "simplify-radicals",
@@ -158,25 +208,33 @@
       {
         "id": "simplify-radicals-hard",
         "name": "Level 2: Prime Factorization",
-        "unlockedBy": { "gold": 25 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Level 2 Unlocked! Now build prime factorizations and drag pairs outside the radical!"
       },
       {
         "id": "simplify-radicals-typed",
         "name": "Level 3: No Scaffolding",
-        "unlockedBy": { "gold": 40 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Level 3 Unlocked! Now simplify radicals without any visual help!"
       },
       {
         "id": "simplify-radicals-complex",
         "name": "Level 4: Complex Numbers",
-        "unlockedBy": { "gold": 55 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Level 4 Unlocked! Now simplify radicals with negative radicands using i!"
       },
       {
         "id": "simplify-radicals-complex-typed",
         "name": "Level 5: Complex No Scaffolding",
-        "unlockedBy": { "gold": 70 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Level 5 Unlocked! Simplify complex radicals without any visual help!"
       }
     ]
