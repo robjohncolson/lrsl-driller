@@ -2399,10 +2399,13 @@ export class GhostOrbitsController {
     // Show help screen on first match (v3)
     if (this.panel?.showHelpScreen && !this._hasShownHelp) {
       this._hasShownHelp = true;
-      // Pause briefly before showing help
-      setTimeout(() => {
-        this.panel.showHelpScreen();
-      }, 500);
+      // Give player extended invulnerability while reading help (30 seconds max)
+      this.playerInvulnerableUntil = Date.now() + 30000;
+      // Show help immediately, remove invulnerability when dismissed
+      this.panel.showHelpScreen(() => {
+        // Help dismissed - reset invulnerability to normal respawn duration
+        this.playerInvulnerableUntil = Date.now() + (this.ghostProperties?.respawnSpeed || 2) * 1000;
+      });
     }
 
     console.log('[GhostOrbits] Match timer started, lives reset to 3');

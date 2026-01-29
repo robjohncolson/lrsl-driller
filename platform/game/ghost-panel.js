@@ -525,9 +525,7 @@ export class GhostPanel {
         } else {
           // Show message explaining why they can't enter
           const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-          const lastSessionGolds = this._getLastSessionGolds();
-          const needed = lastSessionGolds + 1;
-          alert(`You need ${needed} gold star${needed > 1 ? 's' : ''} to enter the arena.\nYou currently have ${currentGolds} gold star${currentGolds !== 1 ? 's' : ''}.\n\nKeep practicing to earn more gold stars!`);
+          alert(`Earn a new gold star to unlock the arena!\n\nYou have ${currentGolds} gold star${currentGolds !== 1 ? 's' : ''}, but you need to earn 1 MORE to play again.\n\nKeep practicing!`);
         }
       });
 

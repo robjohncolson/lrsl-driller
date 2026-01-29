@@ -640,6 +640,12 @@ class GhostOrbitsRenderer {
    * @param {KeyboardEvent} event - Keyboard event
    */
   handleKeyDown(event) {
+    // Ignore keypresses when user is typing in an input field
+    const target = event.target;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+
     // ESC to exit
     if (event.key === 'Escape') {
       if (this.options.onExit) {
