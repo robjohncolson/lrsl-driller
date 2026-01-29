@@ -21,6 +21,11 @@ export class RadicalGame {
     this.extractedFactors = []; // Track what was extracted
     this.onAnswerChange = config.onAnswerChange || (() => {});
 
+    // Store bound handlers for cleanup
+    this._boundUndoHandler = null;
+    this._boundResetHandler = null;
+    this._factorButtonHandlers = [];
+
     this.init();
   }
 
@@ -91,9 +96,11 @@ export class RadicalGame {
     this.answerBreakdown = this.wrapper.querySelector('.answer-breakdown');
     this.factorButtonsContainer = this.wrapper.querySelector('.factor-buttons');
 
-    // Undo/Reset button events
-    this.wrapper.querySelector('.undo-btn').addEventListener('click', () => this.undo());
-    this.wrapper.querySelector('.reset-btn').addEventListener('click', () => this.reset());
+    // Undo/Reset button events (store handlers for cleanup)
+    this._boundUndoHandler = () => this.undo();
+    this._boundResetHandler = () => this.reset();
+    this.wrapper.querySelector('.undo-btn').addEventListener('click', this._boundUndoHandler);
+    this.wrapper.querySelector('.reset-btn').addEventListener('click', this._boundResetHandler);
   }
 
   /**
@@ -133,9 +140,14 @@ export class RadicalGame {
       </button>
     `).join('');
 
-    // Attach event listeners
+    // Clear previous handlers
+    this._factorButtonHandlers = [];
+
+    // Attach event listeners (store handlers for cleanup)
     this.factorButtonsContainer.querySelectorAll('.extract-btn').forEach(btn => {
-      btn.addEventListener('click', () => this.extractFactor(parseInt(btn.dataset.factor)));
+      const handler = () => this.extractFactor(parseInt(btn.dataset.factor));
+      this._factorButtonHandlers.push({ btn, handler });
+      btn.addEventListener('click', handler);
     });
   }
 
@@ -275,6 +287,26 @@ export class RadicalGame {
   }
 
   destroy() {
+    // Remove undo/reset handlers
+    if (this.wrapper) {
+      const undoBtn = this.wrapper.querySelector('.undo-btn');
+      const resetBtn = this.wrapper.querySelector('.reset-btn');
+      if (undoBtn && this._boundUndoHandler) {
+        undoBtn.removeEventListener('click', this._boundUndoHandler);
+      }
+      if (resetBtn && this._boundResetHandler) {
+        resetBtn.removeEventListener('click', this._boundResetHandler);
+      }
+    }
+    this._boundUndoHandler = null;
+    this._boundResetHandler = null;
+
+    // Remove factor button handlers
+    this._factorButtonHandlers.forEach(({ btn, handler }) => {
+      btn.removeEventListener('click', handler);
+    });
+    this._factorButtonHandlers = [];
+
     this.container.innerHTML = '';
   }
 }

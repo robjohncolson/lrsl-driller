@@ -35,6 +35,9 @@ export class TimeTracker {
 
     // Visibility tracking
     this.boundVisibilityHandler = this.handleVisibility.bind(this);
+
+    // Beforeunload handler (stored for cleanup)
+    this._boundBeforeUnload = null;
   }
 
   /**
@@ -62,8 +65,9 @@ export class TimeTracker {
     // Start idle check
     this.idleCheckTimer = setInterval(() => this.checkIdle(), 5000);
 
-    // Sync on page unload
-    window.addEventListener('beforeunload', () => this.sync(true));
+    // Sync on page unload (store handler for cleanup)
+    this._boundBeforeUnload = () => this.sync(true);
+    window.addEventListener('beforeunload', this._boundBeforeUnload);
 
     console.log(`[TimeTracker] Started tracking for ${username}, session: ${this.sessionId}`);
   }
@@ -80,6 +84,12 @@ export class TimeTracker {
       document.removeEventListener(event, this.boundActivityHandler);
     });
     document.removeEventListener('visibilitychange', this.boundVisibilityHandler);
+
+    // Remove beforeunload listener
+    if (this._boundBeforeUnload) {
+      window.removeEventListener('beforeunload', this._boundBeforeUnload);
+      this._boundBeforeUnload = null;
+    }
 
     // Clear timers
     if (this.syncTimer) clearInterval(this.syncTimer);

@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-  <!-- TensorFlow.js for Ghost neural network -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <!-- TensorFlow.js for Ghost neural network - LAZY LOADED when ghost panel opens -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script> -->
   <!-- Three.js for Ghost 3D Maze visualization - now bundled via npm (see package.json) -->
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -676,6 +676,18 @@
           <p class="text-xs text-gray-400 mt-1">Turn off to reduce distractions</p>
         </div>
 
+        <!-- Video Source (Teacher Only) -->
+        <div id="video-source-setting" class="border-t pt-4 hidden">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Video Source</label>
+          <div class="flex items-center gap-3">
+            <button id="video-source-toggle" class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 transition-colors">
+              <span id="video-source-toggle-dot" class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform translate-x-1"></span>
+            </button>
+            <span id="video-source-toggle-label" class="text-sm text-gray-600">Use local videos</span>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">Toggle to use Supabase cloud videos (fallback if local fails)</p>
+        </div>
+
         <!-- Progress Reset -->
         <div class="border-t pt-4">
           <label class="block text-sm font-medium text-gray-700 mb-2">Progress</label>
@@ -942,12 +954,13 @@
     const CLIENT_VERSION = '0.0.1';
 
     // ==================== GHOST SYSTEM ====================
-    // Initialize Ghost Engine with TensorFlow.js (loaded via CDN)
+    // Initialize Ghost Engine in buffered mode (TensorFlow.js loads lazily when panel opens)
+    // This improves startup time - TF (~2MB) only loads when user opens Ghost panel
+    GhostEngine.init(window.tf || null, SERVER_URL);
     if (window.tf) {
-      GhostEngine.init(window.tf, SERVER_URL);
-      console.log('[Ghost] TensorFlow.js initialized, version:', window.tf.version.tfjs);
+      console.log('[Ghost] TensorFlow.js already loaded, version:', window.tf.version.tfjs);
     } else {
-      console.warn('[Ghost] TensorFlow.js not loaded - ghost features disabled');
+      console.log('[Ghost] Running in buffered mode - TensorFlow will load when Ghost panel opens');
     }
 
     // Ghost session tracking
@@ -1240,8 +1253,9 @@
 
     /**
      * Toggle Ghost Panel visibility
+     * Loads TensorFlow.js lazily when panel opens
      */
-    function toggleGhostPanel() {
+    async function toggleGhostPanel() {
       if (!ghostPanel) {
         initGhostPanel();
       }
@@ -1251,6 +1265,16 @@
         ghostPanel.hide();
         if (btn) btn.classList.remove('bg-purple-200');
       } else {
+        // Ensure TensorFlow is loaded when opening panel
+        // This processes any buffered interactions and enables real-time training
+        const tfReady = await GhostEngine.ensureTensorFlowLoaded();
+        if (tfReady) {
+          // Update panel with latest profile after TF training
+          const profile = GhostEngine.getGhostProfile();
+          if (profile && ghostPanel) {
+            ghostPanel.updateGhostProfile(profile);
+          }
+        }
         ghostPanel.show();
         if (btn) btn.classList.add('bg-purple-200');
       }
@@ -2505,6 +2529,57 @@
       document.getElementById('notifications-toggle').classList.toggle('bg-gray-300', !enabled);
     });
 
+    // Video source toggle (teacher only) - initialize state from localStorage
+    const SUPABASE_VIDEO_BASE = 'https://hgvnytaqmuybzbotosyj.supabase.co/storage/v1/object/public/animations';
+
+    function initVideoSourceToggle() {
+      const useSupabase = localStorage.getItem('driller_useSupabaseVideos') === 'true';
+      const videoSourceDot = document.getElementById('video-source-toggle-dot');
+      const videoSourceLabel = document.getElementById('video-source-toggle-label');
+      const videoSourceToggle = document.getElementById('video-source-toggle');
+
+      if (videoSourceDot && videoSourceLabel && videoSourceToggle) {
+        videoSourceDot.classList.toggle('translate-x-6', useSupabase);
+        videoSourceDot.classList.toggle('translate-x-1', !useSupabase);
+        videoSourceLabel.textContent = useSupabase ? 'Use Supabase cloud videos' : 'Use local videos';
+        videoSourceToggle.classList.toggle('bg-purple-600', useSupabase);
+        videoSourceToggle.classList.toggle('bg-gray-300', !useSupabase);
+      }
+    }
+
+    document.getElementById('video-source-toggle')?.addEventListener('click', () => {
+      const useSupabase = localStorage.getItem('driller_useSupabaseVideos') !== 'true';
+      localStorage.setItem('driller_useSupabaseVideos', useSupabase);
+
+      const dot = document.getElementById('video-source-toggle-dot');
+      const label = document.getElementById('video-source-toggle-label');
+      const toggle = document.getElementById('video-source-toggle');
+
+      dot.classList.toggle('translate-x-6', useSupabase);
+      dot.classList.toggle('translate-x-1', !useSupabase);
+      label.textContent = useSupabase ? 'Use Supabase cloud videos' : 'Use local videos';
+      toggle.classList.toggle('bg-purple-600', useSupabase);
+      toggle.classList.toggle('bg-gray-300', !useSupabase);
+
+      celebration.showToast(useSupabase ? 'Using Supabase cloud videos' : 'Using local videos', 'info');
+    });
+
+    // Video URL resolver - returns appropriate URL based on setting
+    function resolveVideoUrl(manifestPath, cartridgeId, forceLocal = false) {
+      if (!manifestPath || !cartridgeId) return null;
+
+      const useSupabase = !forceLocal && localStorage.getItem('driller_useSupabaseVideos') === 'true';
+
+      if (useSupabase) {
+        // Convert "assets/filename.mp4" to Supabase URL
+        const filename = manifestPath.replace('assets/', '');
+        return `${SUPABASE_VIDEO_BASE}/${cartridgeId}/${filename}`;
+      }
+
+      // Use local path (relative to cartridge folder)
+      return `/cartridges/${cartridgeId}/${manifestPath}`;
+    }
+
     // AI Provider dropdown - show/hide API keys section
     document.getElementById('ai-provider').addEventListener('change', (e) => {
       const keysSection = document.getElementById('api-keys-section');
@@ -2646,6 +2721,13 @@
       if (reviewBtn) reviewBtn.style.display = 'flex';
       if (timeAnalyticsBtn) timeAnalyticsBtn.style.display = 'flex';
       if (rosterBtn) rosterBtn.style.display = 'flex';
+
+      // Show video source setting for teachers
+      const videoSourceSetting = document.getElementById('video-source-setting');
+      if (videoSourceSetting) {
+        videoSourceSetting.classList.remove('hidden');
+        initVideoSourceToggle();
+      }
 
       // Initialize roster modal with teacher password
       if (!rosterModal) {
@@ -4227,14 +4309,27 @@
 
       if (animationPath && animationCard) {
         const cartridgeId = platform.currentCartridge?.manifest?.meta?.id;
-        const fullPath = `/cartridges/${cartridgeId}/${animationPath}`;
+        const videoUrl = resolveVideoUrl(animationPath, cartridgeId);
 
         const video = document.getElementById('animation-video');
         const source = document.getElementById('animation-source');
 
         // Only update if path changed
-        if (source.getAttribute('src') !== fullPath) {
-          source.setAttribute('src', fullPath);
+        if (source.getAttribute('src') !== videoUrl) {
+          source.setAttribute('src', videoUrl);
+
+          // Add fallback handler - if Supabase fails, try local
+          video.onerror = () => {
+            const useSupabase = localStorage.getItem('driller_useSupabaseVideos') === 'true';
+            if (useSupabase) {
+              console.log('[Video] Supabase failed, falling back to local');
+              const localUrl = resolveVideoUrl(animationPath, cartridgeId, true);
+              source.setAttribute('src', localUrl);
+              video.load();
+              video.play().catch(() => {});
+            }
+          };
+
           video.load();
           video.play().catch(() => {}); // Autoplay (muted videos can autoplay)
         }
@@ -4794,16 +4889,15 @@
         leaderboard.setCurrentUser(userSystem.currentUser.username);
         timeTracker.start(userSystem.currentUser.username);
 
-        // Initialize ghost for this user/cartridge
-        if (window.tf && GhostEngine.isInitialized !== undefined) {
-          GhostEngine.initGhost(userSystem.currentUser.username, currentCartridgeId)
-            .then(profile => {
-              if (profile) {
-                console.log(`[Ghost] Ready: ${profile.color} ghost, ${profile.total_interactions} interactions, ${(profile.proficiency_score * 100).toFixed(0)}% proficiency`);
-              }
-            })
-            .catch(err => console.warn('[Ghost] Init failed:', err));
-        }
+        // Initialize ghost for this user/cartridge (works in buffered mode without TF)
+        GhostEngine.initGhost(userSystem.currentUser.username, currentCartridgeId)
+          .then(profile => {
+            if (profile) {
+              const mode = GhostEngine.isTensorFlowLoaded() ? '' : ' [buffered]';
+              console.log(`[Ghost] Ready: ${profile.color} ghost, ${profile.total_interactions} interactions, ${(profile.proficiency_score * 100).toFixed(0)}% proficiency${mode}`);
+            }
+          })
+          .catch(err => console.warn('[Ghost] Init failed:', err));
 
         await loadCartridge(currentCartridgeId);
 

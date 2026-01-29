@@ -16,6 +16,7 @@ const BUFFER_SIZE = 50;        // Experience replay buffer size
 const BATCH_SIZE = 8;          // Training batch size
 const OPACITY_THRESHOLD = 100; // Interactions for full opacity
 const SYNC_DEBOUNCE_MS = 2000; // Debounce server sync
+const MAX_INTERACTION_BUFFER = 200; // Max interactions to buffer before TF loads
 
 // State
 let model = null;
@@ -23,13 +24,23 @@ let profile = null;
 let syncTimeout = null;
 let serverBaseUrl = '';
 
+// Lazy loading state
+let tfLoaded = false;
+let interactionBuffer = [];  // Buffer while TF not loaded
+
 /**
  * Initialize the Ghost Engine
- * @param {Object} tfInstance - TensorFlow.js instance (window.tf)
+ * @param {Object} tfInstance - TensorFlow.js instance (window.tf) - optional, can be null for lazy loading
  * @param {string} baseUrl - Server base URL for API calls
  */
 export function init(tfInstance, baseUrl = '') {
-  GhostNetwork.initTensorFlow(tfInstance);
+  if (tfInstance) {
+    GhostNetwork.initTensorFlow(tfInstance);
+    tfLoaded = true;
+    console.log('[Ghost] TensorFlow.js initialized immediately');
+  } else {
+    console.log('[Ghost] Running in buffered mode - TensorFlow will load lazily');
+  }
   serverBaseUrl = baseUrl;
 }
 
@@ -44,27 +55,45 @@ export async function initGhost(username, cartridgeId) {
   profile = loadFromLocalStorage(username, cartridgeId);
 
   if (profile) {
-    // Restore model from saved weights
-    model = GhostNetwork.createGhostNetwork();
-    GhostNetwork.deserializeWeights(model, profile.weights);
-    console.log(`[Ghost] Loaded existing ghost for ${username} (${profile.total_interactions} interactions)`);
+    // Only restore model if TF is loaded
+    if (tfLoaded) {
+      model = GhostNetwork.createGhostNetwork();
+      GhostNetwork.deserializeWeights(model, profile.weights);
+    }
+    console.log(`[Ghost] Loaded existing ghost for ${username} (${profile.total_interactions} interactions)${!tfLoaded ? ' [buffered mode]' : ''}`);
   } else {
-    // Create new ghost
-    model = GhostNetwork.createGhostNetwork();
-    profile = {
-      username,
-      cartridge_id: cartridgeId,
-      weights: GhostNetwork.serializeWeights(model),
-      buffer: [],
-      total_interactions: 0,
-      proficiency_score: 0,
-      color: 'white',
-      opacity: 0.1,
-      last_updated: new Date().toISOString(),
-      version: 1
-    };
+    // Create new ghost - defer model creation if TF not loaded
+    if (tfLoaded) {
+      model = GhostNetwork.createGhostNetwork();
+      profile = {
+        username,
+        cartridge_id: cartridgeId,
+        weights: GhostNetwork.serializeWeights(model),
+        buffer: [],
+        total_interactions: 0,
+        proficiency_score: 0,
+        color: 'white',
+        opacity: 0.1,
+        last_updated: new Date().toISOString(),
+        version: 1
+      };
+    } else {
+      // TF not loaded yet - create profile without weights
+      profile = {
+        username,
+        cartridge_id: cartridgeId,
+        weights: null, // Will be created when TF loads
+        buffer: [],
+        total_interactions: 0,
+        proficiency_score: 0,
+        color: 'white',
+        opacity: 0.1,
+        last_updated: new Date().toISOString(),
+        version: 1
+      };
+    }
     saveToLocalStorage();
-    console.log(`[Ghost] Created new ghost for ${username}`);
+    console.log(`[Ghost] Created new ghost for ${username}${!tfLoaded ? ' [buffered mode]' : ''}`);
   }
 
   // Try to sync with server (may have newer data)
@@ -80,7 +109,7 @@ export async function initGhost(username, cartridgeId) {
  * @returns {Promise<void>}
  */
 export async function recordInteraction(data) {
-  if (!profile || !model) {
+  if (!profile) {
     console.warn('[Ghost] Cannot record - ghost not initialized');
     return;
   }
@@ -88,6 +117,28 @@ export async function recordInteraction(data) {
   // Build normalized interaction record
   const interaction = buildInteraction(data);
 
+  // If TF not loaded or model not ready, buffer the interaction
+  if (!tfLoaded || !model) {
+    interactionBuffer.push(interaction);
+    if (interactionBuffer.length > MAX_INTERACTION_BUFFER) {
+      interactionBuffer.shift(); // Keep buffer bounded
+    }
+
+    // Still update profile's buffer and stats for persistence
+    profile.buffer.push(interaction);
+    if (profile.buffer.length > BUFFER_SIZE) {
+      profile.buffer.shift();
+    }
+    profile.total_interactions++;
+    profile.last_updated = new Date().toISOString();
+    profile.version++;
+    saveToLocalStorage();
+
+    console.log(`[Ghost] Buffered interaction #${profile.total_interactions} (${interactionBuffer.length} pending, TF not loaded)`);
+    return;
+  }
+
+  // Normal training path (TF is loaded)
   // Add to circular buffer
   profile.buffer.push(interaction);
   if (profile.buffer.length > BUFFER_SIZE) {
@@ -233,6 +284,108 @@ function sampleRandom(array, n) {
   return shuffled.slice(0, n);
 }
 
+// ============== Lazy Loading Functions ==============
+
+/**
+ * Dynamically load TensorFlow.js script
+ * @returns {Promise<void>} Resolves when TF is loaded
+ */
+function loadTensorFlowScript() {
+  return new Promise((resolve, reject) => {
+    // Check if already loaded
+    if (window.tf) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js';
+    script.onload = () => {
+      console.log('[Ghost] TensorFlow.js loaded dynamically, version:', window.tf.version.tfjs);
+      resolve();
+    };
+    script.onerror = () => reject(new Error('Failed to load TensorFlow.js'));
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * Ensure TensorFlow.js is loaded and process buffered interactions
+ * Call this when ghost panel opens or when TF features are needed
+ * @returns {Promise<boolean>} True if TF loaded successfully
+ */
+export async function ensureTensorFlowLoaded() {
+  if (tfLoaded) {
+    return true;
+  }
+
+  try {
+    // Dynamically load TensorFlow.js
+    if (!window.tf) {
+      console.log('[Ghost] Loading TensorFlow.js on demand...');
+      await loadTensorFlowScript();
+    }
+
+    GhostNetwork.initTensorFlow(window.tf);
+    tfLoaded = true;
+
+    // Create model if we have a profile
+    if (profile) {
+      model = GhostNetwork.createGhostNetwork();
+
+      // Restore weights if they exist
+      if (profile.weights && Array.isArray(profile.weights) && profile.weights.length > 0) {
+        try {
+          GhostNetwork.deserializeWeights(model, profile.weights);
+          console.log('[Ghost] Restored model weights from profile');
+        } catch (err) {
+          console.warn('[Ghost] Could not restore weights, starting fresh:', err.message);
+        }
+      }
+
+      // Process buffered interactions
+      if (interactionBuffer.length > 0) {
+        console.log(`[Ghost] Processing ${interactionBuffer.length} buffered interactions...`);
+        await GhostNetwork.trainOnBatch(model, interactionBuffer);
+
+        // Update profile with trained model
+        profile.weights = GhostNetwork.serializeWeights(model);
+        profile.proficiency_score = await calculateProficiency();
+        profile.color = calculateColor(profile.proficiency_score);
+        profile.opacity = calculateOpacity(profile.total_interactions);
+        saveToLocalStorage();
+
+        console.log(`[Ghost] Batch training complete, proficiency: ${(profile.proficiency_score * 100).toFixed(1)}%`);
+
+        // Clear the interaction buffer
+        interactionBuffer = [];
+      }
+    }
+
+    console.log('[Ghost] TensorFlow.js now ready for real-time training');
+    return true;
+  } catch (err) {
+    console.error('[Ghost] Failed to load TensorFlow:', err);
+    return false;
+  }
+}
+
+/**
+ * Check if TensorFlow.js is loaded
+ * @returns {boolean} True if TF is ready
+ */
+export function isTensorFlowLoaded() {
+  return tfLoaded;
+}
+
+/**
+ * Get the number of buffered interactions
+ * @returns {number} Count of buffered interactions
+ */
+export function getBufferedInteractionCount() {
+  return interactionBuffer.length;
+}
+
 // ============== localStorage Functions ==============
 
 /**
@@ -374,7 +527,10 @@ async function attemptServerSync() {
         username: profile.username,
         cartridge_id: profile.cartridge_id
       };
-      GhostNetwork.deserializeWeights(model, profile.weights);
+      // Only deserialize weights if TF is loaded and model exists
+      if (tfLoaded && model && profile.weights) {
+        GhostNetwork.deserializeWeights(model, profile.weights);
+      }
       saveToLocalStorage();
     } else if (profile.version > (serverProfile?.version || 0)) {
       // Local is newer, push to server
@@ -410,11 +566,20 @@ export function getGhostPrediction(inputs) {
 }
 
 /**
- * Check if ghost is initialized
- * @returns {boolean} True if ghost is ready
+ * Check if ghost is initialized (profile exists)
+ * Note: In buffered mode, profile exists but model may not
+ * @returns {boolean} True if ghost profile is ready
  */
 export function isInitialized() {
-  return model !== null && profile !== null;
+  return profile !== null;
+}
+
+/**
+ * Check if ghost is fully ready for training/predictions
+ * @returns {boolean} True if both model and profile are ready
+ */
+export function isFullyReady() {
+  return model !== null && profile !== null && tfLoaded;
 }
 
 /**

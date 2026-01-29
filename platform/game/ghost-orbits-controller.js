@@ -132,6 +132,7 @@ export class GhostOrbitsController {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 3;
     this.reconnectDelay = 1000;
+    this._reconnectTimeout = null;
 
     // Input handling
     this.inputEnabled = false;
@@ -940,6 +941,12 @@ export class GhostOrbitsController {
    * @private
    */
   _disconnectWebSocket() {
+    // Clear any pending reconnect timeout
+    if (this._reconnectTimeout) {
+      clearTimeout(this._reconnectTimeout);
+      this._reconnectTimeout = null;
+    }
+
     if (this.ws) {
       this.ws.onclose = null; // Prevent reconnect attempts
       this.ws.close();
@@ -962,7 +969,13 @@ export class GhostOrbitsController {
       this.reconnectAttempts++;
       console.log(`[GhostOrbits] Reconnecting (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
 
-      setTimeout(() => {
+      // Clear any existing reconnect timeout to prevent accumulation
+      if (this._reconnectTimeout) {
+        clearTimeout(this._reconnectTimeout);
+      }
+
+      this._reconnectTimeout = setTimeout(() => {
+        this._reconnectTimeout = null;
         this._connectWebSocket()
           .then(() => {
             // Re-send join message

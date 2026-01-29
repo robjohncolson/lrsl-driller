@@ -32,6 +32,9 @@ export class GhostOrbitsPanel {
     // Bind escape key handler
     this._handleKeyDown = this._handleKeyDown.bind(this);
 
+    // Store help screen key handler for cleanup
+    this._helpKeyHandler = null;
+
     this._render();
     this._addStyles();
     this._attachEventListeners();
@@ -491,14 +494,16 @@ export class GhostOrbitsPanel {
     // Click button to dismiss
     helpOverlay.querySelector('.help-dismiss-btn').addEventListener('click', dismiss);
 
-    // Space key to dismiss
+    // Space key to dismiss (store handler for cleanup)
     const handleKey = (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
         document.removeEventListener('keydown', handleKey);
+        this._helpKeyHandler = null;
         dismiss();
       }
     };
+    this._helpKeyHandler = handleKey;
     document.addEventListener('keydown', handleKey);
 
     // Add to arena container
@@ -513,6 +518,13 @@ export class GhostOrbitsPanel {
    */
   dispose() {
     document.removeEventListener('keydown', this._handleKeyDown);
+
+    // Clean up help screen key handler if it exists
+    if (this._helpKeyHandler) {
+      document.removeEventListener('keydown', this._helpKeyHandler);
+      this._helpKeyHandler = null;
+    }
+
     if (this.overlayElement && this.overlayElement.parentNode) {
       this.overlayElement.parentNode.removeChild(this.overlayElement);
     }
