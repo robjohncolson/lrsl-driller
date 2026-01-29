@@ -1217,7 +1217,7 @@ export class GhostOrbitsController {
         y: player.renderY ?? player.y,
         vx: player.vx || 0,
         vy: player.vy || 0,
-        color: player.color,
+        color: player.color || this._generateFallbackColor(id),
         isLocal: id === this.playerId,
         orbiting: player.orbiting,
         orbitAngle: player.orbitAngle,
@@ -1438,6 +1438,21 @@ export class GhostOrbitsController {
       return 'http://localhost:3000';
     }
     return 'https://lrsl-driller-production.up.railway.app';
+  }
+
+  /**
+   * Generate a fallback color for a player if none provided
+   * @param {string} id - Player ID
+   * @returns {string} HSL color string
+   * @private
+   */
+  _generateFallbackColor(id) {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash % 360);
+    return `hsl(${hue}, 70%, 50%)`;
   }
 
   /**
