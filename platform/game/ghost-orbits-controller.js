@@ -757,7 +757,17 @@ export class GhostOrbitsController {
 
     // Apply initial full state
     if (message.gameState) {
+      console.log('[GhostOrbits] Initial gameState received:', {
+        isRunning: message.gameState.isRunning,
+        playerCount: Object.keys(message.gameState.players || {}).length,
+        dotCount: Object.keys(message.gameState.dots || {}).length,
+        orbitCount: message.gameState.orbits?.length || 0,
+        arenaSize: message.gameState.arenaSize,
+        sampleDot: Object.values(message.gameState.dots || {})[0]
+      });
       this.applyServerState(message.gameState);
+    } else {
+      console.warn('[GhostOrbits] No gameState in arena_joined message!');
     }
 
     // Transition to waiting or playing based on arena state
@@ -1183,7 +1193,18 @@ export class GhostOrbitsController {
    * @private
    */
   _updateRenderer() {
-    if (!this.renderer) return;
+    if (!this.renderer) {
+      console.warn('[GhostOrbits] _updateRenderer called but no renderer');
+      return;
+    }
+
+    // Debug: log state
+    const playerCount = Object.keys(this.serverState.players).length;
+    const dotCount = Object.keys(this.serverState.dots).length;
+    const orbitCount = this.serverState.orbits?.length || 0;
+    if (playerCount === 0 && dotCount === 0) {
+      console.warn('[GhostOrbits] No players or dots in serverState');
+    }
 
     // Convert server state to renderer format
     const ghosts = [];
@@ -1232,13 +1253,32 @@ export class GhostOrbitsController {
     }));
 
     // Use renderFromState for full server-authoritative rendering
-    this.renderer.renderFromState({
+    const renderState = {
       players,
       dots,
       orbits: this.serverState.orbits,
       arenaSize: this.serverState.arenaSize,
       pot: this.currentPot
-    });
+    };
+
+    // Debug: log first render
+    if (!this._hasLoggedRender) {
+      console.log('[GhostOrbits] First render state:', {
+        playerCount: players.length,
+        dotCount: dots.length,
+        orbitCount: renderState.orbits?.length || 0,
+        arenaSize: renderState.arenaSize,
+        sampleDot: dots[0],
+        samplePlayer: players[0]
+      });
+      this._hasLoggedRender = true;
+    }
+
+    if (typeof this.renderer.renderFromState === 'function') {
+      this.renderer.renderFromState(renderState);
+    } else {
+      console.error('[GhostOrbits] renderer.renderFromState is not a function!');
+    }
 
     // Update camera to follow local player or spectate target
     const followId = this.isSpectating ? this.spectateTargetId : this.playerId;
