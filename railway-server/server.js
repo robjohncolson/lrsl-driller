@@ -3285,13 +3285,8 @@ wss.on('connection', (ws) => {
             break;
           }
 
-          // Add to arena
+          // Mark client as in global arena
           client.globalArena = true;
-          globalArena.joinArena(client.username, {
-            name: username,
-            ghostProperties,
-            color: getPlayerColor(client.username)
-          });
 
           // Initialize arena if first player
           if (globalGameState.getPlayerCount() === 0) {
@@ -3335,7 +3330,6 @@ wss.on('connection', (ws) => {
           const client = clients.get(ws);
           if (!client?.username || !client.globalArena) break;
 
-          globalArena.leaveArena(client.username);
           globalGameState.removePlayer(client.username);
           client.globalArena = false;
 
@@ -3421,7 +3415,6 @@ wss.on('connection', (ws) => {
 
         // Handle Global Arena leave
         if (client.globalArena) {
-          globalArena.leaveArena(client.username);
           globalGameState.removePlayer(client.username);
           broadcastToGlobalArena({
             type: 'player_left',
