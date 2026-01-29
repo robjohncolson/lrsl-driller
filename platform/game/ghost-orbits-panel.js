@@ -45,12 +45,16 @@ export class GhostOrbitsPanel {
     this.currentView = 'lobby'; // 'lobby', 'game', 'eliminated', 'spectating', 'winner'
     this.potAmount = 0;
     this.entryStarCost = 1;
-    this.entryPointCost = 100;
+    this.entryPointCost = 100; // Legacy, not used - bet calculated dynamically
     this.playerLives = 3;
     this.maxLives = 3;
     this.playersInArena = [];
     this.localPlayerId = null;
     this.isSpectating = false;
+
+    // Player stats (set by controller from server data)
+    this._serverGoldStars = null;
+    this._serverPoints = null;
 
     // Bind escape key handler
     this._handleKeyDown = this._handleKeyDown.bind(this);
@@ -110,10 +114,25 @@ export class GhostOrbitsPanel {
   // ==========================================================================
 
   /**
+   * Set player stats from server data
+   * @param {number} goldStars - Total gold stars
+   * @param {number} points - Total weighted points
+   */
+  setPlayerStats(goldStars, points) {
+    this._serverGoldStars = goldStars;
+    this._serverPoints = points;
+    console.log('[GhostOrbitsPanel] Stats set:', { goldStars, points });
+  }
+
+  /**
    * Get player's current gold stars
    * @returns {number}
    */
   getPlayerGoldStars() {
+    // Use server value if set
+    if (this._serverGoldStars !== null) {
+      return this._serverGoldStars;
+    }
     // Try DOM first (fastest)
     const goldCount = document.getElementById('gold-count');
     if (goldCount) {
@@ -135,6 +154,10 @@ export class GhostOrbitsPanel {
    * @returns {number}
    */
   getPlayerPoints() {
+    // Use server value if set
+    if (this._serverPoints !== null) {
+      return this._serverPoints;
+    }
     // Try DOM first
     const pointsEl = document.getElementById('total-points');
     if (pointsEl) {

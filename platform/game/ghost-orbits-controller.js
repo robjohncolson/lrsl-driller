@@ -204,6 +204,9 @@ export class GhostOrbitsController {
       });
       await this.panel.init();
 
+      // Set player stats from server-fetched values
+      this.panel.setPlayerStats(this.goldStars, this.points);
+
       // Store reference to the overlay
       this.overlay = this.container.querySelector('.ghost-orbits-overlay');
 
@@ -731,6 +734,11 @@ export class GhostOrbitsController {
 
     // Notify UI to update gold star / points display
     this.onStatsUpdate(this.goldStars, this.points);
+
+    // Update panel's stats too
+    if (this.panel) {
+      this.panel.setPlayerStats(this.goldStars, this.points);
+    }
 
     // Store bet amount for display
     this.currentBet = message.bet || 0;
