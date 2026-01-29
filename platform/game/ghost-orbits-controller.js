@@ -1218,12 +1218,26 @@ export class GhostOrbitsController {
       });
     }
 
-    // Update renderer
-    this.renderer.updateState({
-      ghosts,
+    // Convert ghosts array to players format for renderFromState
+    const players = ghosts.map(g => ({
+      id: g.id,
+      x: g.x,
+      y: g.y,
+      color: g.color,
+      lives: g.lives,
+      dotCount: g.dotCount,
+      isGhost: !g.isLocal,
+      isAlive: true,
+      username: this.serverState.players[g.id]?.username || g.id
+    }));
+
+    // Use renderFromState for full server-authoritative rendering
+    this.renderer.renderFromState({
+      players,
       dots,
       orbits: this.serverState.orbits,
-      arenaSize: this.serverState.arenaSize
+      arenaSize: this.serverState.arenaSize,
+      pot: this.currentPot
     });
 
     // Update camera to follow local player or spectate target
