@@ -240,7 +240,16 @@ export class GhostOrbitsController {
     try {
       await this._connectWebSocket();
 
-      // Send join message
+      // First identify to server
+      this._sendMessage({
+        type: 'identify',
+        username: this.username
+      });
+
+      // Small delay to ensure identify is processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Then send join message
       this._sendMessage({
         type: 'global_arena_join',
         username: this.username,
@@ -551,21 +560,29 @@ export class GhostOrbitsController {
         clearTimeout(this._reconnectTimeout);
       }
 
-      this._reconnectTimeout = setTimeout(() => {
+      this._reconnectTimeout = setTimeout(async () => {
         this._reconnectTimeout = null;
-        this._connectWebSocket()
-          .then(() => {
-            // Re-send join message with rejoin flag
-            this._sendMessage({
-              type: 'global_arena_rejoin',
-              username: this.username,
-              ghostProfile: this.ghostProfile,
-              playerId: this.playerId
-            });
-          })
-          .catch(() => {
-            this._handleWebSocketClose(event);
+        try {
+          await this._connectWebSocket();
+
+          // Re-identify first
+          this._sendMessage({
+            type: 'identify',
+            username: this.username
           });
+
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Then rejoin
+          this._sendMessage({
+            type: 'global_arena_rejoin',
+            username: this.username,
+            ghostProfile: this.ghostProfile,
+            playerId: this.playerId
+          });
+        } catch (err) {
+          this._handleWebSocketClose(event);
+        }
       }, this.reconnectDelay * this.reconnectAttempts);
     } else {
       console.error('[GhostOrbits] Max reconnection attempts reached');
