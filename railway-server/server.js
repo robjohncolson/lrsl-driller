@@ -3293,7 +3293,21 @@ wss.on('connection', (ws) => {
             color: getPlayerColor(client.username)
           });
 
-          globalGameState.addPlayer(client.username, ghostProperties);
+          // Initialize arena if first player
+          if (globalGameState.getPlayerCount() === 0) {
+            globalGameState.initialize(1);
+          }
+
+          // Add player with correct signature: addPlayer(id, username, profile)
+          globalGameState.addPlayer(client.username, client.username, {
+            color: getPlayerColor(client.username),
+            ...ghostProperties
+          });
+
+          // Start game if not already running
+          if (!globalGameState.isRunning) {
+            globalGameState.start();
+          }
 
           // Send entry confirmation and current state
           ws.send(JSON.stringify({
@@ -3356,7 +3370,11 @@ wss.on('connection', (ws) => {
             break;
           }
 
-          globalGameState.addPlayer(client.username, ghostProperties);
+          // Add player with correct signature: addPlayer(id, username, profile)
+          globalGameState.addPlayer(client.username, client.username, {
+            color: getPlayerColor(client.username),
+            ...ghostProperties
+          });
           client.globalArena = true;
 
           ws.send(JSON.stringify({
