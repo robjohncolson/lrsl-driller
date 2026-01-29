@@ -147,6 +147,7 @@ class Player {
     // Input state
     this.lastSpacebar = 0;
     this.lastActivity = Date.now();
+    this.inputDirection = new Vector2(0, 0); // Current input direction
 
     // Properties (can be influenced by NN profile)
     this.claimRadius = ARENA_CONFIG.BASE_CLAIM_RADIUS;
@@ -448,6 +449,13 @@ class ArenaGameState {
 
     // Check win condition
     this.checkWinCondition();
+  }
+
+  /**
+   * Get the number of players in the arena
+   */
+  getPlayerCount() {
+    return this.players.size;
   }
 
   /**
@@ -906,6 +914,35 @@ class ArenaGameState {
     }
 
     return null;
+  }
+
+  /**
+   * Check if the only opponent was a ghost
+   */
+  wasOnlyGhostOpponent() {
+    const players = Array.from(this.players.values());
+    const humans = players.filter(p => !p.isGhost);
+    const ghosts = players.filter(p => p.isGhost);
+    return humans.length === 1 && ghosts.length >= 1;
+  }
+
+  /**
+   * Handle player input (direction and spacebar)
+   */
+  handleInput(playerId, direction, spacebar) {
+    const player = this.players.get(playerId);
+    if (!player || !player.isAlive) return;
+
+    // Update direction
+    if (direction) {
+      player.inputDirection = new Vector2(direction.x || 0, direction.y || 0);
+    }
+
+    // Track spacebar press
+    if (spacebar) {
+      player.lastSpacebar = Date.now();
+      this.pendingSpacebars.set(playerId, Date.now());
+    }
   }
 
   // ============================================
