@@ -78,16 +78,6 @@ describe('Escape Key Handler - Element ID Consistency', () => {
     });
   });
 
-  describe('CTF/Game Mode Sidebar', () => {
-    it('should have ctf-sidebar element defined in HTML', () => {
-      expect(appHtmlContent).toContain('id="ctf-sidebar"');
-    });
-
-    it('should check CTF sidebar in Escape handler', () => {
-      expect(appHtmlContent).toContain("getElementById('ctf-sidebar')");
-    });
-  });
-
   describe('Leaderboard Panel', () => {
     it('should have leaderboard-panel element defined in HTML', () => {
       expect(appHtmlContent).toContain('id="leaderboard-panel"');
@@ -126,8 +116,8 @@ describe('Escape Key Handler - Pattern Verification', () => {
     // Count return statements in the Escape handler
     const returnCount = (escapeHandlerContent.match(/return;/g) || []).length;
     // Should have returns for: share modal, cartridge dropdown, online users dropdown,
-    // CTF sidebar, teacher review panel, time analytics panel, leaderboard panel
-    expect(returnCount).toBeGreaterThanOrEqual(7);
+    // Ghost panel, teacher review panel, time analytics panel, leaderboard panel
+    expect(returnCount).toBeGreaterThanOrEqual(6);
   });
 });
 
@@ -153,7 +143,6 @@ describe('Escape Key Handler - Accessibility', () => {
       'share-modal',
       'cartridge-dropdown',
       'online-dropdown',
-      'ctf-sidebar',
       'teacher-review-panel',
       'time-analytics-panel',
       'leaderboard-panel'

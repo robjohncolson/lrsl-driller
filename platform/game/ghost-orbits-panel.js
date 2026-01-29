@@ -331,6 +331,184 @@ export class GhostOrbitsPanel {
   }
 
   /**
+   * Show the help screen overlay (v3 - explains Dot Territory rules)
+   * @param {Function} [onDismiss] - Optional callback when help is dismissed
+   */
+  showHelpScreen(onDismiss) {
+    if (!this.overlayElement) return;
+
+    // Create help overlay
+    const helpOverlay = document.createElement('div');
+    helpOverlay.className = 'orbits-help-overlay';
+    helpOverlay.innerHTML = `
+      <div class="help-content">
+        <h2 class="help-title">DOT TERRITORY</h2>
+
+        <div class="help-section">
+          <div class="help-icon">&#9899;</div>
+          <div class="help-text">
+            <strong>Claim Dots:</strong> Touch neutral (gray) dots to claim them.
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-icon">&#128308;</div>
+          <div class="help-text">
+            <strong>Danger:</strong> Touch enemy dots WITHOUT spacebar = lose a life!
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-icon">&#9211;</div>
+          <div class="help-text">
+            <strong>Flip:</strong> Press SPACE when touching enemy dot to flip it to your color.
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-icon">&#128190;</div>
+          <div class="help-text">
+            <strong>Safe:</strong> Land on records (spinning plates) - you're safe there!
+          </div>
+        </div>
+
+        <div class="help-section help-goal">
+          <div class="help-icon">&#127942;</div>
+          <div class="help-text">
+            <strong>Win:</strong> Claim 90% of dots OR eliminate opponent (3 lives each).
+          </div>
+        </div>
+
+        <div class="help-controls">
+          <p><strong>SPACEBAR</strong> = Land on record / Launch off / Flip enemy dots</p>
+        </div>
+
+        <button class="help-dismiss-btn">GOT IT! [SPACE]</button>
+      </div>
+    `;
+
+    // Add styles for help overlay
+    const style = document.createElement('style');
+    style.textContent = `
+      .orbits-help-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        animation: fadeIn 0.3s ease-out;
+      }
+      .help-content {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 2px solid #4488ff;
+        border-radius: 12px;
+        padding: 24px 32px;
+        max-width: 500px;
+        text-align: left;
+        box-shadow: 0 0 40px rgba(68, 136, 255, 0.3);
+      }
+      .help-title {
+        text-align: center;
+        color: #4488ff;
+        font-size: 28px;
+        margin: 0 0 20px 0;
+        text-shadow: 0 0 10px rgba(68, 136, 255, 0.5);
+      }
+      .help-section {
+        display: flex;
+        align-items: flex-start;
+        margin: 12px 0;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+      }
+      .help-section.help-goal {
+        background: rgba(68, 136, 255, 0.15);
+        border: 1px solid rgba(68, 136, 255, 0.3);
+      }
+      .help-icon {
+        font-size: 24px;
+        margin-right: 12px;
+        min-width: 32px;
+        text-align: center;
+      }
+      .help-text {
+        color: #ddd;
+        line-height: 1.4;
+      }
+      .help-text strong {
+        color: #fff;
+      }
+      .help-controls {
+        text-align: center;
+        margin: 20px 0 16px 0;
+        padding: 12px;
+        background: rgba(68, 136, 255, 0.1);
+        border-radius: 8px;
+        color: #aaddff;
+      }
+      .help-controls strong {
+        color: #4488ff;
+      }
+      .help-dismiss-btn {
+        display: block;
+        width: 100%;
+        padding: 12px 24px;
+        font-size: 16px;
+        font-weight: bold;
+        color: #fff;
+        background: linear-gradient(135deg, #4488ff 0%, #2266cc 100%);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .help-dismiss-btn:hover {
+        transform: scale(1.02);
+        box-shadow: 0 0 20px rgba(68, 136, 255, 0.5);
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+    `;
+    helpOverlay.appendChild(style);
+
+    // Dismiss handler
+    const dismiss = () => {
+      helpOverlay.style.animation = 'fadeIn 0.2s ease-out reverse';
+      setTimeout(() => {
+        helpOverlay.remove();
+        if (onDismiss) onDismiss();
+      }, 200);
+    };
+
+    // Click button to dismiss
+    helpOverlay.querySelector('.help-dismiss-btn').addEventListener('click', dismiss);
+
+    // Space key to dismiss
+    const handleKey = (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        document.removeEventListener('keydown', handleKey);
+        dismiss();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+
+    // Add to arena container
+    const arenaContainer = this.overlayElement.querySelector('.orbits-arena-container');
+    if (arenaContainer) {
+      arenaContainer.appendChild(helpOverlay);
+    }
+  }
+
+  /**
    * Cleanup resources
    */
   dispose() {
@@ -400,7 +578,7 @@ export class GhostOrbitsPanel {
             <span class="orbits-territory-text" id="orbits-territory-text">Territory: --</span>
           </div>
           <div class="orbits-footer-controls">
-            <span class="orbits-control-hint">[Arrow keys to move]</span>
+            <span class="orbits-control-hint">[SPACE: land/launch from records]</span>
           </div>
           <div class="orbits-footer-right">
             <span class="orbits-exit-hint">[ESC to exit to practice]</span>
@@ -945,6 +1123,9 @@ export class GhostOrbitsPanel {
       }
 
       .orbits-arena-canvas-mount canvas {
+        max-width: 100%;
+        max-height: calc(100vh - 120px);
+        object-fit: contain;
         border: 2px solid #112244;
         border-radius: 8px;
         box-shadow:

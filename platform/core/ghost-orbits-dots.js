@@ -1,35 +1,51 @@
 /**
- * Ghost Orbits - Dots & Trail System (v2)
+ * Ghost Orbits - Dot Territory System (v3)
  *
- * Collectible dots and Snake-style trail following.
- * Dots are collected by touching them, forming a chain behind the ghost.
- * Trail is deadly to the opponent.
+ * Dots are territory markers that persist on the field.
+ * - Touch unclaimed dot = claim it for your color
+ * - Touch opponent's dot + spacebar = flip to your color
+ * - Touch opponent's dot WITHOUT spacebar = lose a life
+ * - 90% dots one color = win (remaining auto-convert)
  *
  * @module ghost-orbits-dots
- * @version 2.0.0
+ * @version 3.0.0
  */
 
 /**
- * Dot states
+ * Dot ownership states
  */
 const DotState = {
-  NEUTRAL: 'NEUTRAL',     // Available to collect
-  COLLECTED: 'COLLECTED', // Part of a ghost's trail
-  RESPAWNING: 'RESPAWNING' // Temporarily unavailable (optional)
+  NEUTRAL: 'NEUTRAL',         // Available to claim
+  PLAYER_OWNED: 'PLAYER',     // Owned by player
+  SHADOW_OWNED: 'SHADOW'      // Owned by shadow/opponent
 };
 
 /**
- * Represents a collectible dot in the arena
+ * Configuration for dot territory system
+ */
+const DOT_CONFIG = {
+  FLIP_WINDOW_MS: 250,        // Spacebar must be pressed within 250ms of touching enemy dot
+  WIN_THRESHOLD: 0.90,        // 90% ownership = win
+  COLLISION_RADIUS: 15,       // Ghost collision radius with dots
+  DOT_RADIUS: 10,             // Visual radius of dots
+  PULSE_SPEED: 3,             // Speed of pulsing animation
+};
+
+/**
+ * Represents a territory dot in the arena
  */
 class Dot {
   constructor(config) {
     this.id = config.id || `dot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     this.x = config.x;
     this.y = config.y;
-    this.radius = config.radius || 8;
+    this.radius = config.radius || DOT_CONFIG.DOT_RADIUS;
     this.state = DotState.NEUTRAL;
-    this.ownerId = null; // Ghost that collected this dot
+    this.ownerId = null;       // 'player', 'shadow', or null
+    this.ownerColor = null;    // Color of owner for rendering
     this.pulsePhase = Math.random() * Math.PI * 2; // For visual pulse effect
+    this.lastTouchedBy = null; // Track who last touched this dot
+    this.lastTouchTime = 0;    // When it was last touched
   }
 
   /**
@@ -39,7 +55,7 @@ class Dot {
    * @param {number} radius - Collision radius
    * @returns {boolean}
    */
-  collidesWith(x, y, radius = 15) {
+  collidesWith(x, y, radius = DOT_CONFIG.COLLISION_RADIUS) {
     const dx = this.x - x;
     const dy = this.y - y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -47,12 +63,14 @@ class Dot {
   }
 
   /**
-   * Collect this dot for a ghost
-   * @param {string} ownerId - Ghost ID
+   * Claim this dot for an owner
+   * @param {string} ownerId - 'player' or 'shadow'
+   * @param {string} color - Hex color for the owner
    */
-  collect(ownerId) {
-    this.state = DotState.COLLECTED;
+  claim(ownerId, color) {
     this.ownerId = ownerId;
+    this.ownerColor = color;
+    this.state = ownerId === 'player' ? DotState.PLAYER_OWNED : DotState.SHADOW_OWNED;
   }
 
   /**
@@ -61,22 +79,58 @@ class Dot {
   reset() {
     this.state = DotState.NEUTRAL;
     this.ownerId = null;
+    this.ownerColor = null;
+    this.lastTouchedBy = null;
+    this.lastTouchTime = 0;
+  }
+
+  /**
+   * Check if dot is owned by opponent of given ghostId
+   * @param {string} ghostId - 'player' or 'shadow'
+   * @returns {boolean}
+   */
+  isOwnedByOpponent(ghostId) {
+    if (this.state === DotState.NEUTRAL) return false;
+    return this.ownerId !== ghostId;
+  }
+
+  /**
+   * Check if dot is neutral (unclaimed)
+   * @returns {boolean}
+   */
+  isNeutral() {
+    return this.state === DotState.NEUTRAL;
   }
 }
 
 /**
- * Manages all dots in the arena
+ * Manages all territory dots in the arena
  */
 class DotManager {
   constructor(arenaSize, options = {}) {
     this.arenaSize = arenaSize;
     this.dots = new Map(); // id -> Dot
     this.dotCount = options.dotCount || 50;
-    this.dotRadius = options.dotRadius || 8;
+    this.dotRadius = options.dotRadius || DOT_CONFIG.DOT_RADIUS;
     this.margin = options.margin || 30; // Distance from arena edges
     this.recordAvoidRadius = options.recordAvoidRadius || 90; // Don't spawn near records
-    this.respawnEnabled = options.respawnEnabled || false;
-    this.respawnDelay = options.respawnDelay || 5000; // ms
+
+    // Track spacebar presses for flip mechanic
+    this.recentSpacebarPresses = new Map(); // ghostId -> timestamp
+
+    // Colors for ownership
+    this.playerColor = options.playerColor || '#4488ff';
+    this.shadowColor = options.shadowColor || '#ff4444';
+  }
+
+  /**
+   * Set owner colors
+   * @param {string} playerColor - Hex color for player
+   * @param {string} shadowColor - Hex color for shadow
+   */
+  setOwnerColors(playerColor, shadowColor) {
+    this.playerColor = playerColor;
+    this.shadowColor = shadowColor;
   }
 
   /**
@@ -93,7 +147,7 @@ class DotManager {
       }
     }
 
-    console.log(`[DotManager] Initialized ${this.dots.size} dots`);
+    console.log(`[DotManager] Initialized ${this.dots.size} territory dots`);
   }
 
   /**
@@ -155,20 +209,73 @@ class DotManager {
   }
 
   /**
-   * Check for dot collection by a ghost
-   * @param {string} ghostId - Ghost ID
+   * Register a spacebar press for flip mechanic timing
+   * @param {string} ghostId - 'player' or 'shadow'
+   */
+  registerSpacebarPress(ghostId) {
+    this.recentSpacebarPresses.set(ghostId, Date.now());
+  }
+
+  /**
+   * Check if spacebar was pressed recently (within flip window)
+   * @param {string} ghostId - 'player' or 'shadow'
+   * @returns {boolean}
+   */
+  wasSpacebarPressedRecently(ghostId) {
+    const pressTime = this.recentSpacebarPresses.get(ghostId);
+    if (!pressTime) return false;
+    return (Date.now() - pressTime) < DOT_CONFIG.FLIP_WINDOW_MS;
+  }
+
+  /**
+   * Check dot interaction when ghost moves through arena
+   * Returns object describing what happened
+   * @param {string} ghostId - 'player' or 'shadow'
    * @param {number} x - Ghost X position
    * @param {number} y - Ghost Y position
+   * @param {string} ghostColor - Ghost's color for claiming
    * @param {number} radius - Ghost collision radius
-   * @returns {Dot|null} Collected dot or null
+   * @returns {Object|null} - { type: 'claimed'|'flipped'|'damaged', dot: Dot } or null
    */
-  checkCollection(ghostId, x, y, radius = 15) {
+  checkDotInteraction(ghostId, x, y, ghostColor, radius = DOT_CONFIG.COLLISION_RADIUS) {
+    const currentTime = Date.now();
+
     for (const dot of this.dots.values()) {
-      if (dot.state === DotState.NEUTRAL && dot.collidesWith(x, y, radius)) {
-        dot.collect(ghostId);
-        return dot;
+      if (!dot.collidesWith(x, y, radius)) continue;
+
+      // Skip if we just touched this dot (debounce)
+      if (dot.lastTouchedBy === ghostId && (currentTime - dot.lastTouchTime) < 500) {
+        continue;
       }
+
+      if (dot.isNeutral()) {
+        // Neutral dot - claim it
+        dot.claim(ghostId, ghostColor);
+        dot.lastTouchedBy = ghostId;
+        dot.lastTouchTime = currentTime;
+        return { type: 'claimed', dot };
+      }
+
+      if (dot.isOwnedByOpponent(ghostId)) {
+        // Opponent's dot - check for flip or damage
+        const hadSpacebar = this.wasSpacebarPressedRecently(ghostId);
+
+        dot.lastTouchedBy = ghostId;
+        dot.lastTouchTime = currentTime;
+
+        if (hadSpacebar) {
+          // Flip the dot to our color
+          dot.claim(ghostId, ghostColor);
+          return { type: 'flipped', dot };
+        } else {
+          // Touched without spacebar - damage!
+          return { type: 'damaged', dot };
+        }
+      }
+
+      // Own dot - no action needed
     }
+
     return null;
   }
 
@@ -190,8 +297,8 @@ class DotManager {
   }
 
   /**
-   * Get dots collected by a specific ghost
-   * @param {string} ownerId - Ghost ID
+   * Get dots owned by a specific ghost
+   * @param {string} ownerId - 'player' or 'shadow'
    * @returns {Dot[]}
    */
   getDotsByOwner(ownerId) {
@@ -200,7 +307,7 @@ class DotManager {
 
   /**
    * Count dots by owner
-   * @param {string} ownerId - Ghost ID
+   * @param {string} ownerId - 'player' or 'shadow'
    * @returns {number}
    */
   countDotsByOwner(ownerId) {
@@ -216,244 +323,82 @@ class DotManager {
   }
 
   /**
+   * Get total dot count
+   * @returns {number}
+   */
+  getTotalDots() {
+    return this.dots.size;
+  }
+
+  /**
+   * Get ownership percentage for a ghost
+   * @param {string} ownerId - 'player' or 'shadow'
+   * @returns {number} - Percentage (0-1)
+   */
+  getOwnershipPercent(ownerId) {
+    if (this.dots.size === 0) return 0;
+    return this.countDotsByOwner(ownerId) / this.dots.size;
+  }
+
+  /**
+   * Check if someone has won (90%+ ownership)
+   * @returns {string|null} - 'player', 'shadow', or null
+   */
+  checkWinner() {
+    const playerPercent = this.getOwnershipPercent('player');
+    const shadowPercent = this.getOwnershipPercent('shadow');
+
+    if (playerPercent >= DOT_CONFIG.WIN_THRESHOLD) {
+      return 'player';
+    }
+    if (shadowPercent >= DOT_CONFIG.WIN_THRESHOLD) {
+      return 'shadow';
+    }
+    return null;
+  }
+
+  /**
+   * Convert all remaining dots to winner's color (called when winner determined)
+   * @param {string} winnerId - 'player' or 'shadow'
+   * @param {string} winnerColor - Winner's color
+   */
+  convertAllToWinner(winnerId, winnerColor) {
+    for (const dot of this.dots.values()) {
+      if (dot.ownerId !== winnerId) {
+        dot.claim(winnerId, winnerColor);
+      }
+    }
+  }
+
+  /**
    * Reset all dots to neutral
    */
   reset() {
     for (const dot of this.dots.values()) {
       dot.reset();
     }
+    this.recentSpacebarPresses.clear();
   }
 
   /**
-   * Update dots (for respawn, animations, etc.)
+   * Update dots (for animations)
    * @param {number} deltaTime - Time elapsed in seconds
    */
   update(deltaTime) {
     // Update pulse phase for visual effect
     for (const dot of this.dots.values()) {
-      dot.pulsePhase += deltaTime * 3;
+      dot.pulsePhase += deltaTime * DOT_CONFIG.PULSE_SPEED;
       if (dot.pulsePhase > Math.PI * 2) {
         dot.pulsePhase -= Math.PI * 2;
       }
     }
-  }
-}
 
-/**
- * Snake-style trail that follows the ghost
- * Collected dots form a chain behind the ghost
- */
-class Trail {
-  constructor(ownerId, options = {}) {
-    this.ownerId = ownerId;
-    this.segments = []; // Array of {x, y, dotId}
-    this.spacing = options.spacing || 18; // Pixels between segments
-    this.color = options.color || '#ffffff';
-  }
-
-  /**
-   * Add a collected dot to the trail
-   * @param {Dot} dot - The collected dot
-   * @param {number} headX - Ghost head X position
-   * @param {number} headY - Ghost head Y position
-   */
-  addDot(dot, headX, headY) {
-    // Position at the end of the trail (or behind ghost if first)
-    let x, y;
-
-    if (this.segments.length === 0) {
-      // First segment: position behind ghost
-      x = headX;
-      y = headY;
-    } else {
-      // Add at end of trail
-      const last = this.segments[this.segments.length - 1];
-      x = last.x;
-      y = last.y;
-    }
-
-    this.segments.push({
-      x,
-      y,
-      dotId: dot.id,
-      radius: dot.radius
-    });
-
-    console.log(`[Trail] Added dot ${dot.id}, trail length: ${this.segments.length}`);
-  }
-
-  /**
-   * Update trail to follow ghost head (Snake-style)
-   * @param {number} headX - Ghost X position
-   * @param {number} headY - Ghost Y position
-   */
-  update(headX, headY) {
-    if (this.segments.length === 0) return;
-
-    // First segment follows ghost head
-    const first = this.segments[0];
-    const dx0 = headX - first.x;
-    const dy0 = headY - first.y;
-    const dist0 = Math.sqrt(dx0 * dx0 + dy0 * dy0);
-
-    if (dist0 > this.spacing) {
-      const ratio = (dist0 - this.spacing) / dist0;
-      first.x += dx0 * ratio;
-      first.y += dy0 * ratio;
-    }
-
-    // Each subsequent segment follows the one ahead
-    for (let i = 1; i < this.segments.length; i++) {
-      const current = this.segments[i];
-      const target = this.segments[i - 1];
-
-      const dx = target.x - current.x;
-      const dy = target.y - current.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist > this.spacing) {
-        const ratio = (dist - this.spacing) / dist;
-        current.x += dx * ratio;
-        current.y += dy * ratio;
+    // Clean up old spacebar presses
+    const now = Date.now();
+    for (const [ghostId, pressTime] of this.recentSpacebarPresses.entries()) {
+      if (now - pressTime > DOT_CONFIG.FLIP_WINDOW_MS * 2) {
+        this.recentSpacebarPresses.delete(ghostId);
       }
-    }
-  }
-
-  /**
-   * Check if a position collides with this trail
-   * @param {number} x - Position X
-   * @param {number} y - Position Y
-   * @param {number} radius - Collision radius
-   * @param {number} skipFirst - Number of segments to skip from head (grace period)
-   * @returns {boolean}
-   */
-  collidesWith(x, y, radius = 15, skipFirst = 3) {
-    for (let i = skipFirst; i < this.segments.length; i++) {
-      const seg = this.segments[i];
-      const dx = x - seg.x;
-      const dy = y - seg.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < seg.radius + radius) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Get all trail segments
-   * @returns {Array}
-   */
-  getSegments() {
-    return this.segments;
-  }
-
-  /**
-   * Get trail length (number of collected dots)
-   * @returns {number}
-   */
-  get length() {
-    return this.segments.length;
-  }
-
-  /**
-   * Clear the trail
-   */
-  clear() {
-    this.segments = [];
-  }
-}
-
-/**
- * Manages all trails in the arena
- */
-class TrailManager {
-  constructor() {
-    this.trails = new Map(); // ghostId -> Trail
-  }
-
-  /**
-   * Create or get a trail for a ghost
-   * @param {string} ghostId - Ghost ID
-   * @param {string} color - Trail color
-   * @returns {Trail}
-   */
-  getOrCreateTrail(ghostId, color) {
-    if (!this.trails.has(ghostId)) {
-      this.trails.set(ghostId, new Trail(ghostId, { color }));
-    }
-    return this.trails.get(ghostId);
-  }
-
-  /**
-   * Get trail for a ghost
-   * @param {string} ghostId - Ghost ID
-   * @returns {Trail|undefined}
-   */
-  getTrail(ghostId) {
-    return this.trails.get(ghostId);
-  }
-
-  /**
-   * Update all trails
-   * @param {Map} ghostPositions - Map of ghostId -> {x, y}
-   */
-  update(ghostPositions) {
-    for (const [ghostId, trail] of this.trails.entries()) {
-      const pos = ghostPositions.get(ghostId);
-      if (pos) {
-        trail.update(pos.x, pos.y);
-      }
-    }
-  }
-
-  /**
-   * Check if a ghost collides with any enemy trail
-   * @param {string} ghostId - Ghost to check
-   * @param {number} x - Ghost X position
-   * @param {number} y - Ghost Y position
-   * @param {number} radius - Collision radius
-   * @returns {string|null} Owner ID of the trail hit, or null
-   */
-  checkCollision(ghostId, x, y, radius = 15) {
-    for (const [ownerId, trail] of this.trails.entries()) {
-      // Skip own trail
-      if (ownerId === ghostId) continue;
-
-      // For enemy trails, check ALL segments (skipFirst = 0)
-      // The skipFirst=3 default is only for self-collision prevention
-      if (trail.collidesWith(x, y, radius, 0)) {
-        console.log(`[TrailManager] Collision! ${ghostId} hit ${ownerId}'s trail (${trail.length} segments)`);
-        return ownerId;
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Get all trails
-   * @returns {Trail[]}
-   */
-  getTrails() {
-    return Array.from(this.trails.values());
-  }
-
-  /**
-   * Clear all trails
-   */
-  clear() {
-    this.trails.clear();
-  }
-
-  /**
-   * Clear trail for a specific ghost
-   * @param {string} ghostId - Ghost ID
-   */
-  clearTrail(ghostId) {
-    const trail = this.trails.get(ghostId);
-    if (trail) {
-      trail.clear();
     }
   }
 }
@@ -462,6 +407,5 @@ export {
   Dot,
   DotManager,
   DotState,
-  Trail,
-  TrailManager
+  DOT_CONFIG
 };

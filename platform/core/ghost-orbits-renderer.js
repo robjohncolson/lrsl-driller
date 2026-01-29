@@ -578,6 +578,35 @@ class GhostOrbitsRenderer {
 
     // Setup input handlers
     this.setupInputHandlers();
+
+    // Setup responsive canvas scaling
+    this._setupResponsiveCanvas();
+  }
+
+  /**
+   * Setup responsive canvas scaling with ResizeObserver
+   * @private
+   */
+  _setupResponsiveCanvas() {
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const resizeObserver = new ResizeObserver(entries => {
+      const container = entries[0].target;
+      if (!container || !this.canvas) return;
+
+      const scale = Math.min(
+        container.clientWidth / this.canvas.width,
+        container.clientHeight / this.canvas.height,
+        1 // Don't scale up beyond native size
+      );
+      this.canvas.style.transform = `scale(${scale})`;
+      this.canvas.style.transformOrigin = 'top center';
+    });
+
+    if (this.canvas.parentElement) {
+      resizeObserver.observe(this.canvas.parentElement);
+    }
+    this.resizeObserver = resizeObserver; // Store for cleanup
   }
 
   /**
@@ -841,16 +870,11 @@ class GhostOrbitsRenderer {
     // Render void zone (legacy, disabled in v2)
     this.renderVoidZone();
 
-    // Render records (spinning plates - v2)
+    // Render records (spinning plates)
     this.renderGravityWells();
 
-    // Render collectible dots (v2)
+    // Render territory dots (v3)
     this.renderDots();
-
-    // Render dot trails (Snake-style - v2)
-    this.renderDotTrails();
-
-    // v2: Legacy trails disabled (only dot trails now)
 
     // Render ghosts
     this.renderGhosts();
@@ -1441,118 +1465,72 @@ class GhostOrbitsRenderer {
   }
 
   // ============================================
-  // v2: DOTS AND TRAILS
+  // v3: TERRITORY DOTS
   // ============================================
 
   /**
-   * Update collectible dots (v2)
-   * @param {Array} dots - Array of Dot objects
+   * Update territory dots (v3)
+   * @param {Array} dots - Array of Dot objects with ownership
    */
   updateDots(dots) {
-    this.collectibleDots = dots || [];
+    this.territoryDots = dots || [];
   }
 
   /**
-   * Update Snake-style dot trails (v2)
-   * @param {Array} trails - Array of Trail objects
-   */
-  updateDotTrails(trails) {
-    this.dotTrails = trails || [];
-  }
-
-  /**
-   * Render collectible dots (v2)
+   * Render territory dots (v3)
+   * - Neutral dots: white/gray
+   * - Owned dots: owner's color with glow
    */
   renderDots() {
-    if (!this.collectibleDots || this.collectibleDots.length === 0) return;
+    if (!this.territoryDots || this.territoryDots.length === 0) return;
 
     const ctx = this.ctx;
 
-    for (const dot of this.collectibleDots) {
-      // Only render neutral (uncollected) dots
-      if (dot.state !== 'NEUTRAL') continue;
+    for (const dot of this.territoryDots) {
+      const { x, y, radius, pulsePhase, state, ownerColor } = dot;
 
-      const { x, y, radius, pulsePhase } = dot;
-
-      // Pulsing effect
-      const pulse = Math.sin(pulsePhase || 0) * 0.2 + 0.8;
+      // Pulsing effect (stronger for neutral, subtle for owned)
+      const isNeutral = state === 'NEUTRAL';
+      const pulseStrength = isNeutral ? 0.25 : 0.15;
+      const pulse = Math.sin(pulsePhase || 0) * pulseStrength + (1 - pulseStrength);
       const visualRadius = radius * pulse;
 
-      // Outer glow
-      ctx.globalAlpha = 0.3;
-      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, visualRadius * 2);
-      glowGradient.addColorStop(0, '#ffffff');
+      // Determine dot color based on ownership
+      const dotColor = isNeutral ? '#aabbcc' : (ownerColor || '#ffffff');
+
+      // Outer glow (larger for owned dots)
+      const glowSize = isNeutral ? 1.5 : 2.0;
+      ctx.globalAlpha = isNeutral ? 0.2 : 0.35;
+      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, visualRadius * glowSize);
+      glowGradient.addColorStop(0, dotColor);
       glowGradient.addColorStop(1, 'transparent');
       ctx.fillStyle = glowGradient;
       ctx.beginPath();
-      ctx.arc(x, y, visualRadius * 2, 0, Math.PI * 2);
+      ctx.arc(x, y, visualRadius * glowSize, 0, Math.PI * 2);
       ctx.fill();
 
-      // Main dot
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = '#ffffff';
+      // Main dot body
+      ctx.globalAlpha = isNeutral ? 0.7 : 0.9;
+      ctx.fillStyle = dotColor;
       ctx.beginPath();
       ctx.arc(x, y, visualRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Inner highlight
-      ctx.globalAlpha = 0.6;
-      ctx.fillStyle = '#aaddff';
+      // Inner highlight (subtle shine)
+      ctx.globalAlpha = isNeutral ? 0.4 : 0.5;
+      ctx.fillStyle = lighten(dotColor, 0.4);
       ctx.beginPath();
-      ctx.arc(x - visualRadius * 0.2, y - visualRadius * 0.2, visualRadius * 0.4, 0, Math.PI * 2);
+      ctx.arc(x - visualRadius * 0.2, y - visualRadius * 0.2, visualRadius * 0.35, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.globalAlpha = 1;
-    }
-  }
-
-  /**
-   * Render Snake-style dot trails (v2)
-   */
-  renderDotTrails() {
-    if (!this.dotTrails || this.dotTrails.length === 0) return;
-
-    const ctx = this.ctx;
-
-    for (const trail of this.dotTrails) {
-      const segments = trail.getSegments();
-      if (segments.length === 0) continue;
-
-      // Get owner's color
-      const owner = this.ghosts.get(trail.ownerId);
-      const trailColor = owner?.color || trail.color || '#ffffff';
-
-      // Render each segment as a glowing dot
-      for (let i = 0; i < segments.length; i++) {
-        const seg = segments[i];
-        const radius = seg.radius || 8;
-
-        // Fade effect: newer segments (closer to head) are brighter
-        const fadeRatio = 1 - (i / segments.length) * 0.5;
-
-        // Outer glow
-        ctx.globalAlpha = 0.2 * fadeRatio;
-        const glowGradient = ctx.createRadialGradient(seg.x, seg.y, 0, seg.x, seg.y, radius * 2.5);
-        glowGradient.addColorStop(0, trailColor);
-        glowGradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = glowGradient;
+      // Border ring for owned dots
+      if (!isNeutral) {
+        ctx.globalAlpha = 0.6;
+        ctx.strokeStyle = lighten(dotColor, 0.3);
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(seg.x, seg.y, radius * 2.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Main segment
-        ctx.globalAlpha = 0.8 * fadeRatio;
-        ctx.fillStyle = trailColor;
-        ctx.beginPath();
-        ctx.arc(seg.x, seg.y, radius, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Inner highlight
-        ctx.globalAlpha = 0.4 * fadeRatio;
-        ctx.fillStyle = lighten(trailColor, 0.4);
-        ctx.beginPath();
-        ctx.arc(seg.x, seg.y, radius * 0.5, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(x, y, visualRadius + 2, 0, Math.PI * 2);
+        ctx.stroke();
       }
 
       ctx.globalAlpha = 1;
@@ -1565,6 +1543,12 @@ class GhostOrbitsRenderer {
   destroy() {
     this.stop();
     this.removeInputHandlers();
+
+    // Disconnect resize observer
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
 
     if (this.canvas && this.canvas.parentNode) {
       this.canvas.parentNode.removeChild(this.canvas);

@@ -22,7 +22,7 @@ Requires: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `GROQ_A
 
 **Platform** (`platform/`): Topic-agnostic orchestrator
 - `app.html` - Main app (~3600 lines), key: `onGradingComplete` ~line 3095, `loadCartridge()` ~line 3078
-- `core/` - Engines: game, grading, graph, input-renderer, ghost-*, ctf-*, ai-feedback-panel
+- `core/` - Engines: game, grading, graph, input-renderer, ghost-*, ai-feedback-panel
 
 **Cartridges** (`cartridges/{id}/`): Self-contained lessons
 - `manifest.json` - Config: modes, inputs, hints, progression, animation refs
@@ -31,7 +31,7 @@ Requires: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `GROQ_A
 - `ai-grader-prompt.txt` - Template with `{{placeholders}}`
 - `assets/` (optional) - Animation videos (MP4)
 
-**Shared** (`shared/`): `scoring.config.js`, `ctf.config.js`
+**Shared** (`shared/`): `scoring.config.js`
 
 **Registry**: `cartridges/registry.json`
 
@@ -66,9 +66,9 @@ After creating: Add to `registry.json` + add `<option>` to `app.html` dropdown.
 
 ## Major Features
 
-**CTF Game** (`platform/game/`): Linear tug-of-war, 21 positions, stars → team points → push front line. Per-period games, timed sessions, Pong tiebreaker.
-
 **Ghost System** (`platform/core/ghost-*.js`): TensorFlow.js neural networks learn student behavior. 3D maze visualization (Three.js), ghost battles with Elo ratings.
+
+**Ghost Orbits** (`platform/game/ghost-orbits-*.js`): Arcade-style battle game where players compete against ghosts in an arena. 12 orbits, lives system, neural network opponents.
 
 **Animation System** (`animations/`): Manim-generated math animations displayed alongside problems. Per-mode video references in manifest, auto-play with controls.
 

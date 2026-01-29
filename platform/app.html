@@ -104,11 +104,6 @@
           </div>
         </div>
 
-        <!-- CTF Toggle (DEPRECATED - hidden) -->
-        <button id="ctf-btn" class="hidden p-1.5 hover:bg-green-100 text-green-600 rounded-lg transition-colors relative" title="Capture The Flag">
-          <span class="text-base">🚩</span>
-        </button>
-
         <!-- Ghost Toggle -->
         <button id="ghost-btn" class="p-1.5 hover:bg-purple-100 text-purple-600 rounded-lg transition-colors relative" title="Ghost Mode">
           <span class="text-base">👻</span>
@@ -345,12 +340,6 @@
       </div>
     </div>
   </div>
-
-  <!-- CTF Sidebar Panel -->
-  <div id="ctf-sidebar" class="fixed right-0 top-0 bottom-0 bg-gray-900 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto" style="width: min(92vw, 480px);">
-    <div id="ctf-container" class="p-2"></div>
-  </div>
-  <div id="ctf-backdrop" class="fixed inset-0 bg-black/30 z-45 hidden"></div>
 
   <!-- Main Content - Split Pane Layout -->
   <main id="main-content" class="max-w-6xl mx-auto px-4 min-h-[calc(100vh-48px)] flex flex-col lg:flex-row gap-4 py-4">
@@ -940,15 +929,13 @@
     import { ClassTime } from './core/class-time.js';
     import { TimeTracker } from './core/time-tracker.js';
     import { CartridgeLoader } from './core/cartridge-loader.js';
-    import { GameModeManager } from './game/game-mode-manager.js';
     import { calculateWeightedPoints, getPointsBreakdown } from '../shared/scoring.config.js';
     import { createAIFeedbackPanel, updateAIFeedbackPanel, showAIFeedbackError, hideAIFeedbackPanel } from './core/ai-feedback-panel.js';
     import { RosterModal } from './core/roster-modal.js';
-    import { GAME_MODE_CONFIG } from '../shared/game-mode.config.js';
     import * as GhostEngine from './core/ghost-engine.js';
     import { GhostPanel, createGhostButton } from './game/ghost-panel.js';
     import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';
-    console.log('[APP] All imports successful, GameModeManager:', typeof GameModeManager);
+    console.log('[APP] All imports successful');
 
     // ==================== CONFIGURATION ====================
     const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
@@ -1124,10 +1111,6 @@
         applyTeacherGrades(message);
       },
       onGridMessage: (message) => {
-        // Forward game mode messages (CTF/KotH) to the manager
-        if (gameModeManager && (message.type?.startsWith('ctf_') || message.type?.startsWith('koth_') || message.type === 'game_mode_changed')) {
-          gameModeManager.handleMessage(message);
-        }
         // v3.2: Handle progression override changes from teacher
         if (message.type === 'progression_override_changed') {
           console.log('[App] Progression override changed:', message);
@@ -1176,8 +1159,6 @@
     let platform = null;
     let currentCartridgeId = localStorage.getItem('lastCartridgeId') || 'lsrl-interpretation';
     let pendingTeacherReview = null; // Store results for teacher review
-    let gameModeManager = null; // Game mode manager instance (CTF/KotH)
-    let gameModeEnabled = true; // Feature flag for game modes
     let aiFeedbackPanel = null; // v2.0.1: AI feedback panel instance
     let rosterModal = null; // Teacher roster management modal
     let requestedStartLevel = null; // URL-requested level (e.g., ?level=l12-sample-space or ?start=12)
@@ -1210,82 +1191,6 @@
         console.warn('[Sync] Failed to sync stars:', err);
       }
     }
-
-    // ==================== GAME MODE INTEGRATION ====================
-
-    /**
-     * Initialize game mode manager for a user (CTF/KotH)
-     */
-    async function initGameMode(username) {
-      console.log('[GameMode] initGameMode called for', username, 'enabled:', gameModeEnabled);
-      if (!gameModeEnabled) return;
-
-      try {
-        const container = document.getElementById('ctf-container');
-        if (!container) {
-          console.error('[GameMode] ctf-container not found in DOM!');
-          return;
-        }
-
-        console.log('[GameMode] Creating GameModeManager...');
-        gameModeManager = new GameModeManager(container, SERVER_URL);
-
-        // Initialize for current cartridge (pass teacherPassword for API auth)
-        await gameModeManager.init(currentCartridgeId, username, isTeacher, null, teacherPassword);
-
-        // If teacher, fetch all users for team assignment
-        if (isTeacher) {
-          try {
-            const response = await fetch(`${SERVER_URL}/api/users`);
-            if (response.ok) {
-              const users = await response.json();
-              console.log('[GameMode] Fetched', users.length, 'users from /api/users');
-              gameModeManager.setAvailableUsers(users);
-            } else {
-              console.warn('[GameMode] /api/users returned status:', response.status);
-            }
-          } catch (err) {
-            console.warn('[GameMode] Failed to fetch users:', err.message);
-          }
-        }
-
-        // Pass current online users (WebSocket may have received presence_snapshot before gameModeManager existed)
-        console.log('[GameMode] WebSocket online users:', wsClient.onlineUsers);
-        if (wsClient.onlineUsers && wsClient.onlineUsers.length > 0) {
-          gameModeManager.setOnlineUsers(wsClient.onlineUsers);
-        }
-
-        console.log('[GameMode] Initialized for', username, 'mode:', gameModeManager.getMode());
-      } catch (err) {
-        console.warn('[GameMode] Init error:', err.message, err);
-        // Game modes are optional - don't break the app
-      }
-    }
-
-    /**
-     * Toggle the CTF sidebar
-     */
-    function toggleCTFSidebar() {
-      const sidebar = document.getElementById('ctf-sidebar');
-      const backdrop = document.getElementById('ctf-backdrop');
-      const btn = document.getElementById('ctf-btn');
-
-      const isOpen = !sidebar.classList.contains('translate-x-full');
-
-      if (isOpen) {
-        sidebar.classList.add('translate-x-full');
-        backdrop.classList.add('hidden');
-        btn.classList.remove('bg-green-200');
-      } else {
-        sidebar.classList.remove('translate-x-full');
-        backdrop.classList.remove('hidden');
-        btn.classList.add('bg-green-200');
-      }
-    }
-
-    // CTF sidebar toggle event listeners
-    document.getElementById('ctf-btn').addEventListener('click', toggleCTFSidebar);
-    document.getElementById('ctf-backdrop').addEventListener('click', toggleCTFSidebar);
 
     // ==================== GHOST PANEL INTEGRATION ====================
 
@@ -1690,11 +1595,6 @@
 
     function updateOnlineDisplay(users) {
       document.getElementById('online-count').textContent = users.length;
-
-      // Update game mode manager with online users for team assignment filtering
-      if (gameModeManager) {
-        gameModeManager.setOnlineUsers(users);
-      }
 
       const list = document.getElementById('online-list');
       if (users.length === 0) {
@@ -2496,13 +2396,6 @@
         const onlineDropdown = document.getElementById('online-dropdown');
         if (onlineDropdown && !onlineDropdown.classList.contains('hidden')) {
           onlineDropdown.classList.add('hidden');
-          return;
-        }
-
-        // Close CTF/Game Mode sidebar
-        const ctfSidebar = document.getElementById('ctf-sidebar');
-        if (!ctfSidebar.classList.contains('translate-x-full')) {
-          toggleCTFSidebar();
           return;
         }
 
@@ -3864,28 +3757,6 @@
     document.addEventListener('platform:starEarned', async (e) => {
       const { starType, modeId } = e.detail || {};
 
-      // Add game mode points for the star earned (with level-weighted scoring)
-      if (gameModeManager && starType) {
-        try {
-          // Get current level position for weighted scoring
-          const gameState = platform.gameEngine.getState();
-          const modeOrder = gameState.modeOrder || [];
-          const levelIndex = modeId ? modeOrder.indexOf(modeId) : 0;
-          const totalLevels = modeOrder.length || 1;
-
-          // Calculate weighted points based on star type and level position
-          const weightedPoints = calculateWeightedPoints(starType, Math.max(0, levelIndex), totalLevels);
-
-          // Log breakdown for debugging
-          const breakdown = getPointsBreakdown(starType, Math.max(0, levelIndex), totalLevels);
-          console.log(`[Scoring] ${starType} star at ${breakdown.levelLabel}: ${weightedPoints} pts (${breakdown.levelMultiplier}x multiplier)`);
-
-          await gameModeManager.addPoints(weightedPoints, starType);
-        } catch (err) {
-          console.warn('[GameMode] Failed to add points:', err.message);
-        }
-      }
-
       // Re-render mode tabs to check for newly unlocked modes
       renderModeTabs();
 
@@ -4912,7 +4783,7 @@
 
       await userSystem.init();
 
-      // Check for persisted teacher mode (must await before initGameMode)
+      // Check for persisted teacher mode
       await checkTeacherModePersistence();
 
       if (userSystem.currentUser) {
@@ -4938,14 +4809,6 @@
 
         // Sync local stars with server on return visit
         syncStarsWithServer(userSystem.currentUser.username);
-
-        // Initialize game mode manager (non-blocking)
-        console.log('[APP] About to call initGameMode for:', userSystem.currentUser.username);
-        initGameMode(userSystem.currentUser.username).then(() => {
-          console.log('[APP] initGameMode promise resolved');
-        }).catch(err => {
-          console.error('[APP] initGameMode promise rejected:', err);
-        });
 
         // Initialize Ghost Panel (non-blocking)
         try {

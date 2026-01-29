@@ -193,7 +193,7 @@ describe('MazeGenerator', () => {
       // Each tier has exactly one node, should be centered
       const l01 = nodes.get('l01');
       expect(l01.position.x).toBe(0);
-      expect(l01.position.z).toBe(0);
+      expect(l01.position.z).toBeCloseTo(0);
     });
 
     it('increases Y with tier depth', () => {

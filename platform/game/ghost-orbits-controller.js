@@ -16,7 +16,7 @@ import { GhostPropertiesMapper } from '../core/ghost-orbits-nn-mapper.js';
 import { PhysicsEngine, PHYSICS } from '../core/ghost-orbits-physics.js';
 import { TerritorySystem } from '../core/ghost-orbits-territory.js';
 import { ShadowAI, PatternRecorder } from './ghost-orbits-shadow-ai.js';
-import { DotManager, TrailManager } from '../core/ghost-orbits-dots.js';
+import { DotManager, DOT_CONFIG } from '../core/ghost-orbits-dots.js';
 
 /**
  * Game states for the Ghost Orbits state machine
@@ -45,12 +45,15 @@ const ROUND_CONFIG = {
 
 /**
  * Win condition constants for solo mode (vs Shadow Self)
+ * v3: Dot Territory - 90% dot ownership wins
  */
 const WIN_CONDITIONS = {
-  DOMINATION_THRESHOLD: 0.70,  // 70% territory
-  DOMINATION_HOLD_TIME: 5000,  // 5 seconds
-  ROUND_DURATION: 90000,       // 90 seconds
-  ABSORPTION_MASS_RATIO: 1.2   // 20% larger to absorb
+  DOT_THRESHOLD: 0.90,         // 90% dots = win (v3)
+  ROUND_DURATION: 120000,      // 120 seconds (extended for v3)
+  // Legacy (unused in v3):
+  DOMINATION_THRESHOLD: 0.70,
+  DOMINATION_HOLD_TIME: 5000,
+  ABSORPTION_MASS_RATIO: 1.2
 };
 
 /**
@@ -240,10 +243,9 @@ export class GhostOrbitsController {
         height: arenaSize
       });
 
-      // Initialize dots system (v2)
+      // Initialize dots system (v3 - territory dots)
       console.log('[GhostOrbits] Creating dots system...');
-      this.dotManager = new DotManager(arenaSize, { dotCount: 35, dotRadius: 8 });
-      this.trailManager = new TrailManager();
+      this.dotManager = new DotManager(arenaSize, { dotCount: 50, dotRadius: 10 });
 
       // Initialize territory system (legacy)
       console.log('[GhostOrbits] Creating territory system...');
@@ -631,6 +633,11 @@ export class GhostOrbitsController {
 
     console.log(`[GhostOrbits] Spawning Shadow Self (Gen ${this.shadowGeneration}) at`, shadowSpawnX, shadowSpawnY);
     console.log('[GhostOrbits] Shadow color:', shadowColor, '(complement of', playerColor, ')');
+
+    // Set owner colors for dot territory system (v3)
+    if (this.dotManager) {
+      this.dotManager.setOwnerColors(playerColor, shadowColor);
+    }
 
     // Add shadow ghost to renderer with same properties as player
     this.renderer.addGhost({
@@ -1283,105 +1290,124 @@ export class GhostOrbitsController {
     }
 
     // ============================================
-    // v2: DOT COLLECTION AND TRAIL UPDATES
+    // v3: DOT TERRITORY SYSTEM
     // ============================================
-    if (this.dotManager && this.trailManager) {
-      // Check dot collection for player
-      const playerCollected = this.dotManager.checkCollection(
-        this.username, localGhost.position.x, localGhost.position.y
-      );
-      if (playerCollected) {
-        const trail = this.trailManager.getOrCreateTrail(this.username, localGhost.color);
-        trail.addDot(playerCollected, localGhost.position.x, localGhost.position.y);
-        if (this.audio) this.audio.playOrbitCapture?.();
-      }
-
-      // Check dot collection for shadow
-      if (shadowGhost) {
-        const shadowCollected = this.dotManager.checkCollection(
-          this.shadowGhostId, shadowGhost.position.x, shadowGhost.position.y
-        );
-        if (shadowCollected) {
-          const trail = this.trailManager.getOrCreateTrail(this.shadowGhostId, shadowGhost.color);
-          trail.addDot(shadowCollected, shadowGhost.position.x, shadowGhost.position.y);
-        }
-      }
-
-      // Update trails to follow ghosts
-      const ghostPositions = new Map();
-      ghostPositions.set(this.username, { x: localGhost.position.x, y: localGhost.position.y });
-      if (shadowGhost) {
-        ghostPositions.set(this.shadowGhostId, { x: shadowGhost.position.x, y: shadowGhost.position.y });
-      }
-      this.trailManager.update(ghostPositions);
-      this.dotManager.update(deltaTime);
-
-      // Check trail collisions (lives system) - skip if dodging or invulnerable
+    if (this.dotManager) {
       const currentTime = Date.now();
 
-      if (!this.isDodging && currentTime > this.playerInvulnerableUntil) {
-        const playerHit = this.trailManager.checkCollision(
-          this.username, localGhost.position.x, localGhost.position.y
+      // Player is safe while on a record (orbiting)
+      const playerOnRecord = this.ghostMovementState === 'ORBITING';
+      const shadowOnRecord = this.shadowMovementState === 'ORBITING';
+
+      // Check dot interactions for player (only when not on record)
+      if (!playerOnRecord && currentTime > this.playerInvulnerableUntil) {
+        const playerColor = localGhost.color || this.ghostProperties?.color || '#4488ff';
+        const interaction = this.dotManager.checkDotInteraction(
+          'player',
+          localGhost.position.x,
+          localGhost.position.y,
+          playerColor
         );
-        if (playerHit) {
-          this.playerLives--;
-          this.playerInvulnerableUntil = currentTime + this.invulnerabilityDuration;
-          console.log(`[GhostOrbits] Player hit! Lives remaining: ${this.playerLives}`);
 
-          // Update lives display immediately
-          if (this.panel?.updateLives) {
-            this.panel.updateLives(this.playerLives);
-          }
+        if (interaction) {
+          if (interaction.type === 'claimed') {
+            // Claimed a neutral dot
+            if (this.audio) this.audio.playOrbitCapture?.();
+          } else if (interaction.type === 'flipped') {
+            // Successfully flipped an enemy dot with spacebar
+            console.log('[GhostOrbits] Player flipped enemy dot!');
+            if (this.audio) this.audio.playVictory?.(); // Celebratory sound
+          } else if (interaction.type === 'damaged') {
+            // Touched enemy dot without spacebar - lose a life!
+            this.playerLives--;
+            this.playerInvulnerableUntil = currentTime + this.invulnerabilityDuration;
+            console.log(`[GhostOrbits] Player damaged! Lives remaining: ${this.playerLives}`);
 
-          // Flash the ghost to show damage
-          if (this.renderer?.flashGhost) {
-            this.renderer.flashGhost(this.username, '#ff4444', 300);
-          }
+            if (this.panel?.updateLives) {
+              this.panel.updateLives(this.playerLives);
+            }
 
-          if (this.audio) this.audio.playDamage?.();
+            if (this.renderer?.flashGhost) {
+              this.renderer.flashGhost(this.username, '#ff4444', 300);
+            }
 
-          if (this.playerLives <= 0) {
-            this._handleMatchEnd('shadow_win', 'elimination');
-            return;
+            if (this.audio) this.audio.playDamage?.();
+
+            if (this.playerLives <= 0) {
+              this._handleMatchEnd('shadow_win', 'elimination');
+              return;
+            }
           }
         }
       }
 
-      if (shadowGhost && currentTime > this.shadowInvulnerableUntil) {
-        // Shadow doesn't dodge, just check collision
-        const shadowHit = this.trailManager.checkCollision(
-          this.shadowGhostId, shadowGhost.position.x, shadowGhost.position.y
+      // Check dot interactions for shadow (only when not on record)
+      if (shadowGhost && !shadowOnRecord && currentTime > this.shadowInvulnerableUntil) {
+        const shadowColor = shadowGhost.color || '#ff4444';
+
+        // Shadow AI: register spacebar if near enemy dot (simple heuristic)
+        // This gives shadow a chance to flip dots too
+        const nearEnemyDot = this._isShadowNearEnemyDot(shadowGhost);
+        if (nearEnemyDot && Math.random() < 0.7) { // 70% chance to attempt flip
+          this.dotManager.registerSpacebarPress('shadow');
+        }
+
+        const interaction = this.dotManager.checkDotInteraction(
+          'shadow',
+          shadowGhost.position.x,
+          shadowGhost.position.y,
+          shadowColor
         );
-        if (shadowHit) {
-          this.shadowLives--;
-          this.shadowInvulnerableUntil = currentTime + this.invulnerabilityDuration;
-          console.log(`[GhostOrbits] Shadow hit! Lives remaining: ${this.shadowLives}`);
 
-          // Flash the shadow ghost
-          if (this.renderer?.flashGhost) {
-            this.renderer.flashGhost(this.shadowGhostId, '#ff4444', 300);
-          }
+        if (interaction) {
+          if (interaction.type === 'flipped') {
+            console.log('[GhostOrbits] Shadow flipped player dot!');
+          } else if (interaction.type === 'damaged') {
+            this.shadowLives--;
+            this.shadowInvulnerableUntil = currentTime + this.invulnerabilityDuration;
+            console.log(`[GhostOrbits] Shadow damaged! Lives remaining: ${this.shadowLives}`);
 
-          if (this.shadowLives <= 0) {
-            this._handleMatchEnd('player_win', 'elimination');
-            return;
+            if (this.renderer?.flashGhost) {
+              this.renderer.flashGhost(this.shadowGhostId, '#ff4444', 300);
+            }
+
+            if (this.shadowLives <= 0) {
+              this._handleMatchEnd('player_win', 'elimination');
+              return;
+            }
           }
         }
       }
 
-      // Sync to renderer
-      this.renderer.updateDots?.(this.dotManager.getDots());
-      this.renderer.updateDotTrails?.(this.trailManager.getTrails());
+      // Update dot animations
+      this.dotManager.update(deltaTime);
 
-      // Update UI
+      // Sync dots to renderer
+      this.renderer?.updateDots?.(this.dotManager.getDots());
+
+      // Check for territory win (90% dots)
+      const winner = this.dotManager.checkWinner();
+      if (winner) {
+        const winnerColor = winner === 'player'
+          ? (localGhost.color || '#4488ff')
+          : (shadowGhost?.color || '#ff4444');
+        this.dotManager.convertAllToWinner(winner, winnerColor);
+        this.renderer?.updateDots?.(this.dotManager.getDots());
+
+        const result = winner === 'player' ? 'player_win' : 'shadow_win';
+        this._handleMatchEnd(result, 'territory');
+        return;
+      }
+
+      // Update UI with dot ownership stats
       if (this.panel) {
-        // Update dot counts
+        const playerDots = this.dotManager.countDotsByOwner('player');
+        const shadowDots = this.dotManager.countDotsByOwner('shadow');
+        const totalDots = this.dotManager.getTotalDots();
+
         if (this.panel.updateDotCounts) {
-          const playerDots = this.dotManager.countDotsByOwner(this.username);
-          const shadowDots = this.dotManager.countDotsByOwner(this.shadowGhostId);
-          this.panel.updateDotCounts(playerDots, shadowDots, WIN_CONDITIONS.COLLECTION_TARGET);
+          this.panel.updateDotCounts(playerDots, shadowDots, totalDots);
         }
-        // Update lives display (in case it wasn't updated from collision)
         if (this.panel.updateLives) {
           this.panel.updateLives(this.playerLives);
         }
@@ -1497,6 +1523,31 @@ export class GhostOrbitsController {
       voidX: this.voidZone?.x || 0,
       voidY: this.voidZone?.y || 0
     };
+  }
+
+  /**
+   * Check if shadow is near a player-owned dot (for flip mechanic AI)
+   * @param {Object} shadowGhost - Shadow ghost object
+   * @returns {boolean}
+   * @private
+   */
+  _isShadowNearEnemyDot(shadowGhost) {
+    if (!this.dotManager || !shadowGhost) return false;
+
+    const dots = this.dotManager.getDots();
+    const checkRadius = DOT_CONFIG.COLLISION_RADIUS * 2; // Look ahead a bit
+
+    for (const dot of dots) {
+      if (dot.ownerId === 'player') {
+        const dx = shadowGhost.position.x - dot.x;
+        const dy = shadowGhost.position.y - dot.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < checkRadius) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /**
@@ -1692,19 +1743,30 @@ export class GhostOrbitsController {
    * @private
    */
   _handleKeyDown(event) {
-    // ESC to exit
-    if (event.code === 'Escape') {
-      event.preventDefault();
-      this.exitArena();
+    // Ignore keypresses when user is typing in an input field
+    const target = event.target;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
       return;
     }
 
-    // Only process input when enabled and in PLAYING state
+    // ESC to exit - only when panel is visible
+    if (event.code === 'Escape') {
+      if (this.panel && this.panel.isVisible) {
+        event.preventDefault();
+        this.exitArena();
+      }
+      return;
+    }
+
+    // Only process game input when enabled and in PLAYING state
     if (!this.inputEnabled || this.state !== GameState.PLAYING) {
       return;
     }
 
-    // Space key for orbit entry/exit (v2)
+    // v3: Space key is the ONLY control
+    // - On record (ORBITING): launch off
+    // - Flying (FREE_FLIGHT) + near record: land on record (safe)
+    // - Flying + pressing spacebar: registers for flip mechanic timing
     if (event.code === 'Space') {
       event.preventDefault();
       if (event.repeat) return; // Don't repeat on held key
@@ -1712,18 +1774,26 @@ export class GhostOrbitsController {
       const localGhost = this.renderer?.getLocalGhost();
       if (!localGhost) return;
 
-      // Check if currently orbiting
+      // Register spacebar press for flip mechanic (v3)
+      // This must happen BEFORE orbit entry/exit to enable flip timing
+      if (this.dotManager) {
+        this.dotManager.registerSpacebarPress('player');
+      }
+
+      // Check if currently on a record (orbiting = safe)
       if (this.ghostMovementState === 'ORBITING') {
-        // Release from orbit
+        // Launch off the record
         const releaseVelocity = this.physicsEngine.releaseFromOrbit(this.username);
         if (releaseVelocity) {
-          console.log('[GhostOrbits] Manual orbit release via Space key');
+          console.log('[GhostOrbits] Launched from record via Space key');
           localGhost.velocity.x = releaseVelocity.x;
           localGhost.velocity.y = releaseVelocity.y;
           this.ghostMovementState = 'FREE_FLIGHT';
+          this.renderer?.updateGhostOrbitState?.(this.username, false);
+          if (this.audio) this.audio.playBounce?.();
         }
       } else {
-        // Try to enter orbit if near a record
+        // Try to land on a record if near one
         const ghostPos = {
           x: localGhost.position?.x ?? 0,
           y: localGhost.position?.y ?? 0
@@ -1733,9 +1803,6 @@ export class GhostOrbitsController {
           y: localGhost.velocity?.y ?? 0
         };
 
-        console.log(`[GhostOrbits] Space pressed - ghost at (${ghostPos.x.toFixed(0)}, ${ghostPos.y.toFixed(0)}), vel (${ghostVel.x.toFixed(1)}, ${ghostVel.y.toFixed(1)})`);
-        console.log(`[GhostOrbits] Physics engine has ${this.physicsEngine.getRecords().length} records`);
-
         const record = this.physicsEngine.requestOrbitEntry(
           this.username,
           ghostPos,
@@ -1743,58 +1810,18 @@ export class GhostOrbitsController {
         );
 
         if (record) {
-          console.log('[GhostOrbits] Entered orbit via Space key, record:', record.id);
+          console.log('[GhostOrbits] Landed on record via Space key:', record.id);
           this.ghostMovementState = 'ORBITING';
+          this.renderer?.updateGhostOrbitState?.(this.username, true);
           if (this.audio) this.audio.playOrbitCapture?.();
-        } else {
-          console.log('[GhostOrbits] No record in range for orbit entry');
         }
+        // If not near a record, spacebar still registered for flip mechanic
       }
       return;
     }
 
-    // Shift key for dodge (v2 Phase 3)
-    if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
-      event.preventDefault();
-      if (event.repeat) return; // Don't repeat on held key
-
-      const localGhost = this.renderer?.getLocalGhost();
-      if (!localGhost) return;
-
-      const currentTime = Date.now();
-
-      // Check cooldown
-      if (currentTime < this.dodgeCooldownEnd) {
-        const cooldownRemaining = ((this.dodgeCooldownEnd - currentTime) / 1000).toFixed(1);
-        console.log(`[GhostOrbits] Dodge on cooldown (${cooldownRemaining}s remaining)`);
-        return;
-      }
-
-      // Check if already dodging
-      if (this.isDodging) {
-        console.log('[GhostOrbits] Already dodging');
-        return;
-      }
-
-      // Activate dodge
-      this.isDodging = true;
-      this.ghostMovementState = 'DODGING';
-      this.dodgeEndTime = currentTime + (PHYSICS.DODGE_DURATION * 1000);
-      this.dodgeCooldownEnd = currentTime + (PHYSICS.DODGE_COOLDOWN * 1000);
-
-      // Apply speed boost to current velocity
-      const speedMultiplier = PHYSICS.DODGE_SPEED_MULTIPLIER;
-      localGhost.velocity.x *= speedMultiplier;
-      localGhost.velocity.y *= speedMultiplier;
-
-      // Play audio feedback
-      if (this.audio) {
-        this.audio.playBounce?.(); // Reuse bounce sound for now
-      }
-
-      console.log(`[GhostOrbits] Dodge activated! Speed boost: ${speedMultiplier}x for ${PHYSICS.DODGE_DURATION}s`);
-      return;
-    }
+    // v3: No dodge mechanic (removed Shift key)
+    // v3: No arrow key movement (ghosts move at constant velocity)
 
     // v2: Arrow keys do NOT apply thrust or affect ghost movement
     // Ghosts move at constant velocity and only change direction via Records (Space key)
@@ -1875,6 +1902,12 @@ export class GhostOrbitsController {
    * @private
    */
   _handleKeyUp(event) {
+    // Ignore keypresses when user is typing in an input field
+    const target = event.target;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+
     if (!this.inputEnabled) return;
 
     // v2: Arrow keys do NOT apply thrust or affect ghost movement
@@ -2029,7 +2062,7 @@ export class GhostOrbitsController {
   // ============================================
 
   /**
-   * Check win conditions each physics frame
+   * Check win conditions each physics frame (v3 - territory dots)
    * @param {number} currentTime - Current timestamp in milliseconds
    * @private
    */
@@ -2042,17 +2075,15 @@ export class GhostOrbitsController {
     const elapsed = currentTime - this.matchStartTime;
     this.matchTimeRemaining = WIN_CONDITIONS.ROUND_DURATION - elapsed;
 
-    // 1. Check timeout condition (90 seconds elapsed)
+    // 1. Check timeout condition (time ran out)
     if (elapsed >= WIN_CONDITIONS.ROUND_DURATION) {
       this._handleTimeoutWin();
       return;
     }
 
-    // 2. Check domination condition (70% territory for 5 seconds)
-    this._checkDominationWin(currentTime);
-
-    // 3. Check absorption condition (ghost collision with mass advantage)
-    this._checkAbsorptionWin();
+    // v3: Territory win (90% dots) is checked in the dot interaction loop
+    // and handled there immediately when threshold is reached.
+    // Lives-based elimination is also handled in dot interaction loop.
   }
 
   /**
@@ -2141,27 +2172,19 @@ export class GhostOrbitsController {
   }
 
   /**
-   * Handle timeout win condition
+   * Handle timeout win condition (v3 - based on dot ownership)
    * @private
    */
   _handleTimeoutWin() {
-    if (!this.territorySystem) return;
+    if (!this.dotManager) return;
 
-    const territoryPercents = this.territorySystem.getAllTerritoryPercents();
+    const playerPercent = this.dotManager.getOwnershipPercent('player');
+    const shadowPercent = this.dotManager.getOwnershipPercent('shadow');
 
-    let playerPercent = 0;
-    let shadowPercent = 0;
+    console.log(`[GhostOrbits] Timeout! Player: ${(playerPercent * 100).toFixed(1)}%, Shadow: ${(shadowPercent * 100).toFixed(1)}%`);
 
-    for (const [playerId, percent] of territoryPercents) {
-      if (playerId === this.username) {
-        playerPercent = percent;
-      } else {
-        shadowPercent = percent;
-      }
-    }
-
-    // Winner is whoever has more territory
-    const winner = playerPercent > shadowPercent ? 'player_win' : 'shadow_win';
+    // Winner is whoever has more dots (or tie goes to player)
+    const winner = playerPercent >= shadowPercent ? 'player_win' : 'shadow_win';
     this._handleMatchEnd(winner, 'timeout');
   }
 
@@ -2225,8 +2248,8 @@ export class GhostOrbitsController {
 
     // Show results in panel
     if (this.panel) {
-      const territoryPercents = this.territorySystem?.getAllTerritoryPercents() || new Map();
-      const playerPercent = territoryPercents.get(this.username) || 0;
+      // v3: Use dot ownership percentage
+      const playerPercent = this.dotManager?.getOwnershipPercent('player') || 0;
 
       const resultsData = {
         winner: winner === 'player_win' ? 'player' : 'shadow',
@@ -2251,16 +2274,19 @@ export class GhostOrbitsController {
   }
 
   /**
-   * Get human-readable win condition text
+   * Get human-readable win condition text (v3)
    * @param {string} condition - Win condition type
    * @returns {string}
    * @private
    */
   _getWinConditionText(condition) {
     const texts = {
+      territory: 'Dot Domination (90%)',
+      elimination: 'Elimination',
+      timeout: 'Time Limit',
+      // Legacy (kept for compatibility):
       domination: 'Territory Domination',
-      absorption: 'Absorption',
-      timeout: 'Time Limit'
+      absorption: 'Absorption'
     };
     return texts[condition] || condition;
   }
@@ -2275,11 +2301,19 @@ export class GhostOrbitsController {
     this.matchResult = null;
     this.winCondition = null;
 
-    // Reset lives (v2 system)
+    // Reset lives (v3 system - 3 lives each)
     this.playerLives = 3;
     this.shadowLives = 3;
     this.playerInvulnerableUntil = 0;
     this.shadowInvulnerableUntil = 0;
+
+    // Reset dots to neutral (v3)
+    if (this.dotManager) {
+      this.dotManager.reset();
+      // Re-initialize dots with current records
+      const records = this.physicsEngine?.getRecords() || [];
+      this.dotManager.initialize(records);
+    }
 
     // Reset match stats
     this.matchStats = {
@@ -2293,6 +2327,15 @@ export class GhostOrbitsController {
     // Update lives display
     if (this.panel?.updateLives) {
       this.panel.updateLives(this.playerLives);
+    }
+
+    // Show help screen on first match (v3)
+    if (this.panel?.showHelpScreen && !this._hasShownHelp) {
+      this._hasShownHelp = true;
+      // Pause briefly before showing help
+      setTimeout(() => {
+        this.panel.showHelpScreen();
+      }, 500);
     }
 
     console.log('[GhostOrbits] Match timer started, lives reset to 3');
