@@ -492,6 +492,74 @@ export class GhostOrbitsPanel {
     this._renderSpectatorWinView(data);
   }
 
+  /**
+   * Show connecting state while waiting for server
+   */
+  showConnecting() {
+    this.currentView = 'connecting';
+    this._renderConnectingView();
+  }
+
+  /**
+   * Render connecting/loading view
+   * @private
+   */
+  _renderConnectingView() {
+    if (!this.overlayElement) return;
+
+    this.overlayElement.innerHTML = `
+      <div class="orbits-connecting-view">
+        <div class="connecting-content">
+          <div class="connecting-spinner"></div>
+          <h2 class="connecting-title">Connecting to Arena...</h2>
+          <p class="connecting-message">Please wait</p>
+          <button class="connecting-cancel-btn" id="connecting-cancel-btn">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    this.overlayElement.classList.add('visible');
+
+    // Attach cancel listener
+    const cancelBtn = this.overlayElement.querySelector('#connecting-cancel-btn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        this.onClose();
+      });
+    }
+  }
+
+  /**
+   * Show waiting/lobby state with player count
+   * @param {number} playerCount - Number of players in arena
+   */
+  showWaiting(playerCount) {
+    this.currentView = 'waiting';
+    this.showLobbyView();
+    this.updatePlayerCount(playerCount);
+  }
+
+  /**
+   * Show spectating mode for a specific player
+   * @param {string} targetPlayerId - ID of player being spectated
+   */
+  showSpectating(targetPlayerId) {
+    this.currentView = 'spectating';
+    this.isSpectating = true;
+    this._renderSpectatorView();
+  }
+
+  /**
+   * Update player list in the arena (public wrapper)
+   * @param {Array} players - List of player objects with id, username, color, lives
+   */
+  updatePlayerList(players) {
+    if (Array.isArray(players)) {
+      this.playersInArena = players;
+    }
+    this._updatePlayerList();
+  }
+
   // ==========================================================================
   // HUD UPDATE METHODS
   // ==========================================================================
@@ -2632,6 +2700,73 @@ export class GhostOrbitsPanel {
       }
 
       .spectator-leave-btn:hover {
+        background: rgba(136, 170, 204, 0.1);
+        border-color: #88aacc;
+      }
+
+      /* -------------------------------------------
+         CONNECTING VIEW
+         ------------------------------------------- */
+
+      .orbits-connecting-view {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        background:
+          radial-gradient(circle at center, rgba(68, 136, 255, 0.08) 0%, transparent 60%),
+          linear-gradient(rgba(17, 34, 68, 0.2) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(17, 34, 68, 0.2) 1px, transparent 1px);
+        background-size: 100% 100%, 40px 40px, 40px 40px;
+      }
+
+      .connecting-content {
+        text-align: center;
+        max-width: 400px;
+      }
+
+      .connecting-spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(68, 136, 255, 0.2);
+        border-top-color: #4488ff;
+        border-radius: 50%;
+        margin: 0 auto 24px auto;
+        animation: connecting-spin 1s linear infinite;
+      }
+
+      @keyframes connecting-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      .connecting-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #ffffff;
+        margin: 0 0 12px 0;
+      }
+
+      .connecting-message {
+        font-size: 16px;
+        color: #88aacc;
+        margin: 0 0 24px 0;
+      }
+
+      .connecting-cancel-btn {
+        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        background: transparent;
+        border: 1px solid #88aacc44;
+        border-radius: 6px;
+        color: #88aacc;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .connecting-cancel-btn:hover {
         background: rgba(136, 170, 204, 0.1);
         border-color: #88aacc;
       }
