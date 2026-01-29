@@ -90,13 +90,32 @@ const INPUT_KEYS = {
 // ============================================================================
 
 /**
- * Lighten a hex color by a percentage
- * @param {string} color - Hex color string
+ * Lighten a color by a percentage
+ * Supports both hex (#rrggbb) and hsl(h, s%, l%) formats
+ * @param {string} color - Color string (hex or HSL)
  * @param {number} percent - Amount to lighten (0-1)
- * @returns {string} Lightened hex color
+ * @returns {string} Lightened color
  */
 function lighten(color, percent) {
-  const num = parseInt(color.replace('#', ''), 16);
+  if (!color || typeof color !== 'string') {
+    return '#ffffff';
+  }
+
+  // Handle HSL colors
+  const hslMatch = color.match(/hsl\(\s*(\d+)\s*,\s*(\d+)%?\s*,\s*(\d+)%?\s*\)/i);
+  if (hslMatch) {
+    const h = parseInt(hslMatch[1], 10);
+    const s = parseInt(hslMatch[2], 10);
+    const l = Math.min(100, parseInt(hslMatch[3], 10) + percent * 100);
+    return `hsl(${h}, ${s}%, ${l}%)`;
+  }
+
+  // Handle hex colors
+  const cleanColor = color.replace('#', '');
+  const num = parseInt(cleanColor, 16);
+  if (isNaN(num)) {
+    return color; // Return original if can't parse
+  }
   const amt = Math.round(255 * percent);
   const R = Math.min(255, (num >> 16) + amt);
   const G = Math.min(255, ((num >> 8) & 0x00FF) + amt);
@@ -574,6 +593,9 @@ class GhostOrbitsRenderer {
     // Wells storage (synced from controller)
     this.wells = [];
 
+    // Territory dots storage (v3 - synced from controller)
+    this.territoryDots = [];
+
     // Void zone
     this.voidZone = null;
 
@@ -593,6 +615,9 @@ class GhostOrbitsRenderer {
     this.lastFrameTime = 0;
     this.animationFrameId = null;
     this.isRunning = false;
+
+    // Server-authoritative mode (disables local physics for multiplayer)
+    this.serverAuthoritative = false;
 
     // Input state
     this.keysPressed = new Set();
@@ -864,10 +889,17 @@ class GhostOrbitsRenderer {
 
   /**
    * Update physics for all ghosts
+   * NOTE: In multiplayer mode (serverAuthoritative=true), physics are skipped
+   * because positions come from the server via updateState()
    * @param {number} deltaTime - Time since last update in seconds
    * @param {number} currentTime - Current timestamp
    */
   updatePhysics(deltaTime, currentTime) {
+    // Skip local physics in multiplayer mode - server owns positions
+    if (this.serverAuthoritative) {
+      return;
+    }
+
     for (const ghost of this.ghosts.values()) {
       // Update energy
       ghost.updateEnergy(deltaTime);
@@ -886,11 +918,27 @@ class GhostOrbitsRenderer {
   }
 
   /**
+   * Enable server-authoritative mode (disables local physics)
+   * @param {boolean} enabled - Whether server owns positions
+   */
+  setServerAuthoritative(enabled) {
+    this.serverAuthoritative = enabled;
+    console.log('[Renderer] Server authoritative mode:', enabled);
+  }
+
+  /**
    * Render the arena and all entities
    */
   render() {
     const ctx = this.ctx;
     const size = this.arena.size;
+
+    // Debug: check canvas is in DOM
+    if (!this._loggedCanvasStatus) {
+      const inDOM = this.canvas && document.body.contains(this.canvas);
+      console.log('[Renderer] render() - canvas in DOM:', inDOM, 'size:', this.canvas?.width, 'x', this.canvas?.height, 'ghosts:', this.ghosts.size, 'dots:', this.territoryDots?.length || 0);
+      this._loggedCanvasStatus = true;
+    }
 
     // Clear with background color
     ctx.fillStyle = COLORS.background;
@@ -1249,6 +1297,12 @@ class GhostOrbitsRenderer {
    * Render all ghosts
    */
   renderGhosts() {
+    if (this.ghosts.size === 0 && !this._loggedNoGhosts) {
+      console.log('[Renderer] renderGhosts: No ghosts in map');
+      this._loggedNoGhosts = true;
+    } else if (this.ghosts.size > 0) {
+      this._loggedNoGhosts = false;
+    }
     for (const ghost of this.ghosts.values()) {
       this.renderGhost(ghost);
     }
@@ -1262,6 +1316,21 @@ class GhostOrbitsRenderer {
     const ctx = this.ctx;
     const { x, y } = ghost.position;
     const radius = ghost.radius;
+
+    // Validate ghost has valid position
+    if (!isFinite(x) || !isFinite(y) || !isFinite(radius) || radius <= 0) {
+      if (!this._loggedInvalidGhost) {
+        console.warn('[Renderer] Invalid ghost position/radius:', ghost.id, { x, y, radius });
+        this._loggedInvalidGhost = true;
+      }
+      return;
+    }
+
+    // Debug: log first successful ghost render
+    if (!this._loggedGhostRender) {
+      console.log('[Renderer] Rendering ghost:', ghost.id, 'at', x, y, 'radius:', radius, 'color:', ghost.color);
+      this._loggedGhostRender = true;
+    }
 
     // Check if ghost is orbiting (indicated by isOrbiting property set by controller)
     const isOrbiting = ghost.isOrbiting || false;
@@ -1403,6 +1472,12 @@ class GhostOrbitsRenderer {
   updateState(state) {
     if (!state) return;
 
+    // Debug: log first update
+    if (!this._loggedFirstUpdate && state.ghosts && state.ghosts.length > 0) {
+      console.log('[Renderer] updateState receiving ghosts:', state.ghosts.length, state.ghosts[0]);
+      this._loggedFirstUpdate = true;
+    }
+
     // Update arena size if changed
     if (state.arenaSize && state.arenaSize !== this.arena.size) {
       this.resizeArena(Math.ceil(state.arenaSize / 80)); // Convert to player count estimate
@@ -1430,7 +1505,7 @@ class GhostOrbitsRenderer {
           if (ghostData.energy !== undefined) ghost.energy = ghostData.energy;
         } else {
           // Add new ghost
-          this.addGhost({
+          const newGhost = this.addGhost({
             id: ghostData.id,
             x: ghostData.x,
             y: ghostData.y,
@@ -1438,6 +1513,10 @@ class GhostOrbitsRenderer {
             tier: ghostData.tier,
             nnProperties: ghostData.nnProperties
           }, ghostData.id === this.localGhostId);
+          if (!this._loggedGhostAdded) {
+            console.log('[Renderer] Ghost added to Map:', newGhost.id, 'at', newGhost.position, 'color:', newGhost.color, 'Map size:', this.ghosts.size);
+            this._loggedGhostAdded = true;
+          }
         }
       }
     }
@@ -1982,6 +2061,10 @@ class GhostOrbitsRenderer {
    */
   updateDots(dots) {
     this.territoryDots = dots || [];
+    if (!this._loggedDotsUpdate && dots && dots.length > 0) {
+      console.log('[Renderer] updateDots received:', dots.length, 'dots, sample:', dots[0]);
+      this._loggedDotsUpdate = true;
+    }
   }
 
   /**
@@ -1990,7 +2073,17 @@ class GhostOrbitsRenderer {
    * - Owned dots: owner's color with glow
    */
   renderDots() {
-    if (!this.territoryDots || this.territoryDots.length === 0) return;
+    if (!this.territoryDots || this.territoryDots.length === 0) {
+      if (!this._loggedNoDots) {
+        console.log('[Renderer] renderDots: No territory dots', {
+          territoryDots: this.territoryDots,
+          isArray: Array.isArray(this.territoryDots)
+        });
+        this._loggedNoDots = true;
+      }
+      return;
+    }
+    this._loggedNoDots = false;
 
     const ctx = this.ctx;
 

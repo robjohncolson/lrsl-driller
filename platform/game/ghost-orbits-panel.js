@@ -140,16 +140,23 @@ export class GhostOrbitsPanel {
    * @private
    */
   _remountCanvas() {
-    if (!this._gameCanvas) return;
+    if (!this._gameCanvas) {
+      console.log('[GhostOrbitsPanel] _remountCanvas: No canvas reference');
+      return;
+    }
 
     const mount = this.getArenaContainer();
+    console.log('[GhostOrbitsPanel] _remountCanvas: mount element exists:', !!mount, 'canvas parent:', this._gameCanvas.parentNode?.className);
+
     if (mount && this._gameCanvas.parentNode !== mount) {
       // Remove from old parent if any
       if (this._gameCanvas.parentNode) {
         this._gameCanvas.parentNode.removeChild(this._gameCanvas);
       }
       mount.appendChild(this._gameCanvas);
-      console.log('[GhostOrbitsPanel] Canvas re-mounted');
+      console.log('[GhostOrbitsPanel] Canvas re-mounted to:', mount.className, 'canvas in DOM:', document.body.contains(this._gameCanvas));
+    } else if (!mount) {
+      console.warn('[GhostOrbitsPanel] _remountCanvas: No mount point found!');
     }
   }
 

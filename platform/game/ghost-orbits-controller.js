@@ -1129,6 +1129,8 @@ export class GhostOrbitsController {
     this._renderLoop();
 
     if (this.renderer) {
+      // Enable server-authoritative mode - server owns all positions
+      this.renderer.setServerAuthoritative(true);
       this.renderer.start();
     }
   }
