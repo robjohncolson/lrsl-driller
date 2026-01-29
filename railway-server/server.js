@@ -5,6 +5,9 @@ const { WebSocketServer } = require('ws');
 const http = require('http');
 const { buildCartridgePrompt } = require('./prompt-utils.js');
 const { ArenaManager, ARENA_CONFIG, RoundState } = require('./ghost-orbits-manager.js');
+const { getArena, ARENA_CONFIG: GLOBAL_ARENA_CONFIG } = require('./arena-manager.js');
+const { ArenaGameState } = require('./arena-game-state.js');
+const { processEntry, processWin, processGhostWin, processRejoin, getPot, recordBet, recordResult } = require('./arena-betting.js');
 
 // ============================================
 // CONFIGURATION
@@ -81,6 +84,68 @@ const ghostOrbitsManager = new ArenaManager((message) => {
 });
 
 console.log('[Ghost Orbits] Arena manager initialized');
+
+// ============================================
+// GLOBAL GHOST ARENA (Persistent Multiplayer)
+// ============================================
+const globalArena = getArena((message) => {
+  broadcastToGlobalArena(message);
+});
+const globalGameState = new ArenaGameState();
+
+// Player color assignment
+const PLAYER_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+function getPlayerColor(username) {
+  // Consistent color per username
+  const hash = username.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return PLAYER_COLORS[hash % PLAYER_COLORS.length];
+}
+
+// Track global arena clients
+function broadcastToGlobalArena(message) {
+  const payload = JSON.stringify(message);
+  for (const [ws, data] of clients) {
+    if (ws.readyState === 1 && data.globalArena) {
+      ws.send(payload);
+    }
+  }
+}
+
+// Game loop for global arena (30 fps)
+setInterval(() => {
+  if (globalGameState.getPlayerCount() > 0) {
+    globalGameState.tick();
+    const state = globalGameState.getDeltaState();
+    state.pot = getPot();
+    broadcastToGlobalArena({ type: 'game_state', ...state });
+
+    // Check win condition
+    const winner = globalGameState.checkWinCondition();
+    if (winner) {
+      handleGlobalArenaWin(winner);
+    }
+  }
+}, 1000 / 30);
+
+// Handle global arena win
+async function handleGlobalArenaWin(winner) {
+  const wasAgainstGhost = winner.isGhost === false && globalGameState.wasOnlyGhostOpponent();
+  const payout = processWin(winner.id, wasAgainstGhost);
+
+  broadcastToGlobalArena({
+    type: 'arena_winner',
+    winner: winner.id,
+    payout: payout.payout,
+    wasAgainstGhost
+  });
+
+  // Reset game state for next round
+  globalGameState.reset();
+
+  console.log(`[Global Arena] ${winner.id} won ${payout.payout} points!`);
+}
+
+console.log('[Global Arena] Multiplayer arena initialized');
 
 // ============================================
 // VERSION - Update this when deploying new versions
@@ -3194,6 +3259,116 @@ wss.on('connection', (ws) => {
           }
           break;
         }
+
+        // ============================================
+        // GLOBAL ARENA MESSAGES (Multiplayer)
+        // ============================================
+
+        case 'global_arena_join': {
+          const client = clients.get(ws);
+          const { goldStars, points, ghostProperties, username } = message;
+
+          if (!client?.username) {
+            ws.send(JSON.stringify({ type: 'error', code: 'NOT_IDENTIFIED', message: 'Must identify first' }));
+            break;
+          }
+
+          // Validate entry
+          const entryResult = processEntry(client.username, goldStars, points);
+          if (!entryResult.success) {
+            ws.send(JSON.stringify({ type: 'arena_entry_failed', error: entryResult.error }));
+            break;
+          }
+
+          // Add to arena
+          client.globalArena = true;
+          globalArena.joinArena(client.username, {
+            name: username,
+            ghostProperties,
+            color: getPlayerColor(client.username)
+          });
+
+          globalGameState.addPlayer(client.username, ghostProperties);
+
+          // Send entry confirmation and current state
+          ws.send(JSON.stringify({
+            type: 'arena_joined',
+            bet: entryResult.bet,
+            newGoldStars: entryResult.newGoldStars,
+            newPoints: entryResult.newPoints,
+            pot: getPot(),
+            gameState: globalGameState.getGameState()
+          }));
+
+          // Broadcast player joined
+          broadcastToGlobalArena({
+            type: 'player_joined',
+            username: client.username,
+            playerCount: globalGameState.getPlayerCount(),
+            pot: getPot()
+          });
+
+          console.log(`[Global Arena] ${client.username} joined. Pot: ${getPot()}`);
+          break;
+        }
+
+        case 'global_arena_leave': {
+          const client = clients.get(ws);
+          if (!client?.username || !client.globalArena) break;
+
+          globalArena.leaveArena(client.username);
+          globalGameState.removePlayer(client.username);
+          client.globalArena = false;
+
+          broadcastToGlobalArena({
+            type: 'player_left',
+            username: client.username,
+            playerCount: globalGameState.getPlayerCount()
+          });
+
+          console.log(`[Global Arena] ${client.username} left`);
+          break;
+        }
+
+        case 'global_arena_input': {
+          const client = clients.get(ws);
+          if (!client?.username || !client.globalArena) break;
+
+          const { direction, spacebar } = message;
+          globalGameState.handleInput(client.username, direction, spacebar);
+          break;
+        }
+
+        case 'global_arena_rejoin': {
+          const client = clients.get(ws);
+          const { goldStars, points, ghostProperties } = message;
+
+          if (!client?.username) break;
+
+          const rejoinResult = processRejoin(client.username, goldStars, points);
+          if (!rejoinResult.success) {
+            ws.send(JSON.stringify({ type: 'rejoin_failed', error: rejoinResult.error }));
+            break;
+          }
+
+          globalGameState.addPlayer(client.username, ghostProperties);
+          client.globalArena = true;
+
+          ws.send(JSON.stringify({
+            type: 'rejoin_success',
+            bet: rejoinResult.bet,
+            newGoldStars: rejoinResult.newGoldStars,
+            newPoints: rejoinResult.newPoints,
+            pot: getPot()
+          }));
+
+          broadcastToGlobalArena({
+            type: 'player_rejoined',
+            username: client.username,
+            pot: getPot()
+          });
+          break;
+        }
       }
     } catch (err) {
       console.error('WebSocket message error:', err);
@@ -3219,6 +3394,18 @@ wss.on('connection', (ws) => {
         if (client.orbitsArena) {
           const [cartridgeId, periodId] = client.orbitsArena.split(':');
           ghostOrbitsManager.handleLeaveArena(client.username, cartridgeId, periodId);
+        }
+
+        // Handle Global Arena leave
+        if (client.globalArena) {
+          globalArena.leaveArena(client.username);
+          globalGameState.removePlayer(client.username);
+          broadcastToGlobalArena({
+            type: 'player_left',
+            username: client.username,
+            playerCount: globalGameState.getPlayerCount()
+          });
+          console.log(`[Global Arena] ${client.username} disconnected`);
         }
       }
     }

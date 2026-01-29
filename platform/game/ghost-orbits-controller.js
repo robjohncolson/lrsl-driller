@@ -1,11 +1,15 @@
 /**
- * Ghost Orbits Controller
+ * Ghost Orbits Controller - Network-Synced Multiplayer
  *
- * Main game controller that orchestrates all Ghost Orbits components.
- * Manages the full game lifecycle including WebSocket communication,
- * state machine transitions, and component coordination.
+ * Thin client controller that:
+ * - Captures input (WASD/arrows, spacebar, escape)
+ * - Sends inputs to server via WebSocket
+ * - Receives and applies state from server
+ * - Manages rendering (client-side only)
  *
- * @version 1.0.0
+ * Server owns all game state - no local physics simulation.
+ *
+ * @version 2.0.0 - Network-synced multiplayer
  */
 
 // Component imports
@@ -13,10 +17,6 @@ import { GhostOrbitsRenderer } from '../core/ghost-orbits-renderer.js';
 import { GhostOrbitsAudio } from '../core/ghost-orbits-audio.js';
 import { GhostOrbitsPanel } from './ghost-orbits-panel.js';
 import { GhostPropertiesMapper } from '../core/ghost-orbits-nn-mapper.js';
-import { PhysicsEngine, PHYSICS } from '../core/ghost-orbits-physics.js';
-import { TerritorySystem } from '../core/ghost-orbits-territory.js';
-import { ShadowAI, PatternRecorder } from './ghost-orbits-shadow-ai.js';
-import { DotManager, DOT_CONFIG } from '../core/ghost-orbits-dots.js';
 
 /**
  * Game states for the Ghost Orbits state machine
@@ -24,40 +24,17 @@ import { DotManager, DOT_CONFIG } from '../core/ghost-orbits-dots.js';
 export const GameState = {
   IDLE: 'idle',               // Not in arena
   CONNECTING: 'connecting',   // Joining WebSocket room
+  WAITING: 'waiting',         // In lobby, waiting for players
   COUNTDOWN: 'countdown',     // 3-2-1-GO
   PLAYING: 'playing',         // Active gameplay
-  ELIMINATED: 'eliminated',   // Waiting for star to rejoin
-  SPECTATING: 'spectating',   // Future: watching others play
+  ELIMINATED: 'eliminated',   // Lost all lives, can spectate
+  SPECTATING: 'spectating',   // Watching others play
   ROUND_END: 'round_end',     // Showing results
   INTERMISSION: 'intermission' // Between rounds
 };
 
 /**
- * Round configuration constants
- */
-const ROUND_CONFIG = {
-  countdownDuration: 3000,      // 3 seconds
-  roundDuration: 150000,        // 2.5 minutes
-  intermissionDuration: 10000,  // 10 seconds
-  minPlayers: 1,
-  targetPlayers: 8
-};
-
-/**
- * Win condition constants for solo mode (vs Shadow Self)
- * v3: Dot Territory - 90% dot ownership wins
- */
-const WIN_CONDITIONS = {
-  DOT_THRESHOLD: 0.90,         // 90% dots = win (v3)
-  ROUND_DURATION: 120000,      // 120 seconds (extended for v3)
-  // Legacy (unused in v3):
-  DOMINATION_THRESHOLD: 0.70,
-  DOMINATION_HOLD_TIME: 5000,
-  ABSORPTION_MASS_RATIO: 1.2
-};
-
-/**
- * Input key codes for movement
+ * Input key codes for movement direction
  */
 const INPUT_KEYS = {
   ArrowUp: { x: 0, y: -1 },
@@ -71,10 +48,10 @@ const INPUT_KEYS = {
 };
 
 /**
- * GhostOrbitsController class
+ * GhostOrbitsController class - Network-Synced Multiplayer
  *
- * Orchestrates all Ghost Orbits game components and manages
- * the complete game lifecycle.
+ * Acts as an input/render bridge between player and server.
+ * Server is authoritative - client only sends inputs and renders state.
  */
 export class GhostOrbitsController {
   /**
@@ -104,87 +81,54 @@ export class GhostOrbitsController {
     // Game state
     this.state = GameState.IDLE;
     this.previousState = null;
-    this.lastSessionGolds = 0;
-    this.currentSessionGolds = 0;
-    this.needsRejoin = false;
-    this.roundNumber = 0;
+    this.playerId = null; // Assigned by server on join
 
-    // Arena state from server
-    this.arenaState = null;
-    this.playerList = new Map();
-    this.eliminationInfo = null;
-    this.roundResults = null;
+    // Server state (received from WebSocket)
+    this.serverState = {
+      players: {},
+      dots: {},
+      orbits: [],
+      arenaSize: 800,
+      playerCount: 0,
+      aliveCount: 0
+    };
 
-    // Countdown state
-    this.countdownValue = 0;
-    this.countdownTimer = null;
+    // Interpolation state for smooth rendering
+    this.interpolationBuffer = new Map(); // playerId -> { prev, next, timestamp }
+    this.interpolationDelay = 100; // ms - buffer for smoothing
 
     // Components (initialized in init())
     this.renderer = null;
     this.audio = null;
     this.panel = null;
     this.propertiesMapper = null;
-    this.physicsEngine = null;
-    this.territorySystem = null;
+
+    // Ghost properties (derived from NN)
+    this.ghostProperties = null;
 
     // WebSocket
     this.ws = null;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 3;
+    this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
     this._reconnectTimeout = null;
 
     // Input handling
     this.inputEnabled = false;
-    this.activeKeys = new Set();
+    this.activeDirection = { x: 0, y: 0 };
+    this.spacebarPressed = false;
     this._boundKeyDown = this._handleKeyDown.bind(this);
     this._boundKeyUp = this._handleKeyUp.bind(this);
 
-    // Ghost properties (derived from NN)
-    this.ghostProperties = null;
+    // Spectator mode
+    this.isSpectating = false;
+    this.spectateTargetId = null; // Player ID to follow camera
 
-    // Ghost movement state
-    this.ghostMovementState = 'FREE_FLIGHT'; // FREE_FLIGHT or ORBITING
+    // Animation frame for render loop
+    this._animationFrameId = null;
+    this._lastRenderTime = 0;
 
-    // Dodge state (v2 Phase 3)
-    this.isDodging = false;
-    this.dodgeEndTime = 0;
-    this.dodgeCooldownEnd = 0;
-
-    // Void zone configuration (center of arena)
-    this.voidZone = null;
-
-    // Match state tracking (for solo mode win conditions)
-    this.matchStartTime = null;
-    this.matchTimeRemaining = null;
-    this.dominationStartTime = new Map(); // playerId -> timestamp when domination began
-    this.matchResult = null; // null, 'player_win', or 'shadow_win'
-    this.winCondition = null; // 'domination', 'absorption', or 'timeout'
-
-    // Lives system (v2 - trail collision takes a life, not instant death)
-    this.playerLives = 3;
-    this.shadowLives = 3;
-    this.playerInvulnerableUntil = 0; // Brief invulnerability after being hit
-    this.shadowInvulnerableUntil = 0;
-    this.invulnerabilityDuration = 1500; // 1.5 seconds of invulnerability after hit
-
-    // Match stats tracking (for stat leveling)
-    this.matchStats = {
-      energyDepletionCount: 0,      // Times energy hit 0
-      territoryClaimRate: 0,         // Territory % per second
-      timeSpentOrbiting: 0,          // Seconds in orbit vs free flight
-      absorptionAttempts: 0,         // Near-collisions where mass was close
-      totalGameTime: 0               // Total time for rate calculations
-    };
-
-    // Shadow Self (AI opponent)
-    this.shadowAI = null;
-    this.shadowGhostId = 'shadow_self';
-    this.shadowMovementState = 'FREE_FLIGHT';
-    this.patternRecorder = null;
-    this.shadowGeneration = 1; // Loaded from localStorage
-
-    // Bind methods for event handlers
+    // Bind methods
     this._boundOnVisibilityChange = this._handleVisibilityChange.bind(this);
   }
 
@@ -193,104 +137,47 @@ export class GhostOrbitsController {
    * @returns {Promise<void>}
    */
   async init() {
-    console.log('[GhostOrbits] Initializing controller...');
+    console.log('[GhostOrbits] Initializing network-synced controller...');
 
     try {
       // Initialize ghost properties mapper
-      console.log('[GhostOrbits] Creating properties mapper...');
       this.propertiesMapper = new GhostPropertiesMapper();
 
       // Calculate ghost properties from NN profile
       if (this.ghostProfile) {
-        console.log('[GhostOrbits] Ghost profile has weights:', !!this.ghostProfile.weights);
         this.ghostProperties = this.propertiesMapper.mapProfile(this.ghostProfile);
         console.log('[GhostOrbits] Ghost properties:', this.ghostProperties);
-        console.log('[GhostOrbits] Pattern generated:', !!this.ghostProperties?.pattern);
-        if (this.ghostProperties?.pattern) {
-          console.log('[GhostOrbits] Pattern size:', this.ghostProperties.pattern.width, 'x', this.ghostProperties.pattern.height);
-        }
-
-        // v3: Apply NN-influenced invulnerability duration from respawnSpeed property
-        // respawnSpeed ranges from 1.2s (best) to 2.0s (worst)
-        if (this.ghostProperties?.respawnSpeed !== undefined) {
-          this.invulnerabilityDuration = this.ghostProperties.respawnSpeed * 1000; // Convert to ms
-          console.log('[GhostOrbits] Invulnerability duration from NN:', this.invulnerabilityDuration, 'ms');
-        }
       }
 
-      // Load and apply saved ghost stat upgrades
-      this._loadGhostStats();
-
       // Initialize HUD panel FIRST - it creates the overlay structure
-      console.log('[GhostOrbits] Creating panel...');
       this.panel = new GhostOrbitsPanel({
         container: this.container,
         onClose: () => this.exitArena(),
         onReturnToPractice: () => this.exitArena(),
-        onRematch: () => this._handleRematch()
+        onSpectate: () => this._enterSpectatorMode(),
+        onRematch: () => this._requestRematch()
       });
       await this.panel.init();
-      console.log('[GhostOrbits] Panel created, overlayElement:', this.panel.overlayElement);
 
-      // Store reference to the overlay the panel created
+      // Store reference to the overlay
       this.overlay = this.container.querySelector('.ghost-orbits-overlay');
-      console.log('[GhostOrbits] Overlay reference:', this.overlay);
 
       // Initialize audio
-      console.log('[GhostOrbits] Creating audio...');
       this.audio = new GhostOrbitsAudio();
       this.audio.init();
 
-      // Get arena size from renderer
-      const arenaSize = this.renderer?.arena?.size || 800;
-
-      // Initialize physics engine
-      console.log('[GhostOrbits] Creating physics engine...');
-      this.physicsEngine = new PhysicsEngine({
-        width: arenaSize,
-        height: arenaSize
-      });
-
-      // Initialize dots system (v3 - territory dots)
-      console.log('[GhostOrbits] Creating dots system...');
-      this.dotManager = new DotManager(arenaSize, { dotCount: 50, dotRadius: 10 });
-
-      // Initialize territory system (legacy)
-      console.log('[GhostOrbits] Creating territory system...');
-      this.territorySystem = new TerritorySystem(arenaSize, arenaSize);
-
       // Initialize renderer into panel's arena container
       const canvasContainer = this.panel.getArenaContainer();
-      console.log('[GhostOrbits] Arena container:', canvasContainer);
       if (canvasContainer) {
-        console.log('[GhostOrbits] Creating renderer...');
         this.renderer = new GhostOrbitsRenderer({
           container: canvasContainer,
           ghostProperties: this.ghostProperties,
-          onWallBounce: (ghost) => {
+          onWallBounce: () => {
             if (this.audio) this.audio.playBounce();
           }
         });
         await this.renderer.init();
-        console.log('[GhostOrbits] Renderer created');
-
-        // Setup physics callback so gravity wells work each frame
-        this.renderer.setPhysicsCallback((deltaTime, currentTime) => {
-          this._updatePhysicsFrame(deltaTime, currentTime);
-        });
-
-        // Setup initial arena configuration (after renderer is ready)
-        this._setupInitialArena(arenaSize);
-
-        // Sync wells and void zone to renderer
-        this.renderer.updateWells(this.physicsEngine.getWells());
-        this.renderer.updateVoidZone(this.voidZone);
-      } else {
-        console.warn('[GhostOrbits] No arena container found!');
       }
-
-      // Load last session's gold count
-      this._loadSessionGolds();
 
       // Setup visibility change handler
       document.addEventListener('visibilitychange', this._boundOnVisibilityChange);
@@ -303,52 +190,12 @@ export class GhostOrbitsController {
   }
 
   /**
-   * Check if player can enter the arena
-   * @param {number} currentGolds - Current session's gold star count
-   * @param {number} lastGolds - Last session's gold star count
-   * @returns {boolean} True if unlock condition is met
-   */
-  checkUnlockCondition(currentGolds, lastGolds) {
-    // First visit ever: lastSessionGolds = 0, so earning 1 gold unlocks
-    // Subsequent visits: must beat your previous session's gold count
-    return currentGolds > lastGolds;
-  }
-
-  /**
-   * Check if arena is currently unlocked for the player
-   * @returns {boolean}
-   */
-  isUnlocked() {
-    return this.checkUnlockCondition(this.currentSessionGolds, this.lastSessionGolds);
-  }
-
-  /**
-   * Update gold star counts
-   * @param {number} currentGolds - Current session gold count
-   */
-  updateGoldCount(currentGolds) {
-    this.currentSessionGolds = currentGolds;
-
-    // If eliminated and earned a star, trigger rejoin
-    if (this.needsRejoin && this.state === GameState.ELIMINATED) {
-      this.handleStarEarned();
-    }
-  }
-
-  /**
    * Enter the arena - show overlay and connect to server
    * @returns {Promise<void>}
    */
   async enterArena() {
-    console.log('[GhostOrbits] enterArena() called, state:', this.state);
-
     if (this.state !== GameState.IDLE) {
       console.warn('[GhostOrbits] Cannot enter arena - not in IDLE state');
-      return;
-    }
-
-    if (!this.isUnlocked()) {
-      console.warn('[GhostOrbits] Cannot enter arena - unlock condition not met');
       return;
     }
 
@@ -356,61 +203,18 @@ export class GhostOrbitsController {
     this._setState(GameState.CONNECTING);
 
     // Show overlay
-    console.log('[GhostOrbits] Calling _showOverlay()...');
     this._showOverlay();
-    console.log('[GhostOrbits] Overlay should now be visible');
 
     // Enable input
     this._enableInput();
 
-    // Update generation display
-    if (this.panel) {
-      this.panel.updateGeneration(this.shadowGeneration);
-    }
-
-    // Add local player's ghost to the renderer
-    if (this.renderer) {
-      const arenaSize = this.renderer.arena?.size || 800;
-      // Player spawns bottom-left area
-      const playerSpawnX = arenaSize * 0.2;
-      const playerSpawnY = arenaSize * 0.8;
-
-      console.log('[GhostOrbits] Adding local ghost at', playerSpawnX, playerSpawnY);
-      console.log('[GhostOrbits] Ghost properties:', this.ghostProperties);
-      this.renderer.addGhost({
-        id: this.username || 'player',
-        x: playerSpawnX,
-        y: playerSpawnY,
-        color: this.ghostProperties?.color || '#4488ff',
-        tier: this.ghostProperties?.tier || 0,
-        pattern: this.ghostProperties?.pattern || null,
-        nnProperties: {
-          mass: this.ghostProperties?.mass || 1.0,
-          thrustEfficiency: this.ghostProperties?.thrustEfficiency || 1.0,
-          trailDuration: this.ghostProperties?.trailDuration || 1.0,
-          energyRegen: this.ghostProperties?.energyRegen || 1.0,
-          trailWidth: this.ghostProperties?.trailWidth || 1.0
-        }
-      }, true); // true = this is the local player's ghost
-
-      // Spawn Shadow Self (AI opponent) in solo mode
-      this._spawnShadow(arenaSize);
-
-      // Start the renderer animation loop
-      this.renderer.start();
-      console.log('[GhostOrbits] Renderer started');
-    }
-
     // Connect to WebSocket
     try {
-      console.log('[GhostOrbits] Attempting WebSocket connection...');
       await this._connectWebSocket();
 
       // Send join message
       this._sendMessage({
-        type: 'join_arena',
-        cartridgeId: this.cartridgeId,
-        periodId: this.periodId,
+        type: 'join_global_arena',
         username: this.username,
         ghostProfile: this.ghostProfile
       });
@@ -418,12 +222,9 @@ export class GhostOrbitsController {
       console.log('[GhostOrbits] Connected to arena');
     } catch (error) {
       console.error('[GhostOrbits] Failed to connect:', error);
-      // Don't hide overlay or reset state - allow offline play for testing
-      console.log('[GhostOrbits] Continuing in offline mode');
+      this._setState(GameState.IDLE);
+      this._hideOverlay();
     }
-
-    // Set to playing state (allows input)
-    this._setState(GameState.PLAYING);
   }
 
   /**
@@ -434,23 +235,28 @@ export class GhostOrbitsController {
 
     // Send leave message if connected
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this._sendMessage({ type: 'leave_arena' });
+      this._sendMessage({ type: 'leave_global_arena' });
     }
 
     // Clean up
     this._disconnectWebSocket();
     this._disableInput();
     this._hideOverlay();
-    this._clearCountdown();
+    this._stopRenderLoop();
 
     // Reset state
-    this.needsRejoin = false;
-    this.arenaState = null;
-    this.eliminationInfo = null;
-    this.roundResults = null;
-
-    // Update session golds for next time
-    this._saveSessionGolds();
+    this.playerId = null;
+    this.serverState = {
+      players: {},
+      dots: {},
+      orbits: [],
+      arenaSize: 800,
+      playerCount: 0,
+      aliveCount: 0
+    };
+    this.interpolationBuffer.clear();
+    this.isSpectating = false;
+    this.spectateTargetId = null;
 
     this._setState(GameState.IDLE);
 
@@ -459,76 +265,65 @@ export class GhostOrbitsController {
   }
 
   /**
-   * Handle player elimination
-   * @param {Object} info - Elimination info from server
+   * Apply server state update
+   * Called when receiving arena_state or arena_delta messages
+   * @param {Object} state - Server state object
    */
-  handleElimination(info) {
-    console.log('[GhostOrbits] Player eliminated:', info);
+  applyServerState(state) {
+    const now = performance.now();
 
-    this.eliminationInfo = info;
-    this.needsRejoin = true;
-    this._setState(GameState.ELIMINATED);
-
-    // Play elimination sound
-    if (this.audio) {
-      this.audio.playEliminated();
+    // Update arena configuration
+    if (state.arenaSize) {
+      this.serverState.arenaSize = state.arenaSize;
+    }
+    if (state.playerCount !== undefined) {
+      this.serverState.playerCount = state.playerCount;
+    }
+    if (state.aliveCount !== undefined) {
+      this.serverState.aliveCount = state.aliveCount;
     }
 
-    // Update panel to show elimination UI
-    if (this.panel) {
-      this.panel.showEliminated({
-        eliminatedBy: info.by,
-        finalTerritory: info.territoryPercent,
-        timeRemaining: Math.ceil((info.roundTimeRemaining || 0) / 1000),
-        playersRemaining: info.playersAlive || 0,
-        placement: info.placement || '?'
-      });
-    }
-
-    // Disable input but keep watching
-    this.inputEnabled = false;
-  }
-
-  /**
-   * Handle gold star earned while eliminated (rejoin trigger)
-   */
-  handleStarEarned() {
-    if (!this.needsRejoin || this.state !== GameState.ELIMINATED) {
-      return;
-    }
-
-    console.log('[GhostOrbits] Star earned - requesting rejoin');
-    this.needsRejoin = false;
-
-    // Send rejoin request to server
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this._sendMessage({ type: 'earned_star' });
-    }
-
-    // Re-enable input
-    this.inputEnabled = true;
-
-    // Play rejoin sound
-    if (this.audio) {
-      this.audio.playRejoin();
-    }
-  }
-
-  /**
-   * Update ghost profile (called when NN updates)
-   * @param {Object} profile - Updated ghost profile
-   */
-  updateGhostProfile(profile) {
-    this.ghostProfile = profile;
-
-    if (this.propertiesMapper) {
-      this.ghostProperties = this.propertiesMapper.mapProfile(profile);
-
-      // Update renderer with new properties
+    // Update orbits
+    if (state.orbits) {
+      this.serverState.orbits = state.orbits;
       if (this.renderer) {
-        this.renderer.updateLocalGhostProperties(this.ghostProperties);
+        this.renderer.updateOrbits(state.orbits);
       }
     }
+
+    // Update players with interpolation
+    if (state.players) {
+      for (const [id, playerData] of Object.entries(state.players)) {
+        // Store previous state for interpolation
+        const prevPlayer = this.serverState.players[id];
+        if (prevPlayer) {
+          this.interpolationBuffer.set(id, {
+            prev: { x: prevPlayer.x, y: prevPlayer.y },
+            next: { x: playerData.x, y: playerData.y },
+            timestamp: now
+          });
+        }
+
+        // Update current state
+        this.serverState.players[id] = {
+          ...this.serverState.players[id],
+          ...playerData
+        };
+      }
+    }
+
+    // Update dots
+    if (state.dots) {
+      for (const [id, dotData] of Object.entries(state.dots)) {
+        this.serverState.dots[id] = {
+          ...this.serverState.dots[id],
+          ...dotData
+        };
+      }
+    }
+
+    // Update panel UI
+    this._updatePanelFromState();
   }
 
   /**
@@ -553,7 +348,6 @@ export class GhostOrbitsController {
     }
 
     if (this.audio) {
-      // Audio doesn't have dispose, just clear reference
       this.audio = null;
     }
 
@@ -563,250 +357,6 @@ export class GhostOrbitsController {
     }
 
     this.overlay = null;
-
-    // Clear state
-    this.arenaState = null;
-    this.playerList.clear();
-  }
-
-  // ============================================
-  // ARENA SETUP
-  // ============================================
-
-  /**
-   * Setup initial arena with Records (spinning plates) - v2 style
-   * @param {number} arenaSize - Arena size in pixels
-   * @private
-   */
-  _setupInitialArena(arenaSize) {
-    console.log('[GhostOrbits] Setting up v2 arena with Records...');
-
-    // Add 8 Records covering the arena (4 corners + 4 sides for more maneuvering space)
-    const recordPositions = [
-      // Corner records
-      { x: arenaSize * 0.2, y: arenaSize * 0.2, clockwise: false },
-      { x: arenaSize * 0.8, y: arenaSize * 0.2, clockwise: true },
-      { x: arenaSize * 0.2, y: arenaSize * 0.8, clockwise: true },
-      { x: arenaSize * 0.8, y: arenaSize * 0.8, clockwise: false },
-      // Side records
-      { x: arenaSize * 0.15, y: arenaSize * 0.5, clockwise: true },
-      { x: arenaSize * 0.85, y: arenaSize * 0.5, clockwise: false },
-      { x: arenaSize * 0.5, y: arenaSize * 0.15, clockwise: true },
-      { x: arenaSize * 0.5, y: arenaSize * 0.85, clockwise: false },
-    ];
-
-    for (let i = 0; i < recordPositions.length; i++) {
-      const pos = recordPositions[i];
-      this.physicsEngine.addRecord({
-        id: `record_${i}`,
-        x: pos.x,
-        y: pos.y,
-        radius: 40,
-        captureRadius: 60,
-        clockwise: pos.clockwise,
-        angularSpeed: 2.0 + Math.random() * 1.0,
-      });
-    }
-
-    // No void zone in v2
-    this.voidZone = null;
-
-    // Initialize dots (v2) - pass records to avoid spawning on top
-    if (this.dotManager) {
-      this.dotManager.initialize(this.physicsEngine.getRecords());
-      console.log('[GhostOrbits] Initialized', this.dotManager.getDots().length, 'dots');
-    }
-
-    console.log('[GhostOrbits] Arena setup complete with', recordPositions.length, 'records');
-  }
-
-  /**
-   * Spawn Shadow Self AI opponent
-   * @param {number} arenaSize - Arena size in pixels
-   * @private
-   */
-  _spawnShadow(arenaSize) {
-    // Load shadow generation from localStorage
-    this._loadShadowGeneration();
-
-    // Shadow spawns at opposite side from player, but NOT near neutral well corners
-    // Neutral wells are at 15% and 85% margins, so spawn at ~70% to avoid them
-    // Also place slightly lower (35%) to give room to maneuver
-    const shadowSpawnX = arenaSize * 0.70;
-    const shadowSpawnY = arenaSize * 0.35;
-
-    // Get complementary color for shadow
-    const playerColor = this.ghostProperties?.color || '#4488ff';
-    const shadowColor = this._getComplementaryColor(playerColor);
-
-    console.log(`[GhostOrbits] Spawning Shadow Self (Gen ${this.shadowGeneration}) at`, shadowSpawnX, shadowSpawnY);
-    console.log('[GhostOrbits] Shadow color:', shadowColor, '(complement of', playerColor, ')');
-
-    // Set owner colors for dot territory system (v3)
-    if (this.dotManager) {
-      this.dotManager.setOwnerColors(playerColor, shadowColor);
-    }
-
-    // Add shadow ghost to renderer with same properties as player
-    this.renderer.addGhost({
-      id: this.shadowGhostId,
-      x: shadowSpawnX,
-      y: shadowSpawnY,
-      color: shadowColor,
-      tier: this.ghostProperties?.tier || 0,
-      pattern: this.ghostProperties?.pattern || null,
-      isShadow: true, // Flag for special rendering
-      nnProperties: {
-        mass: this.ghostProperties?.mass || 1.0,
-        thrustEfficiency: this.ghostProperties?.thrustEfficiency || 1.0,
-        trailDuration: this.ghostProperties?.trailDuration || 1.0,
-        energyRegen: this.ghostProperties?.energyRegen || 1.0,
-        trailWidth: this.ghostProperties?.trailWidth || 1.0
-      }
-    }, false); // false = not local player
-
-    // Load any recorded patterns from previous matches
-    const storedPatterns = this._loadStoredPatterns();
-
-    // Create Shadow AI with player's properties and generation
-    this.shadowAI = new ShadowAI({
-      mass: this.ghostProperties?.mass || 1.0,
-      thrust: this.ghostProperties?.thrustEfficiency || 1.0,
-      trailDuration: this.ghostProperties?.trailDuration || 1.0,
-      energyRegen: this.ghostProperties?.energyRegen || 1.0,
-      trailWidth: this.ghostProperties?.trailWidth || 1.0
-    }, this.shadowGeneration, storedPatterns);
-
-    // Create pattern recorder to learn from player
-    this.patternRecorder = new PatternRecorder();
-    this.patternRecorder.start();
-
-    console.log('[GhostOrbits] Shadow AI initialized, pattern recorder started');
-  }
-
-  /**
-   * Get complementary color (180° rotation on color wheel)
-   * @param {string} hexColor - Hex color string (#RRGGBB)
-   * @returns {string} Complementary hex color
-   * @private
-   */
-  _getComplementaryColor(hexColor) {
-    // Remove # if present
-    const hex = hexColor.replace('#', '');
-
-    // Parse RGB
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-
-    // Convert RGB to HSL
-    const rNorm = r / 255;
-    const gNorm = g / 255;
-    const bNorm = b / 255;
-
-    const max = Math.max(rNorm, gNorm, bNorm);
-    const min = Math.min(rNorm, gNorm, bNorm);
-    const l = (max + min) / 2;
-
-    let h, s;
-
-    if (max === min) {
-      h = s = 0; // achromatic
-    } else {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-      switch (max) {
-        case rNorm: h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0)) / 6; break;
-        case gNorm: h = ((bNorm - rNorm) / d + 2) / 6; break;
-        case bNorm: h = ((rNorm - gNorm) / d + 4) / 6; break;
-      }
-    }
-
-    // Rotate hue by 180° (0.5)
-    h = (h + 0.5) % 1;
-
-    // Convert HSL back to RGB
-    const hue2rgb = (p, q, t) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-      return p;
-    };
-
-    let rOut, gOut, bOut;
-    if (s === 0) {
-      rOut = gOut = bOut = l; // achromatic
-    } else {
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      rOut = hue2rgb(p, q, h + 1/3);
-      gOut = hue2rgb(p, q, h);
-      bOut = hue2rgb(p, q, h - 1/3);
-    }
-
-    // Convert to hex
-    const toHex = (c) => {
-      const hex = Math.round(c * 255).toString(16);
-      return hex.length === 1 ? '0' + hex : hex;
-    };
-
-    return `#${toHex(rOut)}${toHex(gOut)}${toHex(bOut)}`;
-  }
-
-  /**
-   * Load shadow generation from localStorage
-   * @private
-   */
-  _loadShadowGeneration() {
-    const key = `${this.cartridgeId}_shadow_generation`;
-    const stored = localStorage.getItem(key);
-    this.shadowGeneration = stored ? parseInt(stored, 10) : 1;
-  }
-
-  /**
-   * Save shadow generation to localStorage
-   * @private
-   */
-  _saveShadowGeneration() {
-    const key = `${this.cartridgeId}_shadow_generation`;
-    localStorage.setItem(key, this.shadowGeneration.toString());
-  }
-
-  /**
-   * Load stored player patterns from localStorage
-   * @returns {Array} Array of pattern chunks
-   * @private
-   */
-  _loadStoredPatterns() {
-    const key = `${this.cartridgeId}_shadow_patterns`;
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        console.warn('[GhostOrbits] Failed to parse stored patterns:', e);
-      }
-    }
-    return [];
-  }
-
-  /**
-   * Save player patterns to localStorage
-   * @param {Array} patterns - Pattern chunks to save
-   * @private
-   */
-  _saveStoredPatterns(patterns) {
-    const key = `${this.cartridgeId}_shadow_patterns`;
-    try {
-      // Keep only last 20 chunks to avoid storage bloat
-      const trimmed = patterns.slice(-20);
-      localStorage.setItem(key, JSON.stringify(trimmed));
-    } catch (e) {
-      console.warn('[GhostOrbits] Failed to save patterns:', e);
-    }
   }
 
   // ============================================
@@ -841,51 +391,47 @@ export class GhostOrbitsController {
   _handleStateTransition(state) {
     switch (state) {
       case GameState.CONNECTING:
-        // Show connecting indicator (panel will show loading state)
         this.inputEnabled = false;
+        if (this.panel) this.panel.showConnecting();
+        break;
+
+      case GameState.WAITING:
+        this.inputEnabled = false;
+        if (this.panel) this.panel.showWaiting(this.serverState.playerCount);
         break;
 
       case GameState.COUNTDOWN:
-        // Input disabled during countdown
         this.inputEnabled = false;
         break;
 
       case GameState.PLAYING:
-        // Enable input for gameplay
         this.inputEnabled = true;
-        // Start renderer animation loop
-        if (this.renderer) {
-          this.renderer.start();
-        }
-        // Start match timer for solo mode
-        if (this.previousState === GameState.COUNTDOWN || this.previousState === GameState.CONNECTING) {
-          this.startMatchTimer();
-        }
+        this.isSpectating = false;
+        this._startRenderLoop();
         break;
 
       case GameState.ELIMINATED:
-        // Input disabled, show elimination UI
         this.inputEnabled = false;
+        // Can still render (watching), but no input sent
+        break;
+
+      case GameState.SPECTATING:
+        this.inputEnabled = false;
+        this.isSpectating = true;
+        // Keep rendering, allow camera controls
         break;
 
       case GameState.ROUND_END:
-        // Input disabled during results
         this.inputEnabled = false;
         break;
 
       case GameState.INTERMISSION:
-        // Waiting for next round
         this.inputEnabled = false;
         break;
 
       case GameState.IDLE:
-        // Clean state
         this.inputEnabled = false;
-        this.needsRejoin = false;
-        // Stop renderer
-        if (this.renderer) {
-          this.renderer.stop();
-        }
+        this._stopRenderLoop();
         break;
     }
   }
@@ -909,6 +455,10 @@ export class GhostOrbitsController {
       this.ws.onopen = () => {
         console.log('[GhostOrbits] WebSocket connected');
         this.reconnectAttempts = 0;
+
+        // Make WebSocket available globally for panel
+        window.arenaWs = this.ws;
+
         resolve();
       };
 
@@ -918,6 +468,7 @@ export class GhostOrbitsController {
 
       this.ws.onclose = (event) => {
         console.log('[GhostOrbits] WebSocket closed:', event.code);
+        window.arenaWs = null;
         this._handleWebSocketClose(event);
       };
 
@@ -926,7 +477,7 @@ export class GhostOrbitsController {
         reject(error);
       };
 
-      // Timeout for connection
+      // Connection timeout
       setTimeout(() => {
         if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
           this.ws.close();
@@ -941,17 +492,17 @@ export class GhostOrbitsController {
    * @private
    */
   _disconnectWebSocket() {
-    // Clear any pending reconnect timeout
     if (this._reconnectTimeout) {
       clearTimeout(this._reconnectTimeout);
       this._reconnectTimeout = null;
     }
 
     if (this.ws) {
-      this.ws.onclose = null; // Prevent reconnect attempts
+      this.ws.onclose = null;
       this.ws.close();
       this.ws = null;
     }
+    window.arenaWs = null;
     this.reconnectAttempts = 0;
   }
 
@@ -961,7 +512,6 @@ export class GhostOrbitsController {
    * @private
    */
   _handleWebSocketClose(event) {
-    // Don't reconnect if intentionally closed or in IDLE state
     if (this.state === GameState.IDLE) return;
 
     // Attempt reconnection
@@ -969,7 +519,6 @@ export class GhostOrbitsController {
       this.reconnectAttempts++;
       console.log(`[GhostOrbits] Reconnecting (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
 
-      // Clear any existing reconnect timeout to prevent accumulation
       if (this._reconnectTimeout) {
         clearTimeout(this._reconnectTimeout);
       }
@@ -978,14 +527,13 @@ export class GhostOrbitsController {
         this._reconnectTimeout = null;
         this._connectWebSocket()
           .then(() => {
-            // Re-send join message
+            // Re-send join message with rejoin flag
             this._sendMessage({
-              type: 'join_arena',
-              cartridgeId: this.cartridgeId,
-              periodId: this.periodId,
+              type: 'join_global_arena',
               username: this.username,
               ghostProfile: this.ghostProfile,
-              rejoin: true
+              rejoin: true,
+              playerId: this.playerId
             });
           })
           .catch(() => {
@@ -1010,6 +558,20 @@ export class GhostOrbitsController {
   }
 
   /**
+   * Send input to server
+   * @private
+   */
+  _sendInput() {
+    if (!this.inputEnabled || this.isSpectating) return;
+
+    this._sendMessage({
+      type: 'global_arena_input',
+      direction: { ...this.activeDirection },
+      spacebar: this.spacebarPressed
+    });
+  }
+
+  /**
    * Handle incoming WebSocket message
    * @param {string} data - Raw message data
    * @private
@@ -1019,20 +581,16 @@ export class GhostOrbitsController {
       const message = JSON.parse(data);
 
       switch (message.type) {
+        case 'arena_joined':
+          this._handleArenaJoined(message);
+          break;
+
         case 'arena_state':
           this._handleArenaState(message);
           break;
 
-        case 'round_start':
-          this._handleRoundStart(message);
-          break;
-
-        case 'round_end':
-          this._handleRoundEnd(message);
-          break;
-
-        case 'eliminated':
-          this._handleEliminatedMessage(message);
+        case 'arena_delta':
+          this._handleArenaDelta(message);
           break;
 
         case 'player_joined':
@@ -1043,16 +601,24 @@ export class GhostOrbitsController {
           this._handlePlayerLeft(message);
           break;
 
-        case 'rejoin_accepted':
-          this._handleRejoinAccepted(message);
+        case 'player_eliminated':
+          this._handlePlayerEliminated(message);
+          break;
+
+        case 'arena_winner':
+          this._handleArenaWinner(message);
           break;
 
         case 'countdown':
           this._handleCountdown(message);
           break;
 
-        case 'intermission':
-          this._handleIntermission(message);
+        case 'round_start':
+          this._handleRoundStart(message);
+          break;
+
+        case 'round_end':
+          this._handleRoundEnd(message);
           break;
 
         case 'error':
@@ -1068,635 +634,43 @@ export class GhostOrbitsController {
   }
 
   /**
-   * Handle arena_state message
+   * Handle arena_joined message (server confirmed join)
+   * @param {Object} message
+   * @private
+   */
+  _handleArenaJoined(message) {
+    console.log('[GhostOrbits] Joined arena:', message);
+    this.playerId = message.playerId;
+
+    // Apply initial full state
+    if (message.gameState) {
+      this.applyServerState(message.gameState);
+    }
+
+    // Transition to waiting or playing based on arena state
+    if (message.isRunning) {
+      this._setState(GameState.PLAYING);
+    } else {
+      this._setState(GameState.WAITING);
+    }
+  }
+
+  /**
+   * Handle arena_state message (full state sync)
    * @param {Object} message
    * @private
    */
   _handleArenaState(message) {
-    this.arenaState = {
-      ghosts: message.ghosts || [],
-      trails: message.trails || [],
-      territory: message.territory || {},
-      arenaSize: message.arenaSize || 800,
-      roundTimeRemaining: message.roundTimeRemaining
-    };
-
-    // Update game systems
-    this._updateGameSystems();
-
-    // Update renderer
-    if (this.renderer) {
-      this.renderer.updateState(this.arenaState);
-    }
-
-    // Update panel with territory info (convert to array format panel expects)
-    if (this.panel && this.arenaState.territory) {
-      const territories = Object.entries(this.arenaState.territory).map(([username, data]) => ({
-        username,
-        percent: data.percent || 0,
-        color: data.color || '#4488ff',
-        isPlayer: username === this.username
-      }));
-      this.panel.updateTerritory(territories);
-
-      if (typeof this.arenaState.roundTimeRemaining === 'number') {
-        this.panel.updateTimer(Math.ceil(this.arenaState.roundTimeRemaining / 1000));
-      }
-    }
+    this.applyServerState(message);
   }
 
   /**
-   * Update physics each frame (called from renderer's game loop)
-   * @param {number} deltaTime - Time since last frame in seconds
-   * @param {number} currentTime - Current timestamp
-   * @private
-   */
-  _updatePhysicsFrame(deltaTime, currentTime) {
-    if (!this.physicsEngine || !this.territorySystem) {
-      return;
-    }
-
-    const localGhost = this.renderer?.getLocalGhost();
-    if (!localGhost) return;
-
-    // Handle dodge timing
-    if (this.isDodging && currentTime >= this.dodgeEndTime) {
-      // Dodge duration expired - end dodge
-      this.isDodging = false;
-
-      // Restore normal speed (remove the boost multiplier)
-      const speedReduction = 1 / PHYSICS.DODGE_SPEED_MULTIPLIER;
-      localGhost.velocity.x *= speedReduction;
-      localGhost.velocity.y *= speedReduction;
-
-      // Return to previous movement state (FREE_FLIGHT or ORBITING)
-      if (this.ghostMovementState === 'DODGING') {
-        // Determine if ghost is currently orbiting
-        if (this.physicsEngine.isGhostOrbiting?.(this.username)) {
-          this.ghostMovementState = 'ORBITING';
-        } else {
-          this.ghostMovementState = 'FREE_FLIGHT';
-        }
-      }
-
-      console.log('[GhostOrbits] Dodge ended, returned to normal speed');
-    }
-
-    // v2: No automatic trail dropping - trails only come from collected dots
-    // Territory system disabled in v2
-
-    // Check for wells to spawn from territory (disabled in v2)
-    const wellsToSpawn = [];
-    if (wellsToSpawn.length > 0) {
-      console.log('[Territory Debug] Wells to spawn:', wellsToSpawn);
-    }
-    for (const wellInfo of wellsToSpawn) {
-      this.physicsEngine.addWell({
-        id: wellInfo.id,
-        x: wellInfo.x,
-        y: wellInfo.y,
-        type: wellInfo.type,
-        ownerId: wellInfo.ownerId
-      });
-      if (this.audio) this.audio.playWellSpawn?.();
-    }
-
-    // Check for wells to despawn
-    const wellsToDespawn = this.territorySystem.getWellsToDespawn();
-    for (const wellId of wellsToDespawn) {
-      this.physicsEngine.removeWell(wellId);
-    }
-
-    // Clear the spawn queues
-    this.territorySystem.clearWellSpawnQueue();
-
-    // Sync wells to renderer
-    this.renderer.updateWells(this.physicsEngine.getWells());
-
-    // Prepare player ghost data for physics engine
-    const ghostData = {
-      id: this.username,
-      x: localGhost.position.x,
-      y: localGhost.position.y,
-      vx: localGhost.velocity.x,
-      vy: localGhost.velocity.y,
-      ownerId: this.username,
-      mass: localGhost.mass
-    };
-
-    // Get shadow ghost from renderer
-    const shadowGhost = this.renderer?.ghosts?.get(this.shadowGhostId);
-    let shadowData = null;
-
-    // Update Shadow AI and prepare shadow ghost data
-    if (this.shadowAI && shadowGhost) {
-      // Record player's current state for pattern learning
-      this._recordPlayerPattern(localGhost, currentTime);
-
-      // Build game state for Shadow AI
-      const gameState = this._buildShadowGameState(localGhost, shadowGhost);
-
-      // Update Shadow AI and get decision
-      const aiDecision = this.shadowAI.update(deltaTime, gameState);
-
-      // Check if shadow should release from orbit
-      if (this.shadowMovementState === 'ORBITING') {
-        const releaseDir = aiDecision?.releaseDirection;
-        if (releaseDir) {
-          console.log(`[GhostOrbits] Shadow AI releasing from orbit: ${releaseDir}`);
-          const releaseVel = this.physicsEngine.releaseFromOrbit(this.shadowGhostId, releaseDir);
-          if (releaseVel) {
-            shadowGhost.velocity.x = releaseVel.x;
-            shadowGhost.velocity.y = releaseVel.y;
-            this.shadowMovementState = 'FREE_FLIGHT';
-          }
-        }
-      }
-
-      // Apply AI input to shadow ghost (if in free flight)
-      if (this.shadowMovementState === 'FREE_FLIGHT') {
-        const aiInput = aiDecision?.inputDirection;
-        if (aiInput && (aiInput.x !== 0 || aiInput.y !== 0)) {
-          shadowGhost.applyThrust(aiInput);
-        }
-      }
-
-      // Prepare shadow data for physics
-      shadowData = {
-        id: this.shadowGhostId,
-        x: shadowGhost.position.x,
-        y: shadowGhost.position.y,
-        vx: shadowGhost.velocity.x,
-        vy: shadowGhost.velocity.y,
-        ownerId: this.shadowGhostId,
-        mass: shadowGhost.mass
-      };
-
-      // v2: Shadow trails only come from collected dots (handled below)
-    }
-
-    // Update physics engine with both ghosts
-    const ghostsToUpdate = shadowData ? [ghostData, shadowData] : [ghostData];
-    this.physicsEngine.update(ghostsToUpdate, deltaTime);
-
-    // Check if player ghost is in locked orbit
-    if (this.physicsEngine.isGhostOrbiting(this.username)) {
-      if (this.ghostMovementState !== 'ORBITING') {
-        console.log('[GhostOrbits] Ghost locked into stable orbit');
-        this.ghostMovementState = 'ORBITING';
-        this.renderer.updateGhostOrbitState?.(this.username, true);
-        if (this.audio) this.audio.playOrbitCapture?.();
-      }
-      localGhost.position.x = ghostData.x;
-      localGhost.position.y = ghostData.y;
-      localGhost.velocity.x = ghostData.vx;
-      localGhost.velocity.y = ghostData.vy;
-    } else {
-      if (this.ghostMovementState !== 'FREE_FLIGHT') {
-        console.log('[GhostOrbits] Ghost released from orbit');
-        this.ghostMovementState = 'FREE_FLIGHT';
-        this.renderer.updateGhostOrbitState?.(this.username, false);
-      }
-      localGhost.velocity.x = ghostData.vx;
-      localGhost.velocity.y = ghostData.vy;
-    }
-
-    // Check if shadow ghost is in locked orbit
-    if (shadowGhost && shadowData) {
-      if (this.physicsEngine.isGhostOrbiting(this.shadowGhostId)) {
-        if (this.shadowMovementState !== 'ORBITING') {
-          console.log('[GhostOrbits] Shadow locked into orbit');
-          this.shadowMovementState = 'ORBITING';
-          this.shadowAI?.enterOrbit?.();
-        }
-        shadowGhost.position.x = shadowData.x;
-        shadowGhost.position.y = shadowData.y;
-        shadowGhost.velocity.x = shadowData.vx;
-        shadowGhost.velocity.y = shadowData.vy;
-      } else {
-        if (this.shadowMovementState !== 'FREE_FLIGHT') {
-          this.shadowMovementState = 'FREE_FLIGHT';
-        }
-        shadowGhost.velocity.x = shadowData.vx;
-        shadowGhost.velocity.y = shadowData.vy;
-      }
-
-      // Update shadow energy
-      shadowGhost.updateEnergy(deltaTime);
-    }
-
-    // Check void zone for player (drain energy if inside)
-    if (this.voidZone) {
-      const dx = localGhost.position.x - this.voidZone.x;
-      const dy = localGhost.position.y - this.voidZone.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < this.voidZone.radius) {
-        const drainAmount = this.voidZone.energyDrain * deltaTime;
-        localGhost.energy = Math.max(0, localGhost.energy - drainAmount);
-      }
-
-      // Check void zone for shadow too
-      if (shadowGhost) {
-        const sdx = shadowGhost.position.x - this.voidZone.x;
-        const sdy = shadowGhost.position.y - this.voidZone.y;
-        const sdist = Math.sqrt(sdx * sdx + sdy * sdy);
-
-        if (sdist < this.voidZone.radius) {
-          const drainAmount = this.voidZone.energyDrain * deltaTime;
-          shadowGhost.energy = Math.max(0, shadowGhost.energy - drainAmount);
-        }
-      }
-    }
-
-    // ============================================
-    // v3: DOT MAGNETISM (NN-influenced - subtle pull toward unclaimed dots)
-    // ============================================
-    if (this.dotManager && this.ghostMovementState === 'FREE_FLIGHT') {
-      const magnetism = this.ghostProperties?.dotMagnetism || 0;
-
-      if (magnetism > 0) {
-        const neutralDots = this.dotManager.getNeutralDots();
-
-        if (neutralDots.length > 0) {
-          // Find nearest unclaimed dot
-          let nearestDot = null;
-          let nearestDist = Infinity;
-
-          for (const dot of neutralDots) {
-            const dx = dot.x - localGhost.position.x;
-            const dy = dot.y - localGhost.position.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist < nearestDist && dist > 20) { // Ignore dots too close
-              nearestDist = dist;
-              nearestDot = dot;
-            }
-          }
-
-          // Apply subtle magnetism force toward nearest neutral dot
-          if (nearestDot && nearestDist < 200) { // Only within 200px range
-            const dx = nearestDot.x - localGhost.position.x;
-            const dy = nearestDot.y - localGhost.position.y;
-
-            // Normalize and scale by magnetism strength and inverse distance
-            const force = magnetism * (1 - nearestDist / 200) * 0.5;
-            const nx = dx / nearestDist;
-            const ny = dy / nearestDist;
-
-            localGhost.velocity.x += nx * force;
-            localGhost.velocity.y += ny * force;
-          }
-        }
-      }
-    }
-
-    // ============================================
-    // v3: DOT TERRITORY SYSTEM
-    // ============================================
-    if (this.dotManager) {
-      const currentTime = Date.now();
-
-      // Player is safe while on a record (orbiting)
-      const playerOnRecord = this.ghostMovementState === 'ORBITING';
-      const shadowOnRecord = this.shadowMovementState === 'ORBITING';
-
-      // Check dot interactions for player (only when not on record)
-      if (!playerOnRecord && currentTime > this.playerInvulnerableUntil) {
-        const playerColor = localGhost.color || this.ghostProperties?.color || '#4488ff';
-
-        // v3: Apply NN-influenced dot interaction properties
-        const interaction = this.dotManager.checkDotInteraction(
-          'player',
-          localGhost.position.x,
-          localGhost.position.y,
-          playerColor,
-          {
-            claimRadius: this.ghostProperties?.claimRadius || 1.0,
-            flipWindow: this.ghostProperties?.flipWindow || 250
-          }
-        );
-
-        if (interaction) {
-          if (interaction.type === 'claimed') {
-            // Claimed a neutral dot
-            if (this.audio) this.audio.playOrbitCapture?.();
-          } else if (interaction.type === 'flipped') {
-            // Successfully flipped an enemy dot with spacebar
-            console.log('[GhostOrbits] Player flipped enemy dot!');
-            if (this.audio) this.audio.playVictory?.(); // Celebratory sound
-          } else if (interaction.type === 'damaged') {
-            // Touched enemy dot without spacebar - lose a life!
-            this.playerLives--;
-            this.playerInvulnerableUntil = currentTime + this.invulnerabilityDuration;
-            console.log(`[GhostOrbits] Player damaged! Lives remaining: ${this.playerLives}`);
-
-            if (this.panel?.updateLives) {
-              this.panel.updateLives(this.playerLives);
-            }
-
-            if (this.renderer?.flashGhost) {
-              this.renderer.flashGhost(this.username, '#ff4444', 300);
-            }
-
-            if (this.audio) this.audio.playDamage?.();
-
-            if (this.playerLives <= 0) {
-              this._handleMatchEnd('shadow_win', 'elimination');
-              return;
-            }
-          }
-        }
-      }
-
-      // Check dot interactions for shadow (only when not on record)
-      if (shadowGhost && !shadowOnRecord && currentTime > this.shadowInvulnerableUntil) {
-        const shadowColor = shadowGhost.color || '#ff4444';
-
-        // Shadow AI: register spacebar if near enemy dot (simple heuristic)
-        // This gives shadow a chance to flip dots too
-        const nearEnemyDot = this._isShadowNearEnemyDot(shadowGhost);
-        if (nearEnemyDot && Math.random() < 0.7) { // 70% chance to attempt flip
-          this.dotManager.registerSpacebarPress('shadow');
-        }
-
-        const interaction = this.dotManager.checkDotInteraction(
-          'shadow',
-          shadowGhost.position.x,
-          shadowGhost.position.y,
-          shadowColor
-        );
-
-        if (interaction) {
-          if (interaction.type === 'flipped') {
-            console.log('[GhostOrbits] Shadow flipped player dot!');
-          } else if (interaction.type === 'damaged') {
-            this.shadowLives--;
-            this.shadowInvulnerableUntil = currentTime + this.invulnerabilityDuration;
-            console.log(`[GhostOrbits] Shadow damaged! Lives remaining: ${this.shadowLives}`);
-
-            if (this.renderer?.flashGhost) {
-              this.renderer.flashGhost(this.shadowGhostId, '#ff4444', 300);
-            }
-
-            if (this.shadowLives <= 0) {
-              this._handleMatchEnd('player_win', 'elimination');
-              return;
-            }
-          }
-        }
-      }
-
-      // Update dot animations
-      this.dotManager.update(deltaTime);
-
-      // Sync dots to renderer
-      this.renderer?.updateDots?.(this.dotManager.getDots());
-
-      // Check for territory win (90% dots)
-      const winner = this.dotManager.checkWinner();
-      if (winner) {
-        const winnerColor = winner === 'player'
-          ? (localGhost.color || '#4488ff')
-          : (shadowGhost?.color || '#ff4444');
-        this.dotManager.convertAllToWinner(winner, winnerColor);
-        this.renderer?.updateDots?.(this.dotManager.getDots());
-
-        const result = winner === 'player' ? 'player_win' : 'shadow_win';
-        this._handleMatchEnd(result, 'territory');
-        return;
-      }
-
-      // Update UI with dot ownership stats
-      if (this.panel) {
-        const playerDots = this.dotManager.countDotsByOwner('player');
-        const shadowDots = this.dotManager.countDotsByOwner('shadow');
-        const totalDots = this.dotManager.getTotalDots();
-
-        if (this.panel.updateDotCounts) {
-          this.panel.updateDotCounts(playerDots, shadowDots, totalDots);
-        }
-        if (this.panel.updateLives) {
-          this.panel.updateLives(this.playerLives);
-        }
-      }
-    }
-
-    // Track match stats for stat leveling
-    if (this.state === GameState.PLAYING && this.matchStartTime) {
-      this._trackMatchStats(localGhost, shadowGhost, deltaTime);
-
-      // Update timer display in solo mode
-      if (this.panel && this.matchTimeRemaining !== null) {
-        const secondsRemaining = Math.ceil(this.matchTimeRemaining / 1000);
-        this.panel.updateTimer(secondsRemaining);
-      }
-    }
-
-    // Check win conditions (only in PLAYING state for solo mode)
-    if (this.state === GameState.PLAYING && this.matchStartTime) {
-      this._checkWinConditions(currentTime);
-    }
-  }
-
-  /**
-   * Record player pattern for Shadow AI learning
-   * @private
-   */
-  _recordPlayerPattern(localGhost, currentTime) {
-    if (!this.patternRecorder) return;
-
-    const shadowGhost = this.renderer?.ghosts?.get(this.shadowGhostId);
-
-    // Calculate context data
-    let nearestWellDist = Infinity;
-    for (const well of this.physicsEngine.getWells()) {
-      const dx = localGhost.position.x - well.position.x;
-      const dy = localGhost.position.y - well.position.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < nearestWellDist) nearestWellDist = dist;
-    }
-
-    let enemyDist = Infinity;
-    let enemyMassRatio = 1.0;
-    if (shadowGhost) {
-      const dx = localGhost.position.x - shadowGhost.position.x;
-      const dy = localGhost.position.y - shadowGhost.position.y;
-      enemyDist = Math.sqrt(dx * dx + dy * dy);
-      enemyMassRatio = (shadowGhost.mass || 1.0) / (localGhost.mass || 1.0);
-    }
-
-    let voidDist = Infinity;
-    if (this.voidZone) {
-      const dx = localGhost.position.x - this.voidZone.x;
-      const dy = localGhost.position.y - this.voidZone.y;
-      voidDist = Math.sqrt(dx * dx + dy * dy);
-    }
-
-    // Get current input direction
-    let inputDir = null;
-    if (this.activeKeys.size > 0) {
-      inputDir = { x: 0, y: 0 };
-      for (const key of this.activeKeys) {
-        const dir = INPUT_KEYS[key];
-        if (dir) {
-          inputDir.x += dir.x;
-          inputDir.y += dir.y;
-        }
-      }
-    }
-
-    this.patternRecorder.record({
-      timestamp: currentTime,
-      x: localGhost.position.x,
-      y: localGhost.position.y,
-      vx: localGhost.velocity.x,
-      vy: localGhost.velocity.y,
-      inputDirection: inputDir,
-      state: this.ghostMovementState === 'ORBITING' ? 'orbiting' : 'free',
-      energy: localGhost.energy,
-      nearestWellDistance: nearestWellDist,
-      territoryPercent: this.territorySystem?.getTerritoryPercent?.(this.username) || 0,
-      enemyDistance: enemyDist,
-      enemyMassRatio: enemyMassRatio,
-      voidDistance: voidDist
-    });
-  }
-
-  /**
-   * Build game state object for Shadow AI
-   * @private
-   */
-  _buildShadowGameState(localGhost, shadowGhost) {
-    const wells = this.physicsEngine.getWells().map(w => ({
-      position: w.position,
-      ownerId: w.ownerId,
-      type: w.type
-    }));
-
-    return {
-      selfX: shadowGhost.position.x,
-      selfY: shadowGhost.position.y,
-      selfVx: shadowGhost.velocity.x,
-      selfVy: shadowGhost.velocity.y,
-      selfEnergy: shadowGhost.energy,
-      selfIsOrbiting: this.shadowMovementState === 'ORBITING',
-      playerX: localGhost.position.x,
-      playerY: localGhost.position.y,
-      playerVx: localGhost.velocity.x,
-      playerVy: localGhost.velocity.y,
-      playerMass: localGhost.mass,
-      wells: wells,
-      territoryPercent: this.territorySystem?.getTerritoryPercent?.(this.shadowGhostId) || 0,
-      voidX: this.voidZone?.x || 0,
-      voidY: this.voidZone?.y || 0
-    };
-  }
-
-  /**
-   * Check if shadow is near a player-owned dot (for flip mechanic AI)
-   * @param {Object} shadowGhost - Shadow ghost object
-   * @returns {boolean}
-   * @private
-   */
-  _isShadowNearEnemyDot(shadowGhost) {
-    if (!this.dotManager || !shadowGhost) return false;
-
-    const dots = this.dotManager.getDots();
-    const checkRadius = DOT_CONFIG.COLLISION_RADIUS * 2; // Look ahead a bit
-
-    for (const dot of dots) {
-      if (dot.ownerId === 'player') {
-        const dx = shadowGhost.position.x - dot.x;
-        const dy = shadowGhost.position.y - dot.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < checkRadius) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Update game systems from server state (WebSocket)
-   * @private
-   */
-  _updateGameSystems() {
-    // This is called on WebSocket arena_state messages
-    // Most physics is now handled by _updatePhysicsFrame
-    if (this.renderer) {
-      this.renderer.updateWells(this.physicsEngine?.getWells() || []);
-    }
-  }
-
-  /**
-   * Handle round_start message
+   * Handle arena_delta message (incremental state update)
    * @param {Object} message
    * @private
    */
-  _handleRoundStart(message) {
-    this.roundNumber = message.roundNumber || this.roundNumber + 1;
-
-    // Start countdown
-    this.countdownValue = message.countdown || 3;
-    this._setState(GameState.COUNTDOWN);
-
-    // Update round display
-    if (this.panel) {
-      this.panel.updateRound(this.roundNumber);
-      this.panel.showCountdown(this.countdownValue);
-    }
-
-    // Play countdown sound
-    if (this.audio) {
-      this.audio.playCountdown();
-    }
-
-    // Start countdown timer
-    this._startCountdown();
-  }
-
-  /**
-   * Handle round_end message
-   * @param {Object} message
-   * @private
-   */
-  _handleRoundEnd(message) {
-    this.roundResults = message.results;
-    this._setState(GameState.ROUND_END);
-
-    // Update panel with results
-    if (this.panel && this.roundResults) {
-      // Mark current player in rankings
-      const rankings = (this.roundResults.rankings || []).map(r => ({
-        ...r,
-        isPlayer: r.username === this.username
-      }));
-      this.panel.showResults({
-        ...this.roundResults,
-        rankings
-      });
-    }
-
-    // Play victory sound for winner
-    if (this.audio && this.roundResults?.winner === this.username) {
-      this.audio.playVictory();
-    }
-  }
-
-  /**
-   * Handle eliminated message
-   * @param {Object} message
-   * @private
-   */
-  _handleEliminatedMessage(message) {
-    this.handleElimination({
-      by: message.by,
-      territoryPercent: message.territoryPercent,
-      roundTimeRemaining: message.roundTimeRemaining,
-      playersAlive: message.playersAlive
-    });
+  _handleArenaDelta(message) {
+    this.applyServerState(message);
   }
 
   /**
@@ -1705,14 +679,31 @@ export class GhostOrbitsController {
    * @private
    */
   _handlePlayerJoined(message) {
-    this.playerList.set(message.username, {
-      username: message.username,
-      ghostProfile: message.ghostProfile
-    });
+    console.log('[GhostOrbits] Player joined:', message.username);
 
-    // Play notification sound for other players joining
-    if (this.audio && message.username !== this.username) {
-      this.audio.playBounce(); // Use bounce as a subtle join notification
+    // Add to local state
+    this.serverState.players[message.playerId] = {
+      id: message.playerId,
+      username: message.username,
+      color: message.color,
+      x: message.x || 0,
+      y: message.y || 0,
+      lives: message.lives || 3,
+      dotCount: 0,
+      isAlive: true
+    };
+
+    // Update player count
+    this.serverState.playerCount = Object.keys(this.serverState.players).length;
+
+    // Play join sound
+    if (this.audio && message.playerId !== this.playerId) {
+      this.audio.playBounce?.();
+    }
+
+    // Update panel
+    if (this.panel) {
+      this.panel.updatePlayerCount(this.serverState.playerCount);
     }
   }
 
@@ -1722,21 +713,77 @@ export class GhostOrbitsController {
    * @private
    */
   _handlePlayerLeft(message) {
-    this.playerList.delete(message.username);
+    console.log('[GhostOrbits] Player left:', message.username);
+
+    // Remove from local state
+    delete this.serverState.players[message.playerId];
+    this.interpolationBuffer.delete(message.playerId);
+
+    // Update player count
+    this.serverState.playerCount = Object.keys(this.serverState.players).length;
+
+    // Update panel
+    if (this.panel) {
+      this.panel.updatePlayerCount(this.serverState.playerCount);
+    }
   }
 
   /**
-   * Handle rejoin_accepted message
+   * Handle player_eliminated message
    * @param {Object} message
    * @private
    */
-  _handleRejoinAccepted(message) {
-    console.log('[GhostOrbits] Rejoin accepted');
-    this._setState(GameState.PLAYING);
+  _handlePlayerEliminated(message) {
+    console.log('[GhostOrbits] Player eliminated:', message.username);
 
-    // Reset to active view
+    // Update player state
+    if (this.serverState.players[message.playerId]) {
+      this.serverState.players[message.playerId].isAlive = false;
+    }
+
+    // Check if it's the local player
+    if (message.playerId === this.playerId) {
+      this._setState(GameState.ELIMINATED);
+
+      if (this.audio) {
+        this.audio.playEliminated?.();
+      }
+
+      if (this.panel) {
+        this.panel.showEliminated({
+          placement: message.placement || '?',
+          playersRemaining: message.playersAlive || 0
+        });
+      }
+    }
+  }
+
+  /**
+   * Handle arena_winner message
+   * @param {Object} message
+   * @private
+   */
+  _handleArenaWinner(message) {
+    console.log('[GhostOrbits] Arena winner:', message.winner);
+
+    const isLocalWinner = message.winnerId === this.playerId;
+
+    this._setState(GameState.ROUND_END);
+
+    if (this.audio) {
+      if (isLocalWinner) {
+        this.audio.playVictory?.();
+      } else {
+        this.audio.playEliminated?.();
+      }
+    }
+
     if (this.panel) {
-      this.panel.resetToActiveView();
+      this.panel.showResults({
+        winner: message.winner,
+        isLocalWinner,
+        stats: message.stats
+      });
     }
   }
 
@@ -1746,30 +793,52 @@ export class GhostOrbitsController {
    * @private
    */
   _handleCountdown(message) {
-    this.countdownValue = message.value;
+    this._setState(GameState.COUNTDOWN);
 
     if (this.panel) {
-      this.panel.showCountdown(this.countdownValue);
+      this.panel.showCountdown(message.value);
     }
 
     if (this.audio) {
-      if (this.countdownValue > 0) {
-        this.audio.playCountdown();
+      if (message.value > 0) {
+        this.audio.playCountdown?.();
       } else {
-        this.audio.playGo();
-        this._setState(GameState.PLAYING);
+        this.audio.playGo?.();
       }
+    }
+
+    // Transition to playing when countdown reaches 0
+    if (message.value <= 0) {
+      this._setState(GameState.PLAYING);
     }
   }
 
   /**
-   * Handle intermission message
+   * Handle round_start message
    * @param {Object} message
    * @private
    */
-  _handleIntermission(message) {
-    this._setState(GameState.INTERMISSION);
-    // Intermission is handled by results view with countdown
+  _handleRoundStart(message) {
+    console.log('[GhostOrbits] Round starting:', message.roundNumber);
+    this._setState(GameState.COUNTDOWN);
+
+    if (this.panel) {
+      this.panel.showCountdown(message.countdown || 3);
+    }
+  }
+
+  /**
+   * Handle round_end message
+   * @param {Object} message
+   * @private
+   */
+  _handleRoundEnd(message) {
+    console.log('[GhostOrbits] Round ended');
+    this._setState(GameState.ROUND_END);
+
+    if (this.panel) {
+      this.panel.showResults(message.results);
+    }
   }
 
   /**
@@ -1779,7 +848,7 @@ export class GhostOrbitsController {
    */
   _handleServerError(message) {
     console.error('[GhostOrbits] Server error:', message.error);
-    // Could show error toast, but for now just log it
+    // Could show error toast
   }
 
   // ============================================
@@ -1802,7 +871,8 @@ export class GhostOrbitsController {
   _disableInput() {
     document.removeEventListener('keydown', this._boundKeyDown);
     document.removeEventListener('keyup', this._boundKeyUp);
-    this.activeKeys.clear();
+    this.activeDirection = { x: 0, y: 0 };
+    this.spacebarPressed = false;
   }
 
   /**
@@ -1811,13 +881,13 @@ export class GhostOrbitsController {
    * @private
    */
   _handleKeyDown(event) {
-    // Ignore keypresses when user is typing in an input field
+    // Ignore when typing in input fields
     const target = event.target;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
       return;
     }
 
-    // ESC to exit - only when panel is visible
+    // ESC to exit
     if (event.code === 'Escape') {
       if (this.panel && this.panel.isVisible) {
         event.preventDefault();
@@ -1826,144 +896,38 @@ export class GhostOrbitsController {
       return;
     }
 
-    // Only process game input when enabled and in PLAYING state
-    if (!this.inputEnabled || this.state !== GameState.PLAYING) {
-      return;
-    }
-
-    // v3: Space key is the ONLY control
-    // - On record (ORBITING): launch off
-    // - Flying (FREE_FLIGHT) + near record: land on record (safe)
-    // - Flying + pressing spacebar: registers for flip mechanic timing
+    // Spacebar handling
     if (event.code === 'Space') {
       event.preventDefault();
-      if (event.repeat) return; // Don't repeat on held key
+      if (!event.repeat && !this.spacebarPressed) {
+        this.spacebarPressed = true;
+        this._sendInput();
 
-      const localGhost = this.renderer?.getLocalGhost();
-      if (!localGhost) return;
-
-      // Register spacebar press for flip mechanic (v3)
-      // This must happen BEFORE orbit entry/exit to enable flip timing
-      if (this.dotManager) {
-        this.dotManager.registerSpacebarPress('player');
-      }
-
-      // Check if currently on a record (orbiting = safe)
-      if (this.ghostMovementState === 'ORBITING') {
-        // Launch off the record
-        const releaseVelocity = this.physicsEngine.releaseFromOrbit(this.username);
-        if (releaseVelocity) {
-          console.log('[GhostOrbits] Launched from record via Space key');
-          localGhost.velocity.x = releaseVelocity.x;
-          localGhost.velocity.y = releaseVelocity.y;
-          this.ghostMovementState = 'FREE_FLIGHT';
-          this.renderer?.updateGhostOrbitState?.(this.username, false);
-          if (this.audio) this.audio.playBounce?.();
+        if (this.audio) {
+          this.audio.playBounce?.();
         }
-      } else {
-        // Try to land on a record if near one
-        const ghostPos = {
-          x: localGhost.position?.x ?? 0,
-          y: localGhost.position?.y ?? 0
-        };
-        const ghostVel = {
-          x: localGhost.velocity?.x ?? 0,
-          y: localGhost.velocity?.y ?? 0
-        };
-
-        // v3: Pass orbitalSpeed multiplier from NN properties
-        const record = this.physicsEngine.requestOrbitEntry(
-          this.username,
-          ghostPos,
-          ghostVel,
-          { orbitalSpeedMultiplier: this.ghostProperties?.orbitalSpeed || 1.0 }
-        );
-
-        if (record) {
-          console.log('[GhostOrbits] Landed on record via Space key:', record.id, 'speed:', this.ghostProperties?.orbitalSpeed || 1.0);
-          this.ghostMovementState = 'ORBITING';
-          this.renderer?.updateGhostOrbitState?.(this.username, true);
-          if (this.audio) this.audio.playOrbitCapture?.();
-        }
-        // If not near a record, spacebar still registered for flip mechanic
       }
       return;
     }
 
-    // v3: No dodge mechanic (removed Shift key)
-    // v3: No arrow key movement (ghosts move at constant velocity)
+    // Movement keys - only when playing and not spectating
+    if (!this.inputEnabled || this.isSpectating) return;
 
-    // v2: Arrow keys do NOT apply thrust or affect ghost movement
-    // Ghosts move at constant velocity and only change direction via Records (Space key)
-    // Arrow key movement code commented out below:
-
-    /*
-    // Check for movement keys
     const direction = INPUT_KEYS[event.code];
     if (direction) {
       event.preventDefault();
-      this.activeKeys.add(event.code);
 
-      // Sync key state with renderer (so its processInput works)
-      if (this.renderer) {
-        // Convert event.code to event.key format for renderer
-        const keyName = event.code.replace('Key', '').replace('Arrow', 'Arrow');
-        this.renderer.setKeyPressed(event.key, true);
-      }
+      // Update active direction
+      const newDir = { ...this.activeDirection };
+      newDir.x = Math.max(-1, Math.min(1, newDir.x + direction.x));
+      newDir.y = Math.max(-1, Math.min(1, newDir.y + direction.y));
 
-      // If orbiting, release with slingshot
-      if (this.ghostMovementState === 'ORBITING' && this.physicsEngine) {
-        const directionName = this._getDirectionName(event.code);
-        const releaseVelocity = this.physicsEngine.releaseFromOrbit(this.username, directionName);
-
-        if (releaseVelocity) {
-          console.log('[GhostOrbits] Slingshot release:', directionName, releaseVelocity);
-          this.ghostMovementState = 'FREE_FLIGHT';
-
-          // Update local ghost velocity if we have renderer
-          if (this.renderer) {
-            const localGhost = this.renderer.getLocalGhost();
-            if (localGhost) {
-              localGhost.velocity.x = releaseVelocity.x;
-              localGhost.velocity.y = releaseVelocity.y;
-            }
-          }
-        }
-      }
-
-      // Send input to server
-      this._sendMessage({
-        type: 'input',
-        direction: direction,
-        thrust: true
-      });
-
-      // Play thrust sound (only on first press, not repeat)
-      if (this.audio && !event.repeat) {
-        this.audio.playThrust();
+      // Only send if direction changed
+      if (newDir.x !== this.activeDirection.x || newDir.y !== this.activeDirection.y) {
+        this.activeDirection = newDir;
+        this._sendInput();
       }
     }
-    */
-  }
-
-  /**
-   * Convert key code to direction name for physics engine
-   * @param {string} code - Key code
-   * @returns {string} Direction name
-   * @private
-   */
-  _getDirectionName(code) {
-    const directionMap = {
-      ArrowUp: 'up',
-      ArrowDown: 'down',
-      ArrowLeft: 'left',
-      ArrowRight: 'right',
-      KeyW: 'up',
-      KeyS: 'down',
-      KeyA: 'left',
-      KeyD: 'right'
-    };
-    return directionMap[code] || 'up';
   }
 
   /**
@@ -1972,41 +936,273 @@ export class GhostOrbitsController {
    * @private
    */
   _handleKeyUp(event) {
-    // Ignore keypresses when user is typing in an input field
+    // Ignore when typing in input fields
     const target = event.target;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
       return;
     }
 
-    if (!this.inputEnabled) return;
-
-    // v2: Arrow keys do NOT apply thrust or affect ghost movement
-    // Commenting out arrow key release handling:
-
-    /*
-    const direction = INPUT_KEYS[event.code];
-    if (direction && this.activeKeys.has(event.code)) {
-      this.activeKeys.delete(event.code);
-
-      // Sync key state with renderer
-      if (this.renderer) {
-        this.renderer.setKeyPressed(event.key, false);
+    // Spacebar release
+    if (event.code === 'Space') {
+      if (this.spacebarPressed) {
+        this.spacebarPressed = false;
+        this._sendInput();
       }
+      return;
+    }
 
-      // Send release to server
-      this._sendMessage({
-        type: 'input',
-        direction: direction,
-        thrust: false
+    // Movement keys - only when playing and not spectating
+    if (!this.inputEnabled || this.isSpectating) return;
+
+    const direction = INPUT_KEYS[event.code];
+    if (direction) {
+      // Update active direction
+      const newDir = { ...this.activeDirection };
+      newDir.x = Math.max(-1, Math.min(1, newDir.x - direction.x));
+      newDir.y = Math.max(-1, Math.min(1, newDir.y - direction.y));
+
+      // Only send if direction changed
+      if (newDir.x !== this.activeDirection.x || newDir.y !== this.activeDirection.y) {
+        this.activeDirection = newDir;
+        this._sendInput();
+      }
+    }
+  }
+
+  // ============================================
+  // RENDERING
+  // ============================================
+
+  /**
+   * Start the render loop
+   * @private
+   */
+  _startRenderLoop() {
+    if (this._animationFrameId) return;
+
+    this._lastRenderTime = performance.now();
+    this._renderLoop();
+
+    if (this.renderer) {
+      this.renderer.start();
+    }
+  }
+
+  /**
+   * Stop the render loop
+   * @private
+   */
+  _stopRenderLoop() {
+    if (this._animationFrameId) {
+      cancelAnimationFrame(this._animationFrameId);
+      this._animationFrameId = null;
+    }
+
+    if (this.renderer) {
+      this.renderer.stop();
+    }
+  }
+
+  /**
+   * Main render loop
+   * @private
+   */
+  _renderLoop() {
+    const now = performance.now();
+    const deltaTime = (now - this._lastRenderTime) / 1000;
+    this._lastRenderTime = now;
+
+    // Interpolate player positions for smooth rendering
+    this._interpolatePositions(now);
+
+    // Update renderer with current state
+    if (this.renderer) {
+      this._updateRenderer();
+    }
+
+    // Continue loop
+    this._animationFrameId = requestAnimationFrame(() => this._renderLoop());
+  }
+
+  /**
+   * Interpolate player positions for smooth rendering
+   * @param {number} now - Current timestamp
+   * @private
+   */
+  _interpolatePositions(now) {
+    for (const [playerId, buffer] of this.interpolationBuffer) {
+      const player = this.serverState.players[playerId];
+      if (!player || !buffer.prev || !buffer.next) continue;
+
+      const elapsed = now - buffer.timestamp;
+      const t = Math.min(elapsed / this.interpolationDelay, 1);
+
+      // Linear interpolation
+      player.renderX = buffer.prev.x + (buffer.next.x - buffer.prev.x) * t;
+      player.renderY = buffer.prev.y + (buffer.next.y - buffer.prev.y) * t;
+    }
+  }
+
+  /**
+   * Update renderer with current server state
+   * @private
+   */
+  _updateRenderer() {
+    if (!this.renderer) return;
+
+    // Convert server state to renderer format
+    const ghosts = [];
+    for (const [id, player] of Object.entries(this.serverState.players)) {
+      if (!player.isAlive) continue;
+
+      ghosts.push({
+        id,
+        x: player.renderX ?? player.x,
+        y: player.renderY ?? player.y,
+        vx: player.vx || 0,
+        vy: player.vy || 0,
+        color: player.color,
+        isLocal: id === this.playerId,
+        orbiting: player.orbiting,
+        orbitAngle: player.orbitAngle,
+        dotCount: player.dotCount,
+        lives: player.lives
       });
     }
-    */
+
+    // Convert dots
+    const dots = [];
+    for (const [id, dot] of Object.entries(this.serverState.dots)) {
+      dots.push({
+        id,
+        x: dot.x,
+        y: dot.y,
+        owner: dot.owner,
+        state: dot.state,
+        color: dot.owner ? this.serverState.players[dot.owner]?.color : null
+      });
+    }
+
+    // Update renderer
+    this.renderer.updateState({
+      ghosts,
+      dots,
+      orbits: this.serverState.orbits,
+      arenaSize: this.serverState.arenaSize
+    });
+
+    // Update camera to follow local player or spectate target
+    const followId = this.isSpectating ? this.spectateTargetId : this.playerId;
+    if (followId && this.serverState.players[followId]) {
+      const target = this.serverState.players[followId];
+      this.renderer.setCameraTarget(target.renderX ?? target.x, target.renderY ?? target.y);
+    }
+  }
+
+  /**
+   * Update panel UI from current state
+   * @private
+   */
+  _updatePanelFromState() {
+    if (!this.panel) return;
+
+    // Update player list
+    const playerList = Object.values(this.serverState.players).map(p => ({
+      id: p.id,
+      username: p.username,
+      color: p.color,
+      dotCount: p.dotCount,
+      lives: p.lives,
+      isAlive: p.isAlive,
+      isLocal: p.id === this.playerId
+    }));
+    this.panel.updatePlayerList(playerList);
+
+    // Update local player's lives
+    const localPlayer = this.serverState.players[this.playerId];
+    if (localPlayer) {
+      this.panel.updateLives?.(localPlayer.lives);
+    }
+
+    // Update player count
+    this.panel.updatePlayerCount?.(this.serverState.playerCount);
+  }
+
+  // ============================================
+  // SPECTATOR MODE
+  // ============================================
+
+  /**
+   * Enter spectator mode after elimination
+   * @private
+   */
+  _enterSpectatorMode() {
+    console.log('[GhostOrbits] Entering spectator mode');
+
+    this._setState(GameState.SPECTATING);
+
+    // Find a player to follow (first alive player)
+    const alivePlayers = Object.entries(this.serverState.players)
+      .filter(([id, p]) => p.isAlive);
+
+    if (alivePlayers.length > 0) {
+      this.spectateTargetId = alivePlayers[0][0];
+      console.log('[GhostOrbits] Spectating:', alivePlayers[0][1].username);
+    }
+
+    if (this.panel) {
+      this.panel.showSpectating(this.spectateTargetId);
+    }
+  }
+
+  /**
+   * Switch spectator camera to next player
+   */
+  spectateNext() {
+    if (!this.isSpectating) return;
+
+    const alivePlayers = Object.entries(this.serverState.players)
+      .filter(([id, p]) => p.isAlive);
+
+    if (alivePlayers.length === 0) return;
+
+    const currentIndex = alivePlayers.findIndex(([id]) => id === this.spectateTargetId);
+    const nextIndex = (currentIndex + 1) % alivePlayers.length;
+    this.spectateTargetId = alivePlayers[nextIndex][0];
+
+    console.log('[GhostOrbits] Now spectating:', alivePlayers[nextIndex][1].username);
+  }
+
+  // ============================================
+  // REMATCH
+  // ============================================
+
+  /**
+   * Request rematch (rejoin queue)
+   * @private
+   */
+  _requestRematch() {
+    console.log('[GhostOrbits] Requesting rematch');
+
+    this._sendMessage({
+      type: 'request_rematch'
+    });
+
+    // Reset local state
+    this.interpolationBuffer.clear();
+    this.isSpectating = false;
+    this.spectateTargetId = null;
+
+    this._setState(GameState.WAITING);
+
+    if (this.panel) {
+      this.panel.showWaiting(this.serverState.playerCount);
+    }
   }
 
   // ============================================
   // UI HELPERS
   // ============================================
-
 
   /**
    * Show the game overlay
@@ -2028,47 +1224,6 @@ export class GhostOrbitsController {
     }
   }
 
-  /**
-   * Start the countdown display
-   * @private
-   */
-  _startCountdown() {
-    this._clearCountdown();
-
-    this.countdownTimer = setInterval(() => {
-      this.countdownValue--;
-
-      if (this.panel) {
-        this.panel.showCountdown(this.countdownValue);
-      }
-
-      if (this.audio) {
-        if (this.countdownValue > 0) {
-          this.audio.playCountdown();
-        } else {
-          this.audio.playGo();
-        }
-      }
-
-      if (this.countdownValue <= 0) {
-        this._clearCountdown();
-        this._setState(GameState.PLAYING);
-      }
-    }, 1000);
-  }
-
-  /**
-   * Clear countdown timer
-   * @private
-   */
-  _clearCountdown() {
-    if (this.countdownTimer) {
-      clearInterval(this.countdownTimer);
-      this.countdownTimer = null;
-    }
-  }
-
-
   // ============================================
   // UTILITY METHODS
   // ============================================
@@ -2081,7 +1236,7 @@ export class GhostOrbitsController {
   _buildWebSocketUrl() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const baseUrl = this.serverUrl.replace(/^https?:/, protocol);
-    return `${baseUrl}/ws/ghost-orbits?cartridge=${this.cartridgeId}&period=${this.periodId}`;
+    return `${baseUrl}/ws/global-arena`;
   }
 
   /**
@@ -2090,30 +1245,10 @@ export class GhostOrbitsController {
    * @private
    */
   _getDefaultServerUrl() {
-    // Use same logic as app.html
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return 'http://localhost:3000';
     }
     return 'https://lrsl-driller-production.up.railway.app';
-  }
-
-  /**
-   * Load last session's gold count from localStorage
-   * @private
-   */
-  _loadSessionGolds() {
-    const key = `ghostOrbits_lastGolds_${this.cartridgeId}`;
-    const stored = localStorage.getItem(key);
-    this.lastSessionGolds = stored ? parseInt(stored, 10) : 0;
-  }
-
-  /**
-   * Save current session's gold count to localStorage
-   * @private
-   */
-  _saveSessionGolds() {
-    const key = `ghostOrbits_lastGolds_${this.cartridgeId}`;
-    localStorage.setItem(key, String(this.currentSessionGolds));
   }
 
   /**
@@ -2122,671 +1257,51 @@ export class GhostOrbitsController {
    */
   _handleVisibilityChange() {
     if (document.hidden && this.state === GameState.PLAYING) {
-      // Could pause or show warning when tab is hidden
       console.log('[GhostOrbits] Page hidden while playing');
-    }
-  }
-
-  // ============================================
-  // WIN CONDITION DETECTION (SOLO MODE)
-  // ============================================
-
-  /**
-   * Check win conditions each physics frame (v3 - territory dots)
-   * @param {number} currentTime - Current timestamp in milliseconds
-   * @private
-   */
-  _checkWinConditions(currentTime) {
-    if (!this.matchStartTime || this.matchResult !== null) {
-      return; // Match hasn't started or already ended
-    }
-
-    // Update time remaining
-    const elapsed = currentTime - this.matchStartTime;
-    this.matchTimeRemaining = WIN_CONDITIONS.ROUND_DURATION - elapsed;
-
-    // 1. Check timeout condition (time ran out)
-    if (elapsed >= WIN_CONDITIONS.ROUND_DURATION) {
-      this._handleTimeoutWin();
-      return;
-    }
-
-    // v3: Territory win (90% dots) is checked in the dot interaction loop
-    // and handled there immediately when threshold is reached.
-    // Lives-based elimination is also handled in dot interaction loop.
-  }
-
-  /**
-   * Check for domination win condition
-   * @param {number} currentTime - Current timestamp
-   * @private
-   */
-  _checkDominationWin(currentTime) {
-    if (!this.territorySystem) return;
-
-    const territoryPercents = this.territorySystem.getAllTerritoryPercents();
-
-    for (const [playerId, percent] of territoryPercents) {
-      if (percent >= WIN_CONDITIONS.DOMINATION_THRESHOLD) {
-        // Player has 70%+ territory
-        if (!this.dominationStartTime.has(playerId)) {
-          // Started dominating
-          this.dominationStartTime.set(playerId, currentTime);
-          console.log(`[GhostOrbits] ${playerId} started dominating with ${(percent * 100).toFixed(1)}% territory`);
-        } else {
-          // Check if held for required time
-          const dominationDuration = currentTime - this.dominationStartTime.get(playerId);
-          if (dominationDuration >= WIN_CONDITIONS.DOMINATION_HOLD_TIME) {
-            // Domination win!
-            const winner = playerId === this.username ? 'player_win' : 'shadow_win';
-            this._handleMatchEnd(winner, 'domination');
-            return;
-          }
-        }
-      } else {
-        // Lost domination
-        if (this.dominationStartTime.has(playerId)) {
-          console.log(`[GhostOrbits] ${playerId} lost domination at ${(percent * 100).toFixed(1)}% territory`);
-          this.dominationStartTime.delete(playerId);
-        }
-      }
-    }
-  }
-
-  /**
-   * Check for absorption win condition (ghost collision)
-   * @private
-   */
-  _checkAbsorptionWin() {
-    if (!this.renderer) return;
-
-    const localGhost = this.renderer.getLocalGhost();
-    if (!localGhost) return;
-
-    // Skip collision check if player is dodging (invulnerable)
-    if (this.isDodging) {
-      return;
-    }
-
-    // Get all ghosts (including shadow)
-    const allGhosts = this.renderer.getAllGhosts();
-    if (!allGhosts || allGhosts.length < 2) return;
-
-    // Find shadow ghost (any ghost that isn't the local player)
-    const shadowGhost = allGhosts.find(g => g.id !== this.username);
-    if (!shadowGhost) return;
-
-    // Check if ghosts are colliding
-    const dx = localGhost.position.x - shadowGhost.position.x;
-    const dy = localGhost.position.y - shadowGhost.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    const playerRadius = (localGhost.mass || 1.0) * 15; // Base radius from NN mass
-    const shadowRadius = (shadowGhost.mass || 1.0) * 15;
-    const combinedRadius = playerRadius + shadowRadius;
-
-    if (distance < combinedRadius) {
-      // Collision detected - check mass ratio
-      const playerMass = localGhost.mass || 1.0;
-      const shadowMass = shadowGhost.mass || 1.0;
-
-      if (playerMass >= shadowMass * WIN_CONDITIONS.ABSORPTION_MASS_RATIO) {
-        // Player absorbs shadow
-        this._handleMatchEnd('player_win', 'absorption');
-      } else if (shadowMass >= playerMass * WIN_CONDITIONS.ABSORPTION_MASS_RATIO) {
-        // Shadow absorbs player
-        this._handleMatchEnd('shadow_win', 'absorption');
-      }
-      // If masses are too close, no absorption occurs
-    }
-  }
-
-  /**
-   * Handle timeout win condition (v3 - based on dot ownership)
-   * @private
-   */
-  _handleTimeoutWin() {
-    if (!this.dotManager) return;
-
-    const playerPercent = this.dotManager.getOwnershipPercent('player');
-    const shadowPercent = this.dotManager.getOwnershipPercent('shadow');
-
-    console.log(`[GhostOrbits] Timeout! Player: ${(playerPercent * 100).toFixed(1)}%, Shadow: ${(shadowPercent * 100).toFixed(1)}%`);
-
-    // Winner is whoever has more dots (or tie goes to player)
-    const winner = playerPercent >= shadowPercent ? 'player_win' : 'shadow_win';
-    this._handleMatchEnd(winner, 'timeout');
-  }
-
-  /**
-   * Handle match end
-   * @param {string} winner - 'player_win' or 'shadow_win'
-   * @param {string} condition - 'domination', 'absorption', or 'timeout'
-   * @private
-   */
-  _handleMatchEnd(winner, condition) {
-    if (this.matchResult !== null) {
-      return; // Already ended
-    }
-
-    console.log(`[GhostOrbits] Match ended: ${winner} via ${condition}`);
-
-    this.matchResult = winner;
-    this.winCondition = condition;
-
-    // Handle Shadow Self progression system
-    if (winner === 'player_win') {
-      // Player victory - apply stat upgrade and level up shadow
-      const weakestStat = this._analyzeMatchStats();
-      this._applyStatUpgrade(weakestStat);
-
-      // Increment shadow generation
-      this.shadowGeneration++;
-      this._saveShadowGeneration();
-      console.log(`[GhostOrbits] Shadow Self leveled up to Generation ${this.shadowGeneration}`);
-
-      // Save patterns from this match (player's winning moves)
-      if (this.patternRecorder) {
-        const recordedPatterns = this.patternRecorder.getPatterns();
-        const existingPatterns = this._loadStoredPatterns();
-        const allPatterns = [...existingPatterns, ...(recordedPatterns?.chunks || [])];
-        this._saveStoredPatterns(allPatterns);
-        console.log(`[GhostOrbits] Saved ${recordedPatterns?.chunks?.length || 0} winning patterns`);
-      }
-    } else {
-      // Shadow victory - save shadow's winning patterns
-      if (this.patternRecorder) {
-        const recordedPatterns = this.patternRecorder.getPatterns();
-        const existingPatterns = this._loadStoredPatterns();
-        const allPatterns = [...existingPatterns, ...(recordedPatterns?.chunks || [])];
-        this._saveStoredPatterns(allPatterns);
-        console.log(`[GhostOrbits] Shadow learned from victory, saved ${recordedPatterns?.chunks?.length || 0} patterns`);
-      }
-    }
-
-    // Update lastSessionGolds to require a new gold star for rematch
-    // This ensures players can't infinitely rematch without earning more stars
-    this.lastSessionGolds = this.currentSessionGolds;
-    this._saveSessionGolds();
-    console.log(`[GhostOrbits] Updated lastSessionGolds to ${this.lastSessionGolds} - rematch requires new gold star`);
-
-    // Transition to ROUND_END state
-    this._setState(GameState.ROUND_END);
-
-    // Play appropriate sound
-    if (this.audio) {
-      if (winner === 'player_win') {
-        this.audio.playVictory?.();
-      } else {
-        this.audio.playEliminated?.();
-      }
-    }
-
-    // Show results in panel
-    if (this.panel) {
-      // v3: Use dot ownership percentage
-      const playerPercent = this.dotManager?.getOwnershipPercent('player') || 0;
-
-      const resultsData = {
-        winner: winner === 'player_win' ? 'player' : 'shadow',
-        condition: this._getWinConditionText(condition),
-        playerTerritory: (playerPercent * 100).toFixed(1),
-        timeElapsed: Math.ceil((Date.now() - this.matchStartTime) / 1000)
-      };
-
-      // Add stat upgrade info for victory
-      if (winner === 'player_win') {
-        const weakestStat = this._getWeakestStatName();
-        resultsData.statUpgrade = this._formatStatUpgrade(weakestStat);
-      } else {
-        // For defeat, indicate that rematch is NOT currently available
-        // (player just used their gold star unlock and needs to earn another)
-        resultsData.canRematch = false;
-      }
-
-      this.panel.showResults(resultsData);
-    }
-
-    // Emit event for external handlers
-    if (this.onStateChange) {
-      this.onStateChange(GameState.ROUND_END, GameState.PLAYING);
-    }
-  }
-
-  /**
-   * Get human-readable win condition text (v3)
-   * @param {string} condition - Win condition type
-   * @returns {string}
-   * @private
-   */
-  _getWinConditionText(condition) {
-    const texts = {
-      territory: 'Dot Domination (90%)',
-      elimination: 'Elimination',
-      timeout: 'Time Limit',
-      // Legacy (kept for compatibility):
-      domination: 'Territory Domination',
-      absorption: 'Absorption'
-    };
-    return texts[condition] || condition;
-  }
-
-  /**
-   * Start match timer (call when entering PLAYING state in solo mode)
-   */
-  startMatchTimer() {
-    this.matchStartTime = Date.now();
-    this.matchTimeRemaining = WIN_CONDITIONS.ROUND_DURATION;
-    this.dominationStartTime.clear();
-    this.matchResult = null;
-    this.winCondition = null;
-
-    // Reset lives (v3 system - 3 lives each)
-    this.playerLives = 3;
-    this.shadowLives = 3;
-    this.playerInvulnerableUntil = 0;
-    this.shadowInvulnerableUntil = 0;
-
-    // Reset dots to neutral (v3)
-    if (this.dotManager) {
-      this.dotManager.reset();
-      // Re-initialize dots with current records
-      const records = this.physicsEngine?.getRecords() || [];
-      this.dotManager.initialize(records);
-    }
-
-    // Reset match stats
-    this.matchStats = {
-      energyDepletionCount: 0,
-      territoryClaimRate: 0,
-      timeSpentOrbiting: 0,
-      absorptionAttempts: 0,
-      totalGameTime: 0
-    };
-
-    // Update lives display
-    if (this.panel?.updateLives) {
-      this.panel.updateLives(this.playerLives);
-    }
-
-    // Show help screen on first match (v3)
-    if (this.panel?.showHelpScreen && !this._hasShownHelp) {
-      this._hasShownHelp = true;
-      // Give player extended invulnerability while reading help (30 seconds max)
-      this.playerInvulnerableUntil = Date.now() + 30000;
-      // Show help immediately, remove invulnerability when dismissed
-      this.panel.showHelpScreen(() => {
-        // Help dismissed - reset invulnerability to normal respawn duration
-        this.playerInvulnerableUntil = Date.now() + (this.ghostProperties?.respawnSpeed || 2) * 1000;
+      // Optionally send idle input to prevent AFK penalty
+      this._sendMessage({
+        type: 'global_arena_input',
+        direction: { x: 0, y: 0 },
+        spacebar: false,
+        idle: true
       });
     }
-
-    console.log('[GhostOrbits] Match timer started, lives reset to 3');
-  }
-
-  /**
-   * Get time remaining in match (for UI display)
-   * @returns {string} Time remaining formatted as MM:SS
-   */
-  getTimeRemaining() {
-    if (this.matchTimeRemaining === null || this.matchTimeRemaining < 0) {
-      return '0:00';
-    }
-
-    const totalSeconds = Math.ceil(this.matchTimeRemaining / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  }
-
-  /**
-   * Get match state for external access
-   * @returns {Object} Match state information
-   */
-  getMatchState() {
-    return {
-      startTime: this.matchStartTime,
-      timeRemaining: this.matchTimeRemaining,
-      result: this.matchResult,
-      winCondition: this.winCondition,
-      formattedTime: this.getTimeRemaining()
-    };
   }
 
   // ============================================
-  // SHADOW SELF PROGRESSION SYSTEM
+  // PUBLIC GETTERS
   // ============================================
 
   /**
-   * Track match statistics during gameplay
-   * @param {Object} localGhost - Player's ghost
-   * @param {Object} shadowGhost - Shadow's ghost
-   * @param {number} deltaTime - Time since last frame
-   * @private
+   * Get current game state
+   * @returns {string}
    */
-  _trackMatchStats(localGhost, shadowGhost, deltaTime) {
-    if (!localGhost) return;
-
-    this.matchStats.totalGameTime += deltaTime;
-
-    // Track energy depletion
-    if (localGhost.energy <= 0) {
-      this.matchStats.energyDepletionCount++;
-    }
-
-    // Track time spent orbiting
-    if (this.ghostMovementState === 'ORBITING') {
-      this.matchStats.timeSpentOrbiting += deltaTime;
-    }
-
-    // Track territory claim rate (calculate running average)
-    if (this.territorySystem) {
-      const currentTerritory = this.territorySystem.getTerritoryPercent?.(this.username) || 0;
-      // Weighted average to smooth out spikes
-      const timeWeight = Math.min(this.matchStats.totalGameTime, 1.0);
-      this.matchStats.territoryClaimRate = (this.matchStats.territoryClaimRate * (1 - timeWeight * 0.1)) +
-                                           (currentTerritory / Math.max(this.matchStats.totalGameTime, 1.0)) * (timeWeight * 0.1);
-    }
-
-    // Track near-collisions (absorption attempts)
-    if (shadowGhost) {
-      const dx = localGhost.position.x - shadowGhost.position.x;
-      const dy = localGhost.position.y - shadowGhost.position.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      const playerRadius = (localGhost.mass || 1.0) * 15;
-      const shadowRadius = (shadowGhost.mass || 1.0) * 15;
-      const nearCollisionRadius = (playerRadius + shadowRadius) * 1.5; // 50% margin
-
-      if (distance < nearCollisionRadius) {
-        // Near collision - check if masses are close (risky absorption attempt)
-        const playerMass = localGhost.mass || 1.0;
-        const shadowMass = shadowGhost.mass || 1.0;
-        const massRatio = Math.max(playerMass, shadowMass) / Math.min(playerMass, shadowMass);
-
-        if (massRatio < WIN_CONDITIONS.ABSORPTION_MASS_RATIO * 1.2) {
-          // Masses are close - this was a risky absorption attempt
-          this.matchStats.absorptionAttempts++;
-        }
-      }
-    }
+  getState() {
+    return this.state;
   }
 
   /**
-   * Analyze match statistics to determine weakest stat
-   * @returns {string} Name of stat to upgrade ('mass', 'energyRegen', 'trailDuration', 'trailWidth', 'thrustEfficiency')
-   * @private
+   * Get local player info
+   * @returns {Object|null}
    */
-  _analyzeMatchStats() {
-    console.log('[GhostOrbits] Analyzing match stats:', this.matchStats);
-
-    const weaknesses = [];
-
-    // Energy depletion analysis
-    const energyDepletionRate = this.matchStats.energyDepletionCount / Math.max(this.matchStats.totalGameTime, 1.0);
-    if (energyDepletionRate > 0.1) { // More than once per 10 seconds
-      weaknesses.push({ stat: 'energyRegen', score: energyDepletionRate });
-      console.log('[GhostOrbits] Energy weakness detected:', energyDepletionRate.toFixed(3), 'depletions/sec');
-    }
-
-    // Territory claim rate analysis
-    const avgTerritoryPerSec = this.matchStats.territoryClaimRate;
-    if (avgTerritoryPerSec < 0.005) { // Less than 0.5% per second
-      // Could be trail duration or trail width
-      weaknesses.push({ stat: 'trailDuration', score: 0.01 - avgTerritoryPerSec });
-      weaknesses.push({ stat: 'trailWidth', score: (0.01 - avgTerritoryPerSec) * 0.9 }); // Slight preference for duration
-      console.log('[GhostOrbits] Territory weakness detected:', avgTerritoryPerSec.toFixed(4), 'percent/sec');
-    }
-
-    // Absorption attempt analysis
-    if (this.matchStats.absorptionAttempts > 5) {
-      // Got into risky situations - mass might be weak
-      weaknesses.push({ stat: 'mass', score: this.matchStats.absorptionAttempts / 10 });
-      console.log('[GhostOrbits] Mass weakness detected:', this.matchStats.absorptionAttempts, 'risky encounters');
-    }
-
-    // Orbit time analysis
-    const orbitPercent = this.matchStats.timeSpentOrbiting / Math.max(this.matchStats.totalGameTime, 1.0);
-    if (orbitPercent > 0.4) { // Spent more than 40% of time in orbit
-      // Might indicate difficulty catching enemy - thrust efficiency weak
-      weaknesses.push({ stat: 'thrustEfficiency', score: orbitPercent - 0.3 });
-      console.log('[GhostOrbits] Thrust weakness detected:', (orbitPercent * 100).toFixed(1), '% time orbiting');
-    }
-
-    // Find highest scoring weakness
-    if (weaknesses.length > 0) {
-      weaknesses.sort((a, b) => b.score - a.score);
-      const chosenStat = weaknesses[0].stat;
-      console.log('[GhostOrbits] Weakest stat identified:', chosenStat, 'score:', weaknesses[0].score.toFixed(3));
-      return chosenStat;
-    }
-
-    // Default: upgrade a random stat if no clear weakness
-    const allStats = ['mass', 'energyRegen', 'trailDuration', 'trailWidth', 'thrustEfficiency'];
-    const randomStat = allStats[Math.floor(Math.random() * allStats.length)];
-    console.log('[GhostOrbits] No clear weakness, upgrading random stat:', randomStat);
-    return randomStat;
+  getLocalPlayer() {
+    return this.serverState.players[this.playerId] || null;
   }
 
   /**
-   * Apply stat upgrade to ghost properties
-   * @param {string} statName - Name of stat to upgrade
-   * @private
+   * Get all players
+   * @returns {Object}
    */
-  _applyStatUpgrade(statName) {
-    if (!this.ghostProperties) {
-      console.warn('[GhostOrbits] Cannot upgrade stat - no ghost properties');
-      return;
-    }
-
-    const UPGRADE_AMOUNT = 0.05;
-    const MAX_STAT = 1.5; // From spec section 7
-
-    // Get current value
-    const currentValue = this.ghostProperties[statName] || 1.0;
-    const newValue = Math.min(currentValue + UPGRADE_AMOUNT, MAX_STAT);
-
-    console.log(`[GhostOrbits] Upgrading ${statName}: ${currentValue.toFixed(2)} -> ${newValue.toFixed(2)}`);
-
-    // Apply upgrade to ghost properties
-    this.ghostProperties[statName] = newValue;
-
-    // Save to localStorage
-    this._saveGhostStats();
-
-    // Update renderer with new properties
-    if (this.renderer) {
-      this.renderer.updateLocalGhostProperties(this.ghostProperties);
-    }
-
-    console.log(`[GhostOrbits] ${statName} upgraded by +${UPGRADE_AMOUNT.toFixed(2)}`);
+  getPlayers() {
+    return this.serverState.players;
   }
 
   /**
-   * Load saved ghost stat upgrades from localStorage
-   * @private
+   * Check if connected to server
+   * @returns {boolean}
    */
-  _loadGhostStats() {
-    const key = `${this.cartridgeId}_ghost_stats`;
-    const stored = localStorage.getItem(key);
-
-    if (stored) {
-      try {
-        const savedStats = JSON.parse(stored);
-        console.log('[GhostOrbits] Loading saved ghost stats:', savedStats);
-
-        // Merge saved stats with current properties
-        if (this.ghostProperties) {
-          for (const [statName, value] of Object.entries(savedStats)) {
-            if (typeof value === 'number' && this.ghostProperties.hasOwnProperty(statName)) {
-              this.ghostProperties[statName] = value;
-              console.log(`[GhostOrbits] Loaded ${statName}: ${value.toFixed(2)}`);
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('[GhostOrbits] Failed to parse saved ghost stats:', e);
-      }
-    } else {
-      console.log('[GhostOrbits] No saved ghost stats found, using base properties');
-    }
-  }
-
-  /**
-   * Save ghost stat upgrades to localStorage
-   * @private
-   */
-  _saveGhostStats() {
-    if (!this.ghostProperties) return;
-
-    const key = `${this.cartridgeId}_ghost_stats`;
-
-    // Save only the upgradeable stats
-    const statsToSave = {
-      mass: this.ghostProperties.mass || 1.0,
-      thrustEfficiency: this.ghostProperties.thrustEfficiency || 1.0,
-      trailDuration: this.ghostProperties.trailDuration || 1.0,
-      energyRegen: this.ghostProperties.energyRegen || 1.0,
-      trailWidth: this.ghostProperties.trailWidth || 1.0
-    };
-
-    try {
-      localStorage.setItem(key, JSON.stringify(statsToSave));
-      console.log('[GhostOrbits] Saved ghost stats:', statsToSave);
-    } catch (e) {
-      console.warn('[GhostOrbits] Failed to save ghost stats:', e);
-    }
-  }
-
-  /**
-   * Get the name of the weakest stat from match analysis
-   * @returns {string} Stat name
-   * @private
-   */
-  _getWeakestStatName() {
-    return this._analyzeMatchStats();
-  }
-
-  /**
-   * Format stat upgrade for display
-   * @param {string} statName - Name of stat that was upgraded
-   * @returns {string} Formatted upgrade text (e.g., "Mass +0.05")
-   * @private
-   */
-  _formatStatUpgrade(statName) {
-    const UPGRADE_AMOUNT = 0.05;
-    const statDisplayNames = {
-      mass: 'Mass',
-      thrustEfficiency: 'Thrust',
-      trailDuration: 'Trail Duration',
-      energyRegen: 'Energy Regen',
-      trailWidth: 'Trail Width'
-    };
-
-    const displayName = statDisplayNames[statName] || statName;
-    return `${displayName} +${UPGRADE_AMOUNT.toFixed(2)}`;
-  }
-
-  /**
-   * Handle rematch request (player wants to play again after defeat)
-   * @private
-   */
-  _handleRematch() {
-    console.log('[GhostOrbits] Rematch requested');
-
-    // Check if player has enough stars
-    if (!this.isUnlocked()) {
-      console.warn('[GhostOrbits] Cannot rematch - not enough stars');
-      console.log('[GhostOrbits] currentSessionGolds:', this.currentSessionGolds, 'lastSessionGolds:', this.lastSessionGolds);
-      // The UI should already show a disabled button, but just in case,
-      // exit gracefully without an intrusive alert
-      this.exitArena();
-      return;
-    }
-
-    // Reset match state
-    this.matchResult = null;
-    this.winCondition = null;
-    this.dominationStartTime.clear();
-
-    // Clear the results screen
-    if (this.panel) {
-      this.panel.resetToActiveView();
-    }
-
-    // Restart the match
-    this._setState(GameState.PLAYING);
-    this.startMatchTimer();
-
-    // Get arena size
-    const arenaSize = this.renderer?.arena?.size || 800;
-
-    // Reset physics engine - clear and re-add records
-    if (this.physicsEngine) {
-      this.physicsEngine.clearRecords();
-      this.physicsEngine.orbitStates.clear();
-      // Update arena size in physics engine
-      this.physicsEngine.arenaSize = { width: arenaSize, height: arenaSize };
-    }
-
-    // Reset dots and trails (v2)
-    if (this.dotManager) {
-      this.dotManager.reset();
-    }
-    if (this.trailManager) {
-      this.trailManager.clear();
-    }
-
-    // Re-setup arena with records
-    this._setupInitialArena(arenaSize);
-
-    // Reset ghosts to spawn positions with initial velocity
-    if (this.renderer) {
-      // Reset player ghost
-      const localGhost = this.renderer.getLocalGhost();
-      if (localGhost) {
-        localGhost.position.x = arenaSize * 0.2;
-        localGhost.position.y = arenaSize * 0.8;
-        // v2: Give initial velocity (not zero!)
-        localGhost.velocity.x = 3;
-        localGhost.velocity.y = -3;
-        localGhost.energy = 1.0;
-      }
-
-      // Reset shadow ghost
-      const shadowGhost = this.renderer.ghosts?.get(this.shadowGhostId);
-      if (shadowGhost) {
-        shadowGhost.position.x = arenaSize * 0.8;
-        shadowGhost.position.y = arenaSize * 0.2;
-        // v2: Give initial velocity (not zero!)
-        shadowGhost.velocity.x = -3;
-        shadowGhost.velocity.y = 3;
-        shadowGhost.energy = 1.0;
-      }
-
-      // Reset movement states
-      this.ghostMovementState = 'FREE_FLIGHT';
-      this.shadowMovementState = 'FREE_FLIGHT';
-    }
-
-    // Clear territory
-    if (this.territorySystem) {
-      this.territorySystem.clearAll?.();
-    }
-
-    // Reset pattern recorder
-    if (this.patternRecorder) {
-      this.patternRecorder.reset?.();
-      this.patternRecorder.start();
-    }
-
-    // Reset Shadow AI
-    if (this.shadowAI) {
-      this.shadowAI.reset?.();
-    }
-
-    console.log('[GhostOrbits] Rematch started with full re-initialization');
+  isConnected() {
+    return this.ws && this.ws.readyState === WebSocket.OPEN;
   }
 }
 

@@ -1,10 +1,10 @@
 /**
- * Ghost Orbits Panel
+ * Ghost Orbits Panel - Multiplayer Arena UI
  *
- * Full-screen overlay UI for the Ghost Orbits territory game.
- * Provides the HUD, arena container, and various game state views.
+ * Full-screen overlay UI for the Ghost Orbits multiplayer arena.
+ * Provides lobby entry, in-game HUD, elimination/rejoin flow, and victory screens.
  *
- * @see ghost-orbits-spec.md sections 9.1-9.3
+ * @version 2.0.0 - Global multiplayer arena
  */
 
 export class GhostOrbitsPanel {
@@ -12,14 +12,26 @@ export class GhostOrbitsPanel {
    * @param {Object} options
    * @param {HTMLElement} options.container - Container element to mount the panel into
    * @param {Function} options.onClose - Callback when close button is clicked
-   * @param {Function} options.onReturnToPractice - Callback when returning to practice (from eliminated view)
-   * @param {Function} options.onRematch - Callback when player chooses to rematch
+   * @param {Function} options.onReturnToPractice - Callback when returning to practice
+   * @param {Function} options.onRematch - Callback when player chooses to rematch (deprecated)
+   * @param {Function} options.onEnterArena - Callback when player wants to enter arena
+   * @param {Function} options.onRejoin - Callback when eliminated player wants to rejoin
+   * @param {Function} options.onSpectate - Callback when player wants to spectate
+   * @param {Function} options.onLeave - Callback when player leaves arena
+   * @param {Function} options.onSendInput - Callback to send player input (direction, spacebar)
+   * @param {Object} options.wsClient - WebSocket client for arena communication
    */
   constructor(options) {
     this.container = options.container;
     this.onClose = options.onClose || (() => {});
     this.onReturnToPractice = options.onReturnToPractice || (() => {});
-    this.onRematch = options.onRematch || (() => {});
+    this.onRematch = options.onRematch || (() => {}); // Legacy
+    this.onEnterArena = options.onEnterArena || (() => {});
+    this.onRejoin = options.onRejoin || (() => {});
+    this.onSpectate = options.onSpectate || (() => {});
+    this.onLeave = options.onLeave || (() => {});
+    this.onSendInput = options.onSendInput || (() => {});
+    this.wsClient = options.wsClient || null;
 
     this.isVisible = false;
     this.currentRound = 1;
@@ -29,8 +41,20 @@ export class GhostOrbitsPanel {
     this.eliminatedStats = null;
     this.resultsData = null;
 
+    // Multiplayer arena state
+    this.currentView = 'lobby'; // 'lobby', 'game', 'eliminated', 'spectating', 'winner'
+    this.potAmount = 0;
+    this.entryStarCost = 1;
+    this.entryPointCost = 100;
+    this.playerLives = 3;
+    this.maxLives = 3;
+    this.playersInArena = [];
+    this.localPlayerId = null;
+    this.isSpectating = false;
+
     // Bind escape key handler
     this._handleKeyDown = this._handleKeyDown.bind(this);
+    this._handleGameInput = this._handleGameInput.bind(this);
 
     // Store help screen key handler for cleanup
     this._helpKeyHandler = null;
@@ -45,7 +69,6 @@ export class GhostOrbitsPanel {
    * @returns {Promise<void>}
    */
   async init() {
-    // Initialization is done in constructor
     return Promise.resolve();
   }
 
@@ -53,15 +76,12 @@ export class GhostOrbitsPanel {
    * Show the panel
    */
   show() {
-    console.log('[GhostOrbitsPanel] show() called, isVisible:', this.isVisible, 'overlayElement:', this.overlayElement);
+    console.log('[GhostOrbitsPanel] show() called, isVisible:', this.isVisible);
     if (this.isVisible) return;
 
     this.isVisible = true;
     if (this.overlayElement) {
       this.overlayElement.classList.add('visible');
-      console.log('[GhostOrbitsPanel] Added visible class, classList:', this.overlayElement.classList.toString());
-    } else {
-      console.error('[GhostOrbitsPanel] No overlayElement!');
     }
 
     // Add keyboard listener
@@ -81,7 +101,400 @@ export class GhostOrbitsPanel {
 
     // Remove keyboard listener
     document.removeEventListener('keydown', this._handleKeyDown);
+    document.removeEventListener('keydown', this._handleGameInput);
+    document.removeEventListener('keyup', this._handleGameInput);
   }
+
+  // ==========================================================================
+  // HELPER METHODS FOR STATE ACCESS
+  // ==========================================================================
+
+  /**
+   * Get player's current gold stars
+   * @returns {number}
+   */
+  getPlayerGoldStars() {
+    // Try DOM first (fastest)
+    const goldCount = document.getElementById('gold-count');
+    if (goldCount) {
+      return parseInt(goldCount.textContent || '0', 10);
+    }
+    // Fallback to localStorage
+    const cartridgeId = this._getCurrentCartridgeId();
+    const starsKey = `driller_${cartridgeId}_stars`;
+    try {
+      const stars = JSON.parse(localStorage.getItem(starsKey) || '{}');
+      return stars.gold || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Get player's current points
+   * @returns {number}
+   */
+  getPlayerPoints() {
+    // Try DOM first
+    const pointsEl = document.getElementById('total-points');
+    if (pointsEl) {
+      return parseInt(pointsEl.textContent || '0', 10);
+    }
+    // Fallback to localStorage
+    const cartridgeId = this._getCurrentCartridgeId();
+    const stateKey = `driller_${cartridgeId}_gameState`;
+    try {
+      const state = JSON.parse(localStorage.getItem(stateKey) || '{}');
+      return state.totalPoints || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Get ghost properties from ghost engine
+   * @returns {Object|null}
+   */
+  getGhostProperties() {
+    // Access through window global if available
+    if (window.GhostEngine?.getGhostProfile) {
+      const profile = window.GhostEngine.getGhostProfile();
+      if (profile?.weights) {
+        return profile.weights;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Update local state after bet/payout
+   * @param {number} newGoldStars
+   * @param {number} newPoints
+   */
+  updateLocalState(newGoldStars, newPoints) {
+    const cartridgeId = this._getCurrentCartridgeId();
+
+    // Update DOM
+    const goldCountEl = document.getElementById('gold-count');
+    const pointsEl = document.getElementById('total-points');
+    if (goldCountEl) goldCountEl.textContent = newGoldStars;
+    if (pointsEl) pointsEl.textContent = newPoints;
+
+    // Update localStorage stars
+    const starsKey = `driller_${cartridgeId}_stars`;
+    try {
+      const stars = JSON.parse(localStorage.getItem(starsKey) || '{}');
+      stars.gold = newGoldStars;
+      localStorage.setItem(starsKey, JSON.stringify(stars));
+    } catch (e) {
+      console.warn('[GhostOrbitsPanel] Failed to update stars in localStorage:', e);
+    }
+
+    // Update localStorage points
+    const stateKey = `driller_${cartridgeId}_gameState`;
+    try {
+      const state = JSON.parse(localStorage.getItem(stateKey) || '{}');
+      state.totalPoints = newPoints;
+      localStorage.setItem(stateKey, JSON.stringify(state));
+    } catch (e) {
+      console.warn('[GhostOrbitsPanel] Failed to update points in localStorage:', e);
+    }
+  }
+
+  /**
+   * Get current cartridge ID
+   * @private
+   */
+  _getCurrentCartridgeId() {
+    // Try window global
+    if (window.currentCartridgeId) {
+      return window.currentCartridgeId;
+    }
+    // Try platform global
+    if (window.platform?.currentCartridge?.manifest?.meta?.id) {
+      return window.platform.currentCartridge.manifest.meta.id;
+    }
+    return 'unknown';
+  }
+
+  // ==========================================================================
+  // WEBSOCKET INTEGRATION
+  // ==========================================================================
+
+  /**
+   * Set WebSocket client for arena communication
+   * @param {Object} wsClient
+   */
+  setWebSocketClient(wsClient) {
+    this.wsClient = wsClient;
+  }
+
+  /**
+   * Send arena join request
+   */
+  sendArenaJoin() {
+    if (!this.wsClient?.send) {
+      console.warn('[GhostOrbitsPanel] No WebSocket client available');
+      return;
+    }
+    this.wsClient.send({
+      type: 'global_arena_join',
+      goldStars: this.getPlayerGoldStars(),
+      points: this.getPlayerPoints(),
+      ghostProperties: this.getGhostProperties()
+    });
+  }
+
+  /**
+   * Send player input to server
+   * @param {Object} input - { direction: {x, y}, spacebar: boolean }
+   */
+  sendArenaInput(input) {
+    if (!this.wsClient?.send) return;
+    this.wsClient.send({
+      type: 'global_arena_input',
+      ...input
+    });
+  }
+
+  /**
+   * Send leave arena request
+   */
+  sendArenaLeave() {
+    if (!this.wsClient?.send) return;
+    this.wsClient.send({
+      type: 'global_arena_leave'
+    });
+  }
+
+  /**
+   * Send rejoin request
+   */
+  sendArenaRejoin() {
+    if (!this.wsClient?.send) return;
+    this.wsClient.send({
+      type: 'global_arena_rejoin',
+      goldStars: this.getPlayerGoldStars(),
+      points: this.getPlayerPoints()
+    });
+  }
+
+  /**
+   * Handle incoming WebSocket message
+   * @param {Object} message
+   */
+  handleWebSocketMessage(message) {
+    switch (message.type) {
+      case 'arena_joined':
+        this._handleArenaJoined(message);
+        break;
+      case 'arena_entry_failed':
+        this._handleEntryFailed(message);
+        break;
+      case 'game_state':
+        this._handleGameState(message);
+        break;
+      case 'player_joined':
+        this._handlePlayerJoined(message);
+        break;
+      case 'player_left':
+        this._handlePlayerLeft(message);
+        break;
+      case 'player_eliminated':
+        this._handlePlayerEliminated(message);
+        break;
+      case 'arena_winner':
+        this._handleArenaWinner(message);
+        break;
+      case 'rejoin_success':
+        this._handleRejoinSuccess(message);
+        break;
+      case 'rejoin_failed':
+        this._handleRejoinFailed(message);
+        break;
+      case 'pot_update':
+        this.updatePot(message.pot);
+        break;
+    }
+  }
+
+  _handleArenaJoined(message) {
+    this.localPlayerId = message.playerId;
+    this.potAmount = message.pot || 0;
+    this.playersInArena = message.players || [];
+    this.playerLives = message.lives || 3;
+    this.entryPointCost = message.pointCost || 100;
+
+    // Deduct entry cost from local state
+    const newGold = this.getPlayerGoldStars() - this.entryStarCost;
+    const newPoints = this.getPlayerPoints() - this.entryPointCost;
+    this.updateLocalState(newGold, newPoints);
+
+    this.showGameView();
+  }
+
+  _handleEntryFailed(message) {
+    alert(message.reason || 'Failed to join arena');
+    this.showLobbyView();
+  }
+
+  _handleGameState(message) {
+    // Update positions, dots, lives, etc.
+    if (message.players) {
+      this.playersInArena = message.players;
+      this._updatePlayerList();
+    }
+    if (message.pot !== undefined) {
+      this.updatePot(message.pot);
+    }
+    if (message.localLives !== undefined) {
+      this.updateLives(message.localLives);
+    }
+    if (message.timer !== undefined) {
+      this.updateTimer(message.timer);
+    }
+  }
+
+  _handlePlayerJoined(message) {
+    this.playersInArena.push(message.player);
+    this._updatePlayerList();
+    if (message.pot !== undefined) {
+      this.updatePot(message.pot);
+    }
+  }
+
+  _handlePlayerLeft(message) {
+    this.playersInArena = this.playersInArena.filter(p => p.id !== message.playerId);
+    this._updatePlayerList();
+  }
+
+  _handlePlayerEliminated(message) {
+    if (message.playerId === this.localPlayerId) {
+      this.showEliminatedView({
+        placement: message.placement,
+        pot: message.pot,
+        playersRemaining: message.playersRemaining
+      });
+    } else {
+      // Another player eliminated
+      this.playersInArena = this.playersInArena.filter(p => p.id !== message.playerId);
+      this._updatePlayerList();
+    }
+  }
+
+  _handleArenaWinner(message) {
+    if (message.winnerId === this.localPlayerId) {
+      this.showWinnerView({
+        payout: message.payout,
+        playersDefeated: message.playersDefeated
+      });
+      // Add payout to local state
+      const newPoints = this.getPlayerPoints() + message.payout;
+      this.updateLocalState(this.getPlayerGoldStars(), newPoints);
+    } else {
+      // Someone else won
+      this.showSpectatorWinView({
+        winnerName: message.winnerName,
+        payout: message.payout
+      });
+    }
+  }
+
+  _handleRejoinSuccess(message) {
+    this.localPlayerId = message.playerId;
+    this.playerLives = message.lives || 3;
+
+    // Deduct rejoin cost
+    const newGold = this.getPlayerGoldStars() - this.entryStarCost;
+    const newPoints = this.getPlayerPoints() - message.pointCost;
+    this.updateLocalState(newGold, newPoints);
+
+    this.showGameView();
+  }
+
+  _handleRejoinFailed(message) {
+    alert(message.reason || 'Failed to rejoin');
+  }
+
+  // ==========================================================================
+  // VIEW MANAGEMENT
+  // ==========================================================================
+
+  /**
+   * Show lobby/entry view
+   */
+  showLobbyView() {
+    this.currentView = 'lobby';
+    this.isEliminated = false;
+    this._renderLobbyView();
+  }
+
+  /**
+   * Show active game view
+   */
+  showGameView() {
+    this.currentView = 'game';
+    this.isEliminated = false;
+    this.isSpectating = false;
+
+    // Re-render to game HUD
+    if (this.overlayElement && this.overlayElement.parentNode) {
+      this.overlayElement.parentNode.removeChild(this.overlayElement);
+    }
+    this._render();
+    this._attachEventListeners();
+    this.overlayElement?.classList.add('visible');
+
+    // Enable game input
+    document.addEventListener('keydown', this._handleGameInput);
+    document.addEventListener('keyup', this._handleGameInput);
+  }
+
+  /**
+   * Show eliminated view with rejoin options
+   * @param {Object} data
+   */
+  showEliminatedView(data) {
+    this.currentView = 'eliminated';
+    this.isEliminated = true;
+    this.eliminatedStats = data;
+
+    // Disable game input
+    document.removeEventListener('keydown', this._handleGameInput);
+    document.removeEventListener('keyup', this._handleGameInput);
+
+    this._renderEliminatedView();
+  }
+
+  /**
+   * Show spectator view
+   */
+  showSpectatorView() {
+    this.currentView = 'spectating';
+    this.isSpectating = true;
+    this._renderSpectatorView();
+  }
+
+  /**
+   * Show winner view
+   * @param {Object} data - { payout, playersDefeated }
+   */
+  showWinnerView(data) {
+    this.currentView = 'winner';
+    this._renderWinnerView(data);
+  }
+
+  /**
+   * Show view when someone else wins
+   * @param {Object} data - { winnerName, payout }
+   */
+  showSpectatorWinView(data) {
+    this._renderSpectatorWinView(data);
+  }
+
+  // ==========================================================================
+  // HUD UPDATE METHODS
+  // ==========================================================================
 
   /**
    * Update the timer display
@@ -95,7 +508,6 @@ export class GhostOrbitsPanel {
       const secs = seconds % 60;
       timerEl.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
 
-      // Add warning classes for low time
       timerEl.classList.remove('warning', 'danger');
       if (seconds <= 30) {
         timerEl.classList.add('danger');
@@ -106,47 +518,36 @@ export class GhostOrbitsPanel {
   }
 
   /**
-   * Update the Shadow generation display
-   * @param {number} generation - Current Shadow generation number
+   * Update pot display
+   * @param {number} amount
    */
-  updateGeneration(generation) {
-    const genEl = this.overlayElement?.querySelector('#orbits-generation');
-    if (genEl) {
-      genEl.textContent = `Shadow Gen ${generation}`;
+  updatePot(amount) {
+    this.potAmount = amount;
+    const potEl = this.overlayElement?.querySelector('#arena-pot');
+    if (potEl) {
+      potEl.textContent = `${amount} pts`;
+    }
+    // Also update lobby pot if visible
+    const lobbyPotEl = this.overlayElement?.querySelector('#lobby-pot-amount');
+    if (lobbyPotEl) {
+      lobbyPotEl.textContent = amount;
     }
   }
 
   /**
-   * Update the round display
-   * @param {number} round - Current round number
-   */
-  updateRound(round) {
-    this.currentRound = round;
-    const roundEl = this.overlayElement?.querySelector('#orbits-round');
-    if (roundEl) {
-      roundEl.textContent = `Round ${round}`;
-    }
-  }
-
-  /**
-   * Update the lives display
+   * Update lives display
    * @param {number} lives - Remaining lives (0-3)
    */
   updateLives(lives) {
+    this.playerLives = lives;
     const livesEl = this.overlayElement?.querySelector('#orbits-lives');
     if (livesEl) {
-      // Display hearts (filled or empty)
       const hearts = [];
-      for (let i = 0; i < 3; i++) {
-        if (i < lives) {
-          hearts.push('♥'); // Filled heart
-        } else {
-          hearts.push('♡'); // Empty heart
-        }
+      for (let i = 0; i < this.maxLives; i++) {
+        hearts.push(i < lives ? '\u2665' : '\u2661'); // Filled or empty heart
       }
       livesEl.textContent = hearts.join(' ');
 
-      // Add warning class if low on lives
       livesEl.classList.remove('warning', 'danger');
       if (lives === 1) {
         livesEl.classList.add('danger');
@@ -157,28 +558,79 @@ export class GhostOrbitsPanel {
   }
 
   /**
-   * Update the dot count display
-   * @param {number} playerDots - Number of dots collected by player
-   * @param {number} shadowDots - Number of dots collected by shadow
-   * @param {number} targetDots - Target number of dots to win
+   * Update player count indicator
+   * @param {number} count
    */
-  updateDotCounts(playerDots, shadowDots, targetDots) {
-    const dotCountEl = this.overlayElement?.querySelector('#orbits-dot-count');
-    if (dotCountEl) {
-      dotCountEl.textContent = `Player: ${playerDots}/${targetDots} | Shadow: ${shadowDots}/${targetDots}`;
+  updatePlayerCount(count) {
+    const countEl = this.overlayElement?.querySelector('#arena-player-count');
+    if (countEl) {
+      countEl.textContent = `${count} player${count !== 1 ? 's' : ''}`;
     }
   }
 
   /**
-   * Update territory bar with player percentages
-   * @param {Array<{username: string, percent: number, color: string, isPlayer: boolean}>} territories
+   * Update round display
+   * @param {number} round
+   */
+  updateRound(round) {
+    this.currentRound = round;
+    const roundEl = this.overlayElement?.querySelector('#orbits-round');
+    if (roundEl) {
+      roundEl.textContent = `Round ${round}`;
+    }
+  }
+
+  /**
+   * Update the dot count display (for dot territory mode)
+   * @param {number} playerDots
+   * @param {number} shadowDots
+   * @param {number} targetDots
+   */
+  updateDotCounts(playerDots, shadowDots, targetDots) {
+    const dotCountEl = this.overlayElement?.querySelector('#orbits-dot-count');
+    if (dotCountEl) {
+      dotCountEl.textContent = `You: ${playerDots}/${targetDots}`;
+    }
+  }
+
+  /**
+   * Update mini player list
+   * @private
+   */
+  _updatePlayerList() {
+    const listEl = this.overlayElement?.querySelector('#arena-player-list');
+    if (!listEl) return;
+
+    const html = this.playersInArena.slice(0, 6).map(p => {
+      const isLocal = p.id === this.localPlayerId;
+      const livesStr = '\u2665'.repeat(p.lives || 0);
+      return `
+        <div class="arena-player-item ${isLocal ? 'local' : ''}">
+          <span class="player-color" style="background: ${p.color || '#4488ff'}"></span>
+          <span class="player-name">${isLocal ? 'You' : p.username}</span>
+          <span class="player-lives">${livesStr}</span>
+        </div>
+      `;
+    }).join('');
+
+    if (this.playersInArena.length > 6) {
+      listEl.innerHTML = html + `<div class="arena-player-more">+${this.playersInArena.length - 6} more</div>`;
+    } else {
+      listEl.innerHTML = html || '<div class="arena-player-empty">Waiting for players...</div>';
+    }
+
+    this.updatePlayerCount(this.playersInArena.length);
+  }
+
+  /**
+   * Update territory bar (for territory mode)
+   * @param {Array} territories
    */
   updateTerritory(territories) {
     this.playerTerritories = territories;
     const territoryBar = this.overlayElement?.querySelector('#orbits-territory-bar');
     if (!territoryBar) return;
 
-    // Build the territory segments
     const segmentsHtml = territories
       .filter(t => t.percent > 0)
       .sort((a, b) => b.percent - a.percent)
@@ -193,34 +645,11 @@ export class GhostOrbitsPanel {
       .join('');
 
     territoryBar.innerHTML = segmentsHtml || '<span class="territory-empty">No territory claimed</span>';
-
-    // Also update the text display below the bar
-    const territoryText = this.overlayElement?.querySelector('#orbits-territory-text');
-    if (territoryText) {
-      const textParts = territories
-        .filter(t => t.percent > 0)
-        .sort((a, b) => b.percent - a.percent)
-        .slice(0, 4)
-        .map(t => {
-          const displayName = t.isPlayer ? 'You' : `@${t.username}`;
-          return `<span style="color: ${t.color}">${displayName} ${Math.round(t.percent)}%</span>`;
-        });
-
-      // Add "others" if more than 4 players
-      const shown = territories.filter(t => t.percent > 0).slice(0, 4);
-      const others = territories.filter(t => t.percent > 0).slice(4);
-      if (others.length > 0) {
-        const othersPercent = others.reduce((sum, t) => sum + t.percent, 0);
-        textParts.push(`<span class="territory-others">others ${Math.round(othersPercent)}%</span>`);
-      }
-
-      territoryText.innerHTML = `Territory: ${textParts.join(' | ')}`;
-    }
   }
 
   /**
-   * Show countdown before round starts
-   * @param {number} number - Countdown number (3, 2, 1, or 0 for "GO!")
+   * Show countdown before game starts
+   * @param {number} number
    */
   showCountdown(number) {
     let countdownOverlay = this.overlayElement?.querySelector('.orbits-countdown-overlay');
@@ -240,7 +669,6 @@ export class GhostOrbitsPanel {
       countdownOverlay.innerHTML = '<span class="countdown-text countdown-go">GO!</span>';
       countdownOverlay.classList.add('visible');
 
-      // Remove after animation
       setTimeout(() => {
         countdownOverlay.classList.remove('visible');
         setTimeout(() => countdownOverlay.remove(), 300);
@@ -249,108 +677,38 @@ export class GhostOrbitsPanel {
       countdownOverlay.innerHTML = `<span class="countdown-text">${number}</span>`;
       countdownOverlay.classList.add('visible');
     } else {
-      // Hide countdown
       countdownOverlay.classList.remove('visible');
     }
   }
 
-  /**
-   * Show eliminated player view
-   * @param {Object} stats
-   * @param {number} stats.finalTerritory - Final territory percentage
-   * @param {number} stats.placement - Final placement (1st, 2nd, etc.)
-   * @param {number} stats.playersRemaining - How many players still alive
-   * @param {number} stats.timeRemaining - Seconds remaining in round
-   * @param {string} stats.eliminatedBy - Username of player who absorbed you (optional)
-   */
-  showEliminated(stats) {
-    this.isEliminated = true;
-    this.eliminatedStats = stats;
-    this._renderEliminatedView();
-  }
+  // ==========================================================================
+  // HELP SCREEN
+  // ==========================================================================
 
   /**
-   * Show round results (for multiplayer or renamed to match the requirement)
-   * @param {Object} results
-   * @param {Array<{username: string, territory: number, eliminations: number, placement: number}>} results.rankings
-   * @param {string} results.winner - Username of winner
-   * @param {boolean} results.isNextRoundStarting - Whether another round is starting
-   * @param {number} results.intermissionSeconds - Seconds until next round
-   */
-  showRoundResults(results) {
-    this.resultsData = results;
-    this._renderResultsView();
-  }
-
-  /**
-   * Show victory/defeat screen for solo Shadow Self mode
-   * @param {Object} data - Match results data
-   * @param {string} data.winner - 'player' or 'shadow'
-   * @param {string} data.condition - Win condition text (e.g., 'Territory Domination')
-   * @param {number} data.playerTerritory - Player's final territory %
-   * @param {number} data.timeElapsed - Match duration in seconds
-   * @param {string} [data.statUpgrade] - Stat that was upgraded (for victory only, e.g., 'Mass +0.05')
-   */
-  showResults(data) {
-    if (data.winner === 'player') {
-      this._renderVictoryScreen(data);
-    } else {
-      this._renderDefeatScreen(data);
-    }
-  }
-
-  /**
-   * Show rematch prompt (called when player has stars to rejoin)
-   * @param {Function} onRematch - Callback when player chooses to rematch
-   * @param {Function} onExit - Callback when player chooses to exit
-   */
-  showRematchPrompt(onRematch, onExit) {
-    this._renderRematchPrompt(onRematch, onExit);
-  }
-
-  /**
-   * Reset to active game view (clear eliminated/results)
-   */
-  resetToActiveView() {
-    this.isEliminated = false;
-    this.eliminatedStats = null;
-    this.resultsData = null;
-
-    // Remove the old overlay and re-render
-    if (this.overlayElement && this.overlayElement.parentNode) {
-      this.overlayElement.parentNode.removeChild(this.overlayElement);
-    }
-    this._render();
-    this._attachEventListeners();
-    this.overlayElement?.classList.add('visible');
-  }
-
-  /**
-   * Get the arena container element where the game canvas should be mounted
-   * @returns {HTMLElement|null}
-   */
-  getArenaContainer() {
-    return this.overlayElement?.querySelector('.orbits-arena-canvas-mount') || null;
-  }
-
-  /**
-   * Show the help screen overlay (v3 - explains Dot Territory rules)
-   * @param {Function} [onDismiss] - Optional callback when help is dismissed
+   * Show the help screen overlay (updated for multiplayer arena)
+   * @param {Function} [onDismiss]
    */
   showHelpScreen(onDismiss) {
     if (!this.overlayElement) return;
 
-    // Create help overlay
     const helpOverlay = document.createElement('div');
     helpOverlay.className = 'orbits-help-overlay';
     helpOverlay.innerHTML = `
       <div class="help-content">
-        <h2 class="help-title">DOT TERRITORY</h2>
+        <h2 class="help-title">MULTIPLAYER ARENA</h2>
+
+        <div class="help-section">
+          <div class="help-icon">&#128176;</div>
+          <div class="help-text">
+            <strong>Entry Fee:</strong> 1 Gold Star + Points to enter. Winner takes the pot!
+          </div>
+        </div>
 
         <div class="help-section">
           <div class="help-icon">&#9899;</div>
           <div class="help-text">
-            <strong>Claim Dots:</strong> Touch neutral (gray) dots to claim them.
+            <strong>Claim Dots:</strong> Touch neutral (gray) dots to claim them for points.
           </div>
         </div>
 
@@ -371,26 +729,26 @@ export class GhostOrbitsPanel {
         <div class="help-section">
           <div class="help-icon">&#128190;</div>
           <div class="help-text">
-            <strong>Safe:</strong> Land on records (spinning plates) - you're safe there!
+            <strong>Safe Zones:</strong> Land on records (spinning plates) - you're safe there!
           </div>
         </div>
 
         <div class="help-section help-goal">
           <div class="help-icon">&#127942;</div>
           <div class="help-text">
-            <strong>Win:</strong> Claim 90% of dots OR eliminate opponent (3 lives each).
+            <strong>Win:</strong> Be the last player standing! Eliminated players can rejoin.
           </div>
         </div>
 
         <div class="help-controls">
-          <p><strong>SPACEBAR</strong> = Land on record / Launch off / Flip enemy dots</p>
+          <p><strong>ARROWS/WASD</strong> = Move | <strong>SPACEBAR</strong> = Land/Launch/Flip</p>
         </div>
 
         <button class="help-dismiss-btn">GOT IT! [SPACE]</button>
       </div>
     `;
 
-    // Add styles for help overlay
+    // Add styles
     const style = document.createElement('style');
     style.textContent = `
       .orbits-help-overlay {
@@ -482,7 +840,6 @@ export class GhostOrbitsPanel {
     `;
     helpOverlay.appendChild(style);
 
-    // Dismiss handler
     const dismiss = () => {
       helpOverlay.style.animation = 'fadeIn 0.2s ease-out reverse';
       setTimeout(() => {
@@ -491,10 +848,8 @@ export class GhostOrbitsPanel {
       }, 200);
     };
 
-    // Click button to dismiss
     helpOverlay.querySelector('.help-dismiss-btn').addEventListener('click', dismiss);
 
-    // Space key to dismiss (store handler for cleanup)
     const handleKey = (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
@@ -506,70 +861,41 @@ export class GhostOrbitsPanel {
     this._helpKeyHandler = handleKey;
     document.addEventListener('keydown', handleKey);
 
-    // Add to arena container
     const arenaContainer = this.overlayElement.querySelector('.orbits-arena-container');
     if (arenaContainer) {
       arenaContainer.appendChild(helpOverlay);
     }
   }
 
-  /**
-   * Cleanup resources
-   */
-  dispose() {
-    document.removeEventListener('keydown', this._handleKeyDown);
-
-    // Clean up help screen key handler if it exists
-    if (this._helpKeyHandler) {
-      document.removeEventListener('keydown', this._helpKeyHandler);
-      this._helpKeyHandler = null;
-    }
-
-    if (this.overlayElement && this.overlayElement.parentNode) {
-      this.overlayElement.parentNode.removeChild(this.overlayElement);
-    }
-    this.overlayElement = null;
-  }
+  // ==========================================================================
+  // RENDERING
+  // ==========================================================================
 
   /**
-   * Handle keyboard events
-   * @param {KeyboardEvent} event
-   */
-  _handleKeyDown(event) {
-    if (event.key === 'Escape' && this.isVisible) {
-      // If eliminated, return to practice; otherwise close
-      if (this.isEliminated) {
-        this.onReturnToPractice();
-      } else {
-        this.onClose();
-      }
-    }
-  }
-
-  /**
-   * Render the main panel HTML
+   * Render the main panel HTML (game view)
+   * @private
    */
   _render() {
-    console.log('[GhostOrbitsPanel] _render() called, container:', this.container);
-    // Create overlay element (don't replace container's content)
     this.overlayElement = document.createElement('div');
     this.overlayElement.className = 'ghost-orbits-overlay';
-    console.log('[GhostOrbitsPanel] Created overlayElement:', this.overlayElement);
     this.overlayElement.innerHTML = `
       <!-- Header Bar -->
       <div class="orbits-header">
         <div class="orbits-header-left">
-          <button class="orbits-close-btn" aria-label="Close Ghost Orbits">&times;</button>
-          <h2 class="orbits-title">Ghost Orbits</h2>
-          <span class="orbits-generation" id="orbits-generation">Shadow Gen 1</span>
+          <button class="orbits-close-btn" aria-label="Close Arena">&times;</button>
+          <h2 class="orbits-title">Ghost Arena</h2>
         </div>
         <div class="orbits-header-center">
+          <div class="arena-pot-display">
+            <span class="pot-label">POT:</span>
+            <span class="pot-amount" id="arena-pot">${this.potAmount} pts</span>
+          </div>
           <span class="orbits-timer" id="orbits-timer">--:--</span>
-          <span class="orbits-dot-count" id="orbits-dot-count">Player: 0/25 | Shadow: 0/25</span>
-          <span class="orbits-lives" id="orbits-lives">♥ ♥ ♥</span>
+          <span class="orbits-dot-count" id="orbits-dot-count"></span>
+          <span class="orbits-lives" id="orbits-lives">\u2665 \u2665 \u2665</span>
         </div>
         <div class="orbits-header-right">
-          <span class="orbits-round" id="orbits-round">Round ${this.currentRound}</span>
+          <span class="arena-player-count" id="arena-player-count">${this.playersInArena.length} players</span>
         </div>
       </div>
 
@@ -577,6 +903,13 @@ export class GhostOrbitsPanel {
       <div class="orbits-arena-container">
         <div class="orbits-arena-canvas-mount">
           <!-- Game canvas will be mounted here -->
+        </div>
+
+        <!-- Mini Player List (overlay) -->
+        <div class="arena-player-list-container">
+          <div class="arena-player-list" id="arena-player-list">
+            <div class="arena-player-empty">Waiting for players...</div>
+          </div>
         </div>
       </div>
 
@@ -587,39 +920,177 @@ export class GhostOrbitsPanel {
         </div>
         <div class="orbits-footer-info">
           <div class="orbits-footer-left">
-            <span class="orbits-territory-text" id="orbits-territory-text">Territory: --</span>
+            <span class="orbits-territory-text" id="orbits-territory-text"></span>
           </div>
           <div class="orbits-footer-controls">
-            <span class="orbits-control-hint">[SPACE: land/launch from records]</span>
+            <span class="orbits-control-hint">[ARROWS: move] [SPACE: land/flip]</span>
           </div>
           <div class="orbits-footer-right">
-            <span class="orbits-exit-hint">[ESC to exit to practice]</span>
+            <span class="orbits-exit-hint">[ESC to leave]</span>
           </div>
         </div>
       </div>
     `;
 
-    // Append to container (not replace)
     this.container.appendChild(this.overlayElement);
   }
 
   /**
+   * Render lobby/entry view
+   * @private
+   */
+  _renderLobbyView() {
+    if (!this.overlayElement) return;
+
+    const goldStars = this.getPlayerGoldStars();
+    const points = this.getPlayerPoints();
+    const canEnter = goldStars >= this.entryStarCost && points >= this.entryPointCost;
+
+    this.overlayElement.innerHTML = `
+      <div class="orbits-lobby-view">
+        <div class="lobby-content">
+          <h1 class="lobby-title">GHOST ARENA</h1>
+          <p class="lobby-subtitle">Last one standing wins the pot!</p>
+
+          <!-- Pot Display -->
+          <div class="lobby-pot-box">
+            <span class="lobby-pot-label">CURRENT POT</span>
+            <span class="lobby-pot-amount" id="lobby-pot-amount">${this.potAmount}</span>
+            <span class="lobby-pot-unit">points</span>
+          </div>
+
+          <!-- Entry Cost -->
+          <div class="lobby-entry-cost">
+            <span class="entry-cost-label">Entry Fee:</span>
+            <span class="entry-cost-value">${this.entryStarCost} \u2B50 + ${this.entryPointCost} pts</span>
+          </div>
+
+          <!-- Your Balance -->
+          <div class="lobby-balance">
+            <span>Your balance: ${goldStars} \u2B50 | ${points} pts</span>
+          </div>
+
+          <!-- Players in Arena -->
+          <div class="lobby-players-box">
+            <h3 class="lobby-players-title">Players in Arena (${this.playersInArena.length})</h3>
+            <div class="lobby-players-list" id="lobby-players-list">
+              ${this.playersInArena.length > 0
+                ? this.playersInArena.map(p => `
+                    <div class="lobby-player-item">
+                      <span class="player-color" style="background: ${p.color || '#4488ff'}"></span>
+                      <span class="player-name">${p.username}</span>
+                    </div>
+                  `).join('')
+                : '<div class="lobby-no-players">No players yet - be the first!</div>'
+              }
+            </div>
+          </div>
+
+          <!-- Enter Button -->
+          <button class="lobby-enter-btn ${canEnter ? '' : 'disabled'}" id="lobby-enter-btn" ${canEnter ? '' : 'disabled'}>
+            ${canEnter ? 'Enter Arena' : 'Not Enough Resources'}
+          </button>
+
+          <!-- Help Link -->
+          <button class="lobby-help-btn" id="lobby-help-btn">How to Play</button>
+
+          <!-- Close Button -->
+          <button class="lobby-close-btn" id="lobby-close-btn">Back to Practice</button>
+        </div>
+      </div>
+    `;
+
+    // Re-attach event listeners
+    this._attachLobbyListeners();
+  }
+
+  /**
+   * Attach lobby-specific event listeners
+   * @private
+   */
+  _attachLobbyListeners() {
+    const enterBtn = this.overlayElement?.querySelector('#lobby-enter-btn');
+    const helpBtn = this.overlayElement?.querySelector('#lobby-help-btn');
+    const closeBtn = this.overlayElement?.querySelector('#lobby-close-btn');
+
+    if (enterBtn && !enterBtn.disabled) {
+      enterBtn.addEventListener('click', () => {
+        this._showEntryConfirmDialog();
+      });
+    }
+
+    if (helpBtn) {
+      helpBtn.addEventListener('click', () => {
+        this.showHelpScreen();
+      });
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        this.onReturnToPractice();
+      });
+    }
+  }
+
+  /**
+   * Show entry confirmation dialog
+   * @private
+   */
+  _showEntryConfirmDialog() {
+    const modal = document.createElement('div');
+    modal.className = 'orbits-confirm-modal';
+    modal.innerHTML = `
+      <div class="confirm-modal-content">
+        <h2 class="confirm-title">Enter Arena?</h2>
+        <p class="confirm-message">You will bet:</p>
+        <div class="confirm-cost">
+          <span>${this.entryStarCost} \u2B50 Gold Star</span>
+          <span>${this.entryPointCost} Points</span>
+        </div>
+        <p class="confirm-note">If you win, you'll receive the entire pot!</p>
+        <div class="confirm-actions">
+          <button class="confirm-yes-btn" id="confirm-yes-btn">Enter!</button>
+          <button class="confirm-no-btn" id="confirm-no-btn">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    this.overlayElement?.appendChild(modal);
+
+    requestAnimationFrame(() => {
+      modal.classList.add('visible');
+    });
+
+    const yesBtn = modal.querySelector('#confirm-yes-btn');
+    const noBtn = modal.querySelector('#confirm-no-btn');
+
+    yesBtn?.addEventListener('click', () => {
+      modal.remove();
+      this.sendArenaJoin();
+      this.onEnterArena();
+    });
+
+    noBtn?.addEventListener('click', () => {
+      modal.remove();
+    });
+  }
+
+  /**
    * Render eliminated player view
+   * @private
    */
   _renderEliminatedView() {
     if (!this.overlayElement) return;
 
     const stats = this.eliminatedStats || {};
     const placement = stats.placement || '?';
-    const territory = stats.finalTerritory || 0;
-    const timeRemaining = stats.timeRemaining || 0;
     const playersRemaining = stats.playersRemaining || 0;
+    const potAmount = stats.pot || this.potAmount;
 
-    const minutes = Math.floor(timeRemaining / 60);
-    const secs = timeRemaining % 60;
-    const timeDisplay = `${minutes}:${secs.toString().padStart(2, '0')}`;
+    const goldStars = this.getPlayerGoldStars();
+    const points = this.getPlayerPoints();
+    const canRejoin = goldStars >= this.entryStarCost && points >= this.entryPointCost;
 
-    // Get ordinal suffix
     const getOrdinal = (n) => {
       const s = ['th', 'st', 'nd', 'rd'];
       const v = n % 100;
@@ -632,27 +1103,33 @@ export class GhostOrbitsPanel {
           <div class="eliminated-icon">
             <span class="ghost-absorbed">&#128123;</span>
           </div>
-          <h1 class="eliminated-title">YOU WERE ABSORBED</h1>
+          <h1 class="eliminated-title">ELIMINATED!</h1>
 
           <div class="eliminated-stats">
-            <div class="eliminated-stat">
-              <span class="stat-value">${Math.round(territory)}%</span>
-              <span class="stat-label">Final Territory</span>
-            </div>
             <div class="eliminated-stat">
               <span class="stat-value">${getOrdinal(placement)}</span>
               <span class="stat-label">Place</span>
             </div>
+            <div class="eliminated-stat">
+              <span class="stat-value">${playersRemaining}</span>
+              <span class="stat-label">Remaining</span>
+            </div>
           </div>
 
-          <div class="eliminated-rejoin-box">
-            <p class="rejoin-prompt">Earn 1 Gold Star to rejoin!</p>
-            <button class="orbits-return-btn" id="orbits-return-btn">Return to Practice</button>
+          <div class="eliminated-pot-info">
+            <p>Current pot: <strong>${potAmount} pts</strong></p>
           </div>
 
-          <div class="eliminated-round-info">
-            <p>Round continues: <strong>${timeDisplay}</strong> remaining</p>
-            <p>Players alive: <strong>${playersRemaining}</strong></p>
+          <div class="eliminated-actions">
+            <button class="eliminated-rejoin-btn ${canRejoin ? '' : 'disabled'}" id="eliminated-rejoin-btn" ${canRejoin ? '' : 'disabled'}>
+              ${canRejoin ? `Rejoin (${this.entryStarCost} \u2B50 + ${this.entryPointCost} pts)` : 'Need more stars to rejoin'}
+            </button>
+            <button class="eliminated-spectate-btn" id="eliminated-spectate-btn">Spectate</button>
+            <button class="eliminated-leave-btn" id="eliminated-leave-btn">Leave Arena</button>
+          </div>
+
+          <div class="eliminated-balance">
+            <span>Your balance: ${goldStars} \u2B50 | ${points} pts</span>
           </div>
         </div>
       </div>
@@ -660,69 +1137,102 @@ export class GhostOrbitsPanel {
 
     this.overlayElement.classList.add('visible');
 
-    // Attach return button listener
-    const returnBtn = this.overlayElement.querySelector('#orbits-return-btn');
-    if (returnBtn) {
-      returnBtn.addEventListener('click', () => this.onReturnToPractice());
+    // Attach button listeners
+    const rejoinBtn = this.overlayElement.querySelector('#eliminated-rejoin-btn');
+    const spectateBtn = this.overlayElement.querySelector('#eliminated-spectate-btn');
+    const leaveBtn = this.overlayElement.querySelector('#eliminated-leave-btn');
+
+    if (rejoinBtn && canRejoin) {
+      rejoinBtn.addEventListener('click', () => {
+        this.sendArenaRejoin();
+        this.onRejoin();
+      });
+    }
+
+    if (spectateBtn) {
+      spectateBtn.addEventListener('click', () => {
+        this.showSpectatorView();
+        this.onSpectate();
+      });
+    }
+
+    if (leaveBtn) {
+      leaveBtn.addEventListener('click', () => {
+        this.sendArenaLeave();
+        this.onLeave();
+        this.onReturnToPractice();
+      });
     }
   }
 
   /**
-   * Render round results view (for multiplayer)
+   * Render spectator view
+   * @private
    */
-  _renderResultsView() {
+  _renderSpectatorView() {
     if (!this.overlayElement) return;
 
-    const results = this.resultsData || {};
-    const rankings = results.rankings || [];
-    const winner = results.winner;
-    const isNextRound = results.isNextRoundStarting;
-    const intermission = results.intermissionSeconds || 10;
+    // Re-render game view but with spectator badge
+    if (this.overlayElement.parentNode) {
+      this.overlayElement.parentNode.removeChild(this.overlayElement);
+    }
+    this._render();
+    this._attachEventListeners();
+    this.overlayElement?.classList.add('visible');
 
-    const rankingsHtml = rankings.slice(0, 8).map((r, i) => {
-      const isWinner = r.username === winner;
-      const placeClass = i === 0 ? 'first' : i === 1 ? 'second' : i === 2 ? 'third' : '';
+    // Add spectator indicator
+    const header = this.overlayElement.querySelector('.orbits-header');
+    if (header) {
+      const spectatorBadge = document.createElement('span');
+      spectatorBadge.className = 'spectator-badge';
+      spectatorBadge.textContent = 'SPECTATING';
+      header.querySelector('.orbits-header-left')?.appendChild(spectatorBadge);
+    }
+  }
 
-      return `
-        <div class="results-rank-row ${placeClass} ${isWinner ? 'winner' : ''}">
-          <span class="rank-position">${i + 1}</span>
-          <span class="rank-username">${r.isPlayer ? 'You' : `@${r.username}`}</span>
-          <span class="rank-territory">${Math.round(r.territory)}%</span>
-          <span class="rank-eliminations">${r.eliminations} KO${r.eliminations !== 1 ? 's' : ''}</span>
-        </div>
-      `;
-    }).join('');
+  /**
+   * Render winner view
+   * @param {Object} data - { payout, playersDefeated }
+   * @private
+   */
+  _renderWinnerView(data) {
+    if (!this.overlayElement) return;
+
+    const payout = data.payout || 0;
+    const playersDefeated = data.playersDefeated || 0;
 
     this.overlayElement.innerHTML = `
-      <div class="orbits-results-view">
-        <div class="results-content">
-          <h1 class="results-title">Round Complete</h1>
-
-          ${winner ? `
-            <div class="results-winner">
-              <span class="winner-crown">&#128081;</span>
-              <span class="winner-name">${winner}</span>
-              <span class="winner-label">WINNER</span>
+      <div class="orbits-winner-view">
+        <div class="winner-content">
+          <div class="winner-icon-container">
+            <div class="winner-icon">&#127942;</div>
+            <div class="winner-sparkles">
+              <span class="sparkle">&#10024;</span>
+              <span class="sparkle">&#10024;</span>
+              <span class="sparkle">&#10024;</span>
+              <span class="sparkle">&#10024;</span>
             </div>
-          ` : ''}
-
-          <div class="results-rankings">
-            <div class="results-header-row">
-              <span>#</span>
-              <span>Player</span>
-              <span>Territory</span>
-              <span>Eliminations</span>
-            </div>
-            ${rankingsHtml}
           </div>
 
-          <div class="results-next">
-            ${isNextRound ? `
-              <p>Next round starting in <strong id="results-countdown">${intermission}</strong> seconds...</p>
-            ` : `
-              <p>Game over! Return to practice.</p>
-              <button class="orbits-return-btn" id="orbits-return-btn">Return to Practice</button>
-            `}
+          <h1 class="winner-title">YOU WON!</h1>
+          <p class="winner-subtitle">Last one standing!</p>
+
+          <div class="winner-payout-box">
+            <span class="payout-label">PAYOUT</span>
+            <span class="payout-amount">+${payout}</span>
+            <span class="payout-unit">points</span>
+          </div>
+
+          <div class="winner-stats">
+            <div class="winner-stat">
+              <span class="stat-value">${playersDefeated}</span>
+              <span class="stat-label">Players Defeated</span>
+            </div>
+          </div>
+
+          <div class="winner-actions">
+            <button class="winner-again-btn" id="winner-again-btn">Play Again</button>
+            <button class="winner-leave-btn" id="winner-leave-btn">Leave Arena</button>
           </div>
         </div>
       </div>
@@ -730,212 +1240,260 @@ export class GhostOrbitsPanel {
 
     this.overlayElement.classList.add('visible');
 
-    // Attach return button listener if present
-    const returnBtn = this.overlayElement.querySelector('#orbits-return-btn');
-    if (returnBtn) {
-      returnBtn.addEventListener('click', () => this.onReturnToPractice());
+    // Attach button listeners
+    const againBtn = this.overlayElement.querySelector('#winner-again-btn');
+    const leaveBtn = this.overlayElement.querySelector('#winner-leave-btn');
+
+    if (againBtn) {
+      againBtn.addEventListener('click', () => {
+        this.showLobbyView();
+      });
+    }
+
+    if (leaveBtn) {
+      leaveBtn.addEventListener('click', () => {
+        this.sendArenaLeave();
+        this.onLeave();
+        this.onReturnToPractice();
+      });
     }
   }
 
   /**
-   * Render victory screen for Shadow Self mode
-   * @param {Object} data - Victory data
+   * Render view when someone else wins
+   * @param {Object} data - { winnerName, payout }
+   * @private
+   */
+  _renderSpectatorWinView(data) {
+    if (!this.overlayElement) return;
+
+    const winnerName = data.winnerName || 'Unknown';
+    const payout = data.payout || 0;
+
+    this.overlayElement.innerHTML = `
+      <div class="orbits-spectator-win-view">
+        <div class="spectator-win-content">
+          <div class="spectator-win-icon">&#127942;</div>
+          <h1 class="spectator-win-title">GAME OVER</h1>
+          <p class="spectator-win-subtitle">Winner: <strong>${winnerName}</strong></p>
+          <p class="spectator-win-payout">Won ${payout} points!</p>
+
+          <div class="spectator-win-actions">
+            <button class="spectator-again-btn" id="spectator-again-btn">Play Again</button>
+            <button class="spectator-leave-btn" id="spectator-leave-btn">Leave Arena</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.overlayElement.classList.add('visible');
+
+    const againBtn = this.overlayElement.querySelector('#spectator-again-btn');
+    const leaveBtn = this.overlayElement.querySelector('#spectator-leave-btn');
+
+    if (againBtn) {
+      againBtn.addEventListener('click', () => {
+        this.showLobbyView();
+      });
+    }
+
+    if (leaveBtn) {
+      leaveBtn.addEventListener('click', () => {
+        this.sendArenaLeave();
+        this.onLeave();
+        this.onReturnToPractice();
+      });
+    }
+  }
+
+  // ==========================================================================
+  // LEGACY METHODS (for backward compatibility)
+  // ==========================================================================
+
+  /**
+   * @deprecated Use showLobbyView() instead
+   */
+  resetToActiveView() {
+    this.showGameView();
+  }
+
+  /**
+   * Show eliminated (legacy)
+   * @deprecated Use showEliminatedView() instead
+   */
+  showEliminated(stats) {
+    this.showEliminatedView(stats);
+  }
+
+  /**
+   * Show results (legacy - for solo mode)
+   * @deprecated
+   */
+  showResults(data) {
+    if (data.winner === 'player') {
+      this._renderVictoryScreen(data);
+    } else {
+      this._renderDefeatScreen(data);
+    }
+  }
+
+  /**
+   * Legacy victory screen
    * @private
    */
   _renderVictoryScreen(data) {
-    if (!this.overlayElement) return;
-
-    const condition = data.condition || 'Victory';
-    const territory = Math.round(data.playerTerritory) || 0;
-    const timeElapsed = data.timeElapsed || 0;
-    const statUpgrade = data.statUpgrade || 'Mass +0.05';
-
-    const minutes = Math.floor(timeElapsed / 60);
-    const secs = timeElapsed % 60;
-    const timeDisplay = `${minutes}:${secs.toString().padStart(2, '0')}`;
-
-    this.overlayElement.innerHTML = `
-      <div class="orbits-victory-view">
-        <div class="victory-content">
-          <div class="victory-icon-container">
-            <div class="victory-icon">&#127942;</div>
-            <div class="victory-sparkles">
-              <span class="sparkle">&#10024;</span>
-              <span class="sparkle">&#10024;</span>
-              <span class="sparkle">&#10024;</span>
-              <span class="sparkle">&#10024;</span>
-            </div>
-          </div>
-
-          <h1 class="victory-title">VICTORY!</h1>
-          <p class="victory-subtitle">${condition}</p>
-
-          <div class="victory-stats">
-            <div class="victory-stat">
-              <span class="stat-value">${territory}%</span>
-              <span class="stat-label">Territory</span>
-            </div>
-            <div class="victory-stat">
-              <span class="stat-value">${timeDisplay}</span>
-              <span class="stat-label">Time</span>
-            </div>
-          </div>
-
-          <div class="victory-upgrade-box">
-            <div class="upgrade-icon">&#11014;</div>
-            <p class="upgrade-text">${statUpgrade}</p>
-            <p class="upgrade-subtitle">Ghost evolved!</p>
-          </div>
-
-          <button class="orbits-continue-btn" id="orbits-continue-btn">Continue to Practice</button>
-        </div>
-      </div>
-    `;
-
-    this.overlayElement.classList.add('visible');
-
-    // Attach continue button listener
-    const continueBtn = this.overlayElement.querySelector('#orbits-continue-btn');
-    if (continueBtn) {
-      continueBtn.addEventListener('click', () => this.onReturnToPractice());
-    }
+    this.showWinnerView({ payout: 0, playersDefeated: 1 });
   }
 
   /**
-   * Render defeat screen for Shadow Self mode
-   * @param {Object} data - Defeat data
-   * @param {boolean} [data.canRematch=false] - Whether rematch is currently available
+   * Legacy defeat screen
    * @private
    */
   _renderDefeatScreen(data) {
-    if (!this.overlayElement) return;
+    this.showEliminatedView({ placement: 2, playersRemaining: 1 });
+  }
 
-    const condition = data.condition || 'Defeat';
-    const territory = Math.round(data.playerTerritory) || 0;
-    const timeElapsed = data.timeElapsed || 0;
-    const canRematch = data.canRematch !== false; // Default to true for backwards compatibility
+  /**
+   * Show round results (legacy)
+   * @deprecated
+   */
+  showRoundResults(results) {
+    this.resultsData = results;
+  }
 
-    const minutes = Math.floor(timeElapsed / 60);
-    const secs = timeElapsed % 60;
-    const timeDisplay = `${minutes}:${secs.toString().padStart(2, '0')}`;
+  /**
+   * Update generation display (legacy)
+   */
+  updateGeneration(generation) {
+    // No-op for multiplayer
+  }
 
-    // Build the rematch button HTML based on availability
-    const rematchButtonHtml = canRematch
-      ? `<button class="orbits-rematch-btn" id="orbits-rematch-btn">Rematch (1 Gold Star)</button>`
-      : `<button class="orbits-rematch-btn orbits-rematch-btn-disabled" id="orbits-rematch-btn" disabled>Earn a Gold Star to Rematch</button>`;
+  /**
+   * Show rematch prompt (legacy)
+   * @deprecated
+   */
+  showRematchPrompt(onRematch, onExit) {
+    // Redirect to eliminated view
+    this.showEliminatedView({});
+  }
 
-    this.overlayElement.innerHTML = `
-      <div class="orbits-defeat-view">
-        <div class="defeat-content">
-          <div class="defeat-icon">&#128123;</div>
-          <h1 class="defeat-title">DEFEATED</h1>
-          <p class="defeat-subtitle">${condition}</p>
+  // ==========================================================================
+  // EVENT HANDLERS
+  // ==========================================================================
 
-          <div class="defeat-stats">
-            <div class="defeat-stat">
-              <span class="stat-value">${territory}%</span>
-              <span class="stat-label">Territory</span>
-            </div>
-            <div class="defeat-stat">
-              <span class="stat-value">${timeDisplay}</span>
-              <span class="stat-label">Time</span>
-            </div>
-          </div>
-
-          <div class="defeat-message-box">
-            <p class="defeat-message">Shadow learned from this match</p>
-            <p class="defeat-submessage">It will be stronger next time...</p>
-          </div>
-
-          <div class="defeat-actions">
-            ${rematchButtonHtml}
-            <button class="orbits-return-btn" id="orbits-return-btn">Return to Practice</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    this.overlayElement.classList.add('visible');
-
-    // Attach button listeners
-    const rematchBtn = this.overlayElement.querySelector('#orbits-rematch-btn');
-    const returnBtn = this.overlayElement.querySelector('#orbits-return-btn');
-
-    if (rematchBtn && canRematch) {
-      rematchBtn.addEventListener('click', () => {
-        // Show rematch prompt or handle directly
-        if (this.onRematch) {
-          this.onRematch();
+  /**
+   * Handle keyboard events (panel-level)
+   * @param {KeyboardEvent} event
+   * @private
+   */
+  _handleKeyDown(event) {
+    if (event.key === 'Escape' && this.isVisible) {
+      if (this.currentView === 'game' || this.currentView === 'spectating') {
+        // Confirm before leaving during game
+        if (confirm('Leave the arena? You will lose your entry fee.')) {
+          this.sendArenaLeave();
+          this.onLeave();
+          this.onClose();
         }
-      });
-    }
-
-    if (returnBtn) {
-      returnBtn.addEventListener('click', () => this.onReturnToPractice());
+      } else {
+        this.onClose();
+      }
     }
   }
 
   /**
-   * Render rematch prompt modal
-   * @param {Function} onRematch - Callback when player chooses to rematch
-   * @param {Function} onExit - Callback when player chooses to exit
+   * Handle game input (movement and spacebar)
+   * @param {KeyboardEvent} event
    * @private
    */
-  _renderRematchPrompt(onRematch, onExit) {
-    // Create modal overlay
-    const modal = document.createElement('div');
-    modal.className = 'orbits-rematch-modal';
-    modal.innerHTML = `
-      <div class="rematch-modal-content">
-        <h2 class="rematch-title">Rematch?</h2>
-        <p class="rematch-message">Challenge your Shadow Self again?</p>
-        <p class="rematch-cost">Cost: 1 Gold Star</p>
-        <div class="rematch-actions">
-          <button class="rematch-yes-btn" id="rematch-yes-btn">Yes, Rematch!</button>
-          <button class="rematch-no-btn" id="rematch-no-btn">No, Exit</button>
-        </div>
-      </div>
-    `;
+  _handleGameInput(event) {
+    if (this.isSpectating || this.isEliminated) return;
 
-    this.overlayElement?.appendChild(modal);
+    const INPUT_KEYS = {
+      ArrowUp: { x: 0, y: -1 },
+      ArrowDown: { x: 0, y: 1 },
+      ArrowLeft: { x: -1, y: 0 },
+      ArrowRight: { x: 1, y: 0 },
+      KeyW: { x: 0, y: -1 },
+      KeyS: { x: 0, y: 1 },
+      KeyA: { x: -1, y: 0 },
+      KeyD: { x: 1, y: 0 }
+    };
 
-    // Fade in
-    requestAnimationFrame(() => {
-      modal.classList.add('visible');
-    });
-
-    // Attach button listeners
-    const yesBtn = modal.querySelector('#rematch-yes-btn');
-    const noBtn = modal.querySelector('#rematch-no-btn');
-
-    if (yesBtn) {
-      yesBtn.addEventListener('click', () => {
-        modal.remove();
-        onRematch();
-      });
-    }
-
-    if (noBtn) {
-      noBtn.addEventListener('click', () => {
-        modal.remove();
-        onExit();
-      });
+    if (event.type === 'keydown') {
+      if (INPUT_KEYS[event.code]) {
+        event.preventDefault();
+        this.sendArenaInput({
+          direction: INPUT_KEYS[event.code],
+          spacebar: false
+        });
+        this.onSendInput({ direction: INPUT_KEYS[event.code], spacebar: false });
+      } else if (event.code === 'Space') {
+        event.preventDefault();
+        this.sendArenaInput({
+          direction: null,
+          spacebar: true
+        });
+        this.onSendInput({ direction: null, spacebar: true });
+      }
     }
   }
 
   /**
    * Attach event listeners
+   * @private
    */
   _attachEventListeners() {
-    // Close button
     const closeBtn = this.overlayElement?.querySelector('.orbits-close-btn');
     if (closeBtn) {
-      closeBtn.addEventListener('click', () => this.onClose());
+      closeBtn.addEventListener('click', () => {
+        if (this.currentView === 'game') {
+          if (confirm('Leave the arena? You will lose your entry fee.')) {
+            this.sendArenaLeave();
+            this.onLeave();
+            this.onClose();
+          }
+        } else {
+          this.onClose();
+        }
+      });
     }
   }
 
   /**
+   * Get the arena container element
+   * @returns {HTMLElement|null}
+   */
+  getArenaContainer() {
+    return this.overlayElement?.querySelector('.orbits-arena-canvas-mount') || null;
+  }
+
+  /**
+   * Cleanup resources
+   */
+  dispose() {
+    document.removeEventListener('keydown', this._handleKeyDown);
+    document.removeEventListener('keydown', this._handleGameInput);
+    document.removeEventListener('keyup', this._handleGameInput);
+
+    if (this._helpKeyHandler) {
+      document.removeEventListener('keydown', this._helpKeyHandler);
+      this._helpKeyHandler = null;
+    }
+
+    if (this.overlayElement && this.overlayElement.parentNode) {
+      this.overlayElement.parentNode.removeChild(this.overlayElement);
+    }
+    this.overlayElement = null;
+  }
+
+  // ==========================================================================
+  // STYLES
+  // ==========================================================================
+
+  /**
    * Add styles for the panel
+   * @private
    */
   _addStyles() {
     if (document.getElementById('ghost-orbits-panel-styles')) return;
@@ -944,7 +1502,7 @@ export class GhostOrbitsPanel {
     style.id = 'ghost-orbits-panel-styles';
     style.textContent = `
       /* ===========================================
-         GHOST ORBITS PANEL - TRON AESTHETIC
+         GHOST ORBITS PANEL - MULTIPLAYER ARENA
          =========================================== */
 
       .ghost-orbits-overlay {
@@ -1034,22 +1592,46 @@ export class GhostOrbitsPanel {
         letter-spacing: 0.5px;
       }
 
-      .orbits-generation {
-        font-size: 13px;
-        font-weight: 500;
-        color: #88aacc;
-        padding: 4px 12px;
-        background: rgba(136, 170, 204, 0.05);
-        border: 1px solid #112244;
+      .spectator-badge {
+        background: #f59e0b;
+        color: #000;
+        padding: 2px 8px;
         border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
         margin-left: 12px;
       }
 
-      .orbits-round {
-        font-size: 16px;
-        font-weight: 600;
-        color: #88aacc;
+      /* Pot Display */
+      .arena-pot-display {
+        display: flex;
+        align-items: center;
+        gap: 6px;
         padding: 6px 16px;
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.05) 100%);
+        border: 1px solid #ffd700;
+        border-radius: 6px;
+      }
+
+      .pot-label {
+        font-size: 12px;
+        color: #ffd700;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .pot-amount {
+        font-size: 18px;
+        font-weight: 700;
+        color: #ffd700;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .arena-player-count {
+        font-size: 14px;
+        color: #88aacc;
+        padding: 6px 12px;
         background: rgba(136, 170, 204, 0.1);
         border: 1px solid #112244;
         border-radius: 4px;
@@ -1073,15 +1655,9 @@ export class GhostOrbitsPanel {
       }
 
       .orbits-dot-count {
-        font-size: 16px;
-        font-weight: 600;
+        font-size: 14px;
         color: #88aacc;
-        font-variant-numeric: tabular-nums;
-        margin-left: 20px;
-        padding: 6px 16px;
-        background: rgba(136, 170, 204, 0.1);
-        border: 1px solid #112244;
-        border-radius: 4px;
+        margin-left: 12px;
       }
 
       .orbits-lives {
@@ -1152,6 +1728,66 @@ export class GhostOrbitsPanel {
           inset 0 0 60px rgba(0, 0, 0, 0.5);
       }
 
+      /* Mini Player List */
+      .arena-player-list-container {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 10;
+      }
+
+      .arena-player-list {
+        background: rgba(10, 10, 18, 0.85);
+        border: 1px solid #112244;
+        border-radius: 8px;
+        padding: 8px 12px;
+        min-width: 140px;
+      }
+
+      .arena-player-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+        font-size: 13px;
+        color: #88aacc;
+      }
+
+      .arena-player-item.local {
+        color: #4488ff;
+        font-weight: 600;
+      }
+
+      .arena-player-item .player-color {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .arena-player-item .player-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .arena-player-item .player-lives {
+        color: #ff4444;
+        font-size: 11px;
+      }
+
+      .arena-player-more {
+        font-size: 11px;
+        color: #6b7280;
+        padding: 4px 0;
+      }
+
+      .arena-player-empty {
+        font-size: 12px;
+        color: #6b7280;
+        text-align: center;
+      }
+
       /* -------------------------------------------
          COUNTDOWN OVERLAY
          ------------------------------------------- */
@@ -1195,17 +1831,9 @@ export class GhostOrbitsPanel {
       }
 
       @keyframes countdown-pop {
-        0% {
-          transform: scale(1.5);
-          opacity: 0;
-        }
-        50% {
-          transform: scale(0.95);
-        }
-        100% {
-          transform: scale(1);
-          opacity: 1;
-        }
+        0% { transform: scale(1.5); opacity: 0; }
+        50% { transform: scale(0.95); }
+        100% { transform: scale(1); opacity: 1; }
       }
 
       /* -------------------------------------------
@@ -1282,14 +1910,315 @@ export class GhostOrbitsPanel {
         color: #88aacc;
       }
 
-      .territory-others {
-        color: #6b7280;
-      }
-
       .orbits-control-hint,
       .orbits-exit-hint {
         font-size: 12px;
         color: #4b5563;
+      }
+
+      /* -------------------------------------------
+         LOBBY VIEW
+         ------------------------------------------- */
+
+      .orbits-lobby-view {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        background:
+          radial-gradient(circle at center, rgba(68, 136, 255, 0.08) 0%, transparent 60%),
+          linear-gradient(rgba(17, 34, 68, 0.2) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(17, 34, 68, 0.2) 1px, transparent 1px);
+        background-size: 100% 100%, 40px 40px, 40px 40px;
+      }
+
+      .lobby-content {
+        text-align: center;
+        max-width: 450px;
+        width: 100%;
+      }
+
+      .lobby-title {
+        font-size: 48px;
+        font-weight: 700;
+        color: #4488ff;
+        margin: 0 0 8px 0;
+        text-shadow: 0 0 20px rgba(68, 136, 255, 0.5);
+        letter-spacing: 3px;
+      }
+
+      .lobby-subtitle {
+        font-size: 18px;
+        color: #88aacc;
+        margin: 0 0 30px 0;
+      }
+
+      .lobby-pot-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px;
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.05) 100%);
+        border: 2px solid #ffd700;
+        border-radius: 12px;
+        margin-bottom: 20px;
+      }
+
+      .lobby-pot-label {
+        font-size: 12px;
+        color: #ffd700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      .lobby-pot-amount {
+        font-size: 56px;
+        font-weight: 700;
+        color: #ffd700;
+        line-height: 1;
+        margin: 8px 0;
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+      }
+
+      .lobby-pot-unit {
+        font-size: 16px;
+        color: #88aacc;
+      }
+
+      .lobby-entry-cost {
+        font-size: 16px;
+        color: #ffffff;
+        margin-bottom: 8px;
+      }
+
+      .entry-cost-label {
+        color: #88aacc;
+      }
+
+      .entry-cost-value {
+        font-weight: 600;
+        color: #4488ff;
+      }
+
+      .lobby-balance {
+        font-size: 14px;
+        color: #6b7280;
+        margin-bottom: 24px;
+      }
+
+      .lobby-players-box {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #112244;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 24px;
+      }
+
+      .lobby-players-title {
+        font-size: 14px;
+        color: #88aacc;
+        margin: 0 0 12px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .lobby-players-list {
+        max-height: 120px;
+        overflow-y: auto;
+      }
+
+      .lobby-player-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        background: rgba(136, 170, 204, 0.05);
+        border-radius: 4px;
+        margin-bottom: 4px;
+      }
+
+      .lobby-player-item .player-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+
+      .lobby-player-item .player-name {
+        font-size: 14px;
+        color: #ffffff;
+      }
+
+      .lobby-no-players {
+        font-size: 13px;
+        color: #6b7280;
+        padding: 12px;
+      }
+
+      .lobby-enter-btn {
+        width: 100%;
+        padding: 16px 32px;
+        font-size: 20px;
+        font-weight: 700;
+        color: #ffffff;
+        background: linear-gradient(135deg, #4488ff 0%, #2266dd 100%);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 16px rgba(68, 136, 255, 0.4);
+        margin-bottom: 12px;
+      }
+
+      .lobby-enter-btn:hover:not(.disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(68, 136, 255, 0.5);
+      }
+
+      .lobby-enter-btn.disabled {
+        background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      .lobby-help-btn {
+        background: transparent;
+        border: 1px solid #88aacc44;
+        color: #88aacc;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-right: 12px;
+      }
+
+      .lobby-help-btn:hover {
+        background: rgba(136, 170, 204, 0.1);
+        border-color: #88aacc;
+      }
+
+      .lobby-close-btn {
+        background: transparent;
+        border: 1px solid #88aacc44;
+        color: #88aacc;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .lobby-close-btn:hover {
+        background: rgba(136, 170, 204, 0.1);
+        border-color: #88aacc;
+      }
+
+      /* -------------------------------------------
+         CONFIRM MODAL
+         ------------------------------------------- */
+
+      .orbits-confirm-modal {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 10, 18, 0.85);
+        z-index: 100;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .orbits-confirm-modal.visible {
+        opacity: 1;
+      }
+
+      .confirm-modal-content {
+        background: linear-gradient(180deg, #1a1f2e 0%, #0d1117 100%);
+        border: 2px solid #4488ff;
+        border-radius: 12px;
+        padding: 32px 40px;
+        max-width: 400px;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(68, 136, 255, 0.3);
+      }
+
+      .confirm-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #ffffff;
+        margin: 0 0 12px 0;
+      }
+
+      .confirm-message {
+        font-size: 16px;
+        color: #88aacc;
+        margin: 0 0 16px 0;
+      }
+
+      .confirm-cost {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 16px;
+        background: rgba(68, 136, 255, 0.1);
+        border-radius: 8px;
+        margin-bottom: 16px;
+      }
+
+      .confirm-cost span {
+        font-size: 18px;
+        font-weight: 600;
+        color: #4488ff;
+      }
+
+      .confirm-note {
+        font-size: 14px;
+        color: #6b7280;
+        margin: 0 0 24px 0;
+      }
+
+      .confirm-actions {
+        display: flex;
+        gap: 12px;
+      }
+
+      .confirm-yes-btn,
+      .confirm-no-btn {
+        flex: 1;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .confirm-yes-btn {
+        background: linear-gradient(135deg, #4488ff 0%, #2266dd 100%);
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(68, 136, 255, 0.3);
+      }
+
+      .confirm-yes-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(68, 136, 255, 0.4);
+      }
+
+      .confirm-no-btn {
+        background: rgba(136, 170, 204, 0.1);
+        border: 1px solid #88aacc44;
+        color: #88aacc;
+      }
+
+      .confirm-no-btn:hover {
+        background: rgba(136, 170, 204, 0.15);
+        border-color: #88aacc;
       }
 
       /* -------------------------------------------
@@ -1342,7 +2271,7 @@ export class GhostOrbitsPanel {
         display: flex;
         justify-content: center;
         gap: 40px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
       }
 
       .eliminated-stat {
@@ -1365,227 +2294,76 @@ export class GhostOrbitsPanel {
         margin-top: 4px;
       }
 
-      .eliminated-rejoin-box {
-        background: rgba(68, 136, 255, 0.1);
-        border: 2px solid #4488ff;
-        border-radius: 12px;
-        padding: 24px 32px;
-        margin-bottom: 30px;
+      .eliminated-pot-info {
+        font-size: 16px;
+        color: #88aacc;
+        margin-bottom: 24px;
       }
 
-      .rejoin-prompt {
-        font-size: 20px;
-        font-weight: 600;
-        color: #4488ff;
-        margin: 0 0 16px 0;
+      .eliminated-pot-info strong {
+        color: #ffd700;
       }
 
-      .orbits-return-btn {
+      .eliminated-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .eliminated-rejoin-btn {
+        padding: 14px 32px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffffff;
         background: linear-gradient(135deg, #4488ff 0%, #2266dd 100%);
         border: none;
         border-radius: 8px;
-        color: #ffffff;
-        font-size: 16px;
-        font-weight: 600;
-        padding: 14px 32px;
         cursor: pointer;
         transition: all 0.2s;
         box-shadow: 0 4px 12px rgba(68, 136, 255, 0.3);
       }
 
-      .orbits-return-btn:hover {
+      .eliminated-rejoin-btn:hover:not(.disabled) {
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(68, 136, 255, 0.4);
       }
 
-      .orbits-return-btn:active {
-        transform: translateY(0);
+      .eliminated-rejoin-btn.disabled {
+        background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+        cursor: not-allowed;
+        box-shadow: none;
       }
 
-      .eliminated-round-info {
-        color: #88aacc;
+      .eliminated-spectate-btn,
+      .eliminated-leave-btn {
+        padding: 12px 24px;
         font-size: 14px;
-      }
-
-      .eliminated-round-info p {
-        margin: 8px 0;
-      }
-
-      .eliminated-round-info strong {
-        color: #ffffff;
-      }
-
-      /* -------------------------------------------
-         RESULTS VIEW
-         ------------------------------------------- */
-
-      .orbits-results-view {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 40px;
-        background:
-          radial-gradient(circle at center, rgba(68, 136, 255, 0.05) 0%, transparent 50%),
-          linear-gradient(rgba(17, 34, 68, 0.2) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(17, 34, 68, 0.2) 1px, transparent 1px);
-        background-size: 100% 100%, 40px 40px, 40px 40px;
-      }
-
-      .results-content {
-        text-align: center;
-        max-width: 600px;
-        width: 100%;
-      }
-
-      .results-title {
-        font-size: 32px;
-        font-weight: 700;
-        color: #ffffff;
-        margin: 0 0 20px 0;
-        letter-spacing: 1px;
-      }
-
-      .results-winner {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-bottom: 30px;
-        padding: 20px;
-        background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0.02) 100%);
-        border: 2px solid #ffd700;
-        border-radius: 12px;
-      }
-
-      .winner-crown {
-        font-size: 48px;
-        margin-bottom: 8px;
-      }
-
-      .winner-name {
-        font-size: 28px;
-        font-weight: 700;
-        color: #ffd700;
-        text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-      }
-
-      .winner-label {
-        font-size: 12px;
+        font-weight: 600;
+        background: transparent;
+        border: 1px solid #88aacc44;
+        border-radius: 6px;
         color: #88aacc;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        margin-top: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
       }
 
-      .results-rankings {
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid #112244;
-        border-radius: 8px;
-        overflow: hidden;
-        margin-bottom: 24px;
-      }
-
-      .results-header-row {
-        display: grid;
-        grid-template-columns: 40px 1fr 80px 100px;
-        padding: 10px 16px;
+      .eliminated-spectate-btn:hover,
+      .eliminated-leave-btn:hover {
         background: rgba(136, 170, 204, 0.1);
-        font-size: 11px;
-        font-weight: 600;
-        color: #88aacc;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 1px solid #112244;
+        border-color: #88aacc;
       }
 
-      .results-rank-row {
-        display: grid;
-        grid-template-columns: 40px 1fr 80px 100px;
-        padding: 12px 16px;
-        border-bottom: 1px solid #112244;
-        transition: background 0.2s;
-      }
-
-      .results-rank-row:last-child {
-        border-bottom: none;
-      }
-
-      .results-rank-row:hover {
-        background: rgba(68, 136, 255, 0.05);
-      }
-
-      .results-rank-row.first {
-        background: rgba(255, 215, 0, 0.1);
-      }
-
-      .results-rank-row.second {
-        background: rgba(192, 192, 192, 0.05);
-      }
-
-      .results-rank-row.third {
-        background: rgba(205, 127, 50, 0.05);
-      }
-
-      .results-rank-row.winner .rank-username {
-        color: #ffd700;
-      }
-
-      .rank-position {
-        font-size: 16px;
-        font-weight: 700;
-        color: #88aacc;
-      }
-
-      .results-rank-row.first .rank-position {
-        color: #ffd700;
-      }
-
-      .results-rank-row.second .rank-position {
-        color: #c0c0c0;
-      }
-
-      .results-rank-row.third .rank-position {
-        color: #cd7f32;
-      }
-
-      .rank-username {
+      .eliminated-balance {
         font-size: 14px;
-        font-weight: 500;
-        color: #ffffff;
-        text-align: left;
-      }
-
-      .rank-territory {
-        font-size: 14px;
-        font-weight: 600;
-        color: #4488ff;
-      }
-
-      .rank-eliminations {
-        font-size: 13px;
-        color: #88aacc;
-      }
-
-      .results-next {
-        margin-top: 20px;
-        color: #88aacc;
-        font-size: 16px;
-      }
-
-      .results-next strong {
-        color: #ffffff;
-        font-variant-numeric: tabular-nums;
-      }
-
-      .results-next .orbits-return-btn {
-        margin-top: 16px;
+        color: #6b7280;
       }
 
       /* -------------------------------------------
-         VICTORY SCREEN (SHADOW SELF MODE)
+         WINNER VIEW
          ------------------------------------------- */
 
-      .orbits-victory-view {
+      .orbits-winner-view {
         flex: 1;
         display: flex;
         align-items: center;
@@ -1598,29 +2376,23 @@ export class GhostOrbitsPanel {
         background-size: 100% 100%, 40px 40px, 40px 40px;
       }
 
-      .victory-content {
+      .winner-content {
         text-align: center;
         max-width: 500px;
         animation: victory-fade-in 0.6s ease-out;
       }
 
       @keyframes victory-fade-in {
-        0% {
-          opacity: 0;
-          transform: scale(0.9) translateY(20px);
-        }
-        100% {
-          opacity: 1;
-          transform: scale(1) translateY(0);
-        }
+        0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+        100% { opacity: 1; transform: scale(1) translateY(0); }
       }
 
-      .victory-icon-container {
+      .winner-icon-container {
         position: relative;
         margin-bottom: 20px;
       }
 
-      .victory-icon {
+      .winner-icon {
         font-size: 100px;
         animation: victory-bounce 1s ease-in-out infinite;
       }
@@ -1630,7 +2402,7 @@ export class GhostOrbitsPanel {
         50% { transform: translateY(-10px) scale(1.05); }
       }
 
-      .victory-sparkles {
+      .winner-sparkles {
         position: absolute;
         top: 0;
         left: 50%;
@@ -1640,59 +2412,32 @@ export class GhostOrbitsPanel {
         pointer-events: none;
       }
 
-      .victory-sparkles .sparkle {
+      .winner-sparkles .sparkle {
         position: absolute;
         font-size: 24px;
         animation: sparkle-float 2s ease-in-out infinite;
       }
 
-      .victory-sparkles .sparkle:nth-child(1) {
-        top: 10%;
-        left: 20%;
-        animation-delay: 0s;
-      }
-
-      .victory-sparkles .sparkle:nth-child(2) {
-        top: 15%;
-        right: 15%;
-        animation-delay: 0.5s;
-      }
-
-      .victory-sparkles .sparkle:nth-child(3) {
-        bottom: 20%;
-        left: 15%;
-        animation-delay: 1s;
-      }
-
-      .victory-sparkles .sparkle:nth-child(4) {
-        bottom: 25%;
-        right: 20%;
-        animation-delay: 1.5s;
-      }
+      .winner-sparkles .sparkle:nth-child(1) { top: 10%; left: 20%; animation-delay: 0s; }
+      .winner-sparkles .sparkle:nth-child(2) { top: 15%; right: 15%; animation-delay: 0.5s; }
+      .winner-sparkles .sparkle:nth-child(3) { bottom: 20%; left: 15%; animation-delay: 1s; }
+      .winner-sparkles .sparkle:nth-child(4) { bottom: 25%; right: 20%; animation-delay: 1.5s; }
 
       @keyframes sparkle-float {
-        0%, 100% {
-          opacity: 0;
-          transform: translateY(0) scale(0);
-        }
-        50% {
-          opacity: 1;
-          transform: translateY(-20px) scale(1);
-        }
+        0%, 100% { opacity: 0; transform: translateY(0) scale(0); }
+        50% { opacity: 1; transform: translateY(-20px) scale(1); }
       }
 
-      .victory-title {
+      .winner-title {
         font-size: 56px;
         font-weight: 700;
         color: #ffd700;
         margin: 0 0 10px 0;
-        text-shadow:
-          0 0 20px rgba(255, 215, 0, 0.6),
-          0 0 40px rgba(255, 215, 0, 0.3);
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 215, 0, 0.3);
         letter-spacing: 3px;
       }
 
-      .victory-subtitle {
+      .winner-subtitle {
         font-size: 18px;
         color: #88aacc;
         margin: 0 0 30px 0;
@@ -1700,26 +2445,58 @@ export class GhostOrbitsPanel {
         letter-spacing: 1px;
       }
 
-      .victory-stats {
+      .winner-payout-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 32px;
+        background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 255, 136, 0.05) 100%);
+        border: 2px solid #00ff88;
+        border-radius: 12px;
+        margin-bottom: 24px;
+      }
+
+      .payout-label {
+        font-size: 12px;
+        color: #00ff88;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      .payout-amount {
+        font-size: 48px;
+        font-weight: 700;
+        color: #00ff88;
+        line-height: 1;
+        margin: 8px 0;
+        text-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+      }
+
+      .payout-unit {
+        font-size: 16px;
+        color: #88aacc;
+      }
+
+      .winner-stats {
         display: flex;
         justify-content: center;
-        gap: 50px;
+        gap: 40px;
         margin-bottom: 30px;
       }
 
-      .victory-stat {
+      .winner-stat {
         display: flex;
         flex-direction: column;
         align-items: center;
       }
 
-      .victory-stat .stat-value {
-        font-size: 40px;
+      .winner-stat .stat-value {
+        font-size: 36px;
         font-weight: 700;
         color: #ffffff;
       }
 
-      .victory-stat .stat-label {
+      .winner-stat .stat-label {
         font-size: 13px;
         color: #88aacc;
         text-transform: uppercase;
@@ -1727,321 +2504,135 @@ export class GhostOrbitsPanel {
         margin-top: 4px;
       }
 
-      .victory-upgrade-box {
-        background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 255, 136, 0.05) 100%);
-        border: 2px solid #00ff88;
-        border-radius: 12px;
-        padding: 24px 32px;
-        margin-bottom: 30px;
-        position: relative;
-        overflow: hidden;
+      .winner-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
       }
 
-      .victory-upgrade-box::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: linear-gradient(
-          45deg,
-          transparent,
-          rgba(0, 255, 136, 0.1),
-          transparent
-        );
-        animation: upgrade-shine 2s infinite;
-      }
-
-      @keyframes upgrade-shine {
-        0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-        100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-      }
-
-      .upgrade-icon {
-        font-size: 36px;
-        margin-bottom: 8px;
-      }
-
-      .upgrade-text {
-        font-size: 24px;
+      .winner-again-btn {
+        padding: 14px 32px;
+        font-size: 16px;
         font-weight: 700;
-        color: #00ff88;
-        margin: 0;
-        text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
-      }
-
-      .upgrade-subtitle {
-        font-size: 14px;
-        color: #88aacc;
-        margin: 4px 0 0 0;
-      }
-
-      .orbits-continue-btn {
+        color: #000;
         background: linear-gradient(135deg, #ffd700 0%, #ffb800 100%);
         border: none;
         border-radius: 8px;
-        color: #000000;
-        font-size: 18px;
-        font-weight: 700;
-        padding: 16px 40px;
         cursor: pointer;
         transition: all 0.2s;
-        box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4);
+        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
       }
 
-      .orbits-continue-btn:hover {
+      .winner-again-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+        box-shadow: 0 6px 16px rgba(255, 215, 0, 0.4);
       }
 
-      .orbits-continue-btn:active {
-        transform: translateY(0);
+      .winner-leave-btn {
+        padding: 14px 32px;
+        font-size: 16px;
+        font-weight: 600;
+        background: transparent;
+        border: 1px solid #88aacc44;
+        border-radius: 8px;
+        color: #88aacc;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .winner-leave-btn:hover {
+        background: rgba(136, 170, 204, 0.1);
+        border-color: #88aacc;
       }
 
       /* -------------------------------------------
-         DEFEAT SCREEN (SHADOW SELF MODE)
+         SPECTATOR WIN VIEW
          ------------------------------------------- */
 
-      .orbits-defeat-view {
+      .orbits-spectator-win-view {
         flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 40px;
         background:
-          radial-gradient(circle at center, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+          radial-gradient(circle at center, rgba(68, 136, 255, 0.05) 0%, transparent 50%),
           linear-gradient(rgba(17, 34, 68, 0.2) 1px, transparent 1px),
           linear-gradient(90deg, rgba(17, 34, 68, 0.2) 1px, transparent 1px);
         background-size: 100% 100%, 40px 40px, 40px 40px;
       }
 
-      .defeat-content {
+      .spectator-win-content {
         text-align: center;
-        max-width: 500px;
-        animation: defeat-fade-in 0.6s ease-out;
+        max-width: 450px;
       }
 
-      @keyframes defeat-fade-in {
-        0% {
-          opacity: 0;
-          transform: scale(0.95) translateY(20px);
-        }
-        100% {
-          opacity: 1;
-          transform: scale(1) translateY(0);
-        }
-      }
-
-      .defeat-icon {
-        font-size: 100px;
+      .spectator-win-icon {
+        font-size: 80px;
         margin-bottom: 20px;
-        filter: grayscale(0.5) opacity(0.7);
-        animation: defeat-float 3s ease-in-out infinite;
       }
 
-      @keyframes defeat-float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-8px); }
-      }
-
-      .defeat-title {
-        font-size: 48px;
-        font-weight: 700;
-        color: #8b5cf6;
-        margin: 0 0 10px 0;
-        text-shadow:
-          0 0 20px rgba(139, 92, 246, 0.4),
-          0 0 40px rgba(139, 92, 246, 0.2);
-        letter-spacing: 2px;
-      }
-
-      .defeat-subtitle {
-        font-size: 18px;
-        color: #88aacc;
-        margin: 0 0 30px 0;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-
-      .defeat-stats {
-        display: flex;
-        justify-content: center;
-        gap: 50px;
-        margin-bottom: 30px;
-      }
-
-      .defeat-stat {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .defeat-stat .stat-value {
+      .spectator-win-title {
         font-size: 36px;
         font-weight: 700;
         color: #ffffff;
+        margin: 0 0 12px 0;
       }
 
-      .defeat-stat .stat-label {
-        font-size: 13px;
-        color: #88aacc;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-top: 4px;
-      }
-
-      .defeat-message-box {
-        background: rgba(139, 92, 246, 0.1);
-        border: 1px solid #8b5cf6;
-        border-radius: 8px;
-        padding: 20px 24px;
-        margin-bottom: 30px;
-      }
-
-      .defeat-message {
-        font-size: 18px;
-        font-weight: 600;
-        color: #8b5cf6;
-        margin: 0 0 8px 0;
-      }
-
-      .defeat-submessage {
-        font-size: 14px;
-        color: #88aacc;
-        margin: 0;
-        font-style: italic;
-      }
-
-      .defeat-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .orbits-rematch-btn {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-        border: none;
-        border-radius: 8px;
-        color: #ffffff;
-        font-size: 16px;
-        font-weight: 700;
-        padding: 14px 32px;
-        cursor: pointer;
-        transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-      }
-
-      .orbits-rematch-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
-      }
-
-      .orbits-rematch-btn:active {
-        transform: translateY(0);
-      }
-
-      .orbits-rematch-btn-disabled {
-        background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-        cursor: not-allowed;
-        opacity: 0.7;
-        box-shadow: none;
-      }
-
-      .orbits-rematch-btn-disabled:hover {
-        transform: none;
-        box-shadow: none;
-      }
-
-      /* -------------------------------------------
-         REMATCH MODAL
-         ------------------------------------------- */
-
-      .orbits-rematch-modal {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(10, 10, 18, 0.85);
-        z-index: 100;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      }
-
-      .orbits-rematch-modal.visible {
-        opacity: 1;
-      }
-
-      .rematch-modal-content {
-        background: linear-gradient(180deg, #1a1f2e 0%, #0d1117 100%);
-        border: 2px solid #4488ff;
-        border-radius: 12px;
-        padding: 32px 40px;
-        max-width: 400px;
-        text-align: center;
-        box-shadow: 0 8px 32px rgba(68, 136, 255, 0.3);
-      }
-
-      .rematch-title {
-        font-size: 28px;
-        font-weight: 700;
-        color: #ffffff;
-        margin: 0 0 16px 0;
-      }
-
-      .rematch-message {
-        font-size: 16px;
+      .spectator-win-subtitle {
+        font-size: 20px;
         color: #88aacc;
         margin: 0 0 8px 0;
       }
 
-      .rematch-cost {
-        font-size: 14px;
+      .spectator-win-subtitle strong {
         color: #ffd700;
-        font-weight: 600;
-        margin: 0 0 24px 0;
       }
 
-      .rematch-actions {
+      .spectator-win-payout {
+        font-size: 16px;
+        color: #00ff88;
+        margin: 0 0 30px 0;
+      }
+
+      .spectator-win-actions {
         display: flex;
         gap: 12px;
+        justify-content: center;
       }
 
-      .rematch-yes-btn,
-      .rematch-no-btn {
-        flex: 1;
-        padding: 12px 24px;
+      .spectator-again-btn {
+        padding: 14px 32px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #ffffff;
+        background: linear-gradient(135deg, #4488ff 0%, #2266dd 100%);
         border: none;
-        border-radius: 6px;
-        font-size: 15px;
-        font-weight: 600;
+        border-radius: 8px;
         cursor: pointer;
         transition: all 0.2s;
-      }
-
-      .rematch-yes-btn {
-        background: linear-gradient(135deg, #4488ff 0%, #2266dd 100%);
-        color: #ffffff;
         box-shadow: 0 4px 12px rgba(68, 136, 255, 0.3);
       }
 
-      .rematch-yes-btn:hover {
+      .spectator-again-btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(68, 136, 255, 0.4);
       }
 
-      .rematch-no-btn {
-        background: rgba(136, 170, 204, 0.1);
+      .spectator-leave-btn {
+        padding: 14px 32px;
+        font-size: 16px;
+        font-weight: 600;
+        background: transparent;
         border: 1px solid #88aacc44;
+        border-radius: 8px;
         color: #88aacc;
+        cursor: pointer;
+        transition: all 0.2s;
       }
 
-      .rematch-no-btn:hover {
-        background: rgba(136, 170, 204, 0.15);
+      .spectator-leave-btn:hover {
+        background: rgba(136, 170, 204, 0.1);
         border-color: #88aacc;
       }
 
@@ -2059,11 +2650,20 @@ export class GhostOrbitsPanel {
         }
 
         .orbits-timer {
+          font-size: 18px;
+        }
+
+        .pot-amount {
           font-size: 14px;
         }
 
         .orbits-arena-container {
           padding: 10px;
+        }
+
+        .arena-player-list-container {
+          top: 10px;
+          right: 10px;
         }
 
         .orbits-footer {
@@ -2074,50 +2674,21 @@ export class GhostOrbitsPanel {
           font-size: 10px;
         }
 
-        .eliminated-title {
-          font-size: 28px;
+        .lobby-title {
+          font-size: 32px;
         }
 
-        .eliminated-stats {
-          gap: 24px;
+        .lobby-pot-amount {
+          font-size: 40px;
         }
 
-        .eliminated-stat .stat-value {
-          font-size: 28px;
+        .eliminated-title,
+        .winner-title {
+          font-size: 32px;
         }
 
         .countdown-text {
           font-size: 80px;
-        }
-
-        .victory-title,
-        .defeat-title {
-          font-size: 36px;
-        }
-
-        .victory-stats,
-        .defeat-stats {
-          gap: 30px;
-        }
-
-        .victory-stat .stat-value,
-        .defeat-stat .stat-value {
-          font-size: 32px;
-        }
-
-        .victory-icon,
-        .defeat-icon {
-          font-size: 70px;
-        }
-
-        .upgrade-text {
-          font-size: 20px;
-        }
-
-        .orbits-continue-btn,
-        .orbits-rematch-btn {
-          font-size: 16px;
-          padding: 12px 28px;
         }
       }
     `;

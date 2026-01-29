@@ -50,8 +50,28 @@ const COLORS = {
     '#ff44ff',  // Tier 4: Magenta
   ],
   textPrimary: '#ffffff',
-  textSecondary: '#88aacc'
+  textSecondary: '#88aacc',
+  pot: '#ffd700',           // Gold for pot display
+  potBackground: 'rgba(0, 0, 0, 0.6)',
+  playerListBg: 'rgba(10, 10, 20, 0.75)',
+  playerListBorder: '#334466',
+  neutralDot: '#aabbcc',
+  eliminatedPlayer: '#555566',
+  livesActive: '#ff4466',   // Red heart/dot for lives
+  livesInactive: '#333344', // Grey for lost lives
 };
+
+// Player colors palette (for multiplayer)
+const PLAYER_COLORS = [
+  '#4488ff',  // Blue
+  '#ff4466',  // Red
+  '#44ff88',  // Green
+  '#ffdd00',  // Yellow
+  '#ff88ff',  // Pink
+  '#88ffff',  // Cyan
+  '#ff8844',  // Orange
+  '#aa88ff',  // Purple
+];
 
 // Input keys
 const INPUT_KEYS = {
@@ -556,6 +576,15 @@ class GhostOrbitsRenderer {
 
     // Void zone
     this.voidZone = null;
+
+    // Multi-player state (from server)
+    this.serverState = null;
+    this.currentPlayerId = null;
+
+    // Visual effects
+    this.playerFlashEffects = new Map(); // playerId -> { color, until }
+    this.eliminationEffects = new Map(); // playerId -> { startTime, duration }
+    this.damageEffects = new Map(); // playerId -> { startTime, duration }
 
     // Animation time for pulsing effects
     this.animationTime = 0;
@@ -1459,6 +1488,479 @@ class GhostOrbitsRenderer {
   }
 
   /**
+   * Set the current player ID (for highlighting)
+   * @param {string} playerId - Current player's ID
+   */
+  setCurrentPlayerId(playerId) {
+    this.currentPlayerId = playerId;
+  }
+
+  // ============================================
+  // MULTI-PLAYER RENDERING (Server State)
+  // ============================================
+
+  /**
+   * Render the arena from server state (multiplayer mode)
+   * This is the main entry point for server-authoritative rendering.
+   *
+   * @param {Object} state - Server state object
+   * @param {Array} state.players - Array of player objects with { id, x, y, color, lives, dots, isGhost, isAlive, username }
+   * @param {Array} state.dots - Array of dot objects with { id, x, y, owner, state }
+   * @param {Array} state.orbits - Array of orbit objects with { cx, cy, radius }
+   * @param {number} state.arenaSize - Arena size in pixels
+   * @param {number} state.pot - Current pot amount
+   */
+  renderFromState(state) {
+    if (!state) return;
+
+    this.serverState = state;
+
+    // Update arena size if changed
+    if (state.arenaSize && state.arenaSize !== this.canvas.width) {
+      this.canvas.width = state.arenaSize;
+      this.canvas.height = state.arenaSize;
+      this.arena.resize(state.arenaSize);
+    }
+
+    const ctx = this.ctx;
+    const size = state.arenaSize || this.arena.size;
+
+    // Clear with background color
+    ctx.fillStyle = COLORS.background;
+    ctx.fillRect(0, 0, size, size);
+
+    // Render grid lines (subtle)
+    this.renderGrid();
+
+    // Render orbits
+    this.renderOrbitsFromState(state.orbits);
+
+    // Render dots with ownership colors
+    this.renderDotsFromState(state.dots, state.players);
+
+    // Render all players
+    this.renderPlayersFromState(state.players);
+
+    // Render pot display at top center
+    if (state.pot !== undefined) {
+      this.renderPot(state.pot);
+    }
+
+    // Render player list overlay
+    this.renderPlayerList(state.players);
+  }
+
+  /**
+   * Render orbits from server state
+   * @param {Array} orbits - Array of orbit objects
+   */
+  renderOrbitsFromState(orbits) {
+    if (!orbits || orbits.length === 0) return;
+
+    const ctx = this.ctx;
+
+    for (const orbit of orbits) {
+      const { cx, cy, radius } = orbit;
+
+      // Orbit path (subtle dashed line)
+      ctx.strokeStyle = COLORS.gridLines;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.4;
+      ctx.setLineDash([5, 10]);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /**
+   * Render dots from server state with ownership colors
+   * @param {Array} dots - Array of dot objects
+   * @param {Array} players - Array of player objects (to get colors)
+   */
+  renderDotsFromState(dots, players) {
+    if (!dots || dots.length === 0) return;
+
+    const ctx = this.ctx;
+
+    // Build color map from players
+    const playerColors = new Map();
+    if (players) {
+      for (const player of players) {
+        playerColors.set(player.id, player.color);
+      }
+    }
+
+    for (const dot of dots) {
+      const { x, y, owner, state: dotState } = dot;
+      const radius = dot.radius || 10;
+
+      // Pulsing effect
+      const pulsePhase = dot.pulsePhase || (this.animationTime * 2 + x * 0.01);
+      const isNeutral = !owner || dotState === 'neutral';
+      const pulseStrength = isNeutral ? 0.25 : 0.15;
+      const pulse = Math.sin(pulsePhase) * pulseStrength + (1 - pulseStrength);
+      const visualRadius = radius * pulse;
+
+      // Determine dot color based on ownership
+      const dotColor = isNeutral ? COLORS.neutralDot : (playerColors.get(owner) || '#ffffff');
+
+      // Outer glow (larger for owned dots)
+      const glowSize = isNeutral ? 1.5 : 2.0;
+      ctx.globalAlpha = isNeutral ? 0.2 : 0.35;
+      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, visualRadius * glowSize);
+      glowGradient.addColorStop(0, dotColor);
+      glowGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, visualRadius * glowSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Main dot body
+      ctx.globalAlpha = isNeutral ? 0.7 : 0.9;
+      ctx.fillStyle = dotColor;
+      ctx.beginPath();
+      ctx.arc(x, y, visualRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Inner highlight (subtle shine)
+      ctx.globalAlpha = isNeutral ? 0.4 : 0.5;
+      ctx.fillStyle = lighten(dotColor, 0.4);
+      ctx.beginPath();
+      ctx.arc(x - visualRadius * 0.2, y - visualRadius * 0.2, visualRadius * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Border ring for owned dots
+      if (!isNeutral) {
+        ctx.globalAlpha = 0.6;
+        ctx.strokeStyle = lighten(dotColor, 0.3);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, visualRadius + 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /**
+   * Render all players from server state
+   * @param {Array} players - Array of player objects
+   */
+  renderPlayersFromState(players) {
+    if (!players || players.length === 0) return;
+
+    for (const player of players) {
+      this.renderPlayerFromState(player);
+    }
+  }
+
+  /**
+   * Render a single player from server state
+   * @param {Object} player - Player object with { id, x, y, color, lives, isGhost, isAlive, username, dotCount }
+   */
+  renderPlayerFromState(player) {
+    const ctx = this.ctx;
+    const { id, x, y, color, lives, isGhost, isAlive, username, orbiting } = player;
+    const radius = 15; // Player collision radius
+
+    // Check for elimination effect
+    const elimEffect = this.eliminationEffects.get(id);
+    if (elimEffect) {
+      const elapsed = Date.now() - elimEffect.startTime;
+      if (elapsed < elimEffect.duration) {
+        // Fade out animation
+        ctx.globalAlpha = 1 - (elapsed / elimEffect.duration);
+      } else {
+        this.eliminationEffects.delete(id);
+        if (!isAlive) return; // Don't render eliminated players
+      }
+    }
+
+    // Don't render eliminated players (unless in fade animation)
+    if (!isAlive && !elimEffect) return;
+
+    // Check for damage effect (flash/shake)
+    const damageEffect = this.damageEffects.get(id);
+    let offsetX = 0, offsetY = 0;
+    if (damageEffect) {
+      const elapsed = Date.now() - damageEffect.startTime;
+      if (elapsed < damageEffect.duration) {
+        // Shake effect
+        const shakeIntensity = 5 * (1 - elapsed / damageEffect.duration);
+        offsetX = (Math.random() - 0.5) * shakeIntensity * 2;
+        offsetY = (Math.random() - 0.5) * shakeIntensity * 2;
+      } else {
+        this.damageEffects.delete(id);
+      }
+    }
+
+    const drawX = x + offsetX;
+    const drawY = y + offsetY;
+
+    // Determine if this is the current player
+    const isCurrentPlayer = id === this.currentPlayerId;
+
+    // Ghost players are slightly transparent
+    const baseAlpha = isGhost ? 0.7 : 1.0;
+    ctx.globalAlpha = baseAlpha;
+
+    // Check for flash effect (from damage or powerup)
+    const flashEffect = this.playerFlashEffects.get(id);
+    let displayColor = color;
+    if (flashEffect && Date.now() < flashEffect.until) {
+      displayColor = flashEffect.color;
+    }
+
+    // Outer glow (larger for current player)
+    const glowRadius = isCurrentPlayer ? 2.5 : 1.8;
+    const glowAlpha = isCurrentPlayer ? 0.5 : 0.3;
+    const gradient = ctx.createRadialGradient(drawX, drawY, radius * 0.5, drawX, drawY, radius * glowRadius);
+    gradient.addColorStop(0, displayColor);
+    gradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradient;
+    ctx.globalAlpha = glowAlpha * baseAlpha;
+    ctx.beginPath();
+    ctx.arc(drawX, drawY, radius * glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = baseAlpha;
+
+    // Current player highlight ring
+    if (isCurrentPlayer) {
+      const pulse = Math.sin(this.animationTime * 3) * 0.2 + 0.8;
+      ctx.strokeStyle = '#ffffff';
+      ctx.globalAlpha = 0.6 * pulse * baseAlpha;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(drawX, drawY, radius + 8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = baseAlpha;
+    }
+
+    // Orbiting indicator (ring when on orbit)
+    if (orbiting) {
+      const orbitPulse = Math.sin(this.animationTime * 4) * 0.2 + 0.8;
+      ctx.strokeStyle = lighten(displayColor, 0.5);
+      ctx.globalAlpha = 0.5 * orbitPulse * baseAlpha;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(drawX, drawY, radius * 1.3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = baseAlpha;
+    }
+
+    // Core body
+    ctx.fillStyle = displayColor;
+    ctx.beginPath();
+    ctx.arc(drawX, drawY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Membrane (border)
+    ctx.strokeStyle = lighten(color, 0.3);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(drawX, drawY, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Player name above avatar
+    if (username) {
+      ctx.font = '10px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = COLORS.textPrimary;
+      ctx.globalAlpha = 0.9 * baseAlpha;
+      ctx.fillText(username, drawX, drawY - radius - 12);
+    }
+
+    // Lives indicator under player (3 small dots/hearts)
+    this.renderLivesIndicator(drawX, drawY + radius + 8, lives, 3, baseAlpha);
+
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Render lives indicator (small dots under player)
+   * @param {number} x - Center X position
+   * @param {number} y - Y position
+   * @param {number} lives - Current lives
+   * @param {number} maxLives - Maximum lives
+   * @param {number} baseAlpha - Base alpha for transparency
+   */
+  renderLivesIndicator(x, y, lives, maxLives, baseAlpha = 1) {
+    const ctx = this.ctx;
+    const dotRadius = 3;
+    const spacing = 10;
+    const startX = x - ((maxLives - 1) * spacing) / 2;
+
+    for (let i = 0; i < maxLives; i++) {
+      const dotX = startX + i * spacing;
+      const isActive = i < lives;
+
+      ctx.fillStyle = isActive ? COLORS.livesActive : COLORS.livesInactive;
+      ctx.globalAlpha = (isActive ? 0.9 : 0.4) * baseAlpha;
+      ctx.beginPath();
+      ctx.arc(dotX, y, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Render pot display at top center
+   * @param {number} pot - Current pot amount
+   */
+  renderPot(pot) {
+    const ctx = this.ctx;
+    const size = this.canvas.width;
+
+    // Background pill
+    const text = `POT: ${pot.toFixed(1)} pts`;
+    ctx.font = 'bold 16px Arial, sans-serif';
+    const textWidth = ctx.measureText(text).width;
+    const padding = 12;
+    const pillWidth = textWidth + padding * 2;
+    const pillHeight = 28;
+    const pillX = (size - pillWidth) / 2;
+    const pillY = 10;
+
+    // Draw pill background
+    ctx.fillStyle = COLORS.potBackground;
+    ctx.beginPath();
+    ctx.roundRect(pillX, pillY, pillWidth, pillHeight, pillHeight / 2);
+    ctx.fill();
+
+    // Draw text
+    ctx.fillStyle = COLORS.pot;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, size / 2, pillY + pillHeight / 2);
+
+    // Gold border
+    ctx.strokeStyle = COLORS.pot;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.roundRect(pillX, pillY, pillWidth, pillHeight, pillHeight / 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Render player list overlay in corner
+   * @param {Array} players - Array of player objects
+   */
+  renderPlayerList(players) {
+    if (!players || players.length === 0) return;
+
+    const ctx = this.ctx;
+    const padding = 10;
+    const lineHeight = 20;
+    const panelWidth = 140;
+    const panelHeight = padding * 2 + players.length * lineHeight;
+    const panelX = 10;
+    const panelY = 50; // Below pot display
+
+    // Panel background
+    ctx.fillStyle = COLORS.playerListBg;
+    ctx.beginPath();
+    ctx.roundRect(panelX, panelY, panelWidth, panelHeight, 6);
+    ctx.fill();
+
+    // Panel border
+    ctx.strokeStyle = COLORS.playerListBorder;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(panelX, panelY, panelWidth, panelHeight, 6);
+    ctx.stroke();
+
+    // Render each player
+    ctx.font = '11px Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+
+    for (let i = 0; i < players.length; i++) {
+      const player = players[i];
+      const y = panelY + padding + i * lineHeight + lineHeight / 2;
+      const x = panelX + padding;
+
+      // Color dot
+      const isEliminated = !player.isAlive;
+      const dotColor = isEliminated ? COLORS.eliminatedPlayer : player.color;
+      ctx.fillStyle = dotColor;
+      ctx.globalAlpha = isEliminated ? 0.5 : 1;
+      ctx.beginPath();
+      ctx.arc(x + 5, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Player name
+      const displayName = player.username || `Player ${i + 1}`;
+      const truncatedName = displayName.length > 10 ? displayName.substring(0, 10) + '...' : displayName;
+      ctx.fillStyle = isEliminated ? COLORS.eliminatedPlayer : COLORS.textPrimary;
+      ctx.globalAlpha = isEliminated ? 0.5 : 1;
+      ctx.fillText(truncatedName, x + 15, y);
+
+      // Lives (small hearts/dots on right)
+      const livesX = panelX + panelWidth - padding - 25;
+      for (let j = 0; j < 3; j++) {
+        const liveX = livesX + j * 8;
+        const isActive = j < player.lives;
+        ctx.fillStyle = isActive ? COLORS.livesActive : COLORS.livesInactive;
+        ctx.globalAlpha = (isActive ? 0.9 : 0.3) * (isEliminated ? 0.5 : 1);
+        ctx.beginPath();
+        ctx.arc(liveX, y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /**
+   * Trigger a damage effect (flash and shake) for a player
+   * @param {string} playerId - Player ID
+   * @param {number} duration - Effect duration in ms
+   */
+  triggerDamageEffect(playerId, duration = 300) {
+    this.damageEffects.set(playerId, {
+      startTime: Date.now(),
+      duration,
+    });
+    this.playerFlashEffects.set(playerId, {
+      color: '#ff0000',
+      until: Date.now() + 150,
+    });
+  }
+
+  /**
+   * Trigger an elimination effect (fade out) for a player
+   * @param {string} playerId - Player ID
+   * @param {number} duration - Effect duration in ms
+   */
+  triggerEliminationEffect(playerId, duration = 1000) {
+    this.eliminationEffects.set(playerId, {
+      startTime: Date.now(),
+      duration,
+    });
+  }
+
+  /**
+   * Flash a player with a color
+   * @param {string} playerId - Player ID
+   * @param {string} color - Flash color
+   * @param {number} duration - Duration in ms
+   */
+  flashPlayer(playerId, color, duration = 200) {
+    this.playerFlashEffects.set(playerId, {
+      color,
+      until: Date.now() + duration,
+    });
+  }
+
+  /**
    * Update ghost orbital state
    * @param {string} ghostId - Ghost ID
    * @param {boolean} isOrbiting - Whether ghost is orbiting
@@ -1589,6 +2091,7 @@ export {
   TRAIL_ALPHA,
   GRID_SIZE,
   COLORS,
+  PLAYER_COLORS,
   // Utilities
   calculateArenaSize,
   lighten,
