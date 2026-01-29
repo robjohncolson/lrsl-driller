@@ -352,8 +352,7 @@ export class GhostOrbitsController {
       return;
     }
 
-    console.log('[GhostOrbits] Entering arena...');
-    this._setState(GameState.CONNECTING);
+    console.log('[GhostOrbits] Entering arena (solo mode)...');
 
     // Show overlay
     console.log('[GhostOrbits] Calling _showOverlay()...');
@@ -401,26 +400,9 @@ export class GhostOrbitsController {
       console.log('[GhostOrbits] Renderer started');
     }
 
-    // Connect to WebSocket
-    try {
-      console.log('[GhostOrbits] Attempting WebSocket connection...');
-      await this._connectWebSocket();
-
-      // Send join message
-      this._sendMessage({
-        type: 'join_arena',
-        cartridgeId: this.cartridgeId,
-        periodId: this.periodId,
-        username: this.username,
-        ghostProfile: this.ghostProfile
-      });
-
-      console.log('[GhostOrbits] Connected to arena');
-    } catch (error) {
-      console.error('[GhostOrbits] Failed to connect:', error);
-      // Don't hide overlay or reset state - allow offline play for testing
-      console.log('[GhostOrbits] Continuing in offline mode');
-    }
+    // Solo mode - no WebSocket, start immediately
+    console.log('[GhostOrbits] Starting solo mode vs Shadow Self');
+    this.startMatchTimer();
 
     // Set to playing state (allows input)
     this._setState(GameState.PLAYING);
