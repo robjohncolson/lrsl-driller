@@ -341,9 +341,7 @@ export class GhostOrbitsController {
     // Update orbits
     if (state.orbits) {
       this.serverState.orbits = state.orbits;
-      if (this.renderer) {
-        this.renderer.updateOrbits(state.orbits);
-      }
+      // Note: renderer.updateOrbits may not exist yet - orbits are rendered from serverState
     }
 
     // Update players with interpolation
@@ -462,6 +460,7 @@ export class GhostOrbitsController {
       case GameState.PLAYING:
         this.inputEnabled = true;
         this.isSpectating = false;
+        if (this.panel) this.panel.showGameView();
         this._startRenderLoop();
         break;
 
@@ -648,10 +647,12 @@ export class GhostOrbitsController {
           break;
 
         case 'arena_state':
+        case 'game_state':
           this._handleArenaState(message);
           break;
 
         case 'arena_delta':
+        case 'game_delta':
           this._handleArenaDelta(message);
           break;
 
@@ -685,6 +686,16 @@ export class GhostOrbitsController {
 
         case 'arena_entry_failed':
           this._handleEntryFailed(message);
+          break;
+
+        case 'ghost_backfill_spawned':
+          console.log('[GhostOrbits] Ghost backfill spawned:', message.ghostId);
+          break;
+
+        case 'user_online':
+        case 'user_offline':
+        case 'presence_snapshot':
+          // Presence messages - ignore for now
           break;
 
         case 'error':
@@ -732,7 +743,9 @@ export class GhostOrbitsController {
     }
 
     // Transition to waiting or playing based on arena state
-    if (message.isRunning) {
+    // Note: isRunning is inside gameState, not directly on message
+    const isRunning = message.gameState?.isRunning || message.isRunning;
+    if (isRunning) {
       this._setState(GameState.PLAYING);
     } else {
       this._setState(GameState.WAITING);
