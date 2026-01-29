@@ -242,7 +242,7 @@ export class GhostOrbitsController {
 
       // Send join message
       this._sendMessage({
-        type: 'join_global_arena',
+        type: 'global_arena_join',
         username: this.username,
         ghostProfile: this.ghostProfile
       });
@@ -263,7 +263,7 @@ export class GhostOrbitsController {
 
     // Send leave message if connected
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this._sendMessage({ type: 'leave_global_arena' });
+      this._sendMessage({ type: 'global_arena_leave' });
     }
 
     // Clean up
@@ -557,10 +557,9 @@ export class GhostOrbitsController {
           .then(() => {
             // Re-send join message with rejoin flag
             this._sendMessage({
-              type: 'join_global_arena',
+              type: 'global_arena_rejoin',
               username: this.username,
               ghostProfile: this.ghostProfile,
-              rejoin: true,
               playerId: this.playerId
             });
           })
