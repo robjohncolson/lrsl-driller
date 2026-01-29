@@ -1198,15 +1198,7 @@ export class GhostOrbitsController {
       return;
     }
 
-    // Debug: log state
-    const playerCount = Object.keys(this.serverState.players).length;
-    const dotCount = Object.keys(this.serverState.dots).length;
-    const orbitCount = this.serverState.orbits?.length || 0;
-    if (playerCount === 0 && dotCount === 0) {
-      console.warn('[GhostOrbits] No players or dots in serverState');
-    }
-
-    // Convert server state to renderer format
+    // Convert server players to ghost format for renderer.updateState()
     const ghosts = [];
     for (const [id, player] of Object.entries(this.serverState.players)) {
       if (!player.isAlive) continue;
@@ -1218,67 +1210,39 @@ export class GhostOrbitsController {
         vx: player.vx || 0,
         vy: player.vy || 0,
         color: player.color || this._generateFallbackColor(id),
-        isLocal: id === this.playerId,
-        orbiting: player.orbiting,
-        orbitAngle: player.orbitAngle,
-        dotCount: player.dotCount,
-        lives: player.lives
+        energy: 100,
+        tier: 1
       });
     }
 
-    // Convert dots
+    // Convert dots to format for renderer.updateDots()
     const dots = [];
     for (const [id, dot] of Object.entries(this.serverState.dots)) {
+      const ownerColor = dot.owner ?
+        (this.serverState.players[dot.owner]?.color || this._generateFallbackColor(dot.owner)) :
+        null;
       dots.push({
         id,
         x: dot.x,
         y: dot.y,
-        owner: dot.owner,
-        state: dot.state,
-        color: dot.owner ? this.serverState.players[dot.owner]?.color : null
+        radius: 10,
+        state: dot.state === 'claimed' ? 'CLAIMED' : 'NEUTRAL',
+        ownerColor: ownerColor,
+        pulsePhase: (Date.now() / 500) % (Math.PI * 2) // Animate pulse
       });
     }
-
-    // Convert ghosts array to players format for renderFromState
-    const players = ghosts.map(g => ({
-      id: g.id,
-      x: g.x,
-      y: g.y,
-      color: g.color,
-      lives: g.lives,
-      dotCount: g.dotCount,
-      isGhost: !g.isLocal,
-      isAlive: true,
-      username: this.serverState.players[g.id]?.username || g.id
-    }));
-
-    // Use renderFromState for full server-authoritative rendering
-    const renderState = {
-      players,
-      dots,
-      orbits: this.serverState.orbits,
-      arenaSize: this.serverState.arenaSize,
-      pot: this.currentPot
-    };
 
     // Debug: log first render
     if (!this._hasLoggedRender) {
-      console.log('[GhostOrbits] First render state:', {
-        playerCount: players.length,
-        dotCount: dots.length,
-        orbitCount: renderState.orbits?.length || 0,
-        arenaSize: renderState.arenaSize,
-        sampleDot: dots[0],
-        samplePlayer: players[0]
-      });
+      console.log('[GhostOrbits] First render - ghosts:', ghosts.length, 'dots:', dots.length);
+      if (ghosts.length > 0) console.log('[GhostOrbits] Sample ghost:', ghosts[0]);
+      if (dots.length > 0) console.log('[GhostOrbits] Sample dot:', dots[0]);
       this._hasLoggedRender = true;
     }
 
-    if (typeof this.renderer.renderFromState === 'function') {
-      this.renderer.renderFromState(renderState);
-    } else {
-      console.error('[GhostOrbits] renderer.renderFromState is not a function!');
-    }
+    // Use the original working renderer methods
+    this.renderer.updateState({ ghosts });
+    this.renderer.updateDots(dots);
 
     // Update camera to follow local player or spectate target
     const followId = this.isSpectating ? this.spectateTargetId : this.playerId;
