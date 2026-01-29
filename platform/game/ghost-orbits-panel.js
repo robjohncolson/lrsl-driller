@@ -56,6 +56,9 @@ export class GhostOrbitsPanel {
     this._serverGoldStars = null;
     this._serverPoints = null;
 
+    // Canvas element reference (set by controller, re-mounted after view changes)
+    this._gameCanvas = null;
+
     // Bind escape key handler
     this._handleKeyDown = this._handleKeyDown.bind(this);
     this._handleGameInput = this._handleGameInput.bind(this);
@@ -122,6 +125,32 @@ export class GhostOrbitsPanel {
     this._serverGoldStars = goldStars;
     this._serverPoints = points;
     console.log('[GhostOrbitsPanel] Stats set:', { goldStars, points });
+  }
+
+  /**
+   * Set game canvas element reference (for re-mounting after view changes)
+   * @param {HTMLCanvasElement} canvas - The renderer's canvas element
+   */
+  setGameCanvas(canvas) {
+    this._gameCanvas = canvas;
+  }
+
+  /**
+   * Re-mount the game canvas to the current container
+   * @private
+   */
+  _remountCanvas() {
+    if (!this._gameCanvas) return;
+
+    const mount = this.getArenaContainer();
+    if (mount && this._gameCanvas.parentNode !== mount) {
+      // Remove from old parent if any
+      if (this._gameCanvas.parentNode) {
+        this._gameCanvas.parentNode.removeChild(this._gameCanvas);
+      }
+      mount.appendChild(this._gameCanvas);
+      console.log('[GhostOrbitsPanel] Canvas re-mounted');
+    }
   }
 
   /**
@@ -468,6 +497,9 @@ export class GhostOrbitsPanel {
     this._attachEventListeners();
     this.overlayElement?.classList.add('visible');
 
+    // Re-mount canvas if we have one (after DOM recreation)
+    this._remountCanvas();
+
     // Enable game input
     document.addEventListener('keydown', this._handleGameInput);
     document.addEventListener('keyup', this._handleGameInput);
@@ -593,12 +625,91 @@ export class GhostOrbitsPanel {
 
   /**
    * Show waiting/lobby state with player count
+   * After entry is paid, show game view with waiting overlay - not lobby
    * @param {number} playerCount - Number of players in arena
    */
   showWaiting(playerCount) {
     this.currentView = 'waiting';
-    this.showLobbyView();
+    // Show game view since entry is paid, with waiting message overlay
+    this.showGameView();
     this.updatePlayerCount(playerCount);
+
+    // Show waiting message on game view
+    this._showWaitingOverlay(playerCount);
+  }
+
+  /**
+   * Show waiting overlay on game view
+   * @param {number} playerCount - Current player count
+   * @private
+   */
+  _showWaitingOverlay(playerCount) {
+    // Remove existing waiting overlay if any
+    const existing = this.overlayElement?.querySelector('.orbits-waiting-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'orbits-waiting-overlay';
+    overlay.innerHTML = `
+      <div class="waiting-content">
+        <div class="waiting-spinner"></div>
+        <div class="waiting-text">Waiting for game to start...</div>
+        <div class="waiting-players">${playerCount} player${playerCount !== 1 ? 's' : ''} in arena</div>
+      </div>
+    `;
+
+    // Add styles if not already present
+    if (!document.getElementById('orbits-waiting-styles')) {
+      const style = document.createElement('style');
+      style.id = 'orbits-waiting-styles';
+      style.textContent = `
+        .orbits-waiting-overlay {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(0, 0, 0, 0.8);
+          border: 2px solid #00ff88;
+          border-radius: 12px;
+          padding: 30px 50px;
+          text-align: center;
+          z-index: 1000;
+        }
+        .waiting-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid rgba(0, 255, 136, 0.3);
+          border-top-color: #00ff88;
+          border-radius: 50%;
+          margin: 0 auto 15px;
+          animation: orbits-spin 1s linear infinite;
+        }
+        @keyframes orbits-spin {
+          to { transform: rotate(360deg); }
+        }
+        .waiting-text {
+          color: #00ff88;
+          font-size: 18px;
+          font-weight: bold;
+          margin-bottom: 8px;
+        }
+        .waiting-players {
+          color: #888;
+          font-size: 14px;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    this.overlayElement?.appendChild(overlay);
+  }
+
+  /**
+   * Hide waiting overlay (called when game starts)
+   */
+  hideWaitingOverlay() {
+    const overlay = this.overlayElement?.querySelector('.orbits-waiting-overlay');
+    if (overlay) overlay.remove();
   }
 
   /**

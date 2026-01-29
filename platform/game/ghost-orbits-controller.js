@@ -225,6 +225,9 @@ export class GhostOrbitsController {
           }
         });
         await this.renderer.init();
+
+        // Give panel canvas reference so it can re-mount after view changes
+        this.panel.setGameCanvas(this.renderer.canvas);
       }
 
       // Setup visibility change handler
@@ -464,7 +467,10 @@ export class GhostOrbitsController {
       case GameState.PLAYING:
         this.inputEnabled = true;
         this.isSpectating = false;
-        if (this.panel) this.panel.showGameView();
+        if (this.panel) {
+          this.panel.hideWaitingOverlay();
+          this.panel.showGameView();
+        }
         this._startRenderLoop();
         break;
 
