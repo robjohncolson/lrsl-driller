@@ -1375,7 +1375,11 @@
         onStatsUpdate: (newGoldStars, newPoints) => {
           // Update UI when arena deducts gold star / points
           console.log('[GhostOrbits] Stats updated:', { newGoldStars, newPoints });
-          // Could update display here if needed
+          // Update the gold star display in the header
+          const goldCountEl = document.getElementById('gold-count');
+          if (goldCountEl && typeof newGoldStars === 'number') {
+            goldCountEl.textContent = newGoldStars;
+          }
         }
       });
 

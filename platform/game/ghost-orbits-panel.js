@@ -1051,7 +1051,10 @@ export class GhostOrbitsPanel {
 
     const goldStars = this.getPlayerGoldStars();
     const points = this.getPlayerPoints();
-    const canEnter = goldStars >= this.entryStarCost && points >= this.entryPointCost;
+    // Entry fee is 1 gold star + 1/50th of your points (bet = points / 50)
+    const calculatedBet = Math.round((points / 50) * 100) / 100; // Round to 2 decimal places
+    // Can enter if you have at least 1 gold star (bet is always affordable since it's a fraction of your points)
+    const canEnter = goldStars >= this.entryStarCost;
 
     this.overlayElement.innerHTML = `
       <div class="orbits-lobby-view">
@@ -1069,7 +1072,7 @@ export class GhostOrbitsPanel {
           <!-- Entry Cost -->
           <div class="lobby-entry-cost">
             <span class="entry-cost-label">Entry Fee:</span>
-            <span class="entry-cost-value">${this.entryStarCost} \u2B50 + ${this.entryPointCost} pts</span>
+            <span class="entry-cost-value">${this.entryStarCost} \u2B50 + ${calculatedBet} pts (1/50 of yours)</span>
           </div>
 
           <!-- Your Balance -->
@@ -1144,6 +1147,9 @@ export class GhostOrbitsPanel {
    * @private
    */
   _showEntryConfirmDialog() {
+    const points = this.getPlayerPoints();
+    const calculatedBet = Math.round((points / 50) * 100) / 100;
+
     const modal = document.createElement('div');
     modal.className = 'orbits-confirm-modal';
     modal.innerHTML = `
@@ -1152,7 +1158,7 @@ export class GhostOrbitsPanel {
         <p class="confirm-message">You will bet:</p>
         <div class="confirm-cost">
           <span>${this.entryStarCost} \u2B50 Gold Star</span>
-          <span>${this.entryPointCost} Points</span>
+          <span>${calculatedBet} Points (1/50 of yours)</span>
         </div>
         <p class="confirm-note">If you win, you'll receive the entire pot!</p>
         <div class="confirm-actions">
@@ -1196,7 +1202,9 @@ export class GhostOrbitsPanel {
 
     const goldStars = this.getPlayerGoldStars();
     const points = this.getPlayerPoints();
-    const canRejoin = goldStars >= this.entryStarCost && points >= this.entryPointCost;
+    // Rejoin cost is same as entry: 1 gold star + 1/50th of points
+    const calculatedBet = Math.round((points / 50) * 100) / 100;
+    const canRejoin = goldStars >= this.entryStarCost;
 
     const getOrdinal = (n) => {
       const s = ['th', 'st', 'nd', 'rd'];
@@ -1229,7 +1237,7 @@ export class GhostOrbitsPanel {
 
           <div class="eliminated-actions">
             <button class="eliminated-rejoin-btn ${canRejoin ? '' : 'disabled'}" id="eliminated-rejoin-btn" ${canRejoin ? '' : 'disabled'}>
-              ${canRejoin ? `Rejoin (${this.entryStarCost} \u2B50 + ${this.entryPointCost} pts)` : 'Need more stars to rejoin'}
+              ${canRejoin ? `Rejoin (${this.entryStarCost} \u2B50 + ${calculatedBet} pts)` : 'Need more stars to rejoin'}
             </button>
             <button class="eliminated-spectate-btn" id="eliminated-spectate-btn">Spectate</button>
             <button class="eliminated-leave-btn" id="eliminated-leave-btn">Leave Arena</button>

@@ -81,6 +81,7 @@ export class GhostOrbitsController {
     // Callbacks
     this.onExit = options.onExit || (() => {});
     this.onStateChange = options.onStateChange || (() => {});
+    this.onStatsUpdate = options.onStatsUpdate || (() => {});
 
     // Game state
     this.state = GameState.IDLE;
@@ -727,6 +728,9 @@ export class GhostOrbitsController {
     if (typeof message.newPoints === 'number') {
       this.points = message.newPoints;
     }
+
+    // Notify UI to update gold star / points display
+    this.onStatsUpdate(this.goldStars, this.points);
 
     // Store bet amount for display
     this.currentBet = message.bet || 0;
