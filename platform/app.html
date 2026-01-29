@@ -1319,7 +1319,7 @@
     /**
      * Initialize Ghost Orbits controller
      */
-    function initGhostOrbits() {
+    async function initGhostOrbits() {
       if (ghostOrbitsController) {
         ghostOrbitsController.dispose();
         ghostOrbitsController = null;
@@ -1331,15 +1331,35 @@
         return null;
       }
 
-      // Get current star counts and calculate points
-      const state = platform.getState();
-      const starCounts = state.game?.starCounts || { gold: 0, silver: 0, bronze: 0, tin: 0 };
-      const goldStars = starCounts.gold || 0;
-      const points = getWeightedScore(starCounts);
+      const username = userSystem.currentUser?.username;
+      if (!username) {
+        console.warn('[GhostOrbits] No username available');
+        return null;
+      }
+
+      // Fetch total stars and points from server (across ALL cartridges)
+      let goldStars = 0;
+      let points = 0;
+      try {
+        const response = await fetch(`${SERVER_URL}/api/users/${encodeURIComponent(username)}/stars`);
+        if (response.ok) {
+          const data = await response.json();
+          goldStars = data.stars?.gold || 0;
+          points = data.weightedTotal || 0;
+          console.log('[GhostOrbits] Fetched server stats:', { goldStars, points });
+        }
+      } catch (err) {
+        console.warn('[GhostOrbits] Failed to fetch server stats, using local:', err);
+        // Fallback to local state
+        const state = platform.getState();
+        const starCounts = state.game?.starCounts || { gold: 0, silver: 0, bronze: 0, tin: 0 };
+        goldStars = starCounts.gold || 0;
+        points = getWeightedScore(starCounts);
+      }
 
       ghostOrbitsController = new GhostOrbitsController({
         container: document.body,
-        username: userSystem.currentUser?.username,
+        username: username,
         cartridgeId: currentCartridgeId,
         periodId: userSystem.currentUser?.class_period,
         ghostProfile: profile,
@@ -1351,6 +1371,11 @@
         },
         onStateChange: (state) => {
           console.log('[GhostOrbits] State:', state);
+        },
+        onStatsUpdate: (newGoldStars, newPoints) => {
+          // Update UI when arena deducts gold star / points
+          console.log('[GhostOrbits] Stats updated:', { newGoldStars, newPoints });
+          // Could update display here if needed
         }
       });
 
@@ -1379,7 +1404,7 @@
 
       if (!ghostOrbitsController) {
         console.log('[GhostOrbits] Creating controller...');
-        initGhostOrbits();
+        await initGhostOrbits();
       }
 
       if (ghostOrbitsController) {
@@ -1387,10 +1412,8 @@
           console.log('[GhostOrbits] Calling init()...');
           await ghostOrbitsController.init();
 
-          // Update controller's gold count from DOM (so isUnlocked() works)
-          const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-          ghostOrbitsController.updateGoldCount(currentGolds);
-          console.log('[GhostOrbits] Updated gold count:', currentGolds, 'lastSession:', ghostOrbitsController.lastSessionGolds);
+          // Gold stars and points are now fetched from server in initGhostOrbits
+          console.log('[GhostOrbits] Gold stars:', ghostOrbitsController.goldStars, 'Points:', ghostOrbitsController.points);
 
           console.log('[GhostOrbits] init() complete, calling enterArena()...');
           await ghostOrbitsController.enterArena();
