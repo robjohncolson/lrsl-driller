@@ -124,12 +124,40 @@ export class GhostOrbitsController {
     this.isSpectating = false;
     this.spectateTargetId = null; // Player ID to follow camera
 
+    // Gold tracking for unlock
+    this.currentGolds = 0;
+    this.lastSessionGolds = parseInt(localStorage.getItem('orbits_lastSessionGolds') || '0');
+
     // Animation frame for render loop
     this._animationFrameId = null;
     this._lastRenderTime = 0;
 
     // Bind methods
     this._boundOnVisibilityChange = this._handleVisibilityChange.bind(this);
+  }
+
+  /**
+   * Update the current gold count for unlock tracking
+   * @param {number} golds - Current gold star count
+   */
+  updateGoldCount(golds) {
+    this.currentGolds = golds;
+  }
+
+  /**
+   * Check if arena is unlocked (earned new gold since last session)
+   * @returns {boolean}
+   */
+  isUnlocked() {
+    return this.currentGolds > this.lastSessionGolds;
+  }
+
+  /**
+   * Save current golds as the session baseline
+   */
+  saveSessionGolds() {
+    this.lastSessionGolds = this.currentGolds;
+    localStorage.setItem('orbits_lastSessionGolds', String(this.currentGolds));
   }
 
   /**
