@@ -292,9 +292,11 @@ class PhysicsEngine {
    * @param {string} ghostId - Ghost ID
    * @param {Object|Vector2} ghostPos - Ghost position {x, y}
    * @param {Object|Vector2} ghostVel - Ghost velocity (for determining orbit direction)
+   * @param {Object} options - Optional parameters
+   * @param {number} options.orbitalSpeedMultiplier - Multiplier for orbital speed (default: 1.0)
    * @returns {Record|null} - Record being orbited, or null if not near any
    */
-  requestOrbitEntry(ghostId, ghostPos, ghostVel) {
+  requestOrbitEntry(ghostId, ghostPos, ghostVel, options = {}) {
     // Already orbiting?
     if (this.orbitStates.has(ghostId)) {
       console.log('[Physics] requestOrbitEntry: already orbiting');
@@ -330,16 +332,18 @@ class PhysicsEngine {
     }
 
     // Lock into orbit at current distance (entry radius)
-    this._lockIntoOrbit(ghostId, nearestRecord, minDistance, ghostPos, ghostVel);
+    const speedMultiplier = options.orbitalSpeedMultiplier || 1.0;
+    this._lockIntoOrbit(ghostId, nearestRecord, minDistance, ghostPos, ghostVel, speedMultiplier);
     nearestRecord.currentOrbiter = ghostId;
     return nearestRecord;
   }
 
   /**
    * Lock ghost into orbit at entry radius
+   * @param {number} speedMultiplier - Orbital speed multiplier (default: 1.0)
    * @private
    */
-  _lockIntoOrbit(ghostId, record, radius, ghostPos, ghostVel) {
+  _lockIntoOrbit(ghostId, record, radius, ghostPos, ghostVel, speedMultiplier = 1.0) {
     // Calculate entry angle (from record center to ghost)
     const angle = Math.atan2(
       ghostPos.y - record.position.y,
@@ -364,13 +368,13 @@ class PhysicsEngine {
     const velMagnitude = velVector.magnitude();
     const clockwise = velMagnitude < 0.5 ? record.clockwise : tangentVel < 0;
 
-    // Use record's angular speed
-    const angularVelocity = record.angularSpeed;
+    // Use record's angular speed, modified by ghost's orbitalSpeed multiplier
+    const angularVelocity = record.angularSpeed * speedMultiplier;
 
     const orbitState = new OrbitState(record.id, radius, angularVelocity, angle, clockwise);
     this.orbitStates.set(ghostId, orbitState);
 
-    console.log(`[Physics] Orbit entry: ${ghostId} at radius ${radius.toFixed(0)}px, ${clockwise ? 'CW' : 'CCW'}`);
+    console.log(`[Physics] Orbit entry: ${ghostId} at radius ${radius.toFixed(0)}px, ${clockwise ? 'CW' : 'CCW'}, speed: ${speedMultiplier.toFixed(2)}x`);
   }
 
   /**

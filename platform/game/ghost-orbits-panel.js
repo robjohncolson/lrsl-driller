@@ -792,6 +792,7 @@ export class GhostOrbitsPanel {
   /**
    * Render defeat screen for Shadow Self mode
    * @param {Object} data - Defeat data
+   * @param {boolean} [data.canRematch=false] - Whether rematch is currently available
    * @private
    */
   _renderDefeatScreen(data) {
@@ -800,10 +801,16 @@ export class GhostOrbitsPanel {
     const condition = data.condition || 'Defeat';
     const territory = Math.round(data.playerTerritory) || 0;
     const timeElapsed = data.timeElapsed || 0;
+    const canRematch = data.canRematch !== false; // Default to true for backwards compatibility
 
     const minutes = Math.floor(timeElapsed / 60);
     const secs = timeElapsed % 60;
     const timeDisplay = `${minutes}:${secs.toString().padStart(2, '0')}`;
+
+    // Build the rematch button HTML based on availability
+    const rematchButtonHtml = canRematch
+      ? `<button class="orbits-rematch-btn" id="orbits-rematch-btn">Rematch (1 Gold Star)</button>`
+      : `<button class="orbits-rematch-btn orbits-rematch-btn-disabled" id="orbits-rematch-btn" disabled>Earn a Gold Star to Rematch</button>`;
 
     this.overlayElement.innerHTML = `
       <div class="orbits-defeat-view">
@@ -829,7 +836,7 @@ export class GhostOrbitsPanel {
           </div>
 
           <div class="defeat-actions">
-            <button class="orbits-rematch-btn" id="orbits-rematch-btn">Rematch (1 Gold Star)</button>
+            ${rematchButtonHtml}
             <button class="orbits-return-btn" id="orbits-return-btn">Return to Practice</button>
           </div>
         </div>
@@ -842,7 +849,7 @@ export class GhostOrbitsPanel {
     const rematchBtn = this.overlayElement.querySelector('#orbits-rematch-btn');
     const returnBtn = this.overlayElement.querySelector('#orbits-return-btn');
 
-    if (rematchBtn) {
+    if (rematchBtn && canRematch) {
       rematchBtn.addEventListener('click', () => {
         // Show rematch prompt or handle directly
         if (this.onRematch) {
@@ -1920,6 +1927,18 @@ export class GhostOrbitsPanel {
 
       .orbits-rematch-btn:active {
         transform: translateY(0);
+      }
+
+      .orbits-rematch-btn-disabled {
+        background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+        cursor: not-allowed;
+        opacity: 0.7;
+        box-shadow: none;
+      }
+
+      .orbits-rematch-btn-disabled:hover {
+        transform: none;
+        box-shadow: none;
       }
 
       /* -------------------------------------------

@@ -219,12 +219,13 @@ class DotManager {
   /**
    * Check if spacebar was pressed recently (within flip window)
    * @param {string} ghostId - 'player' or 'shadow'
+   * @param {number} flipWindow - Custom flip window in ms (optional, defaults to DOT_CONFIG.FLIP_WINDOW_MS)
    * @returns {boolean}
    */
-  wasSpacebarPressedRecently(ghostId) {
+  wasSpacebarPressedRecently(ghostId, flipWindow = DOT_CONFIG.FLIP_WINDOW_MS) {
     const pressTime = this.recentSpacebarPresses.get(ghostId);
     if (!pressTime) return false;
-    return (Date.now() - pressTime) < DOT_CONFIG.FLIP_WINDOW_MS;
+    return (Date.now() - pressTime) < flipWindow;
   }
 
   /**
@@ -234,10 +235,20 @@ class DotManager {
    * @param {number} x - Ghost X position
    * @param {number} y - Ghost Y position
    * @param {string} ghostColor - Ghost's color for claiming
-   * @param {number} radius - Ghost collision radius
+   * @param {Object} options - Optional parameters for NN-influenced gameplay
+   * @param {number} options.radius - Ghost collision radius (default: DOT_CONFIG.COLLISION_RADIUS)
+   * @param {number} options.claimRadius - Multiplier for claim reach (default: 1.0)
+   * @param {number} options.flipWindow - Custom flip timing window in ms (default: DOT_CONFIG.FLIP_WINDOW_MS)
    * @returns {Object|null} - { type: 'claimed'|'flipped'|'damaged', dot: Dot } or null
    */
-  checkDotInteraction(ghostId, x, y, ghostColor, radius = DOT_CONFIG.COLLISION_RADIUS) {
+  checkDotInteraction(ghostId, x, y, ghostColor, options = {}) {
+    // Support legacy call signature: checkDotInteraction(ghostId, x, y, ghostColor, radius)
+    if (typeof options === 'number') {
+      options = { radius: options };
+    }
+
+    const radius = (options.radius || DOT_CONFIG.COLLISION_RADIUS) * (options.claimRadius || 1.0);
+    const flipWindow = options.flipWindow || DOT_CONFIG.FLIP_WINDOW_MS;
     const currentTime = Date.now();
 
     for (const dot of this.dots.values()) {
@@ -258,7 +269,7 @@ class DotManager {
 
       if (dot.isOwnedByOpponent(ghostId)) {
         // Opponent's dot - check for flip or damage
-        const hadSpacebar = this.wasSpacebarPressedRecently(ghostId);
+        const hadSpacebar = this.wasSpacebarPressedRecently(ghostId, flipWindow);
 
         dot.lastTouchedBy = ghostId;
         dot.lastTouchTime = currentTime;
@@ -277,6 +288,14 @@ class DotManager {
     }
 
     return null;
+  }
+
+  /**
+   * Get neutral dots for magnetism calculation
+   * @returns {Dot[]}
+   */
+  getNeutralDots() {
+    return this.getDotsByState(DotState.NEUTRAL);
   }
 
   /**

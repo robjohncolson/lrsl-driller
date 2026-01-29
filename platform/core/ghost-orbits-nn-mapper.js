@@ -2,12 +2,12 @@
  * ghost-orbits-nn-mapper.js
  * Maps neural network outputs to Ghost Orbits arena properties
  *
- * Converts ghost NN predictions into gameplay-affecting properties:
- * - Mass/Size (from accuracy)
- * - Thrust Efficiency (from speed)
- * - Trail Duration (from independence)
- * - Energy Regen (from solve time)
- * - Trail Width (from accuracy)
+ * v3 (Dot Territory) - Converts ghost NN predictions into gameplay-affecting properties:
+ * - flipWindow: Timing window to flip enemy dots (from accuracy)
+ * - claimRadius: Dot claim distance multiplier (from speed)
+ * - respawnSpeed: Invulnerability duration after hit (from independence)
+ * - orbitalSpeed: Movement speed on records (from solve time)
+ * - dotMagnetism: Subtle pull toward unclaimed dots (from proficiency)
  *
  * Also generates unique fractal patterns from NN weights as visual "DNA"
  */
@@ -21,27 +21,34 @@ const GHOST_TIERS = [
   '#ff44ff',  // Tier 4: Magenta (levels 12+)
 ];
 
-// Property range constants
+// Property range constants for v3 dot territory gameplay
 const PROPERTY_RANGES = {
-  mass: { min: 0.5, max: 1.5 },
-  thrustEfficiency: { min: 0.7, max: 1.3 },
-  trailDuration: { min: 0.5, max: 1.5 },
-  energyRegen: { min: 0.7, max: 1.3 },
-  trailWidth: { min: 0.8, max: 1.2 }
+  flipWindow: { min: 250, max: 350 },       // ms - timing window to flip enemy dots
+  claimRadius: { min: 1.0, max: 1.3 },      // multiplier - dot claim distance
+  respawnSpeed: { min: 1.2, max: 2.0 },     // seconds - invulnerability duration
+  orbitalSpeed: { min: 1.0, max: 1.2 },     // multiplier - record orbital movement
+  dotMagnetism: { min: 0, max: 0.3 }        // strength - pull toward unclaimed dots
 };
 
 // Fractal generation constants
 const FRACTAL_SIZE = 64;
 const PERLIN_SCALE = 0.1;
 
+// Terrain generation constants
+const TERRAIN_DEFAULT_SIZE = 128;
+const TERRAIN_BASE_OCTAVES = 4;
+const TERRAIN_MAX_OCTAVES = 8;
+
 /**
  * Calculate ghost arena properties from neural network output
+ * v3 dot territory properties - small edges, not game-breaking
+ *
  * @param {Object} nnOutput - Output from GhostNetwork.predict()
  * @param {number} nnOutput.correctProb - Probability of correct answer (0-1)
  * @param {number} nnOutput.quickProb - Probability of quick answer (0-1)
  * @param {number} nnOutput.hintProb - Probability of using hint (0-1)
  * @param {number} nnOutput.time - Predicted solve time in seconds (0-60+)
- * @returns {Object} Ghost arena properties
+ * @returns {Object} Ghost arena properties for dot territory gameplay
  */
 export function calculateGhostProperties(nnOutput) {
   // Validate and clamp inputs
@@ -51,26 +58,26 @@ export function calculateGhostProperties(nnOutput) {
   const predictedTime = clamp(nnOutput.time ?? 30, 0, 120);
 
   return {
-    // Mass: 0.5 - 1.5 (based on accuracy)
-    // Higher accuracy = larger mass = can absorb smaller ghosts
-    mass: 0.5 + correctProb,
+    // Flip window: 250ms base + up to 100ms bonus (based on accuracy)
+    // Higher accuracy = larger timing window to flip enemy dots
+    flipWindow: 250 + correctProb * 100,
 
-    // Thrust efficiency: 0.7 - 1.3 (based on speed)
-    // Quick solvers get more speed per energy spent
-    thrustEfficiency: 0.7 + quickProb * 0.6,
+    // Claim radius multiplier: 1.0 - 1.3 (based on speed)
+    // Quick solvers can claim dots from slightly further away
+    claimRadius: 1.0 + quickProb * 0.3,
 
-    // Trail duration: 0.5 - 1.5 (inverse of hint usage)
-    // Independent students (low hint usage) leave longer trails
-    trailDuration: 0.5 + (1 - hintProb),
+    // Respawn invulnerability: 2.0s base - up to 0.8s reduction (inverse of hint usage)
+    // Independent students (low hint usage) recover faster after damage
+    respawnSpeed: 2.0 - (1 - hintProb) * 0.8,
 
-    // Energy regen: 0.7 - 1.3 (inverse of solve time)
-    // Fast solvers recover energy quicker
+    // Orbital speed multiplier: 1.0 - 1.2 (inverse of solve time)
+    // Fast solvers move faster on records
     // Normalize time to 0-1 range (60s = max), then invert
-    energyRegen: 0.7 + (1 - Math.min(predictedTime / 60, 1)) * 0.6,
+    orbitalSpeed: 1.0 + (1 - Math.min(predictedTime / 60, 1)) * 0.2,
 
-    // Trail width: 0.8 - 1.2 (based on accuracy)
-    // Accurate students leave wider trails (more territory claim)
-    trailWidth: 0.8 + correctProb * 0.4
+    // Dot magnetism strength: 0 - 0.3 (based on accuracy)
+    // Accurate students have dots slightly gravitate toward them
+    dotMagnetism: correctProb * 0.3
   };
 }
 
@@ -507,10 +514,284 @@ export class GhostPropertiesMapper {
   }
 }
 
+/**
+ * Generate a 3D terrain heightmap from neural network weights
+ * Used for the Ghost Panel's class view landscape visualization
+ *
+ * @param {number[][]|number[]} weights - Serialized NN weights (can be aggregated class weights)
+ * @param {Object} options - Configuration options
+ * @param {number} options.size - Grid size (default: 128)
+ * @param {number} options.correctProb - Average correctness probability (0-1) - affects peak height
+ * @param {number} options.activityLevel - Normalized activity level (0-1) - affects detail complexity
+ * @returns {Object} Terrain data
+ * @returns {Float32Array} .heightmap - Height values (0-1 range), size x size
+ * @returns {number} .size - Grid dimension
+ * @returns {number} .seed - Deterministic seed from weights
+ * @returns {number} .complexity - Complexity metric (octave count)
+ * @returns {Object} .stats - Height statistics { min, max, avg }
+ */
+export function generateTerrainHeightmap(weights, options = {}) {
+  const size = options.size || TERRAIN_DEFAULT_SIZE;
+  const correctProb = clamp(options.correctProb ?? 0.5, 0, 1);
+  const activityLevel = clamp(options.activityLevel ?? 0.5, 0, 1);
+
+  // Generate deterministic seed from weights
+  const seed = hashWeights(weights);
+  const random = createSeededRandom(seed);
+  const noise = createPerlinNoise(random, 32); // Larger gradient grid for terrain
+
+  // Calculate complexity from weight count and activity level
+  const flat = Array.isArray(weights[0]) ? weights.flat() : weights;
+  const weightComplexity = Math.min(flat.length / 500, 1);
+  const octaves = TERRAIN_BASE_OCTAVES + Math.floor((weightComplexity + activityLevel) * (TERRAIN_MAX_OCTAVES - TERRAIN_BASE_OCTAVES) / 2);
+
+  // Create heightmap array
+  const heightmap = new Float32Array(size * size);
+
+  // Noise parameters - more activity = more detail
+  const baseScale = 0.02 + activityLevel * 0.02;
+  const persistence = 0.45 + activityLevel * 0.15;
+  const lacunarity = 2.0;
+
+  // Height modifiers based on learning patterns
+  // Higher correctProb = more prominent peaks
+  const peakBias = 0.3 + correctProb * 0.4;
+  const valleyDepth = 0.3 - correctProb * 0.2;
+
+  let minHeight = Infinity;
+  let maxHeight = -Infinity;
+  let totalHeight = 0;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let value = 0;
+      let amplitude = 1;
+      let frequency = baseScale;
+      let maxAmplitude = 0;
+
+      // Sum multiple octaves of noise (fBm)
+      for (let o = 0; o < octaves; o++) {
+        const noiseVal = noise(x * frequency, y * frequency);
+        value += noiseVal * amplitude;
+        maxAmplitude += amplitude;
+        amplitude *= persistence;
+        frequency *= lacunarity;
+      }
+
+      // Normalize to 0-1 range
+      value = (value / maxAmplitude + 1) / 2;
+
+      // Apply ridged multifractal transformation for mountain ridges
+      // More likely when correctProb is high
+      if (correctProb > 0.4) {
+        const ridgeStrength = (correctProb - 0.4) / 0.6;
+        const ridged = 1 - Math.abs(value * 2 - 1);
+        value = value * (1 - ridgeStrength) + ridged * ridgeStrength;
+      }
+
+      // Apply radial falloff to create island-like terrain
+      const cx = size / 2;
+      const cy = size / 2;
+      const dx = (x - cx) / cx;
+      const dy = (y - cy) / cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const falloff = 1 - Math.pow(Math.min(dist * 1.2, 1), 2);
+
+      // Apply height bias based on correctness
+      value = value * peakBias + (1 - falloff) * valleyDepth;
+      value = value * falloff;
+
+      // Clamp final value
+      value = clamp(value, 0, 1);
+
+      heightmap[y * size + x] = value;
+
+      // Track stats
+      minHeight = Math.min(minHeight, value);
+      maxHeight = Math.max(maxHeight, value);
+      totalHeight += value;
+    }
+  }
+
+  return {
+    heightmap,
+    size,
+    seed,
+    complexity: octaves,
+    stats: {
+      min: minHeight,
+      max: maxHeight,
+      avg: totalHeight / (size * size)
+    }
+  };
+}
+
+/**
+ * Aggregate neural network weights from multiple ghost profiles
+ * Creates averaged weights representing the "class brain"
+ *
+ * @param {Array} ghostProfiles - Array of ghost profiles with weights
+ * @returns {Object} Aggregated data
+ * @returns {number[]} .weights - Averaged weights
+ * @returns {number} .profileCount - Number of profiles with weights
+ * @returns {number} .avgCorrectProb - Average correctness probability
+ * @returns {number} .avgActivity - Normalized activity level (0-1)
+ */
+export function aggregateClassWeights(ghostProfiles) {
+  if (!ghostProfiles || ghostProfiles.length === 0) {
+    return {
+      weights: [0],
+      profileCount: 0,
+      avgCorrectProb: 0.5,
+      avgActivity: 0
+    };
+  }
+
+  // Filter profiles that have weights
+  const profilesWithWeights = ghostProfiles.filter(p => p.weights && p.weights.length > 0);
+
+  if (profilesWithWeights.length === 0) {
+    // Generate synthetic weights from proficiency scores
+    const avgProficiency = ghostProfiles.reduce((sum, p) =>
+      sum + (p.proficiency_score || 0), 0) / ghostProfiles.length;
+
+    const avgInteractions = ghostProfiles.reduce((sum, p) =>
+      sum + (p.total_interactions || 0), 0) / ghostProfiles.length;
+
+    // Create synthetic weights from aggregated stats
+    const syntheticWeights = [];
+    let seed = Math.floor(avgProficiency * 1000000);
+
+    for (let i = 0; i < 100; i++) {
+      seed = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      seed = seed + Math.imul(seed ^ (seed >>> 7), 61 | seed) ^ seed;
+      const rand = ((seed ^ (seed >>> 14)) >>> 0) / 4294967296;
+      // Bias weights toward proficiency level
+      syntheticWeights.push((rand * 2 - 1) * (0.5 + avgProficiency * 0.5));
+    }
+
+    return {
+      weights: syntheticWeights,
+      profileCount: ghostProfiles.length,
+      avgCorrectProb: avgProficiency,
+      avgActivity: Math.min(avgInteractions / 100, 1)
+    };
+  }
+
+  // Find the maximum weight array length
+  const maxLength = profilesWithWeights.reduce((max, p) => {
+    const flat = Array.isArray(p.weights[0]) ? p.weights.flat() : p.weights;
+    return Math.max(max, flat.length);
+  }, 0);
+
+  // Initialize aggregated weights
+  const aggregatedWeights = new Array(maxLength).fill(0);
+  const weightCounts = new Array(maxLength).fill(0);
+
+  // Sum all weights
+  for (const profile of profilesWithWeights) {
+    const flat = Array.isArray(profile.weights[0]) ? profile.weights.flat() : profile.weights;
+    for (let i = 0; i < flat.length; i++) {
+      aggregatedWeights[i] += flat[i];
+      weightCounts[i]++;
+    }
+  }
+
+  // Average the weights
+  for (let i = 0; i < maxLength; i++) {
+    if (weightCounts[i] > 0) {
+      aggregatedWeights[i] /= weightCounts[i];
+    }
+  }
+
+  // Calculate average proficiency and activity
+  const avgCorrectProb = ghostProfiles.reduce((sum, p) =>
+    sum + (p.proficiency_score || 0), 0) / ghostProfiles.length;
+
+  const totalInteractions = ghostProfiles.reduce((sum, p) =>
+    sum + (p.total_interactions || 0), 0);
+  const maxExpectedInteractions = ghostProfiles.length * 100;
+  const avgActivity = Math.min(totalInteractions / maxExpectedInteractions, 1);
+
+  return {
+    weights: aggregatedWeights,
+    profileCount: profilesWithWeights.length,
+    avgCorrectProb,
+    avgActivity
+  };
+}
+
+/**
+ * Get terrain color for a given height value
+ * Maps height to a gradient from deep valleys to bright peaks
+ *
+ * @param {number} height - Height value 0-1
+ * @param {number} proficiency - Class proficiency 0-1 (affects color warmth)
+ * @returns {Object} RGB color { r, g, b } (0-255)
+ */
+export function getTerrainColor(height, proficiency = 0.5) {
+  // Color gradient based on height and proficiency
+  // Low proficiency = cooler blues, high proficiency = warmer greens/golds
+
+  const warmth = proficiency;
+
+  if (height < 0.15) {
+    // Deep valleys - dark blue/purple
+    return {
+      r: Math.floor(20 + warmth * 20),
+      g: Math.floor(25 + warmth * 15),
+      b: Math.floor(60 - warmth * 20)
+    };
+  } else if (height < 0.3) {
+    // Low areas - blue/teal
+    const t = (height - 0.15) / 0.15;
+    return {
+      r: Math.floor(20 + t * 20 + warmth * 30),
+      g: Math.floor(40 + t * 60 + warmth * 30),
+      b: Math.floor(80 + t * 40 - warmth * 20)
+    };
+  } else if (height < 0.5) {
+    // Mid-level - cyan/green
+    const t = (height - 0.3) / 0.2;
+    return {
+      r: Math.floor(40 + t * 20 + warmth * 40),
+      g: Math.floor(120 + t * 60 + warmth * 20),
+      b: Math.floor(120 - t * 40 - warmth * 30)
+    };
+  } else if (height < 0.7) {
+    // Upper areas - green/yellow
+    const t = (height - 0.5) / 0.2;
+    return {
+      r: Math.floor(80 + t * 100 + warmth * 60),
+      g: Math.floor(180 + t * 40),
+      b: Math.floor(80 - t * 30 - warmth * 20)
+    };
+  } else if (height < 0.85) {
+    // High peaks - gold/orange
+    const t = (height - 0.7) / 0.15;
+    return {
+      r: Math.floor(180 + t * 50 + warmth * 25),
+      g: Math.floor(180 - t * 40),
+      b: Math.floor(50 + t * 30)
+    };
+  } else {
+    // Summit - bright white/gold
+    const t = (height - 0.85) / 0.15;
+    return {
+      r: Math.floor(230 + t * 25),
+      g: Math.floor(200 + t * 40),
+      b: Math.floor(150 + t * 80)
+    };
+  }
+}
+
 // Default export for convenience
 export default {
   calculateGhostProperties,
   generateFractalPattern,
+  generateTerrainHeightmap,
+  aggregateClassWeights,
+  getTerrainColor,
   getGhostColor,
   hashWeights,
   GhostPropertiesMapper,

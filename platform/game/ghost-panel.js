@@ -8,9 +8,10 @@
 
 import * as THREE from 'three';
 import { MazeRenderer, parseLeaderboardData } from '../core/ghost-maze-renderer.js';
+import { TerrainRenderer } from '../core/ghost-terrain-renderer.js';
 import { getRatingTier, ELO_CONFIG } from '../core/ghost-battle-engine.js';
 import { BattleViz } from '../core/ghost-battle-viz.js';
-import { generateFractalPattern, calculateGhostProperties, getPropertyRanges, normalizeProperty } from '../core/ghost-orbits-nn-mapper.js';
+import { generateFractalPattern, calculateGhostProperties, getPropertyRanges, normalizeProperty, aggregateClassWeights } from '../core/ghost-orbits-nn-mapper.js';
 
 export class GhostPanel {
   /**
@@ -50,6 +51,12 @@ export class GhostPanel {
     this.classViewError = null;
     this.classPeriod = options.classPeriod || null;
     this.cartridgeId = options.manifest?.meta?.id || null;
+
+    // Terrain renderer state (Class View fractal landscape)
+    this.terrainRenderer = null;
+    this.terrainInitialized = false;
+    this.terrainError = null;
+    this.aggregatedClassData = null;
 
     // Battle state
     this.battleRating = null;
@@ -188,7 +195,14 @@ export class GhostPanel {
   dispose() {
     document.removeEventListener('keydown', this._handleEscapeKey);
 
-    // Dispose maze renderer
+    // Dispose terrain renderer
+    if (this.terrainRenderer) {
+      this.terrainRenderer.dispose();
+      this.terrainRenderer = null;
+    }
+    this.terrainInitialized = false;
+
+    // Dispose maze renderer (legacy)
     if (this.mazeRenderer) {
       this.mazeRenderer.dispose();
       this.mazeRenderer = null;
@@ -246,89 +260,89 @@ export class GhostPanel {
               <div class="ghost-fractal-label">Your Ghost's DNA</div>
             </div>
 
-            <!-- Ghost Properties Bars -->
+            <!-- Ghost Properties Bars (v3 - Dot Territory) -->
             <div class="ghost-properties-panel" id="ghost-properties-panel">
               <div class="ghost-property-row">
-                <div class="ghost-property-icon">⚖️</div>
+                <div class="ghost-property-icon">&#x23F1;</div>
                 <div class="ghost-property-info">
                   <div class="ghost-property-header">
-                    <span class="ghost-property-name">Mass</span>
-                    <span class="ghost-property-value" id="prop-mass">1.0x</span>
+                    <span class="ghost-property-name">Flip Timing</span>
+                    <span class="ghost-property-value" id="prop-flip">250ms</span>
                   </div>
                   <div class="ghost-property-bar">
-                    <div class="ghost-property-fill" id="prop-mass-bar" style="width: 50%"></div>
+                    <div class="ghost-property-fill" id="prop-flip-bar" style="width: 50%"></div>
                   </div>
                   <div class="ghost-property-explain">
-                    <span class="explain-learn">Accuracy → </span>
-                    <span class="explain-play">Absorb smaller ghosts</span>
+                    <span class="explain-learn">Accuracy </span>
+                    <span class="explain-play">Larger window to flip dots</span>
                   </div>
                 </div>
               </div>
 
               <div class="ghost-property-row">
-                <div class="ghost-property-icon">🚀</div>
+                <div class="ghost-property-icon">&#x1F4AB;</div>
                 <div class="ghost-property-info">
                   <div class="ghost-property-header">
-                    <span class="ghost-property-name">Thrust</span>
-                    <span class="ghost-property-value" id="prop-thrust">1.0x</span>
+                    <span class="ghost-property-name">Claim Reach</span>
+                    <span class="ghost-property-value" id="prop-claim">1.0x</span>
                   </div>
                   <div class="ghost-property-bar">
-                    <div class="ghost-property-fill" id="prop-thrust-bar" style="width: 50%"></div>
+                    <div class="ghost-property-fill" id="prop-claim-bar" style="width: 50%"></div>
                   </div>
                   <div class="ghost-property-explain">
-                    <span class="explain-learn">Quick answers → </span>
-                    <span class="explain-play">More speed per energy</span>
+                    <span class="explain-learn">Speed </span>
+                    <span class="explain-play">Claim dots from further away</span>
                   </div>
                 </div>
               </div>
 
               <div class="ghost-property-row">
-                <div class="ghost-property-icon">✨</div>
+                <div class="ghost-property-icon">&#x1F6E1;</div>
                 <div class="ghost-property-info">
                   <div class="ghost-property-header">
-                    <span class="ghost-property-name">Trail</span>
-                    <span class="ghost-property-value" id="prop-trail">1.0x</span>
+                    <span class="ghost-property-name">Recovery</span>
+                    <span class="ghost-property-value" id="prop-respawn">2.0s</span>
                   </div>
                   <div class="ghost-property-bar">
-                    <div class="ghost-property-fill" id="prop-trail-bar" style="width: 50%"></div>
+                    <div class="ghost-property-fill" id="prop-respawn-bar" style="width: 50%"></div>
                   </div>
                   <div class="ghost-property-explain">
-                    <span class="explain-learn">Independence → </span>
-                    <span class="explain-play">Longer territory trails</span>
+                    <span class="explain-learn">Independence </span>
+                    <span class="explain-play">Faster invulnerability</span>
                   </div>
                 </div>
               </div>
 
               <div class="ghost-property-row">
-                <div class="ghost-property-icon">⚡</div>
+                <div class="ghost-property-icon">&#x1F680;</div>
                 <div class="ghost-property-info">
                   <div class="ghost-property-header">
-                    <span class="ghost-property-name">Energy</span>
-                    <span class="ghost-property-value" id="prop-energy">1.0x</span>
+                    <span class="ghost-property-name">Orbit Speed</span>
+                    <span class="ghost-property-value" id="prop-orbital">1.0x</span>
                   </div>
                   <div class="ghost-property-bar">
-                    <div class="ghost-property-fill" id="prop-energy-bar" style="width: 50%"></div>
+                    <div class="ghost-property-fill" id="prop-orbital-bar" style="width: 50%"></div>
                   </div>
                   <div class="ghost-property-explain">
-                    <span class="explain-learn">Fast solving → </span>
-                    <span class="explain-play">Quicker energy recovery</span>
+                    <span class="explain-learn">Fast solving </span>
+                    <span class="explain-play">Move faster on records</span>
                   </div>
                 </div>
               </div>
 
               <div class="ghost-property-row">
-                <div class="ghost-property-icon">🌊</div>
+                <div class="ghost-property-icon">&#x1F9F2;</div>
                 <div class="ghost-property-info">
                   <div class="ghost-property-header">
-                    <span class="ghost-property-name">Width</span>
-                    <span class="ghost-property-value" id="prop-width">1.0x</span>
+                    <span class="ghost-property-name">Magnetism</span>
+                    <span class="ghost-property-value" id="prop-magnet">0%</span>
                   </div>
                   <div class="ghost-property-bar">
-                    <div class="ghost-property-fill" id="prop-width-bar" style="width: 50%"></div>
+                    <div class="ghost-property-fill" id="prop-magnet-bar" style="width: 50%"></div>
                   </div>
                   <div class="ghost-property-explain">
-                    <span class="explain-learn">Accuracy → </span>
-                    <span class="explain-play">Wider territory claim</span>
+                    <span class="explain-learn">Accuracy </span>
+                    <span class="explain-play">Dots gravitate toward you</span>
                   </div>
                 </div>
               </div>
@@ -368,11 +382,21 @@ export class GhostPanel {
 
           <div class="ghost-tab-content hidden" data-tab-content="class-view">
             <div class="ghost-class-view">
-              <div class="ghost-maze-container" id="ghost-maze-container-class">
-                <div class="ghost-maze-loading">
-                  <div class="ghost-placeholder-icon">👻</div>
-                  <p>Select Class View tab to load ghosts...</p>
+              <div class="ghost-terrain-container" id="ghost-terrain-container">
+                <div class="ghost-terrain-loading">
+                  <div class="ghost-placeholder-icon">🏔️</div>
+                  <p>Select Class View tab to see class landscape...</p>
                 </div>
+              </div>
+              <div class="ghost-terrain-legend">
+                <span class="terrain-legend-item">
+                  <span class="terrain-legend-color terrain-peak"></span>
+                  High Accuracy
+                </span>
+                <span class="terrain-legend-item">
+                  <span class="terrain-legend-color terrain-valley"></span>
+                  Struggle Areas
+                </span>
               </div>
               <div class="ghost-class-stats">
                 <div class="ghost-class-stat">
@@ -720,13 +744,13 @@ export class GhostPanel {
         pattern = generateFractalPattern(fakeWeights);
       }
     } else {
-      // Default properties when no profile
+      // Default properties when no profile (v3 - Dot Territory)
       properties = {
-        mass: 1.0,
-        thrustEfficiency: 1.0,
-        trailDuration: 1.0,
-        energyRegen: 1.0,
-        trailWidth: 1.0
+        flipWindow: 250,
+        claimRadius: 1.0,
+        respawnSpeed: 2.0,
+        orbitalSpeed: 1.0,
+        dotMagnetism: 0
       };
       this.ghostProperties = properties;
 
@@ -810,7 +834,7 @@ export class GhostPanel {
   }
 
   /**
-   * Update property bar displays
+   * Update property bar displays (v3 - Dot Territory properties)
    * @param {Object} properties - Ghost properties object
    */
   _updatePropertyBars(properties) {
@@ -818,49 +842,55 @@ export class GhostPanel {
 
     const ranges = getPropertyRanges();
 
-    // Mass
-    const massValue = this.container.querySelector('#prop-mass');
-    const massBar = this.container.querySelector('#prop-mass-bar');
-    if (massValue && massBar) {
-      massValue.textContent = `${properties.mass.toFixed(1)}x`;
-      const massPercent = normalizeProperty('mass', properties.mass) * 100;
-      massBar.style.width = `${massPercent}%`;
+    // Flip Window (timing in ms)
+    const flipValue = this.container.querySelector('#prop-flip');
+    const flipBar = this.container.querySelector('#prop-flip-bar');
+    if (flipValue && flipBar) {
+      const flipWindow = properties.flipWindow || 250;
+      flipValue.textContent = `${Math.round(flipWindow)}ms`;
+      const flipPercent = normalizeProperty('flipWindow', flipWindow) * 100;
+      flipBar.style.width = `${flipPercent}%`;
     }
 
-    // Thrust efficiency
-    const thrustValue = this.container.querySelector('#prop-thrust');
-    const thrustBar = this.container.querySelector('#prop-thrust-bar');
-    if (thrustValue && thrustBar) {
-      thrustValue.textContent = `${properties.thrustEfficiency.toFixed(1)}x`;
-      const thrustPercent = normalizeProperty('thrustEfficiency', properties.thrustEfficiency) * 100;
-      thrustBar.style.width = `${thrustPercent}%`;
+    // Claim Radius (multiplier)
+    const claimValue = this.container.querySelector('#prop-claim');
+    const claimBar = this.container.querySelector('#prop-claim-bar');
+    if (claimValue && claimBar) {
+      const claimRadius = properties.claimRadius || 1.0;
+      claimValue.textContent = `${claimRadius.toFixed(2)}x`;
+      const claimPercent = normalizeProperty('claimRadius', claimRadius) * 100;
+      claimBar.style.width = `${claimPercent}%`;
     }
 
-    // Trail duration
-    const trailValue = this.container.querySelector('#prop-trail');
-    const trailBar = this.container.querySelector('#prop-trail-bar');
-    if (trailValue && trailBar) {
-      trailValue.textContent = `${properties.trailDuration.toFixed(1)}x`;
-      const trailPercent = normalizeProperty('trailDuration', properties.trailDuration) * 100;
-      trailBar.style.width = `${trailPercent}%`;
+    // Respawn Speed (seconds - lower is better)
+    const respawnValue = this.container.querySelector('#prop-respawn');
+    const respawnBar = this.container.querySelector('#prop-respawn-bar');
+    if (respawnValue && respawnBar) {
+      const respawnSpeed = properties.respawnSpeed || 2.0;
+      respawnValue.textContent = `${respawnSpeed.toFixed(1)}s`;
+      // Invert for display: lower respawn = higher bar
+      const respawnPercent = (1 - normalizeProperty('respawnSpeed', respawnSpeed)) * 100;
+      respawnBar.style.width = `${respawnPercent}%`;
     }
 
-    // Energy regen
-    const energyValue = this.container.querySelector('#prop-energy');
-    const energyBar = this.container.querySelector('#prop-energy-bar');
-    if (energyValue && energyBar) {
-      energyValue.textContent = `${properties.energyRegen.toFixed(1)}x`;
-      const energyPercent = normalizeProperty('energyRegen', properties.energyRegen) * 100;
-      energyBar.style.width = `${energyPercent}%`;
+    // Orbital Speed (multiplier)
+    const orbitalValue = this.container.querySelector('#prop-orbital');
+    const orbitalBar = this.container.querySelector('#prop-orbital-bar');
+    if (orbitalValue && orbitalBar) {
+      const orbitalSpeed = properties.orbitalSpeed || 1.0;
+      orbitalValue.textContent = `${orbitalSpeed.toFixed(2)}x`;
+      const orbitalPercent = normalizeProperty('orbitalSpeed', orbitalSpeed) * 100;
+      orbitalBar.style.width = `${orbitalPercent}%`;
     }
 
-    // Trail width
-    const widthValue = this.container.querySelector('#prop-width');
-    const widthBar = this.container.querySelector('#prop-width-bar');
-    if (widthValue && widthBar) {
-      widthValue.textContent = `${properties.trailWidth.toFixed(1)}x`;
-      const widthPercent = normalizeProperty('trailWidth', properties.trailWidth) * 100;
-      widthBar.style.width = `${widthPercent}%`;
+    // Dot Magnetism (percentage)
+    const magnetValue = this.container.querySelector('#prop-magnet');
+    const magnetBar = this.container.querySelector('#prop-magnet-bar');
+    if (magnetValue && magnetBar) {
+      const dotMagnetism = properties.dotMagnetism || 0;
+      magnetValue.textContent = `${Math.round(dotMagnetism * 100)}%`;
+      const magnetPercent = normalizeProperty('dotMagnetism', dotMagnetism) * 100;
+      magnetBar.style.width = `${magnetPercent}%`;
     }
   }
 
@@ -880,29 +910,132 @@ export class GhostPanel {
    * Activate class view mode
    */
   async _activateClassView() {
-    // Initialize maze renderer if needed (for class view)
-    if (!this.mazeInitialized && !this.mazeError) {
-      await this._initMazeRenderer();
+    // Initialize terrain renderer if needed (for class view fractal landscape)
+    if (!this.terrainInitialized && !this.terrainError) {
+      await this._initTerrainRenderer();
     }
 
-    // Set class view mode on renderer
-    if (this.mazeRenderer) {
-      this.mazeRenderer.setClassViewMode(true);
-    }
-
-    // Load class ghosts
+    // Load class ghosts and update terrain
     await this._loadClassGhosts();
+  }
+
+  /**
+   * Initialize the 3D terrain renderer for class view
+   */
+  async _initTerrainRenderer() {
+    const container = this.container.querySelector('#ghost-terrain-container');
+    if (!container) {
+      console.warn('[GhostPanel] Terrain container not found');
+      return;
+    }
+
+    // Check if Three.js is available
+    if (typeof THREE === 'undefined') {
+      this._showTerrainError('3D visualization unavailable', 'Three.js library not loaded');
+      this.terrainError = new Error('Three.js not loaded');
+      return;
+    }
+
+    try {
+      // Show loading state
+      container.innerHTML = `
+        <div class="ghost-terrain-loading">
+          <div class="ghost-loading-spinner"></div>
+          <p>Generating class landscape...</p>
+        </div>
+      `;
+
+      // Create terrain renderer
+      this.terrainRenderer = new TerrainRenderer(container, { quality: 'medium' });
+
+      // Listen for terrain events
+      container.addEventListener('terrain-ready', () => {
+        console.log('[GhostPanel] Terrain renderer ready');
+
+        // Remove loading indicators
+        this._clearTerrainOverlays(container);
+
+        // Update terrain with class data if available
+        if (this.classGhosts.length > 0) {
+          this.terrainRenderer.updateFromClassData(this.classGhosts);
+        }
+      });
+
+      container.addEventListener('terrain-error', (event) => {
+        console.error('[GhostPanel] Terrain error:', event.detail.error);
+        this._showTerrainError('3D visualization unavailable', event.detail.error.message);
+        this.terrainError = event.detail.error;
+      });
+
+      // Initialize the renderer
+      await this.terrainRenderer.init();
+      this.terrainInitialized = true;
+
+    } catch (error) {
+      console.error('[GhostPanel] Failed to initialize terrain renderer:', error);
+      this._showTerrainError('3D visualization unavailable', error.message);
+      this.terrainError = error;
+    }
+  }
+
+  /**
+   * Show error message in terrain container
+   * @param {string} title - Error title
+   * @param {string} message - Error details
+   */
+  _showTerrainError(title, message) {
+    const container = this.container.querySelector('#ghost-terrain-container');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="ghost-terrain-error">
+        <div class="ghost-placeholder-icon">⚠️</div>
+        <h4>${title}</h4>
+        <p>${message || 'Please try reloading the page.'}</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Remove loading overlays from terrain container
+   * @param {HTMLElement} container
+   */
+  _clearTerrainOverlays(container) {
+    if (!container) return;
+    container.querySelectorAll('.ghost-terrain-loading').forEach(el => el.remove());
+    container.querySelectorAll('.ghost-loading-spinner').forEach(el => el.remove());
+  }
+
+  /**
+   * Update terrain visualization with class ghost data
+   * Aggregates weights and proficiency to generate terrain
+   */
+  _updateTerrainFromClassData() {
+    if (!this.terrainRenderer || !this.classGhosts || this.classGhosts.length === 0) {
+      // Show empty state
+      if (this.terrainRenderer) {
+        this.terrainRenderer.updateFromClassData([]);
+      }
+      return;
+    }
+
+    // Aggregate class data for terrain generation
+    this.aggregatedClassData = aggregateClassWeights(this.classGhosts);
+
+    // Update terrain with class ghost profiles
+    this.terrainRenderer.updateFromClassData(this.classGhosts);
+
+    console.log('[GhostPanel] Terrain updated with', this.classGhosts.length, 'ghost profiles');
+    console.log('[GhostPanel] Aggregated data:', this.aggregatedClassData);
   }
 
   /**
    * Deactivate class view mode
    */
   _deactivateClassView() {
-    if (this.mazeRenderer) {
-      this.mazeRenderer.setClassViewMode(false);
-
-      // Move canvas back to My Ghost container
-      this._attachMazeToMyGhostTab();
+    // Terrain renderer stays active but stops animation updates
+    if (this.terrainRenderer) {
+      this.terrainRenderer.setAutoRotate(false);
     }
   }
 
@@ -958,15 +1091,8 @@ export class GhostPanel {
       const data = await response.json();
       this.classGhosts = data.ghosts || [];
 
-      // Parse leaderboard data to add currentLevel based on proficiency
-      if (this.mazeRenderer && this.mazeRenderer.nodes) {
-        this.classGhosts = parseLeaderboardData(this.classGhosts, this.mazeRenderer.nodes);
-      }
-
-      // Show all ghosts in 3D view
-      if (this.mazeRenderer) {
-        this.mazeRenderer.showAllGhosts(this.classGhosts);
-      }
+      // Update terrain visualization with class data
+      this._updateTerrainFromClassData();
 
       this.classViewLoading = false;
       this._renderClassViewContent();
@@ -986,11 +1112,22 @@ export class GhostPanel {
     const container = this.container.querySelector('[data-tab-content="class-view"]');
     if (!container) return;
 
+    // Calculate class stats
+    const stats = this._calculateClassStats();
+
+    // Get terrain status message
+    const terrainStatus = this._getTerrainStatusMessage();
+
     // Loading state
     if (this.classViewLoading) {
       container.innerHTML = `
         <div class="ghost-class-view">
-          <div class="ghost-maze-container" id="ghost-maze-container-class"></div>
+          <div class="ghost-terrain-container" id="ghost-terrain-container">
+            <div class="ghost-terrain-loading">
+              <div class="ghost-loading-spinner"></div>
+              <p>Loading class landscape...</p>
+            </div>
+          </div>
           <div class="ghost-class-loading">
             <div class="ghost-loading-spinner"></div>
             <p>Loading class ghosts...</p>
@@ -1004,7 +1141,12 @@ export class GhostPanel {
     if (this.classViewError) {
       container.innerHTML = `
         <div class="ghost-class-view">
-          <div class="ghost-maze-container" id="ghost-maze-container-class"></div>
+          <div class="ghost-terrain-container" id="ghost-terrain-container">
+            <div class="ghost-terrain-empty">
+              <div class="ghost-placeholder-icon">🏔️</div>
+              <p>No class data yet</p>
+            </div>
+          </div>
           <div class="ghost-class-error">
             <div class="ghost-placeholder-icon">⚠️</div>
             <p>${this.classViewError}</p>
@@ -1017,20 +1159,29 @@ export class GhostPanel {
       return;
     }
 
-    // Calculate class stats
-    const stats = this._calculateClassStats();
-
-    // Render full class view
+    // Render full class view with terrain
     container.innerHTML = `
       <div class="ghost-class-view">
-        <!-- 3D Maze Visualization (reuses the initialized renderer) -->
-        <div class="ghost-maze-container" id="ghost-maze-container-class">
-          ${!this.mazeInitialized ? `
-            <div class="ghost-maze-loading">
-              <div class="ghost-placeholder-icon">👻</div>
-              <p>3D visualization loading...</p>
+        <!-- 3D Terrain Visualization (fractal landscape from class weights) -->
+        <div class="ghost-terrain-container" id="ghost-terrain-container">
+          ${!this.terrainInitialized ? `
+            <div class="ghost-terrain-loading">
+              <div class="ghost-placeholder-icon">🏔️</div>
+              <p>${terrainStatus}</p>
             </div>
           ` : ''}
+        </div>
+
+        <!-- Terrain Legend -->
+        <div class="ghost-terrain-legend">
+          <span class="terrain-legend-item">
+            <span class="terrain-legend-color terrain-peak"></span>
+            High Accuracy
+          </span>
+          <span class="terrain-legend-item">
+            <span class="terrain-legend-color terrain-valley"></span>
+            Struggle Areas
+          </span>
         </div>
 
         <!-- Class Stats Summary -->
@@ -1066,11 +1217,51 @@ export class GhostPanel {
       this._loadClassGhosts();
     });
 
-    // Move the 3D canvas to class view container if needed
-    this._attachMazeToClassView();
+    // Attach terrain renderer to container if initialized
+    this._attachTerrainToClassView();
 
     // Attach click handlers to ghost list items
     this._attachGhostListHandlers();
+  }
+
+  /**
+   * Get terrain status message based on current state
+   * @returns {string} Status message
+   */
+  _getTerrainStatusMessage() {
+    if (this.classGhosts.length === 0) {
+      return 'No class data yet - landscape will appear when students practice';
+    }
+    if (!this.terrainInitialized) {
+      return 'Generating class landscape...';
+    }
+    return 'Class learning landscape';
+  }
+
+  /**
+   * Attach terrain renderer canvas to class view container
+   */
+  _attachTerrainToClassView() {
+    if (!this.terrainRenderer || !this.terrainRenderer.renderer) return;
+
+    const terrainContainer = this.container.querySelector('#ghost-terrain-container');
+    const canvas = this.terrainRenderer.renderer.domElement;
+
+    if (!terrainContainer || !canvas) return;
+
+    // Move canvas to terrain container if not already there
+    if (canvas.parentElement !== terrainContainer) {
+      // Clear loading placeholder
+      terrainContainer.innerHTML = '';
+      terrainContainer.appendChild(canvas);
+
+      // Trigger resize after moving
+      setTimeout(() => {
+        this.terrainRenderer._handleResize();
+        // Enable auto-rotation when in class view
+        this.terrainRenderer.setAutoRotate(true);
+      }, 50);
+    }
   }
 
   /**
@@ -2447,6 +2638,90 @@ export class GhostPanel {
         gap: 16px;
       }
 
+      /* 3D Terrain Container (Class View fractal landscape) */
+      .ghost-terrain-container,
+      #ghost-terrain-container {
+        width: 100%;
+        height: 250px;
+        background: linear-gradient(135deg, #0a0a12 0%, #0a1020 100%);
+        border: 1px solid #00d4ff33;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .ghost-terrain-container canvas,
+      #ghost-terrain-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+      }
+
+      .ghost-terrain-loading,
+      .ghost-terrain-error,
+      .ghost-terrain-empty {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 20px;
+        background: linear-gradient(135deg, #0a0a12 0%, #0a1020 100%);
+      }
+
+      .ghost-terrain-loading p,
+      .ghost-terrain-error p,
+      .ghost-terrain-empty p {
+        color: #9ca3af;
+        font-size: 13px;
+        margin: 8px 0 0 0;
+      }
+
+      .ghost-terrain-error h4 {
+        color: #f9fafb;
+        margin: 8px 0;
+        font-size: 14px;
+      }
+
+      /* Terrain Legend */
+      .ghost-terrain-legend {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        padding: 8px;
+        background: #161b22;
+        border: 1px solid #00d4ff22;
+        border-radius: 6px;
+        font-size: 11px;
+        color: #9ca3af;
+      }
+
+      .terrain-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .terrain-legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+      }
+
+      .terrain-legend-color.terrain-peak {
+        background: linear-gradient(135deg, #ffdd00 0%, #00ff88 100%);
+      }
+
+      .terrain-legend-color.terrain-valley {
+        background: linear-gradient(135deg, #223366 0%, #112244 100%);
+      }
+
+      /* Legacy maze container (kept for compatibility) */
       #ghost-maze-container-class {
         width: 100%;
         height: 250px;

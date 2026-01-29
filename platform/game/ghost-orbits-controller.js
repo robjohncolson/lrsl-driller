@@ -208,6 +208,13 @@ export class GhostOrbitsController {
         if (this.ghostProperties?.pattern) {
           console.log('[GhostOrbits] Pattern size:', this.ghostProperties.pattern.width, 'x', this.ghostProperties.pattern.height);
         }
+
+        // v3: Apply NN-influenced invulnerability duration from respawnSpeed property
+        // respawnSpeed ranges from 1.2s (best) to 2.0s (worst)
+        if (this.ghostProperties?.respawnSpeed !== undefined) {
+          this.invulnerabilityDuration = this.ghostProperties.respawnSpeed * 1000; // Convert to ms
+          console.log('[GhostOrbits] Invulnerability duration from NN:', this.invulnerabilityDuration, 'ms');
+        }
       }
 
       // Load and apply saved ghost stat upgrades
@@ -1290,6 +1297,48 @@ export class GhostOrbitsController {
     }
 
     // ============================================
+    // v3: DOT MAGNETISM (NN-influenced - subtle pull toward unclaimed dots)
+    // ============================================
+    if (this.dotManager && this.ghostMovementState === 'FREE_FLIGHT') {
+      const magnetism = this.ghostProperties?.dotMagnetism || 0;
+
+      if (magnetism > 0) {
+        const neutralDots = this.dotManager.getNeutralDots();
+
+        if (neutralDots.length > 0) {
+          // Find nearest unclaimed dot
+          let nearestDot = null;
+          let nearestDist = Infinity;
+
+          for (const dot of neutralDots) {
+            const dx = dot.x - localGhost.position.x;
+            const dy = dot.y - localGhost.position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < nearestDist && dist > 20) { // Ignore dots too close
+              nearestDist = dist;
+              nearestDot = dot;
+            }
+          }
+
+          // Apply subtle magnetism force toward nearest neutral dot
+          if (nearestDot && nearestDist < 200) { // Only within 200px range
+            const dx = nearestDot.x - localGhost.position.x;
+            const dy = nearestDot.y - localGhost.position.y;
+
+            // Normalize and scale by magnetism strength and inverse distance
+            const force = magnetism * (1 - nearestDist / 200) * 0.5;
+            const nx = dx / nearestDist;
+            const ny = dy / nearestDist;
+
+            localGhost.velocity.x += nx * force;
+            localGhost.velocity.y += ny * force;
+          }
+        }
+      }
+    }
+
+    // ============================================
     // v3: DOT TERRITORY SYSTEM
     // ============================================
     if (this.dotManager) {
@@ -1302,11 +1351,17 @@ export class GhostOrbitsController {
       // Check dot interactions for player (only when not on record)
       if (!playerOnRecord && currentTime > this.playerInvulnerableUntil) {
         const playerColor = localGhost.color || this.ghostProperties?.color || '#4488ff';
+
+        // v3: Apply NN-influenced dot interaction properties
         const interaction = this.dotManager.checkDotInteraction(
           'player',
           localGhost.position.x,
           localGhost.position.y,
-          playerColor
+          playerColor,
+          {
+            claimRadius: this.ghostProperties?.claimRadius || 1.0,
+            flipWindow: this.ghostProperties?.flipWindow || 250
+          }
         );
 
         if (interaction) {
@@ -1803,14 +1858,16 @@ export class GhostOrbitsController {
           y: localGhost.velocity?.y ?? 0
         };
 
+        // v3: Pass orbitalSpeed multiplier from NN properties
         const record = this.physicsEngine.requestOrbitEntry(
           this.username,
           ghostPos,
-          ghostVel
+          ghostVel,
+          { orbitalSpeedMultiplier: this.ghostProperties?.orbitalSpeed || 1.0 }
         );
 
         if (record) {
-          console.log('[GhostOrbits] Landed on record via Space key:', record.id);
+          console.log('[GhostOrbits] Landed on record via Space key:', record.id, 'speed:', this.ghostProperties?.orbitalSpeed || 1.0);
           this.ghostMovementState = 'ORBITING';
           this.renderer?.updateGhostOrbitState?.(this.username, true);
           if (this.audio) this.audio.playOrbitCapture?.();
@@ -2234,6 +2291,12 @@ export class GhostOrbitsController {
       }
     }
 
+    // Update lastSessionGolds to require a new gold star for rematch
+    // This ensures players can't infinitely rematch without earning more stars
+    this.lastSessionGolds = this.currentSessionGolds;
+    this._saveSessionGolds();
+    console.log(`[GhostOrbits] Updated lastSessionGolds to ${this.lastSessionGolds} - rematch requires new gold star`);
+
     // Transition to ROUND_END state
     this._setState(GameState.ROUND_END);
 
@@ -2262,6 +2325,10 @@ export class GhostOrbitsController {
       if (winner === 'player_win') {
         const weakestStat = this._getWeakestStatName();
         resultsData.statUpgrade = this._formatStatUpgrade(weakestStat);
+      } else {
+        // For defeat, indicate that rematch is NOT currently available
+        // (player just used their gold star unlock and needs to earn another)
+        resultsData.canRematch = false;
       }
 
       this.panel.showResults(resultsData);
@@ -2615,9 +2682,9 @@ export class GhostOrbitsController {
     // Check if player has enough stars
     if (!this.isUnlocked()) {
       console.warn('[GhostOrbits] Cannot rematch - not enough stars');
-      // Show message to player
-      alert('You need to earn more gold stars to rematch!\nReturning to practice - earn a gold star and click the Arena button again.');
-      // Close the overlay and return to practice
+      console.log('[GhostOrbits] currentSessionGolds:', this.currentSessionGolds, 'lastSessionGolds:', this.lastSessionGolds);
+      // The UI should already show a disabled button, but just in case,
+      // exit gracefully without an intrusive alert
       this.exitArena();
       return;
     }
