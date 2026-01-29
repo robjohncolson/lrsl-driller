@@ -1003,6 +1003,8 @@ class ArenaGameState {
     for (const [id, dot] of this.dots) {
       if (now - dot.lastClaimTime < recentThreshold || dot.lastClaimTime === 0) {
         recentDots[id] = {
+          x: dot.x,
+          y: dot.y,
           owner: dot.owner,
           state: dot.state,
         };

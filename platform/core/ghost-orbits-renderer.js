@@ -2090,6 +2090,11 @@ class GhostOrbitsRenderer {
     for (const dot of this.territoryDots) {
       const { x, y, radius, pulsePhase, state, ownerColor } = dot;
 
+      // Validate coordinates - skip dots with invalid positions
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        continue;
+      }
+
       // Pulsing effect (stronger for neutral, subtle for owned)
       const isNeutral = state === 'NEUTRAL';
       const pulseStrength = isNeutral ? 0.25 : 0.15;

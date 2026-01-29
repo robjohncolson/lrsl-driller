@@ -354,30 +354,48 @@ export class GhostOrbitsController {
     // Update players with interpolation
     if (state.players) {
       for (const [id, playerData] of Object.entries(state.players)) {
+        // Handle both flat (x, y) and nested (position.x, position.y) formats
+        const newX = playerData.x ?? playerData.position?.x;
+        const newY = playerData.y ?? playerData.position?.y;
+        const newVx = playerData.vx ?? playerData.velocity?.x ?? 0;
+        const newVy = playerData.vy ?? playerData.velocity?.y ?? 0;
+
         // Store previous state for interpolation
         const prevPlayer = this.serverState.players[id];
-        if (prevPlayer) {
+        if (prevPlayer && Number.isFinite(newX) && Number.isFinite(newY)) {
           this.interpolationBuffer.set(id, {
             prev: { x: prevPlayer.x, y: prevPlayer.y },
-            next: { x: playerData.x, y: playerData.y },
+            next: { x: newX, y: newY },
             timestamp: now
           });
         }
 
-        // Update current state
+        // Update current state - normalize to flat format
         this.serverState.players[id] = {
           ...this.serverState.players[id],
-          ...playerData
+          ...playerData,
+          x: newX,
+          y: newY,
+          vx: newVx,
+          vy: newVy,
+          isAlive: playerData.isAlive ?? playerData.lives > 0 ?? true
         };
       }
     }
 
-    // Update dots
+    // Update dots - preserve coordinates from full state, merge ownership from delta
     if (state.dots) {
       for (const [id, dotData] of Object.entries(state.dots)) {
+        const existing = this.serverState.dots[id] || {};
+        // Handle both flat (x, y) and nested (position.x, position.y) formats
+        const newX = dotData.x ?? dotData.position?.x ?? existing.x;
+        const newY = dotData.y ?? dotData.position?.y ?? existing.y;
+
         this.serverState.dots[id] = {
-          ...this.serverState.dots[id],
-          ...dotData
+          ...existing,
+          ...dotData,
+          x: newX,
+          y: newY
         };
       }
     }
@@ -728,6 +746,15 @@ export class GhostOrbitsController {
   _handleArenaJoined(message) {
     console.log('[GhostOrbits] Joined arena:', message);
     this.playerId = message.playerId;
+
+    // Set localGhostId on renderer so it knows which ghost is the local player
+    if (this.renderer) {
+      this.renderer.localGhostId = this.playerId;
+      if (this.renderer.setCurrentPlayerId) {
+        this.renderer.setCurrentPlayerId(this.playerId);
+      }
+      console.log('[GhostOrbits] Set renderer localGhostId:', this.playerId);
+    }
 
     // Update local stats with server-returned values (after bet deduction)
     if (typeof message.newGoldStars === 'number') {
@@ -1125,14 +1152,19 @@ export class GhostOrbitsController {
   _startRenderLoop() {
     if (this._animationFrameId) return;
 
-    this._lastRenderTime = performance.now();
-    this._renderLoop();
-
     if (this.renderer) {
       // Enable server-authoritative mode - server owns all positions
       this.renderer.setServerAuthoritative(true);
+
+      // IMPORTANT: Populate state BEFORE starting render loop
+      // This ensures ghosts/dots are present on first render frame
+      this._updateRenderer();
+
       this.renderer.start();
     }
+
+    this._lastRenderTime = performance.now();
+    this._renderLoop();
   }
 
   /**
