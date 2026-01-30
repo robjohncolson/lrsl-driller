@@ -101,12 +101,11 @@ export class Platform {
       const savedTier = this.gameEngine.currentTier;
       const state = this.gameEngine.getState();
 
-      // Check if saved tier exists and is unlocked
+      // Check if saved tier exists and is unlocked (strict sequential check via unlockedTiers)
       const savedMode = modes.find(m => m.id === savedTier);
       const isSavedModeUnlocked = savedMode && (
         savedMode.unlockedBy === 'default' ||
-        state.unlockedTiers.includes(savedTier) ||
-        (savedMode.unlockedBy?.gold && state.starCounts.gold >= savedMode.unlockedBy.gold)
+        state.unlockedTiers.includes(savedTier)
       );
 
       if (isSavedModeUnlocked) {
@@ -120,7 +119,15 @@ export class Platform {
       // Sync gameEngine.currentTier with platform.currentMode
       // This ensures stars are tracked to the correct mode
       if (this.currentMode) {
-        this.gameEngine.setTier(this.currentMode);
+        const success = this.gameEngine.setTier(this.currentMode);
+        if (!success) {
+          console.warn(`[Platform] Failed to set tier ${this.currentMode}, falling back to first unlocked mode`);
+          const firstUnlocked = this.gameEngine.unlockedTiers[0] || modes[0]?.id;
+          if (firstUnlocked) {
+            this.currentMode = firstUnlocked;
+            this.gameEngine.setTier(firstUnlocked);
+          }
+        }
         console.log(`[Platform] Synced gameEngine.currentTier: ${this.gameEngine.currentTier}`);
       }
 
@@ -146,11 +153,11 @@ export class Platform {
     }
 
     // Check if mode is unlocked (skip check if force=true)
+    // Uses strict sequential check via unlockedTiers - no global gold bypass
     if (!force) {
       const state = this.gameEngine.getState();
       const isUnlocked = mode.unlockedBy === 'default' ||
-        state.unlockedTiers.includes(modeId) ||
-        (mode.unlockedBy?.gold && state.starCounts.gold >= mode.unlockedBy.gold);
+        state.unlockedTiers.includes(modeId);
 
       if (!isUnlocked) {
         console.warn(`Mode "${modeId}" is locked`);
@@ -479,9 +486,12 @@ export class Platform {
       results.scores = Object.values(results.fields).map(r => r.score);
 
       // Update game engine
-      for (const [fieldId, result] of Object.entries(results.fields)) {
-        this.gameEngine.recordResult(fieldId, result.score, results.allCorrect);
-      }
+      // Only pass allCorrect on the final field to avoid awarding N stars for N-field problems
+      const fieldEntries = Object.entries(results.fields);
+      fieldEntries.forEach(([fieldId, result], index) => {
+        const isLastField = index === fieldEntries.length - 1;
+        this.gameEngine.recordResult(fieldId, result.score, isLastField && results.allCorrect);
+      });
 
       // Show feedback
       this.inputRenderer?.showAllFeedback(results);

@@ -1124,6 +1124,17 @@
             }
           }
         }
+        if (message.type === 'progression_overrides_cleared') {
+          console.log('[App] All progression overrides cleared:', message);
+          if (message.cartridgeId === currentCartridgeId && platform?.gameEngine) {
+            platform.gameEngine.setOverrides({});
+            renderModeTabs();
+            updateTeacherProgressionControls();
+            if (!isTeacher) {
+              celebration.showToast('Teacher reset all level requirements to defaults', 'info');
+            }
+          }
+        }
         // Handle ghost battle completion messages
         if (message.type === 'ghost_battle_complete') {
           console.log('[App] Ghost battle completed:', message);

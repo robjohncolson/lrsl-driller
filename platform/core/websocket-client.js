@@ -211,6 +211,12 @@ export class WebSocketClient {
       case 'points_earned':
       case 'grid_full_state':
       case 'avatar_moved':
+      // Progression override messages from teacher
+      case 'progression_override_changed':
+      case 'progression_override_removed':
+      case 'progression_overrides_cleared':
+      // Ghost battle results
+      case 'ghost_battle_complete':
         this.onGridMessage(message);
         break;
     }
