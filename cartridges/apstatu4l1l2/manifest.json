@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstatu4l1l2",
-    "name": "Probability (4.1-4.8)",
+    "name": "Probability (4.1-4.9)",
     "subject": "AP Statistics",
-    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions, random variables, probability distributions, mean, standard deviation"
+    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions, random variables, probability distributions, mean, standard deviation, combining random variables, linear transformations, variance trap"
   },
   "config": {
     "contextsFile": null,
@@ -18,7 +18,8 @@
       "VAR-5.A",
       "VAR-5.B",
       "VAR-5.C",
-      "VAR-5.D"
+      "VAR-5.D",
+      "VAR-5.E"
     ]
   },
   "display": {
@@ -966,6 +967,166 @@
           }
         ]
       }
+    },
+    {
+      "id": "l41-transform-mean",
+      "name": "4.9a: Linear Transform - Mean",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/LinearTransformMean.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "transformMeanAnswer",
+            "type": "number",
+            "label": "Calculate μY:",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l42-transform-sd",
+      "name": "4.9b: Linear Transform - SD",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/LinearTransformSD.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "transformSDAnswer",
+            "type": "number",
+            "label": "Calculate σY:",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l43-sum-means",
+      "name": "4.9c: Sum of Means",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/SumOfMeans.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "sumMeansAnswer",
+            "type": "number",
+            "label": "Calculate μ(X+Y):",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l44-diff-means",
+      "name": "4.9d: Difference of Means",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/DiffOfMeans.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansAnswer",
+            "type": "number",
+            "label": "Calculate μ(X-Y):",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l45-combined-sd-sum",
+      "name": "4.9e: Combined SD (Sum) ⚠️",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/VarianceTrapSum.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "combinedSDSumAnswer",
+            "type": "number",
+            "label": "Calculate σ(X+Y):",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l46-combined-sd-diff",
+      "name": "4.9f: Combined SD (Diff) ⚠️",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/VarianceTrapDiff.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "combinedSDDiffAnswer",
+            "type": "number",
+            "label": "Calculate σ(X-Y):",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l47-identify-error",
+      "name": "4.9g: Identify the Error",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/IdentifyError.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "identifyErrorAnswer",
+            "type": "dropdown",
+            "label": "What error did the student make?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l48-capstone-49",
+      "name": "4.9 Capstone",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "animation": "assets/Capstone49.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstoneMeanAnswer",
+            "type": "number",
+            "label": "Calculate the mean of the combined variable:",
+            "step": 0.01
+          },
+          {
+            "id": "capstoneSDAnswer",
+            "type": "number",
+            "label": "Calculate the standard deviation:",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -1034,7 +1195,16 @@
       "shapeAnswer": "Look at where probability is concentrated. Right-skewed = tail extends right. Left-skewed = tail extends left. Uniform = all equal.",
       "meanAnswer": "μ = Σ[x·P(x)]. Multiply EACH x value by its probability, then add ALL products together.",
       "stdDevAnswer": "σ = √[Σ(x-μ)²·P(x)]. Find deviations from mean, square them, multiply by P(x), sum, then square root.",
-      "interpretAnswer": "Mean = long-run average. Standard deviation = typical variation from mean. Always include context and units!"
+      "interpretAnswer": "Mean = long-run average. Standard deviation = typical variation from mean. Always include context and units!",
+      "transformMeanAnswer": "For Y = a + bX: multiply the mean by b, then add a. μY = a + b·μX",
+      "transformSDAnswer": "For Y = a + bX: multiply SD by |b| only. The constant 'a' shifts the center but doesn't change spread. σY = |b|·σX",
+      "sumMeansAnswer": "Means combine normally: μ(X+Y) = μX + μY. Just add the two means!",
+      "diffMeansAnswer": "Means combine normally: μ(X-Y) = μX - μY. Just subtract the two means!",
+      "combinedSDSumAnswer": "⚠️ THE VARIANCE TRAP: Don't add SDs directly! Add VARIANCES first, then take the square root. σ(X+Y) = √(σX² + σY²)",
+      "combinedSDDiffAnswer": "⚠️ TRAP PART 2: Even for X-Y, variances ADD! Subtracting uncertain things creates MORE uncertainty. σ(X-Y) = √(σX² + σY²)",
+      "identifyErrorAnswer": "Look for the classic mistakes: adding SDs directly, or subtracting variances for a difference.",
+      "capstoneMeanAnswer": "Calculate the combined mean first. Remember: means add/subtract normally.",
+      "capstoneSDAnswer": "For the SD: add the VARIANCES (σ²), then take the square root. Don't fall for the trap!"
     },
     "penalty": {
       "0": "gold",
@@ -1367,7 +1537,71 @@
         "unlockedBy": {
           "gold": 3
         },
-        "celebrationMessage": "UNIT 4.1-4.8 COMPLETE! You've mastered probability AND random variables!"
+        "celebrationMessage": "Topics 4.7-4.8 complete! Now onto combining random variables..."
+      },
+      {
+        "id": "l41-transform-mean",
+        "name": "4.9a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Linear transformation of mean mastered! Next: transforming standard deviation."
+      },
+      {
+        "id": "l42-transform-sd",
+        "name": "4.9b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Transforming SD understood! Remember: the constant doesn't affect spread. Next: adding means."
+      },
+      {
+        "id": "l43-sum-means",
+        "name": "4.9c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Adding means is intuitive! Next: subtracting means."
+      },
+      {
+        "id": "l44-diff-means",
+        "name": "4.9d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Means add/subtract normally! But watch out - SDs don't! Next: THE VARIANCE TRAP."
+      },
+      {
+        "id": "l45-combined-sd-sum",
+        "name": "4.9e",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You avoided the variance trap! Remember: add variances, then square root. Next: difference of SDs."
+      },
+      {
+        "id": "l46-combined-sd-diff",
+        "name": "4.9f",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You know that variances ALWAYS add, even for X-Y! Next: identify errors."
+      },
+      {
+        "id": "l47-identify-error",
+        "name": "4.9g",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can spot the trap! Final capstone next."
+      },
+      {
+        "id": "l48-capstone-49",
+        "name": "4.9 Capstone",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "UNIT 4.1-4.9 COMPLETE! You've mastered probability, random variables, AND combining them!"
       }
     ]
   }

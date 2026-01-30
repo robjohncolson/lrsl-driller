@@ -1178,6 +1178,328 @@ export function gradeField(fieldId, answer, context) {
     };
   }
 
+  // ========== LEVEL 41: Linear Transform - Mean ==========
+  if (fieldId === "transformMeanAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.1;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! μY = ${context.a} + ${context.b}(${context.muX}) = ${expectedVal}`
+      };
+    }
+    if (diff <= tolerance * 2) {
+      return {
+        score: "P",
+        feedback: `Close! μY = a + b·μX = ${context.a} + ${context.b}(${context.muX}) = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. For Y = a + bX: μY = a + b·μX = ${context.a} + ${context.b}(${context.muX}) = ${expectedVal}`
+    };
+  }
+
+  // ========== LEVEL 42: Linear Transform - SD ==========
+  if (fieldId === "transformSDAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.05;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check for the common trap: including the constant
+    const trapAnswer = Math.abs(context.a) + Math.abs(context.b) * context.sigmaX;
+    if (Math.abs(studentVal - trapAnswer) < 0.1 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `TRAP! The constant '${context.a}' doesn't affect spread! σY = |b|·σX = |${context.b}|(${context.sigmaX}) = ${expectedVal}`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! σY = |${context.b}|(${context.sigmaX}) = ${expectedVal}. The constant doesn't affect spread!`
+      };
+    }
+    if (diff <= tolerance * 2) {
+      return {
+        score: "P",
+        feedback: `Close! σY = |b|·σX = |${context.b}|(${context.sigmaX}) = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. σY = |b|·σX = |${context.b}|(${context.sigmaX}) = ${expectedVal}. Remember: constant 'a' doesn't affect spread!`
+    };
+  }
+
+  // ========== LEVEL 43: Sum of Means ==========
+  if (fieldId === "sumMeansAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.1;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! μ(X+Y) = ${context.muX} + ${context.muY} = ${expectedVal}`
+      };
+    }
+    if (diff <= tolerance * 2) {
+      return {
+        score: "P",
+        feedback: `Close! μ(X+Y) = μX + μY = ${context.muX} + ${context.muY} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. μ(X+Y) = μX + μY = ${context.muX} + ${context.muY} = ${expectedVal}`
+    };
+  }
+
+  // ========== LEVEL 44: Difference of Means ==========
+  if (fieldId === "diffMeansAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.1;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! μ(X-Y) = ${context.muX} - ${context.muY} = ${expectedVal}`
+      };
+    }
+    if (diff <= tolerance * 2) {
+      return {
+        score: "P",
+        feedback: `Close! μ(X-Y) = μX - μY = ${context.muX} - ${context.muY} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. μ(X-Y) = μX - μY = ${context.muX} - ${context.muY} = ${expectedVal}`
+    };
+  }
+
+  // ========== LEVEL 45: Combined SD - Sum (THE VARIANCE TRAP) ==========
+  if (fieldId === "combinedSDSumAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.05;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const trapAnswer = context.sigmaX + context.sigmaY; // Adding SDs directly
+    const varianceAnswer = context.varX + context.varY; // Forgot square root
+
+    // Check for THE TRAP: adding SDs directly
+    if (Math.abs(studentVal - trapAnswer) < 0.1 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `⚠️ VARIANCE TRAP! You added SDs directly (${context.sigmaX} + ${context.sigmaY} = ${trapAnswer}). You must add VARIANCES first, then take the square root: σ(X+Y) = √(${context.varX} + ${context.varY}) = ${expectedVal}`
+      };
+    }
+
+    // Check if they got the variance but forgot square root
+    if (Math.abs(studentVal - varianceAnswer) < 0.1 && diff > tolerance) {
+      return {
+        score: "P",
+        feedback: `Good! You added the variances correctly (${context.varX} + ${context.varY} = ${varianceAnswer}), but forgot to take the square root! σ(X+Y) = √${varianceAnswer} = ${expectedVal}`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! σ(X+Y) = √(${context.sigmaX}² + ${context.sigmaY}²) = √(${context.varX} + ${context.varY}) = ${expectedVal}. You avoided the trap!`
+      };
+    }
+    if (diff <= tolerance * 2) {
+      return {
+        score: "P",
+        feedback: `Close! σ(X+Y) = √(σX² + σY²) = √(${context.varX} + ${context.varY}) ≈ ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. σ(X+Y) = √(σX² + σY²) = √(${context.varX} + ${context.varY}) = ${expectedVal}. Remember: add VARIANCES, then square root!`
+    };
+  }
+
+  // ========== LEVEL 46: Combined SD - Difference (THE TRAP CONTINUES) ==========
+  if (fieldId === "combinedSDDiffAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.05;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const trapSubtract = Math.abs(context.sigmaX - context.sigmaY); // Subtracting SDs
+    const trapAdd = context.sigmaX + context.sigmaY; // Adding SDs directly
+    const varianceAnswer = context.varX + context.varY; // Forgot square root
+
+    // Check for TRAP 1: subtracting SDs
+    if (Math.abs(studentVal - trapSubtract) < 0.1 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `⚠️ VARIANCE TRAP! You subtracted SDs (|${context.sigmaX} - ${context.sigmaY}| = ${trapSubtract}). Even for X-Y, variances ADD! Subtracting uncertain quantities adds MORE uncertainty. σ(X-Y) = √(${context.varX} + ${context.varY}) = ${expectedVal}`
+      };
+    }
+
+    // Check for TRAP 2: adding SDs directly
+    if (Math.abs(studentVal - trapAdd) < 0.1 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `⚠️ VARIANCE TRAP! You added SDs directly. You must add VARIANCES, then square root: σ(X-Y) = √(${context.varX} + ${context.varY}) = ${expectedVal}`
+      };
+    }
+
+    // Check if they got the variance but forgot square root
+    if (Math.abs(studentVal - varianceAnswer) < 0.1 && diff > tolerance) {
+      return {
+        score: "P",
+        feedback: `Good! You added variances correctly, but forgot the square root! σ(X-Y) = √${varianceAnswer} = ${expectedVal}`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! σ(X-Y) = √(${context.sigmaX}² + ${context.sigmaY}²) = ${expectedVal}. You know that variances ALWAYS add, even for differences!`
+      };
+    }
+    if (diff <= tolerance * 2) {
+      return {
+        score: "P",
+        feedback: `Close! σ(X-Y) = √(σX² + σY²) = √(${context.varX} + ${context.varY}) ≈ ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. σ(X-Y) = √(σX² + σY²) = ${expectedVal}. Key insight: variances ADD even for X-Y!`
+    };
+  }
+
+  // ========== LEVEL 47: Identify the Error ==========
+  if (fieldId === "identifyErrorAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.expectedExplanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The error was: ${expected}. ${context.expectedExplanation}`
+    };
+  }
+
+  // ========== LEVEL 48: Capstone 4.9 - Mean ==========
+  if (fieldId === "capstoneMeanAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.1;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number for the mean." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! The combined mean is ${expectedVal}.`
+      };
+    }
+    if (diff <= tolerance * 2) {
+      return {
+        score: "P",
+        feedback: `Close! Check your calculation. Mean = ${context.muX} ± ${context.muY} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. For the mean: μ(X+Y) = ${context.muX} + ${context.muY} = ${expectedVal}, or μ(X-Y) = ${context.muX} - ${context.muY}`
+    };
+  }
+
+  // ========== LEVEL 48: Capstone 4.9 - SD ==========
+  if (fieldId === "capstoneSDAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.05;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number for the standard deviation." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const varX = context.sigmaX * context.sigmaX;
+    const varY = context.sigmaY * context.sigmaY;
+    const trapAdd = context.sigmaX + context.sigmaY;
+    const trapSubtract = Math.abs(context.sigmaX - context.sigmaY);
+
+    // Check for THE TRAP
+    if (Math.abs(studentVal - trapAdd) < 0.1 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `⚠️ VARIANCE TRAP! Don't add SDs directly. σ = √(${varX} + ${varY}) = ${expectedVal}`
+      };
+    }
+    if (Math.abs(studentVal - trapSubtract) < 0.1 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `⚠️ VARIANCE TRAP! Variances ADD even for differences. σ = √(${varX} + ${varY}) = ${expectedVal}`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! σ = √(${context.sigmaX}² + ${context.sigmaY}²) = √(${varX} + ${varY}) ≈ ${expectedVal}. You avoided the trap!`
+      };
+    }
+    if (diff <= tolerance * 2) {
+      return {
+        score: "P",
+        feedback: `Close! σ = √(σX² + σY²) = √(${varX} + ${varY}) ≈ ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. σ = √(σX² + σY²) = √(${varX} + ${varY}) ≈ ${expectedVal}. Add variances, then square root!`
+    };
+  }
+
   // ========== GENERIC FALLBACK ==========
   if (studentNorm === expectedNorm) {
     return { score: "E", feedback: "Correct!" };

@@ -2536,6 +2536,680 @@ const capstoneScenarios = [
   }
 ];
 
+// ============ TOPIC 4.9: COMBINING RANDOM VARIABLES ============
+
+// Level 41: Linear Transform - Mean
+const transformMeanScenarios = [
+  {
+    desc: "The number of unhealthy trees X in a parking lot has mean μX = 0.11. An insect infestation is modeled by Y = 3X + 1.",
+    a: 1,
+    b: 3,
+    muX: 0.11,
+    answer: 1.33,
+    context: "unhealthy trees after infestation",
+    explanation: "μY = a + b·μX = 1 + 3(0.11) = 1 + 0.33 = 1.33"
+  },
+  {
+    desc: "Bowling scores X have mean μX = 138 points. The handicap formula is H = (200 - X) × 0.85 = 170 - 0.85X.",
+    a: 170,
+    b: -0.85,
+    muX: 138,
+    answer: 52.7,
+    context: "handicap points",
+    explanation: "μH = 170 - 0.85(138) = 170 - 117.3 = 52.7"
+  },
+  {
+    desc: "Temperature in Celsius X has mean μX = 20°C. To convert to Fahrenheit: F = 32 + 1.8X.",
+    a: 32,
+    b: 1.8,
+    muX: 20,
+    answer: 68,
+    context: "temperature in Fahrenheit",
+    explanation: "μF = 32 + 1.8(20) = 32 + 36 = 68°F"
+  },
+  {
+    desc: "A ride-share driver's base trips X average μX = 12 rides/day. With a $5 bonus per ride: Earnings = 5X + 20 (including base pay).",
+    a: 20,
+    b: 5,
+    muX: 12,
+    answer: 80,
+    context: "daily earnings in dollars",
+    explanation: "μY = 20 + 5(12) = 20 + 60 = $80"
+  },
+  {
+    desc: "Quiz raw scores X have mean μX = 35 points. Curved scores: Y = 1.2X + 10.",
+    a: 10,
+    b: 1.2,
+    muX: 35,
+    answer: 52,
+    context: "curved score",
+    explanation: "μY = 10 + 1.2(35) = 10 + 42 = 52"
+  },
+  {
+    desc: "Phone battery life X has mean μX = 8 hours. After an update: Y = 0.9X + 0.5 (hours).",
+    a: 0.5,
+    b: 0.9,
+    muX: 8,
+    answer: 7.7,
+    context: "battery life after update",
+    explanation: "μY = 0.5 + 0.9(8) = 0.5 + 7.2 = 7.7 hours"
+  },
+  {
+    desc: "Coffee shop customers X average μX = 45 per hour. With new promotion: Y = 1.15X + 5.",
+    a: 5,
+    b: 1.15,
+    muX: 45,
+    answer: 56.75,
+    context: "customers with promotion",
+    explanation: "μY = 5 + 1.15(45) = 5 + 51.75 = 56.75"
+  },
+  {
+    desc: "Package weights X have mean μX = 2.3 kg. Shipping cost: C = 4.50 + 2.00X dollars.",
+    a: 4.50,
+    b: 2.00,
+    muX: 2.3,
+    answer: 9.10,
+    context: "shipping cost",
+    explanation: "μC = 4.50 + 2.00(2.3) = 4.50 + 4.60 = $9.10"
+  }
+];
+
+// Level 42: Linear Transform - SD
+const transformSDScenarios = [
+  {
+    desc: "The number of unhealthy trees X has σX = 0.444. After Y = 3X + 1, find σY.",
+    a: 1,
+    b: 3,
+    sigmaX: 0.444,
+    answer: 1.332,
+    context: "unhealthy trees",
+    explanation: "σY = |b|·σX = |3|(0.444) = 1.332. The constant (+1) doesn't affect spread!"
+  },
+  {
+    desc: "Bowling scores X have σX = 15.1 points. Handicap H = 170 - 0.85X. Find σH.",
+    a: 170,
+    b: -0.85,
+    sigmaX: 15.1,
+    answer: 12.835,
+    context: "handicap points",
+    explanation: "σH = |−0.85|(15.1) = 0.85 × 15.1 = 12.835. Use absolute value of b!"
+  },
+  {
+    desc: "Temperature X has σX = 5°C. Converting F = 32 + 1.8X, find σF.",
+    a: 32,
+    b: 1.8,
+    sigmaX: 5,
+    answer: 9,
+    context: "temperature",
+    explanation: "σF = |1.8|(5) = 9°F. Adding 32 shifts center but doesn't change spread."
+  },
+  {
+    desc: "Ride-share trips X have σX = 3 rides. If Earnings = 5X + 20, find σEarnings.",
+    a: 20,
+    b: 5,
+    sigmaX: 3,
+    answer: 15,
+    context: "earnings",
+    explanation: "σY = |5|(3) = $15. The base pay ($20) is constant and doesn't affect variability."
+  },
+  {
+    desc: "Raw quiz scores X have σX = 8 points. Curved Y = 1.2X + 10, find σY.",
+    a: 10,
+    b: 1.2,
+    sigmaX: 8,
+    answer: 9.6,
+    context: "curved scores",
+    explanation: "σY = |1.2|(8) = 9.6 points. The 10-point boost doesn't change spread."
+  },
+  {
+    desc: "Study time X has σX = 1.5 hours. If grades G = 50 + 4X, find σG.",
+    a: 50,
+    b: 4,
+    sigmaX: 1.5,
+    answer: 6,
+    context: "grade points",
+    explanation: "σG = |4|(1.5) = 6 points. The base 50 doesn't affect variation."
+  },
+  {
+    desc: "Phone battery X has σX = 1.2 hours. After Y = 0.9X + 0.5, find σY.",
+    a: 0.5,
+    b: 0.9,
+    sigmaX: 1.2,
+    answer: 1.08,
+    context: "battery life",
+    explanation: "σY = |0.9|(1.2) = 1.08 hours. The 0.5 hour boost is constant."
+  },
+  {
+    desc: "Package weight X has σX = 0.4 kg. Shipping C = 4.50 + 2.00X. Find σC.",
+    a: 4.50,
+    b: 2.00,
+    sigmaX: 0.4,
+    answer: 0.80,
+    context: "shipping cost",
+    explanation: "σC = |2.00|(0.4) = $0.80. Base fee doesn't affect variation."
+  }
+];
+
+// Level 43: Sum of Means
+const sumMeansScenarios = [
+  {
+    desc: "Gas cars sold X: μX = 3.92 per day. Hybrid cars Y: μY = 0.25 per day. Both are independent.",
+    muX: 3.92,
+    muY: 0.25,
+    answer: 4.17,
+    context: "total cars sold",
+    explanation: "μ(X+Y) = μX + μY = 3.92 + 0.25 = 4.17 cars"
+  },
+  {
+    desc: "Coffee costs X: μX = $4.25. Muffin costs Y: μY = $3.50. Costs are independent.",
+    muX: 4.25,
+    muY: 3.50,
+    answer: 7.75,
+    context: "total cost",
+    explanation: "μ(X+Y) = μX + μY = 4.25 + 3.50 = $7.75"
+  },
+  {
+    desc: "Morning commute X: μX = 22 minutes. Evening commute Y: μY = 28 minutes. Independent trips.",
+    muX: 22,
+    muY: 28,
+    answer: 50,
+    context: "total daily commute time",
+    explanation: "μ(X+Y) = μX + μY = 22 + 28 = 50 minutes"
+  },
+  {
+    desc: "Alice's score X: μX = 85 points. Bob's score Y: μY = 78 points. Independent performances.",
+    muX: 85,
+    muY: 78,
+    answer: 163,
+    context: "combined team score",
+    explanation: "μ(X+Y) = μX + μY = 85 + 78 = 163 points"
+  },
+  {
+    desc: "Manufacturing time X: μX = 15.2 minutes. Quality check Y: μY = 3.8 minutes. Independent processes.",
+    muX: 15.2,
+    muY: 3.8,
+    answer: 19,
+    context: "total production time per unit",
+    explanation: "μ(X+Y) = μX + μY = 15.2 + 3.8 = 19 minutes"
+  },
+  {
+    desc: "Homework time X: μX = 45 minutes. Practice time Y: μY = 30 minutes. Independent activities.",
+    muX: 45,
+    muY: 30,
+    answer: 75,
+    context: "total study time",
+    explanation: "μ(X+Y) = μX + μY = 45 + 30 = 75 minutes"
+  },
+  {
+    desc: "Appetizer price X: μX = $8.50. Entree price Y: μY = $16.75. Menu items independent.",
+    muX: 8.50,
+    muY: 16.75,
+    answer: 25.25,
+    context: "meal cost before tip",
+    explanation: "μ(X+Y) = μX + μY = 8.50 + 16.75 = $25.25"
+  },
+  {
+    desc: "Download time X: μX = 12 seconds. Processing time Y: μY = 5.5 seconds. Independent operations.",
+    muX: 12,
+    muY: 5.5,
+    answer: 17.5,
+    context: "total wait time",
+    explanation: "μ(X+Y) = μX + μY = 12 + 5.5 = 17.5 seconds"
+  }
+];
+
+// Level 44: Difference of Means
+const diffMeansScenarios = [
+  {
+    desc: "Gas cars sold X: μX = 3.92 per day. Hybrid cars Y: μY = 0.25 per day. Find the mean difference.",
+    muX: 3.92,
+    muY: 0.25,
+    answer: 3.67,
+    context: "more gas cars than hybrid cars",
+    explanation: "μ(X-Y) = μX - μY = 3.92 - 0.25 = 3.67 cars"
+  },
+  {
+    desc: "Team A score X: μX = 78 points. Team B score Y: μY = 72 points. Independent games.",
+    muX: 78,
+    muY: 72,
+    answer: 6,
+    context: "point difference (A minus B)",
+    explanation: "μ(X-Y) = μX - μY = 78 - 72 = 6 points"
+  },
+  {
+    desc: "Morning traffic X: μX = 35 minutes. Night traffic Y: μY = 18 minutes. Independent times.",
+    muX: 35,
+    muY: 18,
+    answer: 17,
+    context: "extra time for morning commute",
+    explanation: "μ(X-Y) = μX - μY = 35 - 18 = 17 minutes"
+  },
+  {
+    desc: "Income X: μX = $4200/month. Expenses Y: μY = $3650/month. Independent values.",
+    muX: 4200,
+    muY: 3650,
+    answer: 550,
+    context: "monthly savings",
+    explanation: "μ(X-Y) = μX - μY = 4200 - 3650 = $550"
+  },
+  {
+    desc: "Package A weight X: μX = 5.2 kg. Package B weight Y: μY = 3.8 kg. Independent weights.",
+    muX: 5.2,
+    muY: 3.8,
+    answer: 1.4,
+    context: "weight difference",
+    explanation: "μ(X-Y) = μX - μY = 5.2 - 3.8 = 1.4 kg"
+  },
+  {
+    desc: "New machine output X: μX = 125 units. Old machine Y: μY = 98 units. Independent processes.",
+    muX: 125,
+    muY: 98,
+    answer: 27,
+    context: "additional units from new machine",
+    explanation: "μ(X-Y) = μX - μY = 125 - 98 = 27 units"
+  },
+  {
+    desc: "Adult height X: μX = 68 inches. Child height Y: μY = 48 inches. Independent individuals.",
+    muX: 68,
+    muY: 48,
+    answer: 20,
+    context: "height difference",
+    explanation: "μ(X-Y) = μX - μY = 68 - 48 = 20 inches"
+  },
+  {
+    desc: "Treatment group X: μX = 145 mg/dL. Control group Y: μY = 162 mg/dL. Independent groups.",
+    muX: 145,
+    muY: 162,
+    answer: -17,
+    context: "cholesterol reduction (treatment - control)",
+    explanation: "μ(X-Y) = μX - μY = 145 - 162 = -17 mg/dL (negative means treatment is lower)"
+  }
+];
+
+// Level 45: Combined SD - Sum (THE VARIANCE TRAP)
+const combinedSDSumScenarios = [
+  {
+    desc: "Gas cars X: σX = 0.94 per day. Hybrid cars Y: σY = 0.56 per day. X and Y are INDEPENDENT. Find σ(X+Y).",
+    sigmaX: 0.94,
+    sigmaY: 0.56,
+    varX: 0.8836,
+    varY: 0.3136,
+    answer: 1.094,
+    trapAnswer: 1.5,
+    context: "total cars sold",
+    explanation: "σ(X+Y) = √(σX² + σY²) = √(0.8836 + 0.3136) = √1.1972 ≈ 1.094"
+  },
+  {
+    desc: "Coffee cost X: σX = $0.50. Muffin cost Y: σY = $0.75. Costs are INDEPENDENT. Find σ(X+Y).",
+    sigmaX: 0.50,
+    sigmaY: 0.75,
+    varX: 0.25,
+    varY: 0.5625,
+    answer: 0.901,
+    trapAnswer: 1.25,
+    context: "total cost",
+    explanation: "σ(X+Y) = √(0.25 + 0.5625) = √0.8125 ≈ 0.901 (NOT 0.50 + 0.75 = 1.25!)"
+  },
+  {
+    desc: "Morning commute X: σX = 5 minutes. Evening commute Y: σY = 8 minutes. INDEPENDENT. Find σ(X+Y).",
+    sigmaX: 5,
+    sigmaY: 8,
+    varX: 25,
+    varY: 64,
+    answer: 9.434,
+    trapAnswer: 13,
+    context: "total commute",
+    explanation: "σ(X+Y) = √(25 + 64) = √89 ≈ 9.43 (NOT 5 + 8 = 13!)"
+  },
+  {
+    desc: "Quiz 1 scores X: σX = 3 points. Quiz 2 scores Y: σY = 4 points. INDEPENDENT. Find σ(X+Y).",
+    sigmaX: 3,
+    sigmaY: 4,
+    varX: 9,
+    varY: 16,
+    answer: 5,
+    trapAnswer: 7,
+    context: "combined quiz score",
+    explanation: "σ(X+Y) = √(9 + 16) = √25 = 5 (NOT 3 + 4 = 7!) This is a 3-4-5 right triangle!"
+  },
+  {
+    desc: "Part A time X: σX = 2.5 minutes. Part B time Y: σY = 6 minutes. INDEPENDENT. Find σ(X+Y).",
+    sigmaX: 2.5,
+    sigmaY: 6,
+    varX: 6.25,
+    varY: 36,
+    answer: 6.5,
+    trapAnswer: 8.5,
+    context: "total assembly time",
+    explanation: "σ(X+Y) = √(6.25 + 36) = √42.25 = 6.5 (NOT 2.5 + 6 = 8.5!)"
+  },
+  {
+    desc: "Height X: σX = 3 inches. Arm span Y: σY = 4 inches. INDEPENDENT measurements. Find σ(X+Y).",
+    sigmaX: 3,
+    sigmaY: 4,
+    varX: 9,
+    varY: 16,
+    answer: 5,
+    trapAnswer: 7,
+    context: "combined measurement",
+    explanation: "σ(X+Y) = √(9 + 16) = √25 = 5 inches"
+  },
+  {
+    desc: "Startup time X: σX = 4 seconds. Load time Y: σY = 3 seconds. INDEPENDENT. Find σ(X+Y).",
+    sigmaX: 4,
+    sigmaY: 3,
+    varX: 16,
+    varY: 9,
+    answer: 5,
+    trapAnswer: 7,
+    context: "total boot time",
+    explanation: "σ(X+Y) = √(16 + 9) = √25 = 5 seconds (another 3-4-5 triangle!)"
+  },
+  {
+    desc: "Distance A: σX = 12 meters. Distance B: σY = 5 meters. INDEPENDENT. Find σ(X+Y).",
+    sigmaX: 12,
+    sigmaY: 5,
+    varX: 144,
+    varY: 25,
+    answer: 13,
+    trapAnswer: 17,
+    context: "total distance",
+    explanation: "σ(X+Y) = √(144 + 25) = √169 = 13 meters (5-12-13 right triangle!)"
+  }
+];
+
+// Level 46: Combined SD - Difference (THE TRAP CONTINUES)
+const combinedSDDiffScenarios = [
+  {
+    desc: "Gas cars X: σX = 0.94. Hybrid cars Y: σY = 0.56. X and Y are INDEPENDENT. Find σ(X-Y).",
+    sigmaX: 0.94,
+    sigmaY: 0.56,
+    varX: 0.8836,
+    varY: 0.3136,
+    answer: 1.094,
+    trapAnswer1: 0.38,
+    trapAnswer2: 1.5,
+    context: "difference in cars sold",
+    explanation: "σ(X-Y) = √(σX² + σY²) = √1.1972 ≈ 1.094. Variances STILL ADD for differences!"
+  },
+  {
+    desc: "Team A score X: σX = 12 points. Team B score Y: σY = 9 points. INDEPENDENT. Find σ(X-Y).",
+    sigmaX: 12,
+    sigmaY: 9,
+    varX: 144,
+    varY: 81,
+    answer: 15,
+    trapAnswer1: 3,
+    trapAnswer2: 21,
+    context: "score difference",
+    explanation: "σ(X-Y) = √(144 + 81) = √225 = 15. Subtracting ADDS uncertainty!"
+  },
+  {
+    desc: "Income X: σX = $400. Expenses Y: σY = $300. INDEPENDENT. Find σ(X-Y).",
+    sigmaX: 400,
+    sigmaY: 300,
+    varX: 160000,
+    varY: 90000,
+    answer: 500,
+    trapAnswer1: 100,
+    trapAnswer2: 700,
+    context: "savings variation",
+    explanation: "σ(X-Y) = √(160000 + 90000) = √250000 = $500 (NOT $400 - $300 = $100!)"
+  },
+  {
+    desc: "Machine A output X: σX = 8 units. Machine B output Y: σY = 6 units. INDEPENDENT. Find σ(X-Y).",
+    sigmaX: 8,
+    sigmaY: 6,
+    varX: 64,
+    varY: 36,
+    answer: 10,
+    trapAnswer1: 2,
+    trapAnswer2: 14,
+    context: "output difference",
+    explanation: "σ(X-Y) = √(64 + 36) = √100 = 10 units (6-8-10 right triangle!)"
+  },
+  {
+    desc: "Before treatment X: σX = 15 mg/dL. After treatment Y: σY = 20 mg/dL. INDEPENDENT. Find σ(X-Y).",
+    sigmaX: 15,
+    sigmaY: 20,
+    varX: 225,
+    varY: 400,
+    answer: 25,
+    trapAnswer1: 5,
+    trapAnswer2: 35,
+    context: "change in cholesterol",
+    explanation: "σ(X-Y) = √(225 + 400) = √625 = 25 mg/dL (15-20-25 scaled 3-4-5!)"
+  },
+  {
+    desc: "Adult height X: σX = 4 inches. Child height Y: σY = 3 inches. INDEPENDENT. Find σ(X-Y).",
+    sigmaX: 4,
+    sigmaY: 3,
+    varX: 16,
+    varY: 9,
+    answer: 5,
+    trapAnswer1: 1,
+    trapAnswer2: 7,
+    context: "height difference",
+    explanation: "σ(X-Y) = √(16 + 9) = √25 = 5 inches. Same as σ(X+Y)!"
+  },
+  {
+    desc: "Morning temp X: σX = 5°F. Afternoon temp Y: σY = 12°F. INDEPENDENT. Find σ(X-Y).",
+    sigmaX: 5,
+    sigmaY: 12,
+    varX: 25,
+    varY: 144,
+    answer: 13,
+    trapAnswer1: 7,
+    trapAnswer2: 17,
+    context: "temperature change",
+    explanation: "σ(X-Y) = √(25 + 144) = √169 = 13°F (5-12-13 right triangle!)"
+  },
+  {
+    desc: "Test score X: σX = 9 points. Retest score Y: σY = 12 points. INDEPENDENT. Find σ(X-Y).",
+    sigmaX: 9,
+    sigmaY: 12,
+    varX: 81,
+    varY: 144,
+    answer: 15,
+    trapAnswer1: 3,
+    trapAnswer2: 21,
+    context: "score change",
+    explanation: "σ(X-Y) = √(81 + 144) = √225 = 15 points (9-12-15 scaled 3-4-5!)"
+  }
+];
+
+// Level 47: Identify the Error
+const identifyErrorScenarios = [
+  {
+    desc: "A student calculated σ(X+Y) = 3 + 4 = 7, where X and Y are independent with σX = 3 and σY = 4.",
+    answer: "Added standard deviations instead of adding variances first",
+    options: [
+      "Added standard deviations instead of adding variances first",
+      "Forgot to take the square root",
+      "Should have subtracted instead of added",
+      "No error - this calculation is correct"
+    ],
+    correctSD: 5,
+    explanation: "The student fell for the VARIANCE TRAP! Correct: σ(X+Y) = √(9 + 16) = √25 = 5"
+  },
+  {
+    desc: "For X-Y with σX = 5, σY = 12, a student calculated σ(X-Y) = 5 - 12 = -7.",
+    answer: "Subtracted standard deviations - variances always ADD, even for differences",
+    options: [
+      "Subtracted standard deviations - variances always ADD, even for differences",
+      "The negative sign is correct for subtraction",
+      "Should have taken absolute value: |5-12| = 7",
+      "Used the wrong formula entirely"
+    ],
+    correctSD: 13,
+    explanation: "Variances ALWAYS add! σ(X-Y) = √(25 + 144) = √169 = 13"
+  },
+  {
+    desc: "For Y = 10 + 3X with σX = 4, a student calculated σY = 10 + 3(4) = 22.",
+    answer: "Included the constant in the SD calculation - constants don't affect spread",
+    options: [
+      "Included the constant in the SD calculation - constants don't affect spread",
+      "Should have divided by 3 instead of multiplying",
+      "Forgot to square the 3",
+      "The calculation is correct"
+    ],
+    correctSD: 12,
+    explanation: "Constants shift the center but don't affect spread! σY = |3|(4) = 12"
+  },
+  {
+    desc: "A student calculated σ(X-Y) = |σX - σY| = |8 - 6| = 2 for independent X and Y.",
+    answer: "Subtracted SDs and took absolute value - should add variances then square root",
+    options: [
+      "Subtracted SDs and took absolute value - should add variances then square root",
+      "Forgot the absolute value",
+      "Should have squared 2 to get 4",
+      "This is the correct approach"
+    ],
+    correctSD: 10,
+    explanation: "Even for X-Y, add variances! σ(X-Y) = √(64 + 36) = √100 = 10"
+  },
+  {
+    desc: "For X+Y with σX = 6, σY = 8, a student got σ(X+Y) = 36 + 64 = 100.",
+    answer: "Forgot to take the square root after adding variances",
+    options: [
+      "Forgot to take the square root after adding variances",
+      "Should have added SDs: 6 + 8 = 14",
+      "The variances were added incorrectly",
+      "Should have subtracted instead"
+    ],
+    correctSD: 10,
+    explanation: "Added variances correctly but forgot the final step! σ(X+Y) = √100 = 10"
+  },
+  {
+    desc: "For Y = -2X + 5 with σX = 3, a student calculated σY = -2(3) = -6.",
+    answer: "Got a negative SD - should use |b| to get a positive result",
+    options: [
+      "Got a negative SD - should use |b| to get a positive result",
+      "Should have added 5: -6 + 5 = -1",
+      "Standard deviations can be negative",
+      "Should have squared -2 to get 4"
+    ],
+    correctSD: 6,
+    explanation: "Use absolute value! σY = |-2|(3) = 2(3) = 6. SD is always positive!"
+  },
+  {
+    desc: "To find σ(X-Y), a student reasoned: 'Subtracting makes things cancel out, so variability decreases.'",
+    answer: "Wrong reasoning - subtracting uncertain quantities INCREASES total uncertainty",
+    options: [
+      "Wrong reasoning - subtracting uncertain quantities INCREASES total uncertainty",
+      "The reasoning is correct - subtraction reduces spread",
+      "It depends on whether X > Y or Y > X",
+      "Subtraction has no effect on variability"
+    ],
+    correctSD: "Same as σ(X+Y)",
+    explanation: "Think about it: if both X and Y could vary up or down, their difference can vary even more!"
+  },
+  {
+    desc: "A student said: 'Since we're adding X and Y, we add the SDs: σ(X+Y) = σX + σY.'",
+    answer: "Standard deviations don't add directly - must add variances first",
+    options: [
+      "Standard deviations don't add directly - must add variances first",
+      "This is correct for independent random variables",
+      "This is only wrong if X and Y are dependent",
+      "Should multiply SDs instead of adding"
+    ],
+    correctSD: "√(σX² + σY²)",
+    explanation: "The formula is σ(X+Y) = √(σX² + σY²). SDs don't add directly!"
+  }
+];
+
+// Level 48: Capstone - Combined Problem (Mean AND SD)
+const capstone49Scenarios = [
+  {
+    desc: "Coffee costs $4.25 on average with SD = $0.50. Muffin costs $3.50 on average with SD = $0.75. Costs are INDEPENDENT. Find the mean AND standard deviation of the total cost.",
+    muX: 4.25,
+    muY: 3.50,
+    sigmaX: 0.50,
+    sigmaY: 0.75,
+    answerMean: 7.75,
+    answerSD: 0.901,
+    context: "total breakfast cost",
+    explanation: "μ = 4.25 + 3.50 = $7.75. σ = √(0.25 + 0.5625) = √0.8125 ≈ $0.90"
+  },
+  {
+    desc: "Manufacturing time A: μ = 15 min, σ = 2.5 min. Quality check B: μ = 4 min, σ = 6 min. INDEPENDENT processes. Find mean and SD of total time.",
+    muX: 15,
+    muY: 4,
+    sigmaX: 2.5,
+    sigmaY: 6,
+    answerMean: 19,
+    answerSD: 6.5,
+    context: "total production time",
+    explanation: "μ = 15 + 4 = 19 min. σ = √(6.25 + 36) = √42.25 = 6.5 min"
+  },
+  {
+    desc: "Quiz 1: μ = 82 pts, σ = 3 pts. Quiz 2: μ = 78 pts, σ = 4 pts. INDEPENDENT quizzes. Find mean and SD of total score.",
+    muX: 82,
+    muY: 78,
+    sigmaX: 3,
+    sigmaY: 4,
+    answerMean: 160,
+    answerSD: 5,
+    context: "combined quiz score",
+    explanation: "μ = 82 + 78 = 160 pts. σ = √(9 + 16) = √25 = 5 pts (3-4-5 triangle!)"
+  },
+  {
+    desc: "Appetizer: μ = $9.50, σ = $2. Entree: μ = $18, σ = $4. INDEPENDENT menu items. Find mean and SD of meal cost.",
+    muX: 9.50,
+    muY: 18,
+    sigmaX: 2,
+    sigmaY: 4,
+    answerMean: 27.50,
+    answerSD: 4.472,
+    context: "meal cost",
+    explanation: "μ = 9.50 + 18 = $27.50. σ = √(4 + 16) = √20 ≈ $4.47"
+  },
+  {
+    desc: "Download: μ = 8 sec, σ = 4 sec. Processing: μ = 3 sec, σ = 3 sec. INDEPENDENT. Find mean and SD of total wait.",
+    muX: 8,
+    muY: 3,
+    sigmaX: 4,
+    sigmaY: 3,
+    answerMean: 11,
+    answerSD: 5,
+    context: "total wait time",
+    explanation: "μ = 8 + 3 = 11 sec. σ = √(16 + 9) = √25 = 5 sec"
+  },
+  {
+    desc: "Ingredient A: μ = 250g, σ = 5g. Ingredient B: μ = 150g, σ = 12g. INDEPENDENT. Find mean and SD of total weight.",
+    muX: 250,
+    muY: 150,
+    sigmaX: 5,
+    sigmaY: 12,
+    answerMean: 400,
+    answerSD: 13,
+    context: "total recipe weight",
+    explanation: "μ = 250 + 150 = 400g. σ = √(25 + 144) = √169 = 13g (5-12-13 triangle!)"
+  },
+  {
+    desc: "Shipping time X: μ = 5 days, σ = 1.5 days. Processing time Y: μ = 2 days, σ = 2 days. INDEPENDENT. Find mean and SD of total delivery time.",
+    muX: 5,
+    muY: 2,
+    sigmaX: 1.5,
+    sigmaY: 2,
+    answerMean: 7,
+    answerSD: 2.5,
+    context: "total delivery time",
+    explanation: "μ = 5 + 2 = 7 days. σ = √(2.25 + 4) = √6.25 = 2.5 days"
+  },
+  {
+    desc: "Monthly income: μ = $4800, σ = $400. Monthly expenses: μ = $3500, σ = $300. INDEPENDENT. Find mean and SD of savings (Income - Expenses).",
+    muX: 4800,
+    muY: 3500,
+    sigmaX: 400,
+    sigmaY: 300,
+    answerMean: 1300,
+    answerSD: 500,
+    context: "monthly savings",
+    explanation: "μ = 4800 - 3500 = $1300. σ = √(160000 + 90000) = √250000 = $500 (variances ADD even for subtraction!)"
+  }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, contextFromFile, mode) {
@@ -3483,6 +4157,203 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
     answers = { interpretAnswer: { value: scen.answer } };
     scenario = scen.question;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 41: Linear Transform - Mean ==========
+  if (modeId === "l41-transform-mean") {
+    const scen = drawFromBag('transformMean', transformMeanScenarios);
+
+    context = {
+      topicId: "4.9a",
+      problemText: "**VAR-5.E:** Linear Transformation of Mean\n\n" +
+                   "For **Y = a + bX**:\n" +
+                   "**μY = a + b·μX**\n\n" +
+                   "• Multiply the mean by the slope (b)\n" +
+                   "• Then add the constant (a)",
+      givenText: `${scen.desc}\n\nFormula: Y = ${scen.a} + ${scen.b}X\nGiven: μX = ${scen.muX}`,
+      a: scen.a,
+      b: scen.b,
+      muX: scen.muX,
+      expectedExplanation: scen.explanation
+    };
+    answers = { transformMeanAnswer: { value: scen.answer, tolerance: 0.1 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 42: Linear Transform - SD ==========
+  if (modeId === "l42-transform-sd") {
+    const scen = drawFromBag('transformSD', transformSDScenarios);
+
+    context = {
+      topicId: "4.9b",
+      problemText: "**VAR-5.E:** Linear Transformation of Standard Deviation\n\n" +
+                   "For **Y = a + bX**:\n" +
+                   "**σY = |b|·σX**\n\n" +
+                   "⚠️ The constant 'a' does NOT affect spread!\n" +
+                   "Only the multiplier 'b' changes the SD.\n" +
+                   "Use absolute value |b| to ensure positive SD.",
+      givenText: `${scen.desc}\n\nFormula: Y = ${scen.a} + ${scen.b}X\nGiven: σX = ${scen.sigmaX}`,
+      a: scen.a,
+      b: scen.b,
+      sigmaX: scen.sigmaX,
+      expectedExplanation: scen.explanation
+    };
+    answers = { transformSDAnswer: { value: scen.answer, tolerance: 0.05 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 43: Sum of Means ==========
+  if (modeId === "l43-sum-means") {
+    const scen = drawFromBag('sumMeans', sumMeansScenarios);
+
+    context = {
+      topicId: "4.9c",
+      problemText: "**VAR-5.E:** Mean of a Sum\n\n" +
+                   "For independent random variables X and Y:\n" +
+                   "**μ(X+Y) = μX + μY**\n\n" +
+                   "Means add normally! Just add the two means together.",
+      givenText: `${scen.desc}\n\nGiven: μX = ${scen.muX}, μY = ${scen.muY}`,
+      muX: scen.muX,
+      muY: scen.muY,
+      expectedExplanation: scen.explanation
+    };
+    answers = { sumMeansAnswer: { value: scen.answer, tolerance: 0.1 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 44: Difference of Means ==========
+  if (modeId === "l44-diff-means") {
+    const scen = drawFromBag('diffMeans', diffMeansScenarios);
+
+    context = {
+      topicId: "4.9d",
+      problemText: "**VAR-5.E:** Mean of a Difference\n\n" +
+                   "For independent random variables X and Y:\n" +
+                   "**μ(X-Y) = μX - μY**\n\n" +
+                   "Means subtract normally! Just subtract the second mean from the first.",
+      givenText: `${scen.desc}\n\nGiven: μX = ${scen.muX}, μY = ${scen.muY}`,
+      muX: scen.muX,
+      muY: scen.muY,
+      expectedExplanation: scen.explanation
+    };
+    answers = { diffMeansAnswer: { value: scen.answer, tolerance: 0.1 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 45: Combined SD - Sum (THE VARIANCE TRAP) ==========
+  if (modeId === "l45-combined-sd-sum") {
+    const scen = drawFromBag('combinedSDSum', combinedSDSumScenarios);
+
+    context = {
+      topicId: "4.9e",
+      problemText: "**VAR-5.E:** Standard Deviation of a Sum ⚠️ VARIANCE TRAP\n\n" +
+                   "For INDEPENDENT random variables X and Y:\n" +
+                   "**σ(X+Y) = √(σX² + σY²)**\n\n" +
+                   "⚠️ DO NOT add SDs directly! ⚠️\n" +
+                   "σ(X+Y) ≠ σX + σY\n\n" +
+                   "Steps:\n" +
+                   "1. Square each SD to get variances\n" +
+                   "2. ADD the variances\n" +
+                   "3. Take the square root",
+      givenText: `${scen.desc}\n\nGiven: σX = ${scen.sigmaX}, σY = ${scen.sigmaY}\n\n⚠️ Remember: Don't just add ${scen.sigmaX} + ${scen.sigmaY}!`,
+      sigmaX: scen.sigmaX,
+      sigmaY: scen.sigmaY,
+      varX: scen.varX,
+      varY: scen.varY,
+      trapAnswer: scen.trapAnswer,
+      expectedExplanation: scen.explanation
+    };
+    answers = { combinedSDSumAnswer: { value: scen.answer, tolerance: 0.05 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 46: Combined SD - Difference (THE TRAP CONTINUES) ==========
+  if (modeId === "l46-combined-sd-diff") {
+    const scen = drawFromBag('combinedSDDiff', combinedSDDiffScenarios);
+
+    context = {
+      topicId: "4.9f",
+      problemText: "**VAR-5.E:** Standard Deviation of a Difference ⚠️ TRAP PART 2\n\n" +
+                   "For INDEPENDENT random variables X and Y:\n" +
+                   "**σ(X-Y) = √(σX² + σY²)**\n\n" +
+                   "⚠️ Same formula as the SUM! ⚠️\n" +
+                   "Variances ALWAYS ADD, even for X-Y!\n\n" +
+                   "Why? Subtracting uncertain quantities\n" +
+                   "creates MORE uncertainty, not less.",
+      givenText: `${scen.desc}\n\nGiven: σX = ${scen.sigmaX}, σY = ${scen.sigmaY}\n\n⚠️ Don't subtract: ${scen.sigmaX} - ${scen.sigmaY} is WRONG!`,
+      sigmaX: scen.sigmaX,
+      sigmaY: scen.sigmaY,
+      varX: scen.varX,
+      varY: scen.varY,
+      trapAnswer1: scen.trapAnswer1,
+      trapAnswer2: scen.trapAnswer2,
+      expectedExplanation: scen.explanation
+    };
+    answers = { combinedSDDiffAnswer: { value: scen.answer, tolerance: 0.05 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 47: Identify the Error ==========
+  if (modeId === "l47-identify-error") {
+    const scen = drawFromBag('identifyError', identifyErrorScenarios);
+    const options = shuffle([...scen.options]);
+
+    context = {
+      topicId: "4.9g",
+      problemText: "**VAR-5.E:** Identifying Errors in Combining Random Variables\n\n" +
+                   "Common errors to watch for:\n" +
+                   "• Adding SDs directly (σX + σY)\n" +
+                   "• Subtracting SDs for X-Y\n" +
+                   "• Including constants in SD calculation\n" +
+                   "• Forgetting the square root\n" +
+                   "• Getting negative SD",
+      givenText: scen.desc,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      correctSD: scen.correctSD,
+      expectedExplanation: scen.explanation
+    };
+    answers = { identifyErrorAnswer: { value: scen.answer } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 48: Capstone 4.9 ==========
+  if (modeId === "l48-capstone-49") {
+    const scen = drawFromBag('capstone49', capstone49Scenarios);
+
+    context = {
+      topicId: "4.9",
+      problemText: "**VAR-5.E:** Combining Random Variables - Capstone\n\n" +
+                   "For INDEPENDENT X and Y:\n\n" +
+                   "**Mean:**\n" +
+                   "• μ(X+Y) = μX + μY\n" +
+                   "• μ(X-Y) = μX - μY\n\n" +
+                   "**Standard Deviation:**\n" +
+                   "• σ(X+Y) = √(σX² + σY²)\n" +
+                   "• σ(X-Y) = √(σX² + σY²) ← Same formula!\n\n" +
+                   "Calculate BOTH the mean AND standard deviation.",
+      givenText: `${scen.desc}\n\nGiven:\nX: μX = ${scen.muX}, σX = ${scen.sigmaX}\nY: μY = ${scen.muY}, σY = ${scen.sigmaY}`,
+      muX: scen.muX,
+      muY: scen.muY,
+      sigmaX: scen.sigmaX,
+      sigmaY: scen.sigmaY,
+      expectedExplanation: scen.explanation
+    };
+    answers = {
+      capstoneMeanAnswer: { value: scen.answerMean, tolerance: 0.1 },
+      capstoneSDAnswer: { value: scen.answerSD, tolerance: 0.05 }
+    };
+    scenario = scen.desc;
     return { context, graphConfig, answers, scenario };
   }
 
