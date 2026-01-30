@@ -104,8 +104,9 @@ export class GhostOrbitsController {
     // Game state
     this.state = GameState.IDLE;
     this.previousState = null;
-    this.lastSessionGolds = 0;
     this.currentSessionGolds = 0;
+    this.starsSpent = 0;        // Total stars consumed this session
+    this.matchesPlayed = 0;     // Number of matches played (for escalating cost)
     this.needsRejoin = false;
     this.roundNumber = 0;
 
@@ -289,8 +290,8 @@ export class GhostOrbitsController {
         console.warn('[GhostOrbits] No arena container found!');
       }
 
-      // Load last session's gold count
-      this._loadSessionGolds();
+      // Load star economy state (persists across page loads)
+      this._loadStarEconomy();
 
       // Setup visibility change handler
       document.addEventListener('visibilitychange', this._boundOnVisibilityChange);
@@ -303,15 +304,28 @@ export class GhostOrbitsController {
   }
 
   /**
-   * Check if player can enter the arena
-   * @param {number} currentGolds - Current session's gold star count
-   * @param {number} lastGolds - Last session's gold star count
-   * @returns {boolean} True if unlock condition is met
+   * Get the cost for the next match (escalating: 1, 2, 3, 4...)
+   * @returns {number} Star cost for the next match
    */
-  checkUnlockCondition(currentGolds, lastGolds) {
-    // First visit ever: lastSessionGolds = 0, so earning 1 gold unlocks
-    // Subsequent visits: must beat your previous session's gold count
-    return currentGolds > lastGolds;
+  getNextMatchCost() {
+    return this.matchesPlayed + 1;
+  }
+
+  /**
+   * Get available stars
+   * @returns {number} Stars available to spend
+   */
+  getAvailableStars() {
+    // Stars are directly consumed from currentSessionGolds, so available = current
+    return this.currentSessionGolds;
+  }
+
+  /**
+   * Check if player can afford the next match
+   * @returns {boolean} True if player has enough stars
+   */
+  canAffordNextMatch() {
+    return this.getAvailableStars() >= this.getNextMatchCost();
   }
 
   /**
@@ -319,7 +333,28 @@ export class GhostOrbitsController {
    * @returns {boolean}
    */
   isUnlocked() {
-    return this.checkUnlockCondition(this.currentSessionGolds, this.lastSessionGolds);
+    return this.canAffordNextMatch();
+  }
+
+  /**
+   * Consume stars for entering a match
+   * @private
+   */
+  _consumeStarsForMatch() {
+    const cost = this.getNextMatchCost();
+    this.matchesPlayed++;
+
+    // Actually consume the stars (reduce the count, don't just track as "spent")
+    this.currentSessionGolds -= cost;
+
+    console.log(`[GhostOrbits] Consumed ${cost} stars. Remaining: ${this.currentSessionGolds}, Matches played: ${this.matchesPlayed}, Next cost: ${this.getNextMatchCost()}`);
+
+    // Update the visual gold count
+    const goldCountEl = document.getElementById('gold-count');
+    if (goldCountEl) {
+      goldCountEl.textContent = this.currentSessionGolds;
+      console.log(`[GhostOrbits] Updated gold display to ${this.currentSessionGolds}`);
+    }
   }
 
   /**
@@ -348,11 +383,14 @@ export class GhostOrbitsController {
     }
 
     if (!this.isUnlocked()) {
-      console.warn('[GhostOrbits] Cannot enter arena - unlock condition not met');
+      console.warn('[GhostOrbits] Cannot enter arena - not enough stars');
       return;
     }
 
-    console.log('[GhostOrbits] Entering arena (solo mode)...');
+    // Consume stars for this match
+    const cost = this.getNextMatchCost();
+    console.log(`[GhostOrbits] Entering arena (cost: ${cost} stars)...`);
+    this._consumeStarsForMatch();
 
     // Show overlay
     console.log('[GhostOrbits] Calling _showOverlay()...');
@@ -431,8 +469,12 @@ export class GhostOrbitsController {
     this.eliminationInfo = null;
     this.roundResults = null;
 
-    // Update session golds for next time
-    this._saveSessionGolds();
+    // Reset escalating cost counter (only applies to consecutive rematches within a session)
+    this.matchesPlayed = 0;
+    this.starsSpent = 0;
+
+    // Save star economy state
+    this._saveStarEconomy();
 
     this._setState(GameState.IDLE);
 
@@ -1094,6 +1136,11 @@ export class GhostOrbitsController {
    * @private
    */
   _updatePhysicsFrame(deltaTime, currentTime) {
+    // Don't process physics if match has ended
+    if (this.state !== GameState.PLAYING) {
+      return;
+    }
+
     if (!this.physicsEngine || !this.territorySystem) {
       return;
     }
@@ -2080,22 +2127,47 @@ export class GhostOrbitsController {
   }
 
   /**
-   * Load last session's gold count from localStorage
+   * Load star economy state from localStorage
    * @private
    */
-  _loadSessionGolds() {
-    const key = `ghostOrbits_lastGolds_${this.cartridgeId}`;
+  _loadStarEconomy() {
+    // Note: matchesPlayed is NOT persisted - escalating cost only applies
+    // to consecutive rematches within a single arena session
+    const key = `ghostOrbits_starEconomy_${this.cartridgeId}`;
     const stored = localStorage.getItem(key);
-    this.lastSessionGolds = stored ? parseInt(stored, 10) : 0;
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        this.starsSpent = data.starsSpent || 0;
+        // matchesPlayed stays at 0 (set in constructor)
+      } catch (e) {
+        this.starsSpent = 0;
+      }
+    }
   }
 
   /**
-   * Save current session's gold count to localStorage
+   * Save star economy state to localStorage
    * @private
    */
-  _saveSessionGolds() {
-    const key = `ghostOrbits_lastGolds_${this.cartridgeId}`;
-    localStorage.setItem(key, String(this.currentSessionGolds));
+  _saveStarEconomy() {
+    // Note: matchesPlayed is NOT persisted - escalating cost only applies
+    // to consecutive rematches within a single arena session
+    const key = `ghostOrbits_starEconomy_${this.cartridgeId}`;
+    localStorage.setItem(key, JSON.stringify({
+      starsSpent: this.starsSpent
+    }));
+  }
+
+  /**
+   * Reset star economy (e.g., when cartridge changes or daily reset)
+   */
+  resetStarEconomy() {
+    this.starsSpent = 0;
+    this.matchesPlayed = 0;
+    const key = `ghostOrbits_starEconomy_${this.cartridgeId}`;
+    localStorage.removeItem(key);
+    console.log('[GhostOrbits] Star economy reset');
   }
 
   /**
@@ -2286,11 +2358,10 @@ export class GhostOrbitsController {
       }
     }
 
-    // Update lastSessionGolds to require a new gold star for rematch
-    // This ensures players can't infinitely rematch without earning more stars
-    this.lastSessionGolds = this.currentSessionGolds;
-    this._saveSessionGolds();
-    console.log(`[GhostOrbits] Updated lastSessionGolds to ${this.lastSessionGolds} - rematch requires new gold star`);
+    // Log current star economy state
+    const nextCost = this.getNextMatchCost();
+    const available = this.getAvailableStars();
+    console.log(`[GhostOrbits] Match ended. Next match cost: ${nextCost}, Available stars: ${available}, Can afford: ${available >= nextCost}`);
 
     // Transition to ROUND_END state
     this._setState(GameState.ROUND_END);
@@ -2316,14 +2387,15 @@ export class GhostOrbitsController {
         timeElapsed: Math.ceil((Date.now() - this.matchStartTime) / 1000)
       };
 
+      // Add rematch cost info
+      resultsData.nextMatchCost = this.getNextMatchCost();
+      resultsData.availableStars = this.getAvailableStars();
+      resultsData.canRematch = this.canAffordNextMatch();
+
       // Add stat upgrade info for victory
       if (winner === 'player_win') {
         const weakestStat = this._getWeakestStatName();
         resultsData.statUpgrade = this._formatStatUpgrade(weakestStat);
-      } else {
-        // For defeat, indicate that rematch is NOT currently available
-        // (player just used their gold star unlock and needs to earn another)
-        resultsData.canRematch = false;
       }
 
       this.panel.showResults(resultsData);
@@ -2675,17 +2747,20 @@ export class GhostOrbitsController {
    * @private
    */
   _handleRematch() {
-    console.log('[GhostOrbits] Rematch requested');
+    const cost = this.getNextMatchCost();
+    console.log(`[GhostOrbits] Rematch requested (cost: ${cost} stars)`);
 
     // Check if player has enough stars
-    if (!this.isUnlocked()) {
-      console.warn('[GhostOrbits] Cannot rematch - not enough stars');
-      console.log('[GhostOrbits] currentSessionGolds:', this.currentSessionGolds, 'lastSessionGolds:', this.lastSessionGolds);
+    if (!this.canAffordNextMatch()) {
+      console.warn(`[GhostOrbits] Cannot rematch - need ${cost} stars, have ${this.getAvailableStars()}`);
       // The UI should already show a disabled button, but just in case,
       // exit gracefully without an intrusive alert
       this.exitArena();
       return;
     }
+
+    // Consume stars for this rematch
+    this._consumeStarsForMatch();
 
     // Reset match state
     this.matchResult = null;
@@ -2695,6 +2770,15 @@ export class GhostOrbitsController {
     // Clear the results screen
     if (this.panel) {
       this.panel.resetToActiveView();
+
+      // Re-mount canvas to new arena container (resetToActiveView recreates the DOM)
+      if (this.renderer?.canvas) {
+        const newContainer = this.panel.getArenaContainer();
+        if (newContainer && !newContainer.contains(this.renderer.canvas)) {
+          this.renderer.container = newContainer;
+          newContainer.appendChild(this.renderer.canvas);
+        }
+      }
     }
 
     // Restart the match
@@ -2722,6 +2806,12 @@ export class GhostOrbitsController {
 
     // Re-setup arena with records
     this._setupInitialArena(arenaSize);
+
+    // Sync records/wells to renderer (critical for visibility!)
+    if (this.renderer) {
+      this.renderer.updateWells(this.physicsEngine.getWells());
+      this.renderer.updateVoidZone(this.voidZone);
+    }
 
     // Reset ghosts to spawn positions with initial velocity
     if (this.renderer) {

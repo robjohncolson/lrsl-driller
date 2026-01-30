@@ -525,7 +525,11 @@ export class GhostPanel {
         } else {
           // Show message explaining why they can't enter
           const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-          alert(`Earn a new gold star to unlock the arena!\n\nYou have ${currentGolds} gold star${currentGolds !== 1 ? 's' : ''}, but you need to earn 1 MORE to play again.\n\nKeep practicing!`);
+          const economy = this._getStarEconomy();
+          const nextCost = economy.matchesPlayed + 1;
+          const available = currentGolds - economy.starsSpent;
+          const needed = nextCost - available;
+          alert(`Not enough gold stars for the arena!\n\nNext match costs ${nextCost} star${nextCost > 1 ? 's' : ''}, you have ${available} available.\nEarn ${needed} more gold star${needed > 1 ? 's' : ''} to play!\n\nKeep practicing!`);
         }
       });
 
@@ -535,16 +539,19 @@ export class GhostPanel {
   }
 
   /**
-   * Get last session gold count for current cartridge
+   * Get star economy state for current cartridge
    * @private
+   * @returns {{starsSpent: number, matchesPlayed: number}}
    */
-  _getLastSessionGolds() {
-    const cartridgeId = this.manifest?.meta?.id || 'unknown';
-    return parseInt(localStorage.getItem(`ghostOrbits_lastGolds_${cartridgeId}`) || '0');
+  _getStarEconomy() {
+    // Stars are now actually consumed from the gold count display, so:
+    // - matchesPlayed is always 0 (escalating cost only applies within arena session)
+    // - starsSpent is always 0 (gold count already reflects spent stars)
+    return { starsSpent: 0, matchesPlayed: 0 };
   }
 
   /**
-   * Update Ghost Orbits button state based on unlock condition
+   * Update Ghost Orbits button state based on star economy
    * @public - Can be called externally when gold stars change
    */
   updateOrbitsButtonState() {
@@ -555,10 +562,12 @@ export class GhostPanel {
     if (!btn || !hint) return;
 
     const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-    const lastSessionGolds = this._getLastSessionGolds();
-    const canEnter = currentGolds > lastSessionGolds;
+    const economy = this._getStarEconomy();
+    const nextMatchCost = economy.matchesPlayed + 1;
+    const availableStars = currentGolds - economy.starsSpent;
+    const canEnter = availableStars >= nextMatchCost;
 
-    console.log(`[GhostPanel] Orbits button state: currentGolds=${currentGolds}, lastSession=${lastSessionGolds}, canEnter=${canEnter}`);
+    console.log(`[GhostPanel] Orbits button state: currentGolds=${currentGolds}, spent=${economy.starsSpent}, available=${availableStars}, nextCost=${nextMatchCost}, canEnter=${canEnter}`);
 
     if (canEnter) {
       btn.disabled = false;
@@ -566,7 +575,7 @@ export class GhostPanel {
       btn.classList.add('unlocked');
       btn.classList.remove('locked');
       if (icon) icon.textContent = '🌀';
-      hint.textContent = 'Arena unlocked! Enter to compete.';
+      hint.textContent = `Cost: ${nextMatchCost} Gold Star${nextMatchCost > 1 ? 's' : ''} (${availableStars} available)`;
       hint.classList.add('unlocked');
     } else {
       btn.disabled = true;
@@ -575,12 +584,8 @@ export class GhostPanel {
       btn.classList.add('locked');
       if (icon) icon.textContent = '🔒';
       // Show helpful message about what's needed
-      const needed = lastSessionGolds + 1 - currentGolds;
-      if (needed > 0) {
-        hint.textContent = `Earn ${needed} more gold star${needed > 1 ? 's' : ''} to unlock! (Need: ${lastSessionGolds + 1}, Have: ${currentGolds})`;
-      } else {
-        hint.textContent = 'Earn gold stars to unlock the arena!';
-      }
+      const needed = nextMatchCost - availableStars;
+      hint.textContent = `Need ${needed} more gold star${needed > 1 ? 's' : ''} (Cost: ${nextMatchCost}, Have: ${availableStars})`;
       hint.classList.remove('unlocked');
     }
   }

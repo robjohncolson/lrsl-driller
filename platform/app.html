@@ -1274,20 +1274,23 @@
     // ==================== GHOST ORBITS INTEGRATION ====================
 
     let ghostOrbitsController = null;
-    // Note: lastSessionGolds is loaded per-cartridge in getLastSessionGolds()
 
     /**
-     * Get the localStorage key for last session golds (cartridge-specific)
+     * Get the localStorage key for star economy (cartridge-specific)
      */
-    function getGhostOrbitsGoldsKey() {
-      return `ghostOrbits_lastGolds_${currentCartridgeId}`;
+    function getGhostOrbitsEconomyKey() {
+      return `ghostOrbits_starEconomy_${currentCartridgeId}`;
     }
 
     /**
-     * Get last session's gold count for current cartridge
+     * Get star economy state for current cartridge
+     * Stars are now actually consumed from the gold count display, so:
+     * - matchesPlayed is always 0 (escalating cost only applies within arena session)
+     * - starsSpent is always 0 (gold count already reflects spent stars)
+     * @returns {{starsSpent: number, matchesPlayed: number}}
      */
-    function getLastSessionGolds() {
-      return parseInt(localStorage.getItem(getGhostOrbitsGoldsKey()) || '0');
+    function getStarEconomy() {
+      return { starsSpent: 0, matchesPlayed: 0 };
     }
 
     /**
@@ -1328,7 +1331,10 @@
      */
     function canEnterGhostOrbits() {
       const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-      return currentGolds > getLastSessionGolds();
+      const economy = getStarEconomy();
+      const nextMatchCost = economy.matchesPlayed + 1;
+      const availableStars = currentGolds - economy.starsSpent;
+      return availableStars >= nextMatchCost;
     }
 
     /**
@@ -1356,7 +1362,7 @@
           // Update controller's gold count from DOM (so isUnlocked() works)
           const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
           ghostOrbitsController.updateGoldCount(currentGolds);
-          console.log('[GhostOrbits] Updated gold count:', currentGolds, 'lastSession:', ghostOrbitsController.lastSessionGolds);
+          console.log('[GhostOrbits] Updated gold count:', currentGolds, 'spent:', ghostOrbitsController.starsSpent, 'matches:', ghostOrbitsController.matchesPlayed);
 
           console.log('[GhostOrbits] init() complete, calling enterArena()...');
           await ghostOrbitsController.enterArena();

@@ -292,6 +292,10 @@ export class GhostOrbitsPanel {
    * @param {string} [data.statUpgrade] - Stat that was upgraded (for victory only, e.g., 'Mass +0.05')
    */
   showResults(data) {
+    // Store cost info for rematch prompt
+    this.nextMatchCost = data.nextMatchCost || 1;
+    this.availableStars = data.availableStars || 0;
+
     if (data.winner === 'player') {
       this._renderVictoryScreen(data);
     } else {
@@ -663,7 +667,11 @@ export class GhostOrbitsPanel {
     // Attach return button listener
     const returnBtn = this.overlayElement.querySelector('#orbits-return-btn');
     if (returnBtn) {
-      returnBtn.addEventListener('click', () => this.onReturnToPractice());
+      console.log('[GhostOrbitsPanel] Attaching return button listener (eliminated view)');
+      returnBtn.addEventListener('click', () => {
+        console.log('[GhostOrbitsPanel] Return button clicked (eliminated), calling onReturnToPractice');
+        this.onReturnToPractice();
+      });
     }
   }
 
@@ -805,6 +813,8 @@ export class GhostOrbitsPanel {
    * Render defeat screen for Shadow Self mode
    * @param {Object} data - Defeat data
    * @param {boolean} [data.canRematch=false] - Whether rematch is currently available
+   * @param {number} [data.nextMatchCost] - Cost in gold stars for next match
+   * @param {number} [data.availableStars] - Stars available to spend
    * @private
    */
   _renderDefeatScreen(data) {
@@ -813,16 +823,19 @@ export class GhostOrbitsPanel {
     const condition = data.condition || 'Defeat';
     const territory = Math.round(data.playerTerritory) || 0;
     const timeElapsed = data.timeElapsed || 0;
-    const canRematch = data.canRematch !== false; // Default to true for backwards compatibility
+    const canRematch = data.canRematch === true;
+    const nextCost = data.nextMatchCost || 1;
+    const available = data.availableStars || 0;
 
     const minutes = Math.floor(timeElapsed / 60);
     const secs = timeElapsed % 60;
     const timeDisplay = `${minutes}:${secs.toString().padStart(2, '0')}`;
 
-    // Build the rematch button HTML based on availability
+    // Build the rematch button HTML based on availability and cost
+    const costText = `${nextCost} Gold Star${nextCost > 1 ? 's' : ''}`;
     const rematchButtonHtml = canRematch
-      ? `<button class="orbits-rematch-btn" id="orbits-rematch-btn">Rematch (1 Gold Star)</button>`
-      : `<button class="orbits-rematch-btn orbits-rematch-btn-disabled" id="orbits-rematch-btn" disabled>Earn a Gold Star to Rematch</button>`;
+      ? `<button class="orbits-rematch-btn" id="orbits-rematch-btn">Rematch (${costText})</button>`
+      : `<button class="orbits-rematch-btn orbits-rematch-btn-disabled" id="orbits-rematch-btn" disabled>Need ${nextCost - available} more star${(nextCost - available) > 1 ? 's' : ''} to Rematch</button>`;
 
     this.overlayElement.innerHTML = `
       <div class="orbits-defeat-view">
@@ -871,7 +884,13 @@ export class GhostOrbitsPanel {
     }
 
     if (returnBtn) {
-      returnBtn.addEventListener('click', () => this.onReturnToPractice());
+      console.log('[GhostOrbitsPanel] Attaching return button listener');
+      returnBtn.addEventListener('click', () => {
+        console.log('[GhostOrbitsPanel] Return button clicked, calling onReturnToPractice');
+        this.onReturnToPractice();
+      });
+    } else {
+      console.error('[GhostOrbitsPanel] Return button not found!');
     }
   }
 
@@ -882,6 +901,9 @@ export class GhostOrbitsPanel {
    * @private
    */
   _renderRematchPrompt(onRematch, onExit) {
+    const cost = this.nextMatchCost || 1;
+    const costText = `${cost} Gold Star${cost > 1 ? 's' : ''}`;
+
     // Create modal overlay
     const modal = document.createElement('div');
     modal.className = 'orbits-rematch-modal';
@@ -889,7 +911,7 @@ export class GhostOrbitsPanel {
       <div class="rematch-modal-content">
         <h2 class="rematch-title">Rematch?</h2>
         <p class="rematch-message">Challenge your Shadow Self again?</p>
-        <p class="rematch-cost">Cost: 1 Gold Star</p>
+        <p class="rematch-cost">Cost: ${costText}</p>
         <div class="rematch-actions">
           <button class="rematch-yes-btn" id="rematch-yes-btn">Yes, Rematch!</button>
           <button class="rematch-no-btn" id="rematch-no-btn">No, Exit</button>
