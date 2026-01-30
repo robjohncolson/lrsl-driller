@@ -2005,6 +2005,9 @@
             else console.log(`Progress saved: ${starType} star = ${weightedPoints} pts (level ${levelIndex + 1}/${totalLevels})`);
           })
           .catch(err => console.warn('Failed to save progress:', err));
+
+          // v2.1: Also sync aggregate cartridge progress for unified leaderboard
+          syncCartridgeProgress();
         }
 
         // Update displays
