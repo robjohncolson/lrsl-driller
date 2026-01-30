@@ -974,6 +974,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/LinearTransformMean.mp4",
       "layout": {
         "inputs": [
           {
@@ -991,6 +992,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/LinearTransformSD.mp4",
       "layout": {
         "inputs": [
           {
@@ -1009,6 +1011,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/SumOfMeans.mp4",
       "layout": {
         "inputs": [
           {
@@ -1026,6 +1029,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/DiffOfMeans.mp4",
       "layout": {
         "inputs": [
           {
@@ -1043,6 +1047,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/VarianceTrapSum.mp4",
       "layout": {
         "inputs": [
           {
@@ -1061,6 +1066,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/VarianceTrapDiff.mp4",
       "layout": {
         "inputs": [
           {
@@ -1079,6 +1085,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/IdentifyError.mp4",
       "layout": {
         "inputs": [
           {
@@ -1102,6 +1109,7 @@
       "unlockedBy": {
         "gold": 3
       },
+      "animation": "assets/Capstone49.mp4",
       "layout": {
         "inputs": [
           {
