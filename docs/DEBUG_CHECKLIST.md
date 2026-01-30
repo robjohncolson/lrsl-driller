@@ -27,7 +27,7 @@ This checklist focuses on stability and correctness without recommending upgrade
   - Server: `gradeWithAI()` in server.js:1243 - Groq first, then Gemini, up to 3 keys per provider.
   - Client: `platform.js:339` - Keywords always run first. AI score only used if higher (`max(keywords, AI)`).
   - On AI failure: Keywords score stands, `_aiFailed=true`, teacher review offered.
-- [ ] **Verify field ID remapping** for `answer` is active in `/api/ai/grade` and `/api/ai/appeal`. **Status: Verified**
+- [x] **Verify field ID remapping** for `answer` is active in `/api/ai/grade` and `/api/ai/appeal`. **Status: Verified**
   - Evidence: `railway-server/server.js` remaps `answer` to actual field ID in both endpoints.
 - [x] **Check prompt placeholder coverage** (`{{studentAnswer}}`, `{{STUDENT_ANSWER}}`, etc.) for each cartridge. **Status: Verified**
   - Evidence: `railway-server/prompt-utils.js` handles all placeholder patterns dynamically.
@@ -36,7 +36,7 @@ This checklist focuses on stability and correctness without recommending upgrade
   - Comprehensive test coverage in `tests/server/prompt-utils.test.js` (360 lines).
 
 ## D) WebSocket Infrastructure
-- [ ] **Confirm WebSocket server initialization** exists in `railway-server/server.js`. **Status: Verified**
+- [x] **Confirm WebSocket server initialization** exists in `railway-server/server.js`. **Status: Verified**
   - Evidence: `http.createServer(app)` + `new WebSocketServer({ server })` at top of `railway-server/server.js`.
 - [x] **Validate WebSocket client lifecycle** (reconnect, heartbeat, error handling). **Status: Verified**
   - Evidence: `platform/core/websocket-client.js` has proper implementation.
@@ -71,7 +71,7 @@ This checklist focuses on stability and correctness without recommending upgrade
   - Shows toast notifications: "Victory against X's ghost!" / "Draw" / "X's ghost won".
 
 ## G) Ghost Orbits (Arena)
-- [ ] **Confirm Ghost Orbits gating** (`canEnterGhostOrbits`) matches star economy rules in §142. **Status: Verified**
+- [x] **Confirm Ghost Orbits gating** (`canEnterGhostOrbits`) matches star economy rules in §142. **Status: Verified**
   - Evidence: `platform/app.html` computes `nextMatchCost = matchesPlayed + 1` and checks gold count.
 - [x] **Validate match state transitions** per §§141–142. **Status: Verified**
   - Evidence: `ghost-orbits-controller.js` lines 24-33 define GameState enum.
@@ -87,7 +87,7 @@ This checklist focuses on stability and correctness without recommending upgrade
   - Note: `matchesPlayed` intentionally NOT persisted (resets each session for escalating cost).
 
 ## H) Roster + Periodization
-- [ ] **Validate roster API** permissions and header requirements. **Status: Verified**
+- [x] **Validate roster API** permissions and header requirements. **Status: Verified**
   - Evidence: `railway-server/server.js` enforces `x-teacher-password` in roster endpoints.
 - [x] **Verify leaderboard period badges** render correctly. **Status: Verified**
   - Evidence: `platform/core/leaderboard.js` lines 193-204.

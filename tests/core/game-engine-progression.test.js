@@ -65,7 +65,8 @@ describe('GameEngine Progression Overrides', () => {
 
     it('returns global default for levels without manifest value', () => {
       // Level 1 has unlockedBy: "default" - no gold value
-      expect(engine.getRequiredGold('level-1')).toBe(3); // Global default
+      // Global default is now 1 (changed from 3 in v4.8.1)
+      expect(engine.getRequiredGold('level-1')).toBe(1); // Global default
     });
 
     it('returns override when set', () => {
@@ -87,7 +88,8 @@ describe('GameEngine Progression Overrides', () => {
     });
 
     it('returns global default when manifest has no gold value', () => {
-      expect(engine.getManifestDefault('level-1')).toBe(3); // Global default
+      // Global default is now 1 (changed from 3 in v4.8.1)
+      expect(engine.getManifestDefault('level-1')).toBe(1); // Global default
     });
   });
 
