@@ -68,7 +68,7 @@ After creating: Add to `registry.json` + add `<option>` to `app.html` dropdown.
 
 **Ghost System** (`platform/core/ghost-*.js`): TensorFlow.js neural networks learn student behavior. 3D maze visualization (Three.js), ghost battles with Elo ratings.
 
-**Ghost Orbits** (`platform/game/ghost-orbits-*.js`): Arcade-style battle game where players compete against ghosts in an arena. 12 orbits, lives system, neural network opponents.
+**Ghost Orbits** (`platform/game/ghost-orbits-*.js`): Full-screen arcade arena where players battle their Shadow Self AI. Dot Territory mechanics (claim neutral dots, flip enemy dots with spacebar timing, avoid damage). 3-life system, Records (safe zones), escalating star entry costs. Shadow learns from player patterns and levels up on player wins.
 
 **Animation System** (`animations/`): Manim-generated math animations displayed alongside problems. Per-mode video references in manifest, auto-play with controls.
 
@@ -97,6 +97,7 @@ npx vitest run tests/server/... # API tests
 
 ## Key Docs
 
-- `docs/STATE_MACHINES.md` - All component state transitions
+- `docs/STATE_MACHINES.md` - All component state transitions (142 sections, v4.8.0)
 - `CARTRIDGE-DEVELOPMENT-GUIDE.md` - Manual cartridge creation
 - `ghost-system-spec.md` - Ghost AI design
+- Ghost Orbits: STATE_MACHINES.md sections 135-142

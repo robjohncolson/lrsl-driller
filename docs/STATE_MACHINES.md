@@ -1,6 +1,18 @@
 # LRSL Driller State Machine Diagrams
 
-Complete state machine documentation for all components as of v4.7.0.
+Complete state machine documentation for all components as of v4.8.0.
+
+**v4.8.0 Changes (Ghost Orbits Arena Game):**
+- **Ghost Orbits**: Full-screen arcade arena game where player battles their Shadow Self
+- Solo mode: Player vs Shadow Self AI that learns from player patterns
+- Dot Territory System (v3): Claim neutral dots, flip enemy dots with timing, avoid damage
+- Lives system: 3 lives each, invulnerability periods after damage
+- Star Economy: Escalating costs (1, 2, 3... gold stars) to enter matches
+- Records (spinning plates): Safe zones, landing/launching via spacebar only
+- Shadow generation progression: Shadow levels up on player wins
+- Win conditions: 90% territory, elimination (0 lives), or timeout (most dots)
+- New sections: 135-142 covering Ghost Orbits state machines
+- New files: ghost-orbits-controller.js, ghost-orbits-panel.js, ghost-orbits-shadow-ai.js, ghost-orbits-dots.js
 
 **v4.7.0 Changes (Ghost Visualization Complete):**
 - **Ghost System Phases 4, 5, 7**: Complete visualization suite
@@ -10136,6 +10148,670 @@ Canvas-based battle replay system.
 
 ---
 
-*Updated to v4.7.0*
+## 135. Ghost Orbits Controller State Machine (v4.8.0)
+
+**Solo arena game where player battles their Shadow Self AI opponent.**
+
+### Game States
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     GHOST ORBITS GAME STATES (v4.8.0)                            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌─────────────┐
+                              │    IDLE     │ ◀────────────────────────────────┐
+                              │ Not in arena│                                  │
+                              └──────┬──────┘                                  │
+                                     │                                         │
+                                     │ enterArena() called                     │
+                                     │ (requires gold stars)                   │
+                                     │                                         │
+                                     ▼                                         │
+                              ┌─────────────┐                                  │
+                              │ CONNECTING  │ ─────────┐                       │
+                              │ (WebSocket) │          │ (Solo mode skips)     │
+                              └──────┬──────┘          │                       │
+                                     │                 │                       │
+                                     ▼                 │                       │
+                              ┌─────────────┐          │                       │
+                              │ COUNTDOWN   │ ◀────────┘                       │
+                              │  3-2-1-GO   │                                  │
+                              └──────┬──────┘                                  │
+                                     │                                         │
+                                     │ countdown = 0                           │
+                                     ▼                                         │
+                              ┌─────────────┐                                  │
+                              │   PLAYING   │ ─────────────────────────────────┤
+                              │ Active game │                                  │
+                              └──────┬──────┘                                  │
+                                     │                                         │
+         ┌───────────────────────────┼───────────────────────────┐             │
+         │                           │                           │             │
+         ▼                           ▼                           ▼             │
+  ┌─────────────┐           ┌─────────────┐           ┌─────────────┐          │
+  │ ELIMINATED  │           │ ROUND_END   │           │   exitArena()          │
+  │ (lost match)│           │ (won/lost)  │           │   called     │─────────┘
+  └──────┬──────┘           └──────┬──────┘           └─────────────┘
+         │                         │
+         │ onReturnToPractice      │ showResults()
+         │ or handleStarEarned     │
+         ▼                         ▼
+  ┌─────────────┐           ┌─────────────┐
+  │    IDLE     │           │INTERMISSION │
+  │ (returned)  │           │(between rnds)│
+  └─────────────┘           └──────┬──────┘
+                                   │
+                                   │ rematch chosen
+                                   ▼
+                            ┌─────────────┐
+                            │  COUNTDOWN  │
+                            │ (new match) │
+                            └─────────────┘
+```
+
+### State Transitions
+
+| From State | To State | Trigger |
+|------------|----------|---------|
+| IDLE | PLAYING | `enterArena()` with sufficient stars |
+| PLAYING | ROUND_END | Match ended (win/lose) |
+| PLAYING | IDLE | `exitArena()` called |
+| ROUND_END | IDLE | Return to practice |
+| ROUND_END | PLAYING | Rematch (costs more stars) |
+| ELIMINATED | IDLE | Return to practice |
+
+---
+
+## 136. Ghost Orbits Star Economy State Machine (v4.8.0)
+
+**Escalating star costs prevent infinite arena farming.**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     STAR ECONOMY (Escalating Costs)                              │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌─────────────────────────────────┐
+                              │      SESSION START (matchesPlayed = 0)          │
+                              └────────────────┬────────────────┘
+                                               │
+                                               ▼
+                              ┌─────────────────────────────────┐
+                              │     CHECK: canAffordNextMatch() │
+                              │     availableStars >= nextCost  │
+                              │     (nextCost = matchesPlayed + 1)│
+                              └────────────────┬────────────────┘
+                                               │
+                         ┌─────────────────────┴─────────────────────┐
+                         │                                           │
+                         ▼                                           ▼
+               ┌─────────────────┐                         ┌─────────────────┐
+               │   CAN AFFORD    │                         │  CANNOT AFFORD  │
+               │ Enter Arena     │                         │ Need more stars │
+               └────────┬────────┘                         └─────────────────┘
+                        │
+                        ▼
+               ┌─────────────────────────────────────────┐
+               │   CONSUME STARS FOR MATCH               │
+               │   currentSessionGolds -= cost           │
+               │   matchesPlayed++                       │
+               │   Update gold count display             │
+               └────────────────┬────────────────────────┘
+                                │
+                                ▼
+               ┌─────────────────────────────────────────┐
+               │          MATCH PLAYS OUT                │
+               │   Win → Can rematch (cost increases)    │
+               │   Lose → Can rematch (cost increases)   │
+               └────────────────┬────────────────────────┘
+                                │
+              ┌─────────────────┴─────────────────┐
+              │                                   │
+              ▼                                   ▼
+    ┌─────────────────┐                 ┌─────────────────┐
+    │   REMATCH?      │                 │   EXIT ARENA    │
+    │ Cost: matchesPlayed + 1 │         │ Reset counters  │
+    │ (2nd=2, 3rd=3...) │               │ matchesPlayed=0 │
+    └─────────────────┘                 └─────────────────┘
+
+Cost Progression:
+┌──────────┬──────────┬─────────────────────────────────────────┐
+│ Match #  │ Cost     │ Example (starting with 10 gold)         │
+├──────────┼──────────┼─────────────────────────────────────────┤
+│ 1        │ 1 star   │ 10 → 9 remaining                        │
+│ 2        │ 2 stars  │ 9 → 7 remaining                         │
+│ 3        │ 3 stars  │ 7 → 4 remaining                         │
+│ 4        │ 4 stars  │ 4 → 0 remaining (cannot afford 5th)     │
+└──────────┴──────────┴─────────────────────────────────────────┘
+
+Key Methods:
+- getNextMatchCost(): returns matchesPlayed + 1
+- getAvailableStars(): returns currentSessionGolds
+- canAffordNextMatch(): availableStars >= nextMatchCost
+- _consumeStarsForMatch(): deduct cost, increment matchesPlayed
+```
+
+---
+
+## 137. Ghost Orbits Dot Territory State Machine (v4.8.0)
+
+**v3 territory system using claimable dots with flip mechanics.**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     DOT TERRITORY SYSTEM (v3)                                    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+DOT STATES:
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│     NEUTRAL     │       │  PLAYER_OWNED   │       │  SHADOW_OWNED   │
+│   (gray/white)  │       │   (player color)│       │  (shadow color) │
+└────────┬────────┘       └────────┬────────┘       └────────┬────────┘
+         │                         │                         │
+         └─────────────────────────┴─────────────────────────┘
+                                   │
+                                   ▼
+                    INTERACTION FLOW (per frame):
+```
+
+### Dot Interaction State Machine
+
+```
+                              ┌─────────────────────────────────────┐
+                              │     GHOST TOUCHES DOT               │
+                              │   (collision radius check)          │
+                              └───────────────────┬─────────────────┘
+                                                  │
+                ┌─────────────────────────────────┼─────────────────────────────────┐
+                │                                 │                                 │
+                ▼                                 ▼                                 ▼
+     ┌──────────────────┐             ┌──────────────────┐             ┌──────────────────┐
+     │  DOT IS NEUTRAL  │             │ DOT IS FRIENDLY  │             │ DOT IS ENEMY     │
+     │  (unclaimed)     │             │ (same owner)     │             │ (opponent's)     │
+     └────────┬─────────┘             └────────┬─────────┘             └────────┬─────────┘
+              │                                │                                │
+              │                                │                                │
+              ▼                                ▼                    ┌───────────┴───────────┐
+     ┌──────────────────┐             ┌──────────────────┐         │                       │
+     │   CLAIM DOT      │             │   NO EFFECT      │         ▼                       ▼
+     │ dot.claim(owner) │             │ (already owned)  │  ┌─────────────┐      ┌─────────────┐
+     │ → 'claimed'      │             └──────────────────┘  │ SPACEBAR    │      │ NO SPACEBAR │
+     └──────────────────┘                                   │ PRESSED     │      │ (within     │
+                                                            │ (within     │      │  250ms)     │
+                                                            │  250ms)     │      └──────┬──────┘
+                                                            └──────┬──────┘             │
+                                                                   │                    │
+                                                                   ▼                    ▼
+                                                          ┌─────────────┐      ┌─────────────┐
+                                                          │   FLIP DOT  │      │   DAMAGE!   │
+                                                          │ to your     │      │ Lose 1 life │
+                                                          │ color       │      │ Invulnerable│
+                                                          │ → 'flipped' │      │ 1.5 seconds │
+                                                          └─────────────┘      └─────────────┘
+
+WIN CONDITION CHECK (every frame):
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│   playerDots / totalDots >= 0.90  →  PLAYER WINS (territory)                     │
+│   shadowDots / totalDots >= 0.90  →  SHADOW WINS (territory)                     │
+│                                                                                  │
+│   On territory win: convertAllToWinner() auto-converts remaining dots            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Flip Mechanic Timing
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          FLIP MECHANIC (250ms window)                            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+Timeline:
+    ─────────────────────────────────────────────────────────────────▶ Time
+         │                               │
+         │ registerSpacebarPress()       │ checkDotInteraction()
+         │ timestamp recorded            │ collision detected
+         │                               │
+         ▼                               ▼
+    ┌─────────┐                    ┌─────────────────────────────────┐
+    │ SPACE   │                    │ Is (now - spacebarTime) < 250ms?│
+    │ PRESSED │                    └───────────────┬─────────────────┘
+    └─────────┘                                    │
+                                      ┌────────────┴────────────┐
+                                      │                         │
+                                      ▼                         ▼
+                              ┌─────────────┐           ┌─────────────┐
+                              │   YES       │           │    NO       │
+                              │ → FLIP      │           │ → DAMAGE    │
+                              │   (safe)    │           │   (lose life)│
+                              └─────────────┘           └─────────────┘
+
+Config:
+- FLIP_WINDOW_MS: 250ms (spacebar must be pressed within this window)
+- WIN_THRESHOLD: 0.90 (90% ownership = win)
+- COLLISION_RADIUS: 15 (ghost collision with dots)
+- DOT_RADIUS: 10 (visual size)
+```
+
+---
+
+## 138. Ghost Orbits Lives System State Machine (v4.8.0)
+
+**3-lives system with invulnerability periods.**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         LIVES SYSTEM (v4.8.0)                                    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+INITIAL STATE (match start):
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│   playerLives = 3       │   ♥ ♥ ♥                                               │
+│   shadowLives = 3       │   ♥ ♥ ♥                                               │
+│   invulnerableUntil = 0 │   (vulnerable immediately)                            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+DAMAGE EVENT:
+                              ┌─────────────────────────────────────┐
+                              │   GHOST TOUCHES ENEMY DOT           │
+                              │   (without spacebar flip)           │
+                              └───────────────────┬─────────────────┘
+                                                  │
+                                                  ▼
+                              ┌─────────────────────────────────────┐
+                              │   CHECK: currentTime > invulnerableUntil? │
+                              └───────────────────┬─────────────────┘
+                                                  │
+                         ┌────────────────────────┴────────────────────────┐
+                         │                                                 │
+                         ▼                                                 ▼
+               ┌─────────────────┐                               ┌─────────────────┐
+               │  VULNERABLE     │                               │  INVULNERABLE   │
+               │  Process damage │                               │  Ignore damage  │
+               └────────┬────────┘                               └─────────────────┘
+                        │
+                        ▼
+               ┌─────────────────────────────────────────┐
+               │   lives--                               │
+               │   invulnerableUntil = now + 1500ms      │
+               │   Flash ghost red                       │
+               │   Play damage sound                     │
+               │   Update HUD (♥ ♥ ♡)                    │
+               └────────────────┬────────────────────────┘
+                                │
+                                ▼
+               ┌─────────────────────────────────────────┐
+               │   CHECK: lives <= 0?                    │
+               └────────────────┬────────────────────────┘
+                                │
+              ┌─────────────────┴─────────────────┐
+              │                                   │
+              ▼                                   ▼
+    ┌─────────────────┐                 ┌─────────────────┐
+    │  LIVES > 0      │                 │  LIVES = 0      │
+    │  Continue play  │                 │  ELIMINATED     │
+    │  (invulnerable  │                 │  Match ends     │
+    │   for 1.5s)     │                 │  Opponent wins  │
+    └─────────────────┘                 └─────────────────┘
+
+HUD Display States:
+┌──────────┬─────────────────────────────────────────────────────────┐
+│ Lives    │ Display            │ CSS Class                          │
+├──────────┼────────────────────┼────────────────────────────────────┤
+│ 3        │ ♥ ♥ ♥              │ (default)                          │
+│ 2        │ ♥ ♥ ♡              │ warning (yellow pulse)             │
+│ 1        │ ♥ ♡ ♡              │ danger (red pulse, fast)           │
+│ 0        │ ♡ ♡ ♡              │ eliminated                         │
+└──────────┴────────────────────┴────────────────────────────────────┘
+```
+
+---
+
+## 139. Ghost Orbits Shadow Self AI State Machine (v4.8.0)
+
+**Pattern-learning AI opponent that mirrors and adapts to player.**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    SHADOW SELF AI (v4.8.0)                                       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+GENERATION PROGRESSION:
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ Generation 1 (new)     → Base AI, no patterns                                   │
+│ Generation 2           → Has patterns from 1 match                              │
+│ Generation N           → Has patterns from N-1 matches, faster reaction         │
+│                                                                                  │
+│ Shadow levels up ONLY when player wins (learns from winning moves)              │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+SHADOW AI UPDATE CYCLE (per frame):
+                              ┌─────────────────────────────────────┐
+                              │    shadowAI.update(deltaTime, gameState) │
+                              └───────────────────┬─────────────────┘
+                                                  │
+                                                  ▼
+                              ┌─────────────────────────────────────┐
+                              │    BUILD GAME STATE                 │
+                              │    - selfPosition, selfVelocity     │
+                              │    - selfEnergy, selfIsOrbiting     │
+                              │    - playerPosition, playerVelocity │
+                              │    - wells[] (gravity wells)        │
+                              │    - territoryPercent               │
+                              └───────────────────┬─────────────────┘
+                                                  │
+                                                  ▼
+                              ┌─────────────────────────────────────┐
+                              │    DECISION MAKING                  │
+                              │    1. Check stored patterns         │
+                              │    2. Find similar context          │
+                              │    3. Apply learned movement        │
+                              │    4. Add generation scaling        │
+                              └───────────────────┬─────────────────┘
+                                                  │
+                              ┌───────────────────┴───────────────────┐
+                              │                                       │
+                              ▼                                       ▼
+                    ┌─────────────────┐                     ┌─────────────────┐
+                    │  ORBITING       │                     │  FREE_FLIGHT    │
+                    │  Check release  │                     │  Apply thrust   │
+                    │  direction      │                     │  inputDirection │
+                    └─────────────────┘                     └─────────────────┘
+
+PATTERN RECORDING (player side):
+                              ┌─────────────────────────────────────┐
+                              │    patternRecorder.record(data)     │
+                              │    Every 100ms while playing        │
+                              └───────────────────┬─────────────────┘
+                                                  │
+                                                  ▼
+                              ┌─────────────────────────────────────┐
+                              │    PatternSegment:                  │
+                              │    - timestamp, position, velocity  │
+                              │    - inputDirection                 │
+                              │    - state ('free' or 'orbiting')   │
+                              │    - context (wells, territory, etc)│
+                              └───────────────────┬─────────────────┘
+                                                  │
+                                                  ▼
+                              ┌─────────────────────────────────────┐
+                              │    Every 5 seconds → PatternChunk   │
+                              │    Store up to 20 chunks max        │
+                              └─────────────────────────────────────┘
+
+ON PLAYER WIN:
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│   1. Analyze match stats (weakest player stat)                                  │
+│   2. Apply stat upgrade to player ghost                                         │
+│   3. Increment shadowGeneration++                                               │
+│   4. Save recorded patterns to localStorage                                     │
+│   5. Next shadow will use these patterns                                        │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+ON SHADOW WIN:
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│   1. Shadow's patterns preserved (already successful)                           │
+│   2. No generation change                                                       │
+│   3. Message: "Shadow learned from this match. It will be stronger next time..." │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 140. Ghost Orbits Movement State Machine (v4.8.0)
+
+**Ghost movement between free flight and record orbiting.**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    GHOST MOVEMENT STATES (v4.8.0)                                │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌─────────────────┐
+                              │   FREE_FLIGHT   │
+                              │ Constant velocity│
+                              │ Walls bounce    │
+                              └────────┬────────┘
+                                       │
+                                       │ SPACEBAR pressed
+                                       │ + near record (within captureRadius)
+                                       │
+                                       ▼
+                              ┌─────────────────┐
+                              │    ORBITING     │
+                              │ Locked to record│
+                              │ Safe from damage│
+                              │ Circular motion │
+                              └────────┬────────┘
+                                       │
+                                       │ SPACEBAR pressed
+                                       │ (launches off record)
+                                       │
+                                       └────────────────────────────────┐
+                                                                        │
+                                       ┌────────────────────────────────┘
+                                       │
+                                       ▼
+                              ┌─────────────────┐
+                              │   FREE_FLIGHT   │
+                              │ Launch velocity │
+                              │ from orbit      │
+                              └─────────────────┘
+
+RECORD (Spinning Plate) Properties:
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│   radius: 40           │ Visual size                                            │
+│   captureRadius: 60    │ Distance to trigger orbit entry                        │
+│   angularSpeed: 2-3    │ Rotation speed (radians/sec)                           │
+│   clockwise: bool      │ Rotation direction                                     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+v3 CONTROL SCHEME (Spacebar Only):
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│   Context              │ Spacebar Action                                        │
+├────────────────────────┼────────────────────────────────────────────────────────┤
+│   FREE_FLIGHT + near record │ Land on record (enter ORBITING)                   │
+│   FREE_FLIGHT + not near    │ Register for flip timing (250ms window)           │
+│   ORBITING                  │ Launch off record (exit to FREE_FLIGHT)           │
+└─────────────────────────────┴────────────────────────────────────────────────────┘
+
+NOTE: Arrow keys disabled in v3. Ghosts move at constant velocity.
+Direction only changes via:
+1. Wall bounces (reflect)
+2. Record launches (tangent velocity from orbit)
+```
+
+---
+
+## 141. Ghost Orbits Win Conditions State Machine (v4.8.0)
+
+**Three possible win conditions per match.**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    WIN CONDITIONS (v4.8.0)                                       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌─────────────────────────────────────┐
+                              │         MATCH IN PROGRESS           │
+                              │   _checkWinConditions() per frame   │
+                              └───────────────────┬─────────────────┘
+                                                  │
+                   ┌──────────────────────────────┼──────────────────────────────┐
+                   │                              │                              │
+                   ▼                              ▼                              ▼
+        ┌─────────────────┐            ┌─────────────────┐            ┌─────────────────┐
+        │   TERRITORY     │            │  ELIMINATION    │            │    TIMEOUT      │
+        │   (90% dots)    │            │  (0 lives)      │            │  (time up)      │
+        └────────┬────────┘            └────────┬────────┘            └────────┬────────┘
+                 │                              │                              │
+                 │                              │                              │
+                 ▼                              ▼                              ▼
+        ┌─────────────────────────────────────────────────────────────────────────────┐
+        │                          _handleMatchEnd(winner, condition)                  │
+        └─────────────────────────────────────────────────────────────────────────────┘
+
+CONDITION DETAILS:
+
+1. TERRITORY WIN (90% dots):
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│   playerDots / totalDots >= 0.90  OR  shadowDots / totalDots >= 0.90            │
+│   → Winner owns 90%+ of all dots                                                │
+│   → Remaining dots auto-convert to winner color                                 │
+│   → Immediate match end                                                         │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+2. ELIMINATION WIN (0 lives):
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│   playerLives <= 0  OR  shadowLives <= 0                                        │
+│   → Opponent touched too many enemy dots without flipping                       │
+│   → Immediate match end                                                         │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+3. TIMEOUT WIN (time expires):
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│   elapsed >= ROUND_DURATION (120 seconds)                                       │
+│   → Compare dot ownership percentages                                           │
+│   → Winner = whoever owns more dots (ties go to player)                         │
+│   → _handleTimeoutWin() determines winner                                       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+MATCH END FLOW:
+                              ┌─────────────────────────────────────┐
+                              │   _handleMatchEnd(winner, condition)│
+                              └───────────────────┬─────────────────┘
+                                                  │
+                         ┌────────────────────────┴────────────────────────┐
+                         │                                                 │
+                         ▼                                                 ▼
+               ┌─────────────────┐                               ┌─────────────────┐
+               │  PLAYER WINS    │                               │  SHADOW WINS    │
+               │                 │                               │                 │
+               │ • Analyze stats │                               │ • Save shadow   │
+               │ • Apply upgrade │                               │   patterns      │
+               │ • Shadow gen++  │                               │ • Show defeat   │
+               │ • Save patterns │                               │   screen        │
+               │ • Show victory  │                               │ • Offer rematch │
+               └─────────────────┘                               └─────────────────┘
+```
+
+---
+
+## 142. Ghost Orbits Match Flow State Machine (v4.8.0)
+
+**Complete match lifecycle from entry to results.**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    COMPLETE MATCH FLOW (v4.8.0)                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 1. ENTRY CHECK                                                                   │
+│    canAffordNextMatch() → cost = matchesPlayed + 1                              │
+│    If NO: Show "Need X more stars to enter"                                     │
+│    If YES: Continue to enter                                                    │
+└─────────────────────────────────┬────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 2. CONSUME STARS                                                                 │
+│    _consumeStarsForMatch()                                                      │
+│    currentSessionGolds -= cost                                                  │
+│    matchesPlayed++                                                              │
+│    Update gold display                                                          │
+└─────────────────────────────────┬────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 3. INITIALIZE ARENA                                                              │
+│    • Show overlay panel                                                         │
+│    • Setup physics with 8 records                                               │
+│    • Spawn 50 neutral dots (avoiding records)                                   │
+│    • Spawn player ghost (bottom-left)                                           │
+│    • Spawn shadow ghost (top-right, complementary color)                        │
+│    • Initialize Shadow AI with stored patterns                                  │
+│    • Start pattern recorder                                                     │
+│    • Enable input, start renderer                                               │
+└─────────────────────────────────┬────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 4. SHOW HELP SCREEN (first time only)                                            │
+│    • Dot Territory rules explanation                                            │
+│    • Press SPACE to dismiss                                                     │
+└─────────────────────────────────┬────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 5. MATCH TIMER STARTS                                                            │
+│    startMatchTimer()                                                            │
+│    • matchStartTime = now                                                       │
+│    • matchTimeRemaining = 120 seconds                                           │
+│    • Reset lives to 3 each                                                      │
+│    • State → PLAYING                                                            │
+└─────────────────────────────────┬────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 6. GAME LOOP (per frame)                                                         │
+│    _updatePhysicsFrame()                                                        │
+│    • Process player input (spacebar only)                                       │
+│    • Update Shadow AI decision                                                  │
+│    • Move both ghosts                                                           │
+│    • Check dot collisions                                                       │
+│    • Handle claims/flips/damage                                                 │
+│    • Update territory display                                                   │
+│    • Record player patterns                                                     │
+│    • Check win conditions                                                       │
+└─────────────────────────────────┬────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 7. MATCH ENDS                                                                    │
+│    _handleMatchEnd(winner, condition)                                           │
+│    • Stop game loop                                                             │
+│    • Process winner rewards/penalties                                           │
+│    • Show results screen                                                        │
+└─────────────────────────────────┬────────────────────────────────────────────────┘
+                                  │
+                         ┌────────┴────────┐
+                         │                 │
+                         ▼                 ▼
+              ┌─────────────────┐   ┌─────────────────┐
+              │  VICTORY SCREEN │   │  DEFEAT SCREEN  │
+              │  • Trophy icon  │   │  • Ghost icon   │
+              │  • "VICTORY!"   │   │  • "DEFEATED"   │
+              │  • Stats shown  │   │  • Stats shown  │
+              │  • Stat upgrade │   │  • Shadow learns│
+              │  • Continue btn │   │  • Rematch btn  │
+              └────────┬────────┘   └────────┬────────┘
+                       │                     │
+                       └─────────┬───────────┘
+                                 │
+                                 ▼
+              ┌─────────────────────────────────────────┐
+              │  PLAYER CHOICE                          │
+              │  • "Continue to Practice" → exitArena() │
+              │  • "Rematch" → _handleRematch()         │
+              │    (if can afford next cost)            │
+              └─────────────────────────────────────────┘
+
+ARENA CONFIGURATION:
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│   Arena Size: 800x800                                                           │
+│   Records: 8 (4 corners + 4 sides)                                              │
+│   Dots: 50 (spawned avoiding records)                                           │
+│   Round Duration: 120 seconds                                                   │
+│   Win Threshold: 90% territory                                                  │
+│   Lives: 3 each                                                                 │
+│   Invulnerability: 1500ms after damage                                          │
+│   Flip Window: 250ms spacebar timing                                            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+*Updated to v4.8.0*
 *Last updated: January 2026*
-*Total sections: 134*
+*Total sections: 142*
