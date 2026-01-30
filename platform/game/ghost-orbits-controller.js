@@ -183,6 +183,7 @@ export class GhostOrbitsController {
     this.shadowGhostId = 'shadow_self';
     this.shadowMovementState = 'FREE_FLIGHT';
     this.patternRecorder = null;
+    this.lastPatternRecordTime = 0; // Throttle pattern recording
     this.shadowGeneration = 1; // Loaded from localStorage
 
     // Bind methods for event handlers
@@ -433,9 +434,18 @@ export class GhostOrbitsController {
       // Spawn Shadow Self (AI opponent) in solo mode
       this._spawnShadow(arenaSize);
 
+      // Verify ghosts were created
+      console.log('[GhostOrbits] Ghost creation verification:', {
+        ghostsCount: this.renderer.ghosts?.size,
+        localGhostId: this.renderer.localGhostId,
+        localGhostExists: !!this.renderer.getLocalGhost(),
+        shadowGhostExists: !!this.renderer.ghosts?.get(this.shadowGhostId),
+        ghostIds: Array.from(this.renderer.ghosts?.keys() || [])
+      });
+
       // Start the renderer animation loop
       this.renderer.start();
-      console.log('[GhostOrbits] Renderer started');
+      console.log('[GhostOrbits] Renderer started, isRunning:', this.renderer.isRunning);
     }
 
     // Solo mode - no WebSocket, start immediately
@@ -584,6 +594,12 @@ export class GhostOrbitsController {
     if (this.panel) {
       this.panel.dispose();
       this.panel = null;
+    }
+
+    // Stop pattern recorder
+    if (this.patternRecorder) {
+      this.patternRecorder.stop();
+      this.patternRecorder = null;
     }
 
     this.overlay = null;
@@ -1535,6 +1551,11 @@ export class GhostOrbitsController {
   _recordPlayerPattern(localGhost, currentTime) {
     if (!this.patternRecorder) return;
 
+    // Throttle to once every 100ms to reduce per-frame allocations
+    // (60fps = ~6 frames between records, reduces allocations by ~83%)
+    if (currentTime - this.lastPatternRecordTime < 100) return;
+    this.lastPatternRecordTime = currentTime;
+
     const shadowGhost = this.renderer?.ghosts?.get(this.shadowGhostId);
 
     // Calculate context data
@@ -2052,6 +2073,7 @@ export class GhostOrbitsController {
    * @private
    */
   _hideOverlay() {
+    console.log('[GhostOrbits] _hideOverlay called, panel exists:', !!this.panel);
     if (this.panel) {
       this.panel.hide();
     }
@@ -2346,6 +2368,7 @@ export class GhostOrbitsController {
         const allPatterns = [...existingPatterns, ...(recordedPatterns?.chunks || [])];
         this._saveStoredPatterns(allPatterns);
         console.log(`[GhostOrbits] Saved ${recordedPatterns?.chunks?.length || 0} winning patterns`);
+        this.patternRecorder.stop();
       }
     } else {
       // Shadow victory - save shadow's winning patterns
@@ -2355,6 +2378,7 @@ export class GhostOrbitsController {
         const allPatterns = [...existingPatterns, ...(recordedPatterns?.chunks || [])];
         this._saveStoredPatterns(allPatterns);
         console.log(`[GhostOrbits] Shadow learned from victory, saved ${recordedPatterns?.chunks?.length || 0} patterns`);
+        this.patternRecorder.stop();
       }
     }
 
@@ -2767,36 +2791,32 @@ export class GhostOrbitsController {
     this.winCondition = null;
     this.dominationStartTime.clear();
 
-    // Clear the results screen
+    // Get arena size early (needed for setup)
+    const arenaSize = this.renderer?.arena?.size || 800;
+
+    // Clear the results screen and re-mount canvas
     if (this.panel) {
       this.panel.resetToActiveView();
 
       // Re-mount canvas to new arena container (resetToActiveView recreates the DOM)
-      if (this.renderer?.canvas) {
+      if (this.renderer) {
         const newContainer = this.panel.getArenaContainer();
-        if (newContainer && !newContainer.contains(this.renderer.canvas)) {
-          this.renderer.container = newContainer;
-          newContainer.appendChild(this.renderer.canvas);
+        if (newContainer) {
+          // Use the new remountCanvas method which handles ResizeObserver re-setup
+          this.renderer.remountCanvas(newContainer);
         }
       }
     }
 
-    // Restart the match
-    this._setState(GameState.PLAYING);
-    this.startMatchTimer();
-
-    // Get arena size
-    const arenaSize = this.renderer?.arena?.size || 800;
-
-    // Reset physics engine - clear and re-add records
+    // PHASE 1: Clear all game state BEFORE re-initializing
+    // Reset physics engine - clear records first
     if (this.physicsEngine) {
       this.physicsEngine.clearRecords();
       this.physicsEngine.orbitStates.clear();
-      // Update arena size in physics engine
       this.physicsEngine.arenaSize = { width: arenaSize, height: arenaSize };
     }
 
-    // Reset dots and trails (v2)
+    // Reset dots and trails
     if (this.dotManager) {
       this.dotManager.reset();
     }
@@ -2804,59 +2824,140 @@ export class GhostOrbitsController {
       this.trailManager.clear();
     }
 
-    // Re-setup arena with records
-    this._setupInitialArena(arenaSize);
-
-    // Sync records/wells to renderer (critical for visibility!)
-    if (this.renderer) {
-      this.renderer.updateWells(this.physicsEngine.getWells());
-      this.renderer.updateVoidZone(this.voidZone);
-    }
-
-    // Reset ghosts to spawn positions with initial velocity
-    if (this.renderer) {
-      // Reset player ghost
-      const localGhost = this.renderer.getLocalGhost();
-      if (localGhost) {
-        localGhost.position.x = arenaSize * 0.2;
-        localGhost.position.y = arenaSize * 0.8;
-        // v2: Give initial velocity (not zero!)
-        localGhost.velocity.x = 3;
-        localGhost.velocity.y = -3;
-        localGhost.energy = 1.0;
-      }
-
-      // Reset shadow ghost
-      const shadowGhost = this.renderer.ghosts?.get(this.shadowGhostId);
-      if (shadowGhost) {
-        shadowGhost.position.x = arenaSize * 0.8;
-        shadowGhost.position.y = arenaSize * 0.2;
-        // v2: Give initial velocity (not zero!)
-        shadowGhost.velocity.x = -3;
-        shadowGhost.velocity.y = 3;
-        shadowGhost.energy = 1.0;
-      }
-
-      // Reset movement states
-      this.ghostMovementState = 'FREE_FLIGHT';
-      this.shadowMovementState = 'FREE_FLIGHT';
-    }
-
     // Clear territory
     if (this.territorySystem) {
       this.territorySystem.clearAll?.();
     }
 
-    // Reset pattern recorder
-    if (this.patternRecorder) {
-      this.patternRecorder.reset?.();
-      this.patternRecorder.start();
+    // PHASE 2: Re-setup arena with fresh records and dots
+    this._setupInitialArena(arenaSize);
+
+    // PHASE 3: Reset or recreate ghosts
+    if (this.renderer) {
+      // Reset or recreate player ghost
+      let localGhost = this.renderer.getLocalGhost();
+      if (localGhost) {
+        // Ghost exists - just reset position
+        localGhost.position.x = arenaSize * 0.2;
+        localGhost.position.y = arenaSize * 0.8;
+        localGhost.velocity.x = 3;
+        localGhost.velocity.y = -3;
+        localGhost.energy = 1.0;
+        localGhost.isOrbiting = false;
+      } else {
+        // Ghost missing - recreate it
+        console.log('[GhostOrbits] Rematch: Recreating local ghost');
+        this.renderer.addGhost({
+          id: this.username || 'player',
+          x: arenaSize * 0.2,
+          y: arenaSize * 0.8,
+          color: this.ghostProperties?.color || '#4488ff',
+          tier: this.ghostProperties?.tier || 0,
+          pattern: this.ghostProperties?.pattern || null,
+          nnProperties: {
+            mass: this.ghostProperties?.mass || 1.0,
+            thrustEfficiency: this.ghostProperties?.thrustEfficiency || 1.0,
+            trailDuration: this.ghostProperties?.trailDuration || 1.0,
+            energyRegen: this.ghostProperties?.energyRegen || 1.0,
+            trailWidth: this.ghostProperties?.trailWidth || 1.0
+          }
+        }, true);
+      }
+
+      // Reset or recreate shadow ghost
+      let shadowGhost = this.renderer.ghosts?.get(this.shadowGhostId);
+      if (shadowGhost) {
+        // Ghost exists - just reset position
+        shadowGhost.position.x = arenaSize * 0.7;
+        shadowGhost.position.y = arenaSize * 0.35;
+        shadowGhost.velocity.x = -3;
+        shadowGhost.velocity.y = 3;
+        shadowGhost.energy = 1.0;
+        shadowGhost.isOrbiting = false;
+      } else {
+        // Ghost missing - recreate it
+        console.log('[GhostOrbits] Rematch: Recreating shadow ghost');
+        const playerColor = this.ghostProperties?.color || '#4488ff';
+        const shadowColor = this._getComplementaryColor(playerColor);
+        this.renderer.addGhost({
+          id: this.shadowGhostId,
+          x: arenaSize * 0.7,
+          y: arenaSize * 0.35,
+          color: shadowColor,
+          tier: this.ghostProperties?.tier || 0,
+          pattern: this.ghostProperties?.pattern || null,
+          isShadow: true,
+          nnProperties: {
+            mass: this.ghostProperties?.mass || 1.0,
+            thrustEfficiency: this.ghostProperties?.thrustEfficiency || 1.0,
+            trailDuration: this.ghostProperties?.trailDuration || 1.0,
+            energyRegen: this.ghostProperties?.energyRegen || 1.0,
+            trailWidth: this.ghostProperties?.trailWidth || 1.0
+          }
+        }, false);
+      }
+
+      // Reset movement states
+      this.ghostMovementState = 'FREE_FLIGHT';
+      this.shadowMovementState = 'FREE_FLIGHT';
+
+      // Verify ghosts exist after rematch setup
+      console.log('[GhostOrbits] Rematch ghost verification:', {
+        ghostsCount: this.renderer.ghosts?.size,
+        localGhostExists: !!this.renderer.getLocalGhost(),
+        shadowGhostExists: !!this.renderer.ghosts?.get(this.shadowGhostId)
+      });
     }
 
-    // Reset Shadow AI
+    // PHASE 4: Sync ALL visual state to renderer
+    if (this.renderer) {
+      // Sync records/wells
+      this.renderer.updateWells(this.physicsEngine.getWells());
+      this.renderer.updateVoidZone(this.voidZone);
+      // Sync dots (critical - was missing!)
+      this.renderer.updateDots(this.dotManager?.getDots() || []);
+    }
+
+    // PHASE 5: Reset AI and recording systems
+    if (this.patternRecorder) {
+      this.patternRecorder.clear();
+      this.patternRecorder.start();
+    }
     if (this.shadowAI) {
       this.shadowAI.reset?.();
     }
+
+    // PHASE 6: Start the match timer FIRST (before render loop starts)
+    this.startMatchTimer();
+
+    // PHASE 7: Re-sync ALL visual state after startMatchTimer (it re-initializes dots)
+    if (this.renderer) {
+      this.renderer.updateWells(this.physicsEngine.getWells());
+      this.renderer.updateDots(this.dotManager?.getDots() || []);
+    }
+
+    // PHASE 8: NOW set state to PLAYING (starts render loop with correct data)
+    // Force restart the renderer to ensure fresh animation loop
+    if (this.renderer) {
+      this.renderer.stop();
+      this.renderer._logNextRender = true;
+    }
+    this._setState(GameState.PLAYING);
+
+    // DIAGNOSTIC: Log state after rematch setup
+    console.log('[GhostOrbits] Rematch diagnostics:', {
+      state: this.state,
+      matchStartTime: this.matchStartTime,
+      matchTimeRemaining: this.matchTimeRemaining,
+      rendererRunning: this.renderer?.isRunning,
+      wellsCount: this.renderer?.wells?.length,
+      dotsCount: this.renderer?.territoryDots?.length,
+      ghostsCount: this.renderer?.ghosts?.size,
+      localGhostId: this.renderer?.localGhostId,
+      localGhostExists: !!this.renderer?.getLocalGhost(),
+      physicsRecordsCount: this.physicsEngine?.getRecords()?.length,
+      dotManagerDotsCount: this.dotManager?.getDots()?.length
+    });
 
     console.log('[GhostOrbits] Rematch started with full re-initialization');
   }
