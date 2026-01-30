@@ -1349,9 +1349,17 @@
 
       console.log('[GhostOrbits] Unlock check passed');
 
-      if (!ghostOrbitsController) {
-        console.log('[GhostOrbits] Creating controller...');
-        initGhostOrbits();
+      // Only create new controller if one doesn't exist OR if existing one is in IDLE state
+      // This prevents creating duplicate panels when called during active game
+      const needsNewController = !ghostOrbitsController ||
+                                  ghostOrbitsController.state === OrbitsGameState.IDLE;
+
+      if (needsNewController) {
+        console.log('[GhostOrbits] Creating new controller (state:', ghostOrbitsController?.state || 'none', ')');
+        initGhostOrbits(); // This disposes old controller first
+      } else {
+        console.log('[GhostOrbits] Controller already active, state:', ghostOrbitsController.state);
+        return false; // Don't launch again if already in game
       }
 
       if (ghostOrbitsController) {

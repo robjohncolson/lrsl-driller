@@ -72,11 +72,23 @@ export class GhostOrbitsPanel {
    * Hide the panel
    */
   hide() {
-    if (!this.isVisible) return;
+    console.log('[GhostOrbitsPanel] hide() called, isVisible:', this.isVisible, 'overlayElement:', !!this.overlayElement);
+
+    if (!this.isVisible) {
+      console.log('[GhostOrbitsPanel] hide() early return - isVisible is false');
+      return;
+    }
 
     this.isVisible = false;
     if (this.overlayElement) {
       this.overlayElement.classList.remove('visible');
+      console.log('[GhostOrbitsPanel] Removed visible class, classList now:', this.overlayElement.classList.toString());
+
+      // Also try removing from DOM entirely
+      if (this.overlayElement.parentNode) {
+        this.overlayElement.parentNode.removeChild(this.overlayElement);
+        console.log('[GhostOrbitsPanel] Removed overlay from DOM');
+      }
     }
 
     // Remove keyboard listener
@@ -327,6 +339,7 @@ export class GhostOrbitsPanel {
     this._render();
     this._attachEventListeners();
     this.overlayElement?.classList.add('visible');
+    this.isVisible = true; // Keep flag in sync with class
   }
 
   /**
@@ -488,6 +501,11 @@ export class GhostOrbitsPanel {
 
     // Dismiss handler
     const dismiss = () => {
+      // Clean up key handler if still active
+      if (this._helpKeyHandler) {
+        document.removeEventListener('keydown', this._helpKeyHandler);
+        this._helpKeyHandler = null;
+      }
       helpOverlay.style.animation = 'fadeIn 0.2s ease-out reverse';
       setTimeout(() => {
         helpOverlay.remove();
@@ -502,8 +520,6 @@ export class GhostOrbitsPanel {
     const handleKey = (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        document.removeEventListener('keydown', handleKey);
-        this._helpKeyHandler = null;
         dismiss();
       }
     };
@@ -663,6 +679,7 @@ export class GhostOrbitsPanel {
     `;
 
     this.overlayElement.classList.add('visible');
+    this.isVisible = true;
 
     // Attach return button listener
     const returnBtn = this.overlayElement.querySelector('#orbits-return-btn');
@@ -737,6 +754,7 @@ export class GhostOrbitsPanel {
     `;
 
     this.overlayElement.classList.add('visible');
+    this.isVisible = true;
 
     // Attach return button listener if present
     const returnBtn = this.overlayElement.querySelector('#orbits-return-btn');
@@ -801,6 +819,7 @@ export class GhostOrbitsPanel {
     `;
 
     this.overlayElement.classList.add('visible');
+    this.isVisible = true;
 
     // Attach continue button listener
     const continueBtn = this.overlayElement.querySelector('#orbits-continue-btn');
@@ -869,6 +888,7 @@ export class GhostOrbitsPanel {
     `;
 
     this.overlayElement.classList.add('visible');
+    this.isVisible = true;
 
     // Attach button listeners
     const rematchBtn = this.overlayElement.querySelector('#orbits-rematch-btn');

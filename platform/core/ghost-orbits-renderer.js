@@ -568,6 +568,9 @@ class GhostOrbitsRenderer {
     // Input state
     this.keysPressed = new Set();
 
+    // ResizeObserver cleanup reference
+    this.resizeObserver = null;
+
     // Bind methods
     this.update = this.update.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
@@ -617,6 +620,35 @@ class GhostOrbitsRenderer {
     // Initialization is done in constructor
     // This method exists for API compatibility with controller
     return Promise.resolve();
+  }
+
+  /**
+   * Re-mount the canvas to a new container (handles ResizeObserver re-setup)
+   * @param {HTMLElement} newContainer - The new container element
+   */
+  remountCanvas(newContainer) {
+    if (!newContainer || !this.canvas) return;
+
+    // Disconnect old ResizeObserver
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+
+    // Move canvas to new container
+    this.container = newContainer;
+    if (!newContainer.contains(this.canvas)) {
+      newContainer.appendChild(this.canvas);
+    }
+
+    // Reset canvas transform (might have been scaled by old observer)
+    this.canvas.style.transform = '';
+    this.canvas.style.transformOrigin = '';
+
+    // Re-setup ResizeObserver for new container
+    this._setupResponsiveCanvas();
+
+    console.log('[Renderer] Canvas remounted to new container');
   }
 
   /**
@@ -863,6 +895,32 @@ class GhostOrbitsRenderer {
     const ctx = this.ctx;
     const size = this.arena.size;
 
+    // DIAGNOSTIC: One-time log after rematch
+    if (this._logNextRender) {
+      console.log('[Renderer] Render state:', {
+        wellsCount: this.wells?.length,
+        dotsCount: this.territoryDots?.length,
+        ghostsCount: this.ghosts?.size,
+        localGhostId: this.localGhostId,
+        canvasInDOM: this.canvas?.parentNode ? true : false,
+        canvasSize: { w: this.canvas?.width, h: this.canvas?.height },
+        arenaSize: size,
+        ctxValid: !!ctx,
+        ctxGlobalAlpha: ctx?.globalAlpha,
+        canvasDisplay: this.canvas?.style?.display,
+        canvasTransform: this.canvas?.style?.transform
+      });
+      this._logNextRender = false;
+      this._logRenderDetails = true; // Also log render function details
+      this._loggedFirstWell = false; // Reset for diagnostic logging
+    }
+
+    // Guard against invalid context
+    if (!ctx) {
+      console.error('[Renderer] Canvas context is null!');
+      return;
+    }
+
     // Clear with background color
     ctx.fillStyle = COLORS.background;
     ctx.fillRect(0, 0, size, size);
@@ -1021,7 +1079,17 @@ class GhostOrbitsRenderer {
    * Render all records (v2 - spinning plates)
    */
   renderGravityWells() {
-    if (!this.wells || this.wells.length === 0) return;
+    if (!this.wells || this.wells.length === 0) {
+      if (this._logRenderDetails) {
+        console.log('[Renderer] renderGravityWells: no wells to render');
+      }
+      return;
+    }
+
+    if (this._logRenderDetails) {
+      console.log('[Renderer] renderGravityWells: rendering', this.wells.length, 'wells');
+      this._logRenderDetails = false; // Only log once
+    }
 
     for (const record of this.wells) {
       this.renderRecord(record);
@@ -1048,6 +1116,12 @@ class GhostOrbitsRenderer {
     if (!isFinite(x) || !isFinite(y)) {
       console.warn('[Renderer] Invalid record coordinates:', record);
       return;
+    }
+
+    // Diagnostic: log first well being rendered
+    if (this._logRenderDetails && !this._loggedFirstWell) {
+      console.log('[Renderer] Sample well coords:', { x, y, radius, captureRadius, spinAngle });
+      this._loggedFirstWell = true;
     }
 
     // Record colors - neutral gray/dark theme
@@ -1220,6 +1294,14 @@ class GhostOrbitsRenderer {
    * Render all ghosts
    */
   renderGhosts() {
+    if (this._logRenderDetails) {
+      console.log('[Renderer] renderGhosts: rendering', this.ghosts?.size || 0, 'ghosts');
+      if (this.ghosts) {
+        for (const ghost of this.ghosts.values()) {
+          console.log('[Renderer] Ghost:', ghost.id, 'at', ghost.position, 'radius:', ghost.radius, 'color:', ghost.color);
+        }
+      }
+    }
     for (const ghost of this.ghosts.values()) {
       this.renderGhost(ghost);
     }
@@ -1488,7 +1570,19 @@ class GhostOrbitsRenderer {
    * - Owned dots: owner's color with glow
    */
   renderDots() {
-    if (!this.territoryDots || this.territoryDots.length === 0) return;
+    if (!this.territoryDots || this.territoryDots.length === 0) {
+      if (this._logRenderDetails) {
+        console.log('[Renderer] renderDots: no dots to render');
+      }
+      return;
+    }
+
+    if (this._logRenderDetails) {
+      console.log('[Renderer] renderDots: rendering', this.territoryDots.length, 'dots');
+      // Log first dot as sample
+      const sample = this.territoryDots[0];
+      console.log('[Renderer] Sample dot:', { x: sample?.x, y: sample?.y, radius: sample?.radius, state: sample?.state });
+    }
 
     const ctx = this.ctx;
 
