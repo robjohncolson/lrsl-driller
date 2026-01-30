@@ -1,4 +1,41 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
+
+# Vercel
 .vercel/
+
+# Local config
 *.local
+
+# Python cache (Manim)
+__pycache__/
+*.py[cod]
+
+# Manim output
+**/media/
+manim_output.txt
+
+# Backup files
+*.bak
+
+# Screenshots
+Screenshot*.png
+
+# Implementation/planning docs (temporary)
+IMPLEMENTATION-SUMMARY.md
+SHADOW-SELF-IMPLEMENTATION.md
+ghost-orbits-v2-plan.md
+shadow-self-patch.txt
+
+# Draft documentation
+docs/GHOST-ORBITS-PROGRESSION.md
+docs/WIN_CONDITIONS_UPDATE.md
+
+# Animation README (generated)
+animations/README.md
+
+# Large video assets (MP4s in cartridge assets)
+cartridges/*/assets/*.mp4
