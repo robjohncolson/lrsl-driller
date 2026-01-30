@@ -42,8 +42,8 @@ describe('Scoring Configuration', () => {
       expect(SCORING_CONFIG.levelMultiplier.last).toBe(3.0);
     });
 
-    it('should require 3 gold stars to unlock next level', () => {
-      expect(SCORING_CONFIG.goldToUnlock).toBe(3);
+    it('should require 1 gold star to unlock next level (default, manifests can override)', () => {
+      expect(SCORING_CONFIG.goldToUnlock).toBe(1);
     });
   });
 

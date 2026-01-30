@@ -177,6 +177,23 @@ Complete state machine documentation for all components as of v4.8.0.
 
 ---
 
+## ⚠️ ARCHIVED SECTIONS NOTICE
+
+**The following sections document features that were REMOVED from the codebase:**
+
+| Sections | Feature | Status | Notes |
+|----------|---------|--------|-------|
+| CTF sections (before §3) | CTF/KotH Game Modes | **ARCHIVED** | Never fully implemented, removed in v4.9 |
+| §§3-21, 27-30, 33-45, 48-100 | Grid Wars & Pong Duel | **HISTORICAL** | Removed in v4.0 |
+| §111 | CTF Session Start | **ARCHIVED** | Part of CTF system |
+| v4.3 Game Mode Expansion | Tiebreaker System | **ARCHIVED** | Never fully implemented |
+
+**Active sections:** §§1-2, 22-26, 31, 46, 101-110, 112-113, 128-142
+
+These archived sections are preserved for historical reference only. Do not implement features based on them.
+
+---
+
 ## 1. GAME ENGINE — Star Earning Flow
 
 ```
@@ -322,7 +339,9 @@ AI Fallback Chain:
 
 ---
 
-## CTF (Capture The Flag) — Game Flow (v4.0)
+## CTF (Capture The Flag) — Game Flow (v4.0) [ARCHIVED - NEVER IMPLEMENTED]
+
+> ⚠️ **ARCHIVED**: This feature was designed but never fully implemented. CTF/KotH were removed in v4.9. This section is preserved for historical reference only.
 
 **Added in v4.0** - Replaces Grid Wars and Pong Duel with a simple linear tug-of-war game.
 
@@ -441,7 +460,9 @@ ctf_tiebreaker_matches: {
 
 ---
 
-## CTF Session Management (v4.2)
+## CTF Session Management (v4.2) [ARCHIVED]
+
+> **ARCHIVED**: CTF/KotH were never fully implemented and removed in v4.9. This section is preserved for historical reference only.
 
 **Added in v4.2** - Time-bounded sessions with automatic start/end and dead-zone tiebreaker.
 
@@ -572,7 +593,9 @@ Select top 3 by velocity per team:
 
 ---
 
-## CTF Tiebreaker Flow (v4.2)
+## CTF Tiebreaker Flow (v4.2) [ARCHIVED]
+
+> **ARCHIVED**: CTF/KotH were never fully implemented and removed in v4.9. This section is preserved for historical reference only.
 
 **Added in v4.2** - Best-of-3 Pong matches when session ends in dead zone.
 

@@ -17,7 +17,8 @@
  * - Every answer awards at least 1 point
  *
  * Unlock Rules:
- * - 3 gold stars on a level unlock the next level
+ * - Default: 1 gold star on a level unlocks the next level
+ * - Manifests can override goldToUnlock per cartridge
  * - All levels above 1 are initially locked
  */
 
