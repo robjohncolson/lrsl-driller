@@ -267,6 +267,8 @@ export class GradingEngine {
       if (aiScore > regexScore) {
         return {
           ...aiResult,
+          _aiScore: aiResult.score,
+          _aiFeedback: aiResult.feedback || '',
           _regexScore: regexResult.score,
           _bestOf: 'ai'
         };

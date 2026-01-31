@@ -292,6 +292,7 @@ export class GameEngine {
       // Clear unlocked tiers and re-check from scratch
       this.unlockedTiers = [];
       this.checkUnlocks(this.unlockRules);
+      this.currentTier = this.unlockedTiers[0] || null;
     }
   }
 

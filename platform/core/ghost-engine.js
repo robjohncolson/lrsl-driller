@@ -535,7 +535,11 @@ async function attemptServerSync() {
     } else if (profile.version > (serverProfile?.version || 0)) {
       // Local is newer, push to server
       console.log('[Ghost] Local version newer, pushing to server');
-      await syncToServer();
+      if (profile.weights && Array.isArray(profile.weights)) {
+        await syncToServer();
+      } else {
+        console.log('[Ghost] Skipping server sync (weights not initialized yet)');
+      }
     }
   } catch (err) {
     console.warn('[Ghost] Server sync attempt failed:', err.message);

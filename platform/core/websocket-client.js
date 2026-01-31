@@ -94,6 +94,13 @@ export class WebSocketClient {
 
       this.ws.onerror = (err) => {
         console.warn('WebSocket error:', err);
+        if (!this.connected && this.ws) {
+          try {
+            this.ws.close();
+          } catch (closeErr) {
+            console.warn('WebSocket close after error failed:', closeErr);
+          }
+        }
       };
     } catch (err) {
       console.warn('WebSocket connection failed:', err);
