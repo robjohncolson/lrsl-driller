@@ -605,6 +605,33 @@ app.post('/api/progress/cartridge-sync', async (req, res) => {
 });
 
 // ============================================
+// PROGRESS RESTORE ENDPOINT
+// ============================================
+
+app.get('/api/progress/cartridge/:username/:cartridgeId', async (req, res) => {
+  try {
+    const { username, cartridgeId } = req.params;
+
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select('gold_stars, silver_stars, bronze_stars, tin_stars, mode_progress, updated_at')
+      .eq('username', username)
+      .eq('cartridge_id', cartridgeId)
+      .single();
+
+    if (error && error.code === 'PGRST116') {
+      return res.json({ found: false, data: null });
+    }
+    if (error) throw error;
+
+    res.json({ found: true, data });
+  } catch (err) {
+    console.error('GET /api/progress/cartridge error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // LEADERBOARD ENDPOINT
 // ============================================
 

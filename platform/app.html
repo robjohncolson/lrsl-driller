@@ -4147,6 +4147,26 @@
           console.log('[App] Progression overrides unavailable, using manifest defaults');
         }
 
+        // Attempt server restore if user is logged in (prevents data loss if localStorage cleared)
+        const username = userSystem?.currentUser?.username;
+        if (username && platform.gameEngine) {
+          try {
+            const result = await platform.gameEngine.restoreFromServer(SERVER_URL, username);
+            if (result.restored) {
+              const state = platform.getState();
+              if (state?.game) {
+                updateStarsDisplay(state.game.starCounts);
+                updateStreaksDisplay(state.game.streaks);
+                updateRankDisplay(state.game.starCounts);
+              }
+              console.log('[App] Progress restored from server');
+              celebration.showToast('Progress restored from cloud', 'success', 3000);
+            }
+          } catch (err) {
+            console.warn('[App] Restore failed:', err.message);
+          }
+        }
+
         document.getElementById('app-title').textContent = platform.currentCartridge?.manifest?.meta?.name || 'Driller';
         document.getElementById('current-cartridge-name').textContent = platform.currentCartridge?.manifest?.meta?.name || cartridgeId;
 

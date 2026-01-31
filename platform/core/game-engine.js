@@ -25,6 +25,9 @@ export class GameEngine {
     // Retry tracking (wrong answers count as penalties)
     this.retriesThisProblem = 0;
 
+    // Timestamp for conflict resolution with server
+    this.stateUpdatedAt = null;
+
     // Teacher progression overrides (modeId -> goldRequired)
     this.progressionOverrides = {};
 
@@ -351,12 +354,14 @@ export class GameEngine {
    * Save state to localStorage
    */
   saveState() {
+    this.stateUpdatedAt = new Date().toISOString();
     const state = {
       streaks: this.streaks,
       starCounts: this.starCounts,
       starsPerMode: this.starsPerMode,
       currentTier: this.currentTier,
-      unlockedTiers: this.unlockedTiers
+      unlockedTiers: this.unlockedTiers,
+      updated_at: this.stateUpdatedAt
     };
     localStorage.setItem(this.storagePrefix + 'gameState', JSON.stringify(state));
   }
@@ -374,9 +379,64 @@ export class GameEngine {
         this.starsPerMode = { ...this.starsPerMode, ...state.starsPerMode };
         this.currentTier = state.currentTier || null;
         this.unlockedTiers = state.unlockedTiers || [];
+        this.stateUpdatedAt = state.updated_at || null;
       } catch (e) {
         console.warn('Failed to load game state:', e);
       }
+    }
+  }
+
+  /**
+   * Restore progress from server if local is empty or older
+   * Enables bidirectional sync to prevent data loss
+   */
+  async restoreFromServer(serverUrl, username) {
+    if (!this.cartridgeId || !username) {
+      return { restored: false, source: 'skipped' };
+    }
+
+    const hasLocalProgress = Object.values(this.starCounts).some(v => v > 0);
+
+    try {
+      const response = await fetch(
+        `${serverUrl}/api/progress/cartridge/${encodeURIComponent(username)}/${encodeURIComponent(this.cartridgeId)}`
+      );
+
+      if (!response.ok) return { restored: false, source: 'local' };
+
+      const result = await response.json();
+      if (!result.found) return { restored: false, source: 'local' };
+
+      const serverData = result.data;
+      const serverTime = new Date(serverData.updated_at || 0).getTime();
+      const localTime = new Date(this.stateUpdatedAt || 0).getTime();
+
+      // Keep local if newer
+      if (hasLocalProgress && localTime > serverTime) {
+        return { restored: false, source: 'local' };
+      }
+
+      // Restore from server
+      this.starCounts = {
+        gold: serverData.gold_stars || 0,
+        silver: serverData.silver_stars || 0,
+        bronze: serverData.bronze_stars || 0,
+        tin: serverData.tin_stars || 0
+      };
+      this.starsPerMode = serverData.mode_progress || {};
+      this.stateUpdatedAt = serverData.updated_at;
+
+      // Recalculate unlocks from restored progress
+      this.unlockedTiers = [];
+      if (this.unlockRules) this.checkUnlocks(this.unlockRules);
+      this.currentTier = this.unlockedTiers[0] || null;
+
+      this.saveState();
+      return { restored: true, source: 'server' };
+
+    } catch (err) {
+      console.warn('[GameEngine] Restore error:', err.message);
+      return { restored: false, source: 'local' };
     }
   }
 
