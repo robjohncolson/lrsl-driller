@@ -1266,9 +1266,8 @@ export class GhostOrbitsController {
     let shadowData = null;
 
     // Get AI decision from mode (mode owns ShadowAI and PatternRecorder)
-    // Mode.step() is called later; here we get the decision from previous frame
-    // and apply it before physics update
-    if (this.mode && shadowGhost) {
+    // Mode.step() runs regardless of shadowGhost, so dot logic always executes
+    if (this.mode) {
       // Build input state for mode's AI update
       const modeInput = {
         ghostMovementState: this.ghostMovementState,
@@ -1280,28 +1279,29 @@ export class GhostOrbitsController {
       // Mode updates ShadowAI and returns decision (single source of truth)
       this.mode.step(deltaTime, currentTime, localGhost, modeInput);
 
-      // Apply AI decision from mode
+      // Apply AI decision from mode (only if shadow exists)
       const aiDecision = modeInput.aiDecision;
-
-      // Check if shadow should release from orbit
-      if (this.shadowMovementState === 'ORBITING') {
-        const releaseDir = aiDecision?.releaseDirection;
-        if (releaseDir) {
-          console.log(`[GhostOrbits] Shadow AI releasing from orbit: ${releaseDir}`);
-          const releaseVel = this.physicsEngine.releaseFromOrbit(this.shadowGhostId, releaseDir);
-          if (releaseVel) {
-            shadowGhost.velocity.x = releaseVel.x;
-            shadowGhost.velocity.y = releaseVel.y;
-            this.shadowMovementState = 'FREE_FLIGHT';
+      if (shadowGhost) {
+        // Check if shadow should release from orbit
+        if (this.shadowMovementState === 'ORBITING') {
+          const releaseDir = aiDecision?.releaseDirection;
+          if (releaseDir) {
+            console.log(`[GhostOrbits] Shadow AI releasing from orbit: ${releaseDir}`);
+            const releaseVel = this.physicsEngine.releaseFromOrbit(this.shadowGhostId, releaseDir);
+            if (releaseVel) {
+              shadowGhost.velocity.x = releaseVel.x;
+              shadowGhost.velocity.y = releaseVel.y;
+              this.shadowMovementState = 'FREE_FLIGHT';
+            }
           }
         }
-      }
 
-      // Apply AI input to shadow ghost (if in free flight)
-      if (this.shadowMovementState === 'FREE_FLIGHT') {
-        const aiInput = aiDecision?.inputDirection;
-        if (aiInput && (aiInput.x !== 0 || aiInput.y !== 0)) {
-          shadowGhost.applyThrust(aiInput);
+        // Apply AI input to shadow ghost (if in free flight)
+        if (this.shadowMovementState === 'FREE_FLIGHT') {
+          const aiInput = aiDecision?.inputDirection;
+          if (aiInput && (aiInput.x !== 0 || aiInput.y !== 0)) {
+            shadowGhost.applyThrust(aiInput);
+          }
         }
       }
 
@@ -1397,15 +1397,17 @@ export class GhostOrbitsController {
       }
 
       // Prepare shadow data for physics
-      shadowData = {
-        id: this.shadowGhostId,
-        x: shadowGhost.position.x,
-        y: shadowGhost.position.y,
-        vx: shadowGhost.velocity.x,
-        vy: shadowGhost.velocity.y,
-        ownerId: this.shadowGhostId,
-        mass: shadowGhost.mass
-      };
+      if (shadowGhost) {
+        shadowData = {
+          id: this.shadowGhostId,
+          x: shadowGhost.position.x,
+          y: shadowGhost.position.y,
+          vx: shadowGhost.velocity.x,
+          vy: shadowGhost.velocity.y,
+          ownerId: this.shadowGhostId,
+          mass: shadowGhost.mass
+        };
+      }
     } else if (shadowGhost) {
       // Legacy: No mode, just prepare shadow data
       shadowData = {
@@ -2509,7 +2511,8 @@ export class GhostOrbitsController {
       // Show help immediately, remove invulnerability when dismissed
       this.panel.showHelpScreen(() => {
         // Help dismissed - reset invulnerability to normal respawn duration
-        this.playerInvulnerableUntil = Date.now() + (this.ghostProperties?.respawnSpeed || 2) * 1000;
+        const respawnDuration = (this.ghostProperties?.respawnSpeed || 2) * 1000;
+        this.playerInvulnerableUntil = Date.now() + respawnDuration;
         if (this.mode) {
           this.mode.setPlayerInvulnerableUntil(this.playerInvulnerableUntil);
         }

@@ -190,7 +190,9 @@ export class ArenaMode extends OrbitsMode {
 
     // Check dot interactions for player
     const playerOnRecord = input.ghostMovementState === 'ORBITING';
-    if (!playerOnRecord && currentTime > this.playerInvulnerableUntil) {
+    // Use Date.now() for invulnerability check since setPlayerInvulnerableUntil uses Date.now()
+    const now = Date.now();
+    if (!playerOnRecord && now > this.playerInvulnerableUntil) {
       const interaction = this.dotManager.checkDotInteraction(
         'player',
         localGhost.position.x,
@@ -214,7 +216,7 @@ export class ArenaMode extends OrbitsMode {
 
     // Check dot interactions for shadow
     const shadowOnRecord = input.shadowMovementState === 'ORBITING';
-    if (input.shadowGhost && !shadowOnRecord && currentTime > this.shadowInvulnerableUntil) {
+    if (input.shadowGhost && !shadowOnRecord && now > this.shadowInvulnerableUntil) {
       // Shadow AI: register spacebar if near enemy dot
       const nearEnemyDot = this._isShadowNearEnemyDot(input.shadowGhost);
       if (nearEnemyDot && Math.random() < 0.7) {
