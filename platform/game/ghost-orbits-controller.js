@@ -17,6 +17,7 @@ import { PhysicsEngine, PHYSICS } from '../core/ghost-orbits-physics.js';
 import { TerritorySystem } from '../core/ghost-orbits-territory.js';
 import { ShadowAI, PatternRecorder } from './ghost-orbits-shadow-ai.js';
 import { DotManager, DOT_CONFIG } from '../core/ghost-orbits-dots.js';
+import { ArenaMode } from './arena-mode.js';
 
 /**
  * Game states for the Ghost Orbits state machine
@@ -182,13 +183,16 @@ export class GhostOrbitsController {
       totalGameTime: 0               // Total time for rate calculations
     };
 
-    // Shadow Self (AI opponent)
+    // Shadow Self (AI opponent) - now managed by ArenaMode
     this.shadowAI = null;
     this.shadowGhostId = 'shadow_self';
     this.shadowMovementState = 'FREE_FLIGHT';
     this.patternRecorder = null;
     this.lastPatternRecordTime = 0; // Throttle pattern recording
     this.shadowGeneration = 1; // Loaded from localStorage
+
+    // Game mode (ArenaMode for solo vs Shadow Self)
+    this.mode = null;
 
     // Bind methods for event handlers
     this._boundOnVisibilityChange = this._handleVisibilityChange.bind(this);
@@ -437,6 +441,9 @@ export class GhostOrbitsController {
 
       // Spawn Shadow Self (AI opponent) in solo mode
       this._spawnShadow(arenaSize);
+
+      // Initialize ArenaMode (manages dots, shadow AI, lives, win conditions)
+      await this._initArenaMode(arenaSize);
 
       // Verify ghosts were created
       console.log('[GhostOrbits] Ghost creation verification:', {
@@ -709,23 +716,44 @@ export class GhostOrbitsController {
       }
     }, false); // false = not local player
 
-    // Load any recorded patterns from previous matches
+    // NOTE: ShadowAI and PatternRecorder are now created by ArenaMode
+    // which is initialized in _initArenaMode() after this method
+    console.log('[GhostOrbits] Shadow ghost added to renderer');
+  }
+
+  /**
+   * Initialize ArenaMode for solo vs Shadow Self gameplay
+   * @param {number} arenaSize - Arena size in pixels
+   * @private
+   */
+  async _initArenaMode(arenaSize) {
+    // Load shadow generation from localStorage
+    this._loadShadowGeneration();
+
+    // Load stored patterns
     const storedPatterns = this._loadStoredPatterns();
 
-    // Create Shadow AI with player's properties and generation
-    this.shadowAI = new ShadowAI({
-      mass: this.ghostProperties?.mass || 1.0,
-      thrust: this.ghostProperties?.thrustEfficiency || 1.0,
-      trailDuration: this.ghostProperties?.trailDuration || 1.0,
-      energyRegen: this.ghostProperties?.energyRegen || 1.0,
-      trailWidth: this.ghostProperties?.trailWidth || 1.0
-    }, this.shadowGeneration, storedPatterns);
+    // Create and initialize ArenaMode
+    this.mode = new ArenaMode({
+      arenaSize,
+      ghostProperties: this.ghostProperties,
+      cartridgeId: this.cartridgeId,
+      username: this.username,
+      physicsEngine: this.physicsEngine,
+      patterns: storedPatterns,
+      shadowGeneration: this.shadowGeneration
+    });
 
-    // Create pattern recorder to learn from player
-    this.patternRecorder = new PatternRecorder();
-    this.patternRecorder.start();
+    await this.mode.init({ arenaSize, physicsEngine: this.physicsEngine });
 
-    console.log('[GhostOrbits] Shadow AI initialized, pattern recorder started');
+    // Sync mode's dotManager with controller's dotManager reference
+    this.dotManager = this.mode.getDotManager();
+
+    // Sync mode's shadowAI with controller's reference (for compatibility)
+    this.shadowAI = this.mode.getShadowAI();
+    this.patternRecorder = this.mode.getPatternRecorder();
+
+    console.log('[GhostOrbits] ArenaMode initialized');
   }
 
   /**
@@ -1237,16 +1265,23 @@ export class GhostOrbitsController {
     const shadowGhost = this.renderer?.ghosts?.get(this.shadowGhostId);
     let shadowData = null;
 
-    // Update Shadow AI and prepare shadow ghost data
-    if (this.shadowAI && shadowGhost) {
-      // Record player's current state for pattern learning
-      this._recordPlayerPattern(localGhost, currentTime);
+    // Get AI decision from mode (mode owns ShadowAI and PatternRecorder)
+    // Mode.step() is called later; here we get the decision from previous frame
+    // and apply it before physics update
+    if (this.mode && shadowGhost) {
+      // Build input state for mode's AI update
+      const modeInput = {
+        ghostMovementState: this.ghostMovementState,
+        shadowMovementState: this.shadowMovementState,
+        shadowGhost: shadowGhost,
+        activeKeys: this.activeKeys
+      };
 
-      // Build game state for Shadow AI
-      const gameState = this._buildShadowGameState(localGhost, shadowGhost);
+      // Mode updates ShadowAI and returns decision (single source of truth)
+      this.mode.step(deltaTime, currentTime, localGhost, modeInput);
 
-      // Update Shadow AI and get decision
-      const aiDecision = this.shadowAI.update(deltaTime, gameState);
+      // Apply AI decision from mode
+      const aiDecision = modeInput.aiDecision;
 
       // Check if shadow should release from orbit
       if (this.shadowMovementState === 'ORBITING') {
@@ -1270,6 +1305,97 @@ export class GhostOrbitsController {
         }
       }
 
+      // Handle player interaction results from mode
+      if (modeInput.playerInteraction) {
+        const interaction = modeInput.playerInteraction;
+        if (interaction.type === 'claimed') {
+          if (this.audio) this.audio.playOrbitCapture?.();
+        } else if (interaction.type === 'flipped') {
+          console.log('[GhostOrbits] Player flipped enemy dot!');
+          if (this.audio) this.audio.playVictory?.();
+        } else if (interaction.type === 'damaged' && modeInput.damageResult) {
+          const damageResult = modeInput.damageResult;
+          console.log(`[GhostOrbits] Player damaged! Lives remaining: ${damageResult.livesRemaining}`);
+
+          // Sync lives from mode
+          this.playerLives = damageResult.livesRemaining;
+          this.playerInvulnerableUntil = damageResult.invulnerableUntil;
+
+          if (this.panel?.updateLives) {
+            this.panel.updateLives(this.playerLives);
+          }
+          if (this.renderer?.flashGhost) {
+            this.renderer.flashGhost(this.username, '#ff4444', 300);
+          }
+          if (this.audio) this.audio.playDamage?.();
+        }
+      }
+
+      // Handle shadow interaction results from mode
+      if (modeInput.shadowInteraction) {
+        const interaction = modeInput.shadowInteraction;
+        if (interaction.type === 'flipped') {
+          console.log('[GhostOrbits] Shadow flipped player dot!');
+        } else if (interaction.type === 'damaged' && modeInput.shadowDamageResult) {
+          const damageResult = modeInput.shadowDamageResult;
+          console.log(`[GhostOrbits] Shadow damaged! Lives remaining: ${damageResult.livesRemaining}`);
+
+          // Sync lives from mode
+          this.shadowLives = damageResult.livesRemaining;
+          this.shadowInvulnerableUntil = damageResult.invulnerableUntil;
+
+          if (this.renderer?.flashGhost) {
+            this.renderer.flashGhost(this.shadowGhostId, '#ff4444', 300);
+          }
+        }
+      }
+
+      // Sync dots to renderer
+      const renderData = this.mode.getRenderData();
+      this.renderer?.updateDots?.(renderData.dots);
+
+      // Check for match end via mode
+      const endCondition = this.mode.checkEndCondition();
+      if (endCondition.ended) {
+        // Convert winner dots
+        const winner = endCondition.winner === 'player' ? 'player' : 'shadow';
+        const winnerColor = winner === 'player'
+          ? (localGhost.color || '#4488ff')
+          : (shadowGhost?.color || '#ff4444');
+        this.dotManager.convertAllToWinner(winner, winnerColor);
+        this.renderer?.updateDots?.(this.dotManager.getDots());
+
+        const result = endCondition.winner === 'player' ? 'player_win' : 'shadow_win';
+        this._handleMatchEnd(result, endCondition.reason);
+        return;
+      }
+
+      // Update UI with scoreboard from mode
+      const scoreboard = this.mode.getScoreboard();
+      if (this.panel) {
+        if (this.panel.updateDotCounts) {
+          this.panel.updateDotCounts(scoreboard.playerScore, scoreboard.opponentScore, scoreboard.totalDots);
+        }
+        if (this.panel.updateLives) {
+          this.panel.updateLives(scoreboard.playerLives);
+        }
+        if (scoreboard.timeRemaining !== undefined) {
+          const secondsRemaining = Math.ceil(scoreboard.timeRemaining / 1000);
+          this.panel.updateTimer(secondsRemaining);
+        }
+      }
+
+      // Sync lives from mode (in case mode updated them)
+      this.playerLives = scoreboard.playerLives;
+      this.shadowLives = scoreboard.opponentLives;
+      this.matchTimeRemaining = scoreboard.timeRemaining;
+
+      // Apply magnetism force from mode (pulls toward neutral dots)
+      if (modeInput.magnetismForce) {
+        localGhost.velocity.x += modeInput.magnetismForce.x;
+        localGhost.velocity.y += modeInput.magnetismForce.y;
+      }
+
       // Prepare shadow data for physics
       shadowData = {
         id: this.shadowGhostId,
@@ -1280,8 +1406,17 @@ export class GhostOrbitsController {
         ownerId: this.shadowGhostId,
         mass: shadowGhost.mass
       };
-
-      // v2: Shadow trails only come from collected dots (handled below)
+    } else if (shadowGhost) {
+      // Legacy: No mode, just prepare shadow data
+      shadowData = {
+        id: this.shadowGhostId,
+        x: shadowGhost.position.x,
+        y: shadowGhost.position.y,
+        vx: shadowGhost.velocity.x,
+        vy: shadowGhost.velocity.y,
+        ownerId: this.shadowGhostId,
+        mass: shadowGhost.mass
+      };
     }
 
     // Update physics engine with both ghosts
@@ -1358,181 +1493,11 @@ export class GhostOrbitsController {
       }
     }
 
-    // ============================================
-    // v3: DOT MAGNETISM (NN-influenced - subtle pull toward unclaimed dots)
-    // ============================================
-    if (this.dotManager && this.ghostMovementState === 'FREE_FLIGHT') {
-      const magnetism = this.ghostProperties?.dotMagnetism || 0;
+    // NOTE: Dot magnetism is now handled by ArenaMode.step() and returned via modeInput.magnetismForce
+    // The controller applies it in the mode handling block above
 
-      if (magnetism > 0) {
-        const neutralDots = this.dotManager.getNeutralDots();
-
-        if (neutralDots.length > 0) {
-          // Find nearest unclaimed dot
-          let nearestDot = null;
-          let nearestDist = Infinity;
-
-          for (const dot of neutralDots) {
-            const dx = dot.x - localGhost.position.x;
-            const dy = dot.y - localGhost.position.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist < nearestDist && dist > 20) { // Ignore dots too close
-              nearestDist = dist;
-              nearestDot = dot;
-            }
-          }
-
-          // Apply subtle magnetism force toward nearest neutral dot
-          if (nearestDot && nearestDist < 200) { // Only within 200px range
-            const dx = nearestDot.x - localGhost.position.x;
-            const dy = nearestDot.y - localGhost.position.y;
-
-            // Normalize and scale by magnetism strength and inverse distance
-            const force = magnetism * (1 - nearestDist / 200) * 0.5;
-            const nx = dx / nearestDist;
-            const ny = dy / nearestDist;
-
-            localGhost.velocity.x += nx * force;
-            localGhost.velocity.y += ny * force;
-          }
-        }
-      }
-    }
-
-    // ============================================
-    // v3: DOT TERRITORY SYSTEM
-    // ============================================
-    if (this.dotManager) {
-      const currentTime = Date.now();
-
-      // Player is safe while on a record (orbiting)
-      const playerOnRecord = this.ghostMovementState === 'ORBITING';
-      const shadowOnRecord = this.shadowMovementState === 'ORBITING';
-
-      // Check dot interactions for player (only when not on record)
-      if (!playerOnRecord && currentTime > this.playerInvulnerableUntil) {
-        const playerColor = localGhost.color || this.ghostProperties?.color || '#4488ff';
-
-        // v3: Apply NN-influenced dot interaction properties
-        const interaction = this.dotManager.checkDotInteraction(
-          'player',
-          localGhost.position.x,
-          localGhost.position.y,
-          playerColor,
-          {
-            claimRadius: this.ghostProperties?.claimRadius || 1.0,
-            flipWindow: this.ghostProperties?.flipWindow || 250
-          }
-        );
-
-        if (interaction) {
-          if (interaction.type === 'claimed') {
-            // Claimed a neutral dot
-            if (this.audio) this.audio.playOrbitCapture?.();
-          } else if (interaction.type === 'flipped') {
-            // Successfully flipped an enemy dot with spacebar
-            console.log('[GhostOrbits] Player flipped enemy dot!');
-            if (this.audio) this.audio.playVictory?.(); // Celebratory sound
-          } else if (interaction.type === 'damaged') {
-            // Touched enemy dot without spacebar - lose a life!
-            this.playerLives--;
-            this.playerInvulnerableUntil = currentTime + this.invulnerabilityDuration;
-            console.log(`[GhostOrbits] Player damaged! Lives remaining: ${this.playerLives}`);
-
-            if (this.panel?.updateLives) {
-              this.panel.updateLives(this.playerLives);
-            }
-
-            if (this.renderer?.flashGhost) {
-              this.renderer.flashGhost(this.username, '#ff4444', 300);
-            }
-
-            if (this.audio) this.audio.playDamage?.();
-
-            if (this.playerLives <= 0) {
-              this._handleMatchEnd('shadow_win', 'elimination');
-              return;
-            }
-          }
-        }
-      }
-
-      // Check dot interactions for shadow (only when not on record)
-      if (shadowGhost && !shadowOnRecord && currentTime > this.shadowInvulnerableUntil) {
-        const shadowColor = shadowGhost.color || '#ff4444';
-
-        // Shadow AI: register spacebar if near enemy dot (simple heuristic)
-        // This gives shadow a chance to flip dots too
-        const nearEnemyDot = this._isShadowNearEnemyDot(shadowGhost);
-        if (nearEnemyDot && Math.random() < 0.7) { // 70% chance to attempt flip
-          this.dotManager.registerSpacebarPress('shadow');
-        }
-
-        const interaction = this.dotManager.checkDotInteraction(
-          'shadow',
-          shadowGhost.position.x,
-          shadowGhost.position.y,
-          shadowColor
-        );
-
-        if (interaction) {
-          if (interaction.type === 'flipped') {
-            console.log('[GhostOrbits] Shadow flipped player dot!');
-          } else if (interaction.type === 'damaged') {
-            this.shadowLives--;
-            this.shadowInvulnerableUntil = currentTime + this.invulnerabilityDuration;
-            console.log(`[GhostOrbits] Shadow damaged! Lives remaining: ${this.shadowLives}`);
-
-            if (this.renderer?.flashGhost) {
-              this.renderer.flashGhost(this.shadowGhostId, '#ff4444', 300);
-            }
-
-            if (this.shadowLives <= 0) {
-              this._handleMatchEnd('player_win', 'elimination');
-              return;
-            }
-          }
-        }
-      }
-
-      // Update dot animations
-      this.dotManager.update(deltaTime);
-
-      // Sync dots to renderer
-      this.renderer?.updateDots?.(this.dotManager.getDots());
-
-      // Check for territory win (90% dots)
-      const winner = this.dotManager.checkWinner();
-      if (winner) {
-        const winnerColor = winner === 'player'
-          ? (localGhost.color || '#4488ff')
-          : (shadowGhost?.color || '#ff4444');
-        this.dotManager.convertAllToWinner(winner, winnerColor);
-        this.renderer?.updateDots?.(this.dotManager.getDots());
-
-        const result = winner === 'player' ? 'player_win' : 'shadow_win';
-        this._handleMatchEnd(result, 'territory');
-        return;
-      }
-
-      // Update UI with dot ownership stats
-      if (this.panel) {
-        const playerDots = this.dotManager.countDotsByOwner('player');
-        const shadowDots = this.dotManager.countDotsByOwner('shadow');
-        const totalDots = this.dotManager.getTotalDots();
-
-        if (this.panel.updateDotCounts) {
-          this.panel.updateDotCounts(playerDots, shadowDots, totalDots);
-        }
-        if (this.panel.updateLives) {
-          this.panel.updateLives(this.playerLives);
-        }
-      }
-    }
-
-    // Track match stats for stat leveling
-    if (this.state === GameState.PLAYING && this.matchStartTime) {
+    // Track match stats for stat leveling (legacy: only runs without mode)
+    if (this.state === GameState.PLAYING && this.matchStartTime && !this.mode) {
       this._trackMatchStats(localGhost, shadowGhost, deltaTime);
 
       // Update timer display in solo mode
@@ -1542,8 +1507,8 @@ export class GhostOrbitsController {
       }
     }
 
-    // Check win conditions (only in PLAYING state for solo mode)
-    if (this.state === GameState.PLAYING && this.matchStartTime) {
+    // Check win conditions (only in PLAYING state for solo mode, and only if no mode)
+    if (this.state === GameState.PLAYING && this.matchStartTime && !this.mode) {
       this._checkWinConditions(currentTime);
     }
   }
@@ -1908,7 +1873,11 @@ export class GhostOrbitsController {
 
       // Register spacebar press for flip mechanic (v3)
       // This must happen BEFORE orbit entry/exit to enable flip timing
-      if (this.dotManager) {
+      // Route through mode.applyInput for single source of truth
+      if (this.mode) {
+        this.mode.applyInput('spacebar', {}, localGhost);
+      } else if (this.dotManager) {
+        // Fallback for non-mode operation
         this.dotManager.registerSpacebarPress('player');
       }
 
@@ -2364,35 +2333,48 @@ export class GhostOrbitsController {
     this.matchResult = winner;
     this.winCondition = condition;
 
+    // Sync result to mode (if mode exists)
+    if (this.mode) {
+      this.mode.setMatchResult(winner, condition);
+    }
+
+    // Get pattern recorder from mode (single source of truth)
+    const patternRecorder = this.mode?.getPatternRecorder() || this.patternRecorder;
+
     // Handle Shadow Self progression system
     if (winner === 'player_win') {
       // Player victory - apply stat upgrade and level up shadow
-      const weakestStat = this._analyzeMatchStats();
+      // Use mode's stat analysis when available (mode tracks stats during match)
+      const weakestStat = this.mode?.analyzeWeakestStat() || this._analyzeMatchStats();
       this._applyStatUpgrade(weakestStat);
 
-      // Increment shadow generation
-      this.shadowGeneration++;
+      // Increment shadow generation (via mode if available)
+      if (this.mode) {
+        this.shadowGeneration = this.mode.incrementShadowGeneration();
+      } else {
+        this.shadowGeneration++;
+      }
       this._saveShadowGeneration();
       console.log(`[GhostOrbits] Shadow Self leveled up to Generation ${this.shadowGeneration}`);
 
       // Save patterns from this match (player's winning moves)
-      if (this.patternRecorder) {
-        const recordedPatterns = this.patternRecorder.getPatterns();
+      if (patternRecorder) {
+        const recordedPatterns = patternRecorder.getPatterns();
         const existingPatterns = this._loadStoredPatterns();
         const allPatterns = [...existingPatterns, ...(recordedPatterns?.chunks || [])];
         this._saveStoredPatterns(allPatterns);
         console.log(`[GhostOrbits] Saved ${recordedPatterns?.chunks?.length || 0} winning patterns`);
-        this.patternRecorder.stop();
+        patternRecorder.stop();
       }
     } else {
       // Shadow victory - save shadow's winning patterns
-      if (this.patternRecorder) {
-        const recordedPatterns = this.patternRecorder.getPatterns();
+      if (patternRecorder) {
+        const recordedPatterns = patternRecorder.getPatterns();
         const existingPatterns = this._loadStoredPatterns();
         const allPatterns = [...existingPatterns, ...(recordedPatterns?.chunks || [])];
         this._saveStoredPatterns(allPatterns);
         console.log(`[GhostOrbits] Shadow learned from victory, saved ${recordedPatterns?.chunks?.length || 0} patterns`);
-        this.patternRecorder.stop();
+        patternRecorder.stop();
       }
     }
 
@@ -2468,23 +2450,37 @@ export class GhostOrbitsController {
    */
   startMatchTimer() {
     this.matchStartTime = Date.now();
-    this.matchTimeRemaining = WIN_CONDITIONS.ROUND_DURATION;
     this.dominationStartTime.clear();
     this.matchResult = null;
     this.winCondition = null;
 
-    // Reset lives (v3 system - 3 lives each)
-    this.playerLives = 3;
-    this.shadowLives = 3;
-    this.playerInvulnerableUntil = 0;
-    this.shadowInvulnerableUntil = 0;
-
-    // Reset dots to neutral (v3)
-    if (this.dotManager) {
-      this.dotManager.reset();
-      // Re-initialize dots with current records
-      const records = this.physicsEngine?.getRecords() || [];
-      this.dotManager.initialize(records);
+    // If mode exists, let it handle reset (it manages dots, lives, timing)
+    if (this.mode) {
+      this.mode.reset();
+      // Sync state from mode (mode is single source of truth for timing/lives)
+      const scoreboard = this.mode.getScoreboard();
+      this.playerLives = scoreboard.playerLives;
+      this.shadowLives = scoreboard.opponentLives;
+      this.matchTimeRemaining = scoreboard.timeRemaining;
+      this.playerInvulnerableUntil = 0;
+      this.shadowInvulnerableUntil = 0;
+      // Sync dotManager reference
+      this.dotManager = this.mode.getDotManager();
+    } else {
+      // Legacy: Use controller constants when no mode
+      this.matchTimeRemaining = WIN_CONDITIONS.ROUND_DURATION;
+      // Reset lives (v3 system - 3 lives each)
+      this.playerLives = 3;
+      this.shadowLives = 3;
+      this.playerInvulnerableUntil = 0;
+      this.shadowInvulnerableUntil = 0;
+      // Legacy: Reset dots to neutral (v3)
+      if (this.dotManager) {
+        this.dotManager.reset();
+        // Re-initialize dots with current records
+        const records = this.physicsEngine?.getRecords() || [];
+        this.dotManager.initialize(records);
+      }
     }
 
     // Reset match stats
@@ -2506,10 +2502,17 @@ export class GhostOrbitsController {
       this._hasShownHelp = true;
       // Give player extended invulnerability while reading help (30 seconds max)
       this.playerInvulnerableUntil = Date.now() + 30000;
+      // Also set in mode if it exists
+      if (this.mode) {
+        this.mode.setPlayerInvulnerableUntil(this.playerInvulnerableUntil);
+      }
       // Show help immediately, remove invulnerability when dismissed
       this.panel.showHelpScreen(() => {
         // Help dismissed - reset invulnerability to normal respawn duration
         this.playerInvulnerableUntil = Date.now() + (this.ghostProperties?.respawnSpeed || 2) * 1000;
+        if (this.mode) {
+          this.mode.setPlayerInvulnerableUntil(this.playerInvulnerableUntil);
+        }
       });
     }
 
@@ -2757,7 +2760,8 @@ export class GhostOrbitsController {
    * @private
    */
   _getWeakestStatName() {
-    return this._analyzeMatchStats();
+    // Use mode's stat analysis when available (mode tracks stats during match)
+    return this.mode?.analyzeWeakestStat() || this._analyzeMatchStats();
   }
 
   /**
@@ -2830,8 +2834,11 @@ export class GhostOrbitsController {
       this.physicsEngine.arenaSize = { width: arenaSize, height: arenaSize };
     }
 
-    // Reset dots and trails
-    if (this.dotManager) {
+    // Reset dots and trails (mode handles dots if present)
+    if (this.mode) {
+      // Mode will reset its dots in startMatchTimer -> mode.reset()
+      this.dotManager = this.mode.getDotManager();
+    } else if (this.dotManager) {
       this.dotManager.reset();
     }
     if (this.trailManager) {
@@ -2932,13 +2939,19 @@ export class GhostOrbitsController {
       this.renderer.updateDots(this.dotManager?.getDots() || []);
     }
 
-    // PHASE 5: Reset AI and recording systems
-    if (this.patternRecorder) {
-      this.patternRecorder.clear();
-      this.patternRecorder.start();
-    }
-    if (this.shadowAI) {
-      this.shadowAI.reset?.();
+    // PHASE 5: Reset AI and recording systems (mode handles these if present)
+    if (this.mode) {
+      // Mode will reset patternRecorder and shadowAI in mode.reset()
+      this.patternRecorder = this.mode.getPatternRecorder();
+      this.shadowAI = this.mode.getShadowAI();
+    } else {
+      if (this.patternRecorder) {
+        this.patternRecorder.clear();
+        this.patternRecorder.start();
+      }
+      if (this.shadowAI) {
+        this.shadowAI.reset?.();
+      }
     }
 
     // PHASE 6: Start the match timer FIRST (before render loop starts)
