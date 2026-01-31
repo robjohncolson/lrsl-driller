@@ -18,6 +18,7 @@ import { TerritorySystem } from '../core/ghost-orbits-territory.js';
 import { ShadowAI, PatternRecorder } from './ghost-orbits-shadow-ai.js';
 import { DotManager, DOT_CONFIG } from '../core/ghost-orbits-dots.js';
 import { ArenaMode } from './arena-mode.js';
+import { TrailsMode } from './trails-mode.js';
 
 /**
  * Game states for the Ghost Orbits state machine
@@ -92,6 +93,7 @@ export class GhostOrbitsController {
    * @param {string} options.serverUrl - WebSocket server URL
    * @param {Function} [options.onExit] - Callback when player exits arena
    * @param {Function} [options.onStateChange] - Callback when game state changes
+   * @param {string} [options.modeType='arena'] - Game mode type ('arena' or 'trails')
    */
   constructor(options) {
     // Required options
@@ -101,6 +103,7 @@ export class GhostOrbitsController {
     this.periodId = options.periodId;
     this.ghostProfile = options.ghostProfile;
     this.serverUrl = options.serverUrl || this._getDefaultServerUrl();
+    this.modeType = options.modeType || 'arena'; // 'arena' or 'trails'
 
     // Callbacks
     this.onExit = options.onExit || (() => {});
@@ -733,8 +736,8 @@ export class GhostOrbitsController {
     // Load stored patterns
     const storedPatterns = this._loadStoredPatterns();
 
-    // Create and initialize ArenaMode
-    this.mode = new ArenaMode({
+    // Create and initialize the appropriate game mode
+    const modeConfig = {
       arenaSize,
       ghostProperties: this.ghostProperties,
       cartridgeId: this.cartridgeId,
@@ -742,18 +745,30 @@ export class GhostOrbitsController {
       physicsEngine: this.physicsEngine,
       patterns: storedPatterns,
       shadowGeneration: this.shadowGeneration
-    });
+    };
+
+    if (this.modeType === 'trails') {
+      this.mode = new TrailsMode(modeConfig);
+      console.log('[GhostOrbits] Creating TrailsMode');
+    } else {
+      this.mode = new ArenaMode(modeConfig);
+      console.log('[GhostOrbits] Creating ArenaMode');
+    }
 
     await this.mode.init({ arenaSize, physicsEngine: this.physicsEngine });
 
-    // Sync mode's dotManager with controller's dotManager reference
-    this.dotManager = this.mode.getDotManager();
+    // Sync mode's dotManager with controller's dotManager reference (ArenaMode only)
+    if (this.mode.getDotManager) {
+      this.dotManager = this.mode.getDotManager();
+    }
 
     // Sync mode's shadowAI with controller's reference (for compatibility)
     this.shadowAI = this.mode.getShadowAI();
-    this.patternRecorder = this.mode.getPatternRecorder();
+    if (this.mode.getPatternRecorder) {
+      this.patternRecorder = this.mode.getPatternRecorder();
+    }
 
-    console.log('[GhostOrbits] ArenaMode initialized');
+    console.log(`[GhostOrbits] ${this.modeType === 'trails' ? 'TrailsMode' : 'ArenaMode'} initialized`);
   }
 
   /**
@@ -1284,23 +1299,51 @@ export class GhostOrbitsController {
       if (shadowGhost) {
         // Check if shadow should release from orbit
         if (this.shadowMovementState === 'ORBITING') {
+          // ArenaMode: releaseDirection
           const releaseDir = aiDecision?.releaseDirection;
-          if (releaseDir) {
-            console.log(`[GhostOrbits] Shadow AI releasing from orbit: ${releaseDir}`);
+          // TrailsMode: wantsRelease
+          const wantsRelease = aiDecision?.wantsRelease;
+
+          if (releaseDir || wantsRelease) {
+            console.log(`[GhostOrbits] Shadow AI releasing from orbit`);
             const releaseVel = this.physicsEngine.releaseFromOrbit(this.shadowGhostId, releaseDir);
             if (releaseVel) {
               shadowGhost.velocity.x = releaseVel.x;
               shadowGhost.velocity.y = releaseVel.y;
               this.shadowMovementState = 'FREE_FLIGHT';
+
+              // TrailsMode: Notify mode of orbit exit for shoot mechanic
+              if (this.mode && this.mode.applyInput) {
+                this.mode.applyInput('orbit_exit', {
+                  tangentVelocity: { x: releaseVel.x, y: releaseVel.y }
+                }, shadowGhost);
+              }
             }
+          }
+        }
+
+        // Check if shadow should enter orbit (TrailsMode: wantsOrbit)
+        if (this.shadowMovementState === 'FREE_FLIGHT' && aiDecision?.wantsOrbit) {
+          const ghostPos = { x: shadowGhost.position.x, y: shadowGhost.position.y };
+          const ghostVel = { x: shadowGhost.velocity.x, y: shadowGhost.velocity.y };
+          const record = this.physicsEngine.requestOrbitEntry(this.shadowGhostId, ghostPos, ghostVel);
+          if (record) {
+            console.log('[GhostOrbits] Shadow AI entering orbit');
+            this.shadowMovementState = 'ORBITING';
           }
         }
 
         // Apply AI input to shadow ghost (if in free flight)
         if (this.shadowMovementState === 'FREE_FLIGHT') {
+          // ArenaMode: inputDirection
           const aiInput = aiDecision?.inputDirection;
+          // TrailsMode: moveDirection
+          const moveDir = aiDecision?.moveDirection;
+
           if (aiInput && (aiInput.x !== 0 || aiInput.y !== 0)) {
             shadowGhost.applyThrust(aiInput);
+          } else if (moveDir && (moveDir.x !== 0 || moveDir.y !== 0)) {
+            shadowGhost.applyThrust(moveDir);
           }
         }
       }
@@ -1350,20 +1393,42 @@ export class GhostOrbitsController {
         }
       }
 
-      // Sync dots to renderer
+      // Sync mode render data to renderer
       const renderData = this.mode.getRenderData();
-      this.renderer?.updateDots?.(renderData.dots);
+      if (renderData.dots) {
+        this.renderer?.updateDots?.(renderData.dots);
+      }
+      // TrailsMode entities (trails, spheres, projectiles)
+      if (renderData.trails || renderData.spheres || renderData.projectiles) {
+        this.renderer?.updateTrailsModeData?.(renderData);
+      }
+
+      // TrailsMode: Update orbit warning states on ghosts
+      if (modeInput.playerOrbitWarning !== undefined || modeInput.playerOrbitUnsafe !== undefined) {
+        if (localGhost) {
+          localGhost.orbitWarning = modeInput.playerOrbitWarning;
+          localGhost.orbitUnsafe = modeInput.playerOrbitUnsafe;
+        }
+      }
+      if (modeInput.shadowOrbitWarning !== undefined || modeInput.shadowOrbitUnsafe !== undefined) {
+        if (shadowGhost) {
+          shadowGhost.orbitWarning = modeInput.shadowOrbitWarning;
+          shadowGhost.orbitUnsafe = modeInput.shadowOrbitUnsafe;
+        }
+      }
 
       // Check for match end via mode
       const endCondition = this.mode.checkEndCondition();
       if (endCondition.ended) {
-        // Convert winner dots
-        const winner = endCondition.winner === 'player' ? 'player' : 'shadow';
-        const winnerColor = winner === 'player'
-          ? (localGhost.color || '#4488ff')
-          : (shadowGhost?.color || '#ff4444');
-        this.dotManager.convertAllToWinner(winner, winnerColor);
-        this.renderer?.updateDots?.(this.dotManager.getDots());
+        // Convert winner dots (ArenaMode only - has dotManager)
+        if (this.dotManager) {
+          const winner = endCondition.winner === 'player' ? 'player' : 'shadow';
+          const winnerColor = winner === 'player'
+            ? (localGhost.color || '#4488ff')
+            : (shadowGhost?.color || '#ff4444');
+          this.dotManager.convertAllToWinner(winner, winnerColor);
+          this.renderer?.updateDots?.(this.dotManager.getDots());
+        }
 
         const result = endCondition.winner === 'player' ? 'player_win' : 'shadow_win';
         this._handleMatchEnd(result, endCondition.reason);
@@ -1894,6 +1959,13 @@ export class GhostOrbitsController {
           this.ghostMovementState = 'FREE_FLIGHT';
           this.renderer?.updateGhostOrbitState?.(this.username, false);
           if (this.audio) this.audio.playBounce?.();
+
+          // TrailsMode: Notify mode of orbit exit for shoot mechanic
+          if (this.mode && this.mode.applyInput) {
+            this.mode.applyInput('orbit_exit', {
+              tangentVelocity: { x: releaseVelocity.x, y: releaseVelocity.y }
+            }, localGhost);
+          }
         }
       } else {
         // Try to land on a record if near one

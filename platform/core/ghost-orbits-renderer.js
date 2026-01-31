@@ -937,8 +937,11 @@ class GhostOrbitsRenderer {
     // Render records (spinning plates)
     this.renderGravityWells();
 
-    // Render territory dots (v3)
+    // Render territory dots (v3 ArenaMode)
     this.renderDots();
+
+    // Render TrailsMode entities (v4)
+    this.renderTrailsModeEntities();
 
     // Render ghosts
     this.renderGhosts();
@@ -1398,6 +1401,11 @@ class GhostOrbitsRenderer {
     if (ghost.isThrusting && !isOrbiting) {
       this.renderThrustParticles(ghost);
     }
+
+    // TrailsMode: Orbit camping warning (yellow/red rings)
+    if (ghost.orbitWarning || ghost.orbitUnsafe) {
+      this.renderOrbitWarning(ghost, ghost.orbitWarning, ghost.orbitUnsafe);
+    }
   }
 
   /**
@@ -1635,6 +1643,244 @@ class GhostOrbitsRenderer {
 
       ctx.globalAlpha = 1;
     }
+  }
+
+  // ============================================
+  // TRAILS MODE RENDERING (v4)
+  // ============================================
+
+  /**
+   * Update trails mode data for rendering
+   * @param {Object} trailsData - Data from TrailsMode.getRenderData()
+   */
+  updateTrailsModeData(trailsData) {
+    this.trailsModeData = trailsData || null;
+  }
+
+  /**
+   * Render trail segments from TrailsMode
+   * @param {Array} trails - Array of trail segments with age/alpha
+   */
+  renderTrailSegments(trails) {
+    if (!trails || trails.length === 0) return;
+
+    const ctx = this.ctx;
+
+    for (const segment of trails) {
+      const { x, y, color, radius, alpha } = segment;
+
+      // Skip if fully faded
+      if (alpha <= 0) continue;
+
+      // Outer glow
+      ctx.globalAlpha = alpha * 0.3;
+      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, radius * 2);
+      glowGradient.addColorStop(0, color);
+      glowGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core segment
+      ctx.globalAlpha = alpha * 0.8;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Render collect spheres from TrailsMode
+   * @param {Array} spheres - Array of active spheres
+   */
+  renderCollectSpheres(spheres) {
+    if (!spheres || spheres.length === 0) return;
+
+    const ctx = this.ctx;
+    const sphereColor = '#88ffaa'; // Bright green for collectibles
+
+    for (const sphere of spheres) {
+      const { x, y, radius, pulsePhase } = sphere;
+
+      // Pulsing effect
+      const pulse = Math.sin(pulsePhase || 0) * 0.2 + 1.0;
+      const visualRadius = radius * pulse;
+
+      // Outer glow
+      ctx.globalAlpha = 0.3;
+      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, visualRadius * 2);
+      glowGradient.addColorStop(0, sphereColor);
+      glowGradient.addColorStop(0.5, sphereColor);
+      glowGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, visualRadius * 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Main sphere body
+      ctx.globalAlpha = 0.9;
+      const bodyGradient = ctx.createRadialGradient(
+        x - visualRadius * 0.3, y - visualRadius * 0.3, 0,
+        x, y, visualRadius
+      );
+      bodyGradient.addColorStop(0, lighten(sphereColor, 0.4));
+      bodyGradient.addColorStop(0.7, sphereColor);
+      bodyGradient.addColorStop(1, '#44aa66');
+      ctx.fillStyle = bodyGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, visualRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Highlight
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x - visualRadius * 0.25, y - visualRadius * 0.25, visualRadius * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Border ring (pulsing)
+      ctx.globalAlpha = 0.4 + Math.sin(pulsePhase || 0) * 0.2;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, visualRadius + 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Render projectiles from TrailsMode
+   * @param {Array} projectiles - Array of projectiles
+   */
+  renderProjectiles(projectiles) {
+    if (!projectiles || projectiles.length === 0) return;
+
+    const ctx = this.ctx;
+
+    for (const proj of projectiles) {
+      const { x, y, color, radius, vx, vy } = proj;
+
+      // Calculate rotation from velocity
+      const speed = Math.sqrt(vx * vx + vy * vy);
+
+      // Motion trail (streak effect)
+      if (speed > 50) {
+        const trailLen = Math.min(speed * 0.1, 30);
+        const nx = vx / speed;
+        const ny = vy / speed;
+
+        ctx.globalAlpha = 0.4;
+        const trailGradient = ctx.createLinearGradient(
+          x - nx * trailLen, y - ny * trailLen,
+          x, y
+        );
+        trailGradient.addColorStop(0, 'transparent');
+        trailGradient.addColorStop(1, color);
+
+        ctx.strokeStyle = trailGradient;
+        ctx.lineWidth = radius * 1.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x - nx * trailLen, y - ny * trailLen);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+
+      // Outer glow
+      ctx.globalAlpha = 0.5;
+      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, radius * 2.5);
+      glowGradient.addColorStop(0, color);
+      glowGradient.addColorStop(0.5, color);
+      glowGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core projectile
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = lighten(color, 0.3);
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Center highlight
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Render orbit camping warning ring on ghost
+   * @param {Object} ghost - Ghost to render warning on
+   * @param {boolean} isWarning - Show yellow warning (approaching limit)
+   * @param {boolean} isUnsafe - Show red unsafe (limit reached)
+   */
+  renderOrbitWarning(ghost, isWarning, isUnsafe) {
+    if (!ghost || (!isWarning && !isUnsafe)) return;
+
+    const ctx = this.ctx;
+    const { x, y } = ghost.position;
+    const radius = ghost.radius || 10;
+
+    // Pulsing effect
+    const pulse = Math.sin(this.animationTime * 6) * 0.3 + 0.7;
+
+    if (isUnsafe) {
+      // Red danger ring - limit reached, now vulnerable
+      ctx.globalAlpha = 0.7 * pulse;
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 1.8, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner warning fill
+      ctx.globalAlpha = 0.15 * pulse;
+      ctx.fillStyle = '#ff4444';
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (isWarning) {
+      // Yellow warning ring - approaching limit
+      ctx.globalAlpha = 0.5 * pulse;
+      ctx.strokeStyle = '#ffaa00';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 1.6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Render all TrailsMode entities
+   * Called from main render() when trailsModeData is present
+   */
+  renderTrailsModeEntities() {
+    if (!this.trailsModeData) return;
+
+    const { trails, spheres, projectiles } = this.trailsModeData;
+
+    // Render in order: trails (back), spheres, projectiles (front)
+    this.renderTrailSegments(trails);
+    this.renderCollectSpheres(spheres);
+    this.renderProjectiles(projectiles);
   }
 
   /**
