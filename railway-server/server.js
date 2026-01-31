@@ -5,6 +5,7 @@ const { WebSocketServer } = require('ws');
 const http = require('http');
 const { buildCartridgePrompt } = require('./prompt-utils.js');
 const { ArenaManager, ARENA_CONFIG, RoundState } = require('./ghost-orbits-manager.js');
+const { OrbitsMultiplayerManager, MULTIPLAYER_CONFIG } = require('./ghost-orbits-multiplayer-manager.js');
 
 // ============================================
 // CONFIGURATION
@@ -81,6 +82,13 @@ const ghostOrbitsManager = new ArenaManager((message) => {
 });
 
 console.log('[Ghost Orbits] Arena manager initialized');
+
+// ============================================
+// GHOST ORBITS MULTIPLAYER MANAGER (Phase 3)
+// ============================================
+const orbitsMultiplayerManager = new OrbitsMultiplayerManager();
+
+console.log('[Ghost Orbits] Multiplayer manager initialized');
 
 // ============================================
 // VERSION - Update this when deploying new versions
@@ -3283,6 +3291,172 @@ wss.on('connection', (ws) => {
           }
           break;
         }
+
+        // ============================================
+        // GHOST ORBITS MULTIPLAYER MESSAGES (Phase 3)
+        // ============================================
+
+        case 'orbits_create_room': {
+          // Create a new multiplayer room
+          const createClient = clients.get(ws);
+          if (!createClient?.username) {
+            ws.send(JSON.stringify({
+              type: 'orbits_error',
+              payload: { error: 'Must identify before creating room' }
+            }));
+            break;
+          }
+
+          const { mode } = message.payload || {};
+          const result = orbitsMultiplayerManager.createRoom(createClient.username, mode || 'arena');
+
+          if (result.success) {
+            // Track this client's multiplayer room
+            createClient.orbitsPlayerId = result.playerId;
+            createClient.orbitsRoomCode = result.roomCode;
+            orbitsMultiplayerManager.setPlayerWs(result.playerId, ws);
+
+            ws.send(JSON.stringify({
+              type: 'orbits_room_created',
+              payload: {
+                roomCode: result.roomCode,
+                playerId: result.playerId
+              }
+            }));
+
+            // Send initial room state so host sees the player list
+            const room = orbitsMultiplayerManager.getRoom(result.roomCode);
+            if (room) {
+              room._broadcastRoomState();
+            }
+
+            console.log(`[Orbits MP] ${createClient.username} created room ${result.roomCode}`);
+          } else {
+            ws.send(JSON.stringify({
+              type: 'orbits_error',
+              payload: { error: result.error }
+            }));
+          }
+          break;
+        }
+
+        case 'orbits_join_room': {
+          // Join an existing multiplayer room
+          const joinMpClient = clients.get(ws);
+          if (!joinMpClient?.username) {
+            ws.send(JSON.stringify({
+              type: 'orbits_error',
+              payload: { error: 'Must identify before joining room' }
+            }));
+            break;
+          }
+
+          const { roomCode } = message.payload || {};
+          if (!roomCode) {
+            ws.send(JSON.stringify({
+              type: 'orbits_error',
+              payload: { error: 'Room code required' }
+            }));
+            break;
+          }
+
+          const joinResult = orbitsMultiplayerManager.joinRoom(roomCode, joinMpClient.username);
+
+          if (joinResult.success) {
+            // Track this client's multiplayer room
+            joinMpClient.orbitsPlayerId = joinResult.playerId;
+            joinMpClient.orbitsRoomCode = joinResult.roomCode;
+            orbitsMultiplayerManager.setPlayerWs(joinResult.playerId, ws);
+
+            ws.send(JSON.stringify({
+              type: 'orbits_room_joined',
+              payload: {
+                roomCode: joinResult.roomCode,
+                playerId: joinResult.playerId
+              }
+            }));
+            console.log(`[Orbits MP] ${joinMpClient.username} joined room ${roomCode}`);
+          } else {
+            ws.send(JSON.stringify({
+              type: 'orbits_error',
+              payload: { error: joinResult.error }
+            }));
+          }
+          break;
+        }
+
+        case 'orbits_rejoin_room': {
+          // Rejoin room after disconnect (resume existing session)
+          const rejoinClient = clients.get(ws);
+          if (!rejoinClient?.username) {
+            ws.send(JSON.stringify({
+              type: 'orbits_error',
+              payload: { error: 'Must identify before rejoining room' }
+            }));
+            break;
+          }
+
+          const { roomCode: rejoinRoomCode, playerId: rejoinPlayerId } = message.payload || {};
+          if (!rejoinRoomCode || !rejoinPlayerId) {
+            ws.send(JSON.stringify({
+              type: 'orbits_error',
+              payload: { error: 'Room code and player ID required for rejoin' }
+            }));
+            break;
+          }
+
+          const rejoinResult = orbitsMultiplayerManager.rejoinRoom(
+            rejoinRoomCode,
+            rejoinPlayerId,
+            rejoinClient.username,
+            ws
+          );
+
+          if (rejoinResult.success) {
+            rejoinClient.orbitsPlayerId = rejoinResult.playerId;
+            rejoinClient.orbitsRoomCode = rejoinResult.roomCode;
+
+            ws.send(JSON.stringify({
+              type: 'orbits_room_rejoined',
+              payload: {
+                roomCode: rejoinResult.roomCode,
+                playerId: rejoinResult.playerId,
+                isHost: rejoinResult.isHost
+              }
+            }));
+            console.log(`[Orbits MP] ${rejoinClient.username} rejoined room ${rejoinRoomCode}`);
+          } else {
+            ws.send(JSON.stringify({
+              type: 'orbits_error',
+              payload: { error: rejoinResult.error }
+            }));
+          }
+          break;
+        }
+
+        case 'orbits_ready':
+        case 'orbits_start':
+        case 'orbits_input':
+        case 'orbits_vote_rematch': {
+          // Forward to multiplayer manager
+          const mpClient = clients.get(ws);
+          if (mpClient?.orbitsPlayerId) {
+            orbitsMultiplayerManager.handleMessage(mpClient.orbitsPlayerId, ws, message);
+          }
+          break;
+        }
+
+        case 'orbits_leave': {
+          // Leave multiplayer room
+          const leaveMpClient = clients.get(ws);
+          if (leaveMpClient?.orbitsPlayerId) {
+            orbitsMultiplayerManager.leaveRoom(leaveMpClient.orbitsPlayerId);
+            delete leaveMpClient.orbitsPlayerId;
+            delete leaveMpClient.orbitsRoomCode;
+            console.log(`[Orbits MP] ${leaveMpClient.username} left room`);
+          }
+          break;
+        }
       }
     } catch (err) {
       console.error('WebSocket message error:', err);
@@ -3308,6 +3482,11 @@ wss.on('connection', (ws) => {
         if (client.orbitsArena) {
           const [cartridgeId, periodId] = client.orbitsArena.split(':');
           ghostOrbitsManager.handleLeaveArena(client.username, cartridgeId, periodId);
+        }
+
+        // Handle Ghost Orbits multiplayer room leave
+        if (client.orbitsPlayerId) {
+          orbitsMultiplayerManager.leaveRoom(client.orbitsPlayerId);
         }
       }
     }
@@ -3448,6 +3627,95 @@ app.delete('/api/ghost-orbits/:cartridgeId/:periodId', (req, res) => {
 });
 
 console.log('[Ghost Orbits] REST endpoints registered');
+
+// ============================================
+// GHOST ORBITS MULTIPLAYER REST ENDPOINTS
+// ============================================
+
+// GET /api/ghost-orbits/multiplayer/rooms - Get active multiplayer rooms
+app.get('/api/ghost-orbits/multiplayer/rooms', (req, res) => {
+  const rooms = orbitsMultiplayerManager.getActiveRooms();
+  res.json({ rooms });
+});
+
+// GET /api/ghost-orbits/multiplayer/config - Get multiplayer configuration
+app.get('/api/ghost-orbits/multiplayer/config', (req, res) => {
+  res.json(MULTIPLAYER_CONFIG);
+});
+
+// POST /api/ghost-orbits/multiplayer/create - Create room via REST (for non-WebSocket clients)
+app.post('/api/ghost-orbits/multiplayer/create', (req, res) => {
+  try {
+    const { username, mode } = req.body;
+
+    if (!username) {
+      return res.status(400).json({ error: 'Username required' });
+    }
+
+    const result = orbitsMultiplayerManager.createRoom(username, mode || 'arena');
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json({ error: result.error });
+    }
+  } catch (err) {
+    console.error('POST /api/ghost-orbits/multiplayer/create error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ghost-orbits/multiplayer/join - Join room via REST
+app.post('/api/ghost-orbits/multiplayer/join', (req, res) => {
+  try {
+    const { username, roomCode } = req.body;
+
+    if (!username || !roomCode) {
+      return res.status(400).json({ error: 'Username and roomCode required' });
+    }
+
+    const result = orbitsMultiplayerManager.joinRoom(roomCode, username);
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json({ error: result.error });
+    }
+  } catch (err) {
+    console.error('POST /api/ghost-orbits/multiplayer/join error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/ghost-orbits/multiplayer/room/:roomCode - Get room state
+app.get('/api/ghost-orbits/multiplayer/room/:roomCode', (req, res) => {
+  const { roomCode } = req.params;
+  const room = orbitsMultiplayerManager.getRoom(roomCode);
+
+  if (!room) {
+    return res.status(404).json({ error: 'Room not found' });
+  }
+
+  // Return basic room info (not full state which includes WS references)
+  const players = Array.from(room.players.entries()).map(([id, p]) => ({
+    playerId: id,
+    username: p.username,
+    ready: p.ready,
+    color: p.color,
+    isHost: id === room.hostId
+  }));
+
+  res.json({
+    roomCode: room.roomCode,
+    state: room.state,
+    hostId: room.hostId,
+    players,
+    mode: room.mode,
+    canStart: room.canStart()
+  });
+});
+
+console.log('[Ghost Orbits] Multiplayer REST endpoints registered');
 
 // ============================================
 // START SERVER
