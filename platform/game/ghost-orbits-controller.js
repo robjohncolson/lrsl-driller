@@ -19,6 +19,8 @@ import { ShadowAI, PatternRecorder } from './ghost-orbits-shadow-ai.js';
 import { DotManager, DOT_CONFIG } from '../core/ghost-orbits-dots.js';
 import { ArenaMode } from './arena-mode.js';
 import { TrailsMode } from './trails-mode.js';
+import { BlizzardMode } from './blizzard-mode.js';
+import { getMapForMode, getAbsoluteRecordPositions } from './orbits-maps.js';
 
 /**
  * Game states for the Ghost Orbits state machine
@@ -628,41 +630,37 @@ export class GhostOrbitsController {
   // ============================================
 
   /**
-   * Setup initial arena with Records (spinning plates) - v2 style
+   * Setup initial arena with Records (spinning plates)
+   * Uses map configurations from orbits-maps.js
    * @param {number} arenaSize - Arena size in pixels
    * @private
    */
   _setupInitialArena(arenaSize) {
-    console.log('[GhostOrbits] Setting up v2 arena with Records...');
+    console.log('[GhostOrbits] Setting up arena with Records...');
 
-    // Add 8 Records covering the arena (4 corners + 4 sides for more maneuvering space)
-    const recordPositions = [
-      // Corner records
-      { x: arenaSize * 0.2, y: arenaSize * 0.2, clockwise: false },
-      { x: arenaSize * 0.8, y: arenaSize * 0.2, clockwise: true },
-      { x: arenaSize * 0.2, y: arenaSize * 0.8, clockwise: true },
-      { x: arenaSize * 0.8, y: arenaSize * 0.8, clockwise: false },
-      // Side records
-      { x: arenaSize * 0.15, y: arenaSize * 0.5, clockwise: true },
-      { x: arenaSize * 0.85, y: arenaSize * 0.5, clockwise: false },
-      { x: arenaSize * 0.5, y: arenaSize * 0.15, clockwise: true },
-      { x: arenaSize * 0.5, y: arenaSize * 0.85, clockwise: false },
-    ];
+    // Get map configuration for current mode type
+    const mapConfig = getMapForMode(this.modeType);
 
-    for (let i = 0; i < recordPositions.length; i++) {
-      const pos = recordPositions[i];
-      this.physicsEngine.addRecord({
-        id: `record_${i}`,
-        x: pos.x,
-        y: pos.y,
-        radius: 40,
-        captureRadius: 60,
-        clockwise: pos.clockwise,
-        angularSpeed: 2.0 + Math.random() * 1.0,
-      });
+    // For Blizzard mode, records are added by the mode itself (different arena dimensions)
+    // So we skip adding them here
+    if (this.modeType === 'blizzard') {
+      console.log('[GhostOrbits] Blizzard mode - records will be added by mode');
+      this.voidZone = null;
+      return;
     }
 
-    // No void zone in v2
+    // Get absolute record positions from map config
+    const recordPositions = getAbsoluteRecordPositions({
+      ...mapConfig,
+      arenaWidth: arenaSize,
+      arenaHeight: arenaSize
+    });
+
+    for (const record of recordPositions) {
+      this.physicsEngine.addRecord(record);
+    }
+
+    // No void zone in v2+
     this.voidZone = null;
 
     // Initialize dots (v2) - pass records to avoid spawning on top
@@ -736,9 +734,16 @@ export class GhostOrbitsController {
     // Load stored patterns
     const storedPatterns = this._loadStoredPatterns();
 
+    // Get map configuration for mode type
+    const mapConfig = getMapForMode(this.modeType);
+    const arenaWidth = mapConfig.arenaWidth;
+    const arenaHeight = mapConfig.arenaHeight;
+
     // Create and initialize the appropriate game mode
     const modeConfig = {
       arenaSize,
+      arenaWidth,
+      arenaHeight,
       ghostProperties: this.ghostProperties,
       cartridgeId: this.cartridgeId,
       username: this.username,
@@ -747,7 +752,15 @@ export class GhostOrbitsController {
       shadowGeneration: this.shadowGeneration
     };
 
-    if (this.modeType === 'trails') {
+    if (this.modeType === 'blizzard') {
+      this.mode = new BlizzardMode(modeConfig);
+      console.log('[GhostOrbits] Creating BlizzardMode');
+
+      // Resize canvas for wide arena
+      if (this.renderer && arenaWidth !== arenaHeight) {
+        this.renderer.resizeCanvas(arenaWidth, arenaHeight);
+      }
+    } else if (this.modeType === 'trails') {
       this.mode = new TrailsMode(modeConfig);
       console.log('[GhostOrbits] Creating TrailsMode');
     } else {
@@ -755,7 +768,7 @@ export class GhostOrbitsController {
       console.log('[GhostOrbits] Creating ArenaMode');
     }
 
-    await this.mode.init({ arenaSize, physicsEngine: this.physicsEngine });
+    await this.mode.init({ arenaSize, arenaWidth, arenaHeight, physicsEngine: this.physicsEngine });
 
     // Sync mode's dotManager with controller's dotManager reference (ArenaMode only)
     if (this.mode.getDotManager) {
@@ -768,7 +781,7 @@ export class GhostOrbitsController {
       this.patternRecorder = this.mode.getPatternRecorder();
     }
 
-    console.log(`[GhostOrbits] ${this.modeType === 'trails' ? 'TrailsMode' : 'ArenaMode'} initialized`);
+    console.log(`[GhostOrbits] ${this.modeType} mode initialized`);
   }
 
   /**
@@ -1401,6 +1414,10 @@ export class GhostOrbitsController {
       // TrailsMode entities (trails, spheres, projectiles)
       if (renderData.trails || renderData.spheres || renderData.projectiles) {
         this.renderer?.updateTrailsModeData?.(renderData);
+      }
+      // BlizzardMode entities (blizzardSpheres, barriers, teamScores)
+      if (renderData.blizzardSpheres || renderData.barriers) {
+        this.renderer?.updateBlizzardModeData?.(renderData);
       }
 
       // TrailsMode: Update orbit warning states on ghosts

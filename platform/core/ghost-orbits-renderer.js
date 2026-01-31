@@ -921,9 +921,11 @@ class GhostOrbitsRenderer {
       return;
     }
 
-    // Clear with background color
+    // Clear with background color (support non-square canvases)
+    const width = this.canvas.width;
+    const height = this.canvas.height;
     ctx.fillStyle = COLORS.background;
-    ctx.fillRect(0, 0, size, size);
+    ctx.fillRect(0, 0, width, height);
 
     // Render grid lines (subtle)
     this.renderGrid();
@@ -942,6 +944,9 @@ class GhostOrbitsRenderer {
 
     // Render TrailsMode entities (v4)
     this.renderTrailsModeEntities();
+
+    // Render BlizzardMode entities (v5)
+    this.renderBlizzardModeEntities();
 
     // Render ghosts
     this.renderGhosts();
@@ -1881,6 +1886,265 @@ class GhostOrbitsRenderer {
     this.renderTrailSegments(trails);
     this.renderCollectSpheres(spheres);
     this.renderProjectiles(projectiles);
+  }
+
+  // ============================================
+  // BLIZZARD MODE RENDERING (v5)
+  // ============================================
+
+  /**
+   * Update Blizzard mode data for rendering
+   * @param {Object} blizzardData - Data from BlizzardMode.getRenderData()
+   */
+  updateBlizzardModeData(blizzardData) {
+    this.blizzardModeData = blizzardData || null;
+  }
+
+  /**
+   * Render all BlizzardMode entities
+   * Called from main render() when blizzardModeData is present
+   */
+  renderBlizzardModeEntities() {
+    if (!this.blizzardModeData) return;
+
+    const { blizzardSpheres, barriers, teamScores, teamColors } = this.blizzardModeData;
+
+    // Render in order: barriers (back), spheres (front)
+    this.renderBarriers(barriers, teamColors);
+    this.renderBlizzardSpheres(blizzardSpheres, teamColors);
+    this.renderTeamScoreOverlay(teamScores, teamColors);
+  }
+
+  /**
+   * Render goal line barriers
+   * @param {Array} barriers - Array of barrier objects
+   * @param {Array} teamColors - Team colors [team0, team1]
+   */
+  renderBarriers(barriers, teamColors) {
+    if (!barriers || barriers.length === 0) return;
+
+    const ctx = this.ctx;
+    const width = this.canvas.width;
+
+    for (const barrier of barriers) {
+      const { y, teamId } = barrier;
+      const color = teamColors?.[teamId] || '#888888';
+
+      // Main barrier line (dashed)
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 4;
+      ctx.setLineDash([15, 10]);
+      ctx.globalAlpha = 0.7;
+
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+
+      // Glow effect
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 12;
+      ctx.globalAlpha = 0.15;
+      ctx.setLineDash([]);
+
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+
+      // Pulsing inner glow
+      const pulse = Math.sin(this.animationTime * 3) * 0.1 + 0.25;
+      ctx.strokeStyle = lighten(color, 0.3);
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = pulse;
+      ctx.setLineDash([8, 5]);
+
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Render Blizzard spheres (drifting orbs)
+   * @param {Array} spheres - Array of sphere objects
+   * @param {Array} teamColors - Team colors [team0, team1]
+   */
+  renderBlizzardSpheres(spheres, teamColors) {
+    if (!spheres || spheres.length === 0) return;
+
+    const ctx = this.ctx;
+    const neutralColor = '#ccddff';
+
+    for (const sphere of spheres) {
+      const { x, y, radius, teamId, teamColor, pulsePhase, returnCount } = sphere;
+
+      // Determine color
+      const color = teamId !== null ? (teamColor || teamColors?.[teamId] || neutralColor) : neutralColor;
+
+      // Pulsing effect (stronger for returned spheres)
+      const pulseStrength = 0.15 + Math.min(returnCount || 0, 5) * 0.02;
+      const pulse = Math.sin(pulsePhase || 0) * pulseStrength + 1.0;
+      const visualRadius = radius * pulse;
+
+      // Speed trail (motion blur)
+      const speed = Math.sqrt(
+        (sphere.velocityX || 0) ** 2 + (sphere.velocityY || 0) ** 2
+      );
+      if (speed > 50) {
+        const trailLen = Math.min(speed * 0.15, 40);
+        const nx = (sphere.velocityX || 0) / speed;
+        const ny = (sphere.velocityY || 0) / speed;
+
+        ctx.globalAlpha = 0.3;
+        const trailGradient = ctx.createLinearGradient(
+          x - nx * trailLen, y - ny * trailLen,
+          x, y
+        );
+        trailGradient.addColorStop(0, 'transparent');
+        trailGradient.addColorStop(1, color);
+
+        ctx.strokeStyle = trailGradient;
+        ctx.lineWidth = radius * 1.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x - nx * trailLen, y - ny * trailLen);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+
+      // Outer glow
+      ctx.globalAlpha = 0.35;
+      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, visualRadius * 2);
+      glowGradient.addColorStop(0, color);
+      glowGradient.addColorStop(0.5, color);
+      glowGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, visualRadius * 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Main sphere body
+      ctx.globalAlpha = 0.9;
+      const bodyGradient = ctx.createRadialGradient(
+        x - visualRadius * 0.3, y - visualRadius * 0.3, 0,
+        x, y, visualRadius
+      );
+      bodyGradient.addColorStop(0, lighten(color, 0.4));
+      bodyGradient.addColorStop(0.7, color);
+      bodyGradient.addColorStop(1, teamId !== null ? color : '#8899bb');
+      ctx.fillStyle = bodyGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, visualRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Highlight
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x - visualRadius * 0.25, y - visualRadius * 0.25, visualRadius * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Team ownership ring (for owned spheres)
+      if (teamId !== null) {
+        ctx.globalAlpha = 0.6;
+        ctx.strokeStyle = lighten(color, 0.3);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, visualRadius + 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Return count indicator (speed boost rings)
+      if (returnCount && returnCount > 0) {
+        ctx.globalAlpha = 0.3;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < Math.min(returnCount, 5); i++) {
+          ctx.beginPath();
+          ctx.arc(x, y, visualRadius + 6 + i * 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /**
+   * Render team score overlay at top of screen
+   * @param {Array} teamScores - [team0Score, team1Score]
+   * @param {Array} teamColors - [team0Color, team1Color]
+   */
+  renderTeamScoreOverlay(teamScores, teamColors) {
+    if (!teamScores) return;
+
+    const ctx = this.ctx;
+    const width = this.canvas.width;
+
+    // Score display background
+    const boxWidth = 200;
+    const boxHeight = 50;
+    const boxX = (width - boxWidth) / 2;
+    const boxY = 10;
+
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 8);
+    ctx.fill();
+
+    ctx.strokeStyle = '#334466';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 8);
+    ctx.stroke();
+
+    ctx.globalAlpha = 1;
+
+    // Team 0 score (left)
+    ctx.fillStyle = teamColors?.[0] || '#4488ff';
+    ctx.font = 'bold 24px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(teamScores[0].toString(), boxX + 50, boxY + boxHeight / 2);
+
+    // VS divider
+    ctx.fillStyle = '#888888';
+    ctx.font = '14px monospace';
+    ctx.fillText('vs', boxX + boxWidth / 2, boxY + boxHeight / 2);
+
+    // Team 1 score (right)
+    ctx.fillStyle = teamColors?.[1] || '#ff4444';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText(teamScores[1].toString(), boxX + boxWidth - 50, boxY + boxHeight / 2);
+
+    // Team color indicators
+    ctx.fillStyle = teamColors?.[0] || '#4488ff';
+    ctx.beginPath();
+    ctx.arc(boxX + 20, boxY + boxHeight / 2, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = teamColors?.[1] || '#ff4444';
+    ctx.beginPath();
+    ctx.arc(boxX + boxWidth - 20, boxY + boxHeight / 2, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /**
+   * Resize canvas for non-square dimensions (e.g., 1200x800 for Blizzard)
+   * @param {number} width - New width
+   * @param {number} height - New height
+   */
+  resizeCanvas(width, height) {
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.arena.resize(Math.max(width, height)); // Arena size for physics
+    console.log(`[Renderer] Canvas resized to ${width}x${height}`);
   }
 
   /**

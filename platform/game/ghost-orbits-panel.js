@@ -29,6 +29,11 @@ export class GhostOrbitsPanel {
     this.eliminatedStats = null;
     this.resultsData = null;
 
+    // Team mode state
+    this.teamScores = [0, 0];
+    this.teamColors = ['#4488ff', '#ff4444'];
+    this.myTeamId = null;
+
     // Bind escape key handler
     this._handleKeyDown = this._handleKeyDown.bind(this);
 
@@ -182,6 +187,53 @@ export class GhostOrbitsPanel {
   }
 
   /**
+   * Update team scores display (for Blizzard mode)
+   * @param {number} team0Score - Team 0 (blue) score
+   * @param {number} team1Score - Team 1 (red) score
+   * @param {number} [myTeamId] - Current player's team (0 or 1)
+   * @param {number} [scoreLimit=15] - Score needed to win
+   */
+  updateTeamScores(team0Score, team1Score, myTeamId = null, scoreLimit = 15) {
+    this.teamScores = [team0Score, team1Score];
+    this.myTeamId = myTeamId;
+
+    const dotCountEl = this.overlayElement?.querySelector('#orbits-dot-count');
+    if (dotCountEl) {
+      // Display team scores with colors
+      const team0Color = this.teamColors[0];
+      const team1Color = this.teamColors[1];
+      const team0Label = myTeamId === 0 ? 'Your Team' : 'Blue';
+      const team1Label = myTeamId === 1 ? 'Your Team' : 'Red';
+
+      dotCountEl.innerHTML = `
+        <span style="color: ${team0Color}">${team0Label}: ${team0Score}</span>
+        <span style="color: #666"> vs </span>
+        <span style="color: ${team1Color}">${team1Label}: ${team1Score}</span>
+        <span style="color: #888"> (first to ${scoreLimit})</span>
+      `;
+
+      // Highlight leading team
+      if (team0Score > team1Score) {
+        dotCountEl.style.borderColor = team0Color;
+      } else if (team1Score > team0Score) {
+        dotCountEl.style.borderColor = team1Color;
+      } else {
+        dotCountEl.style.borderColor = '';
+      }
+    }
+  }
+
+  /**
+   * Set team colors for Blizzard mode
+   * @param {string[]} colors - Array of two team colors
+   */
+  setTeamColors(colors) {
+    if (colors && colors.length >= 2) {
+      this.teamColors = colors;
+    }
+  }
+
+  /**
    * Update territory bar with player percentages
    * @param {Array<{username: string, percent: number, color: string, isPlayer: boolean}>} territories
    */
@@ -322,6 +374,69 @@ export class GhostOrbitsPanel {
    */
   showRematchPrompt(onRematch, onExit) {
     this._renderRematchPrompt(onRematch, onExit);
+  }
+
+  /**
+   * Show Blizzard mode team results
+   * @param {Object} data - Match results data
+   * @param {number} data.winnerTeam - Winning team ID (0 or 1)
+   * @param {string} data.condition - Win condition (score_limit, mercy_rule, timeout)
+   * @param {number[]} data.teamScores - Final team scores [team0, team1]
+   * @param {number} [data.myTeamId] - Current player's team
+   */
+  showBlizzardResults(data) {
+    if (!this.overlayElement) return;
+
+    const isWinner = data.myTeamId === data.winnerTeam;
+    const myScore = data.teamScores[data.myTeamId] || 0;
+    const opponentScore = data.teamScores[data.myTeamId === 0 ? 1 : 0] || 0;
+
+    const conditionText = {
+      score_limit: 'Score Limit Reached',
+      mercy_rule: 'Mercy Rule',
+      timeout: 'Time Up'
+    }[data.condition] || data.condition;
+
+    const teamNames = ['Blue Team', 'Red Team'];
+    const winningTeamName = teamNames[data.winnerTeam];
+
+    this.overlayElement.innerHTML = `
+      <div class="orbits-${isWinner ? 'victory' : 'defeat'}-view orbits-blizzard-results">
+        <div class="${isWinner ? 'victory' : 'defeat'}-content">
+          <div class="${isWinner ? 'victory' : 'defeat'}-icon">${isWinner ? '&#127942;' : '&#128123;'}</div>
+          <h1 class="${isWinner ? 'victory' : 'defeat'}-title">${isWinner ? 'VICTORY!' : 'DEFEATED'}</h1>
+          <p class="${isWinner ? 'victory' : 'defeat'}-subtitle">${conditionText}</p>
+
+          <div class="blizzard-final-scores">
+            <div class="team-score ${data.winnerTeam === 0 ? 'winner' : ''}">
+              <span class="team-name" style="color: ${this.teamColors[0]}">${teamNames[0]}</span>
+              <span class="score-value">${data.teamScores[0]}</span>
+            </div>
+            <span class="vs-separator">vs</span>
+            <div class="team-score ${data.winnerTeam === 1 ? 'winner' : ''}">
+              <span class="team-name" style="color: ${this.teamColors[1]}">${teamNames[1]}</span>
+              <span class="score-value">${data.teamScores[1]}</span>
+            </div>
+          </div>
+
+          <div class="blizzard-winner-box">
+            <span class="winner-crown">&#128081;</span>
+            <span class="winner-text">${winningTeamName} Wins!</span>
+          </div>
+
+          <button class="orbits-return-btn" id="orbits-return-btn">Return to Lobby</button>
+        </div>
+      </div>
+    `;
+
+    this.overlayElement.classList.add('visible');
+    this.isVisible = true;
+
+    // Attach return button listener
+    const returnBtn = this.overlayElement.querySelector('#orbits-return-btn');
+    if (returnBtn) {
+      returnBtn.addEventListener('click', () => this.onReturnToPractice());
+    }
   }
 
   /**
@@ -1151,6 +1266,40 @@ export class GhostOrbitsPanel {
       @keyframes lives-pulse {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.1); }
+      }
+
+      /* Team score display (Blizzard mode) */
+      .orbits-dot-count span {
+        transition: color 0.3s ease;
+      }
+
+      .orbits-dot-count {
+        transition: border-color 0.3s ease;
+        border: 2px solid transparent;
+      }
+
+      /* Team indicator badge */
+      .team-indicator {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-left: 8px;
+      }
+
+      .team-indicator.team-0 {
+        background: rgba(68, 136, 255, 0.2);
+        color: #4488ff;
+        border: 1px solid rgba(68, 136, 255, 0.4);
+      }
+
+      .team-indicator.team-1 {
+        background: rgba(255, 68, 68, 0.2);
+        color: #ff4444;
+        border: 1px solid rgba(255, 68, 68, 0.4);
       }
 
       /* -------------------------------------------
@@ -2085,6 +2234,81 @@ export class GhostOrbitsPanel {
       .rematch-no-btn:hover {
         background: rgba(136, 170, 204, 0.15);
         border-color: #88aacc;
+      }
+
+      /* -------------------------------------------
+         BLIZZARD MODE RESULTS
+         ------------------------------------------- */
+
+      .orbits-blizzard-results .blizzard-final-scores {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        margin: 30px 0;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+      }
+
+      .blizzard-final-scores .team-score {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px 32px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .blizzard-final-scores .team-score.winner {
+        transform: scale(1.1);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        background: rgba(255, 215, 0, 0.1);
+        border: 2px solid rgba(255, 215, 0, 0.4);
+      }
+
+      .blizzard-final-scores .team-name {
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+      }
+
+      .blizzard-final-scores .score-value {
+        font-size: 48px;
+        font-weight: 700;
+        color: #ffffff;
+      }
+
+      .blizzard-final-scores .vs-separator {
+        font-size: 18px;
+        color: #666;
+        font-weight: 600;
+      }
+
+      .blizzard-winner-box {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin: 20px 0 30px 0;
+        padding: 16px 32px;
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.05) 100%);
+        border: 2px solid rgba(255, 215, 0, 0.4);
+        border-radius: 8px;
+      }
+
+      .blizzard-winner-box .winner-crown {
+        font-size: 32px;
+      }
+
+      .blizzard-winner-box .winner-text {
+        font-size: 20px;
+        font-weight: 700;
+        color: #ffd700;
+        text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
       }
 
       /* -------------------------------------------

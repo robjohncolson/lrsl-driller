@@ -20,6 +20,7 @@ const MULTIPLAYER_CONFIG = {
   // Room settings
   roomCodeLength: 6,
   maxPlayersPerRoom: 2,  // 1v1 for Phase 3
+  maxPlayersPerTeam: 6,  // For Blizzard mode
   roomTimeoutMs: 600000, // 10 min inactive room cleanup
 
   // Timing
@@ -33,6 +34,27 @@ const MULTIPLAYER_CONFIG = {
   dotCount: 50,
   initialLives: 3,
   winThreshold: 0.90,
+
+  // Blizzard mode settings
+  blizzard: {
+    arenaWidth: 1200,
+    arenaHeight: 800,
+    roundDuration: 300000, // 5 minutes
+    scoreLimit: 15,
+    mercyLead: 10,
+    sphereRadius: 15,
+    sphereBaseSpeed: 80,
+    sphereMaxSpeed: 200,
+    returnSpeedBoost: 1.1,
+    touchRadius: 30,
+    barrierYTop: 0.05,
+    barrierYBottom: 0.95,
+    wave1: { count: 3, delay: 3000, speed: 80 },
+    wave2: { count: 5, delay: 2000, speed: 120 },
+    wave3: { count: 8, delay: 1000, speed: 160 },
+    wave1Duration: 30000,
+    wave2Duration: 60000
+  },
 
   // Collision radii (match single-player Arena for parity)
   dotClaimRadius: 15,     // How close to claim/interact with a dot
@@ -357,6 +379,85 @@ class Record {
 }
 
 // ============================================
+// BLIZZARD SPHERE CLASS (Team-based mode)
+// ============================================
+
+class BlizzardSphere {
+  constructor(id, x, y, velocityX, velocityY, config) {
+    this.id = id;
+    this.x = x;
+    this.y = y;
+    this.velocityX = velocityX;
+    this.velocityY = velocityY;
+    this.radius = config?.sphereRadius || 15;
+    this.speed = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+    this.teamId = null; // null = neutral
+    this.lastTouchedBy = null;
+    this.returnCount = 0;
+    this.maxSpeed = config?.sphereMaxSpeed || 200;
+  }
+
+  update(dt, arenaWidth, arenaHeight, barrierYTop, barrierYBottom) {
+    // Move
+    this.x += this.velocityX * dt;
+    this.y += this.velocityY * dt;
+
+    // Bounce off side walls
+    if (this.x < this.radius) {
+      this.x = this.radius;
+      this.velocityX = Math.abs(this.velocityX);
+    } else if (this.x > arenaWidth - this.radius) {
+      this.x = arenaWidth - this.radius;
+      this.velocityX = -Math.abs(this.velocityX);
+    }
+
+    // Check barrier crossing (returns barrier id if crossed, null otherwise)
+    const topBarrierY = arenaHeight * barrierYTop;
+    const bottomBarrierY = arenaHeight * barrierYBottom;
+
+    if (this.y < topBarrierY) {
+      return { crossed: true, barrierTeam: 0 }; // Team 0's barrier (at top)
+    } else if (this.y > bottomBarrierY) {
+      return { crossed: true, barrierTeam: 1 }; // Team 1's barrier (at bottom)
+    }
+
+    return { crossed: false };
+  }
+
+  returnToward(targetY, speedBoost = 1.1) {
+    // Redirect sphere toward target barrier
+    const direction = targetY > this.y ? 1 : -1;
+    this.speed = Math.min(this.speed * speedBoost, this.maxSpeed);
+
+    // Keep some horizontal movement for variety
+    const angle = (Math.random() - 0.5) * 0.3; // Small random horizontal component
+    this.velocityX = Math.sin(angle) * this.speed * 0.3;
+    this.velocityY = direction * this.speed * 0.95;
+
+    this.returnCount++;
+  }
+
+  flip(newTeamId, targetY) {
+    this.teamId = newTeamId;
+    this.returnToward(targetY);
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      x: this.x,
+      y: this.y,
+      velocityX: this.velocityX,
+      velocityY: this.velocityY,
+      radius: this.radius,
+      teamId: this.teamId,
+      lastTouchedBy: this.lastTouchedBy,
+      returnCount: this.returnCount
+    };
+  }
+}
+
+// ============================================
 // ROOM CLASS
 // ============================================
 
@@ -387,12 +488,26 @@ class MultiplayerRoom {
 
     // Match state (initialized on start)
     this.arenaSize = 800;
+    this.arenaWidth = 800;
+    this.arenaHeight = 800;
     this.ghosts = new Map();      // playerId -> MultiplayerGhost
     this.dots = [];
     this.records = [];
     this.matchStartTime = null;
     this.matchTimeRemaining = MULTIPLAYER_CONFIG.roundDuration;
     this.tick = 0;
+
+    // Team support (for Blizzard mode)
+    this.teamAssignments = new Map(); // playerId -> teamId (0 or 1)
+    this.teamScores = [0, 0];
+    this.teamColors = ['#4488ff', '#ff4444']; // Blue team, Red team
+
+    // Blizzard mode state
+    this.blizzardSpheres = [];
+    this.barriers = [];
+    this.currentWave = 1;
+    this.lastSpawnTime = 0;
+    this.sphereIdCounter = 0;
 
     // Game loop
     this.tickInterval = null;
@@ -409,7 +524,13 @@ class MultiplayerRoom {
     if (this.state !== RoomState.LOBBY) {
       return { success: false, error: 'Room not in lobby state' };
     }
-    if (this.players.size >= MULTIPLAYER_CONFIG.maxPlayersPerRoom) {
+
+    // Check room capacity based on mode
+    const maxPlayers = this.mode === 'blizzard'
+      ? MULTIPLAYER_CONFIG.maxPlayersPerTeam * 2
+      : MULTIPLAYER_CONFIG.maxPlayersPerRoom;
+
+    if (this.players.size >= maxPlayers) {
       return { success: false, error: 'Room is full' };
     }
 
@@ -421,6 +542,15 @@ class MultiplayerRoom {
       ghost: null,
       color: this.playerColors[colorIndex] || '#888888'
     });
+
+    // Auto-assign team for Blizzard mode (balance teams)
+    if (this.mode === 'blizzard') {
+      const team0Count = Array.from(this.teamAssignments.values()).filter(t => t === 0).length;
+      const team1Count = Array.from(this.teamAssignments.values()).filter(t => t === 1).length;
+      const assignedTeam = team0Count <= team1Count ? 0 : 1;
+      this.teamAssignments.set(playerId, assignedTeam);
+      console.log(`[Orbits MP] ${username} assigned to team ${assignedTeam}`);
+    }
 
     this.lastActivity = Date.now();
     this._broadcastRoomState();
@@ -435,6 +565,7 @@ class MultiplayerRoom {
 
     this.players.delete(playerId);
     this.ghosts.delete(playerId);
+    this.teamAssignments.delete(playerId);
 
     console.log(`[Orbits MP] ${player.username} left room ${this.roomCode}`);
 
@@ -515,33 +646,56 @@ class MultiplayerRoom {
 
     this.state = RoomState.PLAYING;
     this.matchStartTime = Date.now();
-    this.matchTimeRemaining = MULTIPLAYER_CONFIG.roundDuration;
     this.tick = 0;
 
-    // Initialize arena
-    this._initializeArena();
+    // Initialize arena based on mode
+    if (this.mode === 'blizzard') {
+      this._initializeBlizzardArena();
+      this.matchTimeRemaining = MULTIPLAYER_CONFIG.blizzard.roundDuration;
+    } else {
+      this._initializeArena();
+      this.matchTimeRemaining = MULTIPLAYER_CONFIG.roundDuration;
+    }
+
+    // Build players payload with team info
+    const playersPayload = Array.from(this.players.entries()).map(([id, p]) => ({
+      playerId: id,
+      username: p.username,
+      color: p.color,
+      teamId: this.teamAssignments.get(id) ?? null
+    }));
+
+    // Build match start payload based on mode
+    const matchStartPayload = {
+      seed: this.matchStartTime,
+      mode: this.mode,
+      arenaSize: this.arenaSize,
+      arenaWidth: this.arenaWidth,
+      arenaHeight: this.arenaHeight,
+      players: playersPayload,
+      records: this.records.map(r => r.toJSON())
+    };
+
+    if (this.mode === 'blizzard') {
+      matchStartPayload.teamAssignments = Object.fromEntries(this.teamAssignments);
+      matchStartPayload.teamScores = this.teamScores;
+      matchStartPayload.teamColors = this.teamColors;
+      matchStartPayload.barriers = this.barriers;
+      matchStartPayload.blizzardSpheres = this.blizzardSpheres.map(s => s.toJSON());
+    } else {
+      matchStartPayload.dots = this.dots.map(d => d.toJSON());
+    }
 
     // Broadcast match start
     this._broadcastToRoom({
       type: 'orbits_match_start',
-      payload: {
-        seed: this.matchStartTime,
-        mode: this.mode,
-        arenaSize: this.arenaSize,
-        players: Array.from(this.players.entries()).map(([id, p]) => ({
-          playerId: id,
-          username: p.username,
-          color: p.color
-        })),
-        records: this.records.map(r => r.toJSON()),
-        dots: this.dots.map(d => d.toJSON())
-      }
+      payload: matchStartPayload
     });
 
     // Start game loop
     this._startGameLoop();
 
-    console.log(`[Orbits MP] Room ${this.roomCode} match started`);
+    console.log(`[Orbits MP] Room ${this.roomCode} match started (mode: ${this.mode})`);
   }
 
   _initializeArena() {
@@ -615,6 +769,122 @@ class MultiplayerRoom {
     }
   }
 
+  /**
+   * Initialize Blizzard mode arena (WIDE map with barriers)
+   * @private
+   */
+  _initializeBlizzardArena() {
+    const cfg = MULTIPLAYER_CONFIG.blizzard;
+
+    // Set arena dimensions (WIDE map: 1200x800)
+    this.arenaWidth = cfg.arenaWidth;
+    this.arenaHeight = cfg.arenaHeight;
+    this.arenaSize = Math.max(this.arenaWidth, this.arenaHeight);
+
+    // Reset team scores
+    this.teamScores = [0, 0];
+
+    // Create barriers
+    this.barriers = [
+      { y: cfg.barrierYTop * this.arenaHeight, teamId: 0 },    // Team 0's barrier at top
+      { y: cfg.barrierYBottom * this.arenaHeight, teamId: 1 }  // Team 1's barrier at bottom
+    ];
+
+    // Create records (6 in WIDE layout)
+    this.records = [];
+    const recordPositions = [
+      { x: 0.15, y: 0.25 }, { x: 0.50, y: 0.25 }, { x: 0.85, y: 0.25 },
+      { x: 0.15, y: 0.75 }, { x: 0.50, y: 0.75 }, { x: 0.85, y: 0.75 }
+    ];
+    recordPositions.forEach((pos, i) => {
+      this.records.push(new Record(
+        `record_${i}`,
+        pos.x * this.arenaWidth,
+        pos.y * this.arenaHeight
+      ));
+    });
+
+    // Initialize spheres (start with wave 1)
+    this.blizzardSpheres = [];
+    this.currentWave = 1;
+    this.lastSpawnTime = Date.now();
+    this._spawnBlizzardSpheres(cfg.wave1.count, cfg.wave1.speed);
+
+    // Create player ghosts based on team
+    const team0Spawns = [
+      new Vector2(this.arenaWidth * 0.25, this.arenaHeight * 0.15),
+      new Vector2(this.arenaWidth * 0.50, this.arenaHeight * 0.15),
+      new Vector2(this.arenaWidth * 0.75, this.arenaHeight * 0.15)
+    ];
+    const team1Spawns = [
+      new Vector2(this.arenaWidth * 0.25, this.arenaHeight * 0.85),
+      new Vector2(this.arenaWidth * 0.50, this.arenaHeight * 0.85),
+      new Vector2(this.arenaWidth * 0.75, this.arenaHeight * 0.85)
+    ];
+
+    const team0Indices = { current: 0 };
+    const team1Indices = { current: 0 };
+
+    this.ghosts.clear();
+    for (const [playerId, player] of this.players) {
+      const teamId = this.teamAssignments.get(playerId) || 0;
+      const spawns = teamId === 0 ? team0Spawns : team1Spawns;
+      const indices = teamId === 0 ? team0Indices : team1Indices;
+      const spawnPos = spawns[indices.current % spawns.length];
+      indices.current++;
+
+      const ghost = new MultiplayerGhost(
+        playerId,
+        player.username,
+        this.teamColors[teamId],
+        spawnPos,
+        Math.max(this.arenaWidth, this.arenaHeight)
+      );
+
+      // Initial velocity pointing toward center
+      const toCenter = new Vector2(
+        this.arenaWidth / 2 - ghost.position.x,
+        this.arenaHeight / 2 - ghost.position.y
+      ).normalize().multiply(ghost.baseSpeed * 0.5);
+      ghost.velocity = toCenter;
+
+      // Store arena dimensions for wall bouncing
+      ghost.arenaWidth = this.arenaWidth;
+      ghost.arenaHeight = this.arenaHeight;
+
+      this.ghosts.set(playerId, ghost);
+      player.ghost = ghost;
+    }
+
+    console.log(`[Orbits MP] Blizzard arena initialized: ${this.arenaWidth}x${this.arenaHeight}, ${this.blizzardSpheres.length} spheres`);
+  }
+
+  /**
+   * Spawn Blizzard spheres
+   * @private
+   */
+  _spawnBlizzardSpheres(count, speed) {
+    for (let i = 0; i < count; i++) {
+      // Spawn in center third of arena
+      const x = this.arenaWidth * (0.33 + Math.random() * 0.34);
+      const y = this.arenaHeight * 0.5;
+
+      // Random direction (mostly vertical)
+      const angle = (Math.random() - 0.5) * 0.5; // Small horizontal variance
+      const direction = Math.random() > 0.5 ? 1 : -1;
+      const velocityX = Math.sin(angle) * speed * 0.3;
+      const velocityY = direction * speed;
+
+      const sphere = new BlizzardSphere(
+        `sphere_${this.sphereIdCounter++}`,
+        x, y,
+        velocityX, velocityY,
+        MULTIPLAYER_CONFIG.blizzard
+      );
+      this.blizzardSpheres.push(sphere);
+    }
+  }
+
   // ----------------------------------------
   // GAME LOOP
   // ----------------------------------------
@@ -643,8 +913,11 @@ class MultiplayerRoom {
 
     this.tick++;
 
-    // Update match time
-    this.matchTimeRemaining = MULTIPLAYER_CONFIG.roundDuration - (Date.now() - this.matchStartTime);
+    // Update match time based on mode
+    const roundDuration = this.mode === 'blizzard'
+      ? MULTIPLAYER_CONFIG.blizzard.roundDuration
+      : MULTIPLAYER_CONFIG.roundDuration;
+    this.matchTimeRemaining = roundDuration - (Date.now() - this.matchStartTime);
 
     // Update records (visual spin)
     for (const record of this.records) {
@@ -656,11 +929,15 @@ class MultiplayerRoom {
       ghost.update(dt, this.records);
     }
 
-    // Check dot collisions
-    this._checkDotCollisions();
-
-    // Check ghost-to-ghost damage via dots
-    this._checkDotDamage();
+    // Mode-specific logic
+    if (this.mode === 'blizzard') {
+      this._tickBlizzard(dt);
+    } else {
+      // Check dot collisions
+      this._checkDotCollisions();
+      // Check ghost-to-ghost damage via dots
+      this._checkDotDamage();
+    }
 
     // Check end conditions
     this._checkEndConditions();
@@ -668,6 +945,127 @@ class MultiplayerRoom {
     // Broadcast snapshot at 20Hz (every 3rd tick at 60Hz)
     if (this.tick % 3 === 0) {
       this._broadcastSnapshot();
+    }
+  }
+
+  /**
+   * Blizzard mode tick logic
+   * @private
+   */
+  _tickBlizzard(dt) {
+    const cfg = MULTIPLAYER_CONFIG.blizzard;
+    const now = Date.now();
+    const elapsed = now - this.matchStartTime;
+
+    // Update wave progression
+    if (this.currentWave === 1 && elapsed > cfg.wave1Duration) {
+      this.currentWave = 2;
+      this._spawnBlizzardSpheres(cfg.wave2.count - cfg.wave1.count, cfg.wave2.speed);
+      console.log(`[Orbits MP] Room ${this.roomCode} wave 2 started`);
+    } else if (this.currentWave === 2 && elapsed > cfg.wave2Duration) {
+      this.currentWave = 3;
+      this._spawnBlizzardSpheres(cfg.wave3.count - cfg.wave2.count, cfg.wave3.speed);
+      console.log(`[Orbits MP] Room ${this.roomCode} wave 3 started`);
+    }
+
+    // Update spheres and check barrier crossings
+    const spheresToRemove = [];
+    for (const sphere of this.blizzardSpheres) {
+      const result = sphere.update(
+        dt,
+        this.arenaWidth,
+        this.arenaHeight,
+        cfg.barrierYTop,
+        cfg.barrierYBottom
+      );
+
+      if (result.crossed) {
+        // Score for the opposing team if sphere is owned by the attacking team
+        const attackingTeam = result.barrierTeam === 0 ? 1 : 0; // Opposite of barrier team
+        if (sphere.teamId === attackingTeam) {
+          this.teamScores[attackingTeam]++;
+          this._broadcastEvent('BLIZZARD_SCORE', {
+            teamId: attackingTeam,
+            sphereId: sphere.id,
+            teamScores: this.teamScores
+          });
+          console.log(`[Orbits MP] Team ${attackingTeam} scored! Scores: ${this.teamScores}`);
+        }
+        spheresToRemove.push(sphere);
+      }
+    }
+
+    // Remove scored spheres and respawn
+    for (const sphere of spheresToRemove) {
+      const index = this.blizzardSpheres.indexOf(sphere);
+      if (index > -1) {
+        this.blizzardSpheres.splice(index, 1);
+      }
+    }
+
+    // Respawn spheres to maintain count
+    const waveConfig = this.currentWave === 1 ? cfg.wave1 :
+      this.currentWave === 2 ? cfg.wave2 : cfg.wave3;
+    const spawnDelay = waveConfig.delay;
+    if (this.blizzardSpheres.length < waveConfig.count && now - this.lastSpawnTime > spawnDelay) {
+      this._spawnBlizzardSpheres(1, waveConfig.speed);
+      this.lastSpawnTime = now;
+    }
+
+    // Check ghost-sphere collisions
+    this._checkBlizzardSphereCollisions();
+  }
+
+  /**
+   * Check ghost-sphere collisions in Blizzard mode
+   * @private
+   */
+  _checkBlizzardSphereCollisions() {
+    const cfg = MULTIPLAYER_CONFIG.blizzard;
+    const touchRadius = cfg.touchRadius;
+
+    for (const [playerId, ghost] of this.ghosts) {
+      if (!ghost.isAlive || ghost.movementState === 'ORBITING') continue;
+
+      const playerTeam = this.teamAssignments.get(playerId);
+      const enemyBarrierY = playerTeam === 0
+        ? this.arenaHeight * cfg.barrierYBottom  // Team 0 shoots toward bottom
+        : this.arenaHeight * cfg.barrierYTop;    // Team 1 shoots toward top
+
+      for (const sphere of this.blizzardSpheres) {
+        const dist = ghost.position.distanceTo(new Vector2(sphere.x, sphere.y));
+
+        if (dist < touchRadius) {
+          if (sphere.teamId === null) {
+            // Neutral sphere - claim and return
+            sphere.teamId = playerTeam;
+            sphere.lastTouchedBy = playerId;
+            sphere.returnToward(enemyBarrierY, cfg.returnSpeedBoost);
+            this._broadcastEvent('SPHERE_CLAIMED', {
+              playerId,
+              sphereId: sphere.id,
+              teamId: playerTeam
+            });
+          } else if (sphere.teamId === playerTeam) {
+            // Own sphere - boost toward enemy
+            sphere.lastTouchedBy = playerId;
+            sphere.returnToward(enemyBarrierY, cfg.returnSpeedBoost);
+            this._broadcastEvent('SPHERE_RETURNED', {
+              playerId,
+              sphereId: sphere.id
+            });
+          } else {
+            // Enemy sphere - flip it
+            sphere.flip(playerTeam, enemyBarrierY);
+            sphere.lastTouchedBy = playerId;
+            this._broadcastEvent('SPHERE_FLIPPED', {
+              playerId,
+              sphereId: sphere.id,
+              teamId: playerTeam
+            });
+          }
+        }
+      }
     }
   }
 
@@ -738,6 +1136,11 @@ class MultiplayerRoom {
   }
 
   _checkEndConditions() {
+    if (this.mode === 'blizzard') {
+      this._checkBlizzardEndConditions();
+      return;
+    }
+
     // Count territory
     const dotCounts = new Map();
     for (const [playerId] of this.players) {
@@ -789,6 +1192,73 @@ class MultiplayerRoom {
       }
       this._endMatch(winnerId, 'timeout');
     }
+  }
+
+  /**
+   * Check Blizzard mode end conditions
+   * @private
+   */
+  _checkBlizzardEndConditions() {
+    const cfg = MULTIPLAYER_CONFIG.blizzard;
+
+    // Score limit win
+    if (this.teamScores[0] >= cfg.scoreLimit) {
+      this._endBlizzardMatch(0, 'score_limit');
+      return;
+    }
+    if (this.teamScores[1] >= cfg.scoreLimit) {
+      this._endBlizzardMatch(1, 'score_limit');
+      return;
+    }
+
+    // Mercy rule
+    const lead = Math.abs(this.teamScores[0] - this.teamScores[1]);
+    if (lead >= cfg.mercyLead) {
+      const winningTeam = this.teamScores[0] > this.teamScores[1] ? 0 : 1;
+      this._endBlizzardMatch(winningTeam, 'mercy_rule');
+      return;
+    }
+
+    // Timeout
+    if (this.matchTimeRemaining <= 0) {
+      // Team with more points wins
+      const winningTeam = this.teamScores[0] >= this.teamScores[1] ? 0 : 1;
+      this._endBlizzardMatch(winningTeam, 'timeout');
+    }
+  }
+
+  /**
+   * End Blizzard match with team winner
+   * @private
+   */
+  _endBlizzardMatch(winningTeam, reason) {
+    if (this.state !== RoomState.PLAYING) return;
+
+    this.state = RoomState.ENDED;
+    this._stopGameLoop();
+
+    // Build stats per player
+    const stats = {};
+    for (const [playerId, player] of this.players) {
+      const teamId = this.teamAssignments.get(playerId);
+      stats[playerId] = {
+        teamId,
+        username: player.username,
+        isWinner: teamId === winningTeam
+      };
+    }
+
+    this._broadcastToRoom({
+      type: 'orbits_match_end',
+      payload: {
+        winnerTeam: winningTeam,
+        condition: reason,
+        teamScores: this.teamScores,
+        stats
+      }
+    });
+
+    console.log(`[Orbits MP] Room ${this.roomCode} Blizzard match ended: Team ${winningTeam} won by ${reason}`);
   }
 
   _endMatch(winnerId, reason) {
@@ -904,52 +1374,75 @@ class MultiplayerRoom {
       username: p.username,
       ready: p.ready,
       color: p.color,
-      isHost: id === this.hostId
+      isHost: id === this.hostId,
+      teamId: this.teamAssignments.get(id) ?? null
     }));
+
+    const payload = {
+      roomCode: this.roomCode,
+      state: this.state,
+      hostId: this.hostId,
+      players,
+      mode: this.mode,
+      canStart: this.canStart()
+    };
+
+    // Include team info for Blizzard mode
+    if (this.mode === 'blizzard') {
+      payload.teamAssignments = Object.fromEntries(this.teamAssignments);
+      payload.teamColors = this.teamColors;
+    }
 
     this._broadcastToRoom({
       type: 'orbits_room_state',
-      payload: {
-        roomCode: this.roomCode,
-        state: this.state,
-        hostId: this.hostId,
-        players,
-        mode: this.mode,
-        canStart: this.canStart()
-      }
+      payload
     });
   }
 
   _broadcastSnapshot() {
     const ghosts = [];
     for (const [, ghost] of this.ghosts) {
-      ghosts.push(ghost.toJSON());
+      const ghostData = ghost.toJSON();
+      // Include team ID in ghost data for Blizzard mode
+      if (this.mode === 'blizzard') {
+        ghostData.teamId = this.teamAssignments.get(ghost.playerId);
+      }
+      ghosts.push(ghostData);
     }
 
-    const scores = {};
-    const dotCounts = new Map();
-    for (const [playerId] of this.players) {
-      dotCounts.set(playerId, 0);
-    }
-    for (const dot of this.dots) {
-      if (dot.ownerId && dotCounts.has(dot.ownerId)) {
-        dotCounts.set(dot.ownerId, dotCounts.get(dot.ownerId) + 1);
+    const payload = {
+      tick: this.tick,
+      time: Math.max(0, this.matchTimeRemaining),
+      ghosts,
+      records: this.records.map(r => r.toJSON())
+    };
+
+    if (this.mode === 'blizzard') {
+      payload.blizzardSpheres = this.blizzardSpheres.map(s => s.toJSON());
+      payload.teamScores = this.teamScores;
+      payload.barriers = this.barriers;
+      payload.currentWave = this.currentWave;
+    } else {
+      const scores = {};
+      const dotCounts = new Map();
+      for (const [playerId] of this.players) {
+        dotCounts.set(playerId, 0);
       }
-    }
-    for (const [playerId, count] of dotCounts) {
-      scores[playerId] = count;
+      for (const dot of this.dots) {
+        if (dot.ownerId && dotCounts.has(dot.ownerId)) {
+          dotCounts.set(dot.ownerId, dotCounts.get(dot.ownerId) + 1);
+        }
+      }
+      for (const [playerId, count] of dotCounts) {
+        scores[playerId] = count;
+      }
+      payload.dots = this.dots.map(d => d.toJSON());
+      payload.scores = scores;
     }
 
     this._broadcastToRoom({
       type: 'orbits_snapshot',
-      payload: {
-        tick: this.tick,
-        time: Math.max(0, this.matchTimeRemaining),
-        ghosts,
-        dots: this.dots.map(d => d.toJSON()),
-        records: this.records.map(r => r.toJSON()),
-        scores
-      }
+      payload
     });
   }
 
@@ -1216,6 +1709,7 @@ module.exports = {
   OrbitsMultiplayerManager,
   MultiplayerRoom,
   MultiplayerGhost,
+  BlizzardSphere,
   MULTIPLAYER_CONFIG,
   RoomState
 };

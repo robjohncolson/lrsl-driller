@@ -83,6 +83,12 @@ export class OrbitsNetworkController {
     this.lastSnapshot = null;
     this.matchResult = null;
 
+    // Team state (for Blizzard mode)
+    this.myTeamId = null;
+    this.teamAssignments = {};  // playerId -> teamId
+    this.teamColors = ['#4488ff', '#ff4444'];
+    this.teamScores = [0, 0];
+
     // Reconnection
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 3;
@@ -233,6 +239,9 @@ export class OrbitsNetworkController {
     this.players = [];
     this.lastSnapshot = null;
     this.matchResult = null;
+    this.myTeamId = null;
+    this.teamAssignments = {};
+    this.teamScores = [0, 0];
   }
 
   // ----------------------------------------
@@ -503,6 +512,15 @@ export class OrbitsNetworkController {
     this.players = payload.players || [];
     this.isHost = payload.hostId === this.playerId;
 
+    // Parse team info (for Blizzard mode)
+    if (payload.teamAssignments) {
+      this.teamAssignments = payload.teamAssignments;
+      this.myTeamId = this.teamAssignments[this.playerId] ?? null;
+    }
+    if (payload.teamColors) {
+      this.teamColors = payload.teamColors;
+    }
+
     // Update state based on room state
     if (payload.state === RoomState.LOBBY) {
       this._setState(NetworkState.IN_LOBBY);
@@ -519,7 +537,11 @@ export class OrbitsNetworkController {
       state: payload.state,
       players: this.players,
       isHost: this.isHost,
-      canStart: payload.canStart
+      canStart: payload.canStart,
+      mode: payload.mode,
+      teamAssignments: this.teamAssignments,
+      teamColors: this.teamColors,
+      myTeamId: this.myTeamId
     });
   }
 
@@ -533,19 +555,47 @@ export class OrbitsNetworkController {
   _handleMatchStart(payload) {
     this._setState(NetworkState.PLAYING);
     this.matchResult = null;
+
+    // Parse team info (for Blizzard mode)
+    if (payload.teamAssignments) {
+      this.teamAssignments = payload.teamAssignments;
+      this.myTeamId = this.teamAssignments[this.playerId] ?? null;
+    }
+    if (payload.teamColors) {
+      this.teamColors = payload.teamColors;
+    }
+    if (payload.teamScores) {
+      this.teamScores = payload.teamScores;
+    }
+
     this.onMatchStart({
       seed: payload.seed,
       mode: payload.mode,
       arenaSize: payload.arenaSize,
+      arenaWidth: payload.arenaWidth || payload.arenaSize,
+      arenaHeight: payload.arenaHeight || payload.arenaSize,
       players: payload.players,
       records: payload.records,
       dots: payload.dots,
-      myPlayerId: this.playerId
+      myPlayerId: this.playerId,
+      // Blizzard mode data
+      teamAssignments: this.teamAssignments,
+      teamColors: this.teamColors,
+      teamScores: this.teamScores,
+      myTeamId: this.myTeamId,
+      barriers: payload.barriers,
+      blizzardSpheres: payload.blizzardSpheres
     });
   }
 
   _handleSnapshot(payload) {
     this.lastSnapshot = payload;
+
+    // Update team scores if present
+    if (payload.teamScores) {
+      this.teamScores = payload.teamScores;
+    }
+
     this.onSnapshot({
       tick: payload.tick,
       time: payload.time,
@@ -553,7 +603,13 @@ export class OrbitsNetworkController {
       dots: payload.dots,
       records: payload.records,
       scores: payload.scores,
-      myPlayerId: this.playerId
+      myPlayerId: this.playerId,
+      // Blizzard mode data
+      blizzardSpheres: payload.blizzardSpheres,
+      teamScores: payload.teamScores,
+      barriers: payload.barriers,
+      currentWave: payload.currentWave,
+      myTeamId: this.myTeamId
     });
   }
 
@@ -570,13 +626,27 @@ export class OrbitsNetworkController {
   _handleMatchEnd(payload) {
     this._setState(NetworkState.RESULTS);
     this.matchResult = payload;
+
+    // Determine if player won (handle both player-based and team-based results)
+    let isWinner = false;
+    if (payload.winnerTeam !== undefined) {
+      // Blizzard mode - team-based win
+      isWinner = payload.winnerTeam === this.myTeamId;
+    } else {
+      // Arena mode - player-based win
+      isWinner = payload.winner === this.playerId;
+    }
+
     this.onMatchEnd({
       winner: payload.winner,
       winnerUsername: payload.winnerUsername,
+      winnerTeam: payload.winnerTeam,
       condition: payload.condition,
       finalScores: payload.finalScores,
+      teamScores: payload.teamScores,
       stats: payload.stats,
-      isWinner: payload.winner === this.playerId
+      isWinner,
+      myTeamId: this.myTeamId
     });
   }
 
@@ -646,6 +716,46 @@ export class OrbitsNetworkController {
   getOpponentGhost() {
     if (!this.lastSnapshot) return null;
     return this.lastSnapshot.ghosts.find(g => g.playerId !== this.playerId);
+  }
+
+  /**
+   * Get teammates (for Blizzard mode)
+   */
+  getTeammates() {
+    if (this.myTeamId === null) return [];
+    return this.players.filter(p =>
+      p.playerId !== this.playerId &&
+      this.teamAssignments[p.playerId] === this.myTeamId
+    );
+  }
+
+  /**
+   * Get opponents (for Blizzard mode)
+   */
+  getOpponents() {
+    if (this.myTeamId === null) {
+      return this.players.filter(p => p.playerId !== this.playerId);
+    }
+    return this.players.filter(p =>
+      this.teamAssignments[p.playerId] !== this.myTeamId
+    );
+  }
+
+  /**
+   * Get team color for a player
+   */
+  getTeamColor(playerId) {
+    const teamId = this.teamAssignments[playerId];
+    if (teamId === undefined || teamId === null) return '#888888';
+    return this.teamColors[teamId] || '#888888';
+  }
+
+  /**
+   * Get my team color
+   */
+  getMyTeamColor() {
+    if (this.myTeamId === null) return '#888888';
+    return this.teamColors[this.myTeamId] || '#888888';
   }
 }
 
