@@ -167,6 +167,50 @@ export class OrbitsLobby {
         padding: 20px;
       }
 
+      .orbits-lobby-mode-selector {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+      }
+
+      .orbits-lobby-mode-selector label {
+        font-size: 14px;
+        color: #aaa;
+        white-space: nowrap;
+      }
+
+      #orbits-lobby-mode-select {
+        flex: 1;
+        padding: 10px 14px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(68, 136, 255, 0.4);
+        border-radius: 6px;
+        color: #fff;
+        font-size: 14px;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      #orbits-lobby-mode-select:hover {
+        border-color: rgba(68, 136, 255, 0.8);
+      }
+
+      #orbits-lobby-mode-select:focus {
+        outline: none;
+        border-color: #4488ff;
+        box-shadow: 0 0 8px rgba(68, 136, 255, 0.4);
+      }
+
+      #orbits-lobby-mode-select option {
+        background: #1a1f2e;
+        color: #fff;
+        padding: 8px;
+      }
+
       .orbits-lobby-menu-btn {
         display: block;
         width: 100%;
@@ -430,6 +474,14 @@ export class OrbitsLobby {
 
   _renderMenu() {
     return `
+      <div class="orbits-lobby-mode-selector">
+        <label for="orbits-lobby-mode-select">Game Mode:</label>
+        <select id="orbits-lobby-mode-select">
+          <option value="arena" selected>Arena (Dot Territory)</option>
+          <option value="trails">Trails (Snake Survival)</option>
+          <option value="blizzard">Blizzard (Team Defense)</option>
+        </select>
+      </div>
       <button class="orbits-lobby-menu-btn" data-action="create">
         Create Room
       </button>
@@ -612,9 +664,13 @@ export class OrbitsLobby {
   // ----------------------------------------
 
   async _createRoom() {
+    // Get selected mode before changing state (UI gets replaced)
+    const modeSelect = this.overlay.querySelector('#orbits-lobby-mode-select');
+    const selectedMode = modeSelect?.value || 'arena';
+
     this._setState(LobbyState.CREATING);
     try {
-      const result = await this.network.createRoom('arena');
+      const result = await this.network.createRoom(selectedMode);
       this.roomCode = result.roomCode;
       this.isHost = true;
       this._setState(LobbyState.IN_ROOM);

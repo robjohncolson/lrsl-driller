@@ -350,6 +350,14 @@ export class GhostPanel {
 
             <!-- Ghost Orbits Arena Entry -->
             <div class="ghost-orbits-entry">
+              <div class="ghost-orbits-mode-selector">
+                <label for="ghost-orbits-mode-select">Game Mode:</label>
+                <select id="ghost-orbits-mode-select">
+                  <option value="arena" selected>Arena (Dot Territory)</option>
+                  <option value="trails">Trails (Snake Survival)</option>
+                  <option value="blizzard">Blizzard (Team Defense)</option>
+                </select>
+              </div>
               <button class="ghost-orbits-btn locked" id="ghost-orbits-enter-btn" disabled>
                 <span class="ghost-orbits-icon">🔒</span>
                 <span class="ghost-orbits-text">Enter Arena</span>
@@ -595,6 +603,15 @@ export class GhostPanel {
    */
   _updateOrbitsButton() {
     this.updateOrbitsButtonState();
+  }
+
+  /**
+   * Get the selected game mode for Ghost Orbits
+   * @returns {string} Mode type: 'arena', 'trails', or 'blizzard'
+   */
+  getSelectedMode() {
+    const select = this.container.querySelector('#ghost-orbits-mode-select');
+    return select?.value || 'arena';
   }
 
   /**
@@ -2614,6 +2631,48 @@ export class GhostPanel {
 
       .ghost-orbits-hint.unlocked {
         color: #00ff88;
+      }
+
+      /* Ghost Orbits Mode Selector */
+      .ghost-orbits-mode-selector {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .ghost-orbits-mode-selector label {
+        font-size: 13px;
+        color: #9ca3af;
+        white-space: nowrap;
+      }
+
+      #ghost-orbits-mode-select {
+        flex: 1;
+        padding: 8px 12px;
+        background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+        border: 1px solid #8844ff55;
+        border-radius: 6px;
+        color: #e5e7eb;
+        font-size: 13px;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      #ghost-orbits-mode-select:hover {
+        border-color: #8844ff;
+      }
+
+      #ghost-orbits-mode-select:focus {
+        outline: none;
+        border-color: #8844ff;
+        box-shadow: 0 0 8px rgba(136, 68, 255, 0.3);
+      }
+
+      #ghost-orbits-mode-select option {
+        background: #1a1f2e;
+        color: #e5e7eb;
+        padding: 8px;
       }
 
       /* Scrollbar styling */
