@@ -1183,6 +1183,7 @@ async function callGroq(prompt, apiKey) {
 /**
  * v1.6.2: Normalize grading response to consistent field-keyed format
  * Handles both direct { score, feedback } and field-keyed { fieldId: { score, feedback } }
+ * v4.8.1: Also uppercases scores in field-keyed format
  * @param {object} parsed - The parsed AI response
  * @param {string} defaultFieldId - Field ID to use for direct format (default: 'answer')
  * @returns {object} Normalized response in field-keyed format
@@ -1204,8 +1205,35 @@ function normalizeGradingResponse(parsed, defaultFieldId = 'answer') {
     };
   }
 
-  // Already in field-keyed format or some other format
-  return parsed;
+  // v4.8.1: Normalize field-keyed format (uppercase scores)
+  const normalized = {};
+  let didNormalize = false;
+
+  for (const [key, value] of Object.entries(parsed)) {
+    if (key.startsWith('_')) {
+      // Preserve metadata fields
+      normalized[key] = value;
+    } else if (value && typeof value === 'object' && 'score' in value && validScores.includes(value.score)) {
+      // Field-keyed format with valid score - uppercase it
+      const upperScore = value.score.toUpperCase();
+      if (upperScore !== value.score) {
+        didNormalize = true;
+      }
+      normalized[key] = {
+        ...value,
+        score: upperScore
+      };
+    } else {
+      // Pass through other fields
+      normalized[key] = value;
+    }
+  }
+
+  if (didNormalize) {
+    console.log(`[AI] Normalized field-keyed scores to uppercase`);
+  }
+
+  return normalized;
 }
 
 /**

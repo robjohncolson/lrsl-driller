@@ -202,7 +202,7 @@ export class GradingEngine {
    */
   async gradeWithAI(answer, rule, context) {
     try {
-      // Build prompt from template
+      // Build prompt from template (for logging/debugging)
       const prompt = this.buildAIPrompt(rule.promptTemplate, answer, context);
 
       const response = await fetch(`${this.serverUrl}/api/ai/grade`, {
@@ -211,7 +211,10 @@ export class GradingEngine {
         body: JSON.stringify({
           scenario: context.scenario,
           answers: { [context.fieldId]: answer },
-          prompt
+          // v4.8.1: Send both prompt and template/cartridge info for server compatibility
+          prompt,
+          aiPromptTemplate: rule.promptTemplate,
+          cartridgeId: context.cartridgeId
         })
       });
 

@@ -33,23 +33,27 @@ export const GameState = {
 };
 
 /**
- * Round configuration constants
+ * Round configuration constants for WebSocket Arena mode (multiplayer)
+ * NOTE: These values mirror server's ARENA_CONFIG in ghost-orbits-manager.js
+ * v4.8.1: In WS mode, always use server-provided values (roundTimeRemaining from state broadcasts)
  */
 const ROUND_CONFIG = {
-  countdownDuration: 3000,      // 3 seconds
-  roundDuration: 150000,        // 2.5 minutes
-  intermissionDuration: 10000,  // 10 seconds
+  countdownDuration: 3000,      // 3 seconds (matches server)
+  roundDuration: 150000,        // 2.5 minutes (matches server)
+  intermissionDuration: 10000,  // 10 seconds (matches server)
   minPlayers: 1,
-  targetPlayers: 8
+  targetPlayers: 8,
+  territoryThreshold: 0.70     // 70% territory to win (matches server)
 };
 
 /**
- * Win condition constants for solo mode (vs Shadow Self)
- * v3: Dot Territory - 90% dot ownership wins
+ * Win condition constants for SOLO MODE ONLY (vs Shadow Self)
+ * v3 Dot Territory: Higher threshold + shorter rounds for fast-paced solo play
+ * NOTE: These are NOT used in WS Arena mode - server is authoritative there
  */
 const WIN_CONDITIONS = {
-  DOT_THRESHOLD: 0.90,         // 90% dots = win (v3)
-  ROUND_DURATION: 120000,      // 120 seconds (extended for v3)
+  DOT_THRESHOLD: 0.90,         // 90% dots = win (v3 solo)
+  ROUND_DURATION: 120000,      // 120 seconds - faster paced than WS arena
   // Legacy (unused in v3):
   DOMINATION_THRESHOLD: 0.70,
   DOMINATION_HOLD_TIME: 5000,
@@ -1596,6 +1600,11 @@ export class GhostOrbitsController {
       }
     }
 
+    // v4.8.1: Use dotManager for v3 territory (dot ownership), fallback to legacy territorySystem
+    const territoryPercent = this.dotManager
+      ? this.dotManager.getOwnershipPercent('player')
+      : (this.territorySystem?.getTerritoryPercent?.(this.username) || 0);
+
     this.patternRecorder.record({
       timestamp: currentTime,
       x: localGhost.position.x,
@@ -1606,7 +1615,7 @@ export class GhostOrbitsController {
       state: this.ghostMovementState === 'ORBITING' ? 'orbiting' : 'free',
       energy: localGhost.energy,
       nearestWellDistance: nearestWellDist,
-      territoryPercent: this.territorySystem?.getTerritoryPercent?.(this.username) || 0,
+      territoryPercent: territoryPercent,
       enemyDistance: enemyDist,
       enemyMassRatio: enemyMassRatio,
       voidDistance: voidDist
@@ -1624,6 +1633,11 @@ export class GhostOrbitsController {
       type: w.type
     }));
 
+    // v4.8.1: Use dotManager for v3 territory (dot ownership), fallback to legacy territorySystem
+    const territoryPercent = this.dotManager
+      ? this.dotManager.getOwnershipPercent('shadow')
+      : (this.territorySystem?.getTerritoryPercent?.(this.shadowGhostId) || 0);
+
     return {
       selfX: shadowGhost.position.x,
       selfY: shadowGhost.position.y,
@@ -1637,7 +1651,7 @@ export class GhostOrbitsController {
       playerVy: localGhost.velocity.y,
       playerMass: localGhost.mass,
       wells: wells,
-      territoryPercent: this.territorySystem?.getTerritoryPercent?.(this.shadowGhostId) || 0,
+      territoryPercent: territoryPercent,
       voidX: this.voidZone?.x || 0,
       voidY: this.voidZone?.y || 0
     };
