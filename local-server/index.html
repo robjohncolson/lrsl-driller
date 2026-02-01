@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghost Orbits - Local Server</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+      user-select: none;
+    }
+
+    .container {
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 12px;
+    }
+
+    .status-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .status-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #44ff44;
+      box-shadow: 0 0 8px rgba(68, 255, 68, 0.5);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .status-text {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .info-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+    }
+
+    .info-label {
+      color: #888;
+      font-size: 12px;
+    }
+
+    .info-value {
+      font-family: 'Consolas', monospace;
+      font-size: 13px;
+      color: #4488ff;
+    }
+
+    .info-value.highlight {
+      color: #44ff88;
+      font-weight: 600;
+    }
+
+    .clients-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .clients-count {
+      font-size: 48px;
+      font-weight: 700;
+      text-align: center;
+      color: #4488ff;
+      line-height: 1;
+    }
+
+    .clients-label {
+      text-align: center;
+      color: #888;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .log-section {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .log-title {
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .log-entries {
+      font-family: 'Consolas', monospace;
+      font-size: 11px;
+      color: #888;
+    }
+
+    .log-entry {
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-time {
+      color: #555;
+      margin-right: 8px;
+    }
+
+    .instructions {
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(68, 136, 255, 0.1);
+      border: 1px solid rgba(68, 136, 255, 0.2);
+      border-radius: 8px;
+      font-size: 11px;
+      color: #aaa;
+    }
+
+    .instructions strong {
+      color: #4488ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Ghost Orbits Server</h1>
+      <p class="subtitle">Local LAN Multiplayer</p>
+    </header>
+
+    <div class="status-card">
+      <div class="status-header">
+        <div class="status-dot"></div>
+        <span class="status-text">Server Running</span>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-row">
+          <span class="info-label">Port</span>
+          <span class="info-value" id="port">3001</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Local Address</span>
+          <span class="info-value highlight" id="local-address">Loading...</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Network</span>
+          <span class="info-value" id="network-name">-</span>
+        </div>
+      </div>
+
+      <div class="clients-section">
+        <div class="clients-count" id="client-count">0</div>
+        <div class="clients-label">Connected Players</div>
+      </div>
+    </div>
+
+    <div class="log-section">
+      <div class="log-title">Activity Log</div>
+      <div class="log-entries" id="log-entries">
+        <div class="log-entry">
+          <span class="log-time">--:--:--</span>
+          Server starting...
+        </div>
+      </div>
+    </div>
+
+    <div class="instructions">
+      <strong>To connect from clients:</strong><br>
+      Use the Local Address shown above in your game's multiplayer settings,
+      or modify the client to connect to <code>ws://[address]:3001</code>
+    </div>
+  </div>
+
+  <script>
+    const portEl = document.getElementById('port');
+    const localAddressEl = document.getElementById('local-address');
+    const networkNameEl = document.getElementById('network-name');
+    const clientCountEl = document.getElementById('client-count');
+    const logEntriesEl = document.getElementById('log-entries');
+
+    function addLog(message) {
+      const now = new Date();
+      const time = now.toTimeString().slice(0, 8);
+
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">${time}</span>${message}`;
+
+      logEntriesEl.insertBefore(entry, logEntriesEl.firstChild);
+
+      // Keep only last 20 entries
+      while (logEntriesEl.children.length > 20) {
+        logEntriesEl.removeChild(logEntriesEl.lastChild);
+      }
+    }
+
+    // Listen for server events
+    window.serverAPI.onServerStarted((data) => {
+      portEl.textContent = data.port;
+
+      if (data.localIPs && data.localIPs.length > 0) {
+        const primary = data.localIPs[0];
+        localAddressEl.textContent = `${primary.address}:${data.port}`;
+        networkNameEl.textContent = primary.name;
+      } else {
+        localAddressEl.textContent = `localhost:${data.port}`;
+        networkNameEl.textContent = 'Loopback';
+      }
+
+      addLog('Server started successfully');
+    });
+
+    window.serverAPI.onClientCount((count) => {
+      clientCountEl.textContent = count;
+    });
+
+    window.serverAPI.onLog((message) => {
+      addLog(message);
+    });
+
+    // Get initial server info
+    window.serverAPI.getServerInfo().then((info) => {
+      if (info.running) {
+        portEl.textContent = info.port;
+        if (info.localIPs && info.localIPs.length > 0) {
+          const primary = info.localIPs[0];
+          localAddressEl.textContent = `${primary.address}:${info.port}`;
+          networkNameEl.textContent = primary.name;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

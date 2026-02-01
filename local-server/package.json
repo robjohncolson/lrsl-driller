@@ -1,0 +1,49 @@
+{
+  "name": "ghost-orbits-local-server",
+  "version": "1.0.0",
+  "description": "Local multiplayer server for Ghost Orbits - low latency LAN play",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "author": "LRSL Driller",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "build": {
+    "appId": "com.lrsl.ghost-orbits-server",
+    "productName": "Ghost Orbits Server",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "../railway-server/ghost-orbits-multiplayer-manager.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../railway-server/ghost-orbits-multiplayer-manager.js",
+        "to": "server/ghost-orbits-multiplayer-manager.js"
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "icon.ico"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
