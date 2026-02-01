@@ -192,7 +192,10 @@ export class ArenaMode extends OrbitsMode {
     const playerOnRecord = input.ghostMovementState === 'ORBITING';
     // Use Date.now() for invulnerability check since setPlayerInvulnerableUntil uses Date.now()
     const now = Date.now();
-    if (!playerOnRecord && now > this.playerInvulnerableUntil) {
+    const playerInvulnerable = now <= this.playerInvulnerableUntil;
+
+    // Always check dot interactions (even when invulnerable - that's how you claim enemy dots safely)
+    if (!playerOnRecord) {
       const interaction = this.dotManager.checkDotInteraction(
         'player',
         localGhost.position.x,
@@ -210,9 +213,18 @@ export class ArenaMode extends OrbitsMode {
         input.playerInteraction = interaction;
 
         if (interaction.type === 'damaged') {
-          const damageResult = this.handleDamage('player', 'dot', 'dot_collision');
-          input.damageResult = damageResult;
-        } else if (interaction.ghostVelocity) {
+          // Only take damage if NOT invulnerable
+          if (!playerInvulnerable) {
+            const damageResult = this.handleDamage('player', 'dot', 'dot_collision');
+            input.damageResult = damageResult;
+          } else {
+            // Invulnerable: convert damage to flip (safe claim!)
+            interaction.type = 'flipped';
+            interaction.dot.claim('player', this.playerColor);
+          }
+        }
+
+        if (interaction.ghostVelocity) {
           // Billiard physics: ghost velocity changed from bumping dot
           input.playerBilliardBounce = {
             x: interaction.ghostVelocity.ghostVx,
@@ -224,11 +236,16 @@ export class ArenaMode extends OrbitsMode {
 
     // Check dot interactions for shadow
     const shadowOnRecord = input.shadowMovementState === 'ORBITING';
-    if (input.shadowGhost && !shadowOnRecord && now > this.shadowInvulnerableUntil) {
-      // Shadow AI: register spacebar if near enemy dot
-      const nearEnemyDot = this._isShadowNearEnemyDot(input.shadowGhost);
-      if (nearEnemyDot && Math.random() < 0.7) {
-        this.dotManager.registerSpacebarPress('shadow');
+    const shadowInvulnerable = now <= this.shadowInvulnerableUntil;
+
+    // Always check dot interactions for shadow (even when invulnerable - that's how it claims enemy dots)
+    if (input.shadowGhost && !shadowOnRecord) {
+      // Shadow AI: register spacebar if near enemy dot (only when not already invulnerable)
+      if (!shadowInvulnerable) {
+        const nearEnemyDot = this._isShadowNearEnemyDot(input.shadowGhost);
+        if (nearEnemyDot && Math.random() < 0.7) {
+          this.dotManager.registerSpacebarPress('shadow');
+        }
       }
 
       const interaction = this.dotManager.checkDotInteraction(
@@ -246,9 +263,18 @@ export class ArenaMode extends OrbitsMode {
         input.shadowInteraction = interaction;
 
         if (interaction.type === 'damaged') {
-          const damageResult = this.handleDamage('shadow', 'dot', 'dot_collision');
-          input.shadowDamageResult = damageResult;
-        } else if (interaction.ghostVelocity) {
+          // Only take damage if NOT invulnerable
+          if (!shadowInvulnerable) {
+            const damageResult = this.handleDamage('shadow', 'dot', 'dot_collision');
+            input.shadowDamageResult = damageResult;
+          } else {
+            // Invulnerable: convert damage to flip (safe claim!)
+            interaction.type = 'flipped';
+            interaction.dot.claim('shadow', this.shadowColor);
+          }
+        }
+
+        if (interaction.ghostVelocity) {
           // Billiard physics: shadow velocity changed from bumping dot
           input.shadowBilliardBounce = {
             x: interaction.ghostVelocity.ghostVx,
