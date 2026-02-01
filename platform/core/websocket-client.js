@@ -29,6 +29,9 @@ export class WebSocketClient {
     // Grid Wars callbacks
     this.onGridMessage = config.onGridMessage || (() => {});
 
+    // Ghost Orbits multiplayer callbacks
+    this.onOrbitsLobbyStatus = config.onOrbitsLobbyStatus || (() => {});
+
     this.currentUsername = null;
   }
 
@@ -225,6 +228,11 @@ export class WebSocketClient {
       // Ghost battle results
       case 'ghost_battle_complete':
         this.onGridMessage(message);
+        break;
+
+      // Ghost Orbits multiplayer lobby status
+      case 'orbits_lobby_status':
+        this.onOrbitsLobbyStatus(message.payload);
         break;
     }
   }

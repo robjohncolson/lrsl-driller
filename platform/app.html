@@ -1176,6 +1176,12 @@
             celebration.showToast(`${opponent}'s ghost won the battle`, 'warning', 4000);
           }
         }
+      },
+      onOrbitsLobbyStatus: (status) => {
+        // Update ghost panel multiplayer button with lobby status
+        if (ghostPanel) {
+          ghostPanel.updateMultiplayerLobbyStatus(status);
+        }
       }
     });
 

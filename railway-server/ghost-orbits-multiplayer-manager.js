@@ -467,11 +467,11 @@ class BlizzardSphere {
 // ============================================
 
 class MultiplayerRoom {
-  constructor(roomCode, hostId, hostUsername, mode, broadcast) {
+  constructor(roomCode, hostId, hostUsername, mode, onGlobalStateChange) {
     this.roomCode = roomCode;
     this.hostId = hostId;
     this.mode = mode || 'arena';
-    this.broadcast = broadcast;
+    this.onGlobalStateChange = onGlobalStateChange || (() => {});
     this.createdAt = Date.now();
     this.lastActivity = Date.now();
 
@@ -863,6 +863,9 @@ class MultiplayerRoom {
     this.state = RoomState.PLAYING;
     this.matchStartTime = Date.now();
     this.tick = 0;
+
+    // Notify global state change (game started)
+    this.onGlobalStateChange();
 
     // Initialize arena based on mode
     if (this.mode === 'blizzard') {
@@ -1551,6 +1554,9 @@ class MultiplayerRoom {
     this.state = RoomState.ENDED;
     this._stopGameLoop();
 
+    // Notify global state change (game ended)
+    this.onGlobalStateChange();
+
     // Build stats per player
     const stats = {};
     for (const [playerId, player] of this.players) {
@@ -1580,6 +1586,9 @@ class MultiplayerRoom {
 
     this.state = RoomState.ENDED;
     this._stopGameLoop();
+
+    // Notify global state change (game ended)
+    this.onGlobalStateChange();
 
     // Calculate final scores
     const dotCounts = new Map();
@@ -1795,8 +1804,37 @@ class OrbitsMultiplayerManager {
     this.rooms = new Map();  // roomCode -> MultiplayerRoom
     this.playerRooms = new Map();  // playerId -> roomCode
 
+    // Global broadcast callback (set by server.js)
+    this.onLobbyStatusChange = null;
+
     // Cleanup stale rooms every minute
     this.cleanupInterval = setInterval(() => this._cleanupStaleRooms(), 60000);
+  }
+
+  /**
+   * Get current public lobby status for display to all users
+   * @returns {{playerCount: number, gameInProgress: boolean}}
+   */
+  getLobbyStatus() {
+    // Find the public room (there should only be one active at a time)
+    for (const [, room] of this.rooms) {
+      if (room.isPublic) {
+        return {
+          playerCount: room.players.size,
+          gameInProgress: room.state === RoomState.PLAYING || room.state === RoomState.COUNTDOWN
+        };
+      }
+    }
+    return { playerCount: 0, gameInProgress: false };
+  }
+
+  /**
+   * Broadcast lobby status to all connected clients
+   */
+  broadcastLobbyStatus() {
+    if (this.onLobbyStatusChange) {
+      this.onLobbyStatusChange(this.getLobbyStatus());
+    }
   }
 
   // ----------------------------------------
@@ -1811,7 +1849,7 @@ class OrbitsMultiplayerManager {
     } while (this.rooms.has(roomCode));
 
     const hostId = generatePlayerId();
-    const room = new MultiplayerRoom(roomCode, hostId, hostUsername, mode);
+    const room = new MultiplayerRoom(roomCode, hostId, hostUsername, mode, () => this.broadcastLobbyStatus());
     this.rooms.set(roomCode, room);
     this.playerRooms.set(hostId, roomCode);
 
@@ -1864,6 +1902,7 @@ class OrbitsMultiplayerManager {
         if (result.success) {
           this.playerRooms.set(playerId, roomCode);
           console.log(`[Orbits MP] ${username} quick-joined room ${roomCode} (${room.players.size} players)`);
+          this.broadcastLobbyStatus();
           return {
             success: true,
             roomCode: room.roomCode,
@@ -1880,7 +1919,7 @@ class OrbitsMultiplayerManager {
     } while (this.rooms.has(roomCode));
 
     const hostId = generatePlayerId();
-    const room = new MultiplayerRoom(roomCode, hostId, username, mode);
+    const room = new MultiplayerRoom(roomCode, hostId, username, mode, () => this.broadcastLobbyStatus());
     room.isPublic = true;
 
     this.rooms.set(roomCode, room);
@@ -1890,6 +1929,7 @@ class OrbitsMultiplayerManager {
     room._startLobbyTimer();
 
     console.log(`[Orbits MP] ${username} created public room ${roomCode}`);
+    this.broadcastLobbyStatus();
     return {
       success: true,
       roomCode,
@@ -1913,6 +1953,7 @@ class OrbitsMultiplayerManager {
     }
 
     this.playerRooms.delete(playerId);
+    this.broadcastLobbyStatus();
   }
 
   rejoinRoom(roomCode, playerId, username, ws) {

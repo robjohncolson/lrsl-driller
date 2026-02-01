@@ -88,6 +88,14 @@ console.log('[Ghost Orbits] Arena manager initialized');
 // ============================================
 const orbitsMultiplayerManager = new OrbitsMultiplayerManager();
 
+// Set up global lobby status broadcast
+orbitsMultiplayerManager.onLobbyStatusChange = (status) => {
+  broadcast({
+    type: 'orbits_lobby_status',
+    payload: status
+  });
+};
+
 console.log('[Ghost Orbits] Multiplayer manager initialized');
 
 // ============================================

@@ -367,6 +367,7 @@ export class GhostPanel {
                 <button class="ghost-orbits-btn multiplayer" id="ghost-orbits-multiplayer-btn">
                   <span class="ghost-orbits-icon">🌐</span>
                   <span class="ghost-orbits-text">Multiplayer</span>
+                  <span class="ghost-orbits-badge" id="ghost-orbits-mp-badge" style="display: none;">0</span>
                 </button>
               </div>
               <p class="ghost-orbits-hint" id="ghost-orbits-hint">
@@ -611,6 +612,44 @@ export class GhostPanel {
       btn.disabled = true;
       btn.setAttribute('disabled', 'disabled');
       btn.classList.add('disabled');
+    }
+  }
+
+  /**
+   * Update multiplayer button to show lobby status
+   * @param {Object} status - Lobby status
+   * @param {number} status.playerCount - Number of players waiting
+   * @param {boolean} status.gameInProgress - Whether a game is currently running
+   */
+  updateMultiplayerLobbyStatus(status) {
+    const btn = this.container.querySelector('#ghost-orbits-multiplayer-btn');
+    const badge = this.container.querySelector('#ghost-orbits-mp-badge');
+    const textEl = btn?.querySelector('.ghost-orbits-text');
+
+    if (!btn || !badge) return;
+
+    if (status.gameInProgress) {
+      // Game in progress - show "In Game" badge
+      badge.textContent = '⚔️';
+      badge.style.display = 'flex';
+      badge.classList.add('in-game');
+      badge.classList.remove('waiting');
+      if (textEl) textEl.textContent = 'Multiplayer';
+    } else if (status.playerCount > 0) {
+      // Players waiting - show count
+      badge.textContent = status.playerCount;
+      badge.style.display = 'flex';
+      badge.classList.add('waiting');
+      badge.classList.remove('in-game');
+      if (textEl) textEl.textContent = 'Multiplayer';
+      // Add pulse animation
+      btn.classList.add('has-players');
+    } else {
+      // No one waiting
+      badge.style.display = 'none';
+      badge.classList.remove('waiting', 'in-game');
+      if (textEl) textEl.textContent = 'Multiplayer';
+      btn.classList.remove('has-players');
     }
   }
 
@@ -2753,6 +2792,48 @@ export class GhostPanel {
       .ghost-orbits-btn.multiplayer.disabled .ghost-orbits-icon,
       .ghost-orbits-btn.multiplayer:disabled .ghost-orbits-icon {
         color: #666;
+      }
+
+      /* Multiplayer badge */
+      .ghost-orbits-badge {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        background: #ff4444;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .ghost-orbits-badge.waiting {
+        background: #44cc88;
+        animation: badge-pulse 1.5s ease-in-out infinite;
+      }
+
+      .ghost-orbits-badge.in-game {
+        background: #ff8844;
+        font-size: 10px;
+      }
+
+      @keyframes badge-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.15); }
+      }
+
+      .ghost-orbits-btn.multiplayer.has-players {
+        border-color: #44cc88;
+        box-shadow: 0 0 10px rgba(68, 204, 136, 0.3);
+      }
+
+      .ghost-orbits-btn.multiplayer {
+        position: relative;
       }
 
       /* Ghost Orbits Mode Selector */
