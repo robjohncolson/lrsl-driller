@@ -251,10 +251,11 @@ export class GhostOrbitsController {
       this.overlay = this.container.querySelector('.ghost-orbits-overlay');
       console.log('[GhostOrbits] Overlay reference:', this.overlay);
 
-      // Initialize audio
+      // Initialize audio (global for music settings access)
       console.log('[GhostOrbits] Creating audio...');
       this.audio = new GhostOrbitsAudio();
       this.audio.init();
+      window.ghostOrbitsAudio = this.audio; // Expose globally for settings
 
       // Get arena size from renderer
       const arenaSize = this.renderer?.arena?.size || 800;
@@ -1435,10 +1436,10 @@ export class GhostOrbitsController {
       if (modeInput.playerInteraction) {
         const interaction = modeInput.playerInteraction;
         if (interaction.type === 'claimed') {
-          if (this.audio) this.audio.playOrbitCapture?.();
+          if (this.audio) this.audio.playPop?.(); // Pop sound for claiming dots
         } else if (interaction.type === 'flipped') {
           console.log('[GhostOrbits] Player flipped enemy dot!');
-          if (this.audio) this.audio.playVictory?.();
+          if (this.audio) this.audio.playPop?.(); // Pop for flipping too
         } else if (interaction.type === 'damaged' && modeInput.damageResult) {
           const damageResult = modeInput.damageResult;
           console.log(`[GhostOrbits] Player damaged! Lives remaining: ${damageResult.livesRemaining}`);
@@ -1460,8 +1461,11 @@ export class GhostOrbitsController {
       // Handle shadow interaction results from mode
       if (modeInput.shadowInteraction) {
         const interaction = modeInput.shadowInteraction;
-        if (interaction.type === 'flipped') {
-          console.log('[GhostOrbits] Shadow flipped player dot!');
+        if (interaction.type === 'claimed' || interaction.type === 'flipped') {
+          if (this.audio) this.audio.playPop?.(); // Pop sound for shadow claiming
+          if (interaction.type === 'flipped') {
+            console.log('[GhostOrbits] Shadow flipped player dot!');
+          }
         } else if (interaction.type === 'damaged' && modeInput.shadowDamageResult) {
           const damageResult = modeInput.shadowDamageResult;
           console.log(`[GhostOrbits] Shadow damaged! Lives remaining: ${damageResult.livesRemaining}`);

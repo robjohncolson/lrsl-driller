@@ -638,6 +638,31 @@
           </div>
         </div>
 
+        <!-- Background Music -->
+        <div class="border-t pt-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Background Music</label>
+          <div class="flex items-center gap-3 mb-3">
+            <button id="music-toggle" class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 transition-colors">
+              <span id="music-toggle-dot" class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform translate-x-1"></span>
+            </button>
+            <span id="music-toggle-label" class="text-sm text-gray-600">Music disabled</span>
+          </div>
+          <div id="music-track-section" class="space-y-2 opacity-50">
+            <select id="music-track" class="w-full border border-gray-300 rounded-lg p-2 text-sm" disabled>
+              <option value="none">No Music</option>
+              <option value="final_moments">Final Moments</option>
+              <option value="drive">Drive</option>
+              <option value="longing">Longing</option>
+              <option value="tenuf">10µF</option>
+            </select>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">Volume:</span>
+              <input type="range" id="music-volume" min="0" max="100" value="30" class="flex-1" disabled>
+              <span id="music-volume-label" class="text-xs text-gray-500 w-8">30%</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Classmate Notifications -->
         <div class="border-t pt-4">
           <label class="block text-sm font-medium text-gray-700 mb-2">Classmate Notifications</label>
@@ -2508,6 +2533,86 @@
       dot.classList.toggle('translate-x-6', soundEngine.enabled);
       dot.classList.toggle('translate-x-1', !soundEngine.enabled);
       label.textContent = soundEngine.enabled ? 'Sound effects enabled' : 'Sound effects disabled';
+    });
+
+    // ==================== BACKGROUND MUSIC SETTINGS ====================
+    // Global music player (accessible to Ghost Orbits and main app)
+    let globalMusicPlayer = null;
+
+    function initMusicSettings() {
+      // Try to use Ghost Orbits audio if available, otherwise create standalone
+      if (window.ghostOrbitsAudio) {
+        globalMusicPlayer = window.ghostOrbitsAudio;
+      } else {
+        // Import dynamically if needed
+        import('./core/ghost-orbits-audio.js').then(module => {
+          globalMusicPlayer = new module.GhostOrbitsAudio();
+          window.globalMusicPlayer = globalMusicPlayer;
+          updateMusicUI();
+        }).catch(() => {
+          console.warn('[Music] Could not load audio module');
+        });
+        return; // Wait for async load
+      }
+      updateMusicUI();
+    }
+
+    function updateMusicUI() {
+      if (!globalMusicPlayer) return;
+
+      const settings = globalMusicPlayer.getMusicSettings();
+      const musicDot = document.getElementById('music-toggle-dot');
+      const musicLabel = document.getElementById('music-toggle-label');
+      const musicToggle = document.getElementById('music-toggle');
+      const trackSection = document.getElementById('music-track-section');
+      const trackSelect = document.getElementById('music-track');
+      const volumeSlider = document.getElementById('music-volume');
+      const volumeLabel = document.getElementById('music-volume-label');
+
+      // Update toggle state
+      musicDot.classList.toggle('translate-x-6', settings.enabled);
+      musicDot.classList.toggle('translate-x-1', !settings.enabled);
+      musicLabel.textContent = settings.enabled ? 'Music enabled' : 'Music disabled';
+      musicToggle.classList.toggle('bg-purple-600', settings.enabled);
+      musicToggle.classList.toggle('bg-gray-300', !settings.enabled);
+
+      // Update track section state
+      trackSection.classList.toggle('opacity-50', !settings.enabled);
+      trackSelect.disabled = !settings.enabled;
+      volumeSlider.disabled = !settings.enabled;
+
+      // Update track selection
+      trackSelect.value = settings.track;
+
+      // Update volume
+      const volumePercent = Math.round(settings.volume * 100);
+      volumeSlider.value = volumePercent;
+      volumeLabel.textContent = volumePercent + '%';
+    }
+
+    document.getElementById('music-toggle').addEventListener('click', () => {
+      if (!globalMusicPlayer) return;
+      const settings = globalMusicPlayer.getMusicSettings();
+      globalMusicPlayer.setMusicEnabled(!settings.enabled);
+      updateMusicUI();
+    });
+
+    document.getElementById('music-track').addEventListener('change', (e) => {
+      if (!globalMusicPlayer) return;
+      globalMusicPlayer.setMusicTrack(e.target.value);
+    });
+
+    document.getElementById('music-volume').addEventListener('input', (e) => {
+      if (!globalMusicPlayer) return;
+      const volume = parseInt(e.target.value) / 100;
+      globalMusicPlayer.setMusicVolume(volume);
+      document.getElementById('music-volume-label').textContent = e.target.value + '%';
+    });
+
+    // Initialize music settings when settings modal opens
+    document.getElementById('settings-btn').addEventListener('click', () => {
+      document.getElementById('settings-modal').classList.remove('hidden');
+      initMusicSettings();
     });
 
     // Initialize notifications toggle state from saved preference

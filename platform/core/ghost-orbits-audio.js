@@ -315,12 +315,70 @@ class RetroSynth {
 }
 
 /**
+ * Available music tracks for background music
+ */
+const MUSIC_TRACKS = {
+  none: { id: 'none', name: 'No Music', path: null },
+  final_moments: { id: 'final_moments', name: 'Final Moments', path: 'audio/music/final_moments.mp3' },
+  drive: { id: 'drive', name: 'Drive', path: 'audio/music/drive.mp3' },
+  longing: { id: 'longing', name: 'Longing', path: 'audio/music/longing.mp3' },
+  tenuf: { id: 'tenuf', name: '10µF', path: 'audio/music/10uf.mp3' }
+};
+
+/**
  * GhostOrbitsAudio - High-level audio interface for Ghost Orbits game
  * Provides convenience methods for all game sounds
  */
 class GhostOrbitsAudio {
   constructor() {
     this.synth = new RetroSynth();
+
+    // Sound effect samples (lazy-loaded)
+    this._popSound = null;
+    this._popSoundLoaded = false;
+
+    // Background music player
+    this._musicPlayer = null;
+    this._currentTrack = 'none';
+    this._musicVolume = 0.3; // 30% default volume for music
+    this._musicEnabled = false;
+
+    // Load settings from localStorage
+    this._loadMusicSettings();
+  }
+
+  /**
+   * Load music settings from localStorage
+   * @private
+   */
+  _loadMusicSettings() {
+    try {
+      const settings = localStorage.getItem('ghostOrbits_musicSettings');
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        this._musicEnabled = parsed.enabled || false;
+        this._currentTrack = parsed.track || 'none';
+        this._musicVolume = parsed.volume ?? 0.3;
+      }
+    } catch (e) {
+      console.warn('[Audio] Failed to load music settings:', e);
+    }
+  }
+
+  /**
+   * Save music settings to localStorage
+   * @private
+   */
+  _saveMusicSettings() {
+    try {
+      localStorage.setItem('ghostOrbits_musicSettings', JSON.stringify({
+        enabled: this._musicEnabled,
+        track: this._currentTrack,
+        volume: this._musicVolume
+      }));
+    } catch (e) {
+      console.warn('[Audio] Failed to save music settings:', e);
+    }
   }
 
   /**
@@ -441,7 +499,161 @@ class GhostOrbitsAudio {
     const sound = SOUNDS.go;
     this.synth.playTone(sound.freq, sound.duration, sound.type, sound.volume);
   }
+
+  /**
+   * Play pop sound - for claiming dots
+   * Uses pre-recorded sample for better sound
+   */
+  playPop() {
+    // Lazy-load the pop sound
+    if (!this._popSoundLoaded) {
+      this._popSound = new Audio('audio/sfx/pop.mp3');
+      this._popSound.volume = 0.5;
+      this._popSoundLoaded = true;
+    }
+
+    if (this._popSound && !this.synth.isMuted()) {
+      // Clone and play to allow overlapping sounds
+      const sound = this._popSound.cloneNode();
+      sound.volume = this._popSound.volume * this.synth.getVolume();
+      sound.play().catch(() => {}); // Ignore autoplay errors
+    }
+  }
+
+  /**
+   * Play orbit capture sound - ascending tone when entering orbit
+   */
+  playOrbitCapture() {
+    // Quick ascending tone
+    this.synth.playSweep(330, 660, 150, 'sine', 0.3);
+  }
+
+  // ============================================
+  // BACKGROUND MUSIC
+  // ============================================
+
+  /**
+   * Get available music tracks
+   * @returns {Object} Track definitions
+   */
+  getMusicTracks() {
+    return MUSIC_TRACKS;
+  }
+
+  /**
+   * Get current music settings
+   * @returns {Object} {enabled, track, volume}
+   */
+  getMusicSettings() {
+    return {
+      enabled: this._musicEnabled,
+      track: this._currentTrack,
+      volume: this._musicVolume
+    };
+  }
+
+  /**
+   * Set music enabled state
+   * @param {boolean} enabled
+   */
+  setMusicEnabled(enabled) {
+    this._musicEnabled = enabled;
+    this._saveMusicSettings();
+
+    if (enabled && this._currentTrack !== 'none') {
+      this.playMusic(this._currentTrack);
+    } else {
+      this.stopMusic();
+    }
+  }
+
+  /**
+   * Set current music track
+   * @param {string} trackId - Track ID from MUSIC_TRACKS
+   */
+  setMusicTrack(trackId) {
+    this._currentTrack = trackId;
+    this._saveMusicSettings();
+
+    if (this._musicEnabled && trackId !== 'none') {
+      this.playMusic(trackId);
+    } else {
+      this.stopMusic();
+    }
+  }
+
+  /**
+   * Set music volume
+   * @param {number} volume - 0.0 to 1.0
+   */
+  setMusicVolume(volume) {
+    this._musicVolume = Math.max(0, Math.min(1, volume));
+    this._saveMusicSettings();
+
+    if (this._musicPlayer) {
+      this._musicPlayer.volume = this._musicVolume;
+    }
+  }
+
+  /**
+   * Play background music
+   * @param {string} trackId - Track ID from MUSIC_TRACKS
+   */
+  playMusic(trackId) {
+    const track = MUSIC_TRACKS[trackId];
+    if (!track || !track.path) {
+      this.stopMusic();
+      return;
+    }
+
+    // Stop current music
+    this.stopMusic();
+
+    // Create and configure music player
+    this._musicPlayer = new Audio(track.path);
+    this._musicPlayer.volume = this._musicVolume;
+    this._musicPlayer.loop = true;
+
+    // Start playing
+    this._musicPlayer.play().catch(err => {
+      console.warn('[Audio] Music autoplay blocked:', err.message);
+    });
+
+    console.log(`[Audio] Playing music: ${track.name}`);
+  }
+
+  /**
+   * Stop background music
+   */
+  stopMusic() {
+    if (this._musicPlayer) {
+      this._musicPlayer.pause();
+      this._musicPlayer.currentTime = 0;
+      this._musicPlayer = null;
+    }
+  }
+
+  /**
+   * Resume music if enabled (call after user interaction)
+   */
+  resumeMusic() {
+    if (this._musicEnabled && this._currentTrack !== 'none') {
+      if (this._musicPlayer && this._musicPlayer.paused) {
+        this._musicPlayer.play().catch(() => {});
+      } else if (!this._musicPlayer) {
+        this.playMusic(this._currentTrack);
+      }
+    }
+  }
+
+  /**
+   * Check if music is currently playing
+   * @returns {boolean}
+   */
+  isMusicPlaying() {
+    return this._musicPlayer && !this._musicPlayer.paused;
+  }
 }
 
 // Export for ES modules
-export { RetroSynth, GhostOrbitsAudio, SOUNDS };
+export { RetroSynth, GhostOrbitsAudio, SOUNDS, MUSIC_TRACKS };
