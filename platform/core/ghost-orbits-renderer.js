@@ -1584,7 +1584,7 @@ class GhostOrbitsRenderer {
       // 2. SCALE POP: Sprite gets bigger at peak of each flip (simulates height)
       // Sin curve peaks at midpoint of each rotation
       // Use absolute sin to get peaks at both 90° and 270° of each rotation
-      const popFactor = 0.6; // 60% size increase at peak
+      const popFactor = 0.8; // 80% size increase at peak
       scalePop = 1 + Math.abs(Math.sin(spinAngle)) * popFactor;
     }
 
@@ -1919,10 +1919,33 @@ class GhostOrbitsRenderer {
     // Use 12-orbits style for Trails mode
     if (this.isTrailsStyle()) {
       for (const segment of trails) {
-        const { x, y, color, radius, alpha } = segment;
+        let { x, y, color, radius, alpha, ownerId } = segment;
 
         // Skip if fully faded
         if (alpha <= 0) continue;
+
+        // Check if owner ghost is spinning (dash animation)
+        // If so, shrink dots and spread them outward
+        const ownerGhost = ownerId ? this.ghosts.get(ownerId) : null;
+        let spinEffect = 0;
+        if (ownerGhost?.spinProgress !== undefined &&
+            ownerGhost.spinProgress > 0 && ownerGhost.spinProgress < 1) {
+          // Sin curve for smooth effect - peaks at middle of animation
+          spinEffect = Math.sin(ownerGhost.spinProgress * Math.PI);
+
+          // Shrink dots during dash (up to 30% smaller at peak)
+          radius = radius * (1 - spinEffect * 0.3);
+
+          // Spread dots outward from ghost (up to 20% more distance at peak)
+          const dx = x - ownerGhost.position.x;
+          const dy = y - ownerGhost.position.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > 1) {
+            const spreadFactor = 1 + spinEffect * 0.2;
+            x = ownerGhost.position.x + dx * spreadFactor;
+            y = ownerGhost.position.y + dy * spreadFactor;
+          }
+        }
 
         ctx.globalAlpha = Math.min(alpha, 0.9);
 

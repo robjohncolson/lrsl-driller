@@ -31,7 +31,7 @@ export const TRAILS_CONFIG = {
   // Dots are massless, no momentum - they just get pulled when too far
   STARTING_TRAIL_LENGTH: 0,     // Start with no tail (12-orbits style)
   SEGMENTS_PER_SPHERE: 1,       // Grow one ball per sphere collected (12-orbits style)
-  TRAIL_SEGMENT_RADIUS: 12,     // Same size as collectible spheres
+  TRAIL_SEGMENT_RADIUS: 10,     // Slightly smaller than ghost (border adds ~2px visual)
   TRAIL_TETHER_DISTANCE: 28,    // Tighter spacing between dots (about 2.3 radii)
   TRAIL_LIFETIME_MS: 999999,    // Effectively infinite - segments don't fade in 12-orbits style
 
