@@ -200,7 +200,9 @@ export class ArenaMode extends OrbitsMode {
         this.playerColor,
         {
           claimRadius: this.ghostProperties?.claimRadius || 1.0,
-          flipWindow: this.ghostProperties?.flipWindow || 250
+          flipWindow: this.ghostProperties?.flipWindow || 250,
+          vx: localGhost.velocity.x,
+          vy: localGhost.velocity.y
         }
       );
 
@@ -210,6 +212,12 @@ export class ArenaMode extends OrbitsMode {
         if (interaction.type === 'damaged') {
           const damageResult = this.handleDamage('player', 'dot', 'dot_collision');
           input.damageResult = damageResult;
+        } else if (interaction.ghostVelocity) {
+          // Billiard physics: ghost velocity changed from bumping dot
+          input.playerBilliardBounce = {
+            x: interaction.ghostVelocity.ghostVx,
+            y: interaction.ghostVelocity.ghostVy
+          };
         }
       }
     }
@@ -227,7 +235,11 @@ export class ArenaMode extends OrbitsMode {
         'shadow',
         input.shadowGhost.position.x,
         input.shadowGhost.position.y,
-        this.shadowColor
+        this.shadowColor,
+        {
+          vx: input.shadowGhost.velocity.x,
+          vy: input.shadowGhost.velocity.y
+        }
       );
 
       if (interaction) {
@@ -236,6 +248,12 @@ export class ArenaMode extends OrbitsMode {
         if (interaction.type === 'damaged') {
           const damageResult = this.handleDamage('shadow', 'dot', 'dot_collision');
           input.shadowDamageResult = damageResult;
+        } else if (interaction.ghostVelocity) {
+          // Billiard physics: shadow velocity changed from bumping dot
+          input.shadowBilliardBounce = {
+            x: interaction.ghostVelocity.ghostVx,
+            y: interaction.ghostVelocity.ghostVy
+          };
         }
       }
     }
@@ -277,6 +295,58 @@ export class ArenaMode extends OrbitsMode {
             input.magnetismForce = { x: nx * force, y: ny * force };
           }
         }
+      }
+    }
+
+    // 12-orbits style: billiard collision with own dots
+    if (!playerOnRecord) {
+      const ownDotCollision = this.dotManager.checkOwnDotCollision(
+        'player',
+        localGhost.position.x,
+        localGhost.position.y,
+        localGhost.velocity.x,
+        localGhost.velocity.y,
+        12 // Ghost radius
+      );
+
+      if (ownDotCollision) {
+        // Apply billiard bounce to player ghost
+        input.playerBilliardBounce = ownDotCollision.ghostVelocity;
+        if (ownDotCollision.separation) {
+          input.playerSeparation = ownDotCollision.separation;
+        }
+      }
+    }
+
+    // Shadow billiard collision with own dots
+    if (input.shadowGhost && !shadowOnRecord) {
+      const shadowDotCollision = this.dotManager.checkOwnDotCollision(
+        'shadow',
+        input.shadowGhost.position.x,
+        input.shadowGhost.position.y,
+        input.shadowGhost.velocity.x,
+        input.shadowGhost.velocity.y,
+        12 // Ghost radius
+      );
+
+      if (shadowDotCollision) {
+        input.shadowBilliardBounce = shadowDotCollision.ghostVelocity;
+        if (shadowDotCollision.separation) {
+          input.shadowSeparation = shadowDotCollision.separation;
+        }
+      }
+    }
+
+    // Ghost-ghost collision (billiard bounce)
+    if (input.shadowGhost) {
+      const ghostCollision = this.checkGhostGhostCollision(localGhost, input.shadowGhost);
+
+      if (ghostCollision) {
+        // Override any previous bounce with ghost-ghost collision
+        input.playerBilliardBounce = ghostCollision.ghost1Velocity;
+        input.shadowBilliardBounce = ghostCollision.ghost2Velocity;
+        input.playerSeparation = { x: -ghostCollision.separation.x, y: -ghostCollision.separation.y };
+        input.shadowSeparation = ghostCollision.separation;
       }
     }
   }
@@ -758,6 +828,76 @@ export class ArenaMode extends OrbitsMode {
     this.playerInvulnerableUntil = until;
   }
 
+  /**
+   * Set shadow invulnerability (e.g., for dash)
+   * @param {number} until - Timestamp until which shadow is invulnerable
+   */
+  setShadowInvulnerableUntil(until) {
+    this.shadowInvulnerableUntil = until;
+  }
+
+  // ============================================
+  // COLLISION PHYSICS
+  // ============================================
+
+  /**
+   * Check for ghost-ghost collision and apply billiard physics
+   * Both ghosts bounce off each other elastically
+   * @param {Object} ghost1 - First ghost object
+   * @param {Object} ghost2 - Second ghost object
+   * @returns {Object|null} - { ghost1Velocity, ghost2Velocity, separation } if collision occurred
+   */
+  checkGhostGhostCollision(ghost1, ghost2) {
+    if (!ghost1 || !ghost2) return null;
+
+    const ghost1Radius = 12; // BASE_RADIUS from renderer
+    const ghost2Radius = 12;
+    const combinedRadius = ghost1Radius + ghost2Radius;
+
+    const dx = ghost2.position.x - ghost1.position.x;
+    const dy = ghost2.position.y - ghost1.position.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // No collision
+    if (dist >= combinedRadius || dist === 0) return null;
+
+    // Normalize collision normal (from ghost1 to ghost2)
+    const nx = dx / dist;
+    const ny = dy / dist;
+
+    // Relative velocity of ghost1 with respect to ghost2
+    const relVx = ghost1.velocity.x - ghost2.velocity.x;
+    const relVy = ghost1.velocity.y - ghost2.velocity.y;
+
+    // Relative velocity along collision normal
+    // Positive = ghost1 approaching ghost2, Negative = separating
+    const relVelNormal = relVx * nx + relVy * ny;
+
+    // Only collide if moving toward each other (positive relVelNormal)
+    if (relVelNormal <= 0) return null;
+
+    // Elastic collision (equal mass): swap velocity components along normal
+    const ghost1NormalSpeed = ghost1.velocity.x * nx + ghost1.velocity.y * ny;
+    const ghost2NormalSpeed = ghost2.velocity.x * nx + ghost2.velocity.y * ny;
+
+    // Each ghost gets the other's normal component
+    const newGhost1Vx = ghost1.velocity.x + (ghost2NormalSpeed - ghost1NormalSpeed) * nx;
+    const newGhost1Vy = ghost1.velocity.y + (ghost2NormalSpeed - ghost1NormalSpeed) * ny;
+    const newGhost2Vx = ghost2.velocity.x + (ghost1NormalSpeed - ghost2NormalSpeed) * nx;
+    const newGhost2Vy = ghost2.velocity.y + (ghost1NormalSpeed - ghost2NormalSpeed) * ny;
+
+    // Calculate separation to prevent sticking
+    const overlap = combinedRadius - dist;
+    const separationX = nx * overlap * 0.5;
+    const separationY = ny * overlap * 0.5;
+
+    return {
+      ghost1Velocity: { x: newGhost1Vx, y: newGhost1Vy },
+      ghost2Velocity: { x: newGhost2Vx, y: newGhost2Vy },
+      separation: { x: separationX, y: separationY }
+    };
+  }
+
   // ============================================
   // PRIVATE HELPERS
   // ============================================
@@ -839,7 +979,21 @@ export class ArenaMode extends OrbitsMode {
       captureRadius: w.captureRadius
     })) || [];
 
+    const records = this.physicsEngine?.getRecords().map(r => ({
+      position: { x: r.x, y: r.y },
+      captureRadius: r.captureRadius || 70,
+      id: r.id
+    })) || [];
+
     const territoryPercent = this.dotManager?.getOwnershipPercent('shadow') || 0;
+
+    // Get dot information for AI targeting
+    const dots = this.dotManager?.getDots().map(d => ({
+      x: d.x,
+      y: d.y,
+      ownerId: d.ownerId,
+      state: d.state
+    })) || [];
 
     return {
       selfX: shadowGhost.position.x,
@@ -853,8 +1007,11 @@ export class ArenaMode extends OrbitsMode {
       playerVx: localGhost.velocity.x,
       playerVy: localGhost.velocity.y,
       playerMass: localGhost.mass,
-      wells: wells,
+      wells: records, // Use records as "wells" for orbit detection
+      dots: dots,
       territoryPercent: territoryPercent,
+      arenaWidth: this.arenaSize,
+      arenaHeight: this.arenaSize,
       voidX: 0,
       voidY: 0
     };

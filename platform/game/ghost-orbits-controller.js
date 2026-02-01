@@ -1243,19 +1243,26 @@ export class GhostOrbitsController {
     const localGhost = this.renderer?.getLocalGhost();
     if (!localGhost) return;
 
-    // Update spin animation progress (for fling spin effect)
+    // Update spin animation progress (for fling/dash spin effect)
     if (localGhost.spinStartTime && localGhost.spinDuration) {
       const elapsed = currentTime - localGhost.spinStartTime;
       localGhost.spinProgress = Math.min(1, elapsed / localGhost.spinDuration);
-      // Debug: log spin progress
-      if (localGhost.spinProgress > 0 && localGhost.spinProgress < 1) {
-        console.log('[GhostOrbits] Spin progress:', localGhost.spinProgress.toFixed(2));
-      }
       if (localGhost.spinProgress >= 1) {
         console.log('[GhostOrbits] Spin animation complete');
         localGhost.spinStartTime = undefined;
         localGhost.spinDuration = undefined;
         localGhost.spinProgress = 0;
+      }
+    }
+
+    // Update launch pulse animation progress (enlarge then contract)
+    if (localGhost.launchPulseStart && localGhost.launchPulseDuration) {
+      const elapsed = currentTime - localGhost.launchPulseStart;
+      localGhost.launchPulseProgress = Math.min(1, elapsed / localGhost.launchPulseDuration);
+      if (localGhost.launchPulseProgress >= 1) {
+        localGhost.launchPulseStart = undefined;
+        localGhost.launchPulseDuration = undefined;
+        localGhost.launchPulseProgress = 0;
       }
     }
 
@@ -1379,6 +1386,34 @@ export class GhostOrbitsController {
             console.log('[GhostOrbits] Shadow AI entering orbit');
             this.shadowMovementState = 'ORBITING';
           }
+        }
+
+        // Check if shadow wants to dash (to claim enemy dots safely)
+        if (this.shadowMovementState === 'FREE_FLIGHT' && aiDecision?.wantsDash) {
+          const DASH_DURATION = 400;
+          const DASH_SPEED_BOOST = 2.2;
+
+          // Apply spin animation to shadow
+          shadowGhost.spinStartTime = performance.now();
+          shadowGhost.spinDuration = DASH_DURATION;
+
+          // Apply speed burst
+          const speed = Math.sqrt(
+            shadowGhost.velocity.x * shadowGhost.velocity.x +
+            shadowGhost.velocity.y * shadowGhost.velocity.y
+          );
+          if (speed > 0.1) {
+            const boostFactor = DASH_SPEED_BOOST - 1;
+            shadowGhost.velocity.x *= (1 + boostFactor);
+            shadowGhost.velocity.y *= (1 + boostFactor);
+          }
+
+          // Set shadow invulnerability
+          if (this.mode?.setShadowInvulnerableUntil) {
+            this.mode.setShadowInvulnerableUntil(Date.now() + DASH_DURATION);
+          }
+
+          console.log('[GhostOrbits] Shadow AI dashing to claim dot');
         }
 
         // Apply AI input to shadow ghost (if in free flight)
@@ -1511,6 +1546,26 @@ export class GhostOrbitsController {
       if (modeInput.magnetismForce) {
         localGhost.velocity.x += modeInput.magnetismForce.x;
         localGhost.velocity.y += modeInput.magnetismForce.y;
+      }
+
+      // Apply billiard bounce from own-dot or ghost-ghost collision
+      if (modeInput.playerBilliardBounce) {
+        localGhost.velocity.x = modeInput.playerBilliardBounce.x;
+        localGhost.velocity.y = modeInput.playerBilliardBounce.y;
+      }
+      if (modeInput.playerSeparation) {
+        localGhost.position.x += modeInput.playerSeparation.x;
+        localGhost.position.y += modeInput.playerSeparation.y;
+      }
+
+      // Apply billiard bounce to shadow
+      if (shadowGhost && modeInput.shadowBilliardBounce) {
+        shadowGhost.velocity.x = modeInput.shadowBilliardBounce.x;
+        shadowGhost.velocity.y = modeInput.shadowBilliardBounce.y;
+      }
+      if (shadowGhost && modeInput.shadowSeparation) {
+        shadowGhost.position.x += modeInput.shadowSeparation.x;
+        shadowGhost.position.y += modeInput.shadowSeparation.y;
       }
 
       // Prepare shadow data for physics
@@ -2025,6 +2080,10 @@ export class GhostOrbitsController {
           this.renderer?.updateGhostOrbitState?.(this.username, false);
           if (this.audio) this.audio.playBounce?.();
 
+          // Launch animation: size pulse (enlarge then contract)
+          localGhost.launchPulseStart = performance.now();
+          localGhost.launchPulseDuration = 300; // Quick pulse
+
           // TrailsMode: Notify mode of orbit exit for shoot mechanic
           if (this.mode && this.mode.applyInput) {
             this.mode.applyInput('orbit_exit', {
@@ -2057,9 +2116,9 @@ export class GhostOrbitsController {
           this.renderer?.updateGhostOrbitState?.(this.username, true);
           if (this.audio) this.audio.playOrbitCapture?.();
         } else {
-          // 12-orbits style: Not near a record = FLING a ball from tail
-          // Only in Trails mode
+          // 12-orbits style: Not near a record = mode-specific action
           if (this.modeType === 'trails' && this.mode && this.mode.applyInput) {
+            // Trails mode: FLING a ball from tail
             const result = this.mode.applyInput('fling', {}, localGhost);
             if (result && result.flung) {
               console.log('[GhostOrbits] Flung ball via Space key, speed:', result.ballSpeed);
@@ -2072,12 +2131,39 @@ export class GhostOrbitsController {
               }
 
               // 12-orbits style: Ghost spins 3 times when flinging
-              // Spin duration matches a brief moment (500ms)
               localGhost.spinStartTime = performance.now();
-              localGhost.spinDuration = 750; // ms for 3 full rotations (slower for dramatic effect)
+              localGhost.spinDuration = 750; // ms for 3 full rotations
 
               if (this.audio) this.audio.playBounce?.();
             }
+          } else if (this.modeType === 'arena' && this.mode) {
+            // Arena mode: DASH - spin + speed burst + invulnerability
+            // Allows safe enemy dot claiming and passing through danger
+            const DASH_DURATION = 400; // ms
+            const DASH_SPEED_BOOST = 2.2; // 120% speed increase (slightly less than orbit launch)
+
+            // Apply spin animation
+            localGhost.spinStartTime = performance.now();
+            localGhost.spinDuration = DASH_DURATION;
+
+            // Apply speed burst in current movement direction
+            const speed = Math.sqrt(
+              localGhost.velocity.x * localGhost.velocity.x +
+              localGhost.velocity.y * localGhost.velocity.y
+            );
+            if (speed > 0.1) {
+              const boostFactor = DASH_SPEED_BOOST - 1; // Additional speed
+              localGhost.velocity.x *= (1 + boostFactor);
+              localGhost.velocity.y *= (1 + boostFactor);
+            }
+
+            // Set brief invulnerability window for safe dot claiming
+            if (this.mode.setPlayerInvulnerableUntil) {
+              this.mode.setPlayerInvulnerableUntil(Date.now() + DASH_DURATION);
+            }
+
+            console.log('[GhostOrbits] Arena DASH: spin + speed boost + invulnerability for', DASH_DURATION, 'ms');
+            if (this.audio) this.audio.playBounce?.();
           }
         }
         // If not near a record, spacebar still registered for flip mechanic

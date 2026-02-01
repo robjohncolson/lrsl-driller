@@ -11,7 +11,7 @@
 /**
  * Standard square arena map (800x800)
  * Used for Arena mode
- * 8 records: 4 corners + 4 sides
+ * 9 records: 4 corners + 4 sides + 1 center (12-orbits style)
  */
 export const STANDARD_MAP = {
   id: 'standard',
@@ -31,12 +31,14 @@ export const STANDARD_MAP = {
     { x: 0.15, y: 0.50, clockwise: true },
     { x: 0.85, y: 0.50, clockwise: false },
     { x: 0.50, y: 0.15, clockwise: true },
-    { x: 0.50, y: 0.85, clockwise: false }
+    { x: 0.50, y: 0.85, clockwise: false },
+    // Center record
+    { x: 0.50, y: 0.50, clockwise: false }
   ],
 
-  // Record configuration
-  recordRadius: 40,
-  captureRadius: 60,
+  // Record configuration (75% larger for 12-orbits style)
+  recordRadius: 70,
+  captureRadius: 70,  // Same as visual - dark area captures ghost
   angularSpeedBase: 2.0,
   angularSpeedVariation: 1.0
 };

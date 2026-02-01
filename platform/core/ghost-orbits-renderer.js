@@ -54,8 +54,8 @@ const COLORS = {
   textPrimary: '#ffffff',
   textSecondary: '#88aacc',
   // Trails mode flat colors (12-orbits style)
-  trailsRecord: '#888888',      // Flat gray for records
-  trailsRecordCenter: '#e8e8e8', // Same as background (hole in the middle)
+  trailsRecord: '#b0b0b0',      // Light gray for records (like 12-orbits)
+  trailsRecordCenter: '#707070', // Darker center dot
   trailsCollectible: '#ffffff'  // White collectible spheres
 };
 
@@ -678,6 +678,55 @@ class GhostOrbitsRenderer {
   }
 
   /**
+   * Render 12-orbits style colored border and rounded arena
+   * Border colors reflect the two ghost colors (player left, shadow right)
+   * @private
+   */
+  _renderColoredBorderAndArena(ctx, width, height) {
+    const borderSize = 12;
+    const cornerRadius = 30;
+
+    // Get ghost colors for border
+    const localGhost = this.ghosts.get(this.localGhostId);
+    const shadowGhost = this.ghosts.get('shadow_self');
+    const playerColor = localGhost?.color || '#4488ff';
+    const shadowColor = shadowGhost?.color || '#ff4444';
+
+    // Fill entire canvas with a gradient or split of team colors
+    // Left half = player color, Right half = shadow color
+    ctx.fillStyle = playerColor;
+    ctx.fillRect(0, 0, width / 2, height);
+    ctx.fillStyle = shadowColor;
+    ctx.fillRect(width / 2, 0, width / 2, height);
+
+    // Draw the arena (rounded rectangle) on top with the background color
+    ctx.fillStyle = COLORS.backgroundTrails;
+    ctx.beginPath();
+    this._roundedRect(ctx, borderSize, borderSize, width - borderSize * 2, height - borderSize * 2, cornerRadius);
+    ctx.fill();
+
+    // Clip future drawing to the rounded arena (optional, for cleaner edges)
+    // Skipping clip for now to keep it simple
+  }
+
+  /**
+   * Draw a rounded rectangle path
+   * @private
+   */
+  _roundedRect(ctx, x, y, width, height, radius) {
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+
+  /**
    * Re-mount the canvas to a new container (handles ResizeObserver re-setup)
    * @param {HTMLElement} newContainer - The new container element
    */
@@ -979,9 +1028,14 @@ class GhostOrbitsRenderer {
     // Clear with background color (support non-square canvases)
     const width = this.canvas.width;
     const height = this.canvas.height;
-    // Mode-conditional background: light gray for Trails mode (12-orbits style)
-    ctx.fillStyle = this.isTrailsStyle() ? COLORS.backgroundTrails : COLORS.background;
-    ctx.fillRect(0, 0, width, height);
+
+    // 12-orbits style: colored borders reflecting ghost colors
+    if (this.isTrailsStyle()) {
+      this._renderColoredBorderAndArena(ctx, width, height);
+    } else {
+      ctx.fillStyle = COLORS.background;
+      ctx.fillRect(0, 0, width, height);
+    }
 
     // Render grid lines (subtle)
     this.renderGrid();
@@ -1346,60 +1400,19 @@ class GhostOrbitsRenderer {
    * @private
    */
   _renderRecordFlat(ctx, x, y, radius, captureRadius, spinAngle, clockwise, record) {
-    // Flat gray fill (no gradient)
+    // Flat gray fill (no gradient, no border - 12-orbits style)
     ctx.fillStyle = COLORS.trailsRecord;
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Simple stroke outline
-    ctx.strokeStyle = '#666666';
-    ctx.lineWidth = 2;
+    // Center dot: same color as background (blends in - 12-orbits style)
+    ctx.fillStyle = COLORS.backgroundTrails;
     ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Small center dot (dark gray)
-    ctx.fillStyle = COLORS.trailsRecordCenter;
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Spin direction indicator (simple arc, no arrow head)
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(spinAngle);
-
-    const arrowRadius = radius * 0.6;
-    const arrowAngle = Math.PI * 0.3;
-    const arrowStart = clockwise ? 0 : Math.PI;
-    const arrowEnd = clockwise ? -arrowAngle : Math.PI + arrowAngle;
-
-    ctx.strokeStyle = '#555555';
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = 0.6;
-    ctx.beginPath();
-    ctx.arc(0, 0, arrowRadius, arrowStart, arrowEnd, clockwise);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.restore();
-
-    // If ghost is currently orbiting this record, show simple orbit path
-    if (record.currentOrbiter) {
-      const orbiterGhost = this.ghosts.get(record.currentOrbiter);
-      if (orbiterGhost) {
-        const orbitRadius = distance(orbiterGhost.position, { x, y });
-        ctx.strokeStyle = orbiterGhost.color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.5;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(x, y, orbitRadius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-      }
-    }
+    // No dotted orbit lines when ghost enters orbit (12-orbits style)
   }
 
   /**
@@ -1561,6 +1574,14 @@ class GhostOrbitsRenderer {
     // Direction angle for arrow and spin axis
     const dirAngle = ghost.directionAngle || 0;
 
+    // Calculate launch pulse effect (enlarge then contract on orbit exit)
+    let launchPulseScale = 1;
+    if (ghost.launchPulseProgress !== undefined && ghost.launchPulseProgress > 0 && ghost.launchPulseProgress < 1) {
+      // Sin curve: 0 → 1 → 0, peaks at progress = 0.5
+      const pulseAmount = 0.8; // 80% size increase at peak
+      launchPulseScale = 1 + Math.sin(ghost.launchPulseProgress * Math.PI) * pulseAmount;
+    }
+
     // Calculate flip effect (12-orbits "jump" animation)
     // Two components:
     // 1. Front flip (pitch rotation) - Y-scale compression simulates 360° rotation
@@ -1570,8 +1591,8 @@ class GhostOrbitsRenderer {
     let isBackSide = false;
 
     if (ghost.spinProgress !== undefined && ghost.spinProgress > 0 && ghost.spinProgress < 1) {
-      // For 3 full rotations: angle goes 0 → 6π
-      const spinAngle = ghost.spinProgress * Math.PI * 6;
+      // Single coin-flip rotation: angle goes 0 → 2π
+      const spinAngle = ghost.spinProgress * Math.PI * 2;
 
       // 1. FRONT FLIP: Y-scale goes 1 → 0 → -1 → 0 → 1 per rotation
       // cos gives us the compression/expansion perpendicular to travel
@@ -1599,9 +1620,12 @@ class GhostOrbitsRenderer {
     // Rotate to align with direction of travel FIRST
     ctx.rotate(dirAngle);
 
-    // Apply scale pop (uniform scaling for "height" effect)
-    // Then apply perpendicular scale (front flip compression)
-    ctx.scale(scalePop, scalePop * scalePerpendicular);
+    // Apply scales: launch pulse + spin pop + flip compression
+    // launchPulseScale: enlarges on orbit exit
+    // scalePop: uniform scaling during spin (height effect)
+    // scalePerpendicular: compression during flip (front flip effect)
+    const totalScale = launchPulseScale * scalePop;
+    ctx.scale(totalScale, totalScale * scalePerpendicular);
 
     // Simple filled circle (no gradient/glow)
     ctx.fillStyle = ghostColor;
@@ -1824,8 +1848,9 @@ class GhostOrbitsRenderer {
 
   /**
    * Render territory dots (v3)
-   * - Neutral dots: white/gray
-   * - Owned dots: owner's color with glow
+   * 12-orbits style: flat circles with border, no glow/shine
+   * - Neutral dots: white
+   * - Owned dots: owner's color
    */
   renderDots() {
     if (!this.territoryDots || this.territoryDots.length === 0) {
@@ -1837,61 +1862,44 @@ class GhostOrbitsRenderer {
 
     if (this._logRenderDetails) {
       console.log('[Renderer] renderDots: rendering', this.territoryDots.length, 'dots');
-      // Log first dot as sample
       const sample = this.territoryDots[0];
       console.log('[Renderer] Sample dot:', { x: sample?.x, y: sample?.y, radius: sample?.radius, state: sample?.state });
     }
 
     const ctx = this.ctx;
+    const DOT_RADIUS = 10; // Fixed size like trails mode
 
     for (const dot of this.territoryDots) {
-      const { x, y, radius, pulsePhase, state, ownerColor } = dot;
+      const { x, y, state, ownerColor } = dot;
 
-      // Pulsing effect (stronger for neutral, subtle for owned)
       const isNeutral = state === 'NEUTRAL';
-      const pulseStrength = isNeutral ? 0.25 : 0.15;
-      const pulse = Math.sin(pulsePhase || 0) * pulseStrength + (1 - pulseStrength);
-      const visualRadius = radius * pulse;
 
-      // Determine dot color based on ownership
-      const dotColor = isNeutral ? '#aabbcc' : (ownerColor || '#ffffff');
+      // 12-orbits style: flat fill, no glow
+      ctx.globalAlpha = 1;
 
-      // Outer glow (larger for owned dots)
-      const glowSize = isNeutral ? 1.5 : 2.0;
-      ctx.globalAlpha = isNeutral ? 0.2 : 0.35;
-      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, visualRadius * glowSize);
-      glowGradient.addColorStop(0, dotColor);
-      glowGradient.addColorStop(1, 'transparent');
-      ctx.fillStyle = glowGradient;
-      ctx.beginPath();
-      ctx.arc(x, y, visualRadius * glowSize, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Main dot body
-      ctx.globalAlpha = isNeutral ? 0.7 : 0.9;
-      ctx.fillStyle = dotColor;
-      ctx.beginPath();
-      ctx.arc(x, y, visualRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Inner highlight (subtle shine)
-      ctx.globalAlpha = isNeutral ? 0.4 : 0.5;
-      ctx.fillStyle = lighten(dotColor, 0.4);
-      ctx.beginPath();
-      ctx.arc(x - visualRadius * 0.2, y - visualRadius * 0.2, visualRadius * 0.35, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Border ring for owned dots
-      if (!isNeutral) {
-        ctx.globalAlpha = 0.6;
-        ctx.strokeStyle = lighten(dotColor, 0.3);
-        ctx.lineWidth = 2;
+      if (isNeutral) {
+        // Neutral: white, NO border
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(x, y, visualRadius + 2, 0, Math.PI * 2);
+        ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Claimed: ghost color with inner darker ring for softness
+        const fillColor = ownerColor || '#ffffff';
+
+        // Outer fill (ghost color)
+        ctx.fillStyle = fillColor;
+        ctx.beginPath();
+        ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner ring: darker/more saturated, slightly smaller radius
+        ctx.strokeStyle = darken(fillColor, 0.25);
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, y, DOT_RADIUS - 2, 0, Math.PI * 2);
         ctx.stroke();
       }
-
-      ctx.globalAlpha = 1;
     }
   }
 

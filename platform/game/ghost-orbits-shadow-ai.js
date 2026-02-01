@@ -425,10 +425,10 @@ export class ShadowAI {
   }
 
   /**
-   * Main AI update - called every frame (v2 - orbit decisions only)
+   * Main AI update - called every frame (v3 - dot-aware with dash)
    * @param {number} deltaTime - Time since last update (seconds)
    * @param {Object} gameState - Current game state
-   * @returns {Object} AI decision {wantsOrbit: boolean, wantsRelease: boolean}
+   * @returns {Object} AI decision {wantsOrbit, wantsRelease, wantsDash, targetDot}
    */
   update(deltaTime, gameState) {
     // Update internal state
@@ -446,21 +446,37 @@ export class ShadowAI {
     this.wasOrbiting = this.isOrbiting;
     this.isOrbiting = newIsOrbiting;
 
+    // Find target dots for intelligent behavior
+    const nearestNeutral = this._findNearestDot(gameState.dots, 'NEUTRAL');
+    const nearestEnemy = this._findNearestDot(gameState.dots, 'player');
+
     const now = Date.now();
     const decision = {
       wantsOrbit: false,
-      wantsRelease: false
+      wantsRelease: false,
+      wantsDash: false,
+      targetDot: nearestNeutral || nearestEnemy
     };
 
-    // v2: AI only decides orbit entry/exit timing
+    // v3: Dot-aware orbit and dash decisions
     if (this.isOrbiting) {
-      // Check if should release from orbit
-      decision.wantsRelease = this._shouldReleaseFromOrbit(gameState, now);
+      // Check if should release from orbit - consider dots
+      decision.wantsRelease = this._shouldReleaseFromOrbit(gameState, now, nearestNeutral, nearestEnemy);
     } else {
+      // Check if should dash to claim enemy dot
+      if (nearestEnemy && nearestEnemy.dist < 50) {
+        // Close to enemy dot - dash to claim it safely!
+        const dashChance = 0.3 + (this.generation * 0.1); // Higher gen = more likely to dash
+        if (Math.random() < dashChance) {
+          decision.wantsDash = true;
+          console.log(`[ShadowAI] Dashing to claim enemy dot at dist ${nearestEnemy.dist.toFixed(0)}`);
+        }
+      }
+
       // Check if should enter orbit (if near a record)
       if (now - this.lastOrbitCheck > this.orbitCheckCooldown) {
         this.lastOrbitCheck = now;
-        decision.wantsOrbit = this._shouldEnterOrbit(gameState);
+        decision.wantsOrbit = this._shouldEnterOrbit(gameState, nearestNeutral, nearestEnemy);
       }
     }
 
@@ -468,11 +484,45 @@ export class ShadowAI {
   }
 
   /**
-   * Decide if should enter orbit when near a record (v2)
+   * Find nearest dot of a specific type
+   * @param {Array} dots - Array of dots from game state
+   * @param {string} targetOwner - 'NEUTRAL', 'player', or 'shadow'
+   * @returns {Object|null} {x, y, dist} or null
+   */
+  _findNearestDot(dots, targetOwner) {
+    if (!dots || dots.length === 0) return null;
+
+    let nearest = null;
+    let minDist = Infinity;
+
+    for (const dot of dots) {
+      const isTarget = targetOwner === 'NEUTRAL'
+        ? (dot.state === 'NEUTRAL' || dot.ownerId === null)
+        : (dot.ownerId === targetOwner);
+
+      if (isTarget) {
+        const dx = dot.x - this.position.x;
+        const dy = dot.y - this.position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = { x: dot.x, y: dot.y, dist, ownerId: dot.ownerId };
+        }
+      }
+    }
+
+    return nearest;
+  }
+
+  /**
+   * Decide if should enter orbit when near a record (v3 - dot-aware)
    * @param {Object} gameState
+   * @param {Object} nearestNeutral - Nearest neutral dot
+   * @param {Object} nearestEnemy - Nearest enemy dot
    * @returns {boolean}
    */
-  _shouldEnterOrbit(gameState) {
+  _shouldEnterOrbit(gameState, nearestNeutral, nearestEnemy) {
     const records = gameState.wells || [];
     if (records.length === 0) return false;
 
@@ -494,19 +544,30 @@ export class ShadowAI {
       return false;
     }
 
+    // v3: Don't orbit if heading toward a close neutral dot
+    if (nearestNeutral && nearestNeutral.dist < 150) {
+      const toDot = new Vector2(nearestNeutral.x - this.position.x, nearestNeutral.y - this.position.y);
+      const velNorm = this.velocity.normalize();
+      const dotNorm = toDot.normalize();
+      const alignment = velNorm.dot(dotNorm);
+
+      // If heading toward dot, skip orbit
+      if (alignment > 0.5) {
+        return false;
+      }
+    }
+
     // Strategic decision: should we orbit?
     // Higher generations are smarter about when to orbit
 
-    // 1. Always orbit if we need to change direction significantly
-    // (heading towards wall or away from good position)
-    const heading = Math.atan2(this.velocity.y, this.velocity.x);
-    const recordAngle = Math.atan2(
-      nearestRecord.position.y - this.position.y,
-      nearestRecord.position.x - this.position.x
-    );
+    // Check if we're heading away from dots (need direction change)
+    const needsRedirect = (!nearestNeutral || nearestNeutral.dist > 200) &&
+                          (!nearestEnemy || nearestEnemy.dist > 200);
 
-    // 2. Probability-based decision (higher gen = more strategic)
-    const orbitChance = 0.3 + (this.generation * 0.05); // 35% at gen 1, up to 80%
+    // Higher chance to orbit if we need to redirect
+    const baseChance = needsRedirect ? 0.6 : 0.3;
+    const orbitChance = baseChance + (this.generation * 0.05);
+
     if (Math.random() > orbitChance) {
       return false;
     }
@@ -516,12 +577,14 @@ export class ShadowAI {
   }
 
   /**
-   * Decide if should release from orbit (v2)
+   * Decide if should release from orbit (v3 - dot-aware)
    * @param {Object} gameState
    * @param {number} now - Current timestamp
+   * @param {Object} nearestNeutral - Nearest neutral dot
+   * @param {Object} nearestEnemy - Nearest enemy dot
    * @returns {boolean}
    */
-  _shouldReleaseFromOrbit(gameState, now) {
+  _shouldReleaseFromOrbit(gameState, now, nearestNeutral, nearestEnemy) {
     const orbitDuration = now - this.orbitStartTime;
 
     // 1. Too early - stay in orbit
@@ -535,11 +598,25 @@ export class ShadowAI {
       return true;
     }
 
-    // 3. Strategic release based on tangent direction
-    // Calculate if current tangent direction is favorable
+    // v3: Release when tangent points toward a dot
+    const tangent = this.velocity.normalize();
+    const targetDot = nearestNeutral || nearestEnemy;
+
+    if (targetDot) {
+      const toDot = new Vector2(targetDot.x - this.position.x, targetDot.y - this.position.y);
+      const dotAlignment = tangent.dot(toDot.normalize());
+
+      // Release when pointing toward the dot
+      const dotReleaseThreshold = 0.4 + (this.generation * 0.1);
+      if (dotAlignment > dotReleaseThreshold) {
+        console.log(`[ShadowAI] Releasing toward dot (alignment: ${dotAlignment.toFixed(2)})`);
+        return true;
+      }
+    }
+
+    // 3. Strategic release based on tangent direction toward player
     const playerPos = new Vector2(gameState.playerX, gameState.playerY);
     const toPlayer = playerPos.subtract(this.position);
-    const tangent = this.velocity.normalize();
 
     // Dot product: positive if tangent points toward player area
     const alignment = tangent.dot(toPlayer.normalize());
