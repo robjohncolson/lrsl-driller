@@ -51,6 +51,7 @@ export class OrbitsLobby {
       onStateChange: (data) => this._handleNetworkStateChange(data),
       onRoomUpdate: (data) => this._handleRoomUpdate(data),
       onCountdown: (data) => this._handleCountdown(data),
+      onLobbyCountdown: (data) => this._handleLobbyCountdown(data),
       onMatchStart: (data) => this._handleMatchStart(data),
       onError: (data) => this._handleError(data)
     });
@@ -61,7 +62,10 @@ export class OrbitsLobby {
     this.isHost = false;
     this.canStart = false;
 
-    // Countdown
+    // Lobby countdown info
+    this.lobbyInfo = null;
+
+    // Match countdown
     this.countdownValue = 0;
 
     // Create UI
@@ -239,6 +243,119 @@ export class OrbitsLobby {
         background: linear-gradient(135deg, #666 0%, #444 100%);
       }
 
+      .orbits-lobby-menu-btn.small {
+        padding: 12px;
+        font-size: 14px;
+      }
+
+      .orbits-lobby-menu-btn.orbits-play-now {
+        padding: 20px;
+        font-size: 20px;
+        background: linear-gradient(135deg, #44cc88 0%, #22aa66 100%);
+        margin-bottom: 8px;
+      }
+
+      .orbits-lobby-menu-btn.orbits-play-now:hover {
+        box-shadow: 0 4px 16px rgba(68, 204, 136, 0.5);
+      }
+
+      .orbits-lobby-quick-play {
+        text-align: center;
+        margin-bottom: 16px;
+      }
+
+      .orbits-lobby-quick-hint {
+        font-size: 12px;
+        color: #888;
+        margin: 0;
+      }
+
+      .orbits-lobby-divider {
+        text-align: center;
+        margin: 20px 0;
+        color: #666;
+        font-size: 12px;
+      }
+
+      .orbits-lobby-divider span {
+        background: #1a1a2e;
+        padding: 0 12px;
+        position: relative;
+      }
+
+      .orbits-lobby-divider::before {
+        content: '';
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        top: 50%;
+        height: 1px;
+        background: #4a4a6a;
+      }
+
+      .orbits-lobby-private {
+        text-align: center;
+      }
+
+      .orbits-lobby-private-label {
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .orbits-lobby-private-btns {
+        display: flex;
+        gap: 12px;
+      }
+
+      .orbits-lobby-private-btns .orbits-lobby-menu-btn {
+        flex: 1;
+        margin-bottom: 0;
+      }
+
+      .orbits-lobby-room-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .orbits-lobby-timer {
+        text-align: center;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #44cc88 0%, #22aa66 100%);
+        border-radius: 8px;
+      }
+
+      .orbits-lobby-timer-label {
+        font-size: 10px;
+        color: rgba(255,255,255,0.8);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .orbits-lobby-timer-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #fff;
+      }
+
+      .orbits-lobby-player-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .orbits-lobby-info {
+        text-align: center;
+        padding: 12px;
+        margin-bottom: 16px;
+        color: #888;
+        font-size: 12px;
+      }
+
       .orbits-lobby-input-group {
         margin-bottom: 16px;
       }
@@ -271,22 +388,21 @@ export class OrbitsLobby {
 
       .orbits-lobby-room-code {
         text-align: center;
-        padding: 20px;
+        padding: 12px 16px;
         background: #2a2a4a;
         border-radius: 8px;
-        margin-bottom: 20px;
       }
 
       .orbits-lobby-room-code-label {
-        font-size: 12px;
+        font-size: 10px;
         color: #888;
         text-transform: uppercase;
-        letter-spacing: 2px;
-        margin-bottom: 8px;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
       }
 
       .orbits-lobby-room-code-value {
-        font-size: 32px;
+        font-size: 20px;
         font-weight: 700;
         letter-spacing: 6px;
         color: #4488ff;
@@ -474,19 +590,28 @@ export class OrbitsLobby {
 
   _renderMenu() {
     return `
-      <div class="orbits-lobby-mode-selector">
-        <label for="orbits-lobby-mode-select">Game Mode:</label>
-        <select id="orbits-lobby-mode-select">
-          <option value="arena" selected>Arena (Dot Territory)</option>
-          <option value="blizzard">Blizzard (Team Defense)</option>
-        </select>
+      <div class="orbits-lobby-quick-play">
+        <button class="orbits-lobby-menu-btn orbits-play-now" data-action="quick-join">
+          🎮 Play Now
+        </button>
+        <p class="orbits-lobby-quick-hint">Jump into a game with up to 8 players</p>
       </div>
-      <button class="orbits-lobby-menu-btn" data-action="create">
-        Create Room
-      </button>
-      <button class="orbits-lobby-menu-btn secondary" data-action="join">
-        Join Room
-      </button>
+
+      <div class="orbits-lobby-divider">
+        <span>or</span>
+      </div>
+
+      <div class="orbits-lobby-private">
+        <p class="orbits-lobby-private-label">Private Game</p>
+        <div class="orbits-lobby-private-btns">
+          <button class="orbits-lobby-menu-btn secondary small" data-action="create">
+            Create Room
+          </button>
+          <button class="orbits-lobby-menu-btn secondary small" data-action="join">
+            Join Room
+          </button>
+        </div>
+      </div>
     `;
   }
 
@@ -517,54 +642,51 @@ export class OrbitsLobby {
   }
 
   _renderRoom() {
-    const myPlayer = this.players.find(p => p.playerId === this.network.playerId);
-    const isReady = myPlayer?.ready || false;
+    const maxPlayers = this.lobbyInfo?.maxPlayers || 8;
+    const lobbySeconds = this.lobbyInfo?.secondsRemaining;
 
     return `
-      <div class="orbits-lobby-room-code">
-        <div class="orbits-lobby-room-code-label">Room Code</div>
-        <div class="orbits-lobby-room-code-value">${this.roomCode}</div>
+      <div class="orbits-lobby-room-header">
+        <div class="orbits-lobby-room-code">
+          <div class="orbits-lobby-room-code-label">Room</div>
+          <div class="orbits-lobby-room-code-value">${this.roomCode}</div>
+        </div>
+        ${lobbySeconds !== undefined ? `
+          <div class="orbits-lobby-timer">
+            <div class="orbits-lobby-timer-label">Starting in</div>
+            <div class="orbits-lobby-timer-value">${lobbySeconds}s</div>
+          </div>
+        ` : ''}
       </div>
 
       <div class="orbits-lobby-players">
-        <div class="orbits-lobby-players-title">Players (${this.players.length}/2)</div>
-        ${this.players.map(p => `
-          <div class="orbits-lobby-player">
-            <div class="orbits-lobby-player-color" style="background: ${p.color}"></div>
-            <div class="orbits-lobby-player-name">
-              ${p.username}${p.playerId === this.network.playerId ? ' (You)' : ''}
-            </div>
-            ${p.isHost ? `
-              <span class="orbits-lobby-player-status host">Host</span>
-            ` : `
+        <div class="orbits-lobby-players-title">
+          Players (${this.players.length}/${maxPlayers})
+          ${this.players.length < 2 ? ' - Waiting for players...' : ''}
+        </div>
+        <div class="orbits-lobby-player-grid">
+          ${this.players.map(p => `
+            <div class="orbits-lobby-player">
+              <div class="orbits-lobby-player-color" style="background: ${p.color}"></div>
+              <div class="orbits-lobby-player-name">
+                ${p.username}${p.playerId === this.network.playerId ? ' (You)' : ''}
+              </div>
               <span class="orbits-lobby-player-status ${p.ready ? 'ready' : 'not-ready'}">
-                ${p.ready ? 'Ready' : 'Not Ready'}
+                ${p.ready ? '✓' : '...'}
               </span>
-            `}
-          </div>
-        `).join('')}
+            </div>
+          `).join('')}
+        </div>
+      </div>
 
-        ${this.players.length < 2 ? `
-          <div class="orbits-lobby-waiting">
-            Waiting for opponent to join...
-          </div>
-        ` : ''}
+      <div class="orbits-lobby-info">
+        <p>Game starts automatically when players are ready</p>
       </div>
 
       <div class="orbits-lobby-actions">
         <button class="orbits-lobby-menu-btn secondary" data-action="leave">
           Leave
         </button>
-        ${this.isHost ? `
-          <button class="orbits-lobby-menu-btn" data-action="start"
-                  ${!this.canStart ? 'disabled style="opacity: 0.5; cursor: not-allowed"' : ''}>
-            Start Match
-          </button>
-        ` : `
-          <button class="orbits-lobby-menu-btn" data-action="ready">
-            ${isReady ? 'Not Ready' : 'Ready'}
-          </button>
-        `}
       </div>
     `;
   }
@@ -594,12 +716,28 @@ export class OrbitsLobby {
   // ----------------------------------------
 
   _attachMenuListeners(content) {
-    content.querySelector('[data-action="create"]').addEventListener('click', () => {
-      this._createRoom();
-    });
-    content.querySelector('[data-action="join"]').addEventListener('click', () => {
-      this._setState(LobbyState.JOINING);
-    });
+    // Quick join (Play Now) button
+    const quickJoinBtn = content.querySelector('[data-action="quick-join"]');
+    if (quickJoinBtn) {
+      quickJoinBtn.addEventListener('click', () => {
+        this._quickJoin();
+      });
+    }
+
+    // Private room buttons
+    const createBtn = content.querySelector('[data-action="create"]');
+    if (createBtn) {
+      createBtn.addEventListener('click', () => {
+        this._createRoom();
+      });
+    }
+
+    const joinBtn = content.querySelector('[data-action="join"]');
+    if (joinBtn) {
+      joinBtn.addEventListener('click', () => {
+        this._setState(LobbyState.JOINING);
+      });
+    }
   }
 
   _attachJoiningListeners(content) {
@@ -662,14 +800,26 @@ export class OrbitsLobby {
   // NETWORK ACTIONS
   // ----------------------------------------
 
-  async _createRoom() {
-    // Get selected mode before changing state (UI gets replaced)
-    const modeSelect = this.overlay.querySelector('#orbits-lobby-mode-select');
-    const selectedMode = modeSelect?.value || 'arena';
-
+  /**
+   * Quick join - find or create a public room
+   */
+  async _quickJoin() {
     this._setState(LobbyState.CREATING);
     try {
-      const result = await this.network.createRoom(selectedMode);
+      const result = await this.network.quickJoin('arena');
+      this.roomCode = result.roomCode;
+      this.isHost = false;
+      this._setState(LobbyState.IN_ROOM);
+    } catch (error) {
+      this.error = error.message || 'Failed to find game';
+      this._setState(LobbyState.ERROR);
+    }
+  }
+
+  async _createRoom() {
+    this._setState(LobbyState.CREATING);
+    try {
+      const result = await this.network.createRoom('arena');
       this.roomCode = result.roomCode;
       this.isHost = true;
       this._setState(LobbyState.IN_ROOM);
@@ -720,6 +870,21 @@ export class OrbitsLobby {
   _handleCountdown({ secondsRemaining }) {
     this.countdownValue = secondsRemaining;
     this._setState(LobbyState.COUNTDOWN);
+  }
+
+  _handleLobbyCountdown(data) {
+    // Update lobby countdown info and refresh UI
+    this.lobbyInfo = {
+      secondsRemaining: data.secondsRemaining,
+      playersNeeded: data.playersNeeded,
+      playerCount: data.playerCount,
+      maxPlayers: data.maxPlayers
+    };
+
+    // Update the room display if we're in the room
+    if (this.state === LobbyState.IN_ROOM) {
+      this._updateContent();
+    }
   }
 
   _handleMatchStart(data) {

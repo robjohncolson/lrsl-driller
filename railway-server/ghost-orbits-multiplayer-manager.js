@@ -19,9 +19,14 @@
 const MULTIPLAYER_CONFIG = {
   // Room settings
   roomCodeLength: 6,
-  maxPlayersPerRoom: 2,  // 1v1 for Phase 3
-  maxPlayersPerTeam: 6,  // For Blizzard mode
-  roomTimeoutMs: 600000, // 10 min inactive room cleanup
+  maxPlayersPerRoom: 8,   // 8-player free-for-all
+  minPlayersToStart: 2,   // Minimum players needed to start
+  maxPlayersPerTeam: 6,   // For Blizzard mode
+  roomTimeoutMs: 600000,  // 10 min inactive room cleanup
+
+  // Matchmaking
+  lobbyWaitTime: 20000,   // 20 seconds max wait in lobby before auto-start
+  autoReadyDelay: 2000,   // 2 seconds after joining before auto-ready
 
   // Timing
   tickRate: 60,           // Hz - simulation rate
@@ -29,11 +34,11 @@ const MULTIPLAYER_CONFIG = {
   snapshotRate: 20,       // Hz - network send rate
   countdownDuration: 3000, // 3 seconds
 
-  // Match settings (Arena mode defaults)
-  roundDuration: 120000,  // 2 minutes
-  dotCount: 50,
+  // Match settings (Arena mode defaults - scaled for 8 players)
+  roundDuration: 180000,  // 3 minutes (longer for more players)
+  dotCount: 100,          // More dots for 8 players
   initialLives: 3,
-  winThreshold: 0.90,
+  winThreshold: 0.60,     // 60% territory wins (lower threshold for more players)
 
   // Blizzard mode settings
   blizzard: {
@@ -475,7 +480,17 @@ class MultiplayerRoom {
 
     // Players: playerId -> { ws, username, ready, ghost }
     this.players = new Map();
-    this.playerColors = ['#4488ff', '#ff4444', '#44ff44', '#ffff44'];
+    // 8 distinct player colors
+    this.playerColors = [
+      '#4488ff', // Blue
+      '#ff4444', // Red
+      '#44ff44', // Green
+      '#ffff44', // Yellow
+      '#ff44ff', // Magenta
+      '#44ffff', // Cyan
+      '#ff8844', // Orange
+      '#aa44ff'  // Purple
+    ];
 
     // Add host
     this.players.set(hostId, {
@@ -512,6 +527,12 @@ class MultiplayerRoom {
     // Game loop
     this.tickInterval = null;
     this.lastTickTime = null;
+
+    // Public matchmaking state
+    this.isPublic = false;
+    this.lobbyStartTime = null;
+    this.lobbyTimer = null;
+    this.autoReadyTimers = new Map(); // playerId -> timeout
 
     console.log(`[Orbits MP] Room ${roomCode} created by ${hostUsername}`);
   }
@@ -553,10 +574,127 @@ class MultiplayerRoom {
     }
 
     this.lastActivity = Date.now();
+
+    // For public rooms: auto-ready after delay
+    if (this.isPublic) {
+      const autoReadyTimer = setTimeout(() => {
+        this.setPlayerReady(playerId, true);
+        this._checkAutoStart();
+      }, MULTIPLAYER_CONFIG.autoReadyDelay);
+      this.autoReadyTimers.set(playerId, autoReadyTimer);
+
+      // Start lobby timer when we have minimum players
+      if (this.players.size >= MULTIPLAYER_CONFIG.minPlayersToStart && !this.lobbyTimer) {
+        this._startLobbyTimer();
+      }
+
+      // Auto-start immediately if room is full
+      if (this.players.size >= maxPlayers) {
+        this._triggerAutoStart();
+      }
+    }
+
     this._broadcastRoomState();
 
-    console.log(`[Orbits MP] ${username} joined room ${this.roomCode}`);
+    console.log(`[Orbits MP] ${username} joined room ${this.roomCode} (${this.players.size}/${maxPlayers})`);
     return { success: true };
+  }
+
+  /**
+   * Start the lobby countdown timer
+   * @private
+   */
+  _startLobbyTimer() {
+    if (this.lobbyTimer) return;
+
+    this.lobbyStartTime = Date.now();
+    console.log(`[Orbits MP] Room ${this.roomCode} lobby timer started (${MULTIPLAYER_CONFIG.lobbyWaitTime}ms)`);
+
+    this.lobbyTimer = setTimeout(() => {
+      this._triggerAutoStart();
+    }, MULTIPLAYER_CONFIG.lobbyWaitTime);
+
+    // Broadcast countdown updates
+    this._broadcastLobbyCountdown();
+  }
+
+  /**
+   * Broadcast lobby countdown to all players
+   * @private
+   */
+  _broadcastLobbyCountdown() {
+    if (this.state !== RoomState.LOBBY || !this.lobbyStartTime) return;
+
+    const elapsed = Date.now() - this.lobbyStartTime;
+    const remaining = Math.max(0, MULTIPLAYER_CONFIG.lobbyWaitTime - elapsed);
+    const secondsRemaining = Math.ceil(remaining / 1000);
+
+    this._broadcastToRoom({
+      type: 'orbits_lobby_countdown',
+      payload: {
+        secondsRemaining,
+        playersNeeded: Math.max(0, MULTIPLAYER_CONFIG.minPlayersToStart - this.players.size),
+        playerCount: this.players.size,
+        maxPlayers: MULTIPLAYER_CONFIG.maxPlayersPerRoom
+      }
+    });
+
+    // Continue broadcasting every second
+    if (remaining > 0 && this.state === RoomState.LOBBY) {
+      setTimeout(() => this._broadcastLobbyCountdown(), 1000);
+    }
+  }
+
+  /**
+   * Check if we should auto-start the game
+   * @private
+   */
+  _checkAutoStart() {
+    if (this.state !== RoomState.LOBBY) return;
+    if (!this.isPublic) return;
+
+    // Check if all players are ready
+    let allReady = true;
+    for (const [, player] of this.players) {
+      if (!player.ready) {
+        allReady = false;
+        break;
+      }
+    }
+
+    // Start if all ready and minimum players met
+    if (allReady && this.players.size >= MULTIPLAYER_CONFIG.minPlayersToStart) {
+      this._triggerAutoStart();
+    }
+  }
+
+  /**
+   * Trigger auto-start of the match
+   * @private
+   */
+  _triggerAutoStart() {
+    if (this.state !== RoomState.LOBBY) return;
+    if (this.players.size < MULTIPLAYER_CONFIG.minPlayersToStart) return;
+
+    // Clear lobby timer
+    if (this.lobbyTimer) {
+      clearTimeout(this.lobbyTimer);
+      this.lobbyTimer = null;
+    }
+
+    // Clear auto-ready timers
+    for (const timer of this.autoReadyTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.autoReadyTimers.clear();
+
+    // Mark all players as ready
+    for (const [, player] of this.players) {
+      player.ready = true;
+    }
+
+    console.log(`[Orbits MP] Room ${this.roomCode} auto-starting with ${this.players.size} players`);
+    this.startCountdown();
   }
 
   removePlayer(playerId) {
@@ -699,15 +837,23 @@ class MultiplayerRoom {
   }
 
   _initializeArena() {
-    // Calculate arena size based on player count
-    this.arenaSize = 800;
+    // Scale arena size based on player count (larger for more players)
+    const playerCount = this.players.size;
+    this.arenaSize = playerCount <= 4 ? 800 : 1000;
 
-    // Create records (orbit points) - 8 in a grid pattern
+    // Create records (orbit points) - more for larger arenas
     this.records = [];
-    const recordPositions = [
+    const recordPositions = playerCount <= 4 ? [
+      // Standard 8 records for small games
       { x: 0.20, y: 0.20 }, { x: 0.50, y: 0.20 }, { x: 0.80, y: 0.20 },
       { x: 0.20, y: 0.50 }, { x: 0.80, y: 0.50 },
       { x: 0.20, y: 0.80 }, { x: 0.50, y: 0.80 }, { x: 0.80, y: 0.80 }
+    ] : [
+      // 12 records for 8-player games
+      { x: 0.15, y: 0.15 }, { x: 0.40, y: 0.15 }, { x: 0.60, y: 0.15 }, { x: 0.85, y: 0.15 },
+      { x: 0.15, y: 0.40 }, { x: 0.85, y: 0.40 },
+      { x: 0.15, y: 0.60 }, { x: 0.85, y: 0.60 },
+      { x: 0.15, y: 0.85 }, { x: 0.40, y: 0.85 }, { x: 0.60, y: 0.85 }, { x: 0.85, y: 0.85 }
     ];
     recordPositions.forEach((pos, i) => {
       this.records.push(new Record(
@@ -717,9 +863,12 @@ class MultiplayerRoom {
       ));
     });
 
+    // Scale dot count based on player count
+    const dotCount = Math.min(MULTIPLAYER_CONFIG.dotCount, 50 + (playerCount * 10));
+
     // Create dots (territory) - avoid records
     this.dots = [];
-    for (let i = 0; i < MULTIPLAYER_CONFIG.dotCount; i++) {
+    for (let i = 0; i < dotCount; i++) {
       let x, y, valid;
       let attempts = 0;
       do {
@@ -740,10 +889,17 @@ class MultiplayerRoom {
       this.dots.push(new Dot(`dot_${i}`, x, y));
     }
 
-    // Create player ghosts at opposite corners
+    // Create player ghosts - spawn around the edges
+    // 8 spawn positions evenly distributed around the perimeter
     const spawnPositions = [
-      new Vector2(this.arenaSize * 0.15, this.arenaSize * 0.85),
-      new Vector2(this.arenaSize * 0.85, this.arenaSize * 0.15)
+      new Vector2(this.arenaSize * 0.15, this.arenaSize * 0.15),  // Top-left
+      new Vector2(this.arenaSize * 0.50, this.arenaSize * 0.10),  // Top-center
+      new Vector2(this.arenaSize * 0.85, this.arenaSize * 0.15),  // Top-right
+      new Vector2(this.arenaSize * 0.90, this.arenaSize * 0.50),  // Right-center
+      new Vector2(this.arenaSize * 0.85, this.arenaSize * 0.85),  // Bottom-right
+      new Vector2(this.arenaSize * 0.50, this.arenaSize * 0.90),  // Bottom-center
+      new Vector2(this.arenaSize * 0.15, this.arenaSize * 0.85),  // Bottom-left
+      new Vector2(this.arenaSize * 0.10, this.arenaSize * 0.50)   // Left-center
     ];
 
     this.ghosts.clear();
@@ -1526,6 +1682,60 @@ class OrbitsMultiplayerManager {
     }
 
     return result;
+  }
+
+  /**
+   * Quick join - find an available public room or create one
+   * This is the main entry point for casual matchmaking
+   * @param {string} username - Player's username
+   * @param {string} [mode='arena'] - Game mode
+   * @returns {{success: boolean, roomCode?: string, playerId?: string, error?: string}}
+   */
+  quickJoin(username, mode = 'arena') {
+    // Find an existing public room with space
+    for (const [roomCode, room] of this.rooms) {
+      if (room.isPublic &&
+          room.mode === mode &&
+          room.state === RoomState.LOBBY &&
+          room.players.size < MULTIPLAYER_CONFIG.maxPlayersPerRoom) {
+        // Found a room with space - join it
+        const playerId = generatePlayerId();
+        const result = room.addPlayer(playerId, username, null);
+
+        if (result.success) {
+          this.playerRooms.set(playerId, roomCode);
+          console.log(`[Orbits MP] ${username} quick-joined room ${roomCode} (${room.players.size} players)`);
+          return {
+            success: true,
+            roomCode: room.roomCode,
+            playerId
+          };
+        }
+      }
+    }
+
+    // No available room - create a new public room
+    let roomCode;
+    do {
+      roomCode = generateRoomCode();
+    } while (this.rooms.has(roomCode));
+
+    const hostId = generatePlayerId();
+    const room = new MultiplayerRoom(roomCode, hostId, username, mode);
+    room.isPublic = true;
+
+    this.rooms.set(roomCode, room);
+    this.playerRooms.set(hostId, roomCode);
+
+    // Start lobby timer immediately for public rooms
+    room._startLobbyTimer();
+
+    console.log(`[Orbits MP] ${username} created public room ${roomCode}`);
+    return {
+      success: true,
+      roomCode,
+      playerId: hostId
+    };
   }
 
   leaveRoom(playerId) {

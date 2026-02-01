@@ -65,6 +65,7 @@ export class OrbitsNetworkController {
     this.onMatchStart = options.onMatchStart || (() => {});
     this.onMatchEnd = options.onMatchEnd || (() => {});
     this.onCountdown = options.onCountdown || (() => {});
+    this.onLobbyCountdown = options.onLobbyCountdown || (() => {});
     this.onEvent = options.onEvent || (() => {});
     this.onError = options.onError || (() => {});
 
@@ -294,6 +295,52 @@ export class OrbitsNetworkController {
   }
 
   /**
+   * Quick join - find an available public room or create one
+   * This is the main entry point for casual "Play Now" matchmaking
+   * @param {string} [mode='arena'] - Game mode
+   * @returns {Promise<{roomCode: string, playerId: string}>}
+   */
+  async quickJoin(mode = 'arena') {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      await this.connect();
+    }
+
+    return new Promise((resolve, reject) => {
+      const handler = (event) => {
+        const message = JSON.parse(event.data);
+
+        if (message.type === 'orbits_quick_joined') {
+          this.ws.removeEventListener('message', handler);
+          this.playerId = message.payload.playerId;
+          this.roomCode = message.payload.roomCode;
+          this.isHost = false; // In public matchmaking, no one is "host"
+          this._setState(NetworkState.IN_LOBBY);
+          resolve({
+            roomCode: this.roomCode,
+            playerId: this.playerId
+          });
+        } else if (message.type === 'orbits_error') {
+          this.ws.removeEventListener('message', handler);
+          reject(new Error(message.payload.error));
+        }
+      };
+
+      this.ws.addEventListener('message', handler);
+
+      // Timeout
+      setTimeout(() => {
+        this.ws.removeEventListener('message', handler);
+        reject(new Error('Quick join timeout'));
+      }, 10000);
+
+      this._send({
+        type: 'orbits_quick_join',
+        payload: { mode }
+      });
+    });
+  }
+
+  /**
    * Join an existing room
    * @param {string} roomCode - Room code to join
    * @returns {Promise<{roomCode: string, playerId: string}>}
@@ -474,6 +521,10 @@ export class OrbitsNetworkController {
           this._handleCountdown(message.payload);
           break;
 
+        case 'orbits_lobby_countdown':
+          this._handleLobbyCountdown(message.payload);
+          break;
+
         case 'orbits_match_start':
           this._handleMatchStart(message.payload);
           break;
@@ -549,6 +600,16 @@ export class OrbitsNetworkController {
     this._setState(NetworkState.COUNTDOWN);
     this.onCountdown({
       secondsRemaining: payload.secondsRemaining
+    });
+  }
+
+  _handleLobbyCountdown(payload) {
+    // Lobby countdown - waiting for more players or auto-start timer
+    this.onLobbyCountdown({
+      secondsRemaining: payload.secondsRemaining,
+      playersNeeded: payload.playersNeeded,
+      playerCount: payload.playerCount,
+      maxPlayers: payload.maxPlayers
     });
   }
 

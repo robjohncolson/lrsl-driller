@@ -3340,6 +3340,47 @@ wss.on('connection', (ws) => {
           break;
         }
 
+        case 'orbits_quick_join': {
+          // Quick join - find or create a public room
+          const quickJoinClient = clients.get(ws);
+          if (!quickJoinClient?.username) {
+            ws.send(JSON.stringify({
+              type: 'orbits_error',
+              payload: { error: 'Must identify before joining' }
+            }));
+            break;
+          }
+
+          const { mode: quickJoinMode } = message.payload || {};
+          const quickJoinResult = orbitsMultiplayerManager.quickJoin(
+            quickJoinClient.username,
+            quickJoinMode || 'arena'
+          );
+
+          if (quickJoinResult.success) {
+            // Track this client's multiplayer room
+            quickJoinClient.orbitsPlayerId = quickJoinResult.playerId;
+            quickJoinClient.orbitsRoomCode = quickJoinResult.roomCode;
+            orbitsMultiplayerManager.setPlayerWs(quickJoinResult.playerId, ws);
+
+            ws.send(JSON.stringify({
+              type: 'orbits_quick_joined',
+              payload: {
+                roomCode: quickJoinResult.roomCode,
+                playerId: quickJoinResult.playerId
+              }
+            }));
+
+            console.log(`[Orbits MP] ${quickJoinClient.username} quick-joined room ${quickJoinResult.roomCode}`);
+          } else {
+            ws.send(JSON.stringify({
+              type: 'orbits_error',
+              payload: { error: quickJoinResult.error }
+            }));
+          }
+          break;
+        }
+
         case 'orbits_join_room': {
           // Join an existing multiplayer room
           const joinMpClient = clients.get(ws);
