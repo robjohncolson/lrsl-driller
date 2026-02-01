@@ -813,6 +813,142 @@ export class OrbitsLobby {
       @keyframes spin {
         to { transform: rotate(360deg); }
       }
+
+      /* Server toggle in menu */
+      .orbits-lobby-server-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid #3a3a5a;
+        font-size: 13px;
+      }
+
+      .orbits-server-label {
+        color: #888;
+      }
+
+      .orbits-server-name {
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+      }
+
+      .orbits-server-name.cloud {
+        background: #224466;
+        color: #88ccff;
+      }
+
+      .orbits-server-name.local {
+        background: #226644;
+        color: #88ffaa;
+      }
+
+      .orbits-server-name.lan {
+        background: #664422;
+        color: #ffcc88;
+      }
+
+      .orbits-server-change {
+        background: none;
+        border: 1px solid #4a4a6a;
+        color: #888;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .orbits-server-change:hover {
+        border-color: #6a6a8a;
+        color: #fff;
+      }
+
+      /* Server selector screen */
+      .orbits-server-selector h3 {
+        text-align: center;
+        margin-bottom: 16px;
+        color: #ccc;
+        font-size: 16px;
+      }
+
+      .orbits-server-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        background: #2a2a4a;
+        border: 2px solid transparent;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: left;
+      }
+
+      .orbits-server-option:hover {
+        background: #3a3a5a;
+        border-color: #4a4a6a;
+      }
+
+      .orbits-server-option.selected {
+        border-color: #4488ff;
+        background: #2a3a5a;
+      }
+
+      .orbits-server-icon {
+        font-size: 24px;
+      }
+
+      .orbits-server-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .orbits-server-option-name {
+        font-weight: 600;
+        color: #fff;
+        font-size: 14px;
+      }
+
+      .orbits-server-option-desc {
+        color: #888;
+        font-size: 11px;
+      }
+
+      .orbits-lan-input {
+        display: none;
+        margin-top: 12px;
+        padding: 12px;
+        background: #1a1a2e;
+        border-radius: 8px;
+      }
+
+      .orbits-lan-input.visible {
+        display: block;
+      }
+
+      .orbits-lan-input label {
+        display: block;
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 8px;
+      }
+
+      .orbits-lan-input .orbits-lobby-input {
+        width: 100%;
+        margin-bottom: 8px;
+      }
+
+      .orbits-lan-input .orbits-lobby-btn {
+        width: 100%;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -865,6 +1001,7 @@ export class OrbitsLobby {
   // ----------------------------------------
 
   _renderMenu() {
+    const serverInfo = this._getServerInfo();
     return `
       <div class="orbits-lobby-quick-play">
         <button class="orbits-lobby-menu-btn orbits-play-now" data-action="quick-join">
@@ -872,7 +1009,32 @@ export class OrbitsLobby {
         </button>
         <p class="orbits-lobby-quick-hint">Jump into a game with up to 8 players</p>
       </div>
+      <div class="orbits-lobby-server-toggle">
+        <span class="orbits-server-label">Server:</span>
+        <span class="orbits-server-name ${serverInfo.type}">${serverInfo.display}</span>
+        <button class="orbits-server-change" data-action="change-server">Change</button>
+      </div>
     `;
+  }
+
+  /**
+   * Get current server info for display
+   */
+  _getServerInfo() {
+    const customUrl = localStorage.getItem('orbits_server_url');
+    if (customUrl) {
+      // Extract just the host for display
+      try {
+        const url = new URL(customUrl.replace('ws://', 'http://').replace('wss://', 'https://'));
+        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+          return { type: 'local', display: 'Local (this PC)', url: customUrl };
+        }
+        return { type: 'lan', display: `LAN (${url.hostname})`, url: customUrl };
+      } catch {
+        return { type: 'custom', display: 'Custom', url: customUrl };
+      }
+    }
+    return { type: 'cloud', display: 'Cloud', url: null };
   }
 
   _renderCreating() {
@@ -992,6 +1154,165 @@ export class OrbitsLobby {
         this._quickJoin();
       });
     }
+
+    // Server change button
+    const changeServerBtn = content.querySelector('[data-action="change-server"]');
+    if (changeServerBtn) {
+      changeServerBtn.addEventListener('click', () => {
+        this._showServerSelector();
+      });
+    }
+  }
+
+  /**
+   * Show server selection modal
+   */
+  _showServerSelector() {
+    const serverInfo = this._getServerInfo();
+    const content = this.overlay.querySelector('.orbits-lobby-content');
+
+    content.innerHTML = `
+      <button class="orbits-lobby-back-btn" data-action="back-to-menu">
+        &larr; Back
+      </button>
+      <div class="orbits-server-selector">
+        <h3>Choose Server</h3>
+
+        <button class="orbits-server-option ${serverInfo.type === 'cloud' ? 'selected' : ''}" data-server="cloud">
+          <span class="orbits-server-icon">☁️</span>
+          <span class="orbits-server-details">
+            <span class="orbits-server-option-name">Cloud Server</span>
+            <span class="orbits-server-option-desc">Play with anyone online</span>
+          </span>
+        </button>
+
+        <button class="orbits-server-option ${serverInfo.type === 'local' ? 'selected' : ''}" data-server="local">
+          <span class="orbits-server-icon">💻</span>
+          <span class="orbits-server-details">
+            <span class="orbits-server-option-name">This Computer</span>
+            <span class="orbits-server-option-desc">Server running on this PC</span>
+          </span>
+        </button>
+
+        <button class="orbits-server-option ${serverInfo.type === 'lan' ? 'selected' : ''}" data-server="lan">
+          <span class="orbits-server-icon">🏠</span>
+          <span class="orbits-server-details">
+            <span class="orbits-server-option-name">Classroom / LAN</span>
+            <span class="orbits-server-option-desc">Connect to teacher's server</span>
+          </span>
+        </button>
+
+        <div class="orbits-lan-input ${serverInfo.type === 'lan' ? 'visible' : ''}" id="orbits-lan-section">
+          <label>Server IP Address:</label>
+          <input type="text" class="orbits-lobby-input" id="orbits-lan-ip"
+                 placeholder="192.168.1.100"
+                 value="${serverInfo.type === 'lan' ? this._extractIp(serverInfo.url) : ''}">
+          <button class="orbits-lobby-btn" id="orbits-lan-connect">Connect</button>
+        </div>
+      </div>
+    `;
+
+    this._attachServerSelectorListeners(content);
+  }
+
+  /**
+   * Extract IP from WebSocket URL
+   */
+  _extractIp(url) {
+    if (!url) return '';
+    try {
+      const parsed = new URL(url.replace('ws://', 'http://').replace('wss://', 'https://'));
+      return parsed.hostname;
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Attach listeners to server selector
+   */
+  _attachServerSelectorListeners(content) {
+    // Back button
+    content.querySelector('[data-action="back-to-menu"]').addEventListener('click', () => {
+      this._updateContent();
+    });
+
+    // Server options
+    content.querySelectorAll('.orbits-server-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const server = btn.dataset.server;
+
+        // Update selected state
+        content.querySelectorAll('.orbits-server-option').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+
+        // Show/hide LAN input
+        const lanSection = content.querySelector('#orbits-lan-section');
+        if (server === 'lan') {
+          lanSection.classList.add('visible');
+          content.querySelector('#orbits-lan-ip').focus();
+        } else {
+          lanSection.classList.remove('visible');
+          // Immediately apply for cloud and local
+          this._applyServerChoice(server);
+        }
+      });
+    });
+
+    // LAN connect button
+    const lanConnectBtn = content.querySelector('#orbits-lan-connect');
+    const lanIpInput = content.querySelector('#orbits-lan-ip');
+
+    lanConnectBtn.addEventListener('click', () => {
+      const ip = lanIpInput.value.trim();
+      if (ip) {
+        this._applyServerChoice('lan', ip);
+      }
+    });
+
+    lanIpInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const ip = lanIpInput.value.trim();
+        if (ip) {
+          this._applyServerChoice('lan', ip);
+        }
+      }
+    });
+  }
+
+  /**
+   * Apply server choice and reconnect
+   */
+  _applyServerChoice(type, ip = null) {
+    let newUrl;
+
+    switch (type) {
+      case 'cloud':
+        localStorage.removeItem('orbits_server_url');
+        newUrl = 'wss://lrsl-trainer-production.up.railway.app';
+        break;
+      case 'local':
+        newUrl = 'ws://localhost:3001';
+        localStorage.setItem('orbits_server_url', newUrl);
+        break;
+      case 'lan':
+        newUrl = `ws://${ip}:3001`;
+        localStorage.setItem('orbits_server_url', newUrl);
+        break;
+    }
+
+    // Update network controller with new URL
+    this.serverUrl = newUrl;
+    this.network.serverUrl = newUrl;
+
+    // Disconnect and show confirmation
+    if (this.network.ws) {
+      this.network.disconnect();
+    }
+
+    // Show toast and return to menu
+    this._showToast(`Connected to ${type === 'cloud' ? 'Cloud' : type === 'local' ? 'Local' : 'LAN'} server`);
+    this._updateContent();
   }
 
   _attachJoiningListeners(content) {

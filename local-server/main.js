@@ -7,6 +7,7 @@
 
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const http = require('http');
 const { WebSocketServer } = require('ws');
 const os = require('os');
 
@@ -15,8 +16,10 @@ const { OrbitsMultiplayerManager, MULTIPLAYER_CONFIG } = require('../railway-ser
 
 let mainWindow;
 let wss;
+let httpServer;
 let multiplayerManager;
-const PORT = 3001;
+const WS_PORT = 3001;
+const HTTP_PORT = 3002;  // Discovery endpoint
 
 // Track connected clients
 const clients = new Map();
@@ -69,8 +72,43 @@ function broadcast(message) {
 }
 
 function startServer() {
+  // Create HTTP server for discovery
+  httpServer = http.createServer((req, res) => {
+    // CORS headers for browser access
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    if (req.url === '/discover' || req.url === '/') {
+      const localIPs = getLocalIPs();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        service: 'ghost-orbits-local-server',
+        wsPort: WS_PORT,
+        httpPort: HTTP_PORT,
+        wsUrl: `ws://localhost:${WS_PORT}`,
+        lanUrls: localIPs.map(ip => `ws://${ip.address}:${WS_PORT}`),
+        localIPs: localIPs,
+        clients: clients.size
+      }));
+    } else {
+      res.writeHead(404);
+      res.end('Not found');
+    }
+  });
+
+  httpServer.listen(HTTP_PORT, () => {
+    console.log(`[Local Server] Discovery HTTP server on port ${HTTP_PORT}`);
+  });
+
   // Create WebSocket server
-  wss = new WebSocketServer({ port: PORT });
+  wss = new WebSocketServer({ port: WS_PORT });
 
   // Create multiplayer manager
   multiplayerManager = new OrbitsMultiplayerManager();
@@ -87,7 +125,7 @@ function startServer() {
     const clientIP = req.socket.remoteAddress;
     clients.set(ws, { username: null, lastHeartbeat: Date.now() });
 
-    console.log(`[Local Server] Client connected from ${clientIP} (${clients.size} total)`);
+    console.log(`[Local Server] WebSocket client connected from ${clientIP} (${clients.size} total)`);
 
     // Send to renderer
     if (mainWindow) {
@@ -127,13 +165,14 @@ function startServer() {
     });
   });
 
-  console.log(`[Local Server] WebSocket server running on port ${PORT}`);
+  console.log(`[Local Server] WebSocket server running on port ${WS_PORT}`);
 
   // Send server info to renderer
   const localIPs = getLocalIPs();
   if (mainWindow) {
     mainWindow.webContents.send('server-started', {
-      port: PORT,
+      port: WS_PORT,
+      httpPort: HTTP_PORT,
       localIPs: localIPs
     });
   }
@@ -370,7 +409,8 @@ function handleMessage(ws, message) {
 // IPC handlers
 ipcMain.handle('get-server-info', () => {
   return {
-    port: PORT,
+    wsPort: WS_PORT,
+    httpPort: HTTP_PORT,
     localIPs: getLocalIPs(),
     running: wss !== null,
     clientCount: clients.size
@@ -390,9 +430,12 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  // Close WebSocket server
+  // Close servers
   if (wss) {
     wss.close();
+  }
+  if (httpServer) {
+    httpServer.close();
   }
 
   if (process.platform !== 'darwin') {

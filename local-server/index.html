@@ -222,9 +222,10 @@
     </div>
 
     <div class="instructions">
-      <strong>To connect from clients:</strong><br>
-      Use the Local Address shown above in your game's multiplayer settings,
-      or modify the client to connect to <code>ws://[address]:3001</code>
+      <strong>Same computer:</strong> Automatic - local server detected via localhost.<br><br>
+      <strong>LAN clients:</strong> Open browser console (F12) and run:<br>
+      <code id="connect-cmd">setLocalServer('192.168.x.x')</code>
+      <button onclick="copyCommand()" style="margin-left:8px;padding:2px 8px;cursor:pointer;font-size:10px;">Copy</button>
     </div>
   </div>
 
@@ -251,6 +252,18 @@
       }
     }
 
+    const connectCmdEl = document.getElementById('connect-cmd');
+
+    function updateConnectCommand(ip) {
+      connectCmdEl.textContent = `setLocalServer('${ip}')`;
+    }
+
+    function copyCommand() {
+      navigator.clipboard.writeText(connectCmdEl.textContent).then(() => {
+        addLog('Command copied to clipboard');
+      });
+    }
+
     // Listen for server events
     window.serverAPI.onServerStarted((data) => {
       portEl.textContent = data.port;
@@ -259,9 +272,11 @@
         const primary = data.localIPs[0];
         localAddressEl.textContent = `${primary.address}:${data.port}`;
         networkNameEl.textContent = primary.name;
+        updateConnectCommand(primary.address);
       } else {
         localAddressEl.textContent = `localhost:${data.port}`;
         networkNameEl.textContent = 'Loopback';
+        updateConnectCommand('localhost');
       }
 
       addLog('Server started successfully');
@@ -278,11 +293,13 @@
     // Get initial server info
     window.serverAPI.getServerInfo().then((info) => {
       if (info.running) {
-        portEl.textContent = info.port;
+        portEl.textContent = info.wsPort || info.port;
         if (info.localIPs && info.localIPs.length > 0) {
           const primary = info.localIPs[0];
-          localAddressEl.textContent = `${primary.address}:${info.port}`;
+          const port = info.wsPort || info.port;
+          localAddressEl.textContent = `${primary.address}:${port}`;
           networkNameEl.textContent = primary.name;
+          updateConnectCommand(primary.address);
         }
       }
     });

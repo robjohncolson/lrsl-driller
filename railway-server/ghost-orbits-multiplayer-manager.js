@@ -1636,7 +1636,11 @@ class MultiplayerRoom {
               this._broadcastEvent('DAMAGE', {
                 playerId,
                 lives: ghost.lives,
-                sourceId: dot.ownerId
+                sourceId: dot.ownerId,
+                // Include position and color for death animation
+                x: ghost.x,
+                y: ghost.y,
+                color: ghost.color
               });
             }
           }

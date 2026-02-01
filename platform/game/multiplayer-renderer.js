@@ -25,6 +25,110 @@ const COLORS = {
 const GHOST_RADIUS = 12;  // Match single-player BASE_RADIUS
 const DOT_RADIUS = 10;    // Match single-player
 
+// Death animation constants
+const DEATH_ANIM_DURATION = 30;  // frames (~0.5 seconds at 60fps)
+const DEATH_PARTICLE_COUNT = 8;
+const DEATH_EXPANSION_SPEED = 6; // pixels per frame
+const DEATH_PARTICLE_FRICTION = 0.92;
+
+// ============================================================================
+// DEATH ANIMATION CLASS
+// ============================================================================
+
+/**
+ * DeathAnimation - Radial burst effect when a ghost dies
+ * Combines an expanding shockwave ring with exploding shrapnel particles
+ */
+class DeathAnimation {
+  /**
+   * @param {number} x - Center X position
+   * @param {number} y - Center Y position
+   * @param {string} color - Ghost color
+   */
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    this.age = 0;
+    this.maxAge = DEATH_ANIM_DURATION;
+    this.startRadius = GHOST_RADIUS;
+
+    // Initialize shrapnel particles
+    this.particles = [];
+    for (let i = 0; i < DEATH_PARTICLE_COUNT; i++) {
+      const angle = (Math.PI * 2 / DEATH_PARTICLE_COUNT) * i;
+      const speed = 5 + Math.random() * 3;
+      this.particles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: GHOST_RADIUS / 4 + Math.random() * 2
+      });
+    }
+  }
+
+  /**
+   * Update animation state
+   * @returns {boolean} True if animation is still alive
+   */
+  update() {
+    this.age++;
+
+    // Update particles with friction
+    for (const p of this.particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= DEATH_PARTICLE_FRICTION;
+      p.vy *= DEATH_PARTICLE_FRICTION;
+    }
+
+    return this.age < this.maxAge;
+  }
+
+  /**
+   * Draw the death animation
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   */
+  draw(ctx) {
+    const progress = this.age / this.maxAge;
+    const alpha = 1 - progress;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Draw shockwave ring
+    const ringRadius = this.startRadius + (this.age * DEATH_EXPANSION_SPEED);
+    const ringWidth = 4 * (1 - progress * 0.5);  // Thins as it expands
+
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = ringWidth;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Draw shrapnel particles
+    ctx.fillStyle = this.color;
+    for (const p of this.particles) {
+      const particleAlpha = alpha * 0.8;
+      ctx.globalAlpha = particleAlpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius * (1 - progress * 0.3), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Check if animation is complete
+   * @returns {boolean} True if animation is finished
+   */
+  isDead() {
+    return this.age >= this.maxAge;
+  }
+}
+
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
@@ -86,6 +190,10 @@ export class MultiplayerRenderer {
 
     // Track my player ID for highlighting
     this.myPlayerId = null;
+
+    // Death animations
+    this.deathAnimations = [];
+    this.previousLives = new Map();  // Track ghost lives to detect deaths
 
     // Viewport scaling
     this.scale = 1;
@@ -198,6 +306,15 @@ export class MultiplayerRenderer {
       this._drawDots(snapshot.dots);
     }
 
+    // Detect deaths and spawn death animations
+    if (snapshot.ghosts) {
+      this._detectDeaths(snapshot.ghosts);
+    }
+
+    // Update and draw death animations
+    this._updateDeathAnimations();
+    this._drawDeathAnimations();
+
     // Draw ghosts
     if (snapshot.ghosts) {
       this._drawGhosts(snapshot.ghosts);
@@ -205,6 +322,58 @@ export class MultiplayerRenderer {
 
     // Restore context
     ctx.restore();
+  }
+
+  /**
+   * Detect ghost deaths by comparing lives to previous snapshot
+   * @param {Array} ghosts - Current ghost data
+   * @private
+   */
+  _detectDeaths(ghosts) {
+    for (const ghost of ghosts) {
+      const prevLives = this.previousLives.get(ghost.id);
+      const currentLives = ghost.lives ?? 3;
+
+      // Spawn death animation if lives decreased and ghost is now dead or took a hit
+      if (prevLives !== undefined && prevLives > currentLives) {
+        // Ghost took damage - spawn death animation at their position
+        this.deathAnimations.push(new DeathAnimation(
+          ghost.x,
+          ghost.y,
+          ghost.color || '#4488ff'
+        ));
+        console.log(`[Renderer] Death animation spawned for ${ghost.id} at (${ghost.x}, ${ghost.y})`);
+      }
+
+      // Update tracked lives
+      this.previousLives.set(ghost.id, currentLives);
+    }
+
+    // Clean up ghosts that no longer exist
+    const currentIds = new Set(ghosts.map(g => g.id));
+    for (const id of this.previousLives.keys()) {
+      if (!currentIds.has(id)) {
+        this.previousLives.delete(id);
+      }
+    }
+  }
+
+  /**
+   * Update all active death animations
+   * @private
+   */
+  _updateDeathAnimations() {
+    this.deathAnimations = this.deathAnimations.filter(anim => anim.update());
+  }
+
+  /**
+   * Draw all active death animations
+   * @private
+   */
+  _drawDeathAnimations() {
+    for (const anim of this.deathAnimations) {
+      anim.draw(this.ctx);
+    }
   }
 
   /**
@@ -492,6 +661,27 @@ export class MultiplayerRenderer {
   /**
    * Clean up resources
    */
+  /**
+   * Manually trigger a death animation at a position
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @param {string} color - Ghost color
+   */
+  triggerDeathAnimation(x, y, color) {
+    this.deathAnimations.push(new DeathAnimation(x, y, color));
+  }
+
+  /**
+   * Reset animation state (call when game starts/ends)
+   */
+  reset() {
+    this.deathAnimations = [];
+    this.previousLives.clear();
+  }
+
+  /**
+   * Clean up resources
+   */
   destroy() {
     window.removeEventListener('resize', this._boundResize);
 
@@ -499,6 +689,8 @@ export class MultiplayerRenderer {
       this.canvas.parentNode.removeChild(this.canvas);
     }
 
+    this.deathAnimations = [];
+    this.previousLives.clear();
     this.ctx = null;
     this.canvas = null;
   }

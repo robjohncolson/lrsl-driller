@@ -90,6 +90,7 @@ export class MultiplayerGameClient {
       arenaHeight
     });
     this.renderer.setMyPlayerId(this.myPlayerId);
+    this.renderer.reset();  // Clear any leftover animations
 
     // Initialize HUD panel
     this.panel = new MultiplayerPanel(this.gameContainer);
@@ -283,32 +284,41 @@ export class MultiplayerGameClient {
     const playerName = isMe ? 'You' : `Player ${data.playerId?.slice(-4) || '???'}`;
 
     switch (data.event) {
-      case 'dot_claimed':
+      case 'DOT_CLAIMED':
         this.panel.showEvent(`${playerName} claimed a dot!`, 'claim');
         break;
 
-      case 'dot_flipped':
+      case 'DOT_FLIPPED':
         this.panel.showEvent(`${playerName} flipped a dot!`, 'flip');
         break;
 
-      case 'player_damaged':
+      case 'DAMAGE':
         if (isMe) {
           this.panel.showEvent(`You took damage! (${data.lives} lives left)`, 'damage');
         } else {
           this.panel.showEvent(`${playerName} took damage!`, 'info');
         }
+        // Trigger death animation at player position
+        if (this.renderer && data.x !== undefined && data.y !== undefined) {
+          this.renderer.triggerDeathAnimation(data.x, data.y, data.color || '#ff4444');
+        }
         break;
 
-      case 'player_eliminated':
+      case 'ELIMINATED':
         if (isMe) {
           this.panel.showEvent('You were eliminated!', 'damage');
         } else {
           this.panel.showEvent(`${playerName} was eliminated!`, 'info');
         }
+        // Trigger death animation at player position
+        if (this.renderer && data.x !== undefined && data.y !== undefined) {
+          this.renderer.triggerDeathAnimation(data.x, data.y, data.color || '#ff4444');
+        }
         break;
 
       default:
-        // Unknown event type
+        // Unknown event type - log for debugging
+        console.log('[MultiplayerGameClient] Unknown event:', data.event);
         break;
     }
   }

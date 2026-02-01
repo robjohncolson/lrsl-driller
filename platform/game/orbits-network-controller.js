@@ -701,7 +701,11 @@ export class OrbitsNetworkController {
       playerId: payload.playerId,
       dotId: payload.dotId,
       lives: payload.lives,
-      sourceId: payload.sourceId
+      sourceId: payload.sourceId,
+      // Position and color for death animations
+      x: payload.x,
+      y: payload.y,
+      color: payload.color
     });
   }
 

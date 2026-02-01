@@ -570,29 +570,84 @@ export class GhostPanel {
   }
 
   /**
+   * Discover the best available multiplayer server
+   * Priority: 1. localStorage override, 2. Local LAN server, 3. Railway cloud
+   * @returns {Promise<string>} WebSocket URL
+   * @private
+   */
+  async _discoverServerUrl() {
+    // 1. Check localStorage for manual override
+    const customServer = localStorage.getItem('orbits_server_url');
+    if (customServer) {
+      console.log('[GhostPanel] Using custom server from localStorage');
+      return customServer;
+    }
+
+    // 2. Try to discover local LAN server (with short timeout)
+    const localServerUrl = await this._tryDiscoverLocalServer();
+    if (localServerUrl) {
+      console.log('[GhostPanel] Found local LAN server');
+      return localServerUrl;
+    }
+
+    // 3. Fall back to configured server or Railway
+    if (this.serverUrl) {
+      return this.serverUrl.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://');
+    } else if (window.location.hostname === 'localhost') {
+      return 'ws://localhost:3001';
+    } else {
+      return 'wss://lrsl-trainer-production.up.railway.app';
+    }
+  }
+
+  /**
+   * Try to discover a local LAN server via HTTP discovery endpoint
+   * @returns {Promise<string|null>} WebSocket URL if found, null otherwise
+   * @private
+   */
+  async _tryDiscoverLocalServer() {
+    const discoveryEndpoints = [
+      'http://localhost:3002/discover',  // Same machine
+    ];
+
+    for (const endpoint of discoveryEndpoints) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 500); // 500ms timeout
+
+        const response = await fetch(endpoint, {
+          signal: controller.signal,
+          mode: 'cors'
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.service === 'ghost-orbits-local-server' && data.wsUrl) {
+            console.log('[GhostPanel] Discovered local server:', data);
+            return data.wsUrl;
+          }
+        }
+      } catch (err) {
+        // Discovery failed for this endpoint, try next or give up
+        if (err.name !== 'AbortError') {
+          console.log('[GhostPanel] Local server not found at', endpoint);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Open the multiplayer lobby
    * @private
    */
-  _openMultiplayerLobby() {
-    // Determine server URL
-    // Check localStorage for custom server (for local LAN play)
-    const customServer = localStorage.getItem('orbits_server_url');
-    let serverUrl;
-
-    if (customServer) {
-      // Use custom server URL from localStorage
-      serverUrl = customServer;
-      console.log('[GhostPanel] Using custom server:', serverUrl);
-    } else if (this.serverUrl) {
-      // Use configured server URL
-      serverUrl = this.serverUrl.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://');
-    } else if (window.location.hostname === 'localhost') {
-      // Dev server - use local WebSocket
-      serverUrl = 'ws://localhost:3001';
-    } else {
-      // Production - use Railway
-      serverUrl = 'wss://lrsl-trainer-production.up.railway.app';
-    }
+  async _openMultiplayerLobby() {
+    // Determine server URL with auto-discovery
+    let serverUrl = await this._discoverServerUrl();
+    console.log('[GhostPanel] Using server:', serverUrl);
 
     // Create lobby if not exists
     if (!this.orbitsLobby) {
