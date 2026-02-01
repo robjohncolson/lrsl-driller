@@ -601,6 +601,62 @@ class MultiplayerRoom {
   }
 
   /**
+   * Add an AI player to the room
+   * @returns {{success: boolean, error?: string}}
+   */
+  addAIPlayer() {
+    if (this.state !== RoomState.LOBBY) {
+      return { success: false, error: 'Can only add AI in lobby' };
+    }
+
+    const maxPlayers = this.mode === 'blizzard'
+      ? MULTIPLAYER_CONFIG.maxPlayersPerTeam * 2
+      : MULTIPLAYER_CONFIG.maxPlayersPerRoom;
+
+    if (this.players.size >= maxPlayers) {
+      return { success: false, error: 'Room is full' };
+    }
+
+    // Generate AI player
+    const aiId = 'ai_' + Math.random().toString(36).substring(2, 8);
+    const aiNames = ['Shadow', 'Phantom', 'Specter', 'Ghost', 'Spirit', 'Wraith', 'Shade', 'Echo'];
+    const usedNames = new Set(Array.from(this.players.values()).map(p => p.username));
+    let aiName = aiNames.find(n => !usedNames.has(n)) || `Bot_${this.players.size + 1}`;
+
+    const colorIndex = this.players.size;
+    this.players.set(aiId, {
+      ws: null,
+      username: aiName,
+      ready: true, // AI is always ready
+      ghost: null,
+      color: this.playerColors[colorIndex] || '#888888',
+      isAI: true
+    });
+
+    // Track AI players
+    if (!this.aiPlayers) this.aiPlayers = new Set();
+    this.aiPlayers.add(aiId);
+
+    // Auto-assign team for Blizzard mode
+    if (this.mode === 'blizzard') {
+      const team0Count = Array.from(this.teamAssignments.values()).filter(t => t === 0).length;
+      const team1Count = Array.from(this.teamAssignments.values()).filter(t => t === 1).length;
+      const assignedTeam = team0Count <= team1Count ? 0 : 1;
+      this.teamAssignments.set(aiId, assignedTeam);
+    }
+
+    this.lastActivity = Date.now();
+    this._broadcastRoomState();
+
+    console.log(`[Orbits MP] AI player ${aiName} added to room ${this.roomCode}`);
+
+    // Check if we can auto-start now
+    this._checkAutoStart();
+
+    return { success: true, playerId: aiId };
+  }
+
+  /**
    * Start the lobby countdown timer
    * @private
    */
@@ -1085,6 +1141,9 @@ class MultiplayerRoom {
       ghost.update(dt, this.records);
     }
 
+    // Update AI players
+    this._updateAIPlayers(dt);
+
     // Mode-specific logic
     if (this.mode === 'blizzard') {
       this._tickBlizzard(dt);
@@ -1101,6 +1160,83 @@ class MultiplayerRoom {
     // Broadcast snapshot at 20Hz (every 3rd tick at 60Hz)
     if (this.tick % 3 === 0) {
       this._broadcastSnapshot();
+    }
+  }
+
+  /**
+   * Update AI player behavior
+   * @private
+   */
+  _updateAIPlayers(dt) {
+    if (!this.aiPlayers || this.aiPlayers.size === 0) return;
+
+    for (const aiId of this.aiPlayers) {
+      const ghost = this.ghosts.get(aiId);
+      if (!ghost || !ghost.isAlive) continue;
+
+      // AI behavior: simple target-seeking
+      if (ghost.movementState === 'FREE_FLIGHT') {
+        // Find nearest target based on mode
+        let target = null;
+        let minDist = Infinity;
+
+        if (this.mode === 'blizzard') {
+          // Target spheres
+          for (const sphere of this.blizzardSpheres) {
+            const dist = ghost.position.distanceTo(new Vector2(sphere.x, sphere.y));
+            if (dist < minDist) {
+              minDist = dist;
+              target = { x: sphere.x, y: sphere.y };
+            }
+          }
+        } else {
+          // Target unclaimed or enemy dots
+          for (const dot of this.dots) {
+            if (dot.ownerId !== aiId) {
+              const dist = ghost.position.distanceTo(new Vector2(dot.x, dot.y));
+              if (dist < minDist) {
+                minDist = dist;
+                target = { x: dot.x, y: dot.y };
+              }
+            }
+          }
+        }
+
+        // Steer toward target
+        if (target) {
+          const dx = target.x - ghost.position.x;
+          const dy = target.y - ghost.position.y;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len > 0) {
+            // Blend current velocity with target direction (smooth steering)
+            const targetVx = (dx / len) * ghost.baseSpeed;
+            const targetVy = (dy / len) * ghost.baseSpeed;
+            ghost.velocity.x = ghost.velocity.x * 0.95 + targetVx * 0.05;
+            ghost.velocity.y = ghost.velocity.y * 0.95 + targetVy * 0.05;
+          }
+        }
+
+        // Random spacebar press near dots/spheres (for claiming/flipping)
+        if (minDist < 30 && Math.random() < 0.1) {
+          ghost.addInput({ action: 'PRESS', timestamp: Date.now() });
+        }
+      } else if (ghost.movementState === 'ORBITING') {
+        // Exit orbit randomly after a bit
+        if (Math.random() < 0.02) {
+          ghost.addInput({ action: 'PRESS', timestamp: Date.now() });
+        }
+      }
+
+      // Occasionally try to enter orbit near records
+      if (ghost.movementState === 'FREE_FLIGHT') {
+        for (const record of this.records) {
+          const dist = ghost.position.distanceTo(new Vector2(record.x, record.y));
+          if (dist < record.captureRadius && Math.random() < 0.01) {
+            ghost.addInput({ action: 'PRESS', timestamp: Date.now() });
+            break;
+          }
+        }
+      }
     }
   }
 
@@ -1531,6 +1667,7 @@ class MultiplayerRoom {
       ready: p.ready,
       color: p.color,
       isHost: id === this.hostId,
+      isAI: p.isAI || false,
       teamId: this.teamAssignments.get(id) ?? null
     }));
 

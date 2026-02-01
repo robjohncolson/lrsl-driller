@@ -3487,6 +3487,24 @@ wss.on('connection', (ws) => {
           break;
         }
 
+        case 'orbits_add_ai': {
+          // Add AI player to room (host only)
+          const aiClient = clients.get(ws);
+          if (aiClient?.orbitsPlayerId && aiClient?.orbitsRoomCode) {
+            const room = orbitsMultiplayerManager.getRoom(aiClient.orbitsRoomCode);
+            if (room && aiClient.orbitsPlayerId === room.hostId) {
+              const result = room.addAIPlayer();
+              if (!result.success) {
+                ws.send(JSON.stringify({
+                  type: 'orbits_error',
+                  payload: { error: result.error }
+                }));
+              }
+            }
+          }
+          break;
+        }
+
         case 'orbits_leave': {
           // Leave multiplayer room
           const leaveMpClient = clients.get(ws);

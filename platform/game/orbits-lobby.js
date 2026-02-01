@@ -518,6 +518,37 @@ export class OrbitsLobby {
         box-shadow: 0 4px 16px rgba(68, 204, 136, 0.5);
       }
 
+      .orbits-lobby-menu-btn.orbits-add-ai {
+        padding: 12px;
+        font-size: 14px;
+        background: linear-gradient(135deg, #8844ff 0%, #6622dd 100%);
+        margin-bottom: 4px;
+      }
+
+      .orbits-lobby-menu-btn.orbits-add-ai:hover {
+        box-shadow: 0 4px 16px rgba(136, 68, 255, 0.5);
+      }
+
+      .orbits-lobby-ai-section {
+        text-align: center;
+        margin: 16px 0;
+        padding: 12px;
+        background: rgba(136, 68, 255, 0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(136, 68, 255, 0.3);
+      }
+
+      .orbits-lobby-ai-hint {
+        font-size: 11px;
+        color: #888;
+        margin: 0;
+      }
+
+      .orbits-lobby-player.ai-player {
+        background: linear-gradient(135deg, #2a2a4a 0%, #3a2a5a 100%);
+        border: 1px solid rgba(136, 68, 255, 0.3);
+      }
+
       .orbits-lobby-quick-play {
         text-align: center;
         margin-bottom: 16px;
@@ -855,22 +886,6 @@ export class OrbitsLobby {
         </button>
         <p class="orbits-lobby-quick-hint">Jump into a game with up to 8 players</p>
       </div>
-
-      <div class="orbits-lobby-divider">
-        <span>or</span>
-      </div>
-
-      <div class="orbits-lobby-private">
-        <p class="orbits-lobby-private-label">Private Game</p>
-        <div class="orbits-lobby-private-btns">
-          <button class="orbits-lobby-menu-btn secondary small" data-action="create">
-            Create Room
-          </button>
-          <button class="orbits-lobby-menu-btn secondary small" data-action="join">
-            Join Room
-          </button>
-        </div>
-      </div>
     `;
   }
 
@@ -903,6 +918,8 @@ export class OrbitsLobby {
   _renderRoom() {
     const maxPlayers = this.lobbyInfo?.maxPlayers || 8;
     const lobbySeconds = this.lobbyInfo?.secondsRemaining;
+    const playerCount = this.players.length;
+    const canAddAI = this.isHost && playerCount < maxPlayers;
 
     return `
       <div class="orbits-lobby-room-header">
@@ -920,15 +937,15 @@ export class OrbitsLobby {
 
       <div class="orbits-lobby-players">
         <div class="orbits-lobby-players-title">
-          Players (${this.players.length}/${maxPlayers})
-          ${this.players.length < 2 ? ' - Waiting for players...' : ''}
+          Players (${playerCount}/${maxPlayers})
+          ${playerCount < 2 ? ' - Waiting for players...' : ''}
         </div>
         <div class="orbits-lobby-player-grid">
           ${this.players.map(p => `
-            <div class="orbits-lobby-player">
+            <div class="orbits-lobby-player ${p.isAI ? 'ai-player' : ''}">
               <div class="orbits-lobby-player-color" style="background: ${p.color}"></div>
               <div class="orbits-lobby-player-name">
-                ${p.username}${p.playerId === this.network.playerId ? ' (You)' : ''}
+                ${p.username}${p.playerId === this.network.playerId ? ' (You)' : ''}${p.isAI ? ' 🤖' : ''}
               </div>
               <span class="orbits-lobby-player-status ${p.ready ? 'ready' : 'not-ready'}">
                 ${p.ready ? '✓' : '...'}
@@ -937,6 +954,15 @@ export class OrbitsLobby {
           `).join('')}
         </div>
       </div>
+
+      ${canAddAI ? `
+        <div class="orbits-lobby-ai-section">
+          <button class="orbits-lobby-menu-btn orbits-add-ai" data-action="add-ai">
+            🤖 Add AI Player
+          </button>
+          <p class="orbits-lobby-ai-hint">Fill empty slots with AI opponents</p>
+        </div>
+      ` : ''}
 
       <div class="orbits-lobby-info">
         <p>Game starts automatically when players are ready</p>
@@ -982,21 +1008,6 @@ export class OrbitsLobby {
         this._quickJoin();
       });
     }
-
-    // Private room buttons
-    const createBtn = content.querySelector('[data-action="create"]');
-    if (createBtn) {
-      createBtn.addEventListener('click', () => {
-        this._createRoom();
-      });
-    }
-
-    const joinBtn = content.querySelector('[data-action="join"]');
-    if (joinBtn) {
-      joinBtn.addEventListener('click', () => {
-        this._setState(LobbyState.JOINING);
-      });
-    }
   }
 
   _attachJoiningListeners(content) {
@@ -1032,18 +1043,10 @@ export class OrbitsLobby {
       });
     }
 
-    const startBtn = content.querySelector('[data-action="start"]');
-    if (startBtn) {
-      startBtn.addEventListener('click', () => {
-        this.network.startMatch();
-      });
-    }
-
-    const readyBtn = content.querySelector('[data-action="ready"]');
-    if (readyBtn) {
-      readyBtn.addEventListener('click', () => {
-        const myPlayer = this.players.find(p => p.playerId === this.network.playerId);
-        this.network.setReady(!myPlayer?.ready);
+    const addAIBtn = content.querySelector('[data-action="add-ai"]');
+    if (addAIBtn) {
+      addAIBtn.addEventListener('click', () => {
+        this.network.addAIPlayer();
       });
     }
   }
@@ -1070,7 +1073,12 @@ export class OrbitsLobby {
       this.isHost = false;
       this._setState(LobbyState.IN_ROOM);
     } catch (error) {
-      this.error = error.message || 'Failed to find game';
+      // Check if it's a "game in progress" error
+      if (error.message && error.message.includes('in progress')) {
+        this.error = 'All games are currently in progress. Try Solo vs AI mode instead, or wait a moment and try again.';
+      } else {
+        this.error = error.message || 'Failed to find game';
+      }
       this._setState(LobbyState.ERROR);
     }
   }

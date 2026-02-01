@@ -459,6 +459,21 @@ export class OrbitsNetworkController {
   }
 
   /**
+   * Add an AI player to the room (host only)
+   */
+  addAIPlayer() {
+    if (!this.isHost) {
+      console.warn('[OrbitsNetwork] Only host can add AI players');
+      return;
+    }
+
+    this._send({
+      type: 'orbits_add_ai',
+      payload: {}
+    });
+  }
+
+  /**
    * Start the match (host only)
    */
   startMatch() {
