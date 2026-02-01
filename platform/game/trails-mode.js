@@ -46,6 +46,8 @@ export const TRAILS_CONFIG = {
   FLUNG_BALL_RADIUS: 12,        // Same size as other balls
   FLUNG_BALL_LIFETIME_MS: 8000, // Despawn after 8 seconds if no collision
   FLING_SURGE_SPEED: 0,         // No surge - ghost maintains speed, ball shoots ahead
+  FLUNG_BALL_WALL_BOUNCE: 0.6,  // Velocity retained after wall bounce (like billiards)
+  FLUNG_BALL_MIN_SPEED: 40,     // Min speed before ball stops and becomes collectible
 
   // Lives
   STARTING_LIVES: 3,
@@ -606,24 +608,31 @@ export class TrailsMode extends OrbitsMode {
       ball.x += ball.vx * dt;
       ball.y += ball.vy * dt;
 
-      // Check wall collision - stop and convert to neutral (walls absorb the ball)
-      let hitWall = false;
+      // Check wall collision - bounce with dampening (like billiards)
+      const bounce = TRAILS_CONFIG.FLUNG_BALL_WALL_BOUNCE;
+      const minSpeed = TRAILS_CONFIG.FLUNG_BALL_MIN_SPEED;
+
+      // Horizontal walls
       if (ball.x < ball.radius) {
         ball.x = ball.radius;
-        hitWall = true;
+        ball.vx = -ball.vx * bounce;  // Reflect and dampen
       } else if (ball.x > this.arenaSize - ball.radius) {
         ball.x = this.arenaSize - ball.radius;
-        hitWall = true;
-      }
-      if (ball.y < ball.radius) {
-        ball.y = ball.radius;
-        hitWall = true;
-      } else if (ball.y > this.arenaSize - ball.radius) {
-        ball.y = this.arenaSize - ball.radius;
-        hitWall = true;
+        ball.vx = -ball.vx * bounce;
       }
 
-      if (hitWall) {
+      // Vertical walls
+      if (ball.y < ball.radius) {
+        ball.y = ball.radius;
+        ball.vy = -ball.vy * bounce;
+      } else if (ball.y > this.arenaSize - ball.radius) {
+        ball.y = this.arenaSize - ball.radius;
+        ball.vy = -ball.vy * bounce;
+      }
+
+      // Check if ball has slowed enough to stop
+      const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+      if (speed < minSpeed) {
         toConvertToSphere.push(ball);
         ball.state = 'STOPPED';
         continue;
@@ -665,7 +674,7 @@ export class TrailsMode extends OrbitsMode {
         pulsePhase: Math.random() * Math.PI * 2,
         wasFlungBall: true  // Mark as converted from flung ball
       });
-      console.log(`[TrailsMode] Flung ball hit wall, converted to neutral sphere at (${ball.x.toFixed(0)}, ${ball.y.toFixed(0)})`);
+      console.log(`[TrailsMode] Flung ball stopped, converted to neutral sphere at (${ball.x.toFixed(0)}, ${ball.y.toFixed(0)})`);
     }
 
     return this.flungBalls.filter(b => b.state === 'HIT');

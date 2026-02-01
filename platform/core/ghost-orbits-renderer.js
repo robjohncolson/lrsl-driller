@@ -91,6 +91,21 @@ function lighten(color, percent) {
 }
 
 /**
+ * Darken a color by a percentage
+ * @param {string} color - Hex color string
+ * @param {number} percent - Amount to darken (0-1)
+ * @returns {string} Darkened hex color
+ */
+function darken(color, percent) {
+  const num = parseInt(color.replace('#', ''), 16);
+  const factor = 1 - percent;
+  const R = Math.max(0, Math.floor((num >> 16) * factor));
+  const G = Math.max(0, Math.floor(((num >> 8) & 0x00FF) * factor));
+  const B = Math.max(0, Math.floor((num & 0x0000FF) * factor));
+  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
+}
+
+/**
  * Calculate distance between two points
  * @param {Object} a - First point {x, y}
  * @param {Object} b - Second point {x, y}
@@ -1542,58 +1557,54 @@ class GhostOrbitsRenderer {
    * @private
    */
   _renderGhostFlat(ctx, ghost, x, y, radius, displayColor, isOrbiting) {
-    // Calculate spin angle for radial body spin
-    let spinAngle = 0;
-    if (ghost.spinProgress !== undefined && ghost.spinProgress > 0) {
-      spinAngle = ghost.spinProgress * Math.PI * 6; // 3 full rotations
-      console.log('[Renderer] Applying spin angle:', spinAngle.toFixed(2), 'from progress:', ghost.spinProgress.toFixed(2));
+    // Calculate radial spin effect (coin flip illusion)
+    // Uses horizontal scale compression/expansion with color change
+    let scaleX = 1;
+    let isBackSide = false;
+
+    if (ghost.spinProgress !== undefined && ghost.spinProgress > 0 && ghost.spinProgress < 1) {
+      // For 3 full rotations: angle goes 0 → 6π
+      const spinAngle = ghost.spinProgress * Math.PI * 6;
+      // scaleX = |cos(angle)| gives us the compression/expansion
+      // cos goes: 1 → 0 → -1 → 0 → 1 (one full rotation)
+      const cosValue = Math.cos(spinAngle);
+      scaleX = Math.abs(cosValue);
+      // When cos is negative, we're seeing the "back" of the coin
+      isBackSide = cosValue < 0;
+      // Minimum scale to avoid disappearing completely
+      scaleX = Math.max(0.05, scaleX);
     }
+
+    // Determine the color to use (darker on back side)
+    const ghostColor = isBackSide ? darken(displayColor, 0.4) : displayColor;
+    const arrowColor = isBackSide ? '#999999' : '#ffffff';
 
     ctx.save();
     ctx.translate(x, y);
 
-    // Apply radial spin to the entire ghost body
-    if (spinAngle > 0) {
-      ctx.rotate(spinAngle);
+    // Apply horizontal scale for radial spin effect
+    if (scaleX < 1) {
+      ctx.scale(scaleX, 1);
     }
 
     // Simple filled circle (no gradient/glow)
-    ctx.fillStyle = displayColor;
+    ctx.fillStyle = ghostColor;
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Draw spin indicator on the OUTER EDGE (won't be covered by direction arrow)
-    // Two contrasting arc segments on the perimeter
-    const edgeWidth = radius * 0.2;
-
-    // Dark half-ring on one side
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.lineWidth = edgeWidth;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius - edgeWidth/2, 0, Math.PI);
-    ctx.stroke();
-
-    // Light half-ring on the other side
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.beginPath();
-    ctx.arc(0, 0, radius - edgeWidth/2, Math.PI, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.restore();
-
-    // Direction indicator: 12-orbits style (doesn't spin with body)
-    // - FILLED white arrow = vulnerable (flying)
-    // - OUTLINE white arrow = safe (orbiting)
+    // Direction indicator: 12-orbits style
+    // - FILLED arrow = vulnerable (flying)
+    // - OUTLINE arrow = safe (orbiting)
+    // Arrow spins WITH the ghost body for the radial effect
     const dirAngle = ghost.directionAngle || 0;
 
-    // Make the arrow LARGER and more visible
-    const triangleSize = radius * 0.9;  // Much larger (was 0.5)
-    const triangleDist = radius * 0.1;  // Closer to center
-
-    ctx.save();
-    ctx.translate(x, y);
+    // Rotate to face movement direction
     ctx.rotate(dirAngle);
+
+    // Arrow dimensions
+    const triangleSize = radius * 0.9;
+    const triangleDist = radius * 0.1;
 
     // Draw arrow - filled if vulnerable, outline if safe
     ctx.beginPath();
@@ -1603,13 +1614,13 @@ class GhostOrbitsRenderer {
     ctx.closePath();
 
     if (isOrbiting) {
-      // Safe: white OUTLINE arrow only
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3;
+      // Safe: OUTLINE arrow only
+      ctx.strokeStyle = arrowColor;
+      ctx.lineWidth = 3 / scaleX; // Compensate for scale
       ctx.stroke();
     } else {
-      // Vulnerable: white FILLED arrow
-      ctx.fillStyle = '#ffffff';
+      // Vulnerable: FILLED arrow
+      ctx.fillStyle = arrowColor;
       ctx.fill();
     }
 

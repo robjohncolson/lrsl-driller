@@ -389,7 +389,7 @@ describe('TrailsMode', () => {
       expect(ball.vx).toBe(initialVx);
     });
 
-    it('flung ball converts to neutral sphere when hitting wall', () => {
+    it('flung ball bounces off wall with dampened velocity', () => {
       // Position ball near wall, moving toward it
       mode.flungBalls = [{
         id: 'flung1',
@@ -397,6 +397,29 @@ describe('TrailsMode', () => {
         y: 400,
         vx: -100,  // Moving toward wall
         vy: 0,
+        ownerId: 'player',
+        color: '#4488ff',
+        radius: TRAILS_CONFIG.FLUNG_BALL_RADIUS,
+        createdAt: performance.now(),
+        state: 'FLYING'
+      }];
+
+      mode._updateFlungBalls(0.1, performance.now(), mockGhost, mockShadowGhost);
+
+      // Ball should bounce (velocity reversed and dampened, still flying)
+      expect(mode.flungBalls.length).toBe(1);
+      expect(mode.flungBalls[0].vx).toBeGreaterThan(0);  // Reversed direction
+      expect(mode.flungBalls[0].vx).toBeLessThan(100);   // Dampened
+    });
+
+    it('flung ball converts to sphere when speed drops below minimum', () => {
+      // Ball with very low speed
+      mode.flungBalls = [{
+        id: 'flung1',
+        x: 400,
+        y: 400,
+        vx: 10,  // Below FLUNG_BALL_MIN_SPEED (40)
+        vy: 10,
         ownerId: 'player',
         color: '#4488ff',
         radius: TRAILS_CONFIG.FLUNG_BALL_RADIUS,
