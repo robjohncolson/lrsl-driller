@@ -1542,6 +1542,11 @@ export class GhostOrbitsController {
     const ghostsToUpdate = shadowData ? [ghostData, shadowData] : [ghostData];
     this.physicsEngine.update(ghostsToUpdate, deltaTime);
 
+    // Update dots (12-orbits style: moving dots with wall bouncing)
+    if (this.dotManager) {
+      this.dotManager.update(deltaTime, this.arenaWidth, this.arenaHeight);
+    }
+
     // Check if player ghost is in locked orbit
     if (this.physicsEngine.isGhostOrbiting(this.username)) {
       if (this.ghostMovementState !== 'ORBITING') {

@@ -29,6 +29,10 @@ const DOT_CONFIG = {
   COLLISION_RADIUS: 15,       // Ghost collision radius with dots
   DOT_RADIUS: 10,             // Visual radius of dots
   PULSE_SPEED: 3,             // Speed of pulsing animation
+  // 12-orbits style: moving dots
+  DOT_SPEED: 60,              // Base speed of dots (pixels per second)
+  DOT_SPEED_VARIATION: 20,    // Random speed variation (+/-)
+  TOUCH_TO_CLAIM: true,       // True = just touch to claim/steal (12-orbits style)
 };
 
 /**
@@ -46,6 +50,41 @@ class Dot {
     this.pulsePhase = Math.random() * Math.PI * 2; // For visual pulse effect
     this.lastTouchedBy = null; // Track who last touched this dot
     this.lastTouchTime = 0;    // When it was last touched
+
+    // 12-orbits style: moving dots with constant velocity
+    const speed = DOT_CONFIG.DOT_SPEED + (Math.random() - 0.5) * 2 * DOT_CONFIG.DOT_SPEED_VARIATION;
+    const angle = Math.random() * Math.PI * 2;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+  }
+
+  /**
+   * Update dot position and handle wall bouncing (12-orbits style)
+   * @param {number} dt - Delta time in seconds
+   * @param {number} arenaWidth - Arena width
+   * @param {number} arenaHeight - Arena height
+   */
+  update(dt, arenaWidth, arenaHeight) {
+    // Move dot
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+
+    // Elastic wall bouncing (angle of incidence = angle of reflection)
+    if (this.x - this.radius < 0) {
+      this.x = this.radius;
+      this.vx = -this.vx; // Reflect
+    } else if (this.x + this.radius > arenaWidth) {
+      this.x = arenaWidth - this.radius;
+      this.vx = -this.vx;
+    }
+
+    if (this.y - this.radius < 0) {
+      this.y = this.radius;
+      this.vy = -this.vy;
+    } else if (this.y + this.radius > arenaHeight) {
+      this.y = arenaHeight - this.radius;
+      this.vy = -this.vy;
+    }
   }
 
   /**
@@ -131,6 +170,18 @@ class DotManager {
   setOwnerColors(playerColor, shadowColor) {
     this.playerColor = playerColor;
     this.shadowColor = shadowColor;
+  }
+
+  /**
+   * Update all dots (12-orbits style: moving dots with wall bouncing)
+   * @param {number} dt - Delta time in seconds
+   * @param {number} arenaWidth - Arena width (defaults to arenaSize)
+   * @param {number} arenaHeight - Arena height (defaults to arenaSize)
+   */
+  update(dt, arenaWidth = this.arenaSize, arenaHeight = this.arenaSize) {
+    for (const dot of this.dots.values()) {
+      dot.update(dt, arenaWidth, arenaHeight);
+    }
   }
 
   /**
@@ -250,6 +301,7 @@ class DotManager {
     const radius = (options.radius || DOT_CONFIG.COLLISION_RADIUS) * (options.claimRadius || 1.0);
     const flipWindow = options.flipWindow || DOT_CONFIG.FLIP_WINDOW_MS;
     const currentTime = Date.now();
+    const touchToClaim = DOT_CONFIG.TOUCH_TO_CLAIM;
 
     for (const dot of this.dots.values()) {
       if (!dot.collidesWith(x, y, radius)) continue;
@@ -258,6 +310,9 @@ class DotManager {
       if (dot.lastTouchedBy === ghostId && (currentTime - dot.lastTouchTime) < 500) {
         continue;
       }
+
+      // Skip own dots
+      if (dot.ownerId === ghostId) continue;
 
       if (dot.isNeutral()) {
         // Neutral dot - claim it
@@ -268,12 +323,17 @@ class DotManager {
       }
 
       if (dot.isOwnedByOpponent(ghostId)) {
-        // Opponent's dot - check for flip or damage
-        const hadSpacebar = this.wasSpacebarPressedRecently(ghostId, flipWindow);
-
         dot.lastTouchedBy = ghostId;
         dot.lastTouchTime = currentTime;
 
+        // 12-orbits style: just touch to steal (no spacebar, no damage)
+        if (touchToClaim) {
+          dot.claim(ghostId, ghostColor);
+          return { type: 'flipped', dot };
+        }
+
+        // Legacy mode: need spacebar to flip, otherwise damage
+        const hadSpacebar = this.wasSpacebarPressedRecently(ghostId, flipWindow);
         if (hadSpacebar) {
           // Flip the dot to our color
           dot.claim(ghostId, ghostColor);
