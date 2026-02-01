@@ -1,20 +1,22 @@
 /**
- * Ghost Orbits - Blizzard Mode
+ * Ghost Orbits - Blizzard Mode (12-Orbits Style)
  *
- * Team-based, no-elimination arena defense game. Two teams defend barriers
- * (goal lines) while returning drifting spheres toward the enemy.
- * Spheres crossing a barrier score for the opposing team.
+ * Team-based dot territory game. Players claim and smash dots toward
+ * enemy goals. Dots crossing a goal score for the attacking team.
  *
- * Key differentiator: Players cannot be eliminated - pure score-based
- * gameplay that's lag-tolerant and beginner-friendly.
+ * Key mechanics (from 12-orbits "Blizzard" game):
+ * - Touch to claim: Collision instantly claims dot and smashes it away
+ * - Billiard physics: Dot flies AWAY from player center on collision
+ * - Dash = Power hit: 1.5x velocity boost (no invulnerability)
+ * - Goal-based scoring: Dot crossing enemy goal = 1 point
  *
  * Win conditions:
  * - Score Limit: First team to 15 points
- * - Timeout: Most points after 5 minutes
+ * - Timeout: Most points after 1 minute
  * - Mercy Rule: 10-point lead = instant win
  *
  * @module blizzard-mode
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import { OrbitsMode } from '../core/orbits-mode-interface.js';
@@ -28,29 +30,26 @@ import { WIDE_MAP, getAbsoluteRecordPositions, getAbsoluteBarriers } from './orb
 export const BLIZZARD_CONFIG = {
   // Teams
   TEAM_COUNT: 2,
-  MAX_PER_TEAM: 6,
 
-  // Barriers (relative y positions)
-  BARRIER_Y_TOP: 0.05,
-  BARRIER_Y_BOTTOM: 0.95,
+  // Dots (replacing spheres)
+  DOT_RADIUS: 10,
+  DOT_BASE_SPEED: 300,        // px/s when smashed
+  DOT_DRIFT_SPEED: 20,        // px/s initial drift
+  DOT_FRICTION: 0.998,        // Very low friction
+  TOUCH_RADIUS: 25,           // Collision radius
 
-  // Spheres
-  SPHERE_RADIUS: 15,
-  SPHERE_BASE_SPEED: 80,        // px/s
-  SPHERE_MAX_SPEED: 200,        // px/s
-  RETURN_SPEED_BOOST: 1.1,      // 10% per return
-  TOUCH_RADIUS: 30,             // Collision radius for player touch
+  // Dash (power hit, NOT invulnerability)
+  DASH_DURATION: 400,         // ms (spin animation)
+  DASH_POWER_MULTIPLIER: 1.5, // 1.5x velocity on smash
 
-  // Spawn waves
-  WAVE_1_DURATION: 30000,       // First 30 seconds
-  WAVE_2_DURATION: 60000,       // First 60 seconds (includes wave 1)
-  WAVE_1: { count: 3, delay: 3000, speed: 80 },
-  WAVE_2: { count: 5, delay: 2000, speed: 120 },
-  WAVE_3: { count: 8, delay: 1000, speed: 160 },
+  // Spawner
+  INITIAL_DOTS: 8,
+  MAX_DOTS: 15,
+  SPAWN_INTERVAL: 2500,       // ms
 
   // Win conditions
   SCORE_LIMIT: 15,
-  ROUND_DURATION_MS: 300000,    // 5 minutes
+  ROUND_DURATION_MS: 60000,   // 1 minute rounds
   MERCY_LEAD: 10
 };
 
@@ -92,107 +91,60 @@ function clamp(value, min, max) {
 }
 
 // ============================================
-// BLIZZARD SPHERE CLASS
+// BLIZZARD DOT CLASS
 // ============================================
 
 /**
- * A drifting sphere that players return toward enemies
+ * A dot that can be claimed and smashed toward goals
+ * Simpler than BlizzardSphere - uses billiard physics
  */
-class BlizzardSphere {
+class BlizzardDot {
   /**
-   * Create a new BlizzardSphere
-   * @param {Object} options
-   * @param {number} options.x - Initial x position
-   * @param {number} options.y - Initial y position
-   * @param {number} options.velocityX - Initial x velocity
-   * @param {number} options.velocityY - Initial y velocity
-   * @param {number} options.speed - Base speed
+   * Create a new BlizzardDot
+   * @param {number} x - Initial x position
+   * @param {number} y - Initial y position
+   * @param {number} driftSpeed - Initial drift velocity
    */
-  constructor(options) {
+  constructor(x, y, driftSpeed) {
     this.id = generateId();
-    this.x = options.x;
-    this.y = options.y;
-    this.radius = BLIZZARD_CONFIG.SPHERE_RADIUS;
-    this.velocityX = options.velocityX || 0;
-    this.velocityY = options.velocityY || 0;
-    this.speed = options.speed || BLIZZARD_CONFIG.SPHERE_BASE_SPEED;
+    this.x = x;
+    this.y = y;
+    this.radius = BLIZZARD_CONFIG.DOT_RADIUS;
 
-    // Ownership
-    this.teamId = null;           // null = neutral
-    this.lastTouchedBy = null;    // playerId who last touched
-    this.returnCount = 0;         // Times returned (affects speed)
+    // Random drift direction
+    const angle = Math.random() * Math.PI * 2;
+    this.vx = Math.cos(angle) * driftSpeed;
+    this.vy = Math.sin(angle) * driftSpeed;
 
-    // Animation
-    this.pulsePhase = Math.random() * Math.PI * 2;
+    this.teamId = null;  // null = neutral (white)
+    this.lastTouchedBy = null;
   }
 
   /**
-   * Update sphere position
+   * Update dot position with physics
    * @param {number} dt - Delta time in seconds
    * @param {number} arenaWidth - Arena width
    * @param {number} arenaHeight - Arena height
    */
   update(dt, arenaWidth, arenaHeight) {
-    // Move sphere
-    this.x += this.velocityX * dt;
-    this.y += this.velocityY * dt;
+    // Apply very low friction
+    this.vx *= BLIZZARD_CONFIG.DOT_FRICTION;
+    this.vy *= BLIZZARD_CONFIG.DOT_FRICTION;
 
-    // Update animation
-    this.pulsePhase += dt * 3;
+    // Move
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
 
-    // Side wall bounce
-    if (this.x < this.radius) {
-      this.x = this.radius;
-      this.velocityX = Math.abs(this.velocityX);
+    // Top/bottom wall bounce
+    if (this.y < this.radius) {
+      this.y = this.radius;
+      this.vy = Math.abs(this.vy);
     }
-    if (this.x > arenaWidth - this.radius) {
-      this.x = arenaWidth - this.radius;
-      this.velocityX = -Math.abs(this.velocityX);
+    if (this.y > arenaHeight - this.radius) {
+      this.y = arenaHeight - this.radius;
+      this.vy = -Math.abs(this.vy);
     }
-  }
-
-  /**
-   * Return the sphere toward a target y direction
-   * @param {string} playerId - Player who returned it
-   * @param {number} targetTeamId - Team ID of the target barrier (0=top, 1=bottom)
-   * @param {number} [newTeamId] - New team ownership (null for neutral)
-   */
-  return(playerId, targetTeamId, newTeamId = null) {
-    this.lastTouchedBy = playerId;
-    this.teamId = newTeamId;
-    this.returnCount++;
-
-    // Calculate new velocity toward target barrier
-    const targetY = targetTeamId === 0 ? 0 : Infinity; // 0 = top barrier, 1 = bottom barrier
-    const dirY = targetTeamId === 0 ? -1 : 1;
-
-    // Add some horizontal variance based on touch position
-    const horizontalVariance = (Math.random() - 0.5) * 0.3;
-
-    // Calculate boosted speed
-    const boostedSpeed = Math.min(
-      this.speed * Math.pow(BLIZZARD_CONFIG.RETURN_SPEED_BOOST, this.returnCount),
-      BLIZZARD_CONFIG.SPHERE_MAX_SPEED
-    );
-
-    // Normalize and apply velocity
-    const len = Math.sqrt(horizontalVariance * horizontalVariance + 1);
-    this.velocityX = (horizontalVariance / len) * boostedSpeed;
-    this.velocityY = (dirY / len) * boostedSpeed;
-    this.speed = boostedSpeed;
-  }
-
-  /**
-   * Flip sphere to new team ownership
-   * @param {string} playerId - Player who flipped it
-   * @param {number} newTeamId - New team ID
-   */
-  flip(playerId, newTeamId) {
-    this.lastTouchedBy = playerId;
-    this.teamId = newTeamId;
-
-    // Reverse y direction
-    this.velocityY = -this.velocityY;
+    // Left/right = scoring zones (no bounce, handled by goal check)
   }
 
   /**
@@ -205,13 +157,10 @@ class BlizzardSphere {
       x: this.x,
       y: this.y,
       radius: this.radius,
-      velocityX: this.velocityX,
-      velocityY: this.velocityY,
-      speed: this.speed,
+      vx: this.vx,
+      vy: this.vy,
       teamId: this.teamId,
-      lastTouchedBy: this.lastTouchedBy,
-      returnCount: this.returnCount,
-      pulsePhase: this.pulsePhase
+      lastTouchedBy: this.lastTouchedBy
     };
   }
 }
@@ -221,7 +170,7 @@ class BlizzardSphere {
 // ============================================
 
 /**
- * Blizzard Mode - Team-based sphere defense
+ * Blizzard Mode - 12-Orbits Style Dot Territory
  * @extends OrbitsMode
  */
 export class BlizzardMode extends OrbitsMode {
@@ -256,14 +205,16 @@ export class BlizzardMode extends OrbitsMode {
       this._getComplementaryColor(config.ghostProperties?.color || '#4488ff')  // Team 1
     ];
 
-    // Entities
-    this.spheres = [];
+    // Entities (dots replace spheres)
+    this.dots = [];
     this.barriers = [];
 
     // Spawn system
-    this.currentWave = 1;
-    this.lastSpawnTime = 0;
-    this.spheresSpawnedThisWave = 0;
+    this.lastDotSpawn = 0;
+
+    // Dash state (for power hit detection)
+    this.playerDashUntil = 0;
+    this.shadowDashUntil = 0;
 
     // Match timing
     this.matchStartTime = null;
@@ -311,40 +262,39 @@ export class BlizzardMode extends OrbitsMode {
     });
 
     // Reset match state
-    // Use performance.now() for consistency with animation frame timestamps
     this.matchStartTime = performance.now();
     this.matchTimeRemaining = BLIZZARD_CONFIG.ROUND_DURATION_MS;
     this.teamScores = [0, 0];
-    this.currentWave = 1;
-    this.lastSpawnTime = performance.now();
-    this.spheresSpawnedThisWave = 0;
+    this.lastDotSpawn = performance.now();
     this.matchResult = null;
     this.winCondition = null;
 
-    // Spawn initial spheres
-    this._spawnInitialSpheres();
+    // Spawn initial dots
+    this._spawnInitialDots();
 
     this.initialized = true;
-    console.log(`[BlizzardMode] Initialized with ${this.spheres.length} spheres, arena ${this.arenaWidth}x${this.arenaHeight}`);
+    console.log(`[BlizzardMode] Initialized with ${this.dots.length} dots, arena ${this.arenaWidth}x${this.arenaHeight}`);
   }
 
   /**
-   * Initialize barriers at top and bottom
+   * Initialize barriers at left and right (vertical barriers - pong/air hockey style)
    * @private
    */
   _initializeBarriers() {
     this.barriers = [
       {
         id: 'barrier_0',
-        y: this.arenaHeight * BLIZZARD_CONFIG.BARRIER_Y_TOP,
+        x: 0,
         teamId: 0,
-        width: this.arenaWidth
+        height: this.arenaHeight,
+        orientation: 'vertical'
       },
       {
         id: 'barrier_1',
-        y: this.arenaHeight * BLIZZARD_CONFIG.BARRIER_Y_BOTTOM,
+        x: this.arenaWidth,
         teamId: 1,
-        width: this.arenaWidth
+        height: this.arenaHeight,
+        orientation: 'vertical'
       }
     ];
   }
@@ -370,58 +320,32 @@ export class BlizzardMode extends OrbitsMode {
   }
 
   /**
-   * Spawn initial spheres in center zone
+   * Spawn initial dots from center emitter
    * @private
    */
-  _spawnInitialSpheres() {
-    const waveConfig = this._getWaveConfig();
+  _spawnInitialDots() {
+    const emitterConfig = WIDE_MAP.dotEmitter;
+    const count = emitterConfig.initialDots;
 
-    for (let i = 0; i < waveConfig.count; i++) {
-      this._spawnSphere(waveConfig.speed);
-    }
-    this.spheresSpawnedThisWave = waveConfig.count;
-  }
-
-  /**
-   * Get current wave configuration
-   * @private
-   * @returns {Object} Wave config with count, delay, speed
-   */
-  _getWaveConfig() {
-    switch (this.currentWave) {
-      case 1: return BLIZZARD_CONFIG.WAVE_1;
-      case 2: return BLIZZARD_CONFIG.WAVE_2;
-      default: return BLIZZARD_CONFIG.WAVE_3;
+    for (let i = 0; i < count; i++) {
+      this._spawnDotAtCenter();
     }
   }
 
   /**
-   * Spawn a new sphere in the center zone
+   * Spawn a dot at center with random drift
    * @private
-   * @param {number} speed - Initial speed
-   * @returns {BlizzardSphere}
+   * @returns {BlizzardDot}
    */
-  _spawnSphere(speed) {
-    const spawnZone = WIDE_MAP.sphereSpawnZone;
-    const x = this.arenaWidth * 0.1 + Math.random() * this.arenaWidth * 0.8;
-    const y = this.arenaHeight * spawnZone.minY +
-              Math.random() * this.arenaHeight * (spawnZone.maxY - spawnZone.minY);
+  _spawnDotAtCenter() {
+    const emitterConfig = WIDE_MAP.dotEmitter;
+    const x = this.arenaWidth * emitterConfig.x;
+    // Spawn in vertical range with some margin
+    const y = this.arenaHeight * 0.1 + Math.random() * this.arenaHeight * 0.8;
 
-    // Random initial direction (mostly vertical)
-    const dirY = Math.random() > 0.5 ? 1 : -1;
-    const dirX = (Math.random() - 0.5) * 0.4;
-    const len = Math.sqrt(dirX * dirX + dirY * dirY);
-
-    const sphere = new BlizzardSphere({
-      x,
-      y,
-      velocityX: (dirX / len) * speed,
-      velocityY: (dirY / len) * speed,
-      speed
-    });
-
-    this.spheres.push(sphere);
-    return sphere;
+    const dot = new BlizzardDot(x, y, emitterConfig.driftSpeed);
+    this.dots.push(dot);
+    return dot;
   }
 
   /**
@@ -434,33 +358,30 @@ export class BlizzardMode extends OrbitsMode {
   step(dt, time, localGhost, input) {
     if (!this.initialized || this.matchResult !== null) return;
 
-    const currentTime = time || Date.now();
+    const currentTime = time || performance.now();
 
     // Update match time
     if (this.matchStartTime) {
       const elapsed = currentTime - this.matchStartTime;
       this.matchTimeRemaining = BLIZZARD_CONFIG.ROUND_DURATION_MS - elapsed;
-
-      // Update wave based on elapsed time
-      this._updateWave(elapsed);
     }
 
-    // Check spawn timing
-    this._checkSpawnTimer(currentTime);
+    // Check dot spawner
+    this._checkDotSpawner(currentTime);
 
-    // Update all spheres
-    this._updateSpheres(dt);
+    // Update all dots
+    this._updateDots(dt);
 
-    // Check player collision with spheres
-    this._checkPlayerSphereCollisions(localGhost, input, currentTime);
+    // Check player collision with dots
+    this._checkPlayerDotCollisions(localGhost, input, currentTime);
 
-    // Check shadow collision with spheres
+    // Check shadow collision with dots
     if (input.shadowGhost) {
-      this._checkShadowSphereCollisions(input.shadowGhost, input, currentTime);
+      this._checkShadowDotCollisions(input.shadowGhost, input, currentTime);
     }
 
-    // Check barrier collisions (scoring)
-    this._checkBarrierCollisions();
+    // Check goal collisions (scoring)
+    this._checkGoalCollisions();
 
     // Update Shadow AI
     if (this.shadowAI && input.shadowGhost) {
@@ -471,62 +392,34 @@ export class BlizzardMode extends OrbitsMode {
   }
 
   /**
-   * Update wave number based on elapsed time
+   * Check if it's time to spawn more dots
    * @private
    */
-  _updateWave(elapsed) {
-    if (elapsed < BLIZZARD_CONFIG.WAVE_1_DURATION) {
-      if (this.currentWave !== 1) {
-        this.currentWave = 1;
-        this.spheresSpawnedThisWave = 0;
-      }
-    } else if (elapsed < BLIZZARD_CONFIG.WAVE_2_DURATION) {
-      if (this.currentWave !== 2) {
-        this.currentWave = 2;
-        this.spheresSpawnedThisWave = 0;
-      }
-    } else {
-      if (this.currentWave !== 3) {
-        this.currentWave = 3;
-        this.spheresSpawnedThisWave = 0;
-      }
+  _checkDotSpawner(currentTime) {
+    const emitterConfig = WIDE_MAP.dotEmitter;
+
+    if (this.dots.length < emitterConfig.maxDots &&
+        currentTime - this.lastDotSpawn > emitterConfig.spawnInterval) {
+      this._spawnDotAtCenter();
+      this.lastDotSpawn = currentTime;
     }
   }
 
   /**
-   * Check if it's time to spawn more spheres
+   * Update all dot positions
    * @private
    */
-  _checkSpawnTimer(currentTime) {
-    const waveConfig = this._getWaveConfig();
-    const timeSinceLastSpawn = currentTime - this.lastSpawnTime;
-
-    // Spawn if delay has passed and we haven't hit the limit
-    if (timeSinceLastSpawn >= waveConfig.delay) {
-      // Keep sphere count manageable (max 15 at once)
-      if (this.spheres.length < 15) {
-        this._spawnSphere(waveConfig.speed);
-        this.lastSpawnTime = currentTime;
-        this.spheresSpawnedThisWave++;
-      }
+  _updateDots(dt) {
+    for (const dot of this.dots) {
+      dot.update(dt, this.arenaWidth, this.arenaHeight);
     }
   }
 
   /**
-   * Update all sphere positions
+   * Check player collision with dots - smash mechanics
    * @private
    */
-  _updateSpheres(dt) {
-    for (const sphere of this.spheres) {
-      sphere.update(dt, this.arenaWidth, this.arenaHeight);
-    }
-  }
-
-  /**
-   * Check player collision with spheres
-   * @private
-   */
-  _checkPlayerSphereCollisions(localGhost, input, currentTime) {
+  _checkPlayerDotCollisions(localGhost, input, currentTime) {
     if (!localGhost) return;
 
     const playerTeamId = this.teams.get('player');
@@ -535,102 +428,122 @@ export class BlizzardMode extends OrbitsMode {
     // Don't interact while orbiting
     if (playerOnRecord) return;
 
-    for (const sphere of this.spheres) {
-      const dist = distance(localGhost.position.x, localGhost.position.y, sphere.x, sphere.y);
+    const ghostX = localGhost.position.x;
+    const ghostY = localGhost.position.y;
+    const isDashing = currentTime < this.playerDashUntil;
 
-      if (dist < BLIZZARD_CONFIG.TOUCH_RADIUS) {
-        this._handleSphereTouch(sphere, 'player', playerTeamId, input);
-        break; // Only interact with one sphere per frame
+    for (const dot of this.dots) {
+      const dist = distance(ghostX, ghostY, dot.x, dot.y);
+
+      if (dist < BLIZZARD_CONFIG.TOUCH_RADIUS + dot.radius) {
+        this._handleDotCollision(dot, 'player', playerTeamId, ghostX, ghostY, isDashing);
+        input.dotInteraction = { type: 'smashed', dotId: dot.id };
+        break; // Only interact with one dot per frame
       }
     }
   }
 
   /**
-   * Check shadow collision with spheres
+   * Check shadow collision with dots - smash mechanics
    * @private
    */
-  _checkShadowSphereCollisions(shadowGhost, input, currentTime) {
+  _checkShadowDotCollisions(shadowGhost, input, currentTime) {
     const shadowTeamId = this.teams.get(this.shadowGhostId);
     const shadowOnRecord = input.shadowMovementState === 'ORBITING';
 
     if (shadowOnRecord) return;
 
-    for (const sphere of this.spheres) {
-      const dist = distance(shadowGhost.position.x, shadowGhost.position.y, sphere.x, sphere.y);
+    const ghostX = shadowGhost.position.x;
+    const ghostY = shadowGhost.position.y;
+    const isDashing = currentTime < this.shadowDashUntil;
 
-      if (dist < BLIZZARD_CONFIG.TOUCH_RADIUS) {
-        this._handleSphereTouch(sphere, this.shadowGhostId, shadowTeamId, input);
+    for (const dot of this.dots) {
+      const dist = distance(ghostX, ghostY, dot.x, dot.y);
+
+      if (dist < BLIZZARD_CONFIG.TOUCH_RADIUS + dot.radius) {
+        this._handleDotCollision(dot, this.shadowGhostId, shadowTeamId, ghostX, ghostY, isDashing);
         break;
       }
     }
   }
 
   /**
-   * Handle sphere touch by a player
+   * Handle dot collision - billiard-style smash physics
+   * Dot flies AWAY from player center, boosted if dashing
    * @private
    */
-  _handleSphereTouch(sphere, playerId, playerTeamId, input) {
-    const enemyTeamId = playerTeamId === 0 ? 1 : 0;
+  _handleDotCollision(dot, playerId, teamId, ghostX, ghostY, isDashing) {
+    // 1. Take ownership
+    dot.teamId = teamId;
+    dot.lastTouchedBy = playerId;
 
-    if (sphere.teamId === null) {
-      // Neutral sphere: CLAIM + RETURN toward enemy
-      sphere.return(playerId, enemyTeamId, playerTeamId);
-      input.sphereInteraction = { type: 'claimed', sphereId: sphere.id };
-    } else if (sphere.teamId === playerTeamId) {
-      // Own sphere: RETURN toward enemy (speed boost)
-      sphere.return(playerId, enemyTeamId, playerTeamId);
-      input.sphereInteraction = { type: 'returned', sphereId: sphere.id };
-    } else {
-      // Enemy sphere: FLIP + RETURN (becomes your team's)
-      sphere.flip(playerId, playerTeamId);
-      sphere.return(playerId, enemyTeamId, playerTeamId);
-      input.sphereInteraction = { type: 'flipped', sphereId: sphere.id };
-    }
+    // 2. Calculate direction (ball flies AWAY from player center)
+    const dx = dot.x - ghostX;
+    const dy = dot.y - ghostY;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const dirX = dx / dist;
+    const dirY = dy / dist;
+
+    // 3. Apply smash velocity (boosted if dashing)
+    const speed = BLIZZARD_CONFIG.DOT_BASE_SPEED *
+      (isDashing ? BLIZZARD_CONFIG.DASH_POWER_MULTIPLIER : 1.0);
+
+    dot.vx = dirX * speed;
+    dot.vy = dirY * speed;
+
+    console.log(`[BlizzardMode] Dot ${dot.id} smashed by ${playerId} (team ${teamId})${isDashing ? ' with POWER HIT!' : ''}`);
   }
 
   /**
-   * Check sphere collisions with barriers (scoring)
+   * Check dot collisions with goals (scoring)
    *
    * Scoring rules:
-   * - When a sphere crosses a barrier, the team that SENT it toward that barrier scores
-   * - A team scores by getting spheres past the ENEMY barrier
-   * - Team 0 attacks bottom barrier (team 1's goal), Team 1 attacks top barrier (team 0's goal)
-   * - Only the team that owns the sphere can score (prevents own goals)
-   * - Neutral spheres don't score (must be claimed first)
+   * - Left edge = Team 0's goal, Right edge = Team 1's goal
+   * - Team's dot crossing enemy goal = 1 point
+   * - Neutral dots crossing edges = despawn (no score)
    *
    * @private
    */
-  _checkBarrierCollisions() {
-    const spheresToRemove = [];
+  _checkGoalCollisions() {
+    const dotsToRemove = [];
 
-    for (const sphere of this.spheres) {
-      for (const barrier of this.barriers) {
-        // Check if sphere crossed the barrier
-        const barrierHit = barrier.teamId === 0
-          ? sphere.y - sphere.radius <= barrier.y  // Top barrier (team 0's goal)
-          : sphere.y + sphere.radius >= barrier.y; // Bottom barrier (team 1's goal)
-
-        if (barrierHit) {
-          // Determine which team attacked this barrier successfully
-          // Top barrier (team 0's goal) → Team 1 scores if they own the sphere
-          // Bottom barrier (team 1's goal) → Team 0 scores if they own the sphere
-          const attackingTeam = barrier.teamId === 0 ? 1 : 0;
-
-          // Only score if the sphere is owned by the attacking team
-          // This prevents own goals and requires claiming spheres to score
-          if (sphere.teamId === attackingTeam) {
-            this.teamScores[attackingTeam]++;
-            console.log(`[BlizzardMode] Team ${attackingTeam} scores! (${this.teamScores[0]}-${this.teamScores[1]})`);
-          }
-
-          spheresToRemove.push(sphere.id);
-          break;
+    for (const dot of this.dots) {
+      // Left goal (Team 0's goal) - Team 1 scores
+      if (dot.x - dot.radius <= 0) {
+        if (dot.teamId === 1) {
+          this.teamScores[1]++;
+          console.log(`[BlizzardMode] Team 1 scores! (${this.teamScores[0]}-${this.teamScores[1]})`);
         }
+        // Neutral dots just despawn (no score)
+        dotsToRemove.push(dot.id);
+      }
+      // Right goal (Team 1's goal) - Team 0 scores
+      else if (dot.x + dot.radius >= this.arenaWidth) {
+        if (dot.teamId === 0) {
+          this.teamScores[0]++;
+          console.log(`[BlizzardMode] Team 0 scores! (${this.teamScores[0]}-${this.teamScores[1]})`);
+        }
+        dotsToRemove.push(dot.id);
       }
     }
 
-    // Remove scored spheres
-    this.spheres = this.spheres.filter(s => !spheresToRemove.includes(s.id));
+    this.dots = this.dots.filter(d => !dotsToRemove.includes(d.id));
+  }
+
+  /**
+   * Set player dash state (for power hit detection)
+   * @param {number} dashUntil - Timestamp when dash ends
+   */
+  setPlayerDashing(dashUntil) {
+    this.playerDashUntil = dashUntil;
+  }
+
+  /**
+   * Set shadow dash state (for power hit detection)
+   * @param {number} dashUntil - Timestamp when dash ends
+   */
+  setShadowDashing(dashUntil) {
+    this.shadowDashUntil = dashUntil;
   }
 
   /**
@@ -641,8 +554,9 @@ export class BlizzardMode extends OrbitsMode {
    * @returns {Object|null}
    */
   applyInput(type, data, ghost) {
-    // Blizzard mode doesn't use spacebar timing mechanics
-    // Sphere interaction is automatic on touch
+    // Blizzard mode doesn't use spacebar timing mechanics for flips
+    // Dot interaction is automatic on touch
+    // Spacebar is used for dash (power hit) in controller
     return null;
   }
 
@@ -659,8 +573,7 @@ export class BlizzardMode extends OrbitsMode {
       timeRemaining: Math.max(0, this.matchTimeRemaining),
       team0Score: this.teamScores[0],
       team1Score: this.teamScores[1],
-      sphereCount: this.spheres.length,
-      wave: this.currentWave
+      dotCount: this.dots.length
     };
   }
 
@@ -670,7 +583,6 @@ export class BlizzardMode extends OrbitsMode {
    */
   checkEndCondition() {
     if (this.matchResult !== null) {
-      console.log(`[BlizzardMode] checkEndCondition: matchResult already set: ${this.matchResult}, reason: ${this.winCondition}`);
       return {
         ended: true,
         winner: this.matchResult === 'player_win' ? 'player' : 'opponent',
@@ -718,7 +630,7 @@ export class BlizzardMode extends OrbitsMode {
       } else if (this.teamScores[1] > this.teamScores[0]) {
         this.matchResult = 'shadow_win';
       } else {
-        // Tie goes to player (sudden death would be better but simpler for now)
+        // Tie goes to player
         this.matchResult = 'player_win';
       }
       this.winCondition = 'timeout';
@@ -739,9 +651,10 @@ export class BlizzardMode extends OrbitsMode {
    */
   getRenderData() {
     return {
-      blizzardSpheres: this.spheres.map(s => ({
-        ...s.toJSON(),
-        teamColor: s.teamId !== null ? this.teamColors[s.teamId] : null
+      // Blizzard dots for renderer
+      blizzardDots: this.dots.map(d => ({
+        ...d.toJSON(),
+        teamColor: d.teamId !== null ? this.teamColors[d.teamId] : null
       })),
       barriers: this.barriers.map(b => ({
         ...b,
@@ -749,8 +662,6 @@ export class BlizzardMode extends OrbitsMode {
       })),
       teamScores: [...this.teamScores],
       teamColors: [...this.teamColors],
-      wave: this.currentWave,
-      dots: [],  // No dots in Blizzard mode
       records: this.physicsEngine?.getRecords() || []
     };
   }
@@ -763,11 +674,11 @@ export class BlizzardMode extends OrbitsMode {
    */
   getEntityByType(type, id) {
     switch (type) {
-      case 'sphere':
+      case 'dot':
         if (id) {
-          return this.spheres.find(s => s.id === id) || null;
+          return this.dots.find(d => d.id === id) || null;
         }
-        return this.spheres;
+        return this.dots;
 
       case 'barrier':
         if (id) {
@@ -807,8 +718,7 @@ export class BlizzardMode extends OrbitsMode {
       type: 'BlizzardMode',
       teamScores: [...this.teamScores],
       matchTimeRemaining: this.matchTimeRemaining,
-      wave: this.currentWave,
-      spheres: this.spheres.map(s => s.toJSON()),
+      dots: this.dots.map(d => d.toJSON()),
       barriers: this.barriers,
       matchResult: this.matchResult,
       winCondition: this.winCondition
@@ -821,7 +731,7 @@ export class BlizzardMode extends OrbitsMode {
    */
   getInitialEntities() {
     return {
-      spheres: this.spheres.map(s => s.toJSON()),
+      dots: this.dots.map(d => d.toJSON()),
       barriers: this.barriers,
       records: this.physicsEngine?.getRecords() || [],
       ghosts: []
@@ -843,14 +753,16 @@ export class BlizzardMode extends OrbitsMode {
     this.matchResult = null;
     this.winCondition = null;
 
-    // Reset waves
-    this.currentWave = 1;
-    this.lastSpawnTime = performance.now();
-    this.spheresSpawnedThisWave = 0;
+    // Reset spawn timer
+    this.lastDotSpawn = performance.now();
 
-    // Clear and respawn spheres
-    this.spheres = [];
-    this._spawnInitialSpheres();
+    // Reset dash states
+    this.playerDashUntil = 0;
+    this.shadowDashUntil = 0;
+
+    // Clear and respawn dots
+    this.dots = [];
+    this._spawnInitialDots();
 
     // Reset AI
     if (this.shadowAI) {
@@ -864,7 +776,7 @@ export class BlizzardMode extends OrbitsMode {
    * Dispose resources
    */
   dispose() {
-    this.spheres = [];
+    this.dots = [];
     this.barriers = [];
     this.teams.clear();
     this.shadowAI = null;
@@ -961,6 +873,14 @@ export class BlizzardMode extends OrbitsMode {
     };
   }
 
+  /**
+   * Get dots array (for AI and renderer)
+   * @returns {Array}
+   */
+  getDots() {
+    return this.dots;
+  }
+
   // ============================================
   // PRIVATE HELPERS
   // ============================================
@@ -1047,7 +967,7 @@ export class BlizzardMode extends OrbitsMode {
       playerVx: localGhost.velocity.x,
       playerVy: localGhost.velocity.y,
       playerTeamId: 0,
-      spheres: this.spheres.map(s => s.toJSON()),
+      dots: this.dots.map(d => d.toJSON()),
       barriers: this.barriers,
       records: this.physicsEngine?.getRecords() || [],
       arenaWidth: this.arenaWidth,

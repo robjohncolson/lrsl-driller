@@ -1,7 +1,7 @@
 /**
- * Ghost Orbits - Blizzard Mode Tests
+ * Ghost Orbits - Blizzard Mode Tests (12-Orbits Style)
  *
- * Tests for the team-based sphere defense mode.
+ * Tests for the dot-based territory game with smash physics.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -20,12 +20,16 @@ describe('BlizzardMode', () => {
     mockPhysicsEngine = {
       addRecord: vi.fn(),
       getRecords: vi.fn(() => [
-        { id: 'record1', position: { x: 180, y: 200 }, radius: 45, captureRadius: 65 },
-        { id: 'record2', position: { x: 600, y: 200 }, radius: 45, captureRadius: 65 },
-        { id: 'record3', position: { x: 1020, y: 200 }, radius: 45, captureRadius: 65 },
-        { id: 'record4', position: { x: 180, y: 600 }, radius: 45, captureRadius: 65 },
-        { id: 'record5', position: { x: 600, y: 600 }, radius: 45, captureRadius: 65 },
-        { id: 'record6', position: { x: 1020, y: 600 }, radius: 45, captureRadius: 65 }
+        { id: 'record1', position: { x: 180, y: 133 }, radius: 70, captureRadius: 70 },
+        { id: 'record2', position: { x: 180, y: 400 }, radius: 70, captureRadius: 70 },
+        { id: 'record3', position: { x: 180, y: 666 }, radius: 70, captureRadius: 70 },
+        { id: 'record4', position: { x: 420, y: 266 }, radius: 70, captureRadius: 70 },
+        { id: 'record5', position: { x: 420, y: 533 }, radius: 70, captureRadius: 70 },
+        { id: 'record6', position: { x: 780, y: 266 }, radius: 70, captureRadius: 70 },
+        { id: 'record7', position: { x: 780, y: 533 }, radius: 70, captureRadius: 70 },
+        { id: 'record8', position: { x: 1020, y: 133 }, radius: 70, captureRadius: 70 },
+        { id: 'record9', position: { x: 1020, y: 400 }, radius: 70, captureRadius: 70 },
+        { id: 'record10', position: { x: 1020, y: 666 }, radius: 70, captureRadius: 70 }
       ])
     };
 
@@ -67,21 +71,22 @@ describe('BlizzardMode', () => {
       expect(mode.arenaHeight).toBe(WIDE_MAP.arenaHeight);
     });
 
-    it('spawns initial spheres', () => {
-      expect(mode.spheres.length).toBeGreaterThan(0);
-      expect(mode.spheres.length).toBe(BLIZZARD_CONFIG.WAVE_1.count);
+    it('spawns initial dots from center emitter', () => {
+      expect(mode.dots.length).toBe(WIDE_MAP.dotEmitter.initialDots);
     });
 
     it('initializes barriers at correct positions', () => {
       expect(mode.barriers.length).toBe(2);
 
-      const topBarrier = mode.barriers.find(b => b.teamId === 0);
-      const bottomBarrier = mode.barriers.find(b => b.teamId === 1);
+      const leftBarrier = mode.barriers.find(b => b.teamId === 0);
+      const rightBarrier = mode.barriers.find(b => b.teamId === 1);
 
-      expect(topBarrier).toBeDefined();
-      expect(bottomBarrier).toBeDefined();
-      expect(topBarrier.y).toBe(mode.arenaHeight * BLIZZARD_CONFIG.BARRIER_Y_TOP);
-      expect(bottomBarrier.y).toBe(mode.arenaHeight * BLIZZARD_CONFIG.BARRIER_Y_BOTTOM);
+      expect(leftBarrier).toBeDefined();
+      expect(rightBarrier).toBeDefined();
+      expect(leftBarrier.x).toBe(0);
+      expect(rightBarrier.x).toBe(mode.arenaWidth);
+      expect(leftBarrier.orientation).toBe('vertical');
+      expect(rightBarrier.orientation).toBe('vertical');
     });
 
     it('initializes team assignments', () => {
@@ -94,12 +99,9 @@ describe('BlizzardMode', () => {
       expect(mode.teamScores[1]).toBe(0);
     });
 
-    it('sets correct round duration', () => {
+    it('sets 1 minute round duration', () => {
       expect(mode.matchTimeRemaining).toBe(BLIZZARD_CONFIG.ROUND_DURATION_MS);
-    });
-
-    it('starts at wave 1', () => {
-      expect(mode.currentWave).toBe(1);
+      expect(BLIZZARD_CONFIG.ROUND_DURATION_MS).toBe(60000);
     });
 
     it('initializes Shadow AI', () => {
@@ -108,168 +110,182 @@ describe('BlizzardMode', () => {
     });
   });
 
-  describe('Sphere Mechanics', () => {
-    it('spawns spheres in center zone', () => {
-      const spawnZone = WIDE_MAP.sphereSpawnZone;
-      const minY = mode.arenaHeight * spawnZone.minY;
-      const maxY = mode.arenaHeight * spawnZone.maxY;
+  describe('Dot Mechanics', () => {
+    it('dots spawn at center with drift', () => {
+      const centerX = mode.arenaWidth * WIDE_MAP.dotEmitter.x;
 
-      for (const sphere of mode.spheres) {
-        expect(sphere.y).toBeGreaterThanOrEqual(minY - 50); // Some tolerance
-        expect(sphere.y).toBeLessThanOrEqual(maxY + 50);
+      for (const dot of mode.dots) {
+        // Dots should spawn at center x
+        expect(dot.x).toBe(centerX);
+        // Should have some velocity (drift)
+        const speed = Math.sqrt(dot.vx * dot.vx + dot.vy * dot.vy);
+        expect(speed).toBeCloseTo(WIDE_MAP.dotEmitter.driftSpeed, 1);
       }
     });
 
-    it('spheres have correct initial properties', () => {
-      for (const sphere of mode.spheres) {
-        expect(sphere.id).toBeDefined();
-        expect(sphere.radius).toBe(BLIZZARD_CONFIG.SPHERE_RADIUS);
-        expect(sphere.teamId).toBeNull(); // Neutral
-        expect(sphere.returnCount).toBe(0);
-        expect(sphere.speed).toBe(BLIZZARD_CONFIG.WAVE_1.speed);
+    it('dots are neutral initially', () => {
+      for (const dot of mode.dots) {
+        expect(dot.teamId).toBeNull();
       }
     });
 
-    it('spheres move when updated', () => {
-      const sphere = mode.spheres[0];
-      const initialX = sphere.x;
-      const initialY = sphere.y;
-
-      // Ensure sphere has velocity
-      sphere.velocityX = 50;
-      sphere.velocityY = 50;
-
-      mode._updateSpheres(0.1); // 100ms
-
-      expect(sphere.x).not.toBe(initialX);
-      expect(sphere.y).not.toBe(initialY);
+    it('dots have correct radius', () => {
+      for (const dot of mode.dots) {
+        expect(dot.radius).toBe(BLIZZARD_CONFIG.DOT_RADIUS);
+      }
     });
 
-    it('spheres bounce off side walls', () => {
-      const sphere = mode.spheres[0];
+    it('dots move when updated', () => {
+      const dot = mode.dots[0];
+      const initialX = dot.x;
+      const initialY = dot.y;
 
-      // Move sphere to left wall
-      sphere.x = 5;
-      sphere.velocityX = -100;
-      sphere.velocityY = 0;
+      // Ensure dot has velocity
+      dot.vx = 50;
+      dot.vy = 50;
 
-      sphere.update(0.1, mode.arenaWidth, mode.arenaHeight);
+      mode._updateDots(0.1); // 100ms
 
-      expect(sphere.velocityX).toBeGreaterThan(0); // Reversed direction
-      expect(sphere.x).toBeGreaterThanOrEqual(sphere.radius);
-    });
-  });
-
-  describe('Sphere Touch Interactions', () => {
-    it('claiming neutral sphere sets team and direction', () => {
-      const sphere = mode.spheres[0];
-      sphere.x = 200;
-      sphere.y = 400;
-      sphere.teamId = null;
-
-      // Simulate touch
-      const input = {};
-      sphere.return('player', 1, 0); // Return toward team 1's barrier, claim for team 0
-
-      expect(sphere.teamId).toBe(0);
-      expect(sphere.lastTouchedBy).toBe('player');
-      expect(sphere.returnCount).toBe(1);
-      expect(sphere.velocityY).toBeGreaterThan(0); // Heading toward bottom (team 1's barrier)
+      expect(dot.x).not.toBe(initialX);
+      expect(dot.y).not.toBe(initialY);
     });
 
-    it('returning own sphere increases speed', () => {
-      const sphere = mode.spheres[0];
-      sphere.teamId = 0;
-      sphere.speed = BLIZZARD_CONFIG.SPHERE_BASE_SPEED;
-      sphere.returnCount = 2;
+    it('dots bounce off top/bottom walls', () => {
+      const dot = mode.dots[0];
 
-      const originalSpeed = sphere.speed;
-      sphere.return('player', 1, 0);
+      // Move dot to top wall
+      dot.x = 400;
+      dot.y = 5;
+      dot.vx = 0;
+      dot.vy = -100;
 
-      expect(sphere.speed).toBeGreaterThan(originalSpeed);
-      expect(sphere.returnCount).toBe(3);
-    });
+      dot.update(0.1, mode.arenaWidth, mode.arenaHeight);
 
-    it('flipping enemy sphere changes team and reverses direction', () => {
-      const sphere = mode.spheres[0];
-      sphere.teamId = 1; // Enemy team
-      sphere.velocityY = -50; // Heading toward top (team 0's barrier)
-
-      sphere.flip('player', 0);
-
-      expect(sphere.teamId).toBe(0);
-      expect(sphere.velocityY).toBeGreaterThan(0); // Reversed, now heading toward bottom
-    });
-
-    it('speed boost is capped at maximum', () => {
-      const sphere = mode.spheres[0];
-      sphere.speed = BLIZZARD_CONFIG.SPHERE_MAX_SPEED - 10;
-      sphere.returnCount = 10;
-
-      sphere.return('player', 1, 0);
-
-      expect(sphere.speed).toBeLessThanOrEqual(BLIZZARD_CONFIG.SPHERE_MAX_SPEED);
+      expect(dot.vy).toBeGreaterThan(0); // Reversed direction
+      expect(dot.y).toBeGreaterThanOrEqual(dot.radius);
     });
   });
 
-  describe('Scoring', () => {
-    it('scores when sphere crosses enemy barrier', () => {
-      const sphere = mode.spheres[0];
-      sphere.x = 600;
-      sphere.y = mode.arenaHeight * BLIZZARD_CONFIG.BARRIER_Y_BOTTOM + 10;
-      sphere.teamId = 0; // Player's team sphere
-      sphere.velocityY = 100;
+  describe('Smash Mechanics (Billiard Physics)', () => {
+    it('touching dot claims it and smashes away from player', () => {
+      const dot = mode.dots[0];
+      dot.x = 250;
+      dot.y = 600;
+      dot.teamId = null;
+      dot.vx = 0;
+      dot.vy = 0;
 
-      mode._checkBarrierCollisions();
+      // Player at 200, 600 touches dot at 250, 600
+      // Dot should fly to the RIGHT (away from player)
+      mode._handleDotCollision(dot, 'player', 0, 200, 600, false);
 
-      expect(mode.teamScores[0]).toBe(1); // Team 0 scores
-      expect(mode.spheres.find(s => s.id === sphere.id)).toBeUndefined(); // Removed
+      expect(dot.teamId).toBe(0);
+      expect(dot.lastTouchedBy).toBe('player');
+      expect(dot.vx).toBeGreaterThan(0); // Flying away (right)
+      const speed = Math.sqrt(dot.vx * dot.vx + dot.vy * dot.vy);
+      expect(speed).toBeCloseTo(BLIZZARD_CONFIG.DOT_BASE_SPEED, 10);
     });
 
-    it('neutral spheres do not score', () => {
-      const sphere = mode.spheres[0];
-      sphere.x = 600;
-      sphere.y = mode.arenaHeight * BLIZZARD_CONFIG.BARRIER_Y_BOTTOM + 10;
-      sphere.teamId = null; // Neutral sphere
-      sphere.velocityY = 100;
+    it('dash gives 1.5x power hit velocity', () => {
+      const dot = mode.dots[0];
+      dot.x = 250;
+      dot.y = 600;
+      dot.teamId = null;
+
+      // Power hit (dashing = true)
+      mode._handleDotCollision(dot, 'player', 0, 200, 600, true);
+
+      const speed = Math.sqrt(dot.vx * dot.vx + dot.vy * dot.vy);
+      const expectedSpeed = BLIZZARD_CONFIG.DOT_BASE_SPEED * BLIZZARD_CONFIG.DASH_POWER_MULTIPLIER;
+      expect(speed).toBeCloseTo(expectedSpeed, 10);
+    });
+
+    it('smash direction is away from player center', () => {
+      const dot = mode.dots[0];
+
+      // Test: player below-left of dot
+      dot.x = 300;
+      dot.y = 300;
+      mode._handleDotCollision(dot, 'player', 0, 200, 400, false);
+
+      // Dot should fly up-right (away from player)
+      expect(dot.vx).toBeGreaterThan(0);
+      expect(dot.vy).toBeLessThan(0);
+    });
+  });
+
+  describe('Goal-Based Scoring', () => {
+    it('team 0 scores when their dot crosses right goal', () => {
+      const dot = mode.dots[0];
+      dot.x = mode.arenaWidth + dot.radius + 1;
+      dot.y = 400;
+      dot.teamId = 0; // Team 0's dot
+      dot.vx = 100;
+
+      mode._checkGoalCollisions();
+
+      expect(mode.teamScores[0]).toBe(1);
+      expect(mode.dots.find(d => d.id === dot.id)).toBeUndefined();
+    });
+
+    it('team 1 scores when their dot crosses left goal', () => {
+      const dot = mode.dots[0];
+      dot.x = -dot.radius - 1;
+      dot.y = 400;
+      dot.teamId = 1; // Team 1's dot
+      dot.vx = -100;
+
+      mode._checkGoalCollisions();
+
+      expect(mode.teamScores[1]).toBe(1);
+    });
+
+    it('neutral dots do not score (despawn only)', () => {
+      const dot = mode.dots[0];
+      dot.x = mode.arenaWidth + dot.radius + 1;
+      dot.y = 400;
+      dot.teamId = null; // Neutral
+      dot.vx = 100;
 
       const initialScore0 = mode.teamScores[0];
       const initialScore1 = mode.teamScores[1];
 
-      mode._checkBarrierCollisions();
+      mode._checkGoalCollisions();
 
-      // Neutral spheres don't score - must be claimed first
       expect(mode.teamScores[0]).toBe(initialScore0);
       expect(mode.teamScores[1]).toBe(initialScore1);
+      expect(mode.dots.find(d => d.id === dot.id)).toBeUndefined(); // Still removed
     });
 
-    it('sphere crossing wrong barrier does not score (own goal prevention)', () => {
-      const sphere = mode.spheres[0];
-      sphere.x = 600;
-      sphere.y = mode.arenaHeight * BLIZZARD_CONFIG.BARRIER_Y_BOTTOM + 10;
-      sphere.teamId = 1; // Team 1's sphere crosses team 1's barrier (bottom)
-      sphere.velocityY = 100;
+    it('own goal is prevented (team 0 dot at team 0 goal = no score)', () => {
+      const dot = mode.dots[0];
+      dot.x = -dot.radius - 1;
+      dot.y = 400;
+      dot.teamId = 0; // Team 0's dot at team 0's goal
+      dot.vx = -100;
 
       const initialScore0 = mode.teamScores[0];
       const initialScore1 = mode.teamScores[1];
 
-      mode._checkBarrierCollisions();
+      mode._checkGoalCollisions();
 
-      // Team 1's sphere at team 1's barrier = no score (own goal prevented)
-      // Only team 0's sphere crossing bottom barrier would score for team 0
+      // No score awarded
       expect(mode.teamScores[0]).toBe(initialScore0);
       expect(mode.teamScores[1]).toBe(initialScore1);
     });
+  });
 
-    it('removes scored sphere from arena', () => {
-      const initialCount = mode.spheres.length;
-      const sphere = mode.spheres[0];
-      sphere.y = mode.arenaHeight * BLIZZARD_CONFIG.BARRIER_Y_BOTTOM + 10;
-      sphere.teamId = 0;
+  describe('Dash State Management', () => {
+    it('setPlayerDashing sets dash until timestamp', () => {
+      const dashUntil = Date.now() + 400;
+      mode.setPlayerDashing(dashUntil);
+      expect(mode.playerDashUntil).toBe(dashUntil);
+    });
 
-      mode._checkBarrierCollisions();
-
-      expect(mode.spheres.length).toBe(initialCount - 1);
+    it('setShadowDashing sets shadow dash until timestamp', () => {
+      const dashUntil = Date.now() + 400;
+      mode.setShadowDashing(dashUntil);
+      expect(mode.shadowDashUntil).toBe(dashUntil);
     });
   });
 
@@ -322,7 +338,7 @@ describe('BlizzardMode', () => {
     it('does not end match before conditions met', () => {
       mode.teamScores[0] = 5;
       mode.teamScores[1] = 3;
-      mode.matchTimeRemaining = 60000;
+      mode.matchTimeRemaining = 30000;
 
       const result = mode.checkEndCondition();
 
@@ -330,31 +346,29 @@ describe('BlizzardMode', () => {
     });
   });
 
-  describe('Wave System', () => {
-    it('starts in wave 1', () => {
-      expect(mode.currentWave).toBe(1);
+  describe('Dot Spawner', () => {
+    it('spawns new dots periodically up to max', () => {
+      const emitter = WIDE_MAP.dotEmitter;
+      mode.dots = [];
+      mode.lastDotSpawn = 0;
+
+      mode._checkDotSpawner(emitter.spawnInterval + 1);
+
+      expect(mode.dots.length).toBe(1);
     });
 
-    it('progresses to wave 2 after wave 1 duration', () => {
-      mode._updateWave(BLIZZARD_CONFIG.WAVE_1_DURATION + 1000);
+    it('does not exceed max dots', () => {
+      const emitter = WIDE_MAP.dotEmitter;
 
-      expect(mode.currentWave).toBe(2);
-    });
+      // Fill to max
+      while (mode.dots.length < emitter.maxDots) {
+        mode._spawnDotAtCenter();
+      }
 
-    it('progresses to wave 3 after wave 2 duration', () => {
-      mode._updateWave(BLIZZARD_CONFIG.WAVE_2_DURATION + 1000);
+      const countBefore = mode.dots.length;
+      mode._checkDotSpawner(Date.now() + emitter.spawnInterval * 10);
 
-      expect(mode.currentWave).toBe(3);
-    });
-
-    it('wave config has increasing counts', () => {
-      expect(BLIZZARD_CONFIG.WAVE_2.count).toBeGreaterThan(BLIZZARD_CONFIG.WAVE_1.count);
-      expect(BLIZZARD_CONFIG.WAVE_3.count).toBeGreaterThan(BLIZZARD_CONFIG.WAVE_2.count);
-    });
-
-    it('wave config has increasing speeds', () => {
-      expect(BLIZZARD_CONFIG.WAVE_2.speed).toBeGreaterThan(BLIZZARD_CONFIG.WAVE_1.speed);
-      expect(BLIZZARD_CONFIG.WAVE_3.speed).toBeGreaterThan(BLIZZARD_CONFIG.WAVE_2.speed);
+      expect(mode.dots.length).toBe(countBefore);
     });
   });
 
@@ -383,16 +397,16 @@ describe('BlizzardMode', () => {
   });
 
   describe('Render Data', () => {
-    it('includes spheres with team colors', () => {
-      mode.spheres[0].teamId = 0;
+    it('includes dots with team colors', () => {
+      mode.dots[0].teamId = 0;
 
       const renderData = mode.getRenderData();
 
-      expect(renderData.blizzardSpheres).toBeDefined();
-      expect(renderData.blizzardSpheres.length).toBe(mode.spheres.length);
+      expect(renderData.blizzardDots).toBeDefined();
+      expect(renderData.blizzardDots.length).toBe(mode.dots.length);
 
-      const firstSphere = renderData.blizzardSpheres.find(s => s.teamId === 0);
-      expect(firstSphere.teamColor).toBe(mode.teamColors[0]);
+      const ownedDot = renderData.blizzardDots.find(d => d.teamId === 0);
+      expect(ownedDot.teamColor).toBe(mode.teamColors[0]);
     });
 
     it('includes barriers with team colors', () => {
@@ -413,14 +427,6 @@ describe('BlizzardMode', () => {
 
       expect(renderData.teamScores).toEqual([3, 5]);
     });
-
-    it('includes current wave', () => {
-      mode.currentWave = 2;
-
-      const renderData = mode.getRenderData();
-
-      expect(renderData.wave).toBe(2);
-    });
   });
 
   describe('Reset', () => {
@@ -432,20 +438,12 @@ describe('BlizzardMode', () => {
       expect(mode.teamScores).toEqual([0, 0]);
     });
 
-    it('resets wave on rematch', () => {
-      mode.currentWave = 3;
+    it('respawns dots on rematch', () => {
+      mode.dots = [];
 
       mode.reset();
 
-      expect(mode.currentWave).toBe(1);
-    });
-
-    it('respawns spheres on rematch', () => {
-      mode.spheres = [];
-
-      mode.reset();
-
-      expect(mode.spheres.length).toBeGreaterThan(0);
+      expect(mode.dots.length).toBe(WIDE_MAP.dotEmitter.initialDots);
     });
 
     it('resets match result on rematch', () => {
@@ -457,21 +455,29 @@ describe('BlizzardMode', () => {
       expect(mode.matchResult).toBeNull();
       expect(mode.winCondition).toBeNull();
     });
+
+    it('resets dash states on rematch', () => {
+      mode.playerDashUntil = Date.now() + 1000;
+      mode.shadowDashUntil = Date.now() + 1000;
+
+      mode.reset();
+
+      expect(mode.playerDashUntil).toBe(0);
+      expect(mode.shadowDashUntil).toBe(0);
+    });
   });
 
   describe('Serialization', () => {
     it('serializes state correctly', () => {
       mode.teamScores = [5, 3];
-      mode.currentWave = 2;
-      mode.matchTimeRemaining = 100000;
+      mode.matchTimeRemaining = 30000;
 
       const state = mode.serializeState();
 
       expect(state.type).toBe('BlizzardMode');
       expect(state.teamScores).toEqual([5, 3]);
-      expect(state.wave).toBe(2);
-      expect(state.matchTimeRemaining).toBe(100000);
-      expect(state.spheres).toBeDefined();
+      expect(state.matchTimeRemaining).toBe(30000);
+      expect(state.dots).toBeDefined();
       expect(state.barriers).toBeDefined();
     });
   });
@@ -490,9 +496,10 @@ describe('BlizzardAI', () => {
   });
 
   describe('Initialization', () => {
-    it('sets correct team barrier positions', () => {
-      expect(ai.ownBarrierY).toBe(800 * 0.95); // Team 1's barrier at bottom
-      expect(ai.enemyBarrierY).toBe(800 * 0.05); // Team 0's barrier at top
+    it('sets correct goal positions', () => {
+      // Team 1 defends RIGHT goal
+      expect(ai.ownGoalX).toBe(1200);
+      expect(ai.enemyGoalX).toBe(0);
     });
 
     it('initializes with team 1', () => {
@@ -508,7 +515,7 @@ describe('BlizzardAI', () => {
         selfVx: 0,
         selfVy: 0,
         selfIsOrbiting: false,
-        spheres: [],
+        dots: [],
         barriers: [],
         records: [],
         currentTime: Date.now()
@@ -518,23 +525,24 @@ describe('BlizzardAI', () => {
 
       expect(decision.moveDirection).toBeDefined();
       expect(decision.wantsOrbit).toBe(false);
+      expect(decision.wantsDash).toBe(false);
     });
 
-    it('prioritizes intercepting spheres heading toward own barrier', () => {
+    it('prioritizes intercepting enemy dots heading toward own goal', () => {
       const gameState = {
-        selfX: 600,
-        selfY: 600,
+        selfX: 1000,
+        selfY: 400,
         selfVx: 0,
         selfVy: 0,
         selfIsOrbiting: false,
-        spheres: [
+        dots: [
           {
-            id: 'sphere1',
-            x: 600,
-            y: 700,
-            velocityX: 0,
-            velocityY: 100, // Heading toward bottom (AI's barrier)
-            teamId: 0 // Enemy sphere
+            id: 'dot1',
+            x: 950,
+            y: 500,
+            vx: 200, // Fast, heading toward right (AI's goal)
+            vy: 0,
+            teamId: 0 // Enemy dot
           }
         ],
         barriers: [],
@@ -545,24 +553,24 @@ describe('BlizzardAI', () => {
       const decision = ai.update(0.016, gameState);
 
       expect(decision.moveDirection).toBeDefined();
-      // Should move toward the sphere
-      expect(decision.moveDirection.y).toBeGreaterThan(0);
+      // Should move toward the dot's predicted position
+      expect(decision.moveDirection.y).toBeGreaterThan(0); // Moving toward dot
     });
 
-    it('seeks neutral spheres when no threats', () => {
+    it('seeks neutral dots when no threats', () => {
       const gameState = {
-        selfX: 600,
-        selfY: 600,
+        selfX: 1000,
+        selfY: 400,
         selfVx: 0,
         selfVy: 0,
         selfIsOrbiting: false,
-        spheres: [
+        dots: [
           {
-            id: 'sphere1',
-            x: 400,
-            y: 500,
-            velocityX: 50,
-            velocityY: -50, // Heading away from AI's barrier
+            id: 'dot1',
+            x: 800,
+            y: 400,
+            vx: -50, // Heading away from AI's goal
+            vy: 0,
             teamId: null // Neutral
           }
         ],
@@ -576,47 +584,82 @@ describe('BlizzardAI', () => {
       expect(decision.moveDirection).toBeDefined();
     });
 
-    it('wants to release from orbit when sphere is nearby', () => {
+    it('wants to release from orbit when dot is nearby', () => {
       const gameState = {
         selfX: 600,
         selfY: 600,
         selfVx: 0,
         selfVy: 0,
         selfIsOrbiting: true,
-        spheres: [
+        dots: [
           {
-            id: 'sphere1',
-            x: 650, // Within orbit escape range
+            id: 'dot1',
+            x: 650,
             y: 620,
-            velocityX: 0,
-            velocityY: 50,
+            vx: 0,
+            vy: 50,
             teamId: 0
           }
         ],
         barriers: [],
         records: [
-          { x: 600, y: 600, radius: 45, captureRadius: 65 }
+          { x: 600, y: 600, radius: 70, captureRadius: 70 }
         ],
-        currentTime: Date.now() + 1000 // Past minimum orbit time
+        currentTime: Date.now() + 1000
       };
 
-      ai.orbitEntryTime = Date.now() - 1000; // Entered orbit 1 second ago
+      ai.orbitEntryTime = Date.now() - 1000;
 
       const decision = ai.update(0.016, gameState);
 
       expect(decision.wantsRelease).toBe(true);
     });
+
+    it('can decide to dash for power hit', () => {
+      // Force a dash decision by being very close to a dot
+      const gameState = {
+        selfX: 820,
+        selfY: 400,
+        selfVx: 0,
+        selfVy: 0,
+        selfIsOrbiting: false,
+        dots: [
+          {
+            id: 'dot1',
+            x: 840, // Very close
+            y: 400,
+            vx: -50,
+            vy: 0,
+            teamId: null
+          }
+        ],
+        barriers: [],
+        records: [],
+        currentTime: Date.now() + 1000
+      };
+
+      // Run multiple times since dash has randomness
+      let sawDash = false;
+      for (let i = 0; i < 20; i++) {
+        ai.decisionLockUntil = 0; // Reset lock
+        const decision = ai.update(0.016, { ...gameState, currentTime: Date.now() + i * 100 });
+        if (decision.wantsDash) sawDash = true;
+      }
+
+      expect(sawDash).toBe(true); // Should have seen at least one dash decision
+    });
   });
 
   describe('Reset', () => {
     it('resets state correctly', () => {
-      ai.targetSphere = 'some_sphere';
+      ai.targetDot = 'some_dot';
       ai.decisionLockUntil = Date.now() + 10000;
 
       ai.reset();
 
-      expect(ai.targetSphere).toBeNull();
+      expect(ai.targetDot).toBeNull();
       expect(ai.decisionLockUntil).toBe(0);
+      expect(ai.lastDecision.wantsDash).toBe(false);
     });
   });
 });
@@ -628,19 +671,50 @@ describe('Orbits Maps', () => {
     expect(WIDE_MAP.aspectRatio).toBe(1.5);
   });
 
-  it('WIDE_MAP has 6 records', () => {
-    expect(WIDE_MAP.records.length).toBe(6);
+  it('WIDE_MAP has 10 records (12-orbits Blizzard layout)', () => {
+    expect(WIDE_MAP.records.length).toBe(10);
+  });
+
+  it('WIDE_MAP has 75% larger records', () => {
+    expect(WIDE_MAP.recordRadius).toBe(70);
+    expect(WIDE_MAP.captureRadius).toBe(70);
   });
 
   it('WIDE_MAP has barrier definitions', () => {
     expect(WIDE_MAP.barriers).toBeDefined();
-    expect(WIDE_MAP.barriers.team0.y).toBe(0.05);
-    expect(WIDE_MAP.barriers.team1.y).toBe(0.95);
+    expect(WIDE_MAP.barriers.team0.x).toBe(0.0);
+    expect(WIDE_MAP.barriers.team1.x).toBe(1.0);
   });
 
-  it('WIDE_MAP has sphere spawn zone', () => {
-    expect(WIDE_MAP.sphereSpawnZone).toBeDefined();
-    expect(WIDE_MAP.sphereSpawnZone.minY).toBe(0.35);
-    expect(WIDE_MAP.sphereSpawnZone.maxY).toBe(0.65);
+  it('WIDE_MAP has dot emitter config', () => {
+    expect(WIDE_MAP.dotEmitter).toBeDefined();
+    expect(WIDE_MAP.dotEmitter.x).toBe(0.5);
+    expect(WIDE_MAP.dotEmitter.spawnInterval).toBe(2500);
+    expect(WIDE_MAP.dotEmitter.initialDots).toBe(8);
+    expect(WIDE_MAP.dotEmitter.maxDots).toBe(15);
+    expect(WIDE_MAP.dotEmitter.driftSpeed).toBe(20);
+  });
+});
+
+describe('BLIZZARD_CONFIG', () => {
+  it('has 1 minute round duration', () => {
+    expect(BLIZZARD_CONFIG.ROUND_DURATION_MS).toBe(60000);
+  });
+
+  it('has correct dot physics config', () => {
+    expect(BLIZZARD_CONFIG.DOT_RADIUS).toBe(10);
+    expect(BLIZZARD_CONFIG.DOT_BASE_SPEED).toBe(300);
+    expect(BLIZZARD_CONFIG.DOT_DRIFT_SPEED).toBe(20);
+    expect(BLIZZARD_CONFIG.DOT_FRICTION).toBe(0.998);
+  });
+
+  it('has 1.5x dash power multiplier', () => {
+    expect(BLIZZARD_CONFIG.DASH_POWER_MULTIPLIER).toBe(1.5);
+  });
+
+  it('has correct spawner config', () => {
+    expect(BLIZZARD_CONFIG.INITIAL_DOTS).toBe(8);
+    expect(BLIZZARD_CONFIG.MAX_DOTS).toBe(15);
+    expect(BLIZZARD_CONFIG.SPAWN_INTERVAL).toBe(2500);
   });
 });

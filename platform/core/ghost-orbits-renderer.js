@@ -2351,16 +2351,75 @@ class GhostOrbitsRenderer {
   renderBlizzardModeEntities() {
     if (!this.blizzardModeData) return;
 
-    const { blizzardSpheres, barriers, teamScores, teamColors } = this.blizzardModeData;
+    const { blizzardDots, barriers, teamScores, teamColors } = this.blizzardModeData;
 
-    // Render in order: barriers (back), spheres (front)
+    // Render in order: center line (back), barriers, dots (front)
+    this.renderBlizzardCenterLine();
     this.renderBarriers(barriers, teamColors);
-    this.renderBlizzardSpheres(blizzardSpheres, teamColors);
+    this.renderBlizzardDots(blizzardDots, teamColors);
     this.renderTeamScoreOverlay(teamScores, teamColors);
   }
 
   /**
-   * Render goal line barriers
+   * Render center line divider for Blizzard mode with chevron emitters
+   * 12-orbits style: gray line with double-chevron spawn indicators
+   */
+  renderBlizzardCenterLine() {
+    const ctx = this.ctx;
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    const centerX = width / 2;
+
+    ctx.save();
+
+    // Main center line (solid darker gray for 12-orbits style)
+    ctx.strokeStyle = '#888888';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(centerX, 0);
+    ctx.lineTo(centerX, height);
+    ctx.stroke();
+
+    // Top chevron emitter (double V pointing down - spawn indicator)
+    ctx.strokeStyle = '#666666';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = 0.6;
+
+    // Outer chevron
+    ctx.beginPath();
+    ctx.moveTo(centerX - 35, 25);
+    ctx.lineTo(centerX, 55);
+    ctx.lineTo(centerX + 35, 25);
+    ctx.stroke();
+
+    // Inner chevron
+    ctx.beginPath();
+    ctx.moveTo(centerX - 25, 45);
+    ctx.lineTo(centerX, 70);
+    ctx.lineTo(centerX + 25, 45);
+    ctx.stroke();
+
+    // Bottom chevron emitter (double V pointing up)
+    ctx.beginPath();
+    ctx.moveTo(centerX - 35, height - 25);
+    ctx.lineTo(centerX, height - 55);
+    ctx.lineTo(centerX + 35, height - 25);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(centerX - 25, height - 45);
+    ctx.lineTo(centerX, height - 70);
+    ctx.lineTo(centerX + 25, height - 45);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  /**
+   * Render goal line barriers (supports both vertical and horizontal)
    * @param {Array} barriers - Array of barrier objects
    * @param {Array} teamColors - Team colors [team0, team1]
    */
@@ -2369,91 +2428,116 @@ class GhostOrbitsRenderer {
 
     const ctx = this.ctx;
     const width = this.canvas.width;
+    const height = this.canvas.height;
 
     for (const barrier of barriers) {
-      const { y, teamId } = barrier;
+      const { x, y, teamId, orientation } = barrier;
       const color = teamColors?.[teamId] || '#888888';
 
-      // Main barrier line (dashed)
       ctx.save();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 4;
-      ctx.setLineDash([15, 10]);
-      ctx.globalAlpha = 0.7;
 
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
+      if (orientation === 'vertical') {
+        // Vertical barriers (pong/air hockey style - left/right goals)
+        // Multiple vertical stripes for visual effect
+        const stripeCount = 5;
+        const stripeWidth = 6;
+        const stripeSpacing = 10;
 
-      // Glow effect
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 12;
-      ctx.globalAlpha = 0.15;
-      ctx.setLineDash([]);
+        for (let i = 0; i < stripeCount; i++) {
+          const stripeX = teamId === 0
+            ? x + i * stripeSpacing              // Left barrier: stripes go right
+            : x - i * stripeSpacing - stripeWidth; // Right barrier: stripes go left
 
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
+          // Main stripe
+          ctx.fillStyle = color;
+          ctx.globalAlpha = 0.7 - i * 0.12;
+          ctx.fillRect(stripeX, 0, stripeWidth, height);
+        }
 
-      // Pulsing inner glow
-      const pulse = Math.sin(this.animationTime * 3) * 0.1 + 0.25;
-      ctx.strokeStyle = lighten(color, 0.3);
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = pulse;
-      ctx.setLineDash([8, 5]);
+        // Pulsing edge glow
+        const pulse = Math.sin(this.animationTime * 3) * 0.15 + 0.4;
+        ctx.fillStyle = lighten(color, 0.3);
+        ctx.globalAlpha = pulse;
+        const glowX = teamId === 0 ? x : x - 3;
+        ctx.fillRect(glowX, 0, 3, height);
 
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
+      } else {
+        // Horizontal barriers (legacy support - top/bottom goals)
+        // Main barrier line (dashed)
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        ctx.setLineDash([15, 10]);
+        ctx.globalAlpha = 0.7;
+
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+
+        // Glow effect
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 12;
+        ctx.globalAlpha = 0.15;
+        ctx.setLineDash([]);
+
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+
+        // Pulsing inner glow
+        const pulse = Math.sin(this.animationTime * 3) * 0.1 + 0.25;
+        ctx.strokeStyle = lighten(color, 0.3);
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = pulse;
+        ctx.setLineDash([8, 5]);
+
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
 
       ctx.restore();
     }
   }
 
   /**
-   * Render Blizzard spheres (drifting orbs)
-   * @param {Array} spheres - Array of sphere objects
+   * Render Blizzard dots (12-orbits flat style)
+   * White = neutral, Team color = owned
+   * @param {Array} dots - Array of dot objects
    * @param {Array} teamColors - Team colors [team0, team1]
    */
-  renderBlizzardSpheres(spheres, teamColors) {
-    if (!spheres || spheres.length === 0) return;
+  renderBlizzardDots(dots, teamColors) {
+    if (!dots || dots.length === 0) return;
 
     const ctx = this.ctx;
-    const neutralColor = '#ccddff';
+    const DOT_RADIUS = 10;
 
-    for (const sphere of spheres) {
-      const { x, y, radius, teamId, teamColor, pulsePhase, returnCount } = sphere;
+    for (const dot of dots) {
+      const { x, y, vx, vy, teamId, teamColor } = dot;
 
-      // Determine color
-      const color = teamId !== null ? (teamColor || teamColors?.[teamId] || neutralColor) : neutralColor;
+      // Color: white if neutral, team color if owned (flat 12-orbits style)
+      const isNeutral = teamId === null;
+      const color = isNeutral ? '#ffffff' : (teamColor || teamColors?.[teamId] || '#ffffff');
 
-      // Pulsing effect (stronger for returned spheres)
-      const pulseStrength = 0.15 + Math.min(returnCount || 0, 5) * 0.02;
-      const pulse = Math.sin(pulsePhase || 0) * pulseStrength + 1.0;
-      const visualRadius = radius * pulse;
+      ctx.save();
 
-      // Speed trail (motion blur)
-      const speed = Math.sqrt(
-        (sphere.velocityX || 0) ** 2 + (sphere.velocityY || 0) ** 2
-      );
-      if (speed > 50) {
-        const trailLen = Math.min(speed * 0.15, 40);
-        const nx = (sphere.velocityX || 0) / speed;
-        const ny = (sphere.velocityY || 0) / speed;
+      // Motion trail for fast-moving dots
+      const speed = Math.sqrt((vx || 0) ** 2 + (vy || 0) ** 2);
+      if (speed > 100) {
+        const trailLen = Math.min(speed * 0.08, 30);
+        const nx = (vx || 0) / speed;
+        const ny = (vy || 0) / speed;
 
         ctx.globalAlpha = 0.3;
         const trailGradient = ctx.createLinearGradient(
-          x - nx * trailLen, y - ny * trailLen,
-          x, y
+          x - nx * trailLen, y - ny * trailLen, x, y
         );
         trailGradient.addColorStop(0, 'transparent');
         trailGradient.addColorStop(1, color);
-
         ctx.strokeStyle = trailGradient;
-        ctx.lineWidth = radius * 1.5;
+        ctx.lineWidth = DOT_RADIUS * 1.5;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(x - nx * trailLen, y - ny * trailLen);
@@ -2461,61 +2545,30 @@ class GhostOrbitsRenderer {
         ctx.stroke();
       }
 
-      // Outer glow
-      ctx.globalAlpha = 0.35;
-      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, visualRadius * 2);
-      glowGradient.addColorStop(0, color);
-      glowGradient.addColorStop(0.5, color);
-      glowGradient.addColorStop(1, 'transparent');
-      ctx.fillStyle = glowGradient;
+      // Main dot (flat style - no gradient for 12-orbits look)
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(x, y, visualRadius * 2, 0, Math.PI * 2);
+      ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
       ctx.fill();
 
-      // Main sphere body
-      ctx.globalAlpha = 0.9;
-      const bodyGradient = ctx.createRadialGradient(
-        x - visualRadius * 0.3, y - visualRadius * 0.3, 0,
-        x, y, visualRadius
-      );
-      bodyGradient.addColorStop(0, lighten(color, 0.4));
-      bodyGradient.addColorStop(0.7, color);
-      bodyGradient.addColorStop(1, teamId !== null ? color : '#8899bb');
-      ctx.fillStyle = bodyGradient;
-      ctx.beginPath();
-      ctx.arc(x, y, visualRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Highlight
-      ctx.globalAlpha = 0.5;
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(x - visualRadius * 0.25, y - visualRadius * 0.25, visualRadius * 0.25, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Team ownership ring (for owned spheres)
-      if (teamId !== null) {
-        ctx.globalAlpha = 0.6;
-        ctx.strokeStyle = lighten(color, 0.3);
+      // Owned dots get subtle inner ring (team identity)
+      if (!isNeutral) {
+        ctx.strokeStyle = darken(color, 0.25);
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(x, y, visualRadius + 3, 0, Math.PI * 2);
+        ctx.arc(x, y, DOT_RADIUS - 2, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      // Return count indicator (speed boost rings)
-      if (returnCount && returnCount > 0) {
-        ctx.globalAlpha = 0.3;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < Math.min(returnCount, 5); i++) {
-          ctx.beginPath();
-          ctx.arc(x, y, visualRadius + 6 + i * 3, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
+      // Small highlight for depth (subtle)
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x - DOT_RADIUS * 0.3, y - DOT_RADIUS * 0.3, DOT_RADIUS * 0.2, 0, Math.PI * 2);
+      ctx.fill();
 
-      ctx.globalAlpha = 1;
+      ctx.restore();
     }
   }
 

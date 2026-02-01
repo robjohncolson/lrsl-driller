@@ -1,16 +1,22 @@
 /**
- * Ghost Orbits - Blizzard Mode AI
+ * Ghost Orbits - Blizzard Mode AI (12-Orbits Style)
  *
- * AI for solo mode Blizzard practice. Priorities:
- * 1. Intercept spheres heading toward own barrier (defense)
- * 2. Return neutral/own spheres toward enemy barrier
- * 3. Flip enemy spheres heading toward own barrier
+ * AI for solo mode Blizzard practice. Pong/air hockey style (horizontal play).
+ * Targets dots instead of spheres, uses smash physics.
+ *
+ * Priorities:
+ * 1. Intercept enemy dots heading toward own goal (defense)
+ * 2. Smash neutral dots toward enemy goal
+ * 3. Redirect own dots heading wrong way
  * 4. Patrol defense zone when no immediate threats
  *
- * The AI focuses on defense first, as letting spheres through scores for opponent.
+ * Key features:
+ * - Dash decision for power hits (1.5x velocity)
+ * - Billiard physics awareness
+ * - Goal-based scoring understanding
  *
  * @module blizzard-ai
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 // ============================================
@@ -48,23 +54,27 @@ function normalize(x, y) {
 // ============================================
 
 const AI_CONFIG = {
-  // Defense zone
-  DEFENSE_Y_MARGIN: 0.3,        // Stay within 30% of own barrier
-  DANGER_ZONE_TIME: 2.0,        // Seconds before sphere reaches barrier = urgent
+  // Defense zone (pong/air hockey style - horizontal play)
+  DEFENSE_X_MARGIN: 0.3,        // Stay within 30% of own barrier
+  DANGER_ZONE_TIME: 1.5,        // Seconds before dot reaches goal = urgent
 
   // Targeting
-  INTERCEPT_RANGE: 300,         // Max distance to chase a sphere
-  PREDICTION_TIME: 0.5,         // Seconds ahead to predict sphere position
+  INTERCEPT_RANGE: 400,         // Max distance to chase a dot
+  PREDICTION_TIME: 0.3,         // Seconds ahead to predict dot position
 
-  // Patrol
-  PATROL_Y_MIN: 0.6,            // Patrol between 60% and 80% of arena (for team 1)
-  PATROL_Y_MAX: 0.8,
+  // Patrol (horizontal defense zones)
+  PATROL_X_MIN: 0.6,            // Patrol between 60% and 80% of arena width (for team 1)
+  PATROL_X_MAX: 0.8,
   PATROL_SPEED: 0.8,
   WANDER_CHANGE_INTERVAL: 2000, // ms between direction changes
 
   // Orbit behavior
   MIN_ORBIT_TIME: 400,          // Minimum time in orbit before releasing
-  ORBIT_ESCAPE_RANGE: 100       // Exit orbit if sphere within this range
+  ORBIT_ESCAPE_RANGE: 100,      // Exit orbit if dot within this range
+
+  // Dash (power hit) behavior
+  DASH_RANGE: 50,               // Distance to dot to consider dashing
+  DASH_CHANCE: 0.6              // 60% chance to power hit when close
 };
 
 // ============================================
@@ -89,26 +99,26 @@ export class BlizzardAI {
     this.teamId = config.teamId || 1;
     this.ghostId = config.ghostId || 'shadow_self';
 
-    // Calculate defense zone based on team
-    // Team 0 defends top (barrier at 5%), Team 1 defends bottom (barrier at 95%)
-    this.ownBarrierY = this.teamId === 0
-      ? this.arenaHeight * 0.05
-      : this.arenaHeight * 0.95;
-
-    this.enemyBarrierY = this.teamId === 0
-      ? this.arenaHeight * 0.95
-      : this.arenaHeight * 0.05;
+    // Calculate defense zone based on team (pong/air hockey style - horizontal play)
+    // Team 0 defends LEFT (goal at x=0), Team 1 defends RIGHT (goal at x=width)
+    this.ownGoalX = this.teamId === 0 ? 0 : this.arenaWidth;
+    this.enemyGoalX = this.teamId === 0 ? this.arenaWidth : 0;
 
     // State
-    this.targetSphere = null;
+    this.targetDot = null;
     this.orbitEntryTime = 0;
 
-    // Patrol state
-    this.wanderDirection = this._randomHorizontalDirection();
+    // Patrol state (vertical movement for horizontal gameplay)
+    this.wanderDirection = this._randomVerticalDirection();
     this.lastWanderChange = 0;
 
     // Decision cache
-    this.lastDecision = { wantsOrbit: false, wantsRelease: false, moveDirection: null };
+    this.lastDecision = {
+      wantsOrbit: false,
+      wantsRelease: false,
+      wantsDash: false,
+      moveDirection: null
+    };
     this.decisionLockUntil = 0;
   }
 
@@ -116,7 +126,7 @@ export class BlizzardAI {
    * Update AI and return decisions
    * @param {number} dt - Delta time in seconds
    * @param {Object} gameState - Current game state
-   * @returns {{wantsOrbit: boolean, wantsRelease: boolean, moveDirection: {x: number, y: number}|null}}
+   * @returns {{wantsOrbit: boolean, wantsRelease: boolean, wantsDash: boolean, moveDirection: {x: number, y: number}|null}}
    */
   update(dt, gameState) {
     const currentTime = gameState.currentTime || Date.now();
@@ -128,21 +138,22 @@ export class BlizzardAI {
 
     const {
       selfX, selfY, selfVx, selfVy, selfIsOrbiting,
-      spheres, barriers, records, arenaWidth, arenaHeight
+      dots, barriers, records, arenaWidth, arenaHeight
     } = gameState;
 
     let decision = {
       wantsOrbit: false,
       wantsRelease: false,
+      wantsDash: false,
       moveDirection: null
     };
 
     if (selfIsOrbiting) {
       // Currently orbiting - decide when to release
-      decision = this._handleOrbiting(selfX, selfY, spheres, records, currentTime);
+      decision = this._handleOrbiting(selfX, selfY, dots, records, currentTime);
     } else {
       // Free flight - prioritize actions
-      decision = this._handleFreeFlight(selfX, selfY, selfVx, selfVy, spheres, records, currentTime);
+      decision = this._handleFreeFlight(selfX, selfY, selfVx, selfVy, dots, records, currentTime);
     }
 
     // Lock decision briefly to prevent oscillation
@@ -156,18 +167,23 @@ export class BlizzardAI {
    * Handle behavior while orbiting
    * @private
    */
-  _handleOrbiting(selfX, selfY, spheres, records, currentTime) {
-    const decision = { wantsOrbit: false, wantsRelease: false, moveDirection: null };
+  _handleOrbiting(selfX, selfY, dots, records, currentTime) {
+    const decision = {
+      wantsOrbit: false,
+      wantsRelease: false,
+      wantsDash: false,
+      moveDirection: null
+    };
 
     // Minimum orbit time
     if (currentTime - this.orbitEntryTime < AI_CONFIG.MIN_ORBIT_TIME) {
       return decision;
     }
 
-    // Check if there's a threatening sphere nearby - exit to intercept
-    const urgentSphere = this._findMostUrgentSphere(selfX, selfY, spheres);
-    if (urgentSphere) {
-      const dist = distance(selfX, selfY, urgentSphere.x, urgentSphere.y);
+    // Check if there's a threatening dot nearby - exit to intercept
+    const urgentDot = this._findMostUrgentDot(selfX, selfY, dots);
+    if (urgentDot) {
+      const dist = distance(selfX, selfY, urgentDot.x, urgentDot.y);
       if (dist < AI_CONFIG.ORBIT_ESCAPE_RANGE) {
         decision.wantsRelease = true;
         return decision;
@@ -186,47 +202,66 @@ export class BlizzardAI {
    * Handle free flight behavior
    * @private
    */
-  _handleFreeFlight(selfX, selfY, selfVx, selfVy, spheres, records, currentTime) {
-    const decision = { wantsOrbit: false, wantsRelease: false, moveDirection: null };
+  _handleFreeFlight(selfX, selfY, selfVx, selfVy, dots, records, currentTime) {
+    const decision = {
+      wantsOrbit: false,
+      wantsRelease: false,
+      wantsDash: false,
+      moveDirection: null
+    };
 
-    // Priority 1: Intercept spheres heading toward own barrier
-    const urgentSphere = this._findMostUrgentSphere(selfX, selfY, spheres);
+    // Priority 1: Intercept enemy dots heading toward own goal
+    const urgentDot = this._findMostUrgentDot(selfX, selfY, dots);
 
-    if (urgentSphere) {
+    if (urgentDot) {
       // Move to intercept
-      const interceptPoint = this._calculateInterceptPoint(selfX, selfY, urgentSphere);
+      const interceptPoint = this._calculateInterceptPoint(selfX, selfY, urgentDot);
       decision.moveDirection = normalize(
         interceptPoint.x - selfX,
         interceptPoint.y - selfY
       );
-      this.targetSphere = urgentSphere.id;
+      this.targetDot = urgentDot.id;
+
+      // Check if should dash for power hit
+      const dist = distance(selfX, selfY, urgentDot.x, urgentDot.y);
+      decision.wantsDash = this._shouldDash(dist, urgentDot);
+
       return decision;
     }
 
-    // Priority 2: Chase neutral spheres to return them
-    const neutralSphere = this._findNearestNeutralSphere(selfX, selfY, spheres);
-    if (neutralSphere) {
+    // Priority 2: Chase neutral dots to claim and smash
+    const neutralDot = this._findNearestNeutralDot(selfX, selfY, dots);
+    if (neutralDot) {
       decision.moveDirection = normalize(
-        neutralSphere.x - selfX,
-        neutralSphere.y - selfY
+        neutralDot.x - selfX,
+        neutralDot.y - selfY
       );
-      this.targetSphere = neutralSphere.id;
+      this.targetDot = neutralDot.id;
+
+      // Dash to power hit neutral dots toward enemy goal
+      const dist = distance(selfX, selfY, neutralDot.x, neutralDot.y);
+      decision.wantsDash = this._shouldDash(dist, neutralDot);
+
       return decision;
     }
 
-    // Priority 3: Chase own spheres to speed them up
-    const ownSphere = this._findNearestOwnSphere(selfX, selfY, spheres);
-    if (ownSphere) {
+    // Priority 3: Chase own dots heading wrong way (toward own goal)
+    const wrongWayDot = this._findWrongWayDot(selfX, selfY, dots);
+    if (wrongWayDot) {
       decision.moveDirection = normalize(
-        ownSphere.x - selfX,
-        ownSphere.y - selfY
+        wrongWayDot.x - selfX,
+        wrongWayDot.y - selfY
       );
+
+      const dist = distance(selfX, selfY, wrongWayDot.x, wrongWayDot.y);
+      decision.wantsDash = this._shouldDash(dist, wrongWayDot);
+
       return decision;
     }
 
     // Priority 4: Patrol defense zone
     decision.moveDirection = this._updatePatrol(selfX, selfY, currentTime);
-    this.targetSphere = null;
+    this.targetDot = null;
 
     // Check if near a record and should enter orbit to wait
     const nearestRecord = this._findNearestRecord(selfX, selfY, records);
@@ -242,36 +277,36 @@ export class BlizzardAI {
   }
 
   /**
-   * Find the most urgent sphere (heading toward own barrier)
+   * Find the most urgent dot (enemy dot heading toward own goal)
    * @private
    */
-  _findMostUrgentSphere(selfX, selfY, spheres) {
+  _findMostUrgentDot(selfX, selfY, dots) {
     let mostUrgent = null;
     let shortestTime = AI_CONFIG.DANGER_ZONE_TIME;
 
-    for (const sphere of spheres) {
-      // Check if sphere is heading toward our barrier
+    for (const dot of dots) {
+      // Check if dot is heading toward our goal (horizontal play)
       const headingTowardUs = this.teamId === 0
-        ? sphere.velocityY < 0  // Team 0: barrier at top, sphere moving up
-        : sphere.velocityY > 0; // Team 1: barrier at bottom, sphere moving down
+        ? dot.vx < 0  // Team 0: goal at left, dot moving left
+        : dot.vx > 0; // Team 1: goal at right, dot moving right
 
       if (!headingTowardUs) continue;
 
-      // Skip own spheres (they score for us if they pass enemy barrier)
-      if (sphere.teamId === this.teamId) continue;
+      // Skip own dots (they score for us if they pass enemy goal)
+      if (dot.teamId === this.teamId) continue;
 
-      // Calculate time to reach our barrier
-      const distanceToBarrier = Math.abs(sphere.y - this.ownBarrierY);
-      const verticalSpeed = Math.abs(sphere.velocityY);
-      const timeToBarrier = verticalSpeed > 0 ? distanceToBarrier / verticalSpeed : Infinity;
+      // Calculate time to reach our goal (horizontal distance)
+      const distanceToGoal = Math.abs(dot.x - this.ownGoalX);
+      const horizontalSpeed = Math.abs(dot.vx);
+      const timeToGoal = horizontalSpeed > 0 ? distanceToGoal / horizontalSpeed : Infinity;
 
       // Check if we can intercept it
-      const distToSphere = distance(selfX, selfY, sphere.x, sphere.y);
-      if (distToSphere > AI_CONFIG.INTERCEPT_RANGE) continue;
+      const distToDot = distance(selfX, selfY, dot.x, dot.y);
+      if (distToDot > AI_CONFIG.INTERCEPT_RANGE) continue;
 
-      if (timeToBarrier < shortestTime) {
-        shortestTime = timeToBarrier;
-        mostUrgent = sphere;
+      if (timeToGoal < shortestTime) {
+        shortestTime = timeToGoal;
+        mostUrgent = dot;
       }
     }
 
@@ -279,13 +314,13 @@ export class BlizzardAI {
   }
 
   /**
-   * Calculate intercept point for a moving sphere
+   * Calculate intercept point for a moving dot
    * @private
    */
-  _calculateInterceptPoint(selfX, selfY, sphere) {
-    // Predict where sphere will be
-    const predictedX = sphere.x + sphere.velocityX * AI_CONFIG.PREDICTION_TIME;
-    const predictedY = sphere.y + sphere.velocityY * AI_CONFIG.PREDICTION_TIME;
+  _calculateInterceptPoint(selfX, selfY, dot) {
+    // Predict where dot will be
+    const predictedX = dot.x + dot.vx * AI_CONFIG.PREDICTION_TIME;
+    const predictedY = dot.y + dot.vy * AI_CONFIG.PREDICTION_TIME;
 
     // Clamp to arena bounds
     return {
@@ -295,20 +330,20 @@ export class BlizzardAI {
   }
 
   /**
-   * Find nearest neutral sphere
+   * Find nearest neutral dot
    * @private
    */
-  _findNearestNeutralSphere(selfX, selfY, spheres) {
+  _findNearestNeutralDot(selfX, selfY, dots) {
     let nearest = null;
     let nearestDist = AI_CONFIG.INTERCEPT_RANGE;
 
-    for (const sphere of spheres) {
-      if (sphere.teamId !== null) continue;
+    for (const dot of dots) {
+      if (dot.teamId !== null) continue;
 
-      const dist = distance(selfX, selfY, sphere.x, sphere.y);
+      const dist = distance(selfX, selfY, dot.x, dot.y);
       if (dist < nearestDist) {
         nearestDist = dist;
-        nearest = sphere;
+        nearest = dot;
       }
     }
 
@@ -316,31 +351,45 @@ export class BlizzardAI {
   }
 
   /**
-   * Find nearest sphere owned by our team
+   * Find own dot heading wrong way (toward own goal)
    * @private
    */
-  _findNearestOwnSphere(selfX, selfY, spheres) {
+  _findWrongWayDot(selfX, selfY, dots) {
     let nearest = null;
     let nearestDist = AI_CONFIG.INTERCEPT_RANGE;
 
-    for (const sphere of spheres) {
-      if (sphere.teamId !== this.teamId) continue;
+    for (const dot of dots) {
+      if (dot.teamId !== this.teamId) continue;
 
-      // Only chase if it's heading the wrong way (toward our barrier)
+      // Check if heading wrong way (toward our goal - horizontal)
       const headingWrongWay = this.teamId === 0
-        ? sphere.velocityY < 0
-        : sphere.velocityY > 0;
+        ? dot.vx < 0  // Team 0: wrong way is moving left (toward own goal)
+        : dot.vx > 0; // Team 1: wrong way is moving right (toward own goal)
 
       if (!headingWrongWay) continue;
 
-      const dist = distance(selfX, selfY, sphere.x, sphere.y);
+      const dist = distance(selfX, selfY, dot.x, dot.y);
       if (dist < nearestDist) {
         nearestDist = dist;
-        nearest = sphere;
+        nearest = dot;
       }
     }
 
     return nearest;
+  }
+
+  /**
+   * Decide if AI should dash for power hit
+   * @private
+   */
+  _shouldDash(distToDot, dot) {
+    if (distToDot > AI_CONFIG.DASH_RANGE) return false;
+
+    // Higher chance to dash for:
+    // - Neutral dots (claim with power)
+    // - Enemy dots heading toward us
+    // - Own dots heading wrong way
+    return Math.random() < AI_CONFIG.DASH_CHANCE;
   }
 
   /**
@@ -361,8 +410,8 @@ export class BlizzardAI {
         nearest = {
           x: rx,
           y: ry,
-          radius: record.radius || 45,
-          captureRadius: record.captureRadius || 65
+          radius: record.radius || 70,
+          captureRadius: record.captureRadius || 70
         };
       }
     }
@@ -371,68 +420,74 @@ export class BlizzardAI {
   }
 
   /**
-   * Update patrol behavior
+   * Update patrol behavior (pong/air hockey style - stay in defensive X zone)
    * @private
    */
   _updatePatrol(selfX, selfY, currentTime) {
-    // Calculate defense zone bounds based on team
-    const minY = this.teamId === 0
-      ? this.arenaHeight * 0.1
-      : this.arenaHeight * AI_CONFIG.PATROL_Y_MIN;
-    const maxY = this.teamId === 0
-      ? this.arenaHeight * (1 - AI_CONFIG.PATROL_Y_MIN)
-      : this.arenaHeight * AI_CONFIG.PATROL_Y_MAX;
+    // Calculate defense zone bounds based on team (horizontal play)
+    // Team 0 stays on LEFT side, Team 1 stays on RIGHT side
+    const minX = this.teamId === 0
+      ? this.arenaWidth * 0.05                    // Team 0: stay near left
+      : this.arenaWidth * AI_CONFIG.PATROL_X_MIN; // Team 1: stay on right side
+    const maxX = this.teamId === 0
+      ? this.arenaWidth * (1 - AI_CONFIG.PATROL_X_MIN)  // Team 0: don't go too far right
+      : this.arenaWidth * 0.95;                         // Team 1: stay near right
 
-    // Stay in defense zone
-    let targetY = selfY;
-    if (selfY < minY) {
-      targetY = minY + 50;
-    } else if (selfY > maxY) {
-      targetY = maxY - 50;
+    // Stay in defensive X zone
+    let targetX = selfX;
+    if (selfX < minX) {
+      targetX = minX + 50;
+    } else if (selfX > maxX) {
+      targetX = maxX - 50;
     }
 
-    // Change horizontal direction periodically
+    // Change vertical direction periodically (patrol up/down like a goalie)
     if (currentTime - this.lastWanderChange > AI_CONFIG.WANDER_CHANGE_INTERVAL) {
-      this.wanderDirection = this._randomHorizontalDirection();
+      this.wanderDirection = this._randomVerticalDirection();
       this.lastWanderChange = currentTime;
     }
 
     // Combine patrol direction with staying in zone
-    let dirX = this.wanderDirection.x;
-    let dirY = 0;
+    let dirX = 0;
+    let dirY = this.wanderDirection.y;
 
-    if (targetY !== selfY) {
-      dirY = targetY > selfY ? 1 : -1;
+    if (targetX !== selfX) {
+      dirX = targetX > selfX ? 1 : -1;
     }
 
-    // Bounce off horizontal walls
-    if (selfX < 100) {
-      dirX = Math.abs(dirX);
-    } else if (selfX > this.arenaWidth - 100) {
-      dirX = -Math.abs(dirX);
+    // Bounce off vertical walls (top/bottom)
+    if (selfY < 100) {
+      dirY = Math.abs(dirY);
+    } else if (selfY > this.arenaHeight - 100) {
+      dirY = -Math.abs(dirY);
     }
 
     return normalize(dirX, dirY);
   }
 
   /**
-   * Generate random horizontal direction
+   * Generate random vertical direction (for goalie-style patrol)
    * @private
    */
-  _randomHorizontalDirection() {
-    const x = Math.random() > 0.5 ? 1 : -1;
-    return { x, y: 0 };
+  _randomVerticalDirection() {
+    const y = Math.random() > 0.5 ? 1 : -1;
+    return { x: 0, y };
   }
 
   /**
    * Reset AI state
    */
   reset() {
-    this.targetSphere = null;
+    this.targetDot = null;
     this.orbitEntryTime = 0;
-    this.wanderDirection = this._randomHorizontalDirection();
+    this.wanderDirection = this._randomVerticalDirection();
     this.lastWanderChange = 0;
-    this.lastDecision = { wantsOrbit: false, wantsRelease: false, moveDirection: null };
+    this.lastDecision = {
+      wantsOrbit: false,
+      wantsRelease: false,
+      wantsDash: false,
+      moveDirection: null
+    };
     this.decisionLockUntil = 0;
   }
 }

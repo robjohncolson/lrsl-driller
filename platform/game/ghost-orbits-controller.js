@@ -1392,29 +1392,36 @@ export class GhostOrbitsController {
         // Check if shadow wants to dash (to claim enemy dots safely)
         if (this.shadowMovementState === 'FREE_FLIGHT' && aiDecision?.wantsDash) {
           const DASH_DURATION = 400;
-          const DASH_SPEED_BOOST = 2.2;
 
           // Apply spin animation to shadow
           shadowGhost.spinStartTime = performance.now();
           shadowGhost.spinDuration = DASH_DURATION;
 
-          // Apply speed burst
-          const speed = Math.sqrt(
-            shadowGhost.velocity.x * shadowGhost.velocity.x +
-            shadowGhost.velocity.y * shadowGhost.velocity.y
-          );
-          if (speed > 0.1) {
-            const boostFactor = DASH_SPEED_BOOST - 1;
-            shadowGhost.velocity.x *= (1 + boostFactor);
-            shadowGhost.velocity.y *= (1 + boostFactor);
-          }
+          if (this.modeType === 'blizzard') {
+            // Blizzard mode: power hit only (no invulnerability, no speed boost)
+            if (this.mode?.setShadowDashing) {
+              this.mode.setShadowDashing(Date.now() + DASH_DURATION);
+            }
+            console.log('[GhostOrbits] Shadow AI power hit mode');
+          } else {
+            // Arena mode: speed burst + invulnerability
+            const DASH_SPEED_BOOST = 2.2;
+            const speed = Math.sqrt(
+              shadowGhost.velocity.x * shadowGhost.velocity.x +
+              shadowGhost.velocity.y * shadowGhost.velocity.y
+            );
+            if (speed > 0.1) {
+              const boostFactor = DASH_SPEED_BOOST - 1;
+              shadowGhost.velocity.x *= (1 + boostFactor);
+              shadowGhost.velocity.y *= (1 + boostFactor);
+            }
 
-          // Set shadow invulnerability
-          if (this.mode?.setShadowInvulnerableUntil) {
-            this.mode.setShadowInvulnerableUntil(Date.now() + DASH_DURATION);
+            // Set shadow invulnerability
+            if (this.mode?.setShadowInvulnerableUntil) {
+              this.mode.setShadowInvulnerableUntil(Date.now() + DASH_DURATION);
+            }
+            console.log('[GhostOrbits] Shadow AI dashing to claim dot');
           }
-
-          console.log('[GhostOrbits] Shadow AI dashing to claim dot');
         }
 
         // Apply AI input to shadow ghost (if in free flight)
@@ -1489,8 +1496,8 @@ export class GhostOrbitsController {
       if (renderData.trails || renderData.spheres || renderData.projectiles) {
         this.renderer?.updateTrailsModeData?.(renderData);
       }
-      // BlizzardMode entities (blizzardSpheres, barriers, teamScores)
-      if (renderData.blizzardSpheres || renderData.barriers) {
+      // BlizzardMode entities (blizzardDots, barriers, teamScores)
+      if (renderData.blizzardDots || renderData.barriers) {
         this.renderer?.updateBlizzardModeData?.(renderData);
       }
 
@@ -2167,6 +2174,22 @@ export class GhostOrbitsController {
             }
 
             console.log('[GhostOrbits] Arena DASH: spin + speed boost + invulnerability for', DASH_DURATION, 'ms');
+            if (this.audio) this.audio.playBounce?.();
+          } else if (this.modeType === 'blizzard' && this.mode) {
+            // Blizzard mode: DASH - power hit mode (NO invulnerability)
+            // 12-orbits style: spin animation + 1.5x smash velocity
+            const DASH_DURATION = 400; // ms
+
+            // Apply spin animation
+            localGhost.spinStartTime = performance.now();
+            localGhost.spinDuration = DASH_DURATION;
+
+            // Set dash state in mode (for power hit detection)
+            if (this.mode.setPlayerDashing) {
+              this.mode.setPlayerDashing(Date.now() + DASH_DURATION);
+            }
+
+            console.log('[GhostOrbits] Blizzard DASH: power hit mode for', DASH_DURATION, 'ms');
             if (this.audio) this.audio.playBounce?.();
           }
         }
