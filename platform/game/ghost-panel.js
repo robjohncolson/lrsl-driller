@@ -576,11 +576,17 @@ export class GhostPanel {
    * @private
    */
   async _discoverServerUrl() {
-    // 1. Check localStorage for manual override
-    const customServer = localStorage.getItem('orbits_server_url');
-    if (customServer) {
-      console.log('[GhostPanel] Using custom server from localStorage');
-      return customServer;
+    // 1. Check localStorage for explicit preference
+    const savedServer = localStorage.getItem('orbits_server_url');
+    if (savedServer) {
+      // Special value 'cloud' means user explicitly chose cloud - skip auto-discovery
+      if (savedServer === 'cloud') {
+        console.log('[GhostPanel] Using Cloud server (explicit preference)');
+        return 'wss://lrsl-trainer-production.up.railway.app';
+      }
+      // Otherwise use the saved URL
+      console.log('[GhostPanel] Using saved server from localStorage:', savedServer);
+      return savedServer;
     }
 
     // 2. Try to discover local LAN server (with short timeout)
@@ -591,13 +597,8 @@ export class GhostPanel {
     }
 
     // 3. Fall back to configured server or Railway
-    if (this.serverUrl) {
-      return this.serverUrl.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://');
-    } else if (window.location.hostname === 'localhost') {
-      return 'ws://localhost:3001';
-    } else {
-      return 'wss://lrsl-trainer-production.up.railway.app';
-    }
+    console.log('[GhostPanel] No local server found, using Railway');
+    return 'wss://lrsl-trainer-production.up.railway.app';
   }
 
   /**
@@ -691,6 +692,9 @@ export class GhostPanel {
           this._setMultiplayerButtonEnabled(true);
         }
       });
+    } else {
+      // Update server URL on existing lobby (in case it changed)
+      this.orbitsLobby.updateServerUrl(serverUrl);
     }
 
     // Show the lobby

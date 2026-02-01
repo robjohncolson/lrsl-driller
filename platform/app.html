@@ -5135,17 +5135,19 @@
     };
 
     window.setCloudServer = function() {
-      localStorage.removeItem('orbits_server_url');
-      console.log('✓ Multiplayer server reset to Railway (cloud)');
-      console.log('  Refresh the page to use the cloud server.');
+      localStorage.setItem('orbits_server_url', 'cloud');
+      console.log('✓ Multiplayer server set to Railway (cloud)');
+      console.log('  This preference is saved. Auto-discovery will be skipped.');
     };
 
     window.getServerUrl = function() {
-      const custom = localStorage.getItem('orbits_server_url');
-      if (custom) {
-        console.log(`Current server: ${custom} (local)`);
+      const saved = localStorage.getItem('orbits_server_url');
+      if (saved === 'cloud') {
+        console.log('Current server: Railway cloud (explicit preference)');
+      } else if (saved) {
+        console.log(`Current server: ${saved} (custom)`);
       } else {
-        console.log('Current server: Railway cloud (default)');
+        console.log('Current server: Auto-detect (local if available, otherwise Railway)');
       }
       return custom || 'wss://lrsl-trainer-production.up.railway.app';
     };

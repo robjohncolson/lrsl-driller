@@ -852,6 +852,11 @@ export class OrbitsLobby {
         color: #ffcc88;
       }
 
+      .orbits-server-name.auto {
+        background: #444466;
+        color: #aaaacc;
+      }
+
       .orbits-server-change {
         background: none;
         border: 1px solid #4a4a6a;
@@ -1021,20 +1026,28 @@ export class OrbitsLobby {
    * Get current server info for display
    */
   _getServerInfo() {
-    const customUrl = localStorage.getItem('orbits_server_url');
-    if (customUrl) {
+    const savedUrl = localStorage.getItem('orbits_server_url');
+
+    // Handle special 'cloud' value (explicit cloud preference)
+    if (savedUrl === 'cloud') {
+      return { type: 'cloud', display: 'Cloud', url: 'wss://lrsl-trainer-production.up.railway.app' };
+    }
+
+    if (savedUrl) {
       // Extract just the host for display
       try {
-        const url = new URL(customUrl.replace('ws://', 'http://').replace('wss://', 'https://'));
+        const url = new URL(savedUrl.replace('ws://', 'http://').replace('wss://', 'https://'));
         if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-          return { type: 'local', display: 'Local (this PC)', url: customUrl };
+          return { type: 'local', display: 'Local (this PC)', url: savedUrl };
         }
-        return { type: 'lan', display: `LAN (${url.hostname})`, url: customUrl };
+        return { type: 'lan', display: `LAN (${url.hostname})`, url: savedUrl };
       } catch {
-        return { type: 'custom', display: 'Custom', url: customUrl };
+        return { type: 'custom', display: 'Custom', url: savedUrl };
       }
     }
-    return { type: 'cloud', display: 'Cloud', url: null };
+
+    // No preference - will auto-detect
+    return { type: 'auto', display: 'Auto', url: null };
   }
 
   _renderCreating() {
@@ -1288,7 +1301,8 @@ export class OrbitsLobby {
 
     switch (type) {
       case 'cloud':
-        localStorage.removeItem('orbits_server_url');
+        // Store 'cloud' to indicate explicit cloud preference (skips auto-discovery)
+        localStorage.setItem('orbits_server_url', 'cloud');
         newUrl = 'wss://lrsl-trainer-production.up.railway.app';
         break;
       case 'local':
@@ -1593,6 +1607,31 @@ export class OrbitsLobby {
    */
   getNetworkController() {
     return this.network;
+  }
+
+  /**
+   * Update the server URL (called when discovery finds a different server)
+   * @param {string} newUrl - New WebSocket server URL
+   */
+  updateServerUrl(newUrl) {
+    if (newUrl === this.serverUrl) return;
+
+    console.log('[OrbitsLobby] Updating server URL:', newUrl);
+    this.serverUrl = newUrl;
+
+    // Update network controller
+    if (this.network) {
+      // Disconnect if connected to old server
+      if (this.network.ws) {
+        this.network.disconnect();
+      }
+      this.network.serverUrl = newUrl;
+    }
+
+    // Re-render menu to show updated server info
+    if (this.state === LobbyState.MENU) {
+      this._updateContent();
+    }
   }
 
   /**
