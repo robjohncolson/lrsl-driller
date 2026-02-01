@@ -669,11 +669,12 @@ class GhostOrbitsRenderer {
   }
 
   /**
-   * Check if using 12-orbits style (Trails mode)
+   * Check if using 12-orbits flat style (now default for all modes)
    * @returns {boolean}
    */
   isTrailsStyle() {
-    return this.modeType === 'trails';
+    // 12-orbits flat aesthetic is now universal across all modes
+    return true;
   }
 
   /**
