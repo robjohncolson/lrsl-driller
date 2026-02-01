@@ -282,12 +282,13 @@ export class GhostOrbitsController {
         this.renderer = new GhostOrbitsRenderer({
           container: canvasContainer,
           ghostProperties: this.ghostProperties,
+          modeType: this.modeType, // Pass mode type for visual style
           onWallBounce: (ghost) => {
             if (this.audio) this.audio.playBounce();
           }
         });
         await this.renderer.init();
-        console.log('[GhostOrbits] Renderer created');
+        console.log('[GhostOrbits] Renderer created, modeType:', this.modeType);
 
         // Setup physics callback so gravity wells work each frame
         this.renderer.setPhysicsCallback((deltaTime, currentTime) => {
@@ -421,12 +422,16 @@ export class GhostOrbitsController {
 
     // Add local player's ghost to the renderer
     if (this.renderer) {
-      const arenaSize = this.renderer.arena?.size || 800;
-      // Player spawns bottom-left area
-      const playerSpawnX = arenaSize * 0.2;
-      const playerSpawnY = arenaSize * 0.8;
+      // Get map config for correct arena dimensions (before spawning ghosts)
+      const mapConfig = getMapForMode(this.modeType);
+      const arenaWidth = mapConfig.arenaWidth;
+      const arenaHeight = mapConfig.arenaHeight;
 
-      console.log('[GhostOrbits] Adding local ghost at', playerSpawnX, playerSpawnY);
+      // Player spawns bottom-left area (use width/height for correct bounds)
+      const playerSpawnX = arenaWidth * 0.2;
+      const playerSpawnY = arenaHeight * 0.8;
+
+      console.log('[GhostOrbits] Adding local ghost at', playerSpawnX, playerSpawnY, `(arena: ${arenaWidth}x${arenaHeight})`);
       console.log('[GhostOrbits] Ghost properties:', this.ghostProperties);
       this.renderer.addGhost({
         id: this.username || 'player',
@@ -445,10 +450,10 @@ export class GhostOrbitsController {
       }, true); // true = this is the local player's ghost
 
       // Spawn Shadow Self (AI opponent) in solo mode
-      this._spawnShadow(arenaSize);
+      this._spawnShadow(arenaWidth, arenaHeight);
 
       // Initialize ArenaMode (manages dots, shadow AI, lives, win conditions)
-      await this._initArenaMode(arenaSize);
+      await this._initArenaMode(Math.max(arenaWidth, arenaHeight));
 
       // Verify ghosts were created
       console.log('[GhostOrbits] Ghost creation verification:', {
@@ -674,18 +679,19 @@ export class GhostOrbitsController {
 
   /**
    * Spawn Shadow Self AI opponent
-   * @param {number} arenaSize - Arena size in pixels
+   * @param {number} arenaWidth - Arena width in pixels
+   * @param {number} arenaHeight - Arena height in pixels
    * @private
    */
-  _spawnShadow(arenaSize) {
+  _spawnShadow(arenaWidth, arenaHeight) {
     // Load shadow generation from localStorage
     this._loadShadowGeneration();
 
     // Shadow spawns at opposite side from player, but NOT near neutral well corners
     // Neutral wells are at 15% and 85% margins, so spawn at ~70% to avoid them
     // Also place slightly lower (35%) to give room to maneuver
-    const shadowSpawnX = arenaSize * 0.70;
-    const shadowSpawnY = arenaSize * 0.35;
+    const shadowSpawnX = arenaWidth * 0.70;
+    const shadowSpawnY = arenaHeight * 0.35;
 
     // Get complementary color for shadow
     const playerColor = this.ghostProperties?.color || '#4488ff';
@@ -756,9 +762,13 @@ export class GhostOrbitsController {
       this.mode = new BlizzardMode(modeConfig);
       console.log('[GhostOrbits] Creating BlizzardMode');
 
-      // Resize canvas for wide arena
+      // Resize canvas and physics engine for wide arena
       if (this.renderer && arenaWidth !== arenaHeight) {
         this.renderer.resizeCanvas(arenaWidth, arenaHeight);
+        // Also update physics engine bounds
+        if (this.physicsEngine) {
+          this.physicsEngine.arenaSize = { width: arenaWidth, height: arenaHeight };
+        }
       }
     } else if (this.modeType === 'trails') {
       this.mode = new TrailsMode(modeConfig);
@@ -776,12 +786,21 @@ export class GhostOrbitsController {
     }
 
     // Sync mode's shadowAI with controller's reference (for compatibility)
-    this.shadowAI = this.mode.getShadowAI();
+    if (this.mode.getShadowAI) {
+      this.shadowAI = this.mode.getShadowAI();
+    }
     if (this.mode.getPatternRecorder) {
       this.patternRecorder = this.mode.getPatternRecorder();
     }
 
     console.log(`[GhostOrbits] ${this.modeType} mode initialized`);
+
+    // Sync records/wells to renderer after mode initialization
+    // BlizzardMode adds its own records in init(), so we must sync after
+    if (this.renderer) {
+      this.renderer.updateWells(this.physicsEngine.getWells());
+      console.log(`[GhostOrbits] Synced ${this.physicsEngine.getWells().length} records to renderer`);
+    }
   }
 
   /**
@@ -1223,6 +1242,22 @@ export class GhostOrbitsController {
 
     const localGhost = this.renderer?.getLocalGhost();
     if (!localGhost) return;
+
+    // Update spin animation progress (for fling spin effect)
+    if (localGhost.spinStartTime && localGhost.spinDuration) {
+      const elapsed = currentTime - localGhost.spinStartTime;
+      localGhost.spinProgress = Math.min(1, elapsed / localGhost.spinDuration);
+      // Debug: log spin progress
+      if (localGhost.spinProgress > 0 && localGhost.spinProgress < 1) {
+        console.log('[GhostOrbits] Spin progress:', localGhost.spinProgress.toFixed(2));
+      }
+      if (localGhost.spinProgress >= 1) {
+        console.log('[GhostOrbits] Spin animation complete');
+        localGhost.spinStartTime = undefined;
+        localGhost.spinDuration = undefined;
+        localGhost.spinProgress = 0;
+      }
+    }
 
     // Handle dodge timing
     if (this.isDodging && currentTime >= this.dodgeEndTime) {
@@ -1952,6 +1987,8 @@ export class GhostOrbitsController {
       event.preventDefault();
       if (event.repeat) return; // Don't repeat on held key
 
+      console.log('[GhostOrbits] Spacebar pressed, state:', this.state, 'movementState:', this.ghostMovementState);
+
       const localGhost = this.renderer?.getLocalGhost();
       if (!localGhost) return;
 
@@ -2008,6 +2045,29 @@ export class GhostOrbitsController {
           this.ghostMovementState = 'ORBITING';
           this.renderer?.updateGhostOrbitState?.(this.username, true);
           if (this.audio) this.audio.playOrbitCapture?.();
+        } else {
+          // 12-orbits style: Not near a record = FLING a ball from tail
+          // Only in Trails mode
+          if (this.modeType === 'trails' && this.mode && this.mode.applyInput) {
+            const result = this.mode.applyInput('fling', {}, localGhost);
+            if (result && result.flung) {
+              console.log('[GhostOrbits] Flung ball via Space key, speed:', result.ballSpeed);
+
+              // Apply surge velocity to ghost (12-orbits style forward boost)
+              if (result.surge) {
+                localGhost.velocity.x += result.surge.vx;
+                localGhost.velocity.y += result.surge.vy;
+                console.log('[GhostOrbits] Applied fling surge:', result.surge.vx.toFixed(1), result.surge.vy.toFixed(1));
+              }
+
+              // 12-orbits style: Ghost spins 3 times when flinging
+              // Spin duration matches a brief moment (500ms)
+              localGhost.spinStartTime = performance.now();
+              localGhost.spinDuration = 500; // ms for 3 full rotations
+
+              if (this.audio) this.audio.playBounce?.();
+            }
+          }
         }
         // If not near a record, spacebar still registered for flip mechanic
       }
@@ -2416,31 +2476,32 @@ export class GhostOrbitsController {
    */
   _handleMatchEnd(winner, condition) {
     if (this.matchResult !== null) {
+      console.log(`[GhostOrbits] _handleMatchEnd called but already ended: ${this.matchResult}`);
       return; // Already ended
     }
 
-    console.log(`[GhostOrbits] Match ended: ${winner} via ${condition}`);
+    console.log(`[GhostOrbits] Match ended: ${winner} via ${condition}`, new Error().stack);
 
     this.matchResult = winner;
     this.winCondition = condition;
 
     // Sync result to mode (if mode exists)
-    if (this.mode) {
+    if (this.mode?.setMatchResult) {
       this.mode.setMatchResult(winner, condition);
     }
 
-    // Get pattern recorder from mode (single source of truth)
-    const patternRecorder = this.mode?.getPatternRecorder() || this.patternRecorder;
+    // Get pattern recorder from mode (single source of truth) - ArenaMode only
+    const patternRecorder = this.mode?.getPatternRecorder?.() || this.patternRecorder;
 
     // Handle Shadow Self progression system
     if (winner === 'player_win') {
       // Player victory - apply stat upgrade and level up shadow
       // Use mode's stat analysis when available (mode tracks stats during match)
-      const weakestStat = this.mode?.analyzeWeakestStat() || this._analyzeMatchStats();
+      const weakestStat = this.mode?.analyzeWeakestStat?.() || this._analyzeMatchStats();
       this._applyStatUpgrade(weakestStat);
 
       // Increment shadow generation (via mode if available)
-      if (this.mode) {
+      if (this.mode?.incrementShadowGeneration) {
         this.shadowGeneration = this.mode.incrementShadowGeneration();
       } else {
         this.shadowGeneration++;
@@ -2555,8 +2616,10 @@ export class GhostOrbitsController {
       this.matchTimeRemaining = scoreboard.timeRemaining;
       this.playerInvulnerableUntil = 0;
       this.shadowInvulnerableUntil = 0;
-      // Sync dotManager reference
-      this.dotManager = this.mode.getDotManager();
+      // Sync dotManager reference (ArenaMode only)
+      if (this.mode.getDotManager) {
+        this.dotManager = this.mode.getDotManager();
+      }
     } else {
       // Legacy: Use controller constants when no mode
       this.matchTimeRemaining = WIN_CONDITIONS.ROUND_DURATION;
@@ -2593,8 +2656,8 @@ export class GhostOrbitsController {
       this._hasShownHelp = true;
       // Give player extended invulnerability while reading help (30 seconds max)
       this.playerInvulnerableUntil = Date.now() + 30000;
-      // Also set in mode if it exists
-      if (this.mode) {
+      // Also set in mode if it exists (ArenaMode only)
+      if (this.mode?.setPlayerInvulnerableUntil) {
         this.mode.setPlayerInvulnerableUntil(this.playerInvulnerableUntil);
       }
       // Show help immediately, remove invulnerability when dismissed
@@ -2602,7 +2665,7 @@ export class GhostOrbitsController {
         // Help dismissed - reset invulnerability to normal respawn duration
         const respawnDuration = (this.ghostProperties?.respawnSpeed || 2) * 1000;
         this.playerInvulnerableUntil = Date.now() + respawnDuration;
-        if (this.mode) {
+        if (this.mode?.setPlayerInvulnerableUntil) {
           this.mode.setPlayerInvulnerableUntil(this.playerInvulnerableUntil);
         }
       });
@@ -2853,7 +2916,7 @@ export class GhostOrbitsController {
    */
   _getWeakestStatName() {
     // Use mode's stat analysis when available (mode tracks stats during match)
-    return this.mode?.analyzeWeakestStat() || this._analyzeMatchStats();
+    return this.mode?.analyzeWeakestStat?.() || this._analyzeMatchStats();
   }
 
   /**
@@ -2920,16 +2983,24 @@ export class GhostOrbitsController {
 
     // PHASE 1: Clear all game state BEFORE re-initializing
     // Reset physics engine - clear records first
+    // Use map config to get correct arena dimensions for the current mode
+    const mapConfig = getMapForMode(this.modeType);
+    const arenaWidth = mapConfig.arenaWidth;
+    const arenaHeight = mapConfig.arenaHeight;
+
     if (this.physicsEngine) {
       this.physicsEngine.clearRecords();
       this.physicsEngine.orbitStates.clear();
-      this.physicsEngine.arenaSize = { width: arenaSize, height: arenaSize };
+      this.physicsEngine.arenaSize = { width: arenaWidth, height: arenaHeight };
     }
 
     // Reset dots and trails (mode handles dots if present)
     if (this.mode) {
       // Mode will reset its dots in startMatchTimer -> mode.reset()
-      this.dotManager = this.mode.getDotManager();
+      // Sync dotManager reference (ArenaMode only)
+      if (this.mode.getDotManager) {
+        this.dotManager = this.mode.getDotManager();
+      }
     } else if (this.dotManager) {
       this.dotManager.reset();
     }
@@ -2950,9 +3021,9 @@ export class GhostOrbitsController {
       // Reset or recreate player ghost
       let localGhost = this.renderer.getLocalGhost();
       if (localGhost) {
-        // Ghost exists - just reset position
-        localGhost.position.x = arenaSize * 0.2;
-        localGhost.position.y = arenaSize * 0.8;
+        // Ghost exists - just reset position (use width/height for correct bounds)
+        localGhost.position.x = arenaWidth * 0.2;
+        localGhost.position.y = arenaHeight * 0.8;
         localGhost.velocity.x = 3;
         localGhost.velocity.y = -3;
         localGhost.energy = 1.0;
@@ -2962,8 +3033,8 @@ export class GhostOrbitsController {
         console.log('[GhostOrbits] Rematch: Recreating local ghost');
         this.renderer.addGhost({
           id: this.username || 'player',
-          x: arenaSize * 0.2,
-          y: arenaSize * 0.8,
+          x: arenaWidth * 0.2,
+          y: arenaHeight * 0.8,
           color: this.ghostProperties?.color || '#4488ff',
           tier: this.ghostProperties?.tier || 0,
           pattern: this.ghostProperties?.pattern || null,
@@ -2980,9 +3051,9 @@ export class GhostOrbitsController {
       // Reset or recreate shadow ghost
       let shadowGhost = this.renderer.ghosts?.get(this.shadowGhostId);
       if (shadowGhost) {
-        // Ghost exists - just reset position
-        shadowGhost.position.x = arenaSize * 0.7;
-        shadowGhost.position.y = arenaSize * 0.35;
+        // Ghost exists - just reset position (use width/height for correct bounds)
+        shadowGhost.position.x = arenaWidth * 0.7;
+        shadowGhost.position.y = arenaHeight * 0.35;
         shadowGhost.velocity.x = -3;
         shadowGhost.velocity.y = 3;
         shadowGhost.energy = 1.0;
@@ -2994,8 +3065,8 @@ export class GhostOrbitsController {
         const shadowColor = this._getComplementaryColor(playerColor);
         this.renderer.addGhost({
           id: this.shadowGhostId,
-          x: arenaSize * 0.7,
-          y: arenaSize * 0.35,
+          x: arenaWidth * 0.7,
+          y: arenaHeight * 0.35,
           color: shadowColor,
           tier: this.ghostProperties?.tier || 0,
           pattern: this.ghostProperties?.pattern || null,
@@ -3033,9 +3104,13 @@ export class GhostOrbitsController {
 
     // PHASE 5: Reset AI and recording systems (mode handles these if present)
     if (this.mode) {
-      // Mode will reset patternRecorder and shadowAI in mode.reset()
-      this.patternRecorder = this.mode.getPatternRecorder();
-      this.shadowAI = this.mode.getShadowAI();
+      // Mode will reset patternRecorder and shadowAI in mode.reset() - ArenaMode only
+      if (this.mode.getPatternRecorder) {
+        this.patternRecorder = this.mode.getPatternRecorder();
+      }
+      if (this.mode.getShadowAI) {
+        this.shadowAI = this.mode.getShadowAI();
+      }
     } else {
       if (this.patternRecorder) {
         this.patternRecorder.clear();

@@ -67,7 +67,8 @@ describe('TrailsMode', () => {
       expect(mode.shadowLives).toBe(TRAILS_CONFIG.STARTING_LIVES);
     });
 
-    it('initializes trail lengths to zero', () => {
+    it('initializes trail lengths to 0 (12-orbits style)', () => {
+      // 12-orbits style: Start with no tail
       expect(mode.trailLengths.get('player')).toBe(0);
       expect(mode.trailLengths.get('shadow_self')).toBe(0);
     });
@@ -75,59 +76,60 @@ describe('TrailsMode', () => {
     it('initializes with correct round duration', () => {
       expect(mode.matchTimeRemaining).toBe(TRAILS_CONFIG.ROUND_DURATION_MS);
     });
+
+    it('initializes flung balls array', () => {
+      expect(mode.flungBalls).toBeDefined();
+      expect(Array.isArray(mode.flungBalls)).toBe(true);
+      expect(mode.flungBalls.length).toBe(0);
+    });
   });
 
-  describe('Trail System', () => {
-    it('does not record positions when trail length is zero', () => {
-      mode.trailLengths.set('player', 0);
-      const currentTime = Date.now();
-
-      // Manually call the private record method behavior
-      mode.lastTrailTime.set('player', 0);
-      mode._recordTrailSegment('player', mockGhost, currentTime);
-
-      const segments = mode.trailBuffers.get('player');
-      expect(segments.length).toBe(0);
-    });
-
-    it('records positions when trail length > 0 and interval passed', () => {
+  describe('Trail System (12-orbits style)', () => {
+    it('creates segments to match trail length', () => {
+      // 12-orbits style: trail segments are created to match trailLength
       mode.trailLengths.set('player', 5);
-      mode.lastTrailTime.set('player', 0);
-      const currentTime = Date.now() + TRAILS_CONFIG.TRAIL_RECORD_INTERVAL + 10;
 
-      mode._recordTrailSegment('player', mockGhost, currentTime);
+      mode._updateTrailChain('player', mockGhost, 0.016);
 
       const segments = mode.trailBuffers.get('player');
-      expect(segments.length).toBe(1);
+      expect(segments.length).toBe(5);
       expect(segments[0].ownerId).toBe('player');
-      expect(segments[0].x).toBe(mockGhost.position.x);
-      expect(segments[0].y).toBe(mockGhost.position.y);
+      // First segment starts at ghost position
+      expect(segments[4].x).toBe(mockGhost.position.x);
+      expect(segments[4].y).toBe(mockGhost.position.y);
     });
 
-    it('decrements trail length when dropping segment', () => {
+    it('does not decrement trail length when updating chain', () => {
+      // 12-orbits style: trailLength is max buffer size, not capacity that depletes
       mode.trailLengths.set('player', 5);
-      mode.lastTrailTime.set('player', 0);
-      const currentTime = Date.now() + TRAILS_CONFIG.TRAIL_RECORD_INTERVAL + 10;
 
-      mode._recordTrailSegment('player', mockGhost, currentTime);
+      mode._updateTrailChain('player', mockGhost, 0.016);
 
-      expect(mode.trailLengths.get('player')).toBe(4);
+      expect(mode.trailLengths.get('player')).toBe(5); // Stays the same
     });
 
-    it('stops dropping segments when trail length reaches zero', () => {
-      mode.trailLengths.set('player', 1);
-      mode.lastTrailTime.set('player', 0);
-      let currentTime = Date.now() + TRAILS_CONFIG.TRAIL_RECORD_INTERVAL + 10;
+    it('trims buffer to max length (following tail effect)', () => {
+      mode.trailLengths.set('player', 3); // Max 3 segments
 
-      // First segment - should work
-      mode._recordTrailSegment('player', mockGhost, currentTime);
-      expect(mode.trailBuffers.get('player').length).toBe(1);
-      expect(mode.trailLengths.get('player')).toBe(0);
+      // Add 5 segments manually
+      for (let i = 0; i < 5; i++) {
+        mode.trailBuffers.get('player').push({
+          id: `seg_${i}`,
+          x: 100 + i * 10,
+          y: 100,
+          vx: 0,
+          vy: 0,
+          ownerId: 'player',
+          color: '#4488ff',
+          radius: TRAILS_CONFIG.TRAIL_SEGMENT_RADIUS,
+          createdAt: performance.now()
+        });
+      }
 
-      // Second segment - should not drop (length is 0)
-      currentTime += TRAILS_CONFIG.TRAIL_RECORD_INTERVAL + 10;
-      mode._recordTrailSegment('player', mockGhost, currentTime);
-      expect(mode.trailBuffers.get('player').length).toBe(1); // Still 1
+      // updateTrailChain should trim to 3
+      mode._updateTrailChain('player', mockGhost, 0.016);
+
+      expect(mode.trailBuffers.get('player').length).toBe(3);
     });
 
     it('removes segments older than TRAIL_LIFETIME_MS', () => {
@@ -150,7 +152,7 @@ describe('TrailsMode', () => {
       expect(segments.length).toBe(0);
     });
 
-    it('grows trail on sphere collection', () => {
+    it('grows trail by 1 ball per sphere collection (12-orbits style)', () => {
       mode.trailLengths.set('player', 0);
 
       // Position ghost on top of a sphere
@@ -160,67 +162,59 @@ describe('TrailsMode', () => {
 
       mode._checkSphereCollection('player', mockGhost, Date.now());
 
-      expect(mode.trailLengths.get('player')).toBe(TRAILS_CONFIG.SEGMENTS_PER_SPHERE);
+      // 12-orbits style: 1 ball per sphere
+      expect(mode.trailLengths.get('player')).toBe(1);
       expect(sphere.state).toBe('RESPAWNING');
     });
   });
 
   describe('Collision Detection', () => {
-    it('detects ghost hitting own trail -> DEATH', () => {
-      // Give ghost trail length
-      mode.trailLengths.set('player', 5);
+    it('no self-collision damage (12-orbits style)', () => {
+      // 12-orbits style: NO self-collision damage
+      // Even if ghost crosses own trail line, no collision
+      mode.trailBuffers.set('player', [
+        { id: 'seg1', x: 350, y: 400, ownerId: 'player', color: '#4488ff', radius: 12 },
+        { id: 'seg2', x: 450, y: 400, ownerId: 'player', color: '#4488ff', radius: 12 }
+      ]);
 
-      // Create an old segment at ghost position (past grace period)
-      const oldTime = Date.now() - 1000;
-      mode.trailBuffers.set('player', [{
-        id: 'seg1',
-        x: mockGhost.position.x,
-        y: mockGhost.position.y,
-        ownerId: 'player',
-        color: '#4488ff',
-        createdAt: oldTime,
-        radius: TRAILS_CONFIG.TRAIL_SEGMENT_RADIUS
-      }]);
+      // Ghost moves across own trail line
+      const prevPos = { x: 400, y: 380 };
+      mockGhost.position = { x: 400, y: 420 };
 
-      const collision = mode._checkTrailCollision('player', mockGhost);
-      expect(collision).not.toBeNull();
-      expect(collision.ownerId).toBe('player');
+      // 12-orbits style: own trail = no collision
+      const collision = mode._checkTrailCollision('player', mockGhost, prevPos);
+      expect(collision).toBeNull();
     });
 
-    it('detects ghost hitting enemy trail -> DEATH', () => {
-      // Create shadow trail at player position
-      mode.trailBuffers.set('shadow_self', [{
-        id: 'seg1',
-        x: mockGhost.position.x,
-        y: mockGhost.position.y,
-        ownerId: 'shadow_self',
-        color: '#ff4444',
-        createdAt: Date.now(),
-        radius: TRAILS_CONFIG.TRAIL_SEGMENT_RADIUS
-      }]);
+    it('detects ghost crossing enemy trail line segment -> SEVER', () => {
+      // 12-orbits sever mechanic: ghost must CROSS the line between two dots
+      // Create enemy trail with two segments forming a horizontal line
+      mode.trailBuffers.set('shadow_self', [
+        { id: 'seg1', x: 350, y: 400, ownerId: 'shadow_self', color: '#ff4444', radius: 12 },
+        { id: 'seg2', x: 450, y: 400, ownerId: 'shadow_self', color: '#ff4444', radius: 12 }
+      ]);
 
-      const collision = mode._checkTrailCollision('player', mockGhost);
+      // Ghost moves from above the line to below it (crossing the segment)
+      const prevPos = { x: 400, y: 380 }; // Above the line
+      mockGhost.position = { x: 400, y: 420 }; // Below the line
+
+      const collision = mode._checkTrailCollision('player', mockGhost, prevPos);
       expect(collision).not.toBeNull();
       expect(collision.ownerId).toBe('shadow_self');
     });
 
-    it('detects ghost hitting projectile -> DEATH', () => {
-      // Create enemy projectile at player position
-      mode.projectiles = [{
-        id: 'proj1',
-        x: mockGhost.position.x,
-        y: mockGhost.position.y,
-        vx: 100,
-        vy: 0,
-        ownerId: 'shadow_self',
-        color: '#ff4444',
-        radius: TRAILS_CONFIG.PROJECTILE_RADIUS,
-        createdAt: Date.now()
-      }];
+    it('no collision if ghost does not cross trail line', () => {
+      // Ghost moves parallel to trail, never crossing
+      mode.trailBuffers.set('shadow_self', [
+        { id: 'seg1', x: 350, y: 400, ownerId: 'shadow_self', color: '#ff4444', radius: 12 },
+        { id: 'seg2', x: 450, y: 400, ownerId: 'shadow_self', color: '#ff4444', radius: 12 }
+      ]);
 
-      const collision = mode._checkProjectileCollision('player', mockGhost);
-      expect(collision).not.toBeNull();
-      expect(collision.ownerId).toBe('shadow_self');
+      const prevPos = { x: 380, y: 380 }; // Above the line
+      mockGhost.position = { x: 420, y: 380 }; // Still above the line
+
+      const collision = mode._checkTrailCollision('player', mockGhost, prevPos);
+      expect(collision).toBeNull();
     });
 
     it('ignores ghost-ghost collision', () => {
@@ -229,8 +223,8 @@ describe('TrailsMode', () => {
       mockShadowGhost.position.y = mockGhost.position.y;
 
       // There's no ghost-ghost collision check - ghosts pass through each other
-      // This test documents that behavior
-      const trailCollision = mode._checkTrailCollision('player', mockGhost);
+      const prevPos = { x: mockGhost.position.x - 10, y: mockGhost.position.y };
+      const trailCollision = mode._checkTrailCollision('player', mockGhost, prevPos);
       expect(trailCollision).toBeNull(); // No trail = no collision
     });
 
@@ -259,32 +253,12 @@ describe('TrailsMode', () => {
     });
   });
 
-  describe('Shoot Mechanic', () => {
-    it('creates projectile on orbit exit if has trail', () => {
+  describe('Orbit Exit (12-orbits style)', () => {
+    it('does NOT fire projectile on orbit exit (12-orbits style)', () => {
+      // In 12-orbits style, orbit_exit does NOT fire balls
+      // Balls are only flung via explicit spacebar during FREE_FLIGHT
       mode.trailLengths.set('player', 5);
       mockGhost.position = { x: 300, y: 300 };
-
-      const result = mode.applyInput('orbit_exit', {
-        tangentVelocity: { x: 100, y: 0 }
-      }, mockGhost);
-
-      expect(result.fired).toBe(true);
-      expect(mode.projectiles.length).toBe(1);
-      expect(mode.projectiles[0].ownerId).toBe('player');
-    });
-
-    it('decrements trail length on shot', () => {
-      mode.trailLengths.set('player', 5);
-
-      mode.applyInput('orbit_exit', {
-        tangentVelocity: { x: 100, y: 0 }
-      }, mockGhost);
-
-      expect(mode.trailLengths.get('player')).toBe(4);
-    });
-
-    it('no projectile if trail empty', () => {
-      mode.trailLengths.set('player', 0);
 
       const result = mode.applyInput('orbit_exit', {
         tangentVelocity: { x: 100, y: 0 }
@@ -294,15 +268,33 @@ describe('TrailsMode', () => {
       expect(mode.projectiles.length).toBe(0);
     });
 
-    it('projectile velocity = PROJECTILE_SPEED_MULT x ghost tangent', () => {
+    it('does NOT decrement trail length on orbit exit', () => {
       mode.trailLengths.set('player', 5);
-      const tangentVel = { x: 100, y: 50 };
 
-      mode.applyInput('orbit_exit', { tangentVelocity: tangentVel }, mockGhost);
+      mode.applyInput('orbit_exit', {
+        tangentVelocity: { x: 100, y: 0 }
+      }, mockGhost);
 
-      const proj = mode.projectiles[0];
-      expect(proj.vx).toBe(tangentVel.x * TRAILS_CONFIG.PROJECTILE_SPEED_MULT);
-      expect(proj.vy).toBe(tangentVel.y * TRAILS_CONFIG.PROJECTILE_SPEED_MULT);
+      expect(mode.trailLengths.get('player')).toBe(5); // Unchanged
+    });
+
+    it('projectile collision detection still works (legacy)', () => {
+      // Projectile collision detection kept for any externally-created projectiles
+      mode.projectiles = [{
+        id: 'proj1',
+        x: mockGhost.position.x,
+        y: mockGhost.position.y,
+        vx: 100,
+        vy: 0,
+        ownerId: 'shadow_self',
+        color: '#ff4444',
+        radius: TRAILS_CONFIG.PROJECTILE_RADIUS,
+        createdAt: Date.now()
+      }];
+
+      const collision = mode._checkProjectileCollision('player', mockGhost);
+      expect(collision).not.toBeNull();
+      expect(collision.ownerId).toBe('shadow_self');
     });
 
     it('projectile despawns on wall collision', () => {
@@ -339,6 +331,150 @@ describe('TrailsMode', () => {
       mode._updateProjectiles(0.016, Date.now());
 
       expect(mode.projectiles.length).toBe(0);
+    });
+  });
+
+  describe('Ball Fling System (12-orbits style)', () => {
+    it('flings ball from tail when has trail length', () => {
+      mode.trailLengths.set('player', 3);
+      mockGhost.velocity = { x: 100, y: 0 };
+
+      const result = mode.flingBall('player', mockGhost);
+
+      expect(result).not.toBeNull();
+      expect(result.ownerId).toBe('player');
+      expect(result.state).toBe('FLYING');
+      expect(mode.flungBalls.length).toBe(1);
+    });
+
+    it('decrements trail length when flinging', () => {
+      mode.trailLengths.set('player', 5);
+      mockGhost.velocity = { x: 100, y: 0 };
+
+      mode.flingBall('player', mockGhost);
+
+      expect(mode.trailLengths.get('player')).toBe(4);
+    });
+
+    it('cannot fling when trail is empty', () => {
+      mode.trailLengths.set('player', 0);
+      mockGhost.velocity = { x: 100, y: 0 };
+
+      const result = mode.flingBall('player', mockGhost);
+
+      expect(result).toBeNull();
+      expect(mode.flungBalls.length).toBe(0);
+    });
+
+    it('flung ball travels in movement direction', () => {
+      mode.trailLengths.set('player', 3);
+      mockGhost.velocity = { x: 100, y: 50 };
+
+      const ball = mode.flingBall('player', mockGhost);
+
+      // Ball velocity should be in same direction as ghost
+      expect(ball.vx).toBeGreaterThan(0);
+      expect(ball.vy).toBeGreaterThan(0);
+    });
+
+    it('flung ball has constant velocity (no decay - 12-orbits style)', () => {
+      mode.trailLengths.set('player', 3);
+      mockGhost.velocity = { x: 100, y: 0 };
+      const ball = mode.flingBall('player', mockGhost);
+      const initialVx = ball.vx;
+
+      mode._updateFlungBalls(0.1, performance.now(), mockGhost, mockShadowGhost);
+
+      // 12-orbits style: constant velocity, no decay
+      expect(ball.vx).toBe(initialVx);
+    });
+
+    it('flung ball converts to neutral sphere when hitting wall', () => {
+      // Position ball near wall, moving toward it
+      mode.flungBalls = [{
+        id: 'flung1',
+        x: 5,  // Very close to left wall
+        y: 400,
+        vx: -100,  // Moving toward wall
+        vy: 0,
+        ownerId: 'player',
+        color: '#4488ff',
+        radius: TRAILS_CONFIG.FLUNG_BALL_RADIUS,
+        createdAt: performance.now(),
+        state: 'FLYING'
+      }];
+
+      const sphereCountBefore = mode.spheres.length;
+      mode._updateFlungBalls(0.1, performance.now(), mockGhost, mockShadowGhost);
+
+      expect(mode.spheres.length).toBe(sphereCountBefore + 1);
+      expect(mode.flungBalls.length).toBe(0);
+    });
+
+    it('flung ball kills opponent on body hit', () => {
+      // Position flung ball at shadow position
+      mode.flungBalls = [{
+        id: 'flung1',
+        x: mockShadowGhost.position.x,
+        y: mockShadowGhost.position.y,
+        vx: 100,
+        vy: 0,
+        ownerId: 'player',
+        color: '#4488ff',
+        radius: TRAILS_CONFIG.FLUNG_BALL_RADIUS,
+        createdAt: performance.now(),
+        state: 'FLYING'
+      }];
+
+      const collision = mode._checkFlungBallCollision('shadow_self', mockShadowGhost);
+
+      expect(collision).not.toBeNull();
+      expect(collision.ownerId).toBe('player');
+    });
+
+    it('flung ball passes through trails (no collision)', () => {
+      // This is implicit - flung balls only check body collision, not trail collision
+      // The _checkFlungBallCollision method doesn't check trails
+      mode.trailLengths.set('player', 3);
+      mode.flungBalls = [{
+        id: 'flung1',
+        x: 300,
+        y: 300,
+        vx: 100,
+        vy: 0,
+        ownerId: 'shadow_self',
+        color: '#ff4444',
+        radius: TRAILS_CONFIG.FLUNG_BALL_RADIUS,
+        createdAt: performance.now(),
+        state: 'FLYING'
+      }];
+
+      // Create player trail at ball position
+      mode.trailBuffers.set('player', [{
+        id: 'seg1',
+        x: 300,
+        y: 300,
+        ownerId: 'player',
+        color: '#4488ff',
+        createdAt: Date.now(),
+        radius: TRAILS_CONFIG.TRAIL_SEGMENT_RADIUS
+      }]);
+
+      // Update - ball should not be destroyed by trail
+      mode._updateFlungBalls(0.016, performance.now(), mockGhost, mockShadowGhost);
+
+      // Ball still exists (wasn't destroyed by trail)
+      expect(mode.flungBalls.length).toBe(1);
+    });
+
+    it('applyInput fling returns correct result', () => {
+      mode.trailLengths.set('player', 3);
+      mockGhost.velocity = { x: 100, y: 0 };
+
+      const result = mode.applyInput('fling', {}, mockGhost);
+
+      expect(result.flung).toBe(true);
+      expect(result.ballSpeed).toBeGreaterThan(0);
     });
   });
 
@@ -488,6 +624,74 @@ describe('TrailsMode', () => {
     });
   });
 
+  describe('Ball Transfer on Death (12-orbits style)', () => {
+    it('transfers balls from dead player to killer on trail collision', () => {
+      mode.trailLengths.set('player', 5);
+      mode.trailLengths.set('shadow_self', 3);
+
+      const result = mode.handleDamage('player', 'shadow_self', 'trail_collision');
+
+      expect(result.ballsTransferred).toBe(5);
+      expect(mode.trailLengths.get('player')).toBe(0);
+      expect(mode.trailLengths.get('shadow_self')).toBe(8); // 3 + 5
+    });
+
+    it('clears dead player trail buffer on death', () => {
+      mode.trailLengths.set('player', 5);
+      mode.trailBuffers.set('player', [
+        { id: 'seg1', x: 100, y: 100 },
+        { id: 'seg2', x: 110, y: 100 }
+      ]);
+
+      mode.handleDamage('player', 'shadow_self', 'trail_collision');
+
+      expect(mode.trailBuffers.get('player').length).toBe(0);
+    });
+
+    it('no ball transfer on projectile hit (only trail collision transfers)', () => {
+      mode.trailLengths.set('player', 5);
+      mode.trailLengths.set('shadow_self', 3);
+
+      const result = mode.handleDamage('player', 'shadow_self', 'projectile_hit');
+
+      // No ball transfer on projectile hit - ballsTransferred is 0 or undefined
+      expect(result.ballsTransferred === undefined || result.ballsTransferred === 0).toBe(true);
+      expect(mode.trailLengths.get('player')).toBe(5); // Unchanged
+    });
+
+    it('no ball transfer on flung ball hit (only trail collision transfers)', () => {
+      mode.trailLengths.set('player', 5);
+      mode.trailLengths.set('shadow_self', 3);
+
+      const result = mode.handleDamage('player', 'shadow_self', 'flung_ball_hit');
+
+      // No ball transfer on flung ball hit - ballsTransferred is 0 or undefined
+      expect(result.ballsTransferred === undefined || result.ballsTransferred === 0).toBe(true);
+      expect(mode.trailLengths.get('player')).toBe(5); // Unchanged
+    });
+
+    it('no transfer if dead player had no balls', () => {
+      mode.trailLengths.set('player', 0);
+      mode.trailLengths.set('shadow_self', 3);
+
+      const result = mode.handleDamage('player', 'shadow_self', 'trail_collision');
+
+      expect(result.ballsTransferred).toBe(0);
+      expect(mode.trailLengths.get('shadow_self')).toBe(3); // Unchanged
+    });
+
+    it('shadow to player transfer works correctly', () => {
+      mode.trailLengths.set('shadow_self', 7);
+      mode.trailLengths.set('player', 2);
+
+      const result = mode.handleDamage('shadow', 'player', 'trail_collision');
+
+      expect(result.ballsTransferred).toBe(7);
+      expect(mode.trailLengths.get('shadow_self')).toBe(0);
+      expect(mode.trailLengths.get('player')).toBe(9); // 2 + 7
+    });
+  });
+
   describe('Reset', () => {
     it('resets lives to starting values', () => {
       mode.playerLives = 1;
@@ -527,14 +731,23 @@ describe('TrailsMode', () => {
       expect(mode.projectiles.length).toBe(0);
     });
 
-    it('resets trail lengths to zero', () => {
-      mode.trailLengths.set('player', 10);
-      mode.trailLengths.set('shadow_self', 8);
+    it('resets trail lengths to 0 (12-orbits style)', () => {
+      mode.trailLengths.set('player', 50);
+      mode.trailLengths.set('shadow_self', 40);
 
       mode.reset();
 
+      // 12-orbits style: start with 0 tail
       expect(mode.trailLengths.get('player')).toBe(0);
       expect(mode.trailLengths.get('shadow_self')).toBe(0);
+    });
+
+    it('clears flung balls', () => {
+      mode.flungBalls = [{ id: 'flung1' }, { id: 'flung2' }];
+
+      mode.reset();
+
+      expect(mode.flungBalls.length).toBe(0);
     });
 
     it('reinitializes spheres', () => {
@@ -580,7 +793,7 @@ describe('TrailsMode', () => {
 
   describe('Render Data', () => {
     it('returns trails with age and alpha', () => {
-      const createdAt = Date.now() - 2000; // 2 seconds old
+      const createdAt = performance.now() - 2000; // 2 seconds old (use performance.now for consistency)
       mode.trailBuffers.set('player', [{
         id: 'seg1',
         x: 100,
@@ -619,6 +832,30 @@ describe('TrailsMode', () => {
       const renderData = mode.getRenderData();
 
       expect(renderData.projectiles.length).toBe(2);
+    });
+
+    it('returns flung balls', () => {
+      mode.flungBalls = [
+        { id: 'flung1', x: 100, y: 100, state: 'FLYING' },
+        { id: 'flung2', x: 200, y: 200, state: 'FLYING' }
+      ];
+
+      const renderData = mode.getRenderData();
+
+      expect(renderData.flungBalls.length).toBe(2);
+    });
+
+    it('only returns flying flung balls', () => {
+      mode.flungBalls = [
+        { id: 'flung1', x: 100, y: 100, state: 'FLYING' },
+        { id: 'flung2', x: 200, y: 200, state: 'STOPPED' },
+        { id: 'flung3', x: 300, y: 300, state: 'HIT' }
+      ];
+
+      const renderData = mode.getRenderData();
+
+      expect(renderData.flungBalls.length).toBe(1);
+      expect(renderData.flungBalls[0].id).toBe('flung1');
     });
   });
 });

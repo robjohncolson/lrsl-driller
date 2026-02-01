@@ -27,16 +27,25 @@ export const TRAILS_CONFIG = {
   SPHERE_RADIUS: 12,
   SPHERE_COLLECT_RADIUS: 25, // Slightly larger for easier collection
 
-  // Trails
-  SEGMENTS_PER_SPHERE: 5,
-  TRAIL_RECORD_INTERVAL: 50,    // ms between segment drops
-  TRAIL_LIFETIME_MS: 8000,      // segments fade after this
-  TRAIL_SEGMENT_RADIUS: 4,
+  // Trails - 12-orbits style: rope/tether physics (NOT spring physics)
+  // Dots are massless, no momentum - they just get pulled when too far
+  STARTING_TRAIL_LENGTH: 0,     // Start with no tail (12-orbits style)
+  SEGMENTS_PER_SPHERE: 1,       // Grow one ball per sphere collected (12-orbits style)
+  TRAIL_SEGMENT_RADIUS: 12,     // Same size as collectible spheres
+  TRAIL_TETHER_DISTANCE: 28,    // Tighter spacing between dots (about 2.3 radii)
+  TRAIL_LIFETIME_MS: 999999,    // Effectively infinite - segments don't fade in 12-orbits style
 
-  // Projectiles
-  PROJECTILE_SPEED_MULT: 1.5,   // 1.5x ghost velocity
+  // Projectiles (legacy - kept for collision detection compatibility)
+  PROJECTILE_SPEED_MULT: 1.5,
   PROJECTILE_LIFETIME_MS: 5000,
-  PROJECTILE_RADIUS: 6,
+  PROJECTILE_RADIUS: 12,
+
+  // Flung balls (12-orbits style) - spacebar when flying = fling a ball
+  // Constant velocity, no decay - straight line until hitting wall or player
+  FLUNG_BALL_SPEED_BOOST: 200,  // Ball travels this much FASTER than ghost (clearly overtakes)
+  FLUNG_BALL_RADIUS: 12,        // Same size as other balls
+  FLUNG_BALL_LIFETIME_MS: 8000, // Despawn after 8 seconds if no collision
+  FLING_SURGE_SPEED: 0,         // No surge - ghost maintains speed, ball shoots ahead
 
   // Lives
   STARTING_LIVES: 3,
@@ -74,6 +83,39 @@ function distance(x1, y1, x2, y2) {
 }
 
 /**
+ * Check if two line segments intersect (12-orbits sever mechanic)
+ * Uses cross product orientation test
+ * @param {number} ax - Segment A start x
+ * @param {number} ay - Segment A start y
+ * @param {number} bx - Segment A end x
+ * @param {number} by - Segment A end y
+ * @param {number} cx - Segment B start x
+ * @param {number} cy - Segment B start y
+ * @param {number} dx - Segment B end x
+ * @param {number} dy - Segment B end y
+ * @returns {boolean} True if segments intersect
+ */
+function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+  // Cross product to determine orientation
+  const cross = (px, py, qx, qy, rx, ry) => {
+    return (qx - px) * (ry - py) - (qy - py) * (rx - px);
+  };
+
+  const d1 = cross(cx, cy, dx, dy, ax, ay);
+  const d2 = cross(cx, cy, dx, dy, bx, by);
+  const d3 = cross(ax, ay, bx, by, cx, cy);
+  const d4 = cross(ax, ay, bx, by, dx, dy);
+
+  // Check if segments straddle each other
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+      ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Trails Mode - Snake-style survival with trail hazards
  * @extends OrbitsMode
  */
@@ -100,10 +142,14 @@ export class TrailsMode extends OrbitsMode {
     // Entity collections
     this.spheres = [];           // CollectSphere[]
     this.trailBuffers = new Map(); // ghostId -> TrailSegment[]
-    this.projectiles = [];       // Projectile[]
+    this.projectiles = [];       // Projectile[] (legacy)
+    this.flungBalls = [];        // FlungBall[] (12-orbits style)
 
     // Trail length per ghost (how many segments they can have)
     this.trailLengths = new Map(); // ghostId -> number
+
+    // Previous ghost positions for line segment collision (sever mechanic)
+    this.prevPositions = new Map(); // ghostId -> {x, y}
 
     // Last trail drop time per ghost
     this.lastTrailTime = new Map(); // ghostId -> timestamp
@@ -158,10 +204,11 @@ export class TrailsMode extends OrbitsMode {
     this._initializeSpheres(records);
 
     // Initialize trail buffers for player and shadow
+    // Snake style: everyone starts with a base trail length
     this.trailBuffers.set('player', []);
     this.trailBuffers.set(this.shadowGhostId, []);
-    this.trailLengths.set('player', 0);
-    this.trailLengths.set(this.shadowGhostId, 0);
+    this.trailLengths.set('player', TRAILS_CONFIG.STARTING_TRAIL_LENGTH);
+    this.trailLengths.set(this.shadowGhostId, TRAILS_CONFIG.STARTING_TRAIL_LENGTH);
     this.lastTrailTime.set('player', 0);
     this.lastTrailTime.set(this.shadowGhostId, 0);
 
@@ -172,7 +219,8 @@ export class TrailsMode extends OrbitsMode {
     });
 
     // Reset match state
-    this.matchStartTime = Date.now();
+    // Use performance.now() for consistency with animation frame timestamps
+    this.matchStartTime = performance.now();
     this.matchTimeRemaining = TRAILS_CONFIG.ROUND_DURATION_MS;
     this.playerLives = TRAILS_CONFIG.STARTING_LIVES;
     this.shadowLives = TRAILS_CONFIG.STARTING_LIVES;
@@ -269,13 +317,37 @@ export class TrailsMode extends OrbitsMode {
     // Update trail segments (age and remove old ones)
     this._updateTrails(currentTime);
 
-    // Update projectiles
+    // Update projectiles (legacy)
     this._updateProjectiles(dt, currentTime);
 
-    // Record trail segments for moving ghosts
-    this._recordTrailSegment('player', localGhost, currentTime);
+    // Update flung balls (12-orbits style)
+    const hitBalls = this._updateFlungBalls(dt, currentTime, localGhost, input.shadowGhost);
+    for (const ball of hitBalls) {
+      if (ball.hitTarget === 'player') {
+        const damageResult = this.handleDamage('player', ball.ownerId, 'flung_ball_hit');
+        input.damageResult = damageResult;
+        if (damageResult.eliminated) {
+          this.shadowKills++;
+        }
+      } else if (ball.hitTarget === 'shadow') {
+        const damageResult = this.handleDamage('shadow', ball.ownerId, 'flung_ball_hit');
+        input.shadowDamageResult = damageResult;
+        if (damageResult.eliminated) {
+          this.playerKills++;
+        }
+      }
+    }
+
+    // Get previous positions for line segment collision (sever mechanic)
+    const playerPrev = this.prevPositions.get('player') || { x: localGhost.position.x, y: localGhost.position.y };
+    const shadowPrev = input.shadowGhost
+      ? (this.prevPositions.get(this.shadowGhostId) || { x: input.shadowGhost.position.x, y: input.shadowGhost.position.y })
+      : null;
+
+    // Update trail chain physics (12-orbits style: rope/tether, not spring)
+    this._updateTrailChain('player', localGhost, dt);
     if (input.shadowGhost) {
-      this._recordTrailSegment(this.shadowGhostId, input.shadowGhost, currentTime);
+      this._updateTrailChain(this.shadowGhostId, input.shadowGhost, dt);
     }
 
     // Track orbit duration for anti-camping
@@ -285,7 +357,7 @@ export class TrailsMode extends OrbitsMode {
     }
 
     // Check collisions for player
-    const now = Date.now();
+    const now = Date.now(); // Use Date.now() for invulnerability (consistent with handleDamage)
     const playerOrbiting = input.ghostMovementState === 'ORBITING';
     const playerOrbitUnsafe = this._isOrbitUnsafe('player', currentTime);
 
@@ -293,8 +365,8 @@ export class TrailsMode extends OrbitsMode {
       // Check sphere collection
       this._checkSphereCollection('player', localGhost, currentTime);
 
-      // Check trail collision
-      const trailHit = this._checkTrailCollision('player', localGhost);
+      // Check trail collision (12-orbits sever mechanic: line segment intersection)
+      const trailHit = this._checkTrailCollision('player', localGhost, playerPrev);
       if (trailHit) {
         const damageResult = this.handleDamage('player', trailHit.ownerId, 'trail_collision');
         input.damageResult = damageResult;
@@ -303,7 +375,7 @@ export class TrailsMode extends OrbitsMode {
         }
       }
 
-      // Check projectile collision
+      // Check projectile collision (legacy)
       const projectileHit = this._checkProjectileCollision('player', localGhost);
       if (projectileHit) {
         const damageResult = this.handleDamage('player', projectileHit.ownerId, 'projectile_hit');
@@ -313,6 +385,18 @@ export class TrailsMode extends OrbitsMode {
         }
         // Remove the projectile
         this.projectiles = this.projectiles.filter(p => p.id !== projectileHit.id);
+      }
+
+      // Check flung ball collision (12-orbits style)
+      const flungBallHit = this._checkFlungBallCollision('player', localGhost);
+      if (flungBallHit) {
+        const damageResult = this.handleDamage('player', flungBallHit.ownerId, 'flung_ball_hit');
+        input.damageResult = damageResult;
+        if (damageResult.eliminated) {
+          this.shadowKills++;
+        }
+        // Remove the flung ball
+        this.flungBalls = this.flungBalls.filter(b => b.id !== flungBallHit.id);
       }
     }
 
@@ -324,8 +408,8 @@ export class TrailsMode extends OrbitsMode {
       // Check sphere collection
       this._checkSphereCollection(this.shadowGhostId, input.shadowGhost, currentTime);
 
-      // Check trail collision
-      const trailHit = this._checkTrailCollision(this.shadowGhostId, input.shadowGhost);
+      // Check trail collision (12-orbits sever mechanic: line segment intersection)
+      const trailHit = this._checkTrailCollision(this.shadowGhostId, input.shadowGhost, shadowPrev);
       if (trailHit) {
         const damageResult = this.handleDamage('shadow', trailHit.ownerId, 'trail_collision');
         input.shadowDamageResult = damageResult;
@@ -334,7 +418,7 @@ export class TrailsMode extends OrbitsMode {
         }
       }
 
-      // Check projectile collision
+      // Check projectile collision (legacy)
       const projectileHit = this._checkProjectileCollision(this.shadowGhostId, input.shadowGhost);
       if (projectileHit) {
         const damageResult = this.handleDamage('shadow', projectileHit.ownerId, 'projectile_hit');
@@ -344,6 +428,18 @@ export class TrailsMode extends OrbitsMode {
         }
         // Remove the projectile
         this.projectiles = this.projectiles.filter(p => p.id !== projectileHit.id);
+      }
+
+      // Check flung ball collision (12-orbits style)
+      const flungBallHit = this._checkFlungBallCollision(this.shadowGhostId, input.shadowGhost);
+      if (flungBallHit) {
+        const damageResult = this.handleDamage('shadow', flungBallHit.ownerId, 'flung_ball_hit');
+        input.shadowDamageResult = damageResult;
+        if (damageResult.eliminated) {
+          this.playerKills++;
+        }
+        // Remove the flung ball
+        this.flungBalls = this.flungBalls.filter(b => b.id !== flungBallHit.id);
       }
     }
 
@@ -359,6 +455,12 @@ export class TrailsMode extends OrbitsMode {
     input.playerOrbitUnsafe = playerOrbitUnsafe;
     input.shadowOrbitWarning = this._isOrbitWarning(this.shadowGhostId, currentTime);
     input.shadowOrbitUnsafe = shadowOrbitUnsafe;
+
+    // Update previous positions for next frame's line segment collision
+    this.prevPositions.set('player', { x: localGhost.position.x, y: localGhost.position.y });
+    if (input.shadowGhost) {
+      this.prevPositions.set(this.shadowGhostId, { x: input.shadowGhost.position.x, y: input.shadowGhost.position.y });
+    }
   }
 
   /**
@@ -430,41 +532,253 @@ export class TrailsMode extends OrbitsMode {
   }
 
   /**
-   * Record a trail segment for a ghost
-   * @private
+   * Fling a ball from the ghost's tail (12-orbits style)
+   * Ball travels in ghost's movement direction at guaranteed minimum speed
+   * @param {string} ghostId - Ghost ID
+   * @param {Object} ghost - Ghost object with position and velocity
+   * @returns {Object|null} The flung ball, or null if no tail
    */
-  _recordTrailSegment(ghostId, ghost, currentTime) {
-    if (!ghost) return;
+  flingBall(ghostId, ghost) {
+    if (!ghost) return null;
 
-    const lastTime = this.lastTrailTime.get(ghostId) || 0;
     const trailLength = this.trailLengths.get(ghostId) || 0;
+    if (trailLength <= 0) return null;
 
-    // Only record if enough time has passed and ghost has trail capacity
-    if (trailLength <= 0) return;
-    if (currentTime - lastTime < TRAILS_CONFIG.TRAIL_RECORD_INTERVAL) return;
+    // Get velocity direction
+    const speed = Math.sqrt(ghost.velocity.x ** 2 + ghost.velocity.y ** 2);
+    if (speed < 0.1) return null; // Need some velocity to determine direction
 
-    // Don't record while orbiting
-    if (ghost.isOrbiting) return;
+    // Reduce trail length
+    this.trailLengths.set(ghostId, trailLength - 1);
 
-    this.lastTrailTime.set(ghostId, currentTime);
-
-    const segments = this.trailBuffers.get(ghostId) || [];
     const color = ghostId === 'player' ? this.playerColor : this.shadowColor;
 
-    segments.push({
+    // Normalize direction
+    const nx = ghost.velocity.x / speed;
+    const ny = ghost.velocity.y / speed;
+
+    // Ghost physics uses: position += velocity * dt * 60
+    // Ball physics uses: position += velocity * dt
+    // So actual ghost visual speed = velocity * 60
+    // Ball needs to be FASTER than ghost, so: ballSpeed = (ghostVel * 60) + boost
+    const actualGhostSpeed = speed * 60;
+    const ballSpeed = actualGhostSpeed + TRAILS_CONFIG.FLUNG_BALL_SPEED_BOOST;
+
+    // Start ball slightly ahead of ghost (in movement direction)
+    const startOffset = 20;
+
+    const flungBall = {
       id: generateId(),
-      x: ghost.position.x,
-      y: ghost.position.y,
+      x: ghost.position.x + nx * startOffset,
+      y: ghost.position.y + ny * startOffset,
+      vx: nx * ballSpeed,
+      vy: ny * ballSpeed,
       ownerId: ghostId,
       color,
-      createdAt: currentTime,
-      radius: TRAILS_CONFIG.TRAIL_SEGMENT_RADIUS
-    });
+      radius: TRAILS_CONFIG.FLUNG_BALL_RADIUS,
+      createdAt: performance.now(),
+      state: 'FLYING'  // FLYING -> NEUTRAL (when stopped)
+    };
+
+    this.flungBalls.push(flungBall);
+    console.log(`[TrailsMode] ${ghostId} flung ball, trail remaining: ${trailLength - 1}`);
+
+    return flungBall;
+  }
+
+  /**
+   * Update flung balls - constant velocity, no decay (12-orbits style)
+   * Balls travel in straight line until hitting wall or player body
+   * Pass through tails (no tail collision)
+   * @param {number} dt - Delta time in seconds
+   * @param {number} currentTime - Current timestamp
+   * @param {Object} localGhost - Player ghost
+   * @param {Object} shadowGhost - Shadow ghost
+   * @private
+   */
+  _updateFlungBalls(dt, currentTime, localGhost, shadowGhost) {
+    const toConvertToSphere = [];
+
+    for (const ball of this.flungBalls) {
+      if (ball.state !== 'FLYING') continue;
+
+      // Move the ball - CONSTANT velocity, no decay
+      ball.x += ball.vx * dt;
+      ball.y += ball.vy * dt;
+
+      // Check wall collision - stop and convert to neutral (walls absorb the ball)
+      let hitWall = false;
+      if (ball.x < ball.radius) {
+        ball.x = ball.radius;
+        hitWall = true;
+      } else if (ball.x > this.arenaSize - ball.radius) {
+        ball.x = this.arenaSize - ball.radius;
+        hitWall = true;
+      }
+      if (ball.y < ball.radius) {
+        ball.y = ball.radius;
+        hitWall = true;
+      } else if (ball.y > this.arenaSize - ball.radius) {
+        ball.y = this.arenaSize - ball.radius;
+        hitWall = true;
+      }
+
+      if (hitWall) {
+        toConvertToSphere.push(ball);
+        ball.state = 'STOPPED';
+        continue;
+      }
+
+      // Check body collision with opponent (NOT trails - flung balls pass through trails)
+      const targetGhost = ball.ownerId === 'player' ? shadowGhost : localGhost;
+      if (targetGhost) {
+        const dist = distance(ball.x, ball.y, targetGhost.position.x, targetGhost.position.y);
+        const collisionDist = ball.radius + (targetGhost.radius || 10);
+        if (dist < collisionDist) {
+          // Body hit = kill
+          ball.hitTarget = ball.ownerId === 'player' ? 'shadow' : 'player';
+          ball.state = 'HIT';
+          continue;
+        }
+      }
+
+      // Check lifetime expiry
+      const age = currentTime - ball.createdAt;
+      if (age > TRAILS_CONFIG.FLUNG_BALL_LIFETIME_MS) {
+        toConvertToSphere.push(ball);
+        ball.state = 'STOPPED';
+      }
+    }
+
+    // Remove hit balls and convert stopped balls to spheres
+    this.flungBalls = this.flungBalls.filter(b => b.state === 'FLYING');
+
+    // Convert stopped balls to neutral spheres
+    for (const ball of toConvertToSphere) {
+      this.spheres.push({
+        id: generateId(),
+        x: ball.x,
+        y: ball.y,
+        state: 'ACTIVE',
+        respawnAt: 0,
+        radius: TRAILS_CONFIG.SPHERE_RADIUS,
+        pulsePhase: Math.random() * Math.PI * 2,
+        wasFlungBall: true  // Mark as converted from flung ball
+      });
+      console.log(`[TrailsMode] Flung ball hit wall, converted to neutral sphere at (${ball.x.toFixed(0)}, ${ball.y.toFixed(0)})`);
+    }
+
+    return this.flungBalls.filter(b => b.state === 'HIT');
+  }
+
+  /**
+   * Check flung ball collisions with ghosts
+   * @param {string} ghostId - Ghost to check
+   * @param {Object} ghost - Ghost object
+   * @returns {Object|null} Flung ball that hit, or null
+   * @private
+   */
+  _checkFlungBallCollision(ghostId, ghost) {
+    if (!ghost) return null;
+
+    for (const ball of this.flungBalls) {
+      // Can't be hit by own flung ball
+      if (ball.ownerId === ghostId) continue;
+      if (ball.state !== 'FLYING') continue;
+
+      const dist = distance(ghost.position.x, ghost.position.y, ball.x, ball.y);
+      const collisionDist = (ghost.radius || 10) + ball.radius;
+
+      if (dist < collisionDist) {
+        return ball;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Update trail segments with 12-orbits chase physics
+   * Dots ACTIVELY CHASE their parent in a straight line each frame
+   * This creates the "cut corners" spiral effect when ghost orbits
+   * Hard distance constraint: rope can't stretch beyond D_max
+   * @private
+   */
+  _updateTrailChain(ghostId, ghost, dt) {
+    if (!ghost) return;
+
+    const segments = this.trailBuffers.get(ghostId) || [];
+    const targetLength = this.trailLengths.get(ghostId) || 0;
+    const color = ghostId === 'player' ? this.playerColor : this.shadowColor;
+
+    // Add new segments if we need more
+    while (segments.length < targetLength) {
+      // New segment starts at ghost position
+      segments.push({
+        id: generateId(),
+        x: ghost.position.x,
+        y: ghost.position.y,
+        ownerId: ghostId,
+        color,
+        radius: TRAILS_CONFIG.TRAIL_SEGMENT_RADIUS,
+        createdAt: performance.now()
+      });
+    }
+
+    // Remove excess segments if we have too many (from front = oldest)
+    while (segments.length > targetLength) {
+      segments.shift();
+    }
+
+    // 12-orbits VERLET CONSTRAINT physics
+    // Key insight: dots have NO PATH MEMORY - they only know parent's CURRENT position
+    // Multiple constraint iterations let the chain settle properly
+    // This automatically creates corner-cutting and spiral effects
+    const maxDist = TRAILS_CONFIG.TRAIL_TETHER_DISTANCE;
+
+    // Multiple iterations for constraint propagation (like Verlet physics)
+    const iterations = 3;
+    for (let iter = 0; iter < iterations; iter++) {
+      for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i];
+
+        // Target = parent's CURRENT position (ghost or previous dot)
+        const target = i === 0
+          ? { x: ghost.position.x, y: ghost.position.y }
+          : { x: segments[i - 1].x, y: segments[i - 1].y };
+
+        // Calculate vector from dot to target
+        const dx = target.x - seg.x;
+        const dy = target.y - seg.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // CONSTRAINT: If rope is stretched, pull dot toward parent
+        // This is the key - dot moves in a STRAIGHT LINE toward parent's current position
+        // No path memory, no history - just "where is my parent NOW?"
+        if (dist > maxDist && dist > 0.1) {
+          // How much to move: the excess distance beyond maxDist
+          const excess = dist - maxDist;
+          const nx = dx / dist;
+          const ny = dy / dist;
+
+          // Move dot directly toward parent by the excess amount
+          seg.x += nx * excess;
+          seg.y += ny * excess;
+        }
+      }
+    }
+
+    // Apply arena bounds after all constraint iterations
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      const r = seg.radius;
+      if (seg.x < r) seg.x = r;
+      if (seg.x > this.arenaSize - r) seg.x = this.arenaSize - r;
+      if (seg.y < r) seg.y = r;
+      if (seg.y > this.arenaSize - r) seg.y = this.arenaSize - r;
+    }
 
     this.trailBuffers.set(ghostId, segments);
-
-    // Decrement trail length - each segment consumes one unit of capacity
-    this.trailLengths.set(ghostId, trailLength - 1);
   }
 
   /**
@@ -531,27 +845,45 @@ export class TrailsMode extends OrbitsMode {
   }
 
   /**
-   * Check trail collision
-   * @returns {Object|null} Trail segment that was hit, or null
+   * Check trail collision using line segment intersection (12-orbits sever mechanic)
+   * The ghost's movement path must CROSS the line between two connected dots
+   * Only opponent trails can be severed - no self-collision
+   * @param {string} ghostId - Ghost checking for collision
+   * @param {Object} ghost - Ghost object with current position
+   * @param {Object} prevPos - Ghost's previous position {x, y}
+   * @returns {Object|null} Trail segment info if severed, or null
    * @private
    */
-  _checkTrailCollision(ghostId, ghost) {
-    if (!ghost) return null;
+  _checkTrailCollision(ghostId, ghost, prevPos) {
+    if (!ghost || !prevPos) return null;
 
-    // Check all trail segments (including own trail - hitting own trail = death)
-    for (const [ownerId, segments] of this.trailBuffers) {
-      for (const seg of segments) {
-        // Skip very recent segments from self (grace period)
-        if (ownerId === ghostId) {
-          const age = Date.now() - seg.createdAt;
-          if (age < 500) continue; // 500ms grace period for own trail
-        }
+    const gx1 = prevPos.x;
+    const gy1 = prevPos.y;
+    const gx2 = ghost.position.x;
+    const gy2 = ghost.position.y;
 
-        const dist = distance(ghost.position.x, ghost.position.y, seg.x, seg.y);
-        const collisionDist = (ghost.radius || 10) + seg.radius;
+    // Skip if ghost hasn't moved (no line segment to check)
+    if (Math.abs(gx2 - gx1) < 0.1 && Math.abs(gy2 - gy1) < 0.1) return null;
 
-        if (dist < collisionDist) {
-          return seg;
+    // Check opponent trails only
+    for (const [trailOwnerId, segments] of this.trailBuffers) {
+      // Skip own trail - no self-collision
+      if (trailOwnerId === ghostId) continue;
+      if (segments.length === 0) continue;
+
+      // Check each link in the chain (between consecutive dots)
+      for (let i = 0; i < segments.length - 1; i++) {
+        const seg1 = segments[i];
+        const seg2 = segments[i + 1];
+
+        // Check if ghost's movement path crosses this chain link
+        if (segmentsIntersect(gx1, gy1, gx2, gy2, seg1.x, seg1.y, seg2.x, seg2.y)) {
+          // Return the segment info for damage handling
+          return {
+            ownerId: trailOwnerId,
+            severIndex: i + 1, // Index where chain was severed
+            segment: seg2
+          };
         }
       }
     }
@@ -584,41 +916,43 @@ export class TrailsMode extends OrbitsMode {
 
   /**
    * Handle player input
-   * @param {string} type - Input type ('spacebar', 'orbit_exit')
+   * @param {string} type - Input type ('spacebar', 'orbit_exit', 'fling')
    * @param {Object} data - Input data
    * @param {Object} ghost - Ghost that triggered input
    * @returns {Object|null}
    */
   applyInput(type, data, ghost) {
+    // 12-orbits style: orbit_exit does NOT fire balls
+    // Balls are only flung via explicit spacebar press during FREE_FLIGHT
     if (type === 'orbit_exit') {
-      // Shoot-on-launch mechanic
+      return { fired: false };
+    }
+
+    // 12-orbits style: fling a ball when spacebar pressed during FREE_FLIGHT
+    if (type === 'fling') {
       const ghostId = ghost.id === this.shadowGhostId ? this.shadowGhostId : 'player';
-      const trailLength = this.trailLengths.get(ghostId) || 0;
+      const flungBall = this.flingBall(ghostId, ghost);
 
-      if (trailLength > 0 && data.tangentVelocity) {
-        // Pop a trail segment to create projectile
-        this.trailLengths.set(ghostId, trailLength - 1);
+      if (flungBall) {
+        const speed = Math.sqrt(flungBall.vx ** 2 + flungBall.vy ** 2);
 
-        const color = ghostId === 'player' ? this.playerColor : this.shadowColor;
-        const speed = Math.sqrt(data.tangentVelocity.x ** 2 + data.tangentVelocity.y ** 2);
+        // Calculate surge direction (same as movement direction)
+        const ghostSpeed = Math.sqrt(ghost.velocity.x ** 2 + ghost.velocity.y ** 2);
+        let surgeVx = 0, surgeVy = 0;
+        if (ghostSpeed > 0.1) {
+          // Surge forward in movement direction
+          surgeVx = (ghost.velocity.x / ghostSpeed) * TRAILS_CONFIG.FLING_SURGE_SPEED;
+          surgeVy = (ghost.velocity.y / ghostSpeed) * TRAILS_CONFIG.FLING_SURGE_SPEED;
+        }
 
-        this.projectiles.push({
-          id: generateId(),
-          x: ghost.position.x,
-          y: ghost.position.y,
-          vx: data.tangentVelocity.x * TRAILS_CONFIG.PROJECTILE_SPEED_MULT,
-          vy: data.tangentVelocity.y * TRAILS_CONFIG.PROJECTILE_SPEED_MULT,
-          ownerId: ghostId,
-          color,
-          radius: TRAILS_CONFIG.PROJECTILE_RADIUS,
-          createdAt: Date.now()
-        });
-
-        console.log(`[TrailsMode] ${ghostId} fired projectile, trail remaining: ${trailLength - 1}`);
-        return { fired: true, projectileSpeed: speed * TRAILS_CONFIG.PROJECTILE_SPEED_MULT };
+        return {
+          flung: true,
+          ballSpeed: speed,
+          surge: { vx: surgeVx, vy: surgeVy }
+        };
       }
 
-      return { fired: false };
+      return { flung: false };
     }
 
     return null;
@@ -649,6 +983,7 @@ export class TrailsMode extends OrbitsMode {
    */
   checkEndCondition() {
     if (this.matchResult !== null) {
+      console.log(`[TrailsMode] checkEndCondition: matchResult already set: ${this.matchResult}, reason: ${this.winCondition}`);
       return {
         ended: true,
         winner: this.matchResult === 'player_win' ? 'player' : 'opponent',
@@ -729,6 +1064,7 @@ export class TrailsMode extends OrbitsMode {
       trails: this.getAllTrailSegments(),
       spheres: this.spheres.filter(s => s.state === 'ACTIVE'),
       projectiles: this.projectiles,
+      flungBalls: this.flungBalls.filter(b => b.state === 'FLYING'),
       ghosts: [],  // Controller manages ghost rendering
       effects: []
     };
@@ -740,7 +1076,8 @@ export class TrailsMode extends OrbitsMode {
    */
   getAllTrailSegments() {
     const allSegments = [];
-    const currentTime = Date.now();
+    // Use performance.now() for consistency with segment createdAt timestamps
+    const currentTime = performance.now();
 
     for (const [ghostId, segments] of this.trailBuffers) {
       for (const seg of segments) {
@@ -795,9 +1132,10 @@ export class TrailsMode extends OrbitsMode {
 
   /**
    * Handle damage to entity
+   * 12-orbits style: When dying from trail collision, transfer balls to killer
    * @param {string} target - 'player' or 'shadow'
-   * @param {string} source - Damage source
-   * @param {string} type - Damage type
+   * @param {string} source - Damage source (ghostId that caused damage)
+   * @param {string} type - Damage type ('trail_collision', 'projectile_hit', 'flung_ball_hit')
    * @returns {Object}
    */
   handleDamage(target, source, type) {
@@ -808,15 +1146,22 @@ export class TrailsMode extends OrbitsMode {
         return { blocked: true, livesRemaining: this.playerLives };
       }
 
+      // 12-orbits style: Transfer balls to killer on trail collision
+      let ballsTransferred = 0;
+      if (type === 'trail_collision' && source !== 'player') {
+        ballsTransferred = this._transferBallsOnDeath('player', source);
+      }
+
       this.playerLives--;
       this.playerInvulnerableUntil = currentTime + this.invulnerabilityDuration;
 
-      console.log(`[TrailsMode] Player damaged by ${type}! Lives: ${this.playerLives}`);
+      console.log(`[TrailsMode] Player damaged by ${type}! Lives: ${this.playerLives}, balls transferred: ${ballsTransferred}`);
 
       return {
         livesRemaining: this.playerLives,
         eliminated: this.playerLives <= 0,
-        invulnerableUntil: this.playerInvulnerableUntil
+        invulnerableUntil: this.playerInvulnerableUntil,
+        ballsTransferred
       };
     }
 
@@ -825,19 +1170,56 @@ export class TrailsMode extends OrbitsMode {
         return { blocked: true, livesRemaining: this.shadowLives };
       }
 
+      // 12-orbits style: Transfer balls to killer on trail collision
+      let ballsTransferred = 0;
+      if (type === 'trail_collision' && source !== this.shadowGhostId) {
+        ballsTransferred = this._transferBallsOnDeath(this.shadowGhostId, source);
+      }
+
       this.shadowLives--;
       this.shadowInvulnerableUntil = currentTime + this.invulnerabilityDuration;
 
-      console.log(`[TrailsMode] Shadow damaged by ${type}! Lives: ${this.shadowLives}`);
+      console.log(`[TrailsMode] Shadow damaged by ${type}! Lives: ${this.shadowLives}, balls transferred: ${ballsTransferred}`);
 
       return {
         livesRemaining: this.shadowLives,
         eliminated: this.shadowLives <= 0,
-        invulnerableUntil: this.shadowInvulnerableUntil
+        invulnerableUntil: this.shadowInvulnerableUntil,
+        ballsTransferred
       };
     }
 
     return { blocked: true };
+  }
+
+  /**
+   * Transfer balls from dead ghost to killer (12-orbits style)
+   * @param {string} deadGhostId - Ghost that died
+   * @param {string} killerGhostId - Ghost that killed (trail owner)
+   * @returns {number} Number of balls transferred
+   * @private
+   */
+  _transferBallsOnDeath(deadGhostId, killerGhostId) {
+    const deadTrailLength = this.trailLengths.get(deadGhostId) || 0;
+
+    if (deadTrailLength === 0) return 0;
+
+    // Get the killer's ghost ID (source is the trail owner)
+    const killerId = killerGhostId === 'player' ? 'player' : this.shadowGhostId;
+
+    // Transfer all balls to killer
+    const killerTrailLength = this.trailLengths.get(killerId) || 0;
+    this.trailLengths.set(killerId, killerTrailLength + deadTrailLength);
+
+    // Reset dead player's tail to 0
+    this.trailLengths.set(deadGhostId, 0);
+
+    // Clear dead player's trail buffer (visual trail segments)
+    this.trailBuffers.set(deadGhostId, []);
+
+    console.log(`[TrailsMode] Transferred ${deadTrailLength} balls from ${deadGhostId} to ${killerId}. Killer now has ${killerTrailLength + deadTrailLength} balls`);
+
+    return deadTrailLength;
   }
 
   /**
@@ -894,24 +1276,26 @@ export class TrailsMode extends OrbitsMode {
     this.shadowInvulnerableUntil = 0;
 
     // Reset timing
-    this.matchStartTime = Date.now();
+    this.matchStartTime = performance.now();
     this.matchTimeRemaining = TRAILS_CONFIG.ROUND_DURATION_MS;
     this.matchResult = null;
     this.winCondition = null;
 
-    // Reset trail buffers
+    // Reset trail buffers - Snake style: start with base trail length
     this.trailBuffers.set('player', []);
     this.trailBuffers.set(this.shadowGhostId, []);
-    this.trailLengths.set('player', 0);
-    this.trailLengths.set(this.shadowGhostId, 0);
+    this.trailLengths.set('player', TRAILS_CONFIG.STARTING_TRAIL_LENGTH);
+    this.trailLengths.set(this.shadowGhostId, TRAILS_CONFIG.STARTING_TRAIL_LENGTH);
     this.lastTrailTime.set('player', 0);
     this.lastTrailTime.set(this.shadowGhostId, 0);
 
-    // Reset orbit tracking
+    // Reset orbit tracking and position history
     this.orbitStartTime.clear();
+    this.prevPositions.clear();
 
-    // Clear projectiles
+    // Clear projectiles and flung balls
     this.projectiles = [];
+    this.flungBalls = [];
 
     // Reset spheres
     const records = this.physicsEngine?.getRecords() || [];
@@ -933,8 +1317,10 @@ export class TrailsMode extends OrbitsMode {
     this.trailLengths.clear();
     this.lastTrailTime.clear();
     this.orbitStartTime.clear();
+    this.prevPositions.clear();
     this.spheres = [];
     this.projectiles = [];
+    this.flungBalls = [];
     this.shadowAI = null;
     super.dispose();
   }

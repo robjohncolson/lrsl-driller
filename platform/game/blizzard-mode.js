@@ -311,11 +311,12 @@ export class BlizzardMode extends OrbitsMode {
     });
 
     // Reset match state
-    this.matchStartTime = Date.now();
+    // Use performance.now() for consistency with animation frame timestamps
+    this.matchStartTime = performance.now();
     this.matchTimeRemaining = BLIZZARD_CONFIG.ROUND_DURATION_MS;
     this.teamScores = [0, 0];
     this.currentWave = 1;
-    this.lastSpawnTime = Date.now();
+    this.lastSpawnTime = performance.now();
     this.spheresSpawnedThisWave = 0;
     this.matchResult = null;
     this.winCondition = null;
@@ -669,6 +670,7 @@ export class BlizzardMode extends OrbitsMode {
    */
   checkEndCondition() {
     if (this.matchResult !== null) {
+      console.log(`[BlizzardMode] checkEndCondition: matchResult already set: ${this.matchResult}, reason: ${this.winCondition}`);
       return {
         ended: true,
         winner: this.matchResult === 'player_win' ? 'player' : 'opponent',
@@ -836,14 +838,14 @@ export class BlizzardMode extends OrbitsMode {
     this.teamScores = [0, 0];
 
     // Reset timing
-    this.matchStartTime = Date.now();
+    this.matchStartTime = performance.now();
     this.matchTimeRemaining = BLIZZARD_CONFIG.ROUND_DURATION_MS;
     this.matchResult = null;
     this.winCondition = null;
 
     // Reset waves
     this.currentWave = 1;
-    this.lastSpawnTime = Date.now();
+    this.lastSpawnTime = performance.now();
     this.spheresSpawnedThisWave = 0;
 
     // Clear and respawn spheres

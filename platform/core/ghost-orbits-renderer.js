@@ -23,7 +23,7 @@ const MAX_ENERGY = 100;
 const ENERGY_REGEN_RATE = 8; // per second
 const WALL_BOUNCE_VELOCITY_LOSS = 0.2;
 const BASE_RADIUS = 10;
-const FRICTION = 0.995; // Slight friction to prevent infinite acceleration
+const FRICTION = 1.0; // No friction - v3 uses constant velocity maintained by physics engine
 
 // Trail system
 const TRAIL_SEGMENT_INTERVAL = 50; // ms between trail segments
@@ -41,7 +41,9 @@ const FRAME_TIME = 1000 / TARGET_FPS;
 // Colors
 const COLORS = {
   background: '#0a0a12',
+  backgroundTrails: '#e8e8e8',  // Light gray for Trails mode (12-orbits style)
   gridLines: '#112244',
+  gridLinesTrails: '#cccccc',   // Lighter grid for Trails mode
   ghostTiers: [
     '#4488ff',  // Tier 0: Electric blue
     '#00ff88',  // Tier 1: Neon green
@@ -50,7 +52,11 @@ const COLORS = {
     '#ff44ff',  // Tier 4: Magenta
   ],
   textPrimary: '#ffffff',
-  textSecondary: '#88aacc'
+  textSecondary: '#88aacc',
+  // Trails mode flat colors (12-orbits style)
+  trailsRecord: '#888888',      // Flat gray for records
+  trailsRecordCenter: '#444444', // Dark center dot
+  trailsCollectible: '#ffffff'  // White collectible spheres
 };
 
 // Input keys
@@ -142,7 +148,7 @@ class Ghost {
 
     // Random initial velocity for perpetual motion
     const angle = Math.random() * Math.PI * 2;
-    const speed = 1 + Math.random() * 2;
+    const speed = 5; // Match PHYSICS.GHOST_SPEED for consistent movement
     this.velocity = {
       x: Math.cos(angle) * speed,
       y: Math.sin(angle) * speed
@@ -165,6 +171,9 @@ class Ghost {
     if (this.pattern) {
       this._createPatternCanvas();
     }
+
+    // Direction indicator angle (for 12-orbits style rendering)
+    this.directionAngle = Math.atan2(this.velocity.y, this.velocity.x);
 
     // Energy system
     this.energy = MAX_ENERGY;
@@ -272,12 +281,14 @@ class Ghost {
 
   /**
    * Handle wall collision
-   * @param {number} arenaSize - Size of the arena
+   * @param {number} arenaWidth - Width of the arena
+   * @param {number} [arenaHeight] - Height of the arena (defaults to width for square arenas)
    * @returns {boolean} Whether a collision occurred
    */
-  handleWallCollision(arenaSize) {
+  handleWallCollision(arenaWidth, arenaHeight) {
     let collided = false;
     const radius = this.radius;
+    const height = arenaHeight || arenaWidth; // Support square arenas
 
     // Left wall
     if (this.position.x - radius < 0) {
@@ -287,8 +298,8 @@ class Ghost {
     }
 
     // Right wall
-    if (this.position.x + radius > arenaSize) {
-      this.position.x = arenaSize - radius;
+    if (this.position.x + radius > arenaWidth) {
+      this.position.x = arenaWidth - radius;
       this.velocity.x = -Math.abs(this.velocity.x) * (1 - WALL_BOUNCE_VELOCITY_LOSS);
       collided = true;
     }
@@ -301,8 +312,8 @@ class Ghost {
     }
 
     // Bottom wall
-    if (this.position.y + radius > arenaSize) {
-      this.position.y = arenaSize - radius;
+    if (this.position.y + radius > height) {
+      this.position.y = height - radius;
       this.velocity.y = -Math.abs(this.velocity.y) * (1 - WALL_BOUNCE_VELOCITY_LOSS);
       collided = true;
     }
@@ -349,15 +360,19 @@ class Ghost {
 class Arena {
   /**
    * Create a new Arena
-   * @param {number} size - Arena size in pixels
+   * @param {number} size - Arena size in pixels (used for square arenas)
+   * @param {number} [width] - Arena width (optional, defaults to size)
+   * @param {number} [height] - Arena height (optional, defaults to size)
    */
-  constructor(size) {
-    this.size = size;
+  constructor(size, width, height) {
+    this.size = size; // Kept for backwards compatibility
+    this.width = width || size;
+    this.height = height || size;
     this.trails = [];
 
     // Territory grid
-    this.gridWidth = Math.ceil(size / GRID_SIZE);
-    this.gridHeight = Math.ceil(size / GRID_SIZE);
+    this.gridWidth = Math.ceil(this.width / GRID_SIZE);
+    this.gridHeight = Math.ceil(this.height / GRID_SIZE);
     this.grid = new Array(this.gridWidth * this.gridHeight).fill(null);
 
     // Territory coverage (0-1 per cell, per player)
@@ -371,12 +386,16 @@ class Arena {
 
   /**
    * Resize the arena
-   * @param {number} newSize - New size in pixels
+   * @param {number} newSize - New size in pixels (for square arenas)
+   * @param {number} [newWidth] - New width (optional)
+   * @param {number} [newHeight] - New height (optional)
    */
-  resize(newSize) {
+  resize(newSize, newWidth, newHeight) {
     this.size = newSize;
-    this.gridWidth = Math.ceil(newSize / GRID_SIZE);
-    this.gridHeight = Math.ceil(newSize / GRID_SIZE);
+    this.width = newWidth || newSize;
+    this.height = newHeight || newSize;
+    this.gridWidth = Math.ceil(this.width / GRID_SIZE);
+    this.gridHeight = Math.ceil(this.height / GRID_SIZE);
     this.grid = new Array(this.gridWidth * this.gridHeight).fill(null);
     this.gridCoverage = new Array(this.gridWidth * this.gridHeight).fill(null).map(() => ({}));
   }
@@ -530,6 +549,9 @@ class GhostOrbitsRenderer {
       this.options = containerOrOptions;
     }
 
+    // Game mode type ('arena', 'trails', 'blizzard') - affects visual style
+    this.modeType = this.options.modeType || 'arena';
+
     // Calculate arena size
     const playerCount = options.playerCount || 1;
     const arenaSize = calculateArenaSize(playerCount);
@@ -620,6 +642,23 @@ class GhostOrbitsRenderer {
     // Initialization is done in constructor
     // This method exists for API compatibility with controller
     return Promise.resolve();
+  }
+
+  /**
+   * Set the game mode type (affects visual style)
+   * @param {string} modeType - 'arena', 'trails', or 'blizzard'
+   */
+  setModeType(modeType) {
+    this.modeType = modeType || 'arena';
+    console.log('[Renderer] Mode type set to:', this.modeType);
+  }
+
+  /**
+   * Check if using 12-orbits style (Trails mode)
+   * @returns {boolean}
+   */
+  isTrailsStyle() {
+    return this.modeType === 'trails';
   }
 
   /**
@@ -878,8 +917,8 @@ class GhostOrbitsRenderer {
       // Update position
       ghost.updatePosition(deltaTime);
 
-      // Handle wall collisions
-      const bounced = ghost.handleWallCollision(this.arena.size);
+      // Handle wall collisions (support rectangular arenas)
+      const bounced = ghost.handleWallCollision(this.arena.width, this.arena.height);
       if (bounced && this.options.onWallBounce) {
         this.options.onWallBounce(ghost);
       }
@@ -924,7 +963,8 @@ class GhostOrbitsRenderer {
     // Clear with background color (support non-square canvases)
     const width = this.canvas.width;
     const height = this.canvas.height;
-    ctx.fillStyle = COLORS.background;
+    // Mode-conditional background: light gray for Trails mode (12-orbits style)
+    ctx.fillStyle = this.isTrailsStyle() ? COLORS.backgroundTrails : COLORS.background;
     ctx.fillRect(0, 0, width, height);
 
     // Render grid lines (subtle)
@@ -959,9 +999,10 @@ class GhostOrbitsRenderer {
     const ctx = this.ctx;
     const size = this.arena.size;
 
-    ctx.strokeStyle = COLORS.gridLines;
+    // Mode-conditional grid color
+    ctx.strokeStyle = this.isTrailsStyle() ? COLORS.gridLinesTrails : COLORS.gridLines;
     ctx.lineWidth = 0.5;
-    ctx.globalAlpha = 0.3;
+    ctx.globalAlpha = this.isTrailsStyle() ? 0.2 : 0.3;
 
     // Vertical lines
     for (let x = GRID_SIZE; x < size; x += GRID_SIZE) {
@@ -1107,6 +1148,7 @@ class GhostOrbitsRenderer {
   /**
    * Render a single record (spinning plate) - v2 style
    * Records are neutral gray circles with spinning indicators
+   * In Trails mode (12-orbits style): flat gray with center dot, no gradients
    * @param {Object} record - Record data
    */
   renderRecord(record) {
@@ -1132,6 +1174,13 @@ class GhostOrbitsRenderer {
       this._loggedFirstWell = true;
     }
 
+    // Check if using 12-orbits style (Trails mode)
+    if (this.isTrailsStyle()) {
+      this._renderRecordFlat(ctx, x, y, radius, captureRadius, spinAngle, clockwise, record);
+      return;
+    }
+
+    // Standard vinyl record style (Arena/Blizzard modes)
     // Record colors - neutral gray/dark theme
     const recordColor = '#555566';
     const grooveColor = '#333344';
@@ -1276,6 +1325,68 @@ class GhostOrbitsRenderer {
   }
 
   /**
+   * Render a record in flat 12-orbits style (for Trails mode)
+   * Minimal flat design: gray fill + simple stroke + center dot
+   * @private
+   */
+  _renderRecordFlat(ctx, x, y, radius, captureRadius, spinAngle, clockwise, record) {
+    // Flat gray fill (no gradient)
+    ctx.fillStyle = COLORS.trailsRecord;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Simple stroke outline
+    ctx.strokeStyle = '#666666';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Small center dot (dark gray)
+    ctx.fillStyle = COLORS.trailsRecordCenter;
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Spin direction indicator (simple arc, no arrow head)
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(spinAngle);
+
+    const arrowRadius = radius * 0.6;
+    const arrowAngle = Math.PI * 0.3;
+    const arrowStart = clockwise ? 0 : Math.PI;
+    const arrowEnd = clockwise ? -arrowAngle : Math.PI + arrowAngle;
+
+    ctx.strokeStyle = '#555555';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, arrowRadius, arrowStart, arrowEnd, clockwise);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // If ghost is currently orbiting this record, show simple orbit path
+    if (record.currentOrbiter) {
+      const orbiterGhost = this.ghosts.get(record.currentOrbiter);
+      if (orbiterGhost) {
+        const orbitRadius = distance(orbiterGhost.position, { x, y });
+        ctx.strokeStyle = orbiterGhost.color;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(x, y, orbitRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  /**
    * Render all trails
    */
   renderTrails() {
@@ -1332,6 +1443,18 @@ class GhostOrbitsRenderer {
     const isFlashing = ghost.flashUntil > currentTime;
     const displayColor = isFlashing ? ghost.flashColor : ghost.color;
 
+    // Update direction angle from velocity (for 12-orbits style)
+    if (ghost.velocity && (ghost.velocity.x !== 0 || ghost.velocity.y !== 0)) {
+      ghost.directionAngle = Math.atan2(ghost.velocity.y, ghost.velocity.x);
+    }
+
+    // Use 12-orbits style for Trails mode
+    if (this.isTrailsStyle()) {
+      this._renderGhostFlat(ctx, ghost, x, y, radius, displayColor, isOrbiting);
+      return;
+    }
+
+    // Standard style (Arena/Blizzard modes)
     // Outer glow (more intense when orbiting)
     const glowIntensity = isOrbiting ? 2.0 : 1.5;
     const glowAlpha = isOrbiting ? 0.5 : 0.3;
@@ -1410,6 +1533,100 @@ class GhostOrbitsRenderer {
     // TrailsMode: Orbit camping warning (yellow/red rings)
     if (ghost.orbitWarning || ghost.orbitUnsafe) {
       this.renderOrbitWarning(ghost, ghost.orbitWarning, ghost.orbitUnsafe);
+    }
+  }
+
+  /**
+   * Render a ghost in flat 12-orbits style (for Trails mode)
+   * Simple filled circle with small direction triangle
+   * @private
+   */
+  _renderGhostFlat(ctx, ghost, x, y, radius, displayColor, isOrbiting) {
+    // Calculate spin angle for radial body spin
+    let spinAngle = 0;
+    if (ghost.spinProgress !== undefined && ghost.spinProgress > 0) {
+      spinAngle = ghost.spinProgress * Math.PI * 6; // 3 full rotations
+      console.log('[Renderer] Applying spin angle:', spinAngle.toFixed(2), 'from progress:', ghost.spinProgress.toFixed(2));
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Apply radial spin to the entire ghost body
+    if (spinAngle > 0) {
+      ctx.rotate(spinAngle);
+    }
+
+    // Simple filled circle (no gradient/glow)
+    ctx.fillStyle = displayColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw spin indicator on the OUTER EDGE (won't be covered by direction arrow)
+    // Two contrasting arc segments on the perimeter
+    const edgeWidth = radius * 0.2;
+
+    // Dark half-ring on one side
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.lineWidth = edgeWidth;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius - edgeWidth/2, 0, Math.PI);
+    ctx.stroke();
+
+    // Light half-ring on the other side
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.beginPath();
+    ctx.arc(0, 0, radius - edgeWidth/2, Math.PI, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Direction indicator: 12-orbits style (doesn't spin with body)
+    // - FILLED white arrow = vulnerable (flying)
+    // - OUTLINE white arrow = safe (orbiting)
+    const dirAngle = ghost.directionAngle || 0;
+
+    // Make the arrow LARGER and more visible
+    const triangleSize = radius * 0.9;  // Much larger (was 0.5)
+    const triangleDist = radius * 0.1;  // Closer to center
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(dirAngle);
+
+    // Draw arrow - filled if vulnerable, outline if safe
+    ctx.beginPath();
+    ctx.moveTo(triangleDist + triangleSize, 0);
+    ctx.lineTo(triangleDist - triangleSize * 0.4, -triangleSize * 0.5);
+    ctx.lineTo(triangleDist - triangleSize * 0.4, triangleSize * 0.5);
+    ctx.closePath();
+
+    if (isOrbiting) {
+      // Safe: white OUTLINE arrow only
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else {
+      // Vulnerable: white FILLED arrow
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    // Orbit camping warning (simplified for Trails mode)
+    if (ghost.orbitWarning || ghost.orbitUnsafe) {
+      const warningColor = ghost.orbitUnsafe ? '#ff4444' : '#ffaa00';
+      ctx.strokeStyle = warningColor;
+      ctx.globalAlpha = 0.7;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -1664,6 +1881,7 @@ class GhostOrbitsRenderer {
 
   /**
    * Render trail segments from TrailsMode
+   * In 12-orbits style: individual small circles (ball chain), no glow
    * @param {Array} trails - Array of trail segments with age/alpha
    */
   renderTrailSegments(trails) {
@@ -1671,6 +1889,26 @@ class GhostOrbitsRenderer {
 
     const ctx = this.ctx;
 
+    // Use 12-orbits style for Trails mode
+    if (this.isTrailsStyle()) {
+      for (const segment of trails) {
+        const { x, y, color, radius, alpha } = segment;
+
+        // Skip if fully faded
+        if (alpha <= 0) continue;
+
+        // Simple filled circle (no glow, individual balls)
+        ctx.globalAlpha = Math.min(alpha, 0.9);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    // Standard style (Arena/Blizzard modes) - with glow effects
     for (const segment of trails) {
       const { x, y, color, radius, alpha } = segment;
 
@@ -1700,12 +1938,37 @@ class GhostOrbitsRenderer {
 
   /**
    * Render collect spheres from TrailsMode
+   * In 12-orbits style: flat white circles, no gradient/glow
    * @param {Array} spheres - Array of active spheres
    */
   renderCollectSpheres(spheres) {
     if (!spheres || spheres.length === 0) return;
 
     const ctx = this.ctx;
+
+    // Use 12-orbits style for Trails mode
+    if (this.isTrailsStyle()) {
+      for (const sphere of spheres) {
+        const { x, y, radius } = sphere;
+
+        // Simple flat white circle
+        ctx.fillStyle = COLORS.trailsCollectible;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Subtle gray outline
+        ctx.strokeStyle = '#cccccc';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    // Standard style (Arena/Blizzard modes) - with glow and gradient effects
     const sphereColor = '#88ffaa'; // Bright green for collectibles
 
     for (const sphere of spheres) {
@@ -1880,12 +2143,114 @@ class GhostOrbitsRenderer {
   renderTrailsModeEntities() {
     if (!this.trailsModeData) return;
 
-    const { trails, spheres, projectiles } = this.trailsModeData;
+    const { trails, spheres, projectiles, flungBalls } = this.trailsModeData;
 
-    // Render in order: trails (back), spheres, projectiles (front)
+    // Render in order: trails (back), spheres, flung balls, projectiles (front)
     this.renderTrailSegments(trails);
     this.renderCollectSpheres(spheres);
+    this.renderFlungBalls(flungBalls);
     this.renderProjectiles(projectiles);
+  }
+
+  /**
+   * Render flung balls from TrailsMode (12-orbits style)
+   * These are balls ejected from the tail that travel with momentum
+   * @param {Array} flungBalls - Array of flung ball objects
+   */
+  renderFlungBalls(flungBalls) {
+    if (!flungBalls || flungBalls.length === 0) return;
+
+    const ctx = this.ctx;
+
+    // Use 12-orbits style for Trails mode (flat rendering)
+    if (this.isTrailsStyle()) {
+      for (const ball of flungBalls) {
+        const { x, y, color, radius, vx, vy } = ball;
+
+        // Simple flat filled circle
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Small motion trail indicator
+        const speed = Math.sqrt(vx * vx + vy * vy);
+        if (speed > 30) {
+          const trailLen = Math.min(speed * 0.1, 15);
+          const nx = vx / speed;
+          const ny = vy / speed;
+
+          ctx.globalAlpha = 0.4;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = radius;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(x - nx * trailLen, y - ny * trailLen);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
+      return;
+    }
+
+    // Standard style with glow
+    for (const ball of flungBalls) {
+      const { x, y, color, radius, vx, vy } = ball;
+
+      // Calculate speed for motion effects
+      const speed = Math.sqrt(vx * vx + vy * vy);
+
+      // Motion trail
+      if (speed > 30) {
+        const trailLen = Math.min(speed * 0.12, 25);
+        const nx = vx / speed;
+        const ny = vy / speed;
+
+        ctx.globalAlpha = 0.35;
+        const trailGradient = ctx.createLinearGradient(
+          x - nx * trailLen, y - ny * trailLen,
+          x, y
+        );
+        trailGradient.addColorStop(0, 'transparent');
+        trailGradient.addColorStop(1, color);
+
+        ctx.strokeStyle = trailGradient;
+        ctx.lineWidth = radius * 1.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x - nx * trailLen, y - ny * trailLen);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+
+      // Outer glow
+      ctx.globalAlpha = 0.4;
+      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, radius * 2);
+      glowGradient.addColorStop(0, color);
+      glowGradient.addColorStop(0.5, color);
+      glowGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core ball
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = lighten(color, 0.2);
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Highlight
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
   }
 
   // ============================================
@@ -2143,7 +2508,7 @@ class GhostOrbitsRenderer {
   resizeCanvas(width, height) {
     this.canvas.width = width;
     this.canvas.height = height;
-    this.arena.resize(Math.max(width, height)); // Arena size for physics
+    this.arena.resize(Math.max(width, height), width, height); // Support rectangular arenas
     console.log(`[Renderer] Canvas resized to ${width}x${height}`);
   }
 
