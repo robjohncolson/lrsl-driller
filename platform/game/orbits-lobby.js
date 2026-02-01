@@ -478,7 +478,6 @@ export class OrbitsLobby {
         <label for="orbits-lobby-mode-select">Game Mode:</label>
         <select id="orbits-lobby-mode-select">
           <option value="arena" selected>Arena (Dot Territory)</option>
-          <option value="trails">Trails (Snake Survival)</option>
           <option value="blizzard">Blizzard (Team Defense)</option>
         </select>
       </div>

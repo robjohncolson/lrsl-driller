@@ -252,10 +252,22 @@ export class GhostOrbitsController {
       console.log('[GhostOrbits] Overlay reference:', this.overlay);
 
       // Initialize audio (global for music settings access)
-      console.log('[GhostOrbits] Creating audio...');
-      this.audio = new GhostOrbitsAudio();
-      this.audio.init();
-      window.ghostOrbitsAudio = this.audio; // Expose globally for settings
+      // Use existing singleton if available to prevent duplicate music players
+      console.log('[GhostOrbits] Initializing audio...');
+      if (window.ghostOrbitsAudio) {
+        console.log('[GhostOrbits] Using existing audio instance');
+        this.audio = window.ghostOrbitsAudio;
+      } else if (window.globalMusicPlayer) {
+        // Settings may have created this before Ghost Orbits started
+        console.log('[GhostOrbits] Using existing globalMusicPlayer');
+        this.audio = window.globalMusicPlayer;
+        window.ghostOrbitsAudio = this.audio;
+      } else {
+        console.log('[GhostOrbits] Creating new audio instance');
+        this.audio = new GhostOrbitsAudio();
+        this.audio.init();
+        window.ghostOrbitsAudio = this.audio;
+      }
 
       // Get arena size from renderer
       const arenaSize = this.renderer?.arena?.size || 800;

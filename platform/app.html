@@ -2540,13 +2540,31 @@
     let globalMusicPlayer = null;
 
     function initMusicSettings() {
-      // Try to use Ghost Orbits audio if available, otherwise create standalone
+      // Use singleton audio instance - check all possible global references
+      // Priority: ghostOrbitsAudio (set by Ghost Orbits) > globalMusicPlayer (set by settings)
       if (window.ghostOrbitsAudio) {
+        // Ghost Orbits has an audio instance - use it
+        // If we had our own instance playing, stop it first
+        if (globalMusicPlayer && globalMusicPlayer !== window.ghostOrbitsAudio) {
+          globalMusicPlayer.stopMusic();
+        }
         globalMusicPlayer = window.ghostOrbitsAudio;
+        window.globalMusicPlayer = globalMusicPlayer; // Sync references
+      } else if (globalMusicPlayer) {
+        // We already have an instance from previous settings open
+        // Keep using it, just ensure global refs are synced
+        window.ghostOrbitsAudio = globalMusicPlayer;
+        window.globalMusicPlayer = globalMusicPlayer;
+      } else if (window.globalMusicPlayer) {
+        // Someone else created an instance - use it
+        globalMusicPlayer = window.globalMusicPlayer;
+        window.ghostOrbitsAudio = globalMusicPlayer;
       } else {
-        // Import dynamically if needed
+        // No instance exists - create one and set both global refs
         import('./core/ghost-orbits-audio.js').then(module => {
           globalMusicPlayer = new module.GhostOrbitsAudio();
+          globalMusicPlayer.init();
+          window.ghostOrbitsAudio = globalMusicPlayer;
           window.globalMusicPlayer = globalMusicPlayer;
           updateMusicUI();
         }).catch(() => {
