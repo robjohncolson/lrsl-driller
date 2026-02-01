@@ -7,7 +7,7 @@ function copyRuntimeAssets() {
   return {
     name: 'copy-runtime-assets',
     closeBundle() {
-      const assetsToCopy = ['cartridges']
+      const assetsToCopy = ['cartridges', 'audio']
       for (const dir of assetsToCopy) {
         if (existsSync(dir)) {
           cpSync(dir, `dist/${dir}`, { recursive: true })
