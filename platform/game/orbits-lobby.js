@@ -1198,8 +1198,22 @@ export class OrbitsLobby {
 
     this._pendingMatchData = null;
     this._clearToasts();
-    // Close lobby and start the game
-    this.close();
+
+    // Hide lobby UI but DON'T disconnect - game needs the network!
+    this.hide();
+
+    // Clean up minimized indicator
+    if (this.minimizedIndicator.parentNode) {
+      this.minimizedIndicator.remove();
+    }
+    this.isMinimized = false;
+
+    // Clean up toasts
+    if (this.toastContainer.parentNode) {
+      this.toastContainer.remove();
+    }
+
+    // Start the game with the active network connection
     this.onMatchStart({
       ...data,
       network: this.network // Pass network controller for ongoing communication

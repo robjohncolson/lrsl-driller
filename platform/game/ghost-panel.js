@@ -582,7 +582,18 @@ export class GhostPanel {
         onMatchStart: (data) => {
           console.log('[GhostPanel] Multiplayer match starting:', data);
           this._setMultiplayerButtonEnabled(false);
-          // TODO: Connect to multiplayer game mode with data.network
+
+          // TODO: Implement multiplayer game rendering
+          // For now, show a message that multiplayer is in development
+          alert(`Multiplayer match starting!\n\nPlayers: ${data.players?.map(p => p.username).join(', ')}\n\n(Full multiplayer gameplay coming soon!)`);
+
+          // Re-enable button after alert
+          this._setMultiplayerButtonEnabled(true);
+
+          // Disconnect since we can't actually play yet
+          if (data.network) {
+            data.network.disconnect();
+          }
         },
         onExit: () => {
           console.log('[GhostPanel] Exited multiplayer lobby');
