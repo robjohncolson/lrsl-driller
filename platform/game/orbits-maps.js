@@ -10,7 +10,7 @@
 
 /**
  * Standard square arena map (800x800)
- * Used for Arena mode and Trails mode
+ * Used for Arena mode
  * 8 records: 4 corners + 4 sides
  */
 export const STANDARD_MAP = {
@@ -39,6 +39,44 @@ export const STANDARD_MAP = {
   captureRadius: 60,
   angularSpeedBase: 2.0,
   angularSpeedVariation: 1.0
+};
+
+/**
+ * Trails mode map (800x800) - 12-orbits style
+ * Large records in a 4x3 grid pattern
+ * 12 records covering most of the playing field
+ */
+export const TRAILS_MAP = {
+  id: 'trails',
+  name: '12-Orbits Arena',
+  aspectRatio: 1.0,
+  arenaWidth: 800,
+  arenaHeight: 800,
+
+  // 12 records in a 4x3 grid (like 12-orbits game)
+  records: [
+    // Row 1 (top)
+    { x: 0.15, y: 0.18, clockwise: false },
+    { x: 0.40, y: 0.18, clockwise: true },
+    { x: 0.60, y: 0.18, clockwise: false },
+    { x: 0.85, y: 0.18, clockwise: true },
+    // Row 2 (middle)
+    { x: 0.15, y: 0.50, clockwise: true },
+    { x: 0.40, y: 0.50, clockwise: false },
+    { x: 0.60, y: 0.50, clockwise: true },
+    { x: 0.85, y: 0.50, clockwise: false },
+    // Row 3 (bottom)
+    { x: 0.15, y: 0.82, clockwise: false },
+    { x: 0.40, y: 0.82, clockwise: true },
+    { x: 0.60, y: 0.82, clockwise: false },
+    { x: 0.85, y: 0.82, clockwise: true }
+  ],
+
+  // Large records like 12-orbits
+  recordRadius: 70,
+  captureRadius: 90,
+  angularSpeedBase: 1.5,
+  angularSpeedVariation: 0.5
 };
 
 /**
@@ -90,6 +128,7 @@ export const WIDE_MAP = {
  */
 export const MAPS = {
   standard: STANDARD_MAP,
+  trails: TRAILS_MAP,
   wide: WIDE_MAP
 };
 
@@ -102,8 +141,9 @@ export function getMapForMode(modeType) {
   switch (modeType) {
     case 'blizzard':
       return WIDE_MAP;
-    case 'arena':
     case 'trails':
+      return TRAILS_MAP;
+    case 'arena':
     default:
       return STANDARD_MAP;
   }

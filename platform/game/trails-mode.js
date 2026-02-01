@@ -46,8 +46,8 @@ export const TRAILS_CONFIG = {
   FLUNG_BALL_RADIUS: 12,        // Same size as other balls
   FLUNG_BALL_LIFETIME_MS: 8000, // Despawn after 8 seconds if no collision
   FLING_SURGE_SPEED: 0,         // No surge - ghost maintains speed, ball shoots ahead
-  FLUNG_BALL_WALL_BOUNCE: 0.6,  // Velocity retained after wall bounce (like billiards)
-  FLUNG_BALL_MIN_SPEED: 40,     // Min speed before ball stops and becomes collectible
+  FLUNG_BALL_WALL_BOUNCE: 0.35, // Velocity retained after wall bounce (cushioned edges)
+  FLUNG_BALL_MIN_SPEED: 25,     // Min speed before ball stops and becomes collectible
 
   // Lives
   STARTING_LIVES: 3,

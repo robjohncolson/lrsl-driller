@@ -368,8 +368,12 @@ class PhysicsEngine {
     const velMagnitude = velVector.magnitude();
     const clockwise = velMagnitude < 0.5 ? record.clockwise : tangentVel < 0;
 
-    // Use record's angular speed, modified by ghost's orbitalSpeed multiplier
-    const angularVelocity = record.angularSpeed * speedMultiplier;
+    // Use record's angular speed, modified by:
+    // 1. Ghost's orbitalSpeed multiplier
+    // 2. Inverse radius effect (closer to center = faster, like 12-orbits)
+    //    Using record.radius as reference, so orbiting at edge = base speed
+    const radiusFactor = record.radius / Math.max(radius, PHYSICS.RECORD_MIN_ORBIT_RADIUS);
+    const angularVelocity = record.angularSpeed * speedMultiplier * radiusFactor;
 
     const orbitState = new OrbitState(record.id, radius, angularVelocity, angle, clockwise);
     this.orbitStates.set(ghostId, orbitState);
