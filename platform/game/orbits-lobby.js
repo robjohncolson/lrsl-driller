@@ -77,19 +77,39 @@ export class OrbitsLobby {
   // ----------------------------------------
 
   _createUI() {
+    // Main overlay/modal
     this.overlay = document.createElement('div');
     this.overlay.className = 'orbits-lobby-overlay';
     this.overlay.innerHTML = `
       <div class="orbits-lobby-panel">
         <div class="orbits-lobby-header">
           <h2>Ghost Orbits - Multiplayer</h2>
-          <button class="orbits-lobby-close">&times;</button>
+          <div class="orbits-lobby-header-btns">
+            <button class="orbits-lobby-minimize" title="Minimize">─</button>
+            <button class="orbits-lobby-close" title="Close">&times;</button>
+          </div>
         </div>
         <div class="orbits-lobby-content">
           <!-- Content injected by state -->
         </div>
       </div>
     `;
+
+    // Minimized indicator (floating pill)
+    this.minimizedIndicator = document.createElement('div');
+    this.minimizedIndicator.className = 'orbits-lobby-minimized';
+    this.minimizedIndicator.innerHTML = `
+      <span class="orbits-lobby-minimized-icon">🎮</span>
+      <span class="orbits-lobby-minimized-text">Waiting...</span>
+      <span class="orbits-lobby-minimized-count">0/8</span>
+    `;
+
+    // Toast notification container
+    this.toastContainer = document.createElement('div');
+    this.toastContainer.className = 'orbits-lobby-toast-container';
+
+    // State
+    this.isMinimized = false;
 
     // Add styles
     this._addStyles();
@@ -99,8 +119,113 @@ export class OrbitsLobby {
       this.close();
     });
 
+    this.overlay.querySelector('.orbits-lobby-minimize').addEventListener('click', () => {
+      this._minimize();
+    });
+
+    this.minimizedIndicator.addEventListener('click', () => {
+      this._restore();
+    });
+
     // Update content
     this._updateContent();
+  }
+
+  /**
+   * Minimize the lobby modal
+   */
+  _minimize() {
+    this.isMinimized = true;
+    this.overlay.classList.add('minimized');
+
+    // Update minimized indicator
+    this._updateMinimizedIndicator();
+
+    // Show the indicator
+    if (!this.minimizedIndicator.parentNode) {
+      document.body.appendChild(this.minimizedIndicator);
+    }
+    this.minimizedIndicator.classList.add('visible');
+  }
+
+  /**
+   * Restore the lobby modal from minimized state
+   */
+  _restore() {
+    this.isMinimized = false;
+    this.overlay.classList.remove('minimized');
+    this.minimizedIndicator.classList.remove('visible');
+  }
+
+  /**
+   * Update the minimized indicator with current state
+   */
+  _updateMinimizedIndicator() {
+    const textEl = this.minimizedIndicator.querySelector('.orbits-lobby-minimized-text');
+    const countEl = this.minimizedIndicator.querySelector('.orbits-lobby-minimized-count');
+
+    const maxPlayers = this.lobbyInfo?.maxPlayers || 8;
+    const playerCount = this.players.length;
+    const seconds = this.lobbyInfo?.secondsRemaining;
+
+    if (seconds !== undefined && seconds > 0) {
+      textEl.textContent = `Starting in ${seconds}s`;
+    } else if (playerCount < 2) {
+      textEl.textContent = 'Waiting...';
+    } else {
+      textEl.textContent = 'Ready!';
+    }
+
+    countEl.textContent = `${playerCount}/${maxPlayers}`;
+  }
+
+  /**
+   * Show a toast notification
+   * @param {string} message - Toast message
+   * @param {string} [type='info'] - Toast type (info, success, game-ready)
+   * @param {Function} [onClick] - Click handler
+   */
+  _showToast(message, type = 'info', onClick = null) {
+    // Ensure toast container is in DOM
+    if (!this.toastContainer.parentNode) {
+      document.body.appendChild(this.toastContainer);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `orbits-lobby-toast ${type}`;
+    toast.innerHTML = `
+      <span class="orbits-lobby-toast-icon">${type === 'game-ready' ? '🎮' : 'ℹ️'}</span>
+      <span class="orbits-lobby-toast-message">${message}</span>
+    `;
+
+    if (onClick) {
+      toast.style.cursor = 'pointer';
+      toast.addEventListener('click', () => {
+        onClick();
+        toast.remove();
+      });
+    }
+
+    // Auto-dismiss after 10 seconds (unless it's game-ready)
+    if (type !== 'game-ready') {
+      setTimeout(() => toast.remove(), 10000);
+    }
+
+    this.toastContainer.appendChild(toast);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      toast.classList.add('visible');
+    });
+
+    return toast;
+  }
+
+  /**
+   * Clear all toasts
+   */
+  _clearToasts() {
+    this.toastContainer.innerHTML = '';
   }
 
   _addStyles() {
@@ -165,6 +290,140 @@ export class OrbitsLobby {
       .orbits-lobby-close:hover {
         background: rgba(255, 255, 255, 0.1);
         color: #fff;
+      }
+
+      .orbits-lobby-header-btns {
+        display: flex;
+        gap: 4px;
+      }
+
+      .orbits-lobby-minimize {
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+      }
+
+      .orbits-lobby-minimize:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+
+      /* Minimized state */
+      .orbits-lobby-overlay.minimized {
+        display: none;
+      }
+
+      .orbits-lobby-minimized {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #1a1a2e 0%, #2a2a4a 100%);
+        border: 2px solid #4488ff;
+        border-radius: 50px;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        z-index: 10001;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 20px rgba(68, 136, 255, 0.3);
+      }
+
+      .orbits-lobby-minimized.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .orbits-lobby-minimized:hover {
+        border-color: #66aaff;
+        box-shadow: 0 4px 25px rgba(68, 136, 255, 0.5);
+        transform: translateY(-2px);
+      }
+
+      .orbits-lobby-minimized-icon {
+        font-size: 20px;
+      }
+
+      .orbits-lobby-minimized-text {
+        color: #fff;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .orbits-lobby-minimized-count {
+        background: #4488ff;
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      /* Toast notifications */
+      .orbits-lobby-toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10002;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .orbits-lobby-toast {
+        background: linear-gradient(135deg, #1a1a2e 0%, #2a2a4a 100%);
+        border: 2px solid #4a4a6a;
+        border-radius: 12px;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        opacity: 0;
+        transform: translateX(100px);
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        max-width: 300px;
+      }
+
+      .orbits-lobby-toast.visible {
+        opacity: 1;
+        transform: translateX(0);
+      }
+
+      .orbits-lobby-toast.game-ready {
+        border-color: #44cc88;
+        animation: toast-pulse 1s ease-in-out infinite;
+      }
+
+      @keyframes toast-pulse {
+        0%, 100% { box-shadow: 0 4px 20px rgba(68, 204, 136, 0.3); }
+        50% { box-shadow: 0 4px 30px rgba(68, 204, 136, 0.6); }
+      }
+
+      .orbits-lobby-toast-icon {
+        font-size: 24px;
+      }
+
+      .orbits-lobby-toast-message {
+        color: #fff;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .orbits-lobby-toast.game-ready .orbits-lobby-toast-message {
+        color: #44cc88;
       }
 
       .orbits-lobby-content {
@@ -865,6 +1124,11 @@ export class OrbitsLobby {
     if (data.state === RoomState.LOBBY && this.state !== LobbyState.COUNTDOWN) {
       this._setState(LobbyState.IN_ROOM);
     }
+
+    // Update minimized indicator if minimized
+    if (this.isMinimized) {
+      this._updateMinimizedIndicator();
+    }
   }
 
   _handleCountdown({ secondsRemaining }) {
@@ -885,9 +1149,42 @@ export class OrbitsLobby {
     if (this.state === LobbyState.IN_ROOM) {
       this._updateContent();
     }
+
+    // Update minimized indicator if minimized
+    if (this.isMinimized) {
+      this._updateMinimizedIndicator();
+    }
   }
 
   _handleMatchStart(data) {
+    // Store match data for when user clicks to join
+    this._pendingMatchData = data;
+
+    // If minimized, show toast notification instead of auto-launching
+    if (this.isMinimized) {
+      this._clearToasts();
+      this._showToast('Game is ready! Click to play', 'game-ready', () => {
+        this._launchMatch();
+      });
+
+      // Hide the minimized indicator
+      this.minimizedIndicator.classList.remove('visible');
+      return;
+    }
+
+    // Not minimized - launch immediately
+    this._launchMatch();
+  }
+
+  /**
+   * Launch the match (called when ready to play)
+   */
+  _launchMatch() {
+    const data = this._pendingMatchData;
+    if (!data) return;
+
+    this._pendingMatchData = null;
+    this._clearToasts();
     // Close lobby and start the game
     this.close();
     this.onMatchStart({
@@ -926,6 +1223,19 @@ export class OrbitsLobby {
    */
   close() {
     this.hide();
+
+    // Clean up minimized indicator
+    if (this.minimizedIndicator.parentNode) {
+      this.minimizedIndicator.remove();
+    }
+    this.isMinimized = false;
+
+    // Clean up toasts
+    this._clearToasts();
+    if (this.toastContainer.parentNode) {
+      this.toastContainer.remove();
+    }
+
     this.network.disconnect();
     this.onExit();
   }
