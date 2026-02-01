@@ -1919,14 +1919,26 @@ class GhostOrbitsRenderer {
     // Use 12-orbits style for Trails mode
     if (this.isTrailsStyle()) {
       for (const segment of trails) {
-        let { x, y, color, radius, alpha, ownerId } = segment;
+        let { x, y, color, radius, alpha, ownerId, age } = segment;
 
         // Skip if fully faded
         if (alpha <= 0) continue;
 
+        // Map 'player' to actual localGhostId for ghost lookup
+        const actualGhostId = ownerId === 'player' ? this.localGhostId : ownerId;
+        const ownerGhost = actualGhostId ? this.ghosts.get(actualGhostId) : null;
+
+        // "Pop" effect when dot is first collected (first 300ms)
+        const popDuration = 300; // ms
+        if (age !== undefined && age < popDuration) {
+          // Quick pop up then settle: peaks at 100ms, settles by 300ms
+          const popProgress = age / popDuration;
+          const popCurve = Math.sin(popProgress * Math.PI); // 0 -> 1 -> 0
+          radius = radius * (1 + popCurve * 0.4); // Up to 40% larger at peak
+        }
+
         // Check if owner ghost is spinning (dash animation)
         // If so, shrink dots and spread them outward
-        const ownerGhost = ownerId ? this.ghosts.get(ownerId) : null;
         let spinEffect = 0;
         if (ownerGhost?.spinProgress !== undefined &&
             ownerGhost.spinProgress > 0 && ownerGhost.spinProgress < 1) {
