@@ -580,16 +580,38 @@ export class GhostPanel {
         username: this.username || 'Player',
         onMatchStart: (data) => {
           console.log('[GhostPanel] Multiplayer match starting:', data);
+          this._setMultiplayerButtonEnabled(false);
           // TODO: Connect to multiplayer game mode with data.network
         },
         onExit: () => {
           console.log('[GhostPanel] Exited multiplayer lobby');
+          this._setMultiplayerButtonEnabled(true);
         }
       });
     }
 
     // Show the lobby
     this.orbitsLobby.show();
+  }
+
+  /**
+   * Enable or disable the multiplayer button
+   * @param {boolean} enabled - Whether the button should be enabled
+   * @private
+   */
+  _setMultiplayerButtonEnabled(enabled) {
+    const btn = this.container.querySelector('#ghost-orbits-multiplayer-btn');
+    if (!btn) return;
+
+    if (enabled) {
+      btn.disabled = false;
+      btn.removeAttribute('disabled');
+      btn.classList.remove('disabled');
+    } else {
+      btn.disabled = true;
+      btn.setAttribute('disabled', 'disabled');
+      btn.classList.add('disabled');
+    }
   }
 
   /**
@@ -2709,6 +2731,28 @@ export class GhostPanel {
 
       .ghost-orbits-btn.multiplayer .ghost-orbits-icon {
         color: #00d4ff;
+      }
+
+      .ghost-orbits-btn.multiplayer.disabled,
+      .ghost-orbits-btn.multiplayer:disabled {
+        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+        border-color: #444;
+        color: #666;
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      .ghost-orbits-btn.multiplayer.disabled:hover,
+      .ghost-orbits-btn.multiplayer:disabled:hover {
+        transform: none;
+        box-shadow: none;
+        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+        border-color: #444;
+      }
+
+      .ghost-orbits-btn.multiplayer.disabled .ghost-orbits-icon,
+      .ghost-orbits-btn.multiplayer:disabled .ghost-orbits-icon {
+        color: #666;
       }
 
       /* Ghost Orbits Mode Selector */
