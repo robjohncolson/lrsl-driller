@@ -13,6 +13,7 @@ import { getRatingTier, ELO_CONFIG } from '../core/ghost-battle-engine.js';
 import { BattleViz } from '../core/ghost-battle-viz.js';
 import { generateFractalPattern, calculateGhostProperties, getPropertyRanges, normalizeProperty, aggregateClassWeights } from '../core/ghost-orbits-nn-mapper.js';
 import { OrbitsLobby } from './orbits-lobby.js';
+import { MultiplayerGameClient } from './multiplayer-game-client.js';
 
 export class GhostPanel {
   /**
@@ -557,6 +558,12 @@ export class GhostPanel {
     const multiplayerBtn = this.container.querySelector('#ghost-orbits-multiplayer-btn');
     if (multiplayerBtn) {
       multiplayerBtn.addEventListener('click', () => {
+        // Check for 1 gold star entrance fee
+        const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
+        if (currentGolds < 1) {
+          alert('Multiplayer costs 1 gold star!\n\nEarn gold stars by completing practice problems to unlock multiplayer matches.');
+          return;
+        }
         this._openMultiplayerLobby();
       });
     }
@@ -583,17 +590,32 @@ export class GhostPanel {
           console.log('[GhostPanel] Multiplayer match starting:', data);
           this._setMultiplayerButtonEnabled(false);
 
-          // TODO: Implement multiplayer game rendering
-          // For now, show a message that multiplayer is in development
-          alert(`Multiplayer match starting!\n\nPlayers: ${data.players?.map(p => p.username).join(', ')}\n\n(Full multiplayer gameplay coming soon!)`);
-
-          // Re-enable button after alert
-          this._setMultiplayerButtonEnabled(true);
-
-          // Disconnect since we can't actually play yet
-          if (data.network) {
-            data.network.disconnect();
+          // Deduct 1 gold star entrance fee
+          const goldCountEl = document.getElementById('gold-count');
+          if (goldCountEl) {
+            const currentGolds = parseInt(goldCountEl.textContent || '0');
+            goldCountEl.textContent = Math.max(0, currentGolds - 1);
+            console.log('[GhostPanel] Deducted 1 gold star for multiplayer match');
           }
+
+          // Create and start the multiplayer game client
+          const gameClient = new MultiplayerGameClient({
+            network: data.network,
+            container: document.body,
+            onComplete: (results) => {
+              console.log('[GhostPanel] Multiplayer match completed:', results);
+
+              // Re-enable multiplayer button
+              this._setMultiplayerButtonEnabled(true);
+
+              // Reset lobby state so user can play again
+              if (this.orbitsLobby) {
+                this.orbitsLobby.reset();
+              }
+            }
+          });
+
+          gameClient.start(data);
         },
         onExit: () => {
           console.log('[GhostPanel] Exited multiplayer lobby');

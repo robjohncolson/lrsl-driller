@@ -1273,6 +1273,41 @@ export class OrbitsLobby {
   getNetworkController() {
     return this.network;
   }
+
+  /**
+   * Reset lobby state after a match ends
+   * Prepares the lobby to be shown again for a new match
+   */
+  reset() {
+    console.log('[OrbitsLobby] Resetting lobby state');
+
+    // Reset internal state
+    this.state = LobbyState.MENU;
+    this.error = null;
+    this.roomCode = null;
+    this.players = [];
+    this.isHost = false;
+    this.canStart = false;
+    this.lobbyInfo = null;
+    this.countdownValue = 0;
+
+    // Ensure network is disconnected
+    if (this.network) {
+      this.network.disconnect();
+    }
+
+    // Clean up minimized indicator
+    if (this.minimizedIndicator.parentNode) {
+      this.minimizedIndicator.remove();
+    }
+    this.isMinimized = false;
+
+    // Clear toasts
+    this._clearToasts();
+
+    // Update UI to show menu
+    this._updateContent();
+  }
 }
 
 export default OrbitsLobby;

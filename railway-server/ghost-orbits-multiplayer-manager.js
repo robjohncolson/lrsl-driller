@@ -181,6 +181,13 @@ class MultiplayerGhost {
     this.orbitingRecordId = null;
     this.orbitAngle = 0;
 
+    // Spin/dash state
+    this.isSpinning = false;
+    this.spinStartTime = 0;
+    this.spinDuration = 400;  // 400ms dash
+    this.isInvulnerable = false;
+    this.speedBoostUntil = 0;
+
     // Input buffer for spacebar presses
     this.inputBuffer = [];
     this.lastSpacebarTime = 0;
@@ -188,6 +195,26 @@ class MultiplayerGhost {
 
   update(dt, records) {
     if (!this.isAlive) return;
+
+    const now = Date.now();
+
+    // Update spin state
+    if (this.isSpinning && now > this.spinStartTime + this.spinDuration) {
+      this.isSpinning = false;
+    }
+
+    // Update invulnerability (from spin/dash)
+    this.isInvulnerable = now < this.invulnerableUntil;
+
+    // Normalize speed after boost expires
+    if (now > this.speedBoostUntil && this.movementState === 'FREE_FLIGHT') {
+      const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
+      if (speed > this.baseSpeed * 1.1) {  // If still boosted
+        const scale = this.baseSpeed / speed;
+        this.velocity.x *= scale;
+        this.velocity.y *= scale;
+      }
+    }
 
     if (this.movementState === 'FREE_FLIGHT') {
       // Move in current direction
@@ -284,6 +311,23 @@ class MultiplayerGhost {
     // This is used by dot flip timing checks (independent of orbit logic)
     if (input.action === 'PRESS') {
       this.lastSpacebarTime = now;
+
+      // Trigger dash/spin when in FREE_FLIGHT (not orbiting a record)
+      if (this.movementState === 'FREE_FLIGHT' && !this.isSpinning) {
+        this.isSpinning = true;
+        this.spinStartTime = now;
+        this.speedBoostUntil = now + 400;  // 400ms speed boost
+        this.invulnerableUntil = now + 400;  // 400ms invulnerability
+
+        // Apply speed boost (2.2x)
+        const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
+        if (speed > 0) {
+          const boost = 2.2;
+          this.velocity.x *= boost;
+          this.velocity.y *= boost;
+        }
+        console.log(`[Orbits MP] Player ${this.playerId.slice(-4)} triggered DASH/SPIN (speed boost + invulnerability)`);
+      }
     }
 
     // Add to buffer, remove old inputs
@@ -299,7 +343,8 @@ class MultiplayerGhost {
 
   takeDamage() {
     const now = Date.now();
-    if (now < this.invulnerableUntil) return false;
+    // Check both regular invulnerability and spin invulnerability
+    if (now < this.invulnerableUntil || this.isInvulnerable) return false;
 
     this.lives--;
     this.invulnerableUntil = now + 1500; // 1.5s invulnerability
@@ -311,6 +356,7 @@ class MultiplayerGhost {
   }
 
   toJSON() {
+    const now = Date.now();
     return {
       playerId: this.playerId,
       username: this.username,
@@ -323,7 +369,9 @@ class MultiplayerGhost {
       isAlive: this.isAlive,
       movementState: this.movementState,
       orbitingRecordId: this.orbitingRecordId,
-      invulnerable: Date.now() < this.invulnerableUntil
+      invulnerable: now < this.invulnerableUntil || this.isInvulnerable,
+      isSpinning: this.isSpinning,
+      spinProgress: this.isSpinning ? (now - this.spinStartTime) / this.spinDuration : 0
     };
   }
 }
@@ -337,9 +385,48 @@ class Dot {
     this.id = id;
     this.x = x;
     this.y = y;
+    this.vx = 0;  // velocity x
+    this.vy = 0;  // velocity y
     this.ownerId = null; // null = neutral
+    this.ownerColor = null;  // for client rendering
     this.radius = 10;
+    this.mass = 1.0;  // mass for physics
     this.flipWindowUntil = 0;
+  }
+
+  update(dt, arenaSize) {
+    if (this.vx === 0 && this.vy === 0) return;
+
+    // Move
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+
+    // Wall bounce (elastic)
+    if (this.x - this.radius < 0) {
+      this.x = this.radius;
+      this.vx = Math.abs(this.vx);
+    } else if (this.x + this.radius > arenaSize) {
+      this.x = arenaSize - this.radius;
+      this.vx = -Math.abs(this.vx);
+    }
+    if (this.y - this.radius < 0) {
+      this.y = this.radius;
+      this.vy = Math.abs(this.vy);
+    } else if (this.y + this.radius > arenaSize) {
+      this.y = arenaSize - this.radius;
+      this.vy = -Math.abs(this.vy);
+    }
+
+    // Friction
+    this.vx *= 0.995;
+    this.vy *= 0.995;
+
+    // Stop if slow
+    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    if (speed < 5) {  // 5 px/s threshold
+      this.vx = 0;
+      this.vy = 0;
+    }
   }
 
   toJSON() {
@@ -347,7 +434,11 @@ class Dot {
       id: this.id,
       x: this.x,
       y: this.y,
-      ownerId: this.ownerId
+      vx: this.vx,
+      vy: this.vy,
+      ownerId: this.ownerId,
+      ownerColor: this.ownerColor,
+      radius: this.radius
     };
   }
 }
@@ -1173,8 +1264,14 @@ class MultiplayerRoom {
     if (this.mode === 'blizzard') {
       this._tickBlizzard(dt);
     } else {
+      // Update dots physics
+      for (const dot of this.dots) {
+        dot.update(dt, this.arenaSize);
+      }
       // Check dot collisions
       this._checkDotCollisions();
+      // Check ghost-to-ghost collisions (billiard physics)
+      this._checkGhostGhostCollisions();
       // Check ghost-to-ghost damage via dots
       this._checkDotDamage();
     }
@@ -1386,6 +1483,37 @@ class MultiplayerRoom {
     }
   }
 
+  /**
+   * Apply billiard bump physics when a ghost collides with a dot
+   * @private
+   */
+  _applyBumpPhysics(dot, ghost) {
+    const dx = dot.x - ghost.position.x;
+    const dy = dot.y - ghost.position.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist === 0) return;
+
+    const nx = dx / dist;
+    const ny = dy / dist;
+
+    // Ghost velocity (server uses ~300 px/s, scale for physics)
+    const ghostVx = ghost.velocity.x || 0;
+    const ghostVy = ghost.velocity.y || 0;
+
+    // Relative velocity along collision normal
+    const relVx = ghostVx - dot.vx;
+    const relVy = ghostVy - dot.vy;
+    const relVelNormal = relVx * nx + relVy * ny;
+
+    // Only bump if approaching
+    if (relVelNormal <= 0) return;
+
+    // Equal mass elastic collision: transfer velocity along normal
+    const bumpScale = 0.5;  // Dampen for "underwater" feel
+    dot.vx += relVelNormal * nx * bumpScale;
+    dot.vy += relVelNormal * ny * bumpScale;
+  }
+
   _checkDotCollisions() {
     const claimRadius = MULTIPLAYER_CONFIG.dotClaimRadius;
 
@@ -1395,18 +1523,29 @@ class MultiplayerRoom {
       for (const dot of this.dots) {
         const dist = ghost.position.distanceTo(new Vector2(dot.x, dot.y));
 
+        // Debug: Log close approaches to dots (within 2x claim radius)
+        if (dist < claimRadius * 2 && this.tick % 30 === 0) {
+          console.log(`[Orbits MP] Ghost ${playerId.slice(-4)} near dot ${dot.id}: dist=${dist.toFixed(1)}, claimRadius=${claimRadius}, neutral=${dot.ownerId === null}`);
+        }
+
         if (dist < claimRadius) {
           const now = Date.now();
+
+          // Apply bump physics when ghost touches dot
+          this._applyBumpPhysics(dot, ghost);
 
           if (dot.ownerId === null) {
             // Claim neutral dot
             dot.ownerId = playerId;
+            dot.ownerColor = ghost.color;
+            console.log(`[Orbits MP] Dot ${dot.id} claimed by ${playerId} with color ${ghost.color}`);
             this._broadcastEvent('DOT_CLAIMED', { playerId, dotId: dot.id });
           } else if (dot.ownerId !== playerId) {
             // Enemy dot - check for flip window
             if (now < dot.flipWindowUntil) {
               // Within flip window, can flip
               dot.ownerId = playerId;
+              dot.ownerColor = ghost.color;
               dot.flipWindowUntil = 0;
               this._broadcastEvent('DOT_FLIPPED', { playerId, dotId: dot.id });
             } else {
@@ -1419,12 +1558,66 @@ class MultiplayerRoom {
     }
   }
 
+  /**
+   * Check ghost-to-ghost collisions and apply billiard physics
+   * @private
+   */
+  _checkGhostGhostCollisions() {
+    const ghostRadius = 12;  // Match client GHOST_RADIUS
+    const combinedRadius = ghostRadius * 2;
+    const ghostArray = Array.from(this.ghosts.values());
+
+    for (let i = 0; i < ghostArray.length; i++) {
+      for (let j = i + 1; j < ghostArray.length; j++) {
+        const ghost1 = ghostArray[i];
+        const ghost2 = ghostArray[j];
+
+        if (!ghost1.isAlive || !ghost2.isAlive) continue;
+
+        const dx = ghost2.position.x - ghost1.position.x;
+        const dy = ghost2.position.y - ghost1.position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist >= combinedRadius || dist === 0) continue;
+
+        // Collision normal (from ghost1 to ghost2)
+        const nx = dx / dist;
+        const ny = dy / dist;
+
+        // Relative velocity
+        const relVx = ghost1.velocity.x - ghost2.velocity.x;
+        const relVy = ghost1.velocity.y - ghost2.velocity.y;
+        const relVelNormal = relVx * nx + relVy * ny;
+
+        // Only collide if approaching
+        if (relVelNormal <= 0) continue;
+
+        // Equal mass elastic collision: swap velocity components along normal
+        const ghost1NormalSpeed = ghost1.velocity.x * nx + ghost1.velocity.y * ny;
+        const ghost2NormalSpeed = ghost2.velocity.x * nx + ghost2.velocity.y * ny;
+
+        ghost1.velocity.x += (ghost2NormalSpeed - ghost1NormalSpeed) * nx;
+        ghost1.velocity.y += (ghost2NormalSpeed - ghost1NormalSpeed) * ny;
+        ghost2.velocity.x += (ghost1NormalSpeed - ghost2NormalSpeed) * nx;
+        ghost2.velocity.y += (ghost1NormalSpeed - ghost2NormalSpeed) * ny;
+
+        // Separate ghosts to prevent sticking
+        const overlap = combinedRadius - dist;
+        ghost1.position.x -= nx * overlap * 0.5;
+        ghost1.position.y -= ny * overlap * 0.5;
+        ghost2.position.x += nx * overlap * 0.5;
+        ghost2.position.y += ny * overlap * 0.5;
+      }
+    }
+  }
+
   _checkDotDamage() {
     const damageRadius = MULTIPLAYER_CONFIG.dotDamageRadius;
 
     for (const [playerId, ghost] of this.ghosts) {
       if (!ghost.isAlive || ghost.movementState === 'ORBITING') continue;
-      if (Date.now() < ghost.invulnerableUntil) continue;
+      // Skip damage if invulnerable (includes spin invulnerability)
+      if (ghost.isInvulnerable || Date.now() < ghost.invulnerableUntil) continue;
 
       for (const dot of this.dots) {
         if (dot.ownerId !== null && dot.ownerId !== playerId) {
