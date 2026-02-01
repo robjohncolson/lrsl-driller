@@ -642,6 +642,21 @@ export class TrailsMode extends OrbitsMode {
         continue;
       }
 
+      // Check if OWNER can recollect their own flung ball (12-orbits style)
+      const ownerGhost = ball.ownerId === 'player' ? localGhost : shadowGhost;
+      if (ownerGhost) {
+        const distToOwner = distance(ball.x, ball.y, ownerGhost.position.x, ownerGhost.position.y);
+        const collectDist = ball.radius + (ownerGhost.radius || 12);
+        if (distToOwner < collectDist) {
+          // Owner recollects their ball - add to tail
+          const currentLength = this.trailLengths.get(ball.ownerId) || 0;
+          this.trailLengths.set(ball.ownerId, currentLength + 1);
+          ball.state = 'COLLECTED';
+          console.log(`[TrailsMode] ${ball.ownerId} recollected own flung ball, trail length: ${currentLength + 1}`);
+          continue;
+        }
+      }
+
       // Check body collision with opponent (NOT trails - flung balls pass through trails)
       const targetGhost = ball.ownerId === 'player' ? shadowGhost : localGhost;
       if (targetGhost) {

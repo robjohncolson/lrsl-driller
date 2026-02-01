@@ -22,7 +22,7 @@ const BASE_ENERGY_COST = 5;
 const MAX_ENERGY = 100;
 const ENERGY_REGEN_RATE = 8; // per second
 const WALL_BOUNCE_VELOCITY_LOSS = 0.2;
-const BASE_RADIUS = 10;
+const BASE_RADIUS = 12; // Same size as trail dots (12-orbits style)
 const FRICTION = 1.0; // No friction - v3 uses constant velocity maintained by physics engine
 
 // Trail system
@@ -1615,11 +1615,17 @@ class GhostOrbitsRenderer {
     const triangleSize = radius * 0.9;
     const triangleDist = radius * 0.1;
 
-    // Draw arrow - filled if vulnerable, outline if safe
+    // Draw heart-shaped arrow (12-orbits style) - curved notch at back
     ctx.beginPath();
-    ctx.moveTo(triangleDist + triangleSize, 0);
-    ctx.lineTo(triangleDist - triangleSize * 0.4, -triangleSize * 0.5);
-    ctx.lineTo(triangleDist - triangleSize * 0.4, triangleSize * 0.5);
+    const tipX = triangleDist + triangleSize;
+    const backX = triangleDist - triangleSize * 0.4;
+    const halfHeight = triangleSize * 0.5;
+    const notchDepth = triangleSize * 0.35; // How deep the heart notch curves inward
+
+    ctx.moveTo(tipX, 0);                           // Front tip
+    ctx.lineTo(backX, -halfHeight);                // Top back corner
+    // Curved back with heart-like notch (quadratic curve inward toward tip)
+    ctx.quadraticCurveTo(backX + notchDepth, 0, backX, halfHeight);
     ctx.closePath();
 
     if (isOrbiting) {
