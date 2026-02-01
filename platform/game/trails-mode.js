@@ -823,6 +823,24 @@ export class TrailsMode extends OrbitsMode {
   }
 
   /**
+   * Update trail chains after physics engine has updated ghost positions
+   * Call this AFTER physics engine update when ghosts are orbiting
+   * This ensures trail dots follow the ghost's actual current position
+   * @param {Object} localGhost - Player ghost with updated position
+   * @param {Object} shadowGhost - Shadow ghost with updated position (optional)
+   * @param {number} dt - Delta time in seconds
+   */
+  updateTrailChainsAfterPhysics(localGhost, shadowGhost, dt) {
+    if (!this.initialized) return;
+
+    // Re-run trail chain physics with updated positions
+    this._updateTrailChain('player', localGhost, dt);
+    if (shadowGhost) {
+      this._updateTrailChain(this.shadowGhostId, shadowGhost, dt);
+    }
+  }
+
+  /**
    * Check if ghost should show orbit warning
    * @private
    */

@@ -1588,6 +1588,12 @@ export class GhostOrbitsController {
       shadowGhost.updateEnergy(deltaTime);
     }
 
+    // Update trail chains AFTER physics has updated orbit positions
+    // This ensures trail dots follow the ghost's actual current position when orbiting
+    if (this.mode?.updateTrailChainsAfterPhysics) {
+      this.mode.updateTrailChainsAfterPhysics(localGhost, shadowGhost, deltaTime);
+    }
+
     // Check void zone for player (drain energy if inside)
     if (this.voidZone) {
       const dx = localGhost.position.x - this.voidZone.x;
@@ -2063,7 +2069,7 @@ export class GhostOrbitsController {
               // 12-orbits style: Ghost spins 3 times when flinging
               // Spin duration matches a brief moment (500ms)
               localGhost.spinStartTime = performance.now();
-              localGhost.spinDuration = 500; // ms for 3 full rotations
+              localGhost.spinDuration = 750; // ms for 3 full rotations (slower for dramatic effect)
 
               if (this.audio) this.audio.playBounce?.();
             }

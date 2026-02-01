@@ -1584,7 +1584,7 @@ class GhostOrbitsRenderer {
       // 2. SCALE POP: Sprite gets bigger at peak of each flip (simulates height)
       // Sin curve peaks at midpoint of each rotation
       // Use absolute sin to get peaks at both 90° and 270° of each rotation
-      const popFactor = 0.3; // 30% size increase at peak
+      const popFactor = 0.6; // 60% size increase at peak
       scalePop = 1 + Math.abs(Math.sin(spinAngle)) * popFactor;
     }
 
