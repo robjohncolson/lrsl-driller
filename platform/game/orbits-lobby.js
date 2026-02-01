@@ -676,26 +676,11 @@ export class OrbitsLobby {
         border-color: #4488ff;
       }
 
-      .orbits-lobby-room-code {
-        text-align: center;
-        padding: 12px 16px;
-        background: #2a2a4a;
-        border-radius: 8px;
-      }
-
-      .orbits-lobby-room-code-label {
-        font-size: 10px;
-        color: #888;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 4px;
-      }
-
-      .orbits-lobby-room-code-value {
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 6px;
-        color: #4488ff;
+      .orbits-lobby-status {
+        font-size: 16px;
+        font-weight: 500;
+        color: #aaa;
+        padding: 8px 0;
       }
 
       .orbits-lobby-players {
@@ -923,9 +908,8 @@ export class OrbitsLobby {
 
     return `
       <div class="orbits-lobby-room-header">
-        <div class="orbits-lobby-room-code">
-          <div class="orbits-lobby-room-code-label">Room</div>
-          <div class="orbits-lobby-room-code-value">${this.roomCode}</div>
+        <div class="orbits-lobby-status">
+          ${playerCount < 2 ? '⏳ Waiting for players...' : '✓ Ready to start!'}
         </div>
         ${lobbySeconds !== undefined ? `
           <div class="orbits-lobby-timer">
@@ -938,7 +922,6 @@ export class OrbitsLobby {
       <div class="orbits-lobby-players">
         <div class="orbits-lobby-players-title">
           Players (${playerCount}/${maxPlayers})
-          ${playerCount < 2 ? ' - Waiting for players...' : ''}
         </div>
         <div class="orbits-lobby-player-grid">
           ${this.players.map(p => `
