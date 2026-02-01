@@ -1030,7 +1030,7 @@ export class OrbitsLobby {
 
     // Handle special 'cloud' value (explicit cloud preference)
     if (savedUrl === 'cloud') {
-      return { type: 'cloud', display: 'Cloud', url: 'wss://lrsl-trainer-production.up.railway.app' };
+      return { type: 'cloud', display: 'Cloud', url: 'wss://lrsl-driller-production.up.railway.app' };
     }
 
     if (savedUrl) {
@@ -1303,7 +1303,7 @@ export class OrbitsLobby {
       case 'cloud':
         // Store 'cloud' to indicate explicit cloud preference (skips auto-discovery)
         localStorage.setItem('orbits_server_url', 'cloud');
-        newUrl = 'wss://lrsl-trainer-production.up.railway.app';
+        newUrl = 'wss://lrsl-driller-production.up.railway.app';
         break;
       case 'local':
         newUrl = 'ws://localhost:3001';

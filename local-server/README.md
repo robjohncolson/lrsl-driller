@@ -37,7 +37,7 @@ const serverUrl = 'ws://192.168.1.100:3001';  // Replace with your server's IP
 // Original production code:
 const serverUrl = (window.location.hostname === 'localhost'
   ? 'ws://localhost:3001'
-  : 'wss://lrsl-trainer-production.up.railway.app');
+  : 'wss://lrsl-driller-production.up.railway.app');
 ```
 
 Or add a UI toggle to switch between local and cloud servers.

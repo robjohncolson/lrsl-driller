@@ -582,7 +582,7 @@ export class GhostPanel {
       // Special value 'cloud' means user explicitly chose cloud - skip auto-discovery
       if (savedServer === 'cloud') {
         console.log('[GhostPanel] Using Cloud server (explicit preference)');
-        return 'wss://lrsl-trainer-production.up.railway.app';
+        return 'wss://lrsl-driller-production.up.railway.app';
       }
       // Otherwise use the saved URL
       console.log('[GhostPanel] Using saved server from localStorage:', savedServer);
@@ -598,7 +598,7 @@ export class GhostPanel {
 
     // 3. Fall back to configured server or Railway
     console.log('[GhostPanel] No local server found, using Railway');
-    return 'wss://lrsl-trainer-production.up.railway.app';
+    return 'wss://lrsl-driller-production.up.railway.app';
   }
 
   /**
