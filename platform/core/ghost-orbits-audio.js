@@ -319,10 +319,10 @@ class RetroSynth {
  */
 const MUSIC_TRACKS = {
   none: { id: 'none', name: 'No Music', path: null },
-  final_moments: { id: 'final_moments', name: 'Final Moments', path: 'audio/music/final_moments.mp3' },
-  drive: { id: 'drive', name: 'Drive', path: 'audio/music/drive.mp3' },
-  longing: { id: 'longing', name: 'Longing', path: 'audio/music/longing.mp3' },
-  tenuf: { id: 'tenuf', name: '10µF', path: 'audio/music/10uf.mp3' }
+  final_moments: { id: 'final_moments', name: 'Final Moments', path: '../audio/music/final_moments.mp3' },
+  drive: { id: 'drive', name: 'Drive', path: '../audio/music/drive.mp3' },
+  longing: { id: 'longing', name: 'Longing', path: '../audio/music/longing.mp3' },
+  tenuf: { id: 'tenuf', name: '10µF', path: '../audio/music/10uf.mp3' }
 };
 
 /**
@@ -507,7 +507,7 @@ class GhostOrbitsAudio {
   playPop() {
     // Lazy-load the pop sound
     if (!this._popSoundLoaded) {
-      this._popSound = new Audio('audio/sfx/pop.mp3');
+      this._popSound = new Audio('../audio/sfx/pop.mp3');
       this._popSound.volume = 0.5;
       this._popSoundLoaded = true;
     }
