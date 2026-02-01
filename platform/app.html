@@ -5125,9 +5125,37 @@
       console.log(`✓ Cleared ${keys.length} saved items. Refresh the page to start fresh.`);
     };
 
+    // Multiplayer server commands (for local LAN play)
+    window.setLocalServer = function(ip) {
+      const port = 3001;
+      const url = ip ? `ws://${ip}:${port}` : 'ws://localhost:3001';
+      localStorage.setItem('orbits_server_url', url);
+      console.log(`✓ Multiplayer server set to: ${url}`);
+      console.log('  Refresh the page, then open multiplayer to connect to the local server.');
+    };
+
+    window.setCloudServer = function() {
+      localStorage.removeItem('orbits_server_url');
+      console.log('✓ Multiplayer server reset to Railway (cloud)');
+      console.log('  Refresh the page to use the cloud server.');
+    };
+
+    window.getServerUrl = function() {
+      const custom = localStorage.getItem('orbits_server_url');
+      if (custom) {
+        console.log(`Current server: ${custom} (local)`);
+      } else {
+        console.log('Current server: Railway cloud (default)');
+      }
+      return custom || 'wss://lrsl-trainer-production.up.railway.app';
+    };
+
     console.log('🎮 Console commands available:');
     console.log('  resetProgress()    - Reset progress for current cartridge');
     console.log('  resetAllProgress() - Reset ALL cartridge progress (nuclear option)');
+    console.log('  setLocalServer(ip) - Connect to local LAN server (e.g., setLocalServer("192.168.1.100"))');
+    console.log('  setCloudServer()   - Reset to Railway cloud server');
+    console.log('  getServerUrl()     - Show current multiplayer server');
 
     init();
   </script>

@@ -575,10 +575,24 @@ export class GhostPanel {
    */
   _openMultiplayerLobby() {
     // Determine server URL
-    const serverUrl = this.serverUrl?.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://')
-      || (window.location.hostname === 'localhost'
-        ? 'ws://localhost:3001'
-        : 'wss://lrsl-trainer-production.up.railway.app');
+    // Check localStorage for custom server (for local LAN play)
+    const customServer = localStorage.getItem('orbits_server_url');
+    let serverUrl;
+
+    if (customServer) {
+      // Use custom server URL from localStorage
+      serverUrl = customServer;
+      console.log('[GhostPanel] Using custom server:', serverUrl);
+    } else if (this.serverUrl) {
+      // Use configured server URL
+      serverUrl = this.serverUrl.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://');
+    } else if (window.location.hostname === 'localhost') {
+      // Dev server - use local WebSocket
+      serverUrl = 'ws://localhost:3001';
+    } else {
+      // Production - use Railway
+      serverUrl = 'wss://lrsl-trainer-production.up.railway.app';
+    }
 
     // Create lobby if not exists
     if (!this.orbitsLobby) {
