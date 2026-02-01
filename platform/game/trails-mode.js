@@ -346,11 +346,9 @@ export class TrailsMode extends OrbitsMode {
       ? (this.prevPositions.get(this.shadowGhostId) || { x: input.shadowGhost.position.x, y: input.shadowGhost.position.y })
       : null;
 
-    // Update trail chain physics (12-orbits style: rope/tether, not spring)
-    this._updateTrailChain('player', localGhost, dt);
-    if (input.shadowGhost) {
-      this._updateTrailChain(this.shadowGhostId, input.shadowGhost, dt);
-    }
+    // NOTE: Trail chain physics moved to updateTrailChainsAfterPhysics()
+    // Must run AFTER physics engine updates orbit positions to get chord behavior
+    // (dots chase ghost's CURRENT position, not stale pre-physics position)
 
     // Track orbit duration for anti-camping
     this._updateOrbitTracking('player', input.ghostMovementState, currentTime);
