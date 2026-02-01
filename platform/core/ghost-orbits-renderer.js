@@ -55,7 +55,7 @@ const COLORS = {
   textSecondary: '#88aacc',
   // Trails mode flat colors (12-orbits style)
   trailsRecord: '#888888',      // Flat gray for records
-  trailsRecordCenter: '#444444', // Dark center dot
+  trailsRecordCenter: '#e8e8e8', // Same as background (hole in the middle)
   trailsCollectible: '#ffffff'  // White collectible spheres
 };
 
@@ -1557,35 +1557,50 @@ class GhostOrbitsRenderer {
    * @private
    */
   _renderGhostFlat(ctx, ghost, x, y, radius, displayColor, isOrbiting) {
-    // Calculate radial spin effect (coin flip illusion)
-    // Uses horizontal scale compression/expansion with color change
-    let scaleX = 1;
+    // Direction angle for arrow and spin axis
+    const dirAngle = ghost.directionAngle || 0;
+
+    // Calculate flip effect (12-orbits "jump" animation)
+    // Two components:
+    // 1. Front flip (pitch rotation) - Y-scale compression simulates 360° rotation
+    // 2. Scale pop - sprite gets larger at peak, simulating height/jump arc
+    let scalePerpendicular = 1;
+    let scalePop = 1;
     let isBackSide = false;
 
     if (ghost.spinProgress !== undefined && ghost.spinProgress > 0 && ghost.spinProgress < 1) {
       // For 3 full rotations: angle goes 0 → 6π
       const spinAngle = ghost.spinProgress * Math.PI * 6;
-      // scaleX = |cos(angle)| gives us the compression/expansion
-      // cos goes: 1 → 0 → -1 → 0 → 1 (one full rotation)
+
+      // 1. FRONT FLIP: Y-scale goes 1 → 0 → -1 → 0 → 1 per rotation
+      // cos gives us the compression/expansion perpendicular to travel
       const cosValue = Math.cos(spinAngle);
-      scaleX = Math.abs(cosValue);
-      // When cos is negative, we're seeing the "back" of the coin
+      scalePerpendicular = Math.abs(cosValue);
+      // When cos is negative, we're seeing the "back" (upside down)
       isBackSide = cosValue < 0;
       // Minimum scale to avoid disappearing completely
-      scaleX = Math.max(0.05, scaleX);
+      scalePerpendicular = Math.max(0.05, scalePerpendicular);
+
+      // 2. SCALE POP: Sprite gets bigger at peak of each flip (simulates height)
+      // Sin curve peaks at midpoint of each rotation
+      // Use absolute sin to get peaks at both 90° and 270° of each rotation
+      const popFactor = 0.3; // 30% size increase at peak
+      scalePop = 1 + Math.abs(Math.sin(spinAngle)) * popFactor;
     }
 
-    // Determine the color to use (darker on back side)
+    // Determine the color to use (darker on back side / upside down)
     const ghostColor = isBackSide ? darken(displayColor, 0.4) : displayColor;
     const arrowColor = isBackSide ? '#999999' : '#ffffff';
 
     ctx.save();
     ctx.translate(x, y);
 
-    // Apply horizontal scale for radial spin effect
-    if (scaleX < 1) {
-      ctx.scale(scaleX, 1);
-    }
+    // Rotate to align with direction of travel FIRST
+    ctx.rotate(dirAngle);
+
+    // Apply scale pop (uniform scaling for "height" effect)
+    // Then apply perpendicular scale (front flip compression)
+    ctx.scale(scalePop, scalePop * scalePerpendicular);
 
     // Simple filled circle (no gradient/glow)
     ctx.fillStyle = ghostColor;
@@ -1596,13 +1611,7 @@ class GhostOrbitsRenderer {
     // Direction indicator: 12-orbits style
     // - FILLED arrow = vulnerable (flying)
     // - OUTLINE arrow = safe (orbiting)
-    // Arrow spins WITH the ghost body for the radial effect
-    const dirAngle = ghost.directionAngle || 0;
-
-    // Rotate to face movement direction
-    ctx.rotate(dirAngle);
-
-    // Arrow dimensions
+    // Arrow points along +X (which is direction of travel after rotation)
     const triangleSize = radius * 0.9;
     const triangleDist = radius * 0.1;
 
@@ -1616,7 +1625,8 @@ class GhostOrbitsRenderer {
     if (isOrbiting) {
       // Safe: OUTLINE arrow only
       ctx.strokeStyle = arrowColor;
-      ctx.lineWidth = 3 / scaleX; // Compensate for scale
+      // Compensate line width for both scale factors
+      ctx.lineWidth = 3 / (scalePop * scalePerpendicular);
       ctx.stroke();
     } else {
       // Vulnerable: FILLED arrow
@@ -1908,12 +1918,20 @@ class GhostOrbitsRenderer {
         // Skip if fully faded
         if (alpha <= 0) continue;
 
-        // Simple filled circle (no glow, individual balls)
         ctx.globalAlpha = Math.min(alpha, 0.9);
+
+        // Simple filled circle (no glow, individual balls)
         ctx.fillStyle = color;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
+
+        // Add border - darker shade of the segment's color
+        ctx.strokeStyle = darken(color, 0.25);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.stroke();
       }
       ctx.globalAlpha = 1;
       return;

@@ -363,9 +363,13 @@ export class TrailsMode extends OrbitsMode {
     const playerOrbiting = input.ghostMovementState === 'ORBITING';
     const playerOrbitUnsafe = this._isOrbitUnsafe('player', currentTime);
 
-    if ((!playerOrbiting || playerOrbitUnsafe) && now > this.playerInvulnerableUntil) {
-      // Check sphere collection
+    // Sphere collection: ONLY when NOT orbiting (ghost body must touch, not trail)
+    // This prevents trail segments from appearing to collect spheres while ghost orbits
+    if (!playerOrbiting) {
       this._checkSphereCollection('player', localGhost, currentTime);
+    }
+
+    if ((!playerOrbiting || playerOrbitUnsafe) && now > this.playerInvulnerableUntil) {
 
       // Check trail collision (12-orbits sever mechanic: line segment intersection)
       const trailHit = this._checkTrailCollision('player', localGhost, playerPrev);
@@ -406,10 +410,12 @@ export class TrailsMode extends OrbitsMode {
     const shadowOrbiting = input.shadowMovementState === 'ORBITING';
     const shadowOrbitUnsafe = this._isOrbitUnsafe(this.shadowGhostId, currentTime);
 
-    if (input.shadowGhost && (!shadowOrbiting || shadowOrbitUnsafe) && now > this.shadowInvulnerableUntil) {
-      // Check sphere collection
+    // Sphere collection: ONLY when NOT orbiting (ghost body must touch, not trail)
+    if (input.shadowGhost && !shadowOrbiting) {
       this._checkSphereCollection(this.shadowGhostId, input.shadowGhost, currentTime);
+    }
 
+    if (input.shadowGhost && (!shadowOrbiting || shadowOrbitUnsafe) && now > this.shadowInvulnerableUntil) {
       // Check trail collision (12-orbits sever mechanic: line segment intersection)
       const trailHit = this._checkTrailCollision(this.shadowGhostId, input.shadowGhost, shadowPrev);
       if (trailHit) {
