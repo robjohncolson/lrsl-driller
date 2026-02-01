@@ -67,6 +67,7 @@ export class OrbitsNetworkController {
     this.onCountdown = options.onCountdown || (() => {});
     this.onLobbyCountdown = options.onLobbyCountdown || (() => {});
     this.onEvent = options.onEvent || (() => {});
+    this.onWaiting = options.onWaiting || (() => {});
     this.onError = options.onError || (() => {});
 
     // State
@@ -538,6 +539,11 @@ export class OrbitsNetworkController {
 
         case 'orbits_lobby_countdown':
           this._handleLobbyCountdown(message.payload);
+          break;
+
+        case 'orbits_waiting':
+          // Not enough players, timer reset
+          this.onWaiting(message.payload);
           break;
 
         case 'orbits_match_start':

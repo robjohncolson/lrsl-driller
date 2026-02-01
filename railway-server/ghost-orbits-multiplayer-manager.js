@@ -730,7 +730,27 @@ class MultiplayerRoom {
    */
   _triggerAutoStart() {
     if (this.state !== RoomState.LOBBY) return;
-    if (this.players.size < MULTIPLAYER_CONFIG.minPlayersToStart) return;
+
+    // Not enough players - reset timer and keep waiting
+    if (this.players.size < MULTIPLAYER_CONFIG.minPlayersToStart) {
+      console.log(`[Orbits MP] Room ${this.roomCode} not enough players (${this.players.size}/${MULTIPLAYER_CONFIG.minPlayersToStart}), resetting timer`);
+
+      // Notify players we're still waiting
+      this._broadcastToRoom({
+        type: 'orbits_waiting',
+        payload: {
+          message: 'Waiting for more players...',
+          playerCount: this.players.size,
+          playersNeeded: MULTIPLAYER_CONFIG.minPlayersToStart - this.players.size
+        }
+      });
+
+      // Reset the lobby timer
+      this.lobbyTimer = null;
+      this.lobbyStartTime = null;
+      this._startLobbyTimer();
+      return;
+    }
 
     // Clear lobby timer
     if (this.lobbyTimer) {
@@ -791,6 +811,8 @@ class MultiplayerRoom {
     const player = this.players.get(playerId);
     if (player) {
       player.ws = ws;
+      // Broadcast room state so this player sees current state
+      this._broadcastRoomState();
     }
   }
 

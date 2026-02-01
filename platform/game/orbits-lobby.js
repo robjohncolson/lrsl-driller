@@ -52,6 +52,7 @@ export class OrbitsLobby {
       onRoomUpdate: (data) => this._handleRoomUpdate(data),
       onCountdown: (data) => this._handleCountdown(data),
       onLobbyCountdown: (data) => this._handleLobbyCountdown(data),
+      onWaiting: (data) => this._handleWaiting(data),
       onMatchStart: (data) => this._handleMatchStart(data),
       onError: (data) => this._handleError(data)
     });
@@ -1142,6 +1143,27 @@ export class OrbitsLobby {
     }
 
     // Update minimized indicator if minimized
+    if (this.isMinimized) {
+      this._updateMinimizedIndicator();
+    }
+  }
+
+  _handleWaiting(data) {
+    // Timer expired but not enough players - reset lobby info
+    console.log('[OrbitsLobby] Waiting for more players:', data);
+    this.lobbyInfo = {
+      secondsRemaining: undefined,
+      playersNeeded: data.playersNeeded,
+      playerCount: data.playerCount,
+      maxPlayers: 8
+    };
+
+    // Update the room display
+    if (this.state === LobbyState.IN_ROOM) {
+      this._updateContent();
+    }
+
+    // Update minimized indicator
     if (this.isMinimized) {
       this._updateMinimizedIndicator();
     }
