@@ -12,6 +12,7 @@ import { TerrainRenderer } from '../core/ghost-terrain-renderer.js';
 import { getRatingTier, ELO_CONFIG } from '../core/ghost-battle-engine.js';
 import { BattleViz } from '../core/ghost-battle-viz.js';
 import { generateFractalPattern, calculateGhostProperties, getPropertyRanges, normalizeProperty, aggregateClassWeights } from '../core/ghost-orbits-nn-mapper.js';
+import { OrbitsLobby } from './orbits-lobby.js';
 
 export class GhostPanel {
   /**
@@ -358,12 +359,18 @@ export class GhostPanel {
                   <option value="blizzard">Blizzard (Team Defense)</option>
                 </select>
               </div>
-              <button class="ghost-orbits-btn locked" id="ghost-orbits-enter-btn" disabled>
-                <span class="ghost-orbits-icon">🔒</span>
-                <span class="ghost-orbits-text">Enter Arena</span>
-              </button>
+              <div class="ghost-orbits-buttons">
+                <button class="ghost-orbits-btn locked" id="ghost-orbits-enter-btn" disabled>
+                  <span class="ghost-orbits-icon">🔒</span>
+                  <span class="ghost-orbits-text">Solo vs AI</span>
+                </button>
+                <button class="ghost-orbits-btn multiplayer" id="ghost-orbits-multiplayer-btn">
+                  <span class="ghost-orbits-icon">🌐</span>
+                  <span class="ghost-orbits-text">Multiplayer</span>
+                </button>
+              </div>
               <p class="ghost-orbits-hint" id="ghost-orbits-hint">
-                Earn gold stars to unlock the arena!
+                Earn gold stars to unlock solo mode!
               </p>
             </div>
 
@@ -544,6 +551,45 @@ export class GhostPanel {
       // Check unlock status when panel shows
       this._updateOrbitsButton();
     }
+
+    // Ghost Orbits multiplayer button
+    const multiplayerBtn = this.container.querySelector('#ghost-orbits-multiplayer-btn');
+    if (multiplayerBtn) {
+      multiplayerBtn.addEventListener('click', () => {
+        this._openMultiplayerLobby();
+      });
+    }
+  }
+
+  /**
+   * Open the multiplayer lobby
+   * @private
+   */
+  _openMultiplayerLobby() {
+    // Determine server URL
+    const serverUrl = this.serverUrl?.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://')
+      || (window.location.hostname === 'localhost'
+        ? 'ws://localhost:3001'
+        : 'wss://lrsl-trainer-production.up.railway.app');
+
+    // Create lobby if not exists
+    if (!this.orbitsLobby) {
+      this.orbitsLobby = new OrbitsLobby({
+        container: document.body,
+        serverUrl: serverUrl,
+        username: this.username || 'Player',
+        onMatchStart: (data) => {
+          console.log('[GhostPanel] Multiplayer match starting:', data);
+          // TODO: Connect to multiplayer game mode with data.network
+        },
+        onExit: () => {
+          console.log('[GhostPanel] Exited multiplayer lobby');
+        }
+      });
+    }
+
+    // Show the lobby
+    this.orbitsLobby.show();
   }
 
   /**
@@ -2631,6 +2677,38 @@ export class GhostPanel {
 
       .ghost-orbits-hint.unlocked {
         color: #00ff88;
+      }
+
+      /* Ghost Orbits Button Container */
+      .ghost-orbits-buttons {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .ghost-orbits-buttons .ghost-orbits-btn {
+        flex: 1;
+        min-width: 0;
+      }
+
+      /* Multiplayer Button */
+      .ghost-orbits-btn.multiplayer {
+        background: linear-gradient(135deg, #1f3d4a 0%, #1a2f3e 100%);
+        border: 2px solid #00d4ff55;
+        color: #ffffff;
+        cursor: pointer;
+        opacity: 1;
+      }
+
+      .ghost-orbits-btn.multiplayer:hover {
+        background: linear-gradient(135deg, #2f4d5a 0%, #2a3f4e 100%);
+        border-color: #00d4ff;
+        transform: scale(1.02);
+        box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+      }
+
+      .ghost-orbits-btn.multiplayer .ghost-orbits-icon {
+        color: #00d4ff;
       }
 
       /* Ghost Orbits Mode Selector */
