@@ -24,8 +24,18 @@ const MULTIPLAYER_CONFIG = {
   maxPlayersPerTeam: 6,   // For Blizzard mode
   roomTimeoutMs: 600000,  // 10 min inactive room cleanup
 
-  // Matchmaking
-  lobbyWaitTime: 20000,   // 20 seconds max wait in lobby before auto-start
+  // Matchmaking - countdown scales with player count
+  // 1 player: no countdown (waiting), 2: 24s, 3: 20s, 4: 16s, 5: 12s, 6: 8s, 7: 4s, 8: immediate
+  lobbyCountdownByPlayers: {
+    1: null,    // No countdown, waiting for players
+    2: 24000,   // 24 seconds
+    3: 20000,   // 20 seconds
+    4: 16000,   // 16 seconds
+    5: 12000,   // 12 seconds
+    6: 8000,    // 8 seconds
+    7: 4000,    // 4 seconds
+    8: 0        // Start immediately
+  },
   autoReadyDelay: 2000,   // 2 seconds after joining before auto-ready
 
   // Timing
@@ -623,7 +633,9 @@ class MultiplayerRoom {
     this.isPublic = false;
     this.lobbyStartTime = null;
     this.lobbyTimer = null;
+    this.lobbyCountdownMs = null;  // Current countdown duration
     this.autoReadyTimers = new Map(); // playerId -> timeout
+    this.startNowVotes = new Set(); // Players who voted to start now
 
     console.log(`[Orbits MP] Room ${roomCode} created by ${hostUsername}`);
   }
@@ -666,7 +678,7 @@ class MultiplayerRoom {
 
     this.lastActivity = Date.now();
 
-    // For public rooms: auto-ready after delay
+    // For public rooms: auto-ready after delay and dynamic countdown
     if (this.isPublic) {
       const autoReadyTimer = setTimeout(() => {
         this.setPlayerReady(playerId, true);
@@ -674,15 +686,9 @@ class MultiplayerRoom {
       }, MULTIPLAYER_CONFIG.autoReadyDelay);
       this.autoReadyTimers.set(playerId, autoReadyTimer);
 
-      // Start lobby timer when we have minimum players
-      if (this.players.size >= MULTIPLAYER_CONFIG.minPlayersToStart && !this.lobbyTimer) {
-        this._startLobbyTimer();
-      }
-
-      // Auto-start immediately if room is full
-      if (this.players.size >= maxPlayers) {
-        this._triggerAutoStart();
-      }
+      // Update lobby timer based on new player count
+      // This will start/shorten countdown appropriately
+      this._updateLobbyTimerForNewPlayer();
     }
 
     this._broadcastRoomState();
@@ -748,21 +754,118 @@ class MultiplayerRoom {
   }
 
   /**
-   * Start the lobby countdown timer
+   * Get the countdown duration based on player count
+   * @returns {number|null} Countdown in ms, or null if waiting for players
+   * @private
+   */
+  _getCountdownForPlayerCount() {
+    const count = Math.min(this.players.size, 8);
+    return MULTIPLAYER_CONFIG.lobbyCountdownByPlayers[count] ?? null;
+  }
+
+  /**
+   * Start or update the lobby countdown timer based on player count
    * @private
    */
   _startLobbyTimer() {
-    if (this.lobbyTimer) return;
+    // Clear existing timer
+    if (this.lobbyTimer) {
+      clearTimeout(this.lobbyTimer);
+      this.lobbyTimer = null;
+    }
 
+    const countdownMs = this._getCountdownForPlayerCount();
+
+    // 1 player = no countdown, just wait
+    if (countdownMs === null) {
+      this.lobbyStartTime = null;
+      this.lobbyCountdownMs = null;
+      console.log(`[Orbits MP] Room ${this.roomCode} waiting for more players (${this.players.size}/2 minimum)`);
+      this._broadcastLobbyCountdown();
+      return;
+    }
+
+    // 8 players = start immediately
+    if (countdownMs === 0) {
+      console.log(`[Orbits MP] Room ${this.roomCode} full (8 players), starting immediately`);
+      this._triggerAutoStart();
+      return;
+    }
+
+    // Start countdown
     this.lobbyStartTime = Date.now();
-    console.log(`[Orbits MP] Room ${this.roomCode} lobby timer started (${MULTIPLAYER_CONFIG.lobbyWaitTime}ms)`);
+    this.lobbyCountdownMs = countdownMs;
+    console.log(`[Orbits MP] Room ${this.roomCode} lobby timer started (${countdownMs}ms for ${this.players.size} players)`);
 
     this.lobbyTimer = setTimeout(() => {
       this._triggerAutoStart();
-    }, MULTIPLAYER_CONFIG.lobbyWaitTime);
+    }, countdownMs);
 
     // Broadcast countdown updates
     this._broadcastLobbyCountdown();
+  }
+
+  /**
+   * Update countdown when a new player joins (shortens the timer)
+   * @private
+   */
+  _updateLobbyTimerForNewPlayer() {
+    if (this.state !== RoomState.LOBBY) return;
+    if (!this.isPublic) return;
+
+    // Clear start now votes when players change
+    this.startNowVotes.clear();
+
+    const newCountdownMs = this._getCountdownForPlayerCount();
+
+    // Still waiting for minimum players
+    if (newCountdownMs === null) {
+      this._startLobbyTimer();
+      return;
+    }
+
+    // 8 players - start immediately
+    if (newCountdownMs === 0) {
+      this._triggerAutoStart();
+      return;
+    }
+
+    // If no timer running yet, start one
+    if (!this.lobbyTimer) {
+      this._startLobbyTimer();
+      return;
+    }
+
+    // Calculate remaining time on current timer
+    const elapsed = Date.now() - this.lobbyStartTime;
+    const currentRemaining = this.lobbyCountdownMs - elapsed;
+
+    // If new countdown is shorter than remaining, restart with shorter time
+    if (newCountdownMs < currentRemaining) {
+      console.log(`[Orbits MP] Room ${this.roomCode} shortening countdown: ${Math.ceil(currentRemaining/1000)}s -> ${Math.ceil(newCountdownMs/1000)}s`);
+      this._startLobbyTimer();
+    }
+  }
+
+  /**
+   * Handle "Start Now" vote from a player
+   * @param {string} playerId - Player voting to start
+   */
+  voteStartNow(playerId) {
+    if (this.state !== RoomState.LOBBY) return;
+    if (!this.players.has(playerId)) return;
+
+    this.startNowVotes.add(playerId);
+    console.log(`[Orbits MP] Room ${this.roomCode}: ${playerId} voted to start now (${this.startNowVotes.size}/${this.players.size})`);
+
+    // Check if all players voted
+    if (this.startNowVotes.size >= this.players.size && this.players.size >= MULTIPLAYER_CONFIG.minPlayersToStart) {
+      console.log(`[Orbits MP] Room ${this.roomCode}: All players voted to start now!`);
+      this._triggerAutoStart();
+    } else {
+      // Broadcast updated vote count
+      this._broadcastLobbyCountdown();
+    }
   }
 
   /**
@@ -770,24 +873,29 @@ class MultiplayerRoom {
    * @private
    */
   _broadcastLobbyCountdown() {
-    if (this.state !== RoomState.LOBBY || !this.lobbyStartTime) return;
+    if (this.state !== RoomState.LOBBY) return;
 
-    const elapsed = Date.now() - this.lobbyStartTime;
-    const remaining = Math.max(0, MULTIPLAYER_CONFIG.lobbyWaitTime - elapsed);
-    const secondsRemaining = Math.ceil(remaining / 1000);
+    let secondsRemaining = null;
+    if (this.lobbyStartTime && this.lobbyCountdownMs) {
+      const elapsed = Date.now() - this.lobbyStartTime;
+      const remaining = Math.max(0, this.lobbyCountdownMs - elapsed);
+      secondsRemaining = Math.ceil(remaining / 1000);
+    }
 
     this._broadcastToRoom({
       type: 'orbits_lobby_countdown',
       payload: {
-        secondsRemaining,
+        secondsRemaining,  // null means waiting for players
         playersNeeded: Math.max(0, MULTIPLAYER_CONFIG.minPlayersToStart - this.players.size),
         playerCount: this.players.size,
-        maxPlayers: MULTIPLAYER_CONFIG.maxPlayersPerRoom
+        maxPlayers: MULTIPLAYER_CONFIG.maxPlayersPerRoom,
+        startNowVotes: this.startNowVotes.size,
+        canStartNow: this.players.size >= MULTIPLAYER_CONFIG.minPlayersToStart
       }
     });
 
-    // Continue broadcasting every second
-    if (remaining > 0 && this.state === RoomState.LOBBY) {
+    // Continue broadcasting every second if countdown is active
+    if (secondsRemaining !== null && secondsRemaining > 0 && this.state === RoomState.LOBBY) {
       setTimeout(() => this._broadcastLobbyCountdown(), 1000);
     }
   }

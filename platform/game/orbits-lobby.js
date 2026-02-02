@@ -545,6 +545,31 @@ export class OrbitsLobby {
         margin: 0;
       }
 
+      .orbits-lobby-start-now {
+        text-align: center;
+        margin: 16px 0;
+        padding: 12px;
+        background: rgba(68, 255, 136, 0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(68, 255, 136, 0.3);
+      }
+
+      .orbits-start-now-btn {
+        background: linear-gradient(135deg, #44cc88 0%, #22aa66 100%) !important;
+      }
+
+      .orbits-start-now-btn:disabled {
+        background: #3a3a5a !important;
+        opacity: 0.7;
+        cursor: default;
+      }
+
+      .orbits-lobby-start-hint {
+        font-size: 11px;
+        color: #888;
+        margin: 8px 0 0 0;
+      }
+
       .orbits-lobby-player.ai-player {
         background: linear-gradient(135deg, #2a2a4a 0%, #3a2a5a 100%);
         border: 1px solid rgba(136, 68, 255, 0.3);
@@ -1081,13 +1106,25 @@ export class OrbitsLobby {
     const lobbySeconds = this.lobbyInfo?.secondsRemaining;
     const playerCount = this.players.length;
     const canAddAI = this.isHost && playerCount < maxPlayers;
+    const startNowVotes = this.lobbyInfo?.startNowVotes || 0;
+    const canStartNow = this.lobbyInfo?.canStartNow && playerCount >= 2;
+
+    // Determine status message
+    let statusMessage;
+    if (playerCount < 2) {
+      statusMessage = '⏳ Waiting for players...';
+    } else if (lobbySeconds === null || lobbySeconds === undefined) {
+      statusMessage = '✓ Ready to start!';
+    } else {
+      statusMessage = '✓ Starting soon...';
+    }
 
     return `
       <div class="orbits-lobby-room-header">
         <div class="orbits-lobby-status">
-          ${playerCount < 2 ? '⏳ Waiting for players...' : '✓ Ready to start!'}
+          ${statusMessage}
         </div>
-        ${lobbySeconds !== undefined ? `
+        ${lobbySeconds !== null && lobbySeconds !== undefined ? `
           <div class="orbits-lobby-timer">
             <div class="orbits-lobby-timer-label">Starting in</div>
             <div class="orbits-lobby-timer-value">${lobbySeconds}s</div>
@@ -1123,8 +1160,17 @@ export class OrbitsLobby {
         </div>
       ` : ''}
 
+      ${canStartNow ? `
+        <div class="orbits-lobby-start-now">
+          <button class="orbits-lobby-menu-btn orbits-start-now-btn" data-action="start-now">
+            ⚡ Start Now ${startNowVotes > 0 ? `(${startNowVotes}/${playerCount})` : ''}
+          </button>
+          <p class="orbits-lobby-start-hint">All players must agree to start early</p>
+        </div>
+      ` : ''}
+
       <div class="orbits-lobby-info">
-        <p>Game starts automatically when players are ready</p>
+        <p>${playerCount < 2 ? 'Invite friends to join!' : 'Game starts automatically, or vote to start now'}</p>
       </div>
 
       <div class="orbits-lobby-actions">
@@ -1368,6 +1414,16 @@ export class OrbitsLobby {
         this.network.addAIPlayer();
       });
     }
+
+    const startNowBtn = content.querySelector('[data-action="start-now"]');
+    if (startNowBtn) {
+      startNowBtn.addEventListener('click', () => {
+        this.network.voteStartNow();
+        // Disable button after voting
+        startNowBtn.disabled = true;
+        startNowBtn.textContent = '✓ Voted!';
+      });
+    }
   }
 
   _attachErrorListeners(content) {
@@ -1466,10 +1522,12 @@ export class OrbitsLobby {
   _handleLobbyCountdown(data) {
     // Update lobby countdown info and refresh UI
     this.lobbyInfo = {
-      secondsRemaining: data.secondsRemaining,
+      secondsRemaining: data.secondsRemaining,  // null = waiting for players
       playersNeeded: data.playersNeeded,
       playerCount: data.playerCount,
-      maxPlayers: data.maxPlayers
+      maxPlayers: data.maxPlayers,
+      startNowVotes: data.startNowVotes || 0,
+      canStartNow: data.canStartNow || false
     };
 
     // Update the room display if we're in the room

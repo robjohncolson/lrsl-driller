@@ -475,6 +475,16 @@ export class OrbitsNetworkController {
   }
 
   /**
+   * Vote to start the match now (requires all players to agree)
+   */
+  voteStartNow() {
+    this._send({
+      type: 'orbits_start_now',
+      payload: {}
+    });
+  }
+
+  /**
    * Start the match (host only)
    */
   startMatch() {

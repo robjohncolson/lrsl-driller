@@ -357,6 +357,21 @@ function handleMessage(ws, message) {
       }
       break;
 
+    case 'orbits_start_now':
+      if (client?.orbitsPlayerId) {
+        const roomCode = multiplayerManager.playerRooms.get(client.orbitsPlayerId);
+        if (roomCode) {
+          const room = multiplayerManager.getRoom(roomCode);
+          if (room) {
+            room.voteStartNow(client.orbitsPlayerId);
+            if (mainWindow) {
+              mainWindow.webContents.send('log', `${client.username} voted to start now`);
+            }
+          }
+        }
+      }
+      break;
+
     case 'orbits_set_ready':
       if (client?.orbitsPlayerId) {
         const roomCode = multiplayerManager.playerRooms.get(client.orbitsPlayerId);

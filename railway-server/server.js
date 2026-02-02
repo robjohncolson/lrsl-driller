@@ -3513,6 +3513,18 @@ wss.on('connection', (ws) => {
           break;
         }
 
+        case 'orbits_start_now': {
+          // Vote to start the game immediately
+          const startNowClient = clients.get(ws);
+          if (startNowClient?.orbitsPlayerId && startNowClient?.orbitsRoomCode) {
+            const room = orbitsMultiplayerManager.getRoom(startNowClient.orbitsRoomCode);
+            if (room) {
+              room.voteStartNow(startNowClient.orbitsPlayerId);
+            }
+          }
+          break;
+        }
+
         case 'orbits_leave': {
           // Leave multiplayer room
           const leaveMpClient = clients.get(ws);
