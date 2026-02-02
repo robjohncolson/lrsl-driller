@@ -640,7 +640,9 @@ export class OrbitsNetworkController {
       secondsRemaining: payload.secondsRemaining,
       playersNeeded: payload.playersNeeded,
       playerCount: payload.playerCount,
-      maxPlayers: payload.maxPlayers
+      maxPlayers: payload.maxPlayers,
+      startNowVotes: payload.startNowVotes || 0,
+      canStartNow: payload.canStartNow || false
     });
   }
 
