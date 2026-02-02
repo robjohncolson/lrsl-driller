@@ -1105,9 +1105,10 @@ export class OrbitsLobby {
     const maxPlayers = this.lobbyInfo?.maxPlayers || 8;
     const lobbySeconds = this.lobbyInfo?.secondsRemaining;
     const playerCount = this.players.length;
+    const humanCount = this.lobbyInfo?.humanPlayerCount || playerCount;
     const canAddAI = this.isHost && playerCount < maxPlayers;
     const startNowVotes = this.lobbyInfo?.startNowVotes || 0;
-    const canStartNow = this.lobbyInfo?.canStartNow && playerCount >= 2;
+    const canStartNow = this.lobbyInfo?.canStartNow && humanCount >= 2;
 
     // Determine status message
     let statusMessage;
@@ -1163,7 +1164,7 @@ export class OrbitsLobby {
       ${canStartNow ? `
         <div class="orbits-lobby-start-now">
           <button class="orbits-lobby-menu-btn orbits-start-now-btn" data-action="start-now">
-            ⚡ Start Now ${startNowVotes > 0 ? `(${startNowVotes}/${playerCount})` : ''}
+            ⚡ Start Now ${startNowVotes > 0 ? `(${startNowVotes}/${humanCount})` : ''}
           </button>
           <p class="orbits-lobby-start-hint">All players must agree to start early</p>
         </div>
@@ -1527,6 +1528,7 @@ export class OrbitsLobby {
       secondsRemaining: data.secondsRemaining,  // null = waiting for players
       playersNeeded: data.playersNeeded,
       playerCount: data.playerCount,
+      humanPlayerCount: data.humanPlayerCount || data.playerCount,
       maxPlayers: data.maxPlayers,
       startNowVotes: data.startNowVotes || 0,
       canStartNow: data.canStartNow || false
@@ -1576,8 +1578,8 @@ export class OrbitsLobby {
     const startNowBtn = content.querySelector('[data-action="start-now"]');
     if (startNowBtn && !startNowBtn.disabled) {
       const votes = this.lobbyInfo.startNowVotes;
-      const count = this.lobbyInfo.playerCount;
-      startNowBtn.textContent = `⚡ Start Now ${votes > 0 ? `(${votes}/${count})` : ''}`;
+      const humanCount = this.lobbyInfo.humanPlayerCount;
+      startNowBtn.textContent = `⚡ Start Now ${votes > 0 ? `(${votes}/${humanCount})` : ''}`;
     }
 
     // Update status message

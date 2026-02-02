@@ -848,6 +848,19 @@ class MultiplayerRoom {
   }
 
   /**
+   * Count human (non-AI) players in the room
+   * @returns {number} Number of human players
+   * @private
+   */
+  _getHumanPlayerCount() {
+    let count = 0;
+    for (const [, player] of this.players) {
+      if (!player.isAI) count++;
+    }
+    return count;
+  }
+
+  /**
    * Handle "Start Now" vote from a player
    * @param {string} playerId - Player voting to start
    */
@@ -855,12 +868,17 @@ class MultiplayerRoom {
     if (this.state !== RoomState.LOBBY) return;
     if (!this.players.has(playerId)) return;
 
-    this.startNowVotes.add(playerId);
-    console.log(`[Orbits MP] Room ${this.roomCode}: ${playerId} voted to start now (${this.startNowVotes.size}/${this.players.size})`);
+    // Only human players can vote
+    const player = this.players.get(playerId);
+    if (player.isAI) return;
 
-    // Check if all players voted
-    if (this.startNowVotes.size >= this.players.size && this.players.size >= MULTIPLAYER_CONFIG.minPlayersToStart) {
-      console.log(`[Orbits MP] Room ${this.roomCode}: All players voted to start now!`);
+    this.startNowVotes.add(playerId);
+    const humanCount = this._getHumanPlayerCount();
+    console.log(`[Orbits MP] Room ${this.roomCode}: ${playerId} voted to start now (${this.startNowVotes.size}/${humanCount} humans)`);
+
+    // Check if all HUMAN players voted
+    if (this.startNowVotes.size >= humanCount && this.players.size >= MULTIPLAYER_CONFIG.minPlayersToStart) {
+      console.log(`[Orbits MP] Room ${this.roomCode}: All human players voted to start now!`);
       this._triggerAutoStart();
     } else {
       // Broadcast updated vote count
@@ -882,12 +900,15 @@ class MultiplayerRoom {
       secondsRemaining = Math.ceil(remaining / 1000);
     }
 
+    const humanCount = this._getHumanPlayerCount();
+
     this._broadcastToRoom({
       type: 'orbits_lobby_countdown',
       payload: {
         secondsRemaining,  // null means waiting for players
         playersNeeded: Math.max(0, MULTIPLAYER_CONFIG.minPlayersToStart - this.players.size),
         playerCount: this.players.size,
+        humanPlayerCount: humanCount,  // For vote counting
         maxPlayers: MULTIPLAYER_CONFIG.maxPlayersPerRoom,
         startNowVotes: this.startNowVotes.size,
         canStartNow: this.players.size >= MULTIPLAYER_CONFIG.minPlayersToStart
