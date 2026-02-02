@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstatu4l1l2",
-    "name": "Probability (4.1-4.9)",
+    "name": "Probability (4.1-4.12)",
     "subject": "AP Statistics",
-    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions, random variables, probability distributions, mean, standard deviation, combining random variables, linear transformations, variance trap"
+    "description": "Random processes, outcomes, events, simulation, Law of Large Numbers, sample space, probability rules, complements, mutually exclusive events, conditional probability, independent events, unions, random variables, probability distributions, mean, standard deviation, combining random variables, linear transformations, variance trap, binomial distribution, binomial parameters, geometric distribution"
   },
   "config": {
     "contextsFile": null,
@@ -1127,6 +1127,342 @@
           }
         ]
       }
+    },
+    {
+      "id": "l49-bins-conditions",
+      "name": "4.10a: BINS Conditions",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "binsCondition",
+            "type": "choice",
+            "label": "Which BINS condition is described?",
+            "options": [
+              "Binary (two outcomes)",
+              "Independent",
+              "Number of trials fixed",
+              "Same probability"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l50-identify-bins",
+      "name": "4.10b: Identify Binomial Setting",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "binomYesNo",
+            "type": "choice",
+            "label": "Is this a binomial setting?",
+            "options": [
+              "Yes, it is binomial",
+              "No, it is NOT binomial"
+            ]
+          },
+          {
+            "id": "binsExplain",
+            "type": "textarea",
+            "label": "Explain using BINS conditions:",
+            "rows": 3,
+            "placeholder": "Reference Binary, Independent, Number of trials, Same probability..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l51-binomial-formula-id",
+      "name": "4.10c: Binomial Components",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "binomN",
+            "type": "number",
+            "label": "n (number of trials):",
+            "min": 1,
+            "step": 1
+          },
+          {
+            "id": "binomP",
+            "type": "number",
+            "label": "p (probability of success):",
+            "min": 0,
+            "max": 1,
+            "step": 0.01
+          },
+          {
+            "id": "binomX",
+            "type": "number",
+            "label": "x (number of successes):",
+            "min": 0,
+            "step": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l52-binomial-single-prob",
+      "name": "4.10d: Calculate P(X = k)",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "binomSingleProb",
+            "type": "number",
+            "label": "P(X = k) = (decimal, e.g., 0.125):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l53-binomial-cumulative",
+      "name": "4.10e: Cumulative Probability",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "binomCumulativeProb",
+            "type": "number",
+            "label": "Cumulative probability (decimal):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l54-binomial-capstone",
+      "name": "4.10 Capstone",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "binomCapstoneConcept",
+            "type": "dropdown",
+            "label": "Which binomial concept applies?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "binomCapstoneExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Use binomial vocabulary and formulas..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l55-binomial-mean",
+      "name": "4.11a: Binomial Mean",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "binomMean",
+            "type": "number",
+            "label": "Mean μ = np:",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l56-binomial-sd",
+      "name": "4.11b: Binomial SD",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "binomSD",
+            "type": "number",
+            "label": "Standard deviation σ = √[np(1-p)]:",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l57-interpret-binom-params",
+      "name": "4.11c: Interpret Parameters",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "binomParamsInterpret",
+            "type": "dropdown",
+            "label": "Select the correct interpretation:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l58-would-be-surprised",
+      "name": "4.11d: Would You Be Surprised?",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "surprisedChoice",
+            "type": "choice",
+            "label": "Would this outcome be surprising?",
+            "options": [
+              "Yes, it would be surprising",
+              "No, it would not be surprising"
+            ]
+          },
+          {
+            "id": "surprisedExplain",
+            "type": "textarea",
+            "label": "Explain using the 2-SD rule:",
+            "rows": 3,
+            "placeholder": "Compare the outcome to μ ± 2σ..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l59-geometric-identify",
+      "name": "4.12a: Geometric vs Binomial",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "geomIdentify",
+            "type": "choice",
+            "label": "Which distribution fits this scenario?",
+            "options": [
+              "Geometric distribution",
+              "Binomial distribution"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l60-geometric-prob",
+      "name": "4.12b: Geometric Probability",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "geomProb",
+            "type": "number",
+            "label": "P(X = x) = (decimal):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l61-geometric-params",
+      "name": "4.12c: Geometric Parameters",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "geomMean",
+            "type": "number",
+            "label": "Mean μ = 1/p:",
+            "min": 0,
+            "step": 0.01
+          },
+          {
+            "id": "geomSD",
+            "type": "number",
+            "label": "Standard deviation σ = √[(1-p)/p²]:",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l62-unit4-capstone-1012",
+      "name": "4.10-4.12 Capstone",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone1012Concept",
+            "type": "dropdown",
+            "label": "Which concept applies?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone1012Value",
+            "type": "number",
+            "label": "Requested value (decimal or number):",
+            "step": 0.001
+          },
+          {
+            "id": "capstone1012Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Use binomial/geometric rules or parameters..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -1204,7 +1540,29 @@
       "combinedSDDiffAnswer": "⚠️ TRAP PART 2: Even for X-Y, variances ADD! Subtracting uncertain things creates MORE uncertainty. σ(X-Y) = √(σX² + σY²)",
       "identifyErrorAnswer": "Look for the classic mistakes: adding SDs directly, or subtracting variances for a difference.",
       "capstoneMeanAnswer": "Calculate the combined mean first. Remember: means add/subtract normally.",
-      "capstoneSDAnswer": "For the SD: add the VARIANCES (σ²), then take the square root. Don't fall for the trap!"
+      "capstoneSDAnswer": "For the SD: add the VARIANCES (σ²), then take the square root. Don't fall for the trap!",
+      "binsCondition": "BINS = Binary outcomes, Independent trials, Number of trials fixed, Same probability each trial.",
+      "binomYesNo": "Check all four BINS conditions to decide if it's binomial.",
+      "binsExplain": "Mention which BINS condition fails or confirm all four are satisfied.",
+      "binomN": "n = total number of trials.",
+      "binomP": "p = probability of success on each trial (constant).",
+      "binomX": "x = number of successes of interest.",
+      "binomSingleProb": "Use P(X=x)=C(n,x)p^x(1-p)^(n-x).",
+      "binomCumulativeProb": "Sum binomial probabilities, or use the complement for \"at least\".",
+      "binomCapstoneConcept": "Decide if it's BINS, components, single probability, or cumulative probability.",
+      "binomCapstoneExplain": "Use binomial vocabulary and show the formula you used.",
+      "binomMean": "Binomial mean: μ = n·p.",
+      "binomSD": "Binomial SD: σ = √[n·p·(1-p)].",
+      "binomParamsInterpret": "Mean = long-run average successes; SD = typical variation.",
+      "surprisedChoice": "Unusual if the outcome is outside μ ± 2σ.",
+      "surprisedExplain": "Compute μ ± 2σ and compare the outcome.",
+      "geomIdentify": "Geometric = trials until first success. Binomial = fixed number of trials.",
+      "geomProb": "Geometric: P(X=x) = (1-p)^(x-1)·p.",
+      "geomMean": "Geometric mean: μ = 1/p.",
+      "geomSD": "Geometric SD: σ = √[(1-p)/p²].",
+      "capstone1012Concept": "Identify binomial vs geometric and whether you need probability or parameters.",
+      "capstone1012Value": "Use the correct formula; remember geometric uses x-1.",
+      "capstone1012Explain": "State the distribution and formula used, and justify why it fits."
     },
     "penalty": {
       "0": "gold",
@@ -1602,6 +1960,118 @@
           "gold": 3
         },
         "celebrationMessage": "UNIT 4.1-4.9 COMPLETE! You've mastered probability, random variables, AND combining them!"
+      },
+      {
+        "id": "l49-bins-conditions",
+        "name": "4.10a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "BINS conditions mastered! Next: identify binomial settings."
+      },
+      {
+        "id": "l50-identify-bins",
+        "name": "4.10b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Binomial settings identified! Next: extract n, p, x."
+      },
+      {
+        "id": "l51-binomial-formula-id",
+        "name": "4.10c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Components down! Next: compute P(X = k)."
+      },
+      {
+        "id": "l52-binomial-single-prob",
+        "name": "4.10d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Single probabilities computed! Next: cumulative probability."
+      },
+      {
+        "id": "l53-binomial-cumulative",
+        "name": "4.10e",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Cumulative probabilities done! Capstone next."
+      },
+      {
+        "id": "l54-binomial-capstone",
+        "name": "4.10 Capstone",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Unit 4.10 complete! Now onto binomial parameters."
+      },
+      {
+        "id": "l55-binomial-mean",
+        "name": "4.11a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Binomial mean mastered! Next: binomial SD."
+      },
+      {
+        "id": "l56-binomial-sd",
+        "name": "4.11b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Binomial SD mastered! Next: interpret parameters."
+      },
+      {
+        "id": "l57-interpret-binom-params",
+        "name": "4.11c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Interpretation done! Next: would you be surprised?"
+      },
+      {
+        "id": "l58-would-be-surprised",
+        "name": "4.11d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Unit 4.11 complete! Now onto geometric distributions."
+      },
+      {
+        "id": "l59-geometric-identify",
+        "name": "4.12a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Geometric vs binomial mastered! Next: geometric probability."
+      },
+      {
+        "id": "l60-geometric-prob",
+        "name": "4.12b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Geometric probability computed! Next: geometric parameters."
+      },
+      {
+        "id": "l61-geometric-params",
+        "name": "4.12c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Geometric parameters mastered! Final capstone next."
+      },
+      {
+        "id": "l62-unit4-capstone-1012",
+        "name": "4.10-4.12 Capstone",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "UNIT 4.1-4.12 COMPLETE! You've mastered binomial and geometric distributions too!"
       }
     ]
   }

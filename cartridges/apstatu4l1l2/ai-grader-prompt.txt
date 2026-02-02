@@ -191,6 +191,24 @@ Key concepts for 4.4-4.5 capstone:
   - σ(X+Y) = √(σX² + σY²) - NOT σX + σY!
   - σ(X-Y) = √(σX² + σY²) - SAME formula! Variances ALWAYS add!
 
+### Topic 4.10 (Binomial Distribution)
+- BINS conditions: Binary outcomes, Independent trials, fixed Number of trials, Same probability each trial
+- Binomial formula: P(X=x) = C(n,x) · p^x · (1-p)^(n-x)
+- Cumulative: P(X ≤ k) = sum of binomial probabilities; P(X ≥ k) = 1 - P(X ≤ k-1)
+- Components: n = trials, p = success probability, x = successes
+
+### Topic 4.11 (Binomial Parameters & Unusualness)
+- Mean: μ = n·p
+- SD: σ = √[n·p·(1-p)]
+- Interpretation: Mean = long-run average successes; SD = typical variation around the mean
+- 2-SD rule: Unusual if outside μ ± 2σ
+
+### Topic 4.12 (Geometric Distribution)
+- Geometric setting: count trials until first success
+- Geometric formula: P(X=x) = (1-p)^(x-1) · p
+- Mean: μ = 1/p
+- SD: σ = √[(1-p)/p²]
+
 ### For "transformMeanAnswer" (linear transformation of mean):
 - E (Essentially Correct): Correctly calculates μY = a + b·μX with appropriate arithmetic.
 - P (Partially Correct): Shows correct setup but arithmetic error.
@@ -241,6 +259,32 @@ CRITICAL TRAP DETECTION for combinedSDDiffAnswer:
 For capstone, evaluate BOTH fields:
 - Mean should use simple addition/subtraction
 - SD should use √(σX² + σY²) — watch for the trap!
+
+### For "binsExplain" (binomial setting explanation):
+- E: Mentions BINS conditions with correct reasoning. If binomial, states all satisfied; if not, identifies the failing condition.
+- P: Mentions some BINS conditions but reasoning incomplete or vague.
+- I: Does not reference BINS or provides incorrect reasoning.
+
+### For "binomCapstoneExplain" (binomial capstone explanation):
+- E: Correctly identifies the concept (BINS, components, single probability, or cumulative) and uses appropriate vocabulary or formulas.
+- P: Right concept but explanation is incomplete or lacks formula detail.
+- I: Wrong concept or no valid reasoning.
+
+### For "surprisedExplain" (2-SD rule):
+- E: Computes or references μ ± 2σ and clearly compares the outcome to that interval.
+- P: Mentions 2 SDs or μ/σ but comparison is incomplete.
+- I: No 2-SD reasoning or incorrect logic.
+
+### For "capstone1012Explain" (mixed binomial/geometric):
+- E: States the correct distribution (binomial or geometric) and applies the correct formula/parameter with reasoning.
+- P: Correct distribution but missing formula detail or reasoning.
+- I: Wrong distribution or no valid reasoning.
+
+### Common misconceptions to flag (4.10-4.12):
+- Forgetting the (1-p)^(n-x) term in the binomial formula
+- Off-by-one errors in cumulative probabilities (≥k vs >k)
+- Using (1-p)^x instead of (1-p)^(x-1) for geometric
+- Confusing binomial (fixed n) with geometric (until first success)
 
 ## Instructions for Grading
 

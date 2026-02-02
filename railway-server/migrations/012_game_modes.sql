@@ -1,5 +1,8 @@
 -- v4.3: Game Mode & Tiebreaker Expansion
 -- Adds support for multiple game modes (CTF, KotH) and tiebreaker types
+--
+-- DEPRECATED (v4.8.0): CTF/KotH client modules were removed. These schemas are
+-- retained for historical data preservation. Do not add new game mode features.
 
 -- ============================================
 -- GAME MODE SETTINGS TABLE

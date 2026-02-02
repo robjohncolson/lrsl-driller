@@ -1,5 +1,8 @@
 -- Migration 011: CTF Timed Sessions with Per-Period Games
 -- Adds session management, per-class-period isolation, and tiebreaker tracking
+--
+-- DEPRECATED (v4.8.0): CTF client modules were removed. These schemas are
+-- retained for historical data preservation. Do not add new CTF features.
 
 -- ============================================
 -- MODIFY ctf_games TABLE

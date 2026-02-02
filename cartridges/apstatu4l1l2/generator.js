@@ -18,6 +18,24 @@ function choice(arr) {
   return arr[randInt(0, arr.length - 1)];
 }
 
+function nCr(n, r) {
+  if (r < 0 || r > n) return 0;
+  const k = Math.min(r, n - r);
+  let result = 1;
+  for (let i = 1; i <= k; i++) {
+    result = result * (n - k + i) / i;
+  }
+  return result;
+}
+
+function binomialProb(n, p, x) {
+  return nCr(n, x) * Math.pow(p, x) * Math.pow(1 - p, n - x);
+}
+
+function geometricProb(p, x) {
+  return Math.pow(1 - p, x - 1) * p;
+}
+
 // ============ SHUFFLE BAG SYSTEM ============
 const shuffleBags = {};
 
@@ -3210,6 +3228,286 @@ const capstone49Scenarios = [
   }
 ];
 
+// Level 49: BINS Conditions
+const binsConditionScenarios = [
+  { desc: "The process has only two outcomes: success or failure.", answer: "Binary (two outcomes)" },
+  { desc: "Each trial's result does not affect the next trial's probability.", answer: "Independent" },
+  { desc: "The experiment is repeated a fixed number of times (n trials).", answer: "Number of trials fixed" },
+  { desc: "The probability of success stays the same on every trial.", answer: "Same probability" },
+  { desc: "Each trial results in success or failure, nothing else.", answer: "Binary (two outcomes)" },
+  { desc: "Knowing a previous result doesn't change future chances.", answer: "Independent" },
+  { desc: "We decide ahead of time to run exactly 25 trials.", answer: "Number of trials fixed" },
+  { desc: "The success rate is constant from trial to trial.", answer: "Same probability" }
+];
+
+// Level 50: Identify Binomial Setting
+// failingCondition: "independent" | "fixed" | "sameP" | null (for binomial scenarios)
+const identifyBinomialScenarios = [
+  {
+    desc: "Flip a fair coin 10 times and count the number of heads.",
+    isBinomial: true,
+    failingCondition: null,
+    explanation: "Binary outcomes, independent trials, fixed n = 10, same p = 0.5."
+  },
+  {
+    desc: "Draw 5 cards from a deck WITHOUT replacement and count the number of aces.",
+    isBinomial: false,
+    failingCondition: "independent",
+    explanation: "Not independent and p changes after each draw (no replacement)."
+  },
+  {
+    desc: "Roll a die until you get a 6, and record the number of rolls.",
+    isBinomial: false,
+    failingCondition: "fixed",
+    explanation: "Number of trials is not fixed; this is geometric."
+  },
+  {
+    desc: "Inspect 12 light bulbs; each has a 4% defect rate. Count the defective bulbs.",
+    isBinomial: true,
+    failingCondition: null,
+    explanation: "Binary outcomes, independent trials, fixed n = 12, same p = 0.04."
+  },
+  {
+    desc: "Survey students until you get 3 'yes' responses. Count the number of students surveyed.",
+    isBinomial: false,
+    failingCondition: "fixed",
+    explanation: "Number of trials is not fixed; you stop after success count."
+  },
+  {
+    desc: "Select 6 students from a class without replacement and count the left-handed students.",
+    isBinomial: false,
+    failingCondition: "independent",
+    explanation: "Without replacement means trials are not independent and p changes."
+  },
+  {
+    desc: "Test 20 batteries; each independently has a 90% pass rate. Count passes.",
+    isBinomial: true,
+    failingCondition: null,
+    explanation: "Binary outcomes, independent trials, fixed n = 20, same p = 0.90."
+  },
+  {
+    desc: "Spin a wheel 8 times, but the probability of red increases after each blue.",
+    isBinomial: false,
+    failingCondition: "sameP",
+    explanation: "Probability of success is not the same each trial."
+  }
+];
+
+// Level 51: Binomial Components (n, p, x)
+const binomialComponentsScenarios = [
+  { desc: "A basketball player makes 75% of free throws. In 12 attempts, find P(exactly 9 makes). Identify n, p, x.", n: 12, p: 0.75, x: 9 },
+  { desc: "A factory has a 5% defect rate. If 20 items are inspected, find P(exactly 2 defective). Identify n, p, x.", n: 20, p: 0.05, x: 2 },
+  { desc: "A fair coin is flipped 8 times. Find P(exactly 5 heads). Identify n, p, x.", n: 8, p: 0.5, x: 5 },
+  { desc: "A student guesses on a 4-question multiple choice quiz. Find P(exactly 3 correct). Identify n, p, x.", n: 4, p: 0.25, x: 3 },
+  { desc: "An archer hits the target 60% of the time. Over 10 shots, find P(exactly 7 hits). Identify n, p, x.", n: 10, p: 0.6, x: 7 },
+  { desc: "A medical test is positive 12% of the time. Over 15 tests, find P(exactly 1 positive). Identify n, p, x.", n: 15, p: 0.12, x: 1 },
+  { desc: "A die is rolled 6 times. Find P(exactly 2 sixes). Identify n, p, x.", n: 6, p: 1 / 6, x: 2 },
+  { desc: "A soccer player makes 80% of penalty kicks. Over 5 kicks, find P(exactly 4 makes). Identify n, p, x.", n: 5, p: 0.8, x: 4 }
+];
+
+// Level 52: Binomial Single Probability
+const binomialSingleProbScenarios = [
+  { desc: "A fair coin is flipped 6 times. Find P(exactly 4 heads).", n: 6, p: 0.5, x: 4 },
+  { desc: "A quiz has 5 true/false questions. Guessing gives p = 0.5. Find P(exactly 3 correct).", n: 5, p: 0.5, x: 3 },
+  { desc: "A factory produces 8% defective items. Inspect 12 items. Find P(exactly 1 defective).", n: 12, p: 0.08, x: 1 },
+  { desc: "A basketball player makes 70% of free throws. In 10 attempts, find P(exactly 8 makes).", n: 10, p: 0.7, x: 8 },
+  { desc: "A soccer player scores on 30% of shots. In 7 shots, find P(exactly 2 goals).", n: 7, p: 0.3, x: 2 },
+  { desc: "A die is rolled 8 times. Find P(exactly 1 six).", n: 8, p: 1 / 6, x: 1 },
+  { desc: "A survey has 40% yes responses. In 9 surveys, find P(exactly 5 yes).", n: 9, p: 0.4, x: 5 },
+  { desc: "A machine passes inspection 90% of the time. In 6 items, find P(exactly 6 pass).", n: 6, p: 0.9, x: 6 }
+];
+
+// Level 53: Binomial Cumulative Probability
+const binomialCumulativeScenarios = [
+  { desc: "A fair coin is flipped 8 times. Find P(X ≤ 2 heads).", n: 8, p: 0.5, k: 2, direction: "<=" },
+  { desc: "A basketball player makes 75% of free throws. In 10 shots, find P(X ≥ 8 makes).", n: 10, p: 0.75, k: 8, direction: ">=" },
+  { desc: "A defect rate is 10%. In 12 items, find P(X ≤ 1 defective).", n: 12, p: 0.1, k: 1, direction: "<=" },
+  { desc: "A student guesses on 5 multiple choice questions (p = 0.25). Find P(X ≥ 2 correct).", n: 5, p: 0.25, k: 2, direction: ">=" },
+  { desc: "A soccer player scores 40% of the time. In 6 shots, find P(X ≤ 3 goals).", n: 6, p: 0.4, k: 3, direction: "<=" },
+  { desc: "A die is rolled 7 times. Find P(X ≥ 2 sixes).", n: 7, p: 1 / 6, k: 2, direction: ">=" },
+  { desc: "A machine has a 95% pass rate. In 8 items, find P(X ≥ 7 pass).", n: 8, p: 0.95, k: 7, direction: ">=" },
+  { desc: "A coin with p = 0.3 for heads is flipped 9 times. Find P(X ≤ 4 heads).", n: 9, p: 0.3, k: 4, direction: "<=" }
+];
+
+// Level 54: Binomial Capstone
+const binomialCapstoneScenarios = [
+  { desc: "A survey is run with 15 independent trials and p = 0.2. The question asks for P(X = 3).", answer: "Single probability P(X = k)", explanation: "Use the binomial formula for exactly k successes." },
+  { desc: "A process has fixed n and constant p, and you must decide if it's binomial.", answer: "BINS conditions", explanation: "Check Binary, Independent, fixed Number, Same p." },
+  { desc: "A coin is flipped 12 times. The question asks for P(X ≥ 10).", answer: "Cumulative probability", explanation: "This is a cumulative binomial probability (at least)." },
+  { desc: "A word problem asks you to identify n, p, and x before computing a binomial probability.", answer: "Identify n, p, x", explanation: "You must extract the binomial components first." },
+  { desc: "A quiz question asks: Is this setting binomial? Then justify using BINS.", answer: "BINS conditions", explanation: "The key concept is checking the four BINS conditions." },
+  { desc: "A problem asks for P(X ≤ 2) in a binomial setting.", answer: "Cumulative probability", explanation: "Less than or equal to is cumulative." },
+  { desc: "A problem gives n and p but you must identify x based on the wording.", answer: "Identify n, p, x", explanation: "Extract the components from the context." },
+  { desc: "A question asks for P(X = 5) and shows the formula with C(n,x).", answer: "Single probability P(X = k)", explanation: "Exactly k uses the binomial formula." }
+];
+
+// Level 55: Binomial Mean
+const binomialMeanScenarios = [
+  { desc: "A quiz has 12 questions with a 70% success rate per question. Find the expected number of correct answers.", n: 12, p: 0.7, context: "expected correct answers" },
+  { desc: "A defect rate is 5%. In 40 items, find the expected number of defects.", n: 40, p: 0.05, context: "expected defects" },
+  { desc: "A free-throw shooter makes 80% of shots. In 15 attempts, find the expected number of makes.", n: 15, p: 0.8, context: "expected makes" },
+  { desc: "A fair coin is flipped 20 times. Find the expected number of heads.", n: 20, p: 0.5, context: "expected heads" },
+  { desc: "A spam filter flags 10% of emails. In 50 emails, find the expected number flagged.", n: 50, p: 0.1, context: "expected flagged emails" },
+  { desc: "A baseball player gets a hit 30% of the time. In 25 at-bats, find the expected number of hits.", n: 25, p: 0.3, context: "expected hits" },
+  { desc: "A lightbulb has a 2% defect rate. In 200 bulbs, find expected defects.", n: 200, p: 0.02, context: "expected defects" },
+  { desc: "A survey response rate is 60%. In 18 calls, find the expected number of responses.", n: 18, p: 0.6, context: "expected responses" }
+];
+
+// Level 56: Binomial SD
+const binomialSDScenarios = [
+  { desc: "A coin is flipped 16 times. Find the standard deviation of the number of heads.", n: 16, p: 0.5, context: "number of heads" },
+  { desc: "A 60% success rate over 20 trials. Find the standard deviation of successes.", n: 20, p: 0.6, context: "number of successes" },
+  { desc: "A defect rate is 8% over 50 items. Find the standard deviation of defects.", n: 50, p: 0.08, context: "number of defects" },
+  { desc: "A shooter makes 75% of free throws in 12 attempts. Find the standard deviation of makes.", n: 12, p: 0.75, context: "number of makes" },
+  { desc: "A call center answers 40% of calls within 30 seconds. Over 30 calls, find the SD of fast answers.", n: 30, p: 0.4, context: "fast answers" },
+  { desc: "A test has 10 questions with p = 0.25 for a correct guess. Find SD of correct answers.", n: 10, p: 0.25, context: "correct answers" },
+  { desc: "A server handles 90% of requests successfully. In 25 requests, find SD of successes.", n: 25, p: 0.9, context: "successful requests" },
+  { desc: "A student has 30% chance of solving a problem. Over 14 problems, find SD of solves.", n: 14, p: 0.3, context: "problems solved" }
+];
+
+// Level 57: Interpret Binomial Parameters
+const interpretBinomParamsScenarios = [
+  {
+    desc: "A nurse gives 25 injections. Each has a 0.08 chance of mild side effects. Interpret μ and σ for the number of side effects.",
+    n: 25,
+    p: 0.08
+  },
+  {
+    desc: "A player makes 70% of free throws over 20 attempts. Interpret μ and σ for the number of makes.",
+    n: 20,
+    p: 0.7
+  },
+  {
+    desc: "A company expects 4% of items to be defective. In 60 items, interpret μ and σ for defects.",
+    n: 60,
+    p: 0.04
+  },
+  {
+    desc: "A coin with p = 0.3 for heads is flipped 15 times. Interpret μ and σ for heads.",
+    n: 15,
+    p: 0.3
+  },
+  {
+    desc: "A trivia contestant gets each question right with p = 0.6. Over 10 questions, interpret μ and σ.",
+    n: 10,
+    p: 0.6
+  },
+  {
+    desc: "A warehouse reports 2% damaged boxes. In 80 boxes, interpret μ and σ for damages.",
+    n: 80,
+    p: 0.02
+  },
+  {
+    desc: "A survey response rate is 45%. In 30 calls, interpret μ and σ for responses.",
+    n: 30,
+    p: 0.45
+  },
+  {
+    desc: "A printer succeeds 90% of the time. In 12 print jobs, interpret μ and σ for successes.",
+    n: 12,
+    p: 0.9
+  }
+];
+
+// Level 58: Would You Be Surprised?
+const surprisedScenarios = [
+  { desc: "A binomial distribution has μ = 8 and σ = 2. An outcome of 13 successes is observed.", mu: 8, sigma: 2, value: 13 },
+  { desc: "A binomial distribution has μ = 15 and σ = 3. An outcome of 19 successes is observed.", mu: 15, sigma: 3, value: 19 },
+  { desc: "A binomial distribution has μ = 6 and σ = 1.5. An outcome of 2 successes is observed.", mu: 6, sigma: 1.5, value: 2 },
+  { desc: "A binomial distribution has μ = 10 and σ = 2. An outcome of 12 successes is observed.", mu: 10, sigma: 2, value: 12 },
+  { desc: "A binomial distribution has μ = 4 and σ = 1.2. An outcome of 7 successes is observed.", mu: 4, sigma: 1.2, value: 7 },
+  { desc: "A binomial distribution has μ = 20 and σ = 4. An outcome of 27 successes is observed.", mu: 20, sigma: 4, value: 27 },
+  { desc: "A binomial distribution has μ = 9 and σ = 1.5. An outcome of 6 successes is observed.", mu: 9, sigma: 1.5, value: 6 },
+  { desc: "A binomial distribution has μ = 5 and σ = 1.1. An outcome of 9 successes is observed.", mu: 5, sigma: 1.1, value: 9 }
+];
+
+// Level 59: Geometric vs Binomial
+const geometricIdentifyScenarios = [
+  { desc: "Flip a coin until the first head appears and record the number of flips.", answer: "Geometric distribution" },
+  { desc: "Roll a die 10 times and count the number of sixes.", answer: "Binomial distribution" },
+  { desc: "Survey people until you get the first 'yes' response.", answer: "Geometric distribution" },
+  { desc: "Inspect 12 items and count the number of defects.", answer: "Binomial distribution" },
+  { desc: "Keep shooting free throws until you make one and record the shot number.", answer: "Geometric distribution" },
+  { desc: "Flip a coin 8 times and count heads.", answer: "Binomial distribution" },
+  { desc: "Spin a spinner until you land on blue for the first time.", answer: "Geometric distribution" },
+  { desc: "Check 15 emails and count the number that are spam.", answer: "Binomial distribution" }
+];
+
+// Level 60: Geometric Probability
+const geometricProbScenarios = [
+  { desc: "A free-throw shooter makes shots with p = 0.6. Find P(first make on 3rd shot).", p: 0.6, x: 3 },
+  { desc: "A spinner lands on red with p = 0.2. Find P(first red on 5th spin).", p: 0.2, x: 5 },
+  { desc: "A student guesses correctly with p = 0.25. Find P(first correct on 2nd question).", p: 0.25, x: 2 },
+  { desc: "A coin has p = 0.5 for heads. Find P(first head on 4th flip).", p: 0.5, x: 4 },
+  { desc: "A machine succeeds with p = 0.8. Find P(first success on 1st try).", p: 0.8, x: 1 },
+  { desc: "A die shows a 6 with p = 1/6. Find P(first 6 on 6th roll).", p: 1 / 6, x: 6 },
+  { desc: "A website conversion rate is p = 0.1. Find P(first conversion on 7th visit).", p: 0.1, x: 7 },
+  { desc: "A batter gets a hit with p = 0.3. Find P(first hit on 3rd at-bat).", p: 0.3, x: 3 }
+];
+
+// Level 61: Geometric Parameters
+const geometricParamScenarios = [
+  { desc: "A success rate is p = 0.2. Find the mean and SD of the geometric distribution.", p: 0.2 },
+  { desc: "A coin has p = 0.5 for heads. Find the mean and SD of the geometric distribution.", p: 0.5 },
+  { desc: "A machine succeeds with p = 0.8. Find the mean and SD of the geometric distribution.", p: 0.8 },
+  { desc: "A conversion rate is p = 0.1. Find the mean and SD of the geometric distribution.", p: 0.1 },
+  { desc: "A student guesses correctly with p = 0.25. Find the mean and SD of the geometric distribution.", p: 0.25 },
+  { desc: "A die shows a 6 with p = 1/6. Find the mean and SD of the geometric distribution.", p: 1 / 6 },
+  { desc: "A battery works with p = 0.9. Find the mean and SD of the geometric distribution.", p: 0.9 },
+  { desc: "A goal is scored with p = 0.3. Find the mean and SD of the geometric distribution.", p: 0.3 }
+];
+
+// Level 62: Unit 4.10-4.12 Capstone
+const capstone1012Scenarios = [
+  {
+    desc: "A fair coin is flipped 10 times. Find P(X = 6).",
+    concept: "Binomial probability",
+    n: 10,
+    p: 0.5,
+    x: 6
+  },
+  {
+    desc: "A defect rate is 5%. In 40 items, find the expected number of defects.",
+    concept: "Binomial mean",
+    n: 40,
+    p: 0.05
+  },
+  {
+    desc: "A shooter makes 70% of free throws over 15 attempts. Find the binomial SD.",
+    concept: "Binomial SD",
+    n: 15,
+    p: 0.7
+  },
+  {
+    desc: "A spinner lands on blue with p = 0.2. Find P(first blue on 4th spin).",
+    concept: "Geometric probability",
+    p: 0.2,
+    x: 4
+  },
+  {
+    desc: "A coin has p = 0.5 for heads. Find the geometric mean.",
+    concept: "Geometric mean",
+    p: 0.5
+  },
+  {
+    desc: "A machine succeeds with p = 0.8. Find the geometric SD.",
+    concept: "Geometric SD",
+    p: 0.8
+  },
+  {
+    desc: "A quiz has 6 questions with p = 0.25. Find P(X = 2).",
+    concept: "Binomial probability",
+    n: 6,
+    p: 0.25,
+    x: 2
+  },
+  {
+    desc: "A website conversion rate is p = 0.1. Find the geometric mean.",
+    concept: "Geometric mean",
+    p: 0.1
+  }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, contextFromFile, mode) {
@@ -4352,6 +4650,360 @@ export function generateProblem(modeId, contextFromFile, mode) {
     answers = {
       capstoneMeanAnswer: { value: scen.answerMean, tolerance: 0.1 },
       capstoneSDAnswer: { value: scen.answerSD, tolerance: 0.05 }
+    };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 49: BINS Conditions ==========
+  if (modeId === "l49-bins-conditions") {
+    const scen = drawFromBag('binsCondition', binsConditionScenarios);
+
+    context = {
+      topicId: "4.10a",
+      problemText: "**BINS Conditions for Binomial:**\n\n" +
+                   "B = Binary outcomes\n" +
+                   "I = Independent trials\n" +
+                   "N = Number of trials fixed\n" +
+                   "S = Same probability each trial",
+      givenText: scen.desc
+    };
+    answers = { binsCondition: { value: scen.answer } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 50: Identify Binomial Setting ==========
+  if (modeId === "l50-identify-bins") {
+    const scen = drawFromBag('identifyBinomial', identifyBinomialScenarios);
+    const yesNo = scen.isBinomial ? "Yes, it is binomial" : "No, it is NOT binomial";
+
+    context = {
+      topicId: "4.10b",
+      problemText: "**Identify Binomial Settings**\n\n" +
+                   "Check BINS:\n" +
+                   "• Binary outcomes\n" +
+                   "• Independent trials\n" +
+                   "• Number of trials fixed\n" +
+                   "• Same probability each trial",
+      givenText: scen.desc,
+      expectedExplanation: scen.explanation,
+      isBinomial: scen.isBinomial,
+      failingCondition: scen.failingCondition
+    };
+    answers = { binomYesNo: { value: yesNo } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 51: Binomial Components ==========
+  if (modeId === "l51-binomial-formula-id") {
+    const scen = drawFromBag('binomialComponents', binomialComponentsScenarios);
+
+    context = {
+      topicId: "4.10c",
+      problemText: "**Identify Binomial Components**\n\n" +
+                   "n = number of trials\n" +
+                   "p = probability of success\n" +
+                   "x = number of successes",
+      givenText: scen.desc
+    };
+    answers = {
+      binomN: { value: scen.n, tolerance: 0 },
+      binomP: { value: scen.p, tolerance: 0.01 },
+      binomX: { value: scen.x, tolerance: 0 }
+    };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 52: Binomial Single Probability ==========
+  if (modeId === "l52-binomial-single-prob") {
+    const scen = drawFromBag('binomialSingleProb', binomialSingleProbScenarios);
+    const prob = parseFloat(binomialProb(scen.n, scen.p, scen.x).toFixed(5));
+
+    context = {
+      topicId: "4.10d",
+      problemText: "**Binomial Probability**\n\n" +
+                   "P(X = x) = C(n,x) · p^x · (1-p)^(n-x)",
+      givenText: scen.desc,
+      n: scen.n,
+      p: scen.p,
+      x: scen.x
+    };
+    answers = { binomSingleProb: { value: prob, tolerance: 0.001 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 53: Binomial Cumulative ==========
+  if (modeId === "l53-binomial-cumulative") {
+    const scen = drawFromBag('binomialCumulative', binomialCumulativeScenarios);
+    let prob = 0;
+    if (scen.direction === "<=") {
+      for (let i = 0; i <= scen.k; i++) {
+        prob += binomialProb(scen.n, scen.p, i);
+      }
+    } else {
+      for (let i = scen.k; i <= scen.n; i++) {
+        prob += binomialProb(scen.n, scen.p, i);
+      }
+    }
+    const value = parseFloat(prob.toFixed(5));
+
+    context = {
+      topicId: "4.10e",
+      problemText: "**Cumulative Binomial Probability**\n\n" +
+                   "Use cumulative sums or the complement for \"at least\" problems.",
+      givenText: scen.desc,
+      n: scen.n,
+      p: scen.p,
+      k: scen.k,
+      direction: scen.direction
+    };
+    answers = { binomCumulativeProb: { value, tolerance: 0.001 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 54: Binomial Capstone ==========
+  if (modeId === "l54-binomial-capstone") {
+    const scen = drawFromBag('binomialCapstone', binomialCapstoneScenarios);
+    const baseOptions = [
+      "BINS conditions",
+      "Identify n, p, x",
+      "Single probability P(X = k)",
+      "Cumulative probability"
+    ];
+    const options = shuffle([...baseOptions]);
+
+    context = {
+      topicId: "4.10",
+      problemText: "**Binomial Capstone**\n\n" +
+                   "Decide which binomial concept applies and explain why.",
+      givenText: scen.desc,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      expectedExplanation: scen.explanation
+    };
+    answers = { binomCapstoneConcept: { value: scen.answer } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 55: Binomial Mean ==========
+  if (modeId === "l55-binomial-mean") {
+    const scen = drawFromBag('binomialMean', binomialMeanScenarios);
+    const mean = parseFloat((scen.n * scen.p).toFixed(3));
+
+    context = {
+      topicId: "4.11a",
+      problemText: "**Binomial Mean**\n\n" +
+                   "μ = n · p",
+      givenText: scen.desc,
+      n: scen.n,
+      p: scen.p,
+      contextLabel: scen.context
+    };
+    answers = { binomMean: { value: mean, tolerance: 0.1 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 56: Binomial SD ==========
+  if (modeId === "l56-binomial-sd") {
+    const scen = drawFromBag('binomialSD', binomialSDScenarios);
+    const sd = parseFloat(Math.sqrt(scen.n * scen.p * (1 - scen.p)).toFixed(4));
+
+    context = {
+      topicId: "4.11b",
+      problemText: "**Binomial Standard Deviation**\n\n" +
+                   "σ = √[n · p · (1-p)]",
+      givenText: scen.desc,
+      n: scen.n,
+      p: scen.p,
+      contextLabel: scen.context
+    };
+    answers = { binomSD: { value: sd, tolerance: 0.05 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 57: Interpret Binomial Parameters ==========
+  if (modeId === "l57-interpret-binom-params") {
+    const scen = drawFromBag('interpretBinomParams', interpretBinomParamsScenarios);
+    const mu = parseFloat((scen.n * scen.p).toFixed(2));
+    const sigma = parseFloat(Math.sqrt(scen.n * scen.p * (1 - scen.p)).toFixed(2));
+    const focus = choice(["mean", "sd"]);
+
+    const meanStatement = `On average, about ${mu} successes occur in ${scen.n} trials.`;
+    const sdStatement = `A typical outcome differs from the mean by about ${sigma} successes.`;
+
+    const options = shuffle([
+      meanStatement,
+      sdStatement,
+      `The probability of success on each trial is ${mu}.`,
+      `The number of trials is ${sigma}.`
+    ]);
+    const answer = focus === "mean" ? meanStatement : sdStatement;
+
+    // Explicitly tell student which parameter to interpret
+    const focusLabel = focus === "mean" ? "the MEAN (μ)" : "the STANDARD DEVIATION (σ)";
+
+    context = {
+      topicId: "4.11c",
+      problemText: "**Interpret Binomial Parameters**\n\n" +
+                   "μ = n·p (long-run average successes)\n" +
+                   "σ = √[n·p·(1-p)] (typical variation)",
+      givenText: scen.desc + `\n\n**Select the correct interpretation of ${focusLabel}.**`,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      mu,
+      sigma
+    };
+    answers = { binomParamsInterpret: { value: answer } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 58: Would You Be Surprised? ==========
+  if (modeId === "l58-would-be-surprised") {
+    const scen = drawFromBag('surprised', surprisedScenarios);
+    const lower = scen.mu - 2 * scen.sigma;
+    const upper = scen.mu + 2 * scen.sigma;
+    const isSurprising = scen.value < lower || scen.value > upper;
+    const answer = isSurprising
+      ? "Yes, it would be surprising"
+      : "No, it would not be surprising";
+
+    context = {
+      topicId: "4.11d",
+      problemText: "**2-SD Rule for Unusual Outcomes**\n\n" +
+                   "Unusual if outside μ ± 2σ.",
+      givenText: scen.desc,
+      mu: scen.mu,
+      sigma: scen.sigma,
+      value: scen.value,
+      lower,
+      upper,
+      isSurprising
+    };
+    answers = { surprisedChoice: { value: answer } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 59: Geometric vs Binomial ==========
+  if (modeId === "l59-geometric-identify") {
+    const scen = drawFromBag('geometricIdentify', geometricIdentifyScenarios);
+
+    context = {
+      topicId: "4.12a",
+      problemText: "**Geometric vs Binomial**\n\n" +
+                   "Geometric: trials until first success.\n" +
+                   "Binomial: fixed number of trials.",
+      givenText: scen.desc
+    };
+    answers = { geomIdentify: { value: scen.answer } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 60: Geometric Probability ==========
+  if (modeId === "l60-geometric-prob") {
+    const scen = drawFromBag('geometricProb', geometricProbScenarios);
+    const prob = parseFloat(geometricProb(scen.p, scen.x).toFixed(5));
+
+    context = {
+      topicId: "4.12b",
+      problemText: "**Geometric Probability**\n\n" +
+                   "P(X = x) = (1-p)^(x-1) · p",
+      givenText: scen.desc,
+      p: scen.p,
+      x: scen.x
+    };
+    answers = { geomProb: { value: prob, tolerance: 0.001 } };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 61: Geometric Parameters ==========
+  if (modeId === "l61-geometric-params") {
+    const scen = drawFromBag('geometricParams', geometricParamScenarios);
+    const mean = parseFloat((1 / scen.p).toFixed(3));
+    const sd = parseFloat(Math.sqrt((1 - scen.p) / (scen.p * scen.p)).toFixed(4));
+
+    context = {
+      topicId: "4.12c",
+      problemText: "**Geometric Parameters**\n\n" +
+                   "μ = 1/p\n" +
+                   "σ = √[(1-p)/p²]",
+      givenText: scen.desc,
+      p: scen.p
+    };
+    answers = {
+      geomMean: { value: mean, tolerance: 0.1 },
+      geomSD: { value: sd, tolerance: 0.05 }
+    };
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ========== LEVEL 62: Unit 4.10-4.12 Capstone ==========
+  if (modeId === "l62-unit4-capstone-1012") {
+    const scen = drawFromBag('capstone1012', capstone1012Scenarios);
+    const baseOptions = [
+      "Binomial probability",
+      "Binomial mean",
+      "Binomial SD",
+      "Geometric probability",
+      "Geometric mean",
+      "Geometric SD"
+    ];
+    const distractors = shuffle(baseOptions.filter(opt => opt !== scen.concept)).slice(0, 3);
+    const options = shuffle([...distractors, scen.concept]);
+
+    let value = 0;
+    let tolerance = 0.1;
+    if (scen.concept === "Binomial probability") {
+      value = parseFloat(binomialProb(scen.n, scen.p, scen.x).toFixed(5));
+      tolerance = 0.001;
+    } else if (scen.concept === "Binomial mean") {
+      value = parseFloat((scen.n * scen.p).toFixed(3));
+      tolerance = 0.1;
+    } else if (scen.concept === "Binomial SD") {
+      value = parseFloat(Math.sqrt(scen.n * scen.p * (1 - scen.p)).toFixed(4));
+      tolerance = 0.05;
+    } else if (scen.concept === "Geometric probability") {
+      value = parseFloat(geometricProb(scen.p, scen.x).toFixed(5));
+      tolerance = 0.001;
+    } else if (scen.concept === "Geometric mean") {
+      value = parseFloat((1 / scen.p).toFixed(3));
+      tolerance = 0.1;
+    } else if (scen.concept === "Geometric SD") {
+      value = parseFloat(Math.sqrt((1 - scen.p) / (scen.p * scen.p)).toFixed(4));
+      tolerance = 0.05;
+    }
+
+    context = {
+      topicId: "4.10-4.12",
+      problemText: "**Unit 4.10-4.12 Capstone**\n\n" +
+                   "Identify the correct distribution and compute the requested value.",
+      givenText: scen.desc,
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      expectedValue: value,
+      concept: scen.concept
+    };
+    answers = {
+      capstone1012Concept: { value: scen.concept },
+      capstone1012Value: { value, tolerance }
     };
     scenario = scen.desc;
     return { context, graphConfig, answers, scenario };

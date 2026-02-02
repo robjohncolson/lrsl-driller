@@ -1559,9 +1559,9 @@
       const modeProgress = state.game.starsPerMode || {};
 
       // Calculate total weighted score from stars
-      // Using the scoring config: gold=4, silver=2, bronze=1, tin=0.5 base points
-      // For now, use simple calculation; server can recalculate if needed
-      const totalWeightedScore = (stars.gold * 4) + (stars.silver * 2) + (stars.bronze * 1) + (stars.tin * 0.5);
+      // Using the scoring config: gold=4, silver=3, bronze=2, tin=1 base points
+      // Matches server's basePoints in /api/leaderboard and CLAUDE.md spec
+      const totalWeightedScore = (stars.gold * 4) + (stars.silver * 3) + (stars.bronze * 2) + (stars.tin * 1);
 
       try {
         const response = await fetch(`${SERVER_URL}/api/progress/cartridge-sync`, {
@@ -3642,8 +3642,8 @@
       // Set the mode if available
       if (review.mode_id && platform.cartridgeLoader) {
         platform.currentMode = review.mode_id;
-        // Update mode tabs if visible
-        const modeTab = document.querySelector(`[data-mode="${review.mode_id}"]`);
+        // Update mode tabs if visible (data-mode-id is set via btn.dataset.modeId)
+        const modeTab = document.querySelector(`[data-mode-id="${review.mode_id}"]`);
         if (modeTab) modeTab.click();
       }
 
@@ -3861,7 +3861,9 @@
               }
             });
             btn.className = activeTabClass;
-            platform.setMode(mode.id);
+            // Teachers can force access to locked modes
+            const forceAccess = teacherBypass;
+            platform.setMode(mode.id, forceAccess);
             await platform.loadProblem();
             updateScenarioDisplay();
             updateTeacherProgressionControls(); // Update teacher controls when mode changes

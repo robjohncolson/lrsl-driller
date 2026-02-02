@@ -174,6 +174,10 @@ export class GradingEngine {
     if (results.forbidden.length > 0) {
       results.score = 'I';
       results.feedback = `Avoid using "${results.forbidden[0]}" - it implies causation.`;
+    } else if (required.length === 0) {
+      // No required patterns and no forbidden hits = essentially correct
+      results.score = 'E';
+      results.feedback = 'Correct!';
     } else {
       const scoring = rule.scoring || { all: 'E', most: 'P', few: 'I' };
       const ratio = matchedCount / required.length;

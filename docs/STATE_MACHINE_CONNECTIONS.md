@@ -88,11 +88,6 @@ flowchart LR
 - Ghost battle completion.
 - Real-time leaderboard updates (historical Grid Wars).
 
-## 9) Documented but Missing Connections (Debug Targets)
-The state machine documentation includes active CTF/KotH flows and WebSocket messages (v4.0–v4.3), but the client-side files referenced in the doc are not present in this repo. Confirm whether these were removed intentionally or live elsewhere.
-- Documented client files: `platform/game/ctf-state.js`, `ctf-panel.js`, `ctf-renderer.js`, `koth-*` (missing)
-- Server schemas exist (`railway-server/migrations/009_ctf.sql`, `011_ctf_sessions.sql`, `012_game_modes.sql`)
-
-## 10) Historical Connections (Reference-Only)
+## 9) Historical Connections (Reference-Only)
 `STATE_MACHINES.md` §§3–19 and 33–108 describe the removed Grid Wars and Pong Duel systems. Only treat as active if re-enabled.
 

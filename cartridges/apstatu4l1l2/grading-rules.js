@@ -41,7 +41,11 @@ export function gradeField(fieldId, answer, context) {
     "capExplain",
     "mixedExplain",
     "capstone44Explain",
-    "capstone46Explain"
+    "capstone46Explain",
+    "binsExplain",
+    "binomCapstoneExplain",
+    "surprisedExplain",
+    "capstone1012Explain"
   ]);
 
   if (isBlank(answer)) {
@@ -1498,6 +1502,331 @@ export function gradeField(fieldId, answer, context) {
       score: "I",
       feedback: `Incorrect. σ = √(σX² + σY²) = √(${varX} + ${varY}) ≈ ${expectedVal}. Add variances, then square root!`
     };
+  }
+
+  // ========== LEVEL 49: BINS Conditions ==========
+  if (fieldId === "binsCondition") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You identified the right BINS condition." };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct condition is: ${expected}`
+    };
+  }
+
+  // ========== LEVEL 50: Identify Binomial Setting ==========
+  if (fieldId === "binomYesNo") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: context.isBinomial
+          ? "Correct! All four BINS conditions are satisfied."
+          : "Correct! At least one BINS condition fails."
+      };
+    }
+    return {
+      score: "I",
+      feedback: context.isBinomial
+        ? "Incorrect. This IS binomial because BINS conditions are met."
+        : "Incorrect. This is NOT binomial because a BINS condition fails."
+    };
+  }
+
+  if (fieldId === "binsExplain") {
+    const mentionsBinary = containsAny(answer, ["binary", "two outcomes", "success/failure", "success or failure"]);
+    const mentionsIndependent = containsAny(answer, ["independent", "doesn't affect", "no effect", "memoryless", "replacement", "affect"]);
+    const mentionsFixed = containsAny(answer, ["fixed", "number of trials", "n trials", "set number", "not fixed", "until", "geometric"]);
+    const mentionsSameP = containsAny(answer, ["same probability", "constant p", "same p", "unchanged probability", "p changes", "changes", "increases", "decreases"]);
+    const mentionedCount = [mentionsBinary, mentionsIndependent, mentionsFixed, mentionsSameP].filter(Boolean).length;
+    const hasNegativeIndicator = containsAny(answer, ["not", "fails", "doesn't", "does not", "isn't", "violated", "changes", "until"]);
+
+    if (context.isBinomial) {
+      if (mentionedCount >= 3 && !hasNegativeIndicator) {
+        return { score: "E", feedback: "Great! You cited the key BINS conditions." };
+      }
+      if (mentionedCount >= 2) {
+        return { score: "P", feedback: "Good start. Mention all BINS conditions and why they are satisfied." };
+      }
+      return {
+        score: "I",
+        feedback: `Explain using BINS. ${context.expectedExplanation || ""}`.trim()
+      };
+    }
+
+    // For non-binomial: must identify the ACTUAL failing condition
+    const failingCondition = context.failingCondition;
+    let identifiedCorrectFailing = false;
+
+    if (failingCondition === "independent" && mentionsIndependent && hasNegativeIndicator) {
+      identifiedCorrectFailing = true;
+    } else if (failingCondition === "fixed" && mentionsFixed && hasNegativeIndicator) {
+      identifiedCorrectFailing = true;
+    } else if (failingCondition === "sameP" && mentionsSameP && hasNegativeIndicator) {
+      identifiedCorrectFailing = true;
+    }
+
+    if (identifiedCorrectFailing) {
+      return { score: "E", feedback: "Correct! You identified the failing BINS condition." };
+    }
+    if (mentionedCount >= 1 && hasNegativeIndicator) {
+      return { score: "P", feedback: "You mentioned a BINS condition, but identify the specific one that fails here." };
+    }
+    if (mentionedCount >= 1) {
+      return { score: "P", feedback: "Partial credit. Explain which BINS condition fails and why." };
+    }
+    return {
+      score: "I",
+      feedback: `Mention which BINS condition fails. ${context.expectedExplanation || ""}`.trim()
+    };
+  }
+
+  // ========== LEVEL 51: Binomial Components ==========
+  if (fieldId === "binomN") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a number for n." };
+    if (Math.abs(studentVal - expectedVal) <= (expObj.tolerance || 0)) {
+      return { score: "E", feedback: "Correct! n is the total number of trials." };
+    }
+    return { score: "I", feedback: `Incorrect. n = ${expectedVal}.` };
+  }
+
+  if (fieldId === "binomP") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.01;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a probability for p." };
+    if (Math.abs(studentVal - expectedVal) <= tolerance) {
+      return { score: "E", feedback: "Correct! p is the probability of success on each trial." };
+    }
+    return { score: "I", feedback: `Incorrect. p = ${expectedVal}.` };
+  }
+
+  if (fieldId === "binomX") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a number for x." };
+    if (Math.abs(studentVal - expectedVal) <= (expObj.tolerance || 0)) {
+      return { score: "E", feedback: "Correct! x is the number of successes of interest." };
+    }
+    return { score: "I", feedback: `Incorrect. x = ${expectedVal}.` };
+  }
+
+  // ========== LEVEL 52: Binomial Single Probability ==========
+  if (fieldId === "binomSingleProb") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.001;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a decimal probability." };
+    if (Math.abs(studentVal - expectedVal) <= tolerance) {
+      return { score: "E", feedback: "Correct! You applied the binomial formula." };
+    }
+    if (Math.abs(studentVal - expectedVal) <= 0.01) {
+      return { score: "P", feedback: `Close! Check your arithmetic. P(X=x) ≈ ${expectedVal.toFixed(3)}` };
+    }
+    return { score: "I", feedback: `Incorrect. P(X=x) ≈ ${expectedVal.toFixed(3)}.` };
+  }
+
+  // ========== LEVEL 53: Binomial Cumulative Probability ==========
+  if (fieldId === "binomCumulativeProb") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.001;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a decimal probability." };
+    if (Math.abs(studentVal - expectedVal) <= tolerance) {
+      return { score: "E", feedback: "Correct! You handled the cumulative probability." };
+    }
+    if (Math.abs(studentVal - expectedVal) <= 0.01) {
+      return { score: "P", feedback: `Close! Recheck the cumulative sum or complement. ≈ ${expectedVal.toFixed(3)}` };
+    }
+    return { score: "I", feedback: `Incorrect. Cumulative probability ≈ ${expectedVal.toFixed(3)}.` };
+  }
+
+  // ========== LEVEL 54: Binomial Capstone ==========
+  if (fieldId === "binomCapstoneConcept") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You chose the right binomial concept." };
+    }
+    return { score: "I", feedback: `Incorrect. The correct concept is: ${expected}` };
+  }
+
+  if (fieldId === "binomCapstoneExplain") {
+    const binsKeywords = ["bins", "binary", "independent", "fixed", "same probability"];
+    const componentKeywords = ["n", "p", "x", "number of trials", "success probability", "successes"];
+    const singleProbKeywords = ["exactly", "c(n", "combination", "p^", "(1-p)", "binomial formula"];
+    const cumulativeKeywords = ["at least", "at most", "≤", "≥", "cumulative", "sum", "complement"];
+    const mentionsConcept = containsAny(answer, [
+      ...binsKeywords,
+      ...componentKeywords,
+      ...singleProbKeywords,
+      ...cumulativeKeywords
+    ]);
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "use"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if (mentionsConcept && hasReasoning && hasSubstance) {
+      return { score: "E", feedback: "Great explanation! You used correct binomial reasoning." };
+    }
+    if (mentionsConcept && hasSubstance) {
+      return { score: "P", feedback: "Good start! Add why that concept applies and the key formula." };
+    }
+    return {
+      score: "I",
+      feedback: "Explain which binomial concept applies and why, using key vocabulary."
+    };
+  }
+
+  // ========== LEVEL 55: Binomial Mean ==========
+  if (fieldId === "binomMean") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.1;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a number for the mean." };
+    if (Math.abs(studentVal - expectedVal) <= tolerance) {
+      return { score: "E", feedback: "Correct! μ = n·p." };
+    }
+    if (Math.abs(studentVal - expectedVal) <= tolerance * 2) {
+      return { score: "P", feedback: `Close! μ = n·p = ${expectedVal}` };
+    }
+    return { score: "I", feedback: `Incorrect. μ = n·p = ${expectedVal}.` };
+  }
+
+  // ========== LEVEL 56: Binomial SD ==========
+  if (fieldId === "binomSD") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.05;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a number for the SD." };
+    if (Math.abs(studentVal - expectedVal) <= tolerance) {
+      return { score: "E", feedback: "Correct! σ = √[n·p·(1-p)]." };
+    }
+    if (Math.abs(studentVal - expectedVal) <= tolerance * 2) {
+      return { score: "P", feedback: `Close! σ = √[n·p·(1-p)] = ${expectedVal}` };
+    }
+    return { score: "I", feedback: `Incorrect. σ = √[n·p·(1-p)] = ${expectedVal}.` };
+  }
+
+  // ========== LEVEL 57: Interpret Parameters ==========
+  if (fieldId === "binomParamsInterpret") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct interpretation of the parameter." };
+    }
+    return { score: "I", feedback: `Incorrect. The correct interpretation is: ${expected}` };
+  }
+
+  // ========== LEVEL 58: Would You Be Surprised? ==========
+  if (fieldId === "surprisedChoice") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You applied the 2-SD rule." };
+    }
+    return { score: "I", feedback: "Incorrect. Use the interval μ ± 2σ to decide if it's unusual." };
+  }
+
+  if (fieldId === "surprisedExplain") {
+    const mentionsSD = containsAny(answer, ["standard deviation", "sd", "sigma", "σ"]);
+    const mentionsTwo = containsAny(answer, ["2", "two", "2σ", "2sd"]);
+    const mentionsInterval = containsAny(answer, ["mu", "mean", "±", "plus or minus", "between", "outside", "within"]);
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "compare"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 6;
+
+    if (mentionsSD && mentionsTwo && mentionsInterval && hasReasoning && hasSubstance) {
+      return { score: "E", feedback: "Great explanation using μ ± 2σ." };
+    }
+    if (mentionsSD && mentionsTwo) {
+      return { score: "P", feedback: "Good start. Show the interval μ ± 2σ and compare the value." };
+    }
+    return { score: "I", feedback: "Use the 2-SD rule: compare the value to μ ± 2σ." };
+  }
+
+  // ========== LEVEL 59: Geometric vs Binomial ==========
+  if (fieldId === "geomIdentify") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You identified the right distribution." };
+    }
+    return { score: "I", feedback: `Incorrect. The correct distribution is: ${expected}` };
+  }
+
+  // ========== LEVEL 60: Geometric Probability ==========
+  if (fieldId === "geomProb") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.001;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a decimal probability." };
+    if (Math.abs(studentVal - expectedVal) <= tolerance) {
+      return { score: "E", feedback: "Correct! Remember the exponent is x-1." };
+    }
+    if (Math.abs(studentVal - expectedVal) <= 0.01) {
+      return { score: "P", feedback: `Close! Use (1-p)^(x-1) · p. ≈ ${expectedVal.toFixed(3)}` };
+    }
+    return { score: "I", feedback: `Incorrect. P(X=x) ≈ ${expectedVal.toFixed(3)}.` };
+  }
+
+  // ========== LEVEL 61: Geometric Parameters ==========
+  if (fieldId === "geomMean") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.1;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a number for the mean." };
+    if (Math.abs(studentVal - expectedVal) <= tolerance) {
+      return { score: "E", feedback: "Correct! μ = 1/p." };
+    }
+    if (Math.abs(studentVal - expectedVal) <= tolerance * 2) {
+      return { score: "P", feedback: `Close! μ = 1/p = ${expectedVal}` };
+    }
+    return { score: "I", feedback: `Incorrect. μ = 1/p = ${expectedVal}.` };
+  }
+
+  if (fieldId === "geomSD") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.05;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a number for the SD." };
+    if (Math.abs(studentVal - expectedVal) <= tolerance) {
+      return { score: "E", feedback: "Correct! σ = √[(1-p)/p²]." };
+    }
+    if (Math.abs(studentVal - expectedVal) <= tolerance * 2) {
+      return { score: "P", feedback: `Close! σ = √[(1-p)/p²] = ${expectedVal}` };
+    }
+    return { score: "I", feedback: `Incorrect. σ = √[(1-p)/p²] = ${expectedVal}.` };
+  }
+
+  // ========== LEVEL 62: Unit 4.10-4.12 Capstone ==========
+  if (fieldId === "capstone1012Concept") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct concept selected." };
+    }
+    return { score: "I", feedback: `Incorrect. The correct concept is: ${expected}` };
+  }
+
+  if (fieldId === "capstone1012Value") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = expObj.tolerance || 0.1;
+    if (isNaN(studentVal)) return { score: "I", feedback: "Please enter a numeric value." };
+    if (Math.abs(studentVal - expectedVal) <= tolerance) {
+      return { score: "E", feedback: "Correct value for the selected concept." };
+    }
+    if (Math.abs(studentVal - expectedVal) <= tolerance * 2) {
+      return { score: "P", feedback: `Close! Check your formula. ≈ ${expectedVal}` };
+    }
+    return { score: "I", feedback: `Incorrect. The value is ≈ ${expectedVal}.` };
+  }
+
+  if (fieldId === "capstone1012Explain") {
+    const mentionsBinom = containsAny(answer, ["binomial", "bins", "c(n", "combination"]);
+    const mentionsGeom = containsAny(answer, ["geometric", "(1-p)^(x-1)", "first success"]);
+    const mentionsFormula = containsAny(answer, ["p^", "(1-p)", "1/p", "p²", "sigma", "mean"]);
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "use"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if ((mentionsBinom || mentionsGeom) && mentionsFormula && hasReasoning && hasSubstance) {
+      return { score: "E", feedback: "Great explanation with the correct distribution and formula." };
+    }
+    if ((mentionsBinom || mentionsGeom) && hasSubstance) {
+      return { score: "P", feedback: "Good start! Add the specific formula and reasoning." };
+    }
+    return { score: "I", feedback: "State the distribution and formula used, and explain why it applies." };
   }
 
   // ========== GENERIC FALLBACK ==========

@@ -28,16 +28,16 @@ describe('Ghost Orbits Multiplayer Manager', () => {
       expect(MULTIPLAYER_CONFIG.roomCodeLength).toBe(6);
     });
 
-    it('should support 2 players per room (1v1)', () => {
-      expect(MULTIPLAYER_CONFIG.maxPlayersPerRoom).toBe(2);
+    it('should support 8 players per room (free-for-all)', () => {
+      expect(MULTIPLAYER_CONFIG.maxPlayersPerRoom).toBe(8);
     });
 
     it('should have reasonable round duration', () => {
-      expect(MULTIPLAYER_CONFIG.roundDuration).toBe(120000); // 2 minutes
+      expect(MULTIPLAYER_CONFIG.roundDuration).toBe(180000); // 3 minutes (longer for more players)
     });
 
-    it('should have 90% win threshold', () => {
-      expect(MULTIPLAYER_CONFIG.winThreshold).toBe(0.90);
+    it('should have 60% win threshold (lower for more players)', () => {
+      expect(MULTIPLAYER_CONFIG.winThreshold).toBe(0.60);
     });
 
     it('should have 15px claim radius (matches single-player Arena)', () => {
@@ -135,11 +135,14 @@ describe('Ghost Orbits Multiplayer Manager', () => {
 
       it('should fail joining full room', () => {
         const createResult = manager.createRoom('host', 'arena');
-        manager.joinRoom(createResult.roomCode, 'player2');
-        const thirdPlayer = manager.joinRoom(createResult.roomCode, 'player3');
+        // Fill room to capacity (8 players: host + 7 more)
+        for (let i = 2; i <= 8; i++) {
+          manager.joinRoom(createResult.roomCode, `player${i}`);
+        }
+        const ninthPlayer = manager.joinRoom(createResult.roomCode, 'player9');
 
-        expect(thirdPlayer.success).toBe(false);
-        expect(thirdPlayer.error).toBe('Room is full');
+        expect(ninthPlayer.success).toBe(false);
+        expect(ninthPlayer.error).toBe('Room is full');
       });
 
       it('should be case insensitive', () => {
@@ -307,8 +310,11 @@ describe('Ghost Orbits Multiplayer Manager', () => {
       });
 
       it('should reject player when room is full', () => {
-        room.addPlayer('player2_id', 'player2', null);
-        const result = room.addPlayer('player3_id', 'player3', null);
+        // Fill room to capacity (8 players: host + 7 more)
+        for (let i = 2; i <= 8; i++) {
+          room.addPlayer(`player${i}_id`, `player${i}`, null);
+        }
+        const result = room.addPlayer('player9_id', 'player9', null);
 
         expect(result.success).toBe(false);
         expect(result.error).toBe('Room is full');

@@ -1,5 +1,8 @@
 -- Migration 009: Linear CTF (Capture The Flag) Game
 -- Replaces Grid Wars and Pong Duel with a simpler tug-of-war game
+--
+-- DEPRECATED (v4.8.0): CTF client modules were removed. These schemas are
+-- retained for historical data preservation. Do not add new CTF features.
 
 -- CTF Games: One row per cartridge
 CREATE TABLE IF NOT EXISTS ctf_games (

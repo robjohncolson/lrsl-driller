@@ -523,6 +523,7 @@ export class Platform {
 
     } finally {
       this.isGrading = false;
+      this.inputRenderer?.enable();
     }
   }
 
