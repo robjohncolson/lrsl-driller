@@ -368,8 +368,26 @@
 
     <!-- Right Pane: Answers (scrollable) -->
     <div id="right-pane" class="lg:w-1/2 flex-1 overflow-y-auto space-y-4 pr-1">
-        <!-- Mode Tabs -->
-        <div id="mode-tabs" class="flex gap-2 flex-nowrap overflow-x-auto no-scrollbar pb-2 -mx-1 px-1 items-stretch snap-x snap-mandatory"></div>
+        <!-- Level Selector Bar (collapsed) -->
+        <div id="level-bar" class="level-bar">
+          <button id="level-prev-btn" class="level-bar-nav" title="Previous level">◀</button>
+          <button id="level-current-btn" class="level-bar-current">
+            <span id="level-current-name">Select Level</span>
+            <span id="level-current-badge" class="level-bar-badge"></span>
+          </button>
+          <button id="level-next-btn" class="level-bar-nav" title="Next level">▶</button>
+        </div>
+        <!-- Level Selector Modal (hidden) -->
+        <div id="level-modal" class="level-modal hidden">
+          <div class="level-modal-backdrop"></div>
+          <div class="level-modal-content">
+            <div class="level-modal-header">
+              <span class="level-modal-title">Select Level</span>
+              <button id="level-modal-close" class="level-modal-close">✕</button>
+            </div>
+            <div id="mode-tabs" class="level-modal-list"></div>
+          </div>
+        </div>
 
         <!-- Teacher Progression Controls (hidden by default) -->
         <div id="teacher-progression-panel" class="hidden bg-purple-50 border border-purple-200 rounded-lg p-3 mb-2">
@@ -2513,6 +2531,23 @@
       }
     });
 
+    // ==================== LEVEL SELECTOR BAR ====================
+    document.getElementById('level-current-btn')?.addEventListener('click', openLevelModal);
+    document.getElementById('level-prev-btn')?.addEventListener('click', () => navigateLevel(-1));
+    document.getElementById('level-next-btn')?.addEventListener('click', () => navigateLevel(1));
+    document.getElementById('level-modal-close')?.addEventListener('click', closeLevelModal);
+
+    // Close level modal on backdrop click
+    document.querySelector('.level-modal-backdrop')?.addEventListener('click', closeLevelModal);
+
+    // Keyboard navigation for levels: [ = prev, ] = next
+    document.addEventListener('keydown', (e) => {
+      // Skip if typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === '[') navigateLevel(-1);
+      if (e.key === ']') navigateLevel(1);
+    });
+
     // ==================== STUDENT DETAIL MODAL ====================
     document.getElementById('student-detail-close').addEventListener('click', closeStudentDetail);
 
@@ -3768,6 +3803,91 @@
       return null; // 'server' or 'none' = auto or no preference
     }
 
+    // Level modal helpers
+    function openLevelModal() {
+      document.getElementById('level-modal')?.classList.remove('hidden');
+    }
+    function closeLevelModal() {
+      document.getElementById('level-modal')?.classList.add('hidden');
+    }
+
+    // Navigate to prev/next level
+    async function navigateLevel(direction) {
+      if (!platform?.currentCartridge?.manifest?.modes) return;
+      const modes = platform.currentCartridge.manifest.modes;
+      const gameState = platform.gameEngine.getState();
+      const currentIdx = modes.findIndex(m => m.id === platform.currentMode);
+      const targetIdx = currentIdx + direction;
+
+      if (targetIdx < 0 || targetIdx >= modes.length) return;
+
+      const targetMode = modes[targetIdx];
+      const studentUnlocked = gameState.unlockedTiers.includes(targetMode.id);
+      const canAccess = isTeacher || studentUnlocked;
+
+      if (!canAccess) return;
+
+      const teacherBypass = isTeacher && !studentUnlocked;
+      if (!platform.setMode(targetMode.id, teacherBypass)) return;
+
+      renderModeTabs();
+      await platform.loadProblem();
+      updateScenarioDisplay();
+      updateTeacherProgressionControls();
+    }
+
+    // Update level bar with current level info
+    function updateLevelBar() {
+      if (!platform?.currentCartridge?.manifest?.modes) return;
+
+      const modes = platform.currentCartridge.manifest.modes;
+      const gameState = platform.gameEngine.getState();
+      const currentMode = platform.currentMode;
+      const currentIdx = modes.findIndex(m => m.id === currentMode);
+      const mode = modes[currentIdx];
+      const goldToMaster = 10;
+      const goldToUnlock = platform.gameEngine.getRequiredGold(mode?.id);
+      const modeGold = gameState.starsPerMode?.[mode?.id]?.gold || 0;
+      const isMastered = modeGold >= goldToMaster;
+
+      // Update level name
+      const nameEl = document.getElementById('level-current-name');
+      if (nameEl && mode) {
+        nameEl.textContent = mode.name;
+      }
+
+      // Update badge
+      const badgeEl = document.getElementById('level-current-badge');
+      if (badgeEl && mode) {
+        if (isMastered) {
+          badgeEl.className = 'level-bar-badge level-bar-badge-mastered';
+          badgeEl.textContent = '🎓';
+        } else if (modeGold >= goldToUnlock) {
+          badgeEl.className = 'level-bar-badge level-bar-badge-complete';
+          badgeEl.textContent = '✓';
+        } else {
+          badgeEl.className = 'level-bar-badge level-bar-badge-progress';
+          badgeEl.textContent = `★ ${modeGold}/${goldToUnlock}`;
+        }
+      }
+
+      // Update prev/next button states
+      const prevBtn = document.getElementById('level-prev-btn');
+      const nextBtn = document.getElementById('level-next-btn');
+
+      if (prevBtn) {
+        const prevMode = modes[currentIdx - 1];
+        const prevUnlocked = prevMode && (isTeacher || gameState.unlockedTiers.includes(prevMode.id));
+        prevBtn.disabled = !prevUnlocked;
+      }
+
+      if (nextBtn) {
+        const nextMode = modes[currentIdx + 1];
+        const nextUnlocked = nextMode && (isTeacher || gameState.unlockedTiers.includes(nextMode.id));
+        nextBtn.disabled = !nextUnlocked;
+      }
+    }
+
     // Render mode tabs - reusable function for both initial load and unlock updates
     function renderModeTabs() {
       if (!platform?.currentCartridge?.manifest?.modes) return;
@@ -3780,9 +3900,9 @@
       const currentMode = platform.currentMode;
       const goldToMaster = 10; // Auto-progress threshold
 
-      const baseTabClass = 'mode-tab snap-start';
-      const activeTabClass = 'mode-tab mode-tab-active snap-start';
-      const lockedTabClass = 'mode-tab mode-tab-locked snap-start';
+      const baseTabClass = 'mode-card';
+      const activeTabClass = 'mode-card mode-card-active';
+      const lockedTabClass = 'mode-card mode-card-locked';
 
       // Track lesson groups for dividers (extracts "4.1", "4.2", "4.3" from names like "4.1a: ...")
       let lastLessonGroup = null;
@@ -3799,10 +3919,10 @@
         if (lessonGroup && lessonGroup !== lastLessonGroup) {
           // Add a divider with lesson label
           const divider = document.createElement('div');
-          divider.className = 'flex items-center gap-2 px-2 snap-start';
+          divider.className = 'mode-section-header';
           divider.innerHTML = `
-            <span class="text-xs text-gray-400 font-medium whitespace-nowrap">§${lessonGroup}</span>
-            <span class="w-px h-4 bg-gray-600"></span>
+            <span class="mode-section-label">§${lessonGroup}</span>
+            <span class="mode-section-line"></span>
           `;
           tabsContainer.appendChild(divider);
           lastLessonGroup = lessonGroup;
@@ -3831,39 +3951,35 @@
         const shortName = mode.name.replace('Level ', 'L');
 
         if (isUnlocked) {
-          // Teacher bypass indicator (🔑 = locked for students but teacher has access)
-          const bypassIndicator = teacherBypass ? '<span class="text-amber-400 text-xs ml-1">🔑</span>' : '';
-
-          // Show progress indicator for current mode
-          if (isCurrentMode) {
-            if (isMastered) {
-              btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>${bypassIndicator}`;
-            } else {
-              const stars = modeGold >= goldToUnlock ? '✓' : `${modeGold}/${goldToUnlock}`;
-              const overrideIndicator = hasOverride ? '<span class="text-purple-400">*</span>' : '';
-              btn.innerHTML = `${shortName} <span class="text-yellow-400 text-xs ml-1">★${stars}</span>${overrideIndicator}${bypassIndicator}`;
-            }
+          const badges = [];
+          if (isMastered) {
+            badges.push('<span class="mode-card-badge mode-card-badge-mastered">🎓 Mastered</span>');
+          } else if (modeGold >= goldToUnlock) {
+            badges.push('<span class="mode-card-badge mode-card-badge-complete">✓ Complete</span>');
           } else {
-            // Mastered levels show graduation cap, completed show checkmark
-            if (isMastered) {
-              btn.innerHTML = `${shortName} <span class="text-xs ml-1">🎓</span>${bypassIndicator}`;
-            } else if (modeGold >= goldToUnlock) {
-              btn.innerHTML = `${shortName} <span class="text-green-500 text-xs ml-1">✓</span>${bypassIndicator}`;
-            } else {
-              btn.innerHTML = `${shortName}${bypassIndicator}`;
-            }
+            badges.push(`<span class="mode-card-badge mode-card-badge-progress">★ ${modeGold}/${goldToUnlock}</span>`);
           }
+          if (hasOverride) {
+            badges.push('<span class="mode-card-badge mode-card-badge-override">Override</span>');
+          }
+          if (teacherBypass) {
+            badges.push('<span class="mode-card-badge mode-card-badge-teacher">🔑 Teacher</span>');
+          }
+
+          btn.innerHTML = `
+            <span class="mode-card-main">
+              <span class="mode-card-short">${shortName}</span>
+              <span class="mode-card-name">${mode.name}</span>
+            </span>
+            <span class="mode-card-badges">${badges.join('')}</span>
+          `;
           btn.className = isCurrentMode ? activeTabClass : baseTabClass;
           btn.addEventListener('click', async () => {
-            tabsContainer.querySelectorAll('button').forEach(b => {
-              if (!b.disabled) {
-                b.className = baseTabClass;
-              }
-            });
-            btn.className = activeTabClass;
             // Teachers can force access to locked modes
             const forceAccess = teacherBypass;
-            platform.setMode(mode.id, forceAccess);
+            if (!platform.setMode(mode.id, forceAccess)) return;
+            closeLevelModal(); // Close modal after selection
+            renderModeTabs(); // Update active state
             await platform.loadProblem();
             updateScenarioDisplay();
             updateTeacherProgressionControls(); // Update teacher controls when mode changes
@@ -3872,8 +3988,20 @@
           // Locked mode - show what's needed (gold stars on previous level)
           const prevModeId = gameState.modeOrder?.[i - 1];
           const prevModeGold = prevModeId ? (gameState.starsPerMode?.[prevModeId]?.gold || 0) : 0;
-          const overrideIndicator = hasOverride ? '*' : '';
-          btn.innerHTML = `<span class="opacity-50">${shortName}</span> <span class="text-xs">🔒${prevModeGold}/${goldToUnlock}${overrideIndicator}</span>`;
+          const badges = [
+            `<span class="mode-card-badge mode-card-badge-locked">🔒 ${prevModeGold}/${goldToUnlock}</span>`
+          ];
+          if (hasOverride) {
+            badges.push('<span class="mode-card-badge mode-card-badge-override">Override</span>');
+          }
+
+          btn.innerHTML = `
+            <span class="mode-card-main">
+              <span class="mode-card-short">${shortName}</span>
+              <span class="mode-card-name">${mode.name}</span>
+            </span>
+            <span class="mode-card-badges">${badges.join('')}</span>
+          `;
           btn.className = lockedTabClass;
           btn.disabled = true;
           btn.title = `Earn ${goldToUnlock} gold stars on the previous level to unlock` + (hasOverride ? ' (Teacher override)' : '');
@@ -3882,7 +4010,8 @@
         tabsContainer.appendChild(btn);
       });
 
-      // Update teacher progression controls if visible
+      // Update level bar and teacher progression controls
+      updateLevelBar();
       updateTeacherProgressionControls();
     }
 
