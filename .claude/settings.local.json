@@ -16,7 +16,8 @@
       "Bash(git -C /mnt/c/Users/rober/OneDrive/Desktop/Teaching/lrsl-driller diff --cached --stat)",
       "Bash(git -C /mnt/c/Users/rober/OneDrive/Desktop/Teaching/lrsl-driller show HEAD:SETUP-GUIDE.html)",
       "Bash(cat:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []
