@@ -302,6 +302,104 @@ body {
   gap: 0.5rem;
 }
 
+/* Locked Level Modal */
+.locked-level-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.locked-level-modal.hidden {
+  display: none;
+}
+
+.locked-level-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.locked-level-modal-content {
+  position: relative;
+  width: 90%;
+  max-width: 380px;
+  background: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.locked-level-modal-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.locked-level-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.75rem 0;
+}
+
+.locked-level-modal-text {
+  font-size: 0.9rem;
+  color: #4b5563;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.locked-level-modal-resume {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0 0 1.25rem 0;
+  padding: 0.5rem;
+  background: #f3f4f6;
+  border-radius: 0.5rem;
+}
+
+.locked-level-modal-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.locked-level-btn {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+  border: none;
+}
+
+.locked-level-btn:active {
+  transform: scale(0.98);
+}
+
+.locked-level-btn-primary {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.locked-level-btn-primary:hover {
+  background: #6d28d9;
+}
+
+.locked-level-btn-secondary {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+.locked-level-btn-secondary:hover {
+  background: #e5e7eb;
+}
+
 /* Card-map level selector (inside modal) */
 .mode-section-header {
   display: flex;

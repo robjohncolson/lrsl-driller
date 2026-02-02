@@ -388,6 +388,28 @@
             <div id="mode-tabs" class="level-modal-list"></div>
           </div>
         </div>
+        <!-- Locked Level Modal (shown when student accesses locked level via URL) -->
+        <div id="locked-level-modal" class="locked-level-modal hidden">
+          <div class="locked-level-modal-backdrop"></div>
+          <div class="locked-level-modal-content">
+            <div class="locked-level-modal-icon">🔒</div>
+            <h2 class="locked-level-modal-title">Level Not Yet Unlocked</h2>
+            <p class="locked-level-modal-text">
+              You're trying to access <strong id="locked-level-name">this level</strong>, but you haven't completed the previous levels yet.
+            </p>
+            <p class="locked-level-modal-resume">
+              Your current progress: <strong id="locked-level-resume-name">Level 1</strong>
+            </p>
+            <div class="locked-level-modal-buttons">
+              <button id="locked-level-resume-btn" class="locked-level-btn locked-level-btn-primary">
+                Resume Progress
+              </button>
+              <button id="locked-level-continue-btn" class="locked-level-btn locked-level-btn-secondary">
+                Continue Anyway
+              </button>
+            </div>
+          </div>
+        </div>
 
         <!-- Teacher Progression Controls (hidden by default) -->
         <div id="teacher-progression-panel" class="hidden bg-purple-50 border border-purple-200 rounded-lg p-3 mb-2">
@@ -2548,6 +2570,13 @@
       if (e.key === ']') navigateLevel(1);
     });
 
+    // ==================== LOCKED LEVEL MODAL ====================
+    document.getElementById('locked-level-resume-btn')?.addEventListener('click', handleLockedLevelResume);
+    document.getElementById('locked-level-continue-btn')?.addEventListener('click', handleLockedLevelContinue);
+
+    // Close locked level modal on backdrop click (treat as resume)
+    document.querySelector('.locked-level-modal-backdrop')?.addEventListener('click', handleLockedLevelResume);
+
     // ==================== STUDENT DETAIL MODAL ====================
     document.getElementById('student-detail-close').addEventListener('click', closeStudentDetail);
 
@@ -3811,6 +3840,49 @@
       document.getElementById('level-modal')?.classList.add('hidden');
     }
 
+    // Locked level modal helpers
+    let pendingLockedLevel = null; // Stores {targetMode, resumeMode} when showing modal
+
+    function showLockedLevelModal(targetMode, resumeMode) {
+      pendingLockedLevel = { targetMode, resumeMode };
+      document.getElementById('locked-level-name').textContent = targetMode.name;
+      document.getElementById('locked-level-resume-name').textContent = resumeMode?.name || 'Level 1';
+      document.getElementById('locked-level-modal')?.classList.remove('hidden');
+    }
+
+    function closeLockedLevelModal() {
+      document.getElementById('locked-level-modal')?.classList.add('hidden');
+      pendingLockedLevel = null;
+    }
+
+    async function handleLockedLevelResume() {
+      if (!pendingLockedLevel?.resumeMode) {
+        closeLockedLevelModal();
+        return;
+      }
+      const mode = pendingLockedLevel.resumeMode;
+      closeLockedLevelModal();
+      platform.setMode(mode.id, false);
+      renderModeTabs();
+      await platform.loadProblem();
+      updateScenarioDisplay();
+      updateTeacherProgressionControls();
+    }
+
+    async function handleLockedLevelContinue() {
+      if (!pendingLockedLevel?.targetMode) {
+        closeLockedLevelModal();
+        return;
+      }
+      const mode = pendingLockedLevel.targetMode;
+      closeLockedLevelModal();
+      platform.setMode(mode.id, true); // force=true to bypass lock
+      renderModeTabs();
+      await platform.loadProblem();
+      updateScenarioDisplay();
+      updateTeacherProgressionControls();
+    }
+
     // Navigate to prev/next level
     async function navigateLevel(direction) {
       if (!platform?.currentCartridge?.manifest?.modes) return;
@@ -4463,28 +4535,29 @@
           if (targetMode) {
             const studentUnlocked = gameState.unlockedTiers.includes(targetMode.id);
 
-            // URL deep links always allow access to the requested level (force=true bypasses lock check)
-            console.log(`[App] Jumping to URL-requested level: ${targetMode.id} (force=true)`);
-            platform.setMode(targetMode.id, true); // force=true for URL deep links
-            renderModeTabs(); // Re-render to show active tab
+            // Teachers and students with unlocked access go directly
+            if (isTeacher || studentUnlocked) {
+              console.log(`[App] Jumping to URL-requested level: ${targetMode.id}`);
+              platform.setMode(targetMode.id, isTeacher && !studentUnlocked);
+              renderModeTabs();
+            } else {
+              // Student accessing locked level - show modal with choice
+              console.log(`[App] Student accessing locked level ${targetMode.id} via URL - showing modal`);
 
-            // Show notification for students accessing normally-locked levels
-            if (!isTeacher && !studentUnlocked) {
-              console.log(`[App] Student accessing locked level ${targetMode.id} via URL`);
-              // Show a toast notification (non-blocking)
-              const toast = document.createElement('div');
-              toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-amber-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 max-w-md text-center';
-              toast.innerHTML = `
-                <div class="font-medium">📍 Direct Link Access</div>
-                <div class="text-sm mt-1">Level "${targetMode.name}" is normally locked. Complete earlier levels to unlock it in the main progression.</div>
-              `;
-              document.body.appendChild(toast);
-              // Auto-dismiss after 5 seconds
-              setTimeout(() => {
-                toast.style.transition = 'opacity 0.5s';
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 500);
-              }, 5000);
+              // Find highest unlocked level for resume
+              let resumeMode = modes[0]; // Default to first level
+              for (let i = modes.length - 1; i >= 0; i--) {
+                if (gameState.unlockedTiers.includes(modes[i].id)) {
+                  resumeMode = modes[i];
+                  break;
+                }
+              }
+
+              // Show modal - don't set mode yet, wait for user choice
+              showLockedLevelModal(targetMode, resumeMode);
+              // Note: loadProblem will be called after user makes choice
+              requestedStartLevel = null;
+              return; // Exit early - modal handlers will continue
             }
           } else {
             console.warn(`[App] URL-requested level not found: ${JSON.stringify(requestedStartLevel)}`);
