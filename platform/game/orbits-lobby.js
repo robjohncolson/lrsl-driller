@@ -1520,7 +1520,9 @@ export class OrbitsLobby {
   }
 
   _handleLobbyCountdown(data) {
-    // Update lobby countdown info and refresh UI
+    const prevInfo = this.lobbyInfo;
+
+    // Update lobby countdown info
     this.lobbyInfo = {
       secondsRemaining: data.secondsRemaining,  // null = waiting for players
       playersNeeded: data.playersNeeded,
@@ -1532,12 +1534,63 @@ export class OrbitsLobby {
 
     // Update the room display if we're in the room
     if (this.state === LobbyState.IN_ROOM) {
-      this._updateContent();
+      // Only do partial update if structure hasn't changed
+      // Full re-render if canStartNow changed (button visibility)
+      const structureChanged = prevInfo?.canStartNow !== this.lobbyInfo.canStartNow;
+
+      if (structureChanged) {
+        this._updateContent();
+      } else {
+        // Just update the dynamic text elements
+        this._updateLobbyTimerDisplay();
+      }
     }
 
     // Update minimized indicator if minimized
     if (this.isMinimized) {
       this._updateMinimizedIndicator();
+    }
+  }
+
+  /**
+   * Update just the timer and vote count without rebuilding DOM
+   * @private
+   */
+  _updateLobbyTimerDisplay() {
+    const content = this.overlay.querySelector('.orbits-lobby-content');
+    if (!content) return;
+
+    // Update timer value
+    const timerValue = content.querySelector('.orbits-lobby-timer-value');
+    if (timerValue && this.lobbyInfo.secondsRemaining !== null) {
+      timerValue.textContent = `${this.lobbyInfo.secondsRemaining}s`;
+    }
+
+    // Update timer visibility
+    const timer = content.querySelector('.orbits-lobby-timer');
+    if (timer) {
+      timer.style.display = this.lobbyInfo.secondsRemaining !== null ? '' : 'none';
+    }
+
+    // Update start now button vote count (if not already voted)
+    const startNowBtn = content.querySelector('[data-action="start-now"]');
+    if (startNowBtn && !startNowBtn.disabled) {
+      const votes = this.lobbyInfo.startNowVotes;
+      const count = this.lobbyInfo.playerCount;
+      startNowBtn.textContent = `⚡ Start Now ${votes > 0 ? `(${votes}/${count})` : ''}`;
+    }
+
+    // Update status message
+    const status = content.querySelector('.orbits-lobby-status');
+    if (status) {
+      const playerCount = this.players.length;
+      if (playerCount < 2) {
+        status.textContent = '⏳ Waiting for players...';
+      } else if (this.lobbyInfo.secondsRemaining === null) {
+        status.textContent = '✓ Ready to start!';
+      } else {
+        status.textContent = '✓ Starting soon...';
+      }
     }
   }
 

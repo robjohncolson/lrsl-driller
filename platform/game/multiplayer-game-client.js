@@ -332,8 +332,10 @@ export class MultiplayerGameClient {
     console.log('[MultiplayerGameClient] Match ended:', data);
     this.state = CLIENT_STATE.ENDED;
 
-    // Show results overlay
-    this._showResults(data);
+    // Delay showing results to let death animation play out (~600ms)
+    setTimeout(() => {
+      this._showResults(data);
+    }, 600);
   }
 
   /**
