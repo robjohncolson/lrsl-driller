@@ -1134,6 +1134,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/BINSConditionsBreakdown.mp4",
       "layout": {
         "inputs": [
           {
@@ -1156,6 +1157,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/BINSConditionsBreakdown.mp4",
       "layout": {
         "inputs": [
           {
@@ -1183,6 +1185,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/BinomialFormulaComponents.mp4",
       "layout": {
         "inputs": [
           {
@@ -1216,6 +1219,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/BinomialFormulaComponents.mp4",
       "layout": {
         "inputs": [
           {
@@ -1235,6 +1239,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/CumulativeProbabilitySumming.mp4",
       "layout": {
         "inputs": [
           {
@@ -1254,6 +1259,7 @@
       "unlockedBy": {
         "gold": 3
       },
+      "animation": "assets/CumulativeProbabilitySumming.mp4",
       "layout": {
         "inputs": [
           {
@@ -1284,6 +1290,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/BinomialMeanSDFormulas.mp4",
       "layout": {
         "inputs": [
           {
@@ -1302,6 +1309,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/BinomialMeanSDFormulas.mp4",
       "layout": {
         "inputs": [
           {
@@ -1320,6 +1328,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/BinomialMeanSDFormulas.mp4",
       "layout": {
         "inputs": [
           {
@@ -1343,6 +1352,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/TwoSDRuleUnusualOutcomes.mp4",
       "layout": {
         "inputs": [
           {
@@ -1370,6 +1380,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/GeometricVsBinomialDistinction.mp4",
       "layout": {
         "inputs": [
           {
@@ -1390,6 +1401,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/GeometricFormulaParameters.mp4",
       "layout": {
         "inputs": [
           {
@@ -1409,6 +1421,7 @@
       "unlockedBy": {
         "gold": 1
       },
+      "animation": "assets/GeometricFormulaParameters.mp4",
       "layout": {
         "inputs": [
           {
@@ -1434,6 +1447,7 @@
       "unlockedBy": {
         "gold": 3
       },
+      "animation": "assets/BinomialGeometricCapstoneSynthesis.mp4",
       "layout": {
         "inputs": [
           {
