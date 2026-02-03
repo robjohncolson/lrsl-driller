@@ -542,3 +542,45 @@ body {
   background: #ffedd5;
   color: #9a3412;
 }
+
+/* Sync Queue Indicator */
+#sync-queue-indicator {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  background: #f59e0b;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  animation: sync-pulse 2s ease-in-out infinite;
+}
+
+#sync-queue-indicator.hidden {
+  display: none;
+}
+
+#sync-queue-indicator .sync-icon {
+  font-size: 1rem;
+  animation: sync-spin 1.5s linear infinite;
+}
+
+#sync-queue-indicator .sync-count {
+  font-weight: 700;
+}
+
+@keyframes sync-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes sync-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}

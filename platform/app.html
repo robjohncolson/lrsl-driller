@@ -969,6 +969,12 @@
     </div>
   </div>
 
+  <!-- Sync Queue Indicator -->
+  <div id="sync-queue-indicator" class="hidden">
+    <span class="sync-icon">&#x21bb;</span>
+    <span class="sync-count">0</span> pending sync
+  </div>
+
   <script type="module">
     console.log('[APP] Module script starting...');
     import { Platform } from './platform.js';
@@ -986,6 +992,7 @@
     import * as GhostEngine from './core/ghost-engine.js';
     import { GhostPanel, createGhostButton } from './game/ghost-panel.js';
     import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';
+    import { SyncQueue } from './core/sync-queue.js';
     console.log('[APP] All imports successful');
 
     // ==================== CONFIGURATION ====================
@@ -1139,6 +1146,28 @@
     const classTime = new ClassTime();
     const timeTracker = new TimeTracker({ serverUrl: SERVER_URL });
 
+    // SyncQueue for retry of failed progress syncs
+    const syncQueue = new SyncQueue({
+      onQueueChange: updateSyncIndicator
+    });
+    syncQueue.init();
+
+    /**
+     * Update sync queue indicator visibility and count
+     * @param {number} count - Number of pending sync items
+     */
+    function updateSyncIndicator(count) {
+      const indicator = document.getElementById('sync-queue-indicator');
+      if (!indicator) return;
+
+      if (count > 0) {
+        indicator.classList.remove('hidden');
+        indicator.querySelector('.sync-count').textContent = count;
+      } else {
+        indicator.classList.add('hidden');
+      }
+    }
+
     const wsClient = new WebSocketClient({
       serverUrl: SERVER_URL,
       onPresenceChange: updateOnlineDisplay,
@@ -1245,11 +1274,17 @@
         const starCounts = state?.game?.starCounts;
         if (!starCounts) return;
 
-        const response = await fetch(`${SERVER_URL}/api/progress/${username}/sync`, {
+        const response = await syncQueue.syncFetch(`${SERVER_URL}/api/progress/${username}/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ starCounts })
         });
+
+        if (!response.ok) {
+          // Queued for retry if transient error
+          console.warn('[Sync] Request failed, queued for retry');
+          return;
+        }
 
         const result = await response.json();
         if (result.synced > 0) {
@@ -1257,7 +1292,7 @@
           celebration.showToast(`Synced ${result.synced} stars to leaderboard`, 'success', 3000);
         }
       } catch (err) {
-        console.warn('[Sync] Failed to sync stars:', err);
+        console.warn('[Sync] Unexpected error:', err);
       }
     }
 
@@ -1604,7 +1639,7 @@
       const totalWeightedScore = (stars.gold * 4) + (stars.silver * 3) + (stars.bronze * 2) + (stars.tin * 1);
 
       try {
-        const response = await fetch(`${SERVER_URL}/api/progress/cartridge-sync`, {
+        const response = await syncQueue.syncFetch(`${SERVER_URL}/api/progress/cartridge-sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1616,6 +1651,12 @@
           })
         });
 
+        if (!response.ok) {
+          // Response was queued for retry if transient error
+          console.warn('[Progress Sync] Request failed, queued for retry');
+          return;
+        }
+
         const data = await response.json();
         if (data.success) {
           console.log(`[Progress Sync] Synced ${cartridgeId}: ${stars.gold}G ${stars.silver}S ${stars.bronze}B ${stars.tin}T = ${totalWeightedScore} pts`);
@@ -1625,7 +1666,7 @@
           console.error('[Progress Sync] Failed:', data.error);
         }
       } catch (err) {
-        console.warn('[Progress Sync] Network error:', err.message);
+        console.warn('[Progress Sync] Unexpected error:', err.message);
       }
     }
 
@@ -2069,7 +2110,7 @@
           const levelIndex = getCurrentLevelIndex();
           const totalLevels = getTotalLevels();
           const weightedPoints = calculateWeightedPoints(starType, levelIndex, totalLevels);
-          fetch(`${SERVER_URL}/api/progress`, {
+          syncQueue.syncFetch(`${SERVER_URL}/api/progress`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2087,12 +2128,17 @@
               weighted_points: weightedPoints
             })
           })
-          .then(r => r.json().then(data => ({ ok: r.ok, data })))
-          .then(({ ok, data }) => {
-            if (!ok) console.error('Server rejected progress:', data.error);
-            else console.log(`Progress saved: ${starType} star = ${weightedPoints} pts (level ${levelIndex + 1}/${totalLevels})`);
+          .then(r => {
+            if (!r.ok) {
+              console.warn('Progress request failed, queued for retry');
+              return { ok: false, data: {} };
+            }
+            return r.json().then(data => ({ ok: r.ok, data }));
           })
-          .catch(err => console.warn('Failed to save progress:', err));
+          .then(({ ok, data }) => {
+            if (ok) console.log(`Progress saved: ${starType} star = ${weightedPoints} pts (level ${levelIndex + 1}/${totalLevels})`);
+          })
+          .catch(err => console.warn('Unexpected error saving progress:', err));
 
           // v2.1: Also sync aggregate cartridge progress for unified leaderboard
           syncCartridgeProgress();
@@ -4383,7 +4429,7 @@
                 const levelIndex = getCurrentLevelIndex();
                 const totalLevels = getTotalLevels();
                 const weightedPoints = calculateWeightedPoints(starType, levelIndex, totalLevels);
-                fetch(`${SERVER_URL}/api/progress`, {
+                syncQueue.syncFetch(`${SERVER_URL}/api/progress`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -4401,12 +4447,17 @@
                     weighted_points: weightedPoints
                   })
                 })
-                .then(r => r.json().then(data => ({ ok: r.ok, data })))
-                .then(({ ok, data }) => {
-                  if (!ok) console.error('Server rejected progress:', data.error);
-                  else console.log(`Progress saved: ${starType} star = ${weightedPoints} pts (level ${levelIndex + 1}/${totalLevels})`);
+                .then(r => {
+                  if (!r.ok) {
+                    console.warn('Progress request failed, queued for retry');
+                    return { ok: false, data: {} };
+                  }
+                  return r.json().then(data => ({ ok: r.ok, data }));
                 })
-                .catch(err => console.warn('Failed to save progress:', err));
+                .then(({ ok, data }) => {
+                  if (ok) console.log(`Progress saved: ${starType} star = ${weightedPoints} pts (level ${levelIndex + 1}/${totalLevels})`);
+                })
+                .catch(err => console.warn('Unexpected error saving progress:', err));
 
                 // v2.1: Also sync aggregate cartridge progress for unified leaderboard
                 syncCartridgeProgress();

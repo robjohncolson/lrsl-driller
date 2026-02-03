@@ -96,7 +96,8 @@ describe('Star Award Consistency (B2 Regression Prevention)', () => {
 
   describe('applyTeacherGrades() path', () => {
     it('should contain /api/progress POST', () => {
-      expect(applyTeacherGradesBody).toMatch(/fetch\(`\$\{SERVER_URL\}\/api\/progress`/);
+      // Using syncQueue.syncFetch instead of raw fetch for retry support
+      expect(applyTeacherGradesBody).toMatch(/syncQueue\.syncFetch\(`\$\{SERVER_URL\}\/api\/progress`/);
     });
 
     it('should contain syncCartridgeProgress() call', () => {
@@ -138,7 +139,8 @@ describe('Star Award Consistency (B2 Regression Prevention)', () => {
 
   describe('onGradingComplete() path', () => {
     it('should contain /api/progress POST', () => {
-      expect(onGradingCompleteBody).toMatch(/fetch\(`\$\{SERVER_URL\}\/api\/progress`/);
+      // Using syncQueue.syncFetch instead of raw fetch for retry support
+      expect(onGradingCompleteBody).toMatch(/syncQueue\.syncFetch\(`\$\{SERVER_URL\}\/api\/progress`/);
     });
 
     it('should contain syncCartridgeProgress() call', () => {
