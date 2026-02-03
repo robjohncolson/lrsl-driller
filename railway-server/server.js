@@ -472,9 +472,12 @@ app.get('/api/progress/:username/stats', async (req, res) => {
 // ============================================
 
 app.post('/api/progress/:username/sync', async (req, res) => {
+  console.log('[DEBUG] /api/progress/:username/sync hit, username:', req.params.username);
   try {
     const { username } = req.params;
     const { starCounts } = req.body; // { gold: N, silver: N, bronze: N, tin: N }
+
+    console.log('[DEBUG] starCounts:', starCounts);
 
     if (!starCounts) {
       return res.status(400).json({ error: 'starCounts required' });
@@ -542,6 +545,7 @@ app.post('/api/progress/:username/sync', async (req, res) => {
     });
   } catch (err) {
     console.error('POST /api/progress/:username/sync error:', err);
+    console.error('[DEBUG] Full error object:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
     res.status(500).json({ error: err.message });
   }
 });
