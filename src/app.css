@@ -1,0 +1,67 @@
+@import 'tailwindcss';
+
+/* Custom CSS variables for theming */
+:root {
+	--color-primary: #7c3aed; /* purple-600 */
+	--color-primary-light: #a78bfa; /* purple-400 */
+	--color-primary-dark: #5b21b6; /* purple-800 */
+}
+
+/* Star colors */
+.star-gold { color: #f59e0b; } /* amber-500 */
+.star-silver { color: #9ca3af; } /* gray-400 */
+.star-bronze { color: #b45309; } /* amber-700 */
+.star-tin { color: #78716c; } /* stone-500 */
+
+/* Connection status */
+.connection-online { background-color: #22c55e; } /* green-500 */
+.connection-offline { background-color: #ef4444; } /* red-500 */
+.connection-connecting { background-color: #f59e0b; } /* amber-500 */
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+	.hide-on-mobile {
+		display: none;
+	}
+}
+
+/* Ghost panel animations */
+@keyframes ghost-float {
+	0%, 100% { transform: translateY(0); }
+	50% { transform: translateY(-5px); }
+}
+
+.ghost-float {
+	animation: ghost-float 2s ease-in-out infinite;
+}
+
+/* Toast notifications */
+.toast-enter {
+	animation: slide-in 0.3s ease-out;
+}
+
+.toast-exit {
+	animation: slide-out 0.3s ease-in forwards;
+}
+
+@keyframes slide-in {
+	from {
+		transform: translateX(100%);
+		opacity: 0;
+	}
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
+}
+
+@keyframes slide-out {
+	from {
+		transform: translateX(0);
+		opacity: 1;
+	}
+	to {
+		transform: translateX(100%);
+		opacity: 0;
+	}
+}
