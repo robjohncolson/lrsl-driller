@@ -32,6 +32,11 @@ export class WebSocketClient {
     // Ghost Orbits multiplayer callbacks
     this.onOrbitsLobbyStatus = config.onOrbitsLobbyStatus || (() => {});
 
+    // WebRTC signaling callbacks
+    this.onWebRTCActivate = config.onWebRTCActivate || (() => {});
+    this.onWebRTCDeactivate = config.onWebRTCDeactivate || (() => {});
+    this.onWebRTCSignal = config.onWebRTCSignal || (() => {});
+
     this.currentUsername = null;
   }
 
@@ -233,6 +238,19 @@ export class WebSocketClient {
       // Ghost Orbits multiplayer lobby status
       case 'orbits_lobby_status':
         this.onOrbitsLobbyStatus(message.payload);
+        break;
+
+      // WebRTC signaling
+      case 'webrtc_activate':
+        this.onWebRTCActivate(message);
+        break;
+
+      case 'webrtc_deactivate':
+        this.onWebRTCDeactivate(message);
+        break;
+
+      case 'webrtc_signal':
+        this.onWebRTCSignal(message);
         break;
     }
   }

@@ -1,0 +1,419 @@
+{
+  "meta": {
+    "id": "apstats-u5-sampling-dist",
+    "name": "Sampling Distributions (5.1-5.2)",
+    "subject": "AP Statistics",
+    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations of normal random variables"
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "VAR-1.G",
+      "VAR-6.A",
+      "VAR-6.B",
+      "VAR-6.C"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      {
+        "label": "Topic",
+        "value": "{{topicId}}"
+      },
+      {
+        "label": "Scenario",
+        "value": "{{scenarioText}}"
+      },
+      {
+        "label": "Given",
+        "value": "{{givenText}}"
+      }
+    ]
+  },
+  "modes": [
+    {
+      "id": "l01-sample-variability",
+      "name": "5.1a: Why Samples Vary",
+      "animation": "assets/SamplingVariability.mp4",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "sampleVarAnswer",
+            "type": "choice",
+            "label": "{{questionText}}",
+            "options": [
+              "{{optA}}",
+              "{{optB}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-sampling-dist-concept",
+      "name": "5.1b: Sampling Distributions",
+      "animation": "assets/SamplingDistributionBuildup.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "sampDistAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-z-score-calc",
+      "name": "5.2a: Calculate Z-Scores",
+      "animation": "assets/ZScoreNumberLine.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "zScoreAnswer",
+            "type": "number",
+            "label": "Calculate the z-score (e.g., 1.33 or -0.67):",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-normal-prob",
+      "name": "5.2b: Normal Probability",
+      "animation": "assets/NormalProbabilityArea.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "zScore",
+            "type": "number",
+            "label": "Z-score:",
+            "step": 0.01
+          },
+          {
+            "id": "probability",
+            "type": "number",
+            "label": "Probability (as decimal, e.g., 0.3707):",
+            "min": 0,
+            "max": 1,
+            "step": 0.0001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-inverse-normal",
+      "name": "5.2c: Inverse Normal",
+      "animation": "assets/InverseNormalCutoff.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "invZScore",
+            "type": "number",
+            "label": "Z-score for the cutoff:",
+            "step": 0.01
+          },
+          {
+            "id": "cutoffValue",
+            "type": "number",
+            "label": "Cutoff value (in original units):",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-solution-elements",
+      "name": "5.2d: AP Exam Solutions",
+      "animation": "assets/APSolutionChecklist.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "missingElement",
+            "type": "dropdown",
+            "label": "What is MISSING from this solution?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l07-assess-normality",
+      "name": "5.2e: Assess Normality",
+      "animation": "assets/AssessingNormality.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "normalChoice",
+            "type": "choice",
+            "label": "Is a normal distribution appropriate here?",
+            "options": [
+              "Yes, normal is appropriate",
+              "No, normal is NOT appropriate"
+            ]
+          },
+          {
+            "id": "normalExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Reference shape, symmetry, empirical rule..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l08-linear-combo-params",
+      "name": "5.2f: Linear Combo Parameters",
+      "animation": "assets/VarianceAdditionTrap.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "combMean",
+            "type": "number",
+            "label": "Mean of X - Y (or X + Y):",
+            "step": 0.01
+          },
+          {
+            "id": "combSD",
+            "type": "number",
+            "label": "Standard deviation of X - Y (or X + Y):",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l09-linear-combo-prob",
+      "name": "5.2g: Linear Combo Probability",
+      "animation": "assets/LinearComboProbability.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "combMean2",
+            "type": "number",
+            "label": "Mean of the difference/sum:",
+            "step": 0.01
+          },
+          {
+            "id": "combSD2",
+            "type": "number",
+            "label": "Standard deviation of the difference/sum:",
+            "min": 0,
+            "step": 0.01
+          },
+          {
+            "id": "combProb",
+            "type": "number",
+            "label": "Probability (as decimal, e.g., 0.2981):",
+            "min": 0,
+            "max": 1,
+            "step": 0.0001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l10-capstone",
+      "name": "5.1-5.2 Capstone",
+      "animation": "assets/Unit5CapstoneSynthesis.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstoneAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstoneExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Show your work and explain..."
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "sampleVarAnswer": "Different random samples from the same population naturally produce different statistics. This is called SAMPLING VARIABILITY. A single sample statistic is like a roll of the dice - unpredictable individually, but predictable in the long run.",
+      "sampDistAnswer": "A SAMPLING DISTRIBUTION shows the distribution of a statistic from ALL possible samples of a given size. Individual statistics vary, but the pattern of variation is predictable and centered around the true population parameter.",
+      "zScoreAnswer": "Z-score formula: z = (x - \u03bc) / \u03c3. It tells you how many standard deviations a value is from the mean. Positive z = above mean, negative z = below mean.",
+      "zScore": "Z-score formula: z = (x - \u03bc) / \u03c3. Calculate this first, then use a z-table or normalcdf to find the probability.",
+      "probability": "After finding the z-score, use Table A or normalcdf. For P(X > value): find 1 - P(Z < z). For P(X < value): use P(Z < z) directly.",
+      "invZScore": "For inverse normal: find the z-score that corresponds to the given area using invNorm or Table A. Bottom 25% \u2192 z = -0.67. Top 10% \u2192 z = 1.28.",
+      "cutoffValue": "Once you have the z-score, use algebra: x = \u03bc + z\u00b7\u03c3. Plug in the z-score, mean, and standard deviation to find the cutoff value.",
+      "missingElement": "AP exam solutions need: (1) Define the random variable, (2) Show it's normal (sketch or z-formula), (3) Identify parameters (\u03bc and \u03c3), (4) Show the value of interest with direction, (5) Correct probability answer.",
+      "normalChoice": "Check: Is the distribution unimodal, roughly symmetric, and bell-shaped? Does the 68-95-99.7 rule apply? For binomial: is n large enough that the histogram looks bell-shaped?",
+      "normalExplain": "Mention specific characteristics: unimodal, roughly symmetric, bell-shaped. If checking empirical rule: ~68% within 1 SD, ~95% within 2 SD, ~99.7% within 3 SD.",
+      "combMean": "For the mean of X \u00b1 Y: just add or subtract the means! \u03bc(X-Y) = \u03bcX - \u03bcY or \u03bc(X+Y) = \u03bcX + \u03bcY.",
+      "combSD": "\u26a0\ufe0f VARIANCE TRAP: Don't add/subtract SDs directly! Add VARIANCES, then square root. \u03c3(X\u00b1Y) = \u221a(\u03c3X\u00b2 + \u03c3Y\u00b2). Variances ALWAYS add, even for differences!",
+      "combMean2": "For the mean of X \u00b1 Y: just add or subtract the means! \u03bc(X-Y) = \u03bcX - \u03bcY or \u03bc(X+Y) = \u03bcX + \u03bcY.",
+      "combSD2": "\u26a0\ufe0f VARIANCE TRAP: Don't add/subtract SDs directly! Add VARIANCES, then square root. \u03c3(X\u00b1Y) = \u221a(\u03c3X\u00b2 + \u03c3Y\u00b2). Variances ALWAYS add, even for differences!",
+      "combProb": "Once you have \u03bc and \u03c3 for the difference/sum, use the z-score formula with those parameters: z = (value - \u03bc_diff) / \u03c3_diff, then find the probability.",
+      "capstoneAnswer": "This question combines multiple concepts from 5.1-5.2. Review: sampling variability, normal probability, inverse normal, assessing normality, and linear combinations.",
+      "capstoneExplain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": [
+      "sampleVarAnswer",
+      "sampDistAnswer"
+    ],
+    "tiers": [
+      {
+        "id": "l01-sample-variability",
+        "name": "5.1a",
+        "unlockedBy": "default",
+        "celebrationMessage": "You understand sampling variability! Next: sampling distributions."
+      },
+      {
+        "id": "l02-sampling-dist-concept",
+        "name": "5.1b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Sampling distributions mastered! Next: z-score calculations."
+      },
+      {
+        "id": "l03-z-score-calc",
+        "name": "5.2a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Z-scores calculated! Next: full normal probability problems."
+      },
+      {
+        "id": "l04-normal-prob",
+        "name": "5.2b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Normal probability mastered! Next: inverse normal problems."
+      },
+      {
+        "id": "l05-inverse-normal",
+        "name": "5.2c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Inverse normal conquered! Next: AP exam solution elements."
+      },
+      {
+        "id": "l06-solution-elements",
+        "name": "5.2d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You know what AP graders want! Next: assessing normality."
+      },
+      {
+        "id": "l07-assess-normality",
+        "name": "5.2e",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Normality assessment mastered! Next: linear combination parameters."
+      },
+      {
+        "id": "l08-linear-combo-params",
+        "name": "5.2f",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You avoided the variance trap! Next: full linear combo probability."
+      },
+      {
+        "id": "l09-linear-combo-prob",
+        "name": "5.2g",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Linear combination probability mastered! Final capstone next."
+      },
+      {
+        "id": "l10-capstone",
+        "name": "Capstone",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "UNIT 5.1-5.2 COMPLETE! You've mastered sampling distributions and normal probability!"
+      }
+    ]
+  }
+}

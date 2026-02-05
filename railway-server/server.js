@@ -73,6 +73,18 @@ function broadcastToArena(cartridgeId, periodId, message) {
   }
 }
 
+// Send message to a specific user by username
+function sendToUser(targetUsername, message) {
+  const payload = JSON.stringify(message);
+  for (const [ws, data] of clients) {
+    if (ws.readyState === 1 && data.username === targetUsername) {
+      ws.send(payload);
+      return true;
+    }
+  }
+  return false;
+}
+
 // ============================================
 // GHOST ORBITS ARENA MANAGER
 // ============================================
@@ -3205,6 +3217,52 @@ wss.on('connection', (ws) => {
           break;
 
         // ============================================
+        // WEBRTC SIGNALING MESSAGES
+        // ============================================
+
+        case 'webrtc_activate': {
+          // Teacher activates WebRTC mode - broadcast to all connected clients
+          const activateClient = clients.get(ws);
+          console.log(`[WebRTC] Activated by ${activateClient?.username}`);
+          broadcast({
+            type: 'webrtc_activate',
+            teacherUsername: activateClient?.username
+          });
+          break;
+        }
+
+        case 'webrtc_deactivate': {
+          // Teacher deactivates WebRTC mode - broadcast to all
+          const deactivateClient = clients.get(ws);
+          console.log(`[WebRTC] Deactivated by ${deactivateClient?.username}`);
+          broadcast({
+            type: 'webrtc_deactivate',
+            teacherUsername: deactivateClient?.username
+          });
+          break;
+        }
+
+        case 'webrtc_signal': {
+          // Relay signaling message (offer/answer/ice_candidate) to target user
+          const signalClient = clients.get(ws);
+          const { subtype, targetUsername, payload: signalPayload } = message;
+
+          if (!targetUsername || !subtype) {
+            console.warn('[WebRTC] Invalid signal message, missing targetUsername or subtype');
+            break;
+          }
+
+          sendToUser(targetUsername, {
+            type: 'webrtc_signal',
+            subtype,
+            fromUsername: signalClient?.username,
+            targetUsername,
+            payload: signalPayload
+          });
+          break;
+        }
+
+        // ============================================
         // GHOST ORBITS ARENA MESSAGES
         // ============================================
 
@@ -3560,6 +3618,13 @@ wss.on('connection', (ws) => {
 
       if (!stillConnected) {
         broadcast({ type: 'user_offline', username: client.username });
+
+        // If disconnecting user was a WebRTC teacher, broadcast deactivation
+        // (Students will clean up their connections)
+        broadcast({
+          type: 'webrtc_deactivate',
+          teacherUsername: client.username
+        });
 
         // Handle Ghost Orbits arena leave
         if (client.orbitsArena) {

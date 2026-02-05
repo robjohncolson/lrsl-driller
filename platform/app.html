@@ -88,6 +88,10 @@
         <button id="roster-btn" style="display: none;" class="p-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors" title="Class Roster">
           <span class="text-base">📋</span>
         </button>
+        <button id="webrtc-toggle-btn" style="display: none;" class="flex items-center gap-1 p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors" title="Toggle WebRTC Direct Connect">
+          <span id="webrtc-status-dot" class="w-2 h-2 bg-gray-400 rounded-full"></span>
+          <span class="text-xs font-medium">RTC</span>
+        </button>
 
         <!-- Online Indicator (compact) -->
         <div id="online-indicator" class="relative">
@@ -832,6 +836,17 @@
   </div>
   <div id="teacher-review-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
 
+  <!-- WebRTC Status Panel (Teacher Only) -->
+  <div id="webrtc-status-panel" class="fixed top-14 right-4 w-64 bg-white rounded-lg shadow-xl border border-blue-200 z-50 hidden">
+    <div class="bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-2 rounded-t-lg flex items-center justify-between">
+      <span class="text-sm font-bold text-white">WebRTC Connections</span>
+      <button id="close-webrtc-panel" class="text-white/80 hover:text-white text-lg leading-none">&times;</button>
+    </div>
+    <div id="webrtc-peer-list" class="p-3 max-h-64 overflow-y-auto">
+      <p class="text-xs text-gray-400 italic">No connections</p>
+    </div>
+  </div>
+
   <!-- Time Analytics Panel (Teacher Only) -->
   <div id="time-analytics-panel" class="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out">
     <div class="h-full flex flex-col">
@@ -993,6 +1008,7 @@
     import { GhostPanel, createGhostButton } from './game/ghost-panel.js';
     import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';
     import { SyncQueue } from './core/sync-queue.js';
+    import { WebRTCManager } from './core/webrtc-manager.js';
     console.log('[APP] All imports successful');
 
     // ==================== CONFIGURATION ====================
@@ -1251,8 +1267,33 @@
         if (ghostPanel) {
           ghostPanel.updateMultiplayerLobbyStatus(status);
         }
+      },
+      onWebRTCActivate: (msg) => {
+        if (webrtcManager) return; // Already active
+        // Student: connect to teacher when activation is broadcast
+        if (!isTeacher && userSystem.currentUser) {
+          initWebRTCManager('student');
+          webrtcManager.connectToTeacher(msg.teacherUsername);
+        }
+      },
+      onWebRTCDeactivate: (msg) => {
+        if (!webrtcManager) return;
+        if (!isTeacher) {
+          webrtcManager.disconnectFromTeacher();
+          webrtcManager.destroy();
+          webrtcManager = null;
+          updateWebRTCStatusUI();
+        }
+      },
+      onWebRTCSignal: (msg) => {
+        if (webrtcManager) {
+          webrtcManager.handleSignalingMessage(msg);
+        }
       }
     });
+
+    let webrtcManager = null;
+    const processedReviewIds = new Set(); // Deduplication for WebRTC + WS review grades
 
     let platform = null;
     let currentCartridgeId = localStorage.getItem('lastCartridgeId') || 'lsrl-interpretation';
@@ -2025,6 +2066,15 @@
         return;
       }
 
+      // Deduplication: skip if already processed (WebRTC + WS may both deliver)
+      if (message.reviewId) {
+        if (processedReviewIds.has(message.reviewId)) {
+          console.log('Review already processed, skipping duplicate:', message.reviewId);
+          return;
+        }
+        processedReviewIds.add(message.reviewId);
+      }
+
       const grades = message.grades;
       console.log('Grades received:', JSON.stringify(grades));
       if (!grades) {
@@ -2222,7 +2272,21 @@
       }
 
       try {
-        // Send to server for teacher review queue
+        // WebRTC fast path: send review submission instantly via data channel
+        if (webrtcManager && webrtcManager.isActive) {
+          // Find teacher peer (students have 1 connection to teacher)
+          const peers = webrtcManager.getConnectedPeers();
+          if (peers.length > 0) {
+            webrtcManager.sendTo(peers[0], 'review_submit', {
+              reviewData: pendingTeacherReview,
+              username: userSystem.currentUser?.username,
+              topic: pendingTeacherReview.cartridgeName,
+              cartridgeId: pendingTeacherReview.cartridgeId
+            });
+          }
+        }
+
+        // Always persist to server (Supabase)
         const response = await fetch(`${SERVER_URL}/api/teacher-review`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2963,6 +3027,12 @@
       if (timeAnalyticsBtn) timeAnalyticsBtn.style.display = 'flex';
       if (rosterBtn) rosterBtn.style.display = 'flex';
 
+      // Show WebRTC toggle if browser supports it
+      const webrtcBtn = document.getElementById('webrtc-toggle-btn');
+      if (webrtcBtn && typeof RTCPeerConnection !== 'undefined') {
+        webrtcBtn.style.display = 'flex';
+      }
+
       // Show video source setting for teachers
       const videoSourceSetting = document.getElementById('video-source-setting');
       if (videoSourceSetting) {
@@ -3702,6 +3772,17 @@
       }
 
       try {
+        // WebRTC fast path: send grades instantly to student via data channel
+        const review = pendingReviewsCache.find(r => r.id === reviewId);
+        if (webrtcManager && webrtcManager.isActive && review?.username) {
+          webrtcManager.sendTo(review.username, 'review_grade', {
+            reviewId,
+            grades,
+            feedback: 'Teacher reviewed your work'
+          });
+        }
+
+        // Always persist to server
         const response = await fetch(`${SERVER_URL}/api/teacher-review/${reviewId}`, {
           method: 'PUT',
           headers: {
@@ -5102,6 +5183,96 @@
       document.getElementById('btn-teacher-review')?.classList.add('hidden');
     }
 
+    // ==================== WEBRTC FUNCTIONS ====================
+
+    function initWebRTCManager(role) {
+      if (webrtcManager) {
+        webrtcManager.destroy();
+      }
+      webrtcManager = new WebRTCManager({
+        wsClient,
+        role,
+        username: userSystem.currentUser?.username,
+        onMessage: handleWebRTCMessage,
+        onConnectionChange: (peerUsername, state) => {
+          console.log(`[WebRTC] ${peerUsername}: ${state}`);
+          updateWebRTCStatusUI();
+        },
+        onLatencyUpdate: (peerUsername, latencyMs) => {
+          updateWebRTCStatusUI();
+        }
+      });
+    }
+
+    function handleWebRTCMessage(fromUsername, type, payload, msgId) {
+      switch (type) {
+        case 'review_submit':
+          // Teacher receives student review submission via WebRTC (instant)
+          if (isTeacher) {
+            showTeacherAlert({
+              username: payload.username,
+              topic: payload.topic
+            });
+            loadPendingReviews();
+          }
+          break;
+
+        case 'review_grade':
+          // Student receives teacher grade via WebRTC (instant)
+          if (payload.reviewId && processedReviewIds.has(payload.reviewId)) return;
+          if (payload.reviewId) processedReviewIds.add(payload.reviewId);
+          applyTeacherGrades({
+            username: userSystem.currentUser?.username,
+            grades: payload.grades,
+            feedback: payload.feedback
+          });
+          break;
+
+        case 'channel_ready':
+          console.log(`[WebRTC] Channel ready with ${fromUsername} (${payload.role})`);
+          break;
+      }
+    }
+
+    function updateWebRTCStatusUI() {
+      const dot = document.getElementById('webrtc-status-dot');
+      const panel = document.getElementById('webrtc-peer-list');
+      if (!dot) return;
+
+      if (!webrtcManager || !webrtcManager.isActive) {
+        dot.className = 'w-2 h-2 bg-gray-400 rounded-full';
+        if (panel) panel.innerHTML = '<p class="text-xs text-gray-400 italic">No connections</p>';
+        return;
+      }
+
+      const peers = webrtcManager.getConnectedPeers();
+      if (peers.length > 0) {
+        dot.className = 'w-2 h-2 bg-green-500 rounded-full';
+      } else {
+        dot.className = 'w-2 h-2 bg-yellow-500 rounded-full animate-pulse';
+      }
+
+      // Update peer list panel
+      if (panel) {
+        if (peers.length === 0) {
+          panel.innerHTML = '<p class="text-xs text-gray-400 italic">Waiting for connections...</p>';
+        } else {
+          panel.innerHTML = peers.map(p => {
+            const latency = webrtcManager.getLatency(p);
+            const latencyText = latency !== null ? `${latency}ms` : '...';
+            const latencyColor = latency !== null && latency < 50 ? 'text-green-600' : 'text-yellow-600';
+            return `<div class="flex items-center justify-between py-1 text-sm">
+              <span class="flex items-center gap-1">
+                <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                ${p}
+              </span>
+              <span class="${latencyColor} text-xs font-mono">${latencyText}</span>
+            </div>`;
+          }).join('');
+        }
+      }
+    }
+
     // ==================== AI APPEAL HANDLERS ====================
     // Show appeal input form when Appeal button is clicked
     document.getElementById('btn-ai-appeal').addEventListener('click', () => {
@@ -5406,6 +5577,45 @@
       }
       return custom || 'wss://lrsl-driller-production.up.railway.app';
     };
+
+    // ==================== WEBRTC EVENT LISTENERS ====================
+    document.getElementById('webrtc-toggle-btn')?.addEventListener('click', () => {
+      if (!isTeacher) return;
+
+      if (webrtcManager && webrtcManager.isActive) {
+        // Deactivate
+        webrtcManager.deactivate();
+        webrtcManager.destroy();
+        webrtcManager = null;
+        updateWebRTCStatusUI();
+        celebration.showToast('WebRTC direct connect disabled', 'info');
+      } else {
+        // Activate
+        initWebRTCManager('teacher');
+        webrtcManager.activate();
+        updateWebRTCStatusUI();
+        celebration.showToast('WebRTC direct connect enabled', 'success');
+      }
+    });
+
+    // Toggle status panel on right-click or long-press
+    document.getElementById('webrtc-toggle-btn')?.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const panel = document.getElementById('webrtc-status-panel');
+      if (panel) panel.classList.toggle('hidden');
+    });
+
+    document.getElementById('close-webrtc-panel')?.addEventListener('click', () => {
+      document.getElementById('webrtc-status-panel')?.classList.add('hidden');
+    });
+
+    // Cleanup WebRTC on page unload
+    window.addEventListener('beforeunload', () => {
+      if (webrtcManager) {
+        webrtcManager.destroy();
+        webrtcManager = null;
+      }
+    });
 
     console.log('🎮 Console commands available:');
     console.log('  resetProgress()    - Reset progress for current cartridge');

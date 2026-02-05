@@ -90,6 +90,13 @@
       "subject": "AP Statistics",
       "description": "Random processes, simulation, probability rules, conditional probability, independence, unions, random variables, probability distributions, mean, standard deviation",
       "shortCode": "PROB"
+    },
+    {
+      "id": "apstats-u5-sampling-dist",
+      "name": "Sampling Distributions (5.1-5.2)",
+      "subject": "AP Statistics",
+      "description": "Sampling variability, normal distribution, z-scores, inverse normal, assessing normality, linear combinations",
+      "shortCode": "SAMP"
     }
   ]
 }
