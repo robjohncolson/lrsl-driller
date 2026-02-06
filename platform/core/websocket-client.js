@@ -9,6 +9,7 @@ import { soundEngine } from './sound-engine.js';
 export class WebSocketClient {
   constructor(config = {}) {
     this.serverUrl = config.serverUrl || null;
+    this._wsUrlOverride = config.wsUrl || null; // Direct WebSocket URL override (for local signaling)
     this.ws = null;
     this.connected = false;
     this.reconnectAttempts = 0;
@@ -37,10 +38,21 @@ export class WebSocketClient {
     this.onWebRTCDeactivate = config.onWebRTCDeactivate || (() => {});
     this.onWebRTCSignal = config.onWebRTCSignal || (() => {});
 
+    // P2P asset coordination callbacks
+    this.onAssetFetchAssigned = config.onAssetFetchAssigned || (() => {});
+    this.onAssetQueued = config.onAssetQueued || (() => {});
+    this.onAssetAvailable = config.onAssetAvailable || (() => {});
+    this.onAssetHolders = config.onAssetHolders || (() => {});
+    this.onP2PAssetSignal = config.onP2PAssetSignal || (() => {});
+
+    // Per-fileKey callbacks for asset resolver coordination
+    this._assetCallbacks = new Map();
+
     this.currentUsername = null;
   }
 
   get wsUrl() {
+    if (this._wsUrlOverride) return this._wsUrlOverride;
     if (!this.serverUrl) return null;
     return this.serverUrl.replace('https://', 'wss://').replace('http://', 'ws://');
   }
@@ -251,6 +263,27 @@ export class WebSocketClient {
 
       case 'webrtc_signal':
         this.onWebRTCSignal(message);
+        break;
+
+      // P2P asset coordination
+      case 'asset_fetch_assigned':
+      case 'asset_available':
+      case 'asset_queued':
+      case 'asset_holders': {
+        // Dispatch to per-fileKey callback (used by AssetResolver)
+        const cb = this._assetCallbacks?.get(message.fileKey);
+        if (cb) cb(message);
+
+        // Also fire the general callbacks
+        if (message.type === 'asset_fetch_assigned') this.onAssetFetchAssigned(message);
+        else if (message.type === 'asset_queued') this.onAssetQueued(message);
+        else if (message.type === 'asset_available') this.onAssetAvailable(message);
+        else if (message.type === 'asset_holders') this.onAssetHolders(message);
+        break;
+      }
+
+      case 'p2p_asset_signal':
+        this.onP2PAssetSignal(message);
         break;
     }
   }

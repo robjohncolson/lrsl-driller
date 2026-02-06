@@ -731,6 +731,21 @@
           <p class="text-xs text-gray-400 mt-1">Toggle to use Supabase cloud videos (fallback if local fails)</p>
         </div>
 
+        <!-- Pre-Load Animations (Teacher Only) -->
+        <div id="preload-animations-setting" class="border-t pt-4 hidden">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Animation Pre-Load</label>
+          <button id="preload-animations-btn" class="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 transition-colors">
+            Pre-Load Animations
+          </button>
+          <div id="preload-progress" class="hidden mt-2">
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div id="preload-progress-bar" class="bg-indigo-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+            </div>
+            <p id="preload-progress-text" class="text-xs text-gray-500 mt-1">0 / 0</p>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">Pre-download all animation videos so students can get them via P2P</p>
+        </div>
+
         <!-- Progress Reset -->
         <div class="border-t pt-4">
           <label class="block text-sm font-medium text-gray-700 mb-2">Progress</label>
@@ -1009,11 +1024,42 @@
     import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';
     import { SyncQueue } from './core/sync-queue.js';
     import { WebRTCManager } from './core/webrtc-manager.js';
+    import { AssetCache } from './core/asset-cache.js';
+    import { AssetResolver } from './core/asset-resolver.js';
+    import { P2PAssetTransfer } from './core/p2p-asset-transfer.js';
     console.log('[APP] All imports successful');
 
     // ==================== CONFIGURATION ====================
-    const SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
+    let SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
+    let SIGNALING_URL = null; // Set after server detection
     const CLIENT_VERSION = '0.0.1';
+
+    // Server detection: try Railway first, fall back to local dev signaling
+    let _serverDetected = false;
+    async function detectServer() {
+      // Try Railway with 2-second timeout
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2000);
+        const resp = await fetch(SERVER_URL, { signal: controller.signal, method: 'HEAD' });
+        clearTimeout(timeout);
+        if (resp.ok || resp.status === 404) {
+          SIGNALING_URL = SERVER_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+          console.log('[Server] Using Railway:', SERVER_URL);
+          _serverDetected = true;
+          return;
+        }
+      } catch {
+        console.log('[Server] Railway unreachable, checking local signaling...');
+      }
+
+      // Fall back to local dev server WebSocket signaling
+      SIGNALING_URL = `ws://${window.location.host}/ws-signaling`;
+      SERVER_URL = `http://${window.location.host}`;
+      console.log('[Server] Using local signaling:', SIGNALING_URL);
+      _serverDetected = true;
+    }
+    const serverDetectionPromise = detectServer();
 
     // ==================== GHOST SYSTEM ====================
     // Initialize Ghost Engine in buffered mode (TensorFlow.js loads lazily when panel opens)
@@ -1187,7 +1233,13 @@
     const wsClient = new WebSocketClient({
       serverUrl: SERVER_URL,
       onPresenceChange: updateOnlineDisplay,
-      onConnectionChange: updateConnectionStatus,
+      onConnectionChange: (connected) => {
+        updateConnectionStatus(connected);
+        if (connected && wsClient.currentUsername && !p2pAssetTransfer) {
+          p2pAssetTransfer = new P2PAssetTransfer(wsClient, assetCache, wsClient.currentUsername);
+          assetResolver.setPeerManager(p2pAssetTransfer);
+        }
+      },
       onClassTimeStart: (goal) => {
         classTime.setGoal(goal);
         classTime.start(false);
@@ -1289,11 +1341,35 @@
         if (webrtcManager) {
           webrtcManager.handleSignalingMessage(msg);
         }
+      },
+      onP2PAssetSignal: (msg) => {
+        if (p2pAssetTransfer) {
+          p2pAssetTransfer.handleSignalingMessage(msg);
+        }
       }
     });
 
+    // Wrap wsClient.connect to wait for server detection and use correct URL
+    const _originalConnect = wsClient.connect.bind(wsClient);
+    wsClient.connect = async function(username) {
+      await serverDetectionPromise;
+      if (SIGNALING_URL && SIGNALING_URL.includes('/ws-signaling')) {
+        this._wsUrlOverride = SIGNALING_URL;
+        this.serverUrl = SERVER_URL;
+      }
+      _originalConnect(username);
+    };
+
     let webrtcManager = null;
     const processedReviewIds = new Set(); // Deduplication for WebRTC + WS review grades
+
+    // P2P Asset Delivery System
+    const assetCache = new AssetCache();
+    const assetResolver = new AssetResolver(assetCache, {
+      useSupabase: localStorage.getItem('driller_useSupabaseVideos') === 'true'
+    });
+    assetResolver.setWebSocketClient(wsClient);
+    let p2pAssetTransfer = null; // Created after user identifies (needs username)
 
     let platform = null;
     let currentCartridgeId = localStorage.getItem('lastCartridgeId') || 'lsrl-interpretation';
@@ -2869,9 +2945,47 @@
       toggle.classList.toggle('bg-gray-300', !useSupabase);
 
       celebration.showToast(useSupabase ? 'Using Supabase cloud videos' : 'Using local videos', 'info');
+      assetResolver.setUseSupabase(useSupabase);
     });
 
-    // Video URL resolver - returns appropriate URL based on setting
+    // Pre-load animations button handler
+    document.getElementById('preload-animations-btn')?.addEventListener('click', async () => {
+      const manifest = platform?.currentCartridge?.manifest;
+      const cartridgeId = manifest?.meta?.id;
+      if (!manifest || !cartridgeId) {
+        celebration.showToast('Load a cartridge first', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('preload-animations-btn');
+      const progressDiv = document.getElementById('preload-progress');
+      const progressBar = document.getElementById('preload-progress-bar');
+      const progressText = document.getElementById('preload-progress-text');
+
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+      progressDiv.classList.remove('hidden');
+
+      await assetResolver.preloadCartridge(manifest, cartridgeId, (loaded, total) => {
+        const pct = Math.round((loaded / total) * 100);
+        progressBar.style.width = `${pct}%`;
+        progressText.textContent = `${loaded} / ${total}`;
+      });
+
+      btn.textContent = 'Done!';
+      btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+      btn.classList.add('bg-green-600');
+      celebration.showToast('All animations pre-loaded! Students can now get them via P2P.', 'success');
+
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = 'Pre-Load Animations';
+        btn.classList.remove('bg-green-600');
+        btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+      }, 3000);
+    });
+
+    // Video URL resolver - returns appropriate URL based on setting (legacy fallback)
     function resolveVideoUrl(manifestPath, cartridgeId, forceLocal = false) {
       if (!manifestPath || !cartridgeId) return null;
 
@@ -3039,6 +3153,10 @@
         videoSourceSetting.classList.remove('hidden');
         initVideoSourceToggle();
       }
+
+      // Show pre-load animations setting for teachers
+      const preloadSetting = document.getElementById('preload-animations-setting');
+      if (preloadSetting) preloadSetting.classList.remove('hidden');
 
       // Initialize roster modal with teacher password
       if (!rosterModal) {
@@ -4768,30 +4886,28 @@
 
       if (animationPath && animationCard) {
         const cartridgeId = platform.currentCartridge?.manifest?.meta?.id;
-        const videoUrl = resolveVideoUrl(animationPath, cartridgeId);
 
         const video = document.getElementById('animation-video');
         const source = document.getElementById('animation-source');
 
-        // Only update if path changed
-        if (source.getAttribute('src') !== videoUrl) {
-          source.setAttribute('src', videoUrl);
-
-          // Add fallback handler - if Supabase fails, try local
-          video.onerror = () => {
-            const useSupabase = localStorage.getItem('driller_useSupabaseVideos') === 'true';
-            if (useSupabase) {
-              console.log('[Video] Supabase failed, falling back to local');
-              const localUrl = resolveVideoUrl(animationPath, cartridgeId, true);
-              source.setAttribute('src', localUrl);
+        // Async resolve through cache → P2P → Supabase → local → GitHub
+        assetResolver.resolve(cartridgeId, animationPath).then(blobUrl => {
+          if (!blobUrl) {
+            // All tiers failed — fall back to legacy sync resolver
+            const fallbackUrl = resolveVideoUrl(animationPath, cartridgeId);
+            if (fallbackUrl && source.getAttribute('src') !== fallbackUrl) {
+              source.setAttribute('src', fallbackUrl);
               video.load();
               video.play().catch(() => {});
             }
-          };
-
-          video.load();
-          video.play().catch(() => {}); // Autoplay (muted videos can autoplay)
-        }
+            return;
+          }
+          if (source.getAttribute('src') !== blobUrl) {
+            source.setAttribute('src', blobUrl);
+            video.load();
+            video.play().catch(() => {}); // Autoplay (muted videos can autoplay)
+          }
+        });
 
         animationCard.classList.remove('hidden');
 
@@ -5612,12 +5728,17 @@
       document.getElementById('webrtc-status-panel')?.classList.add('hidden');
     });
 
-    // Cleanup WebRTC on page unload
+    // Cleanup WebRTC, P2P, and asset cache on page unload
     window.addEventListener('beforeunload', () => {
       if (webrtcManager) {
         webrtcManager.destroy();
         webrtcManager = null;
       }
+      if (p2pAssetTransfer) {
+        p2pAssetTransfer.destroy();
+        p2pAssetTransfer = null;
+      }
+      assetCache.revokeBlobUrls();
     });
 
     console.log('🎮 Console commands available:');

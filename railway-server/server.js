@@ -3137,6 +3137,155 @@ app.get('/api/ghost/:cartridgeId/battle/:battleId', async (req, res) => {
   }
 });
 
+// ============================================
+// P2P ASSET COORDINATION (Phase 2)
+// ============================================
+// In-memory state — no database. Tracks who is fetching and who has each asset.
+const assetLeases = new Map();   // Map<fileKey, { assignee, leaseExpiry, waitQueue: [{ws, username}] }>
+const assetHolders = new Map();  // Map<fileKey, Set<username>>
+const LEASE_TIMEOUT_MS = 15000;  // 15 seconds
+
+function handleAssetNeed(ws, message) {
+  const client = clients.get(ws);
+  if (!client?.username) return;
+  const { fileKey } = message;
+  if (!fileKey) return;
+
+  // Check if peers already have it
+  const holders = assetHolders.get(fileKey);
+  if (holders && holders.size > 0) {
+    const peers = [...holders].filter(u => u !== client.username);
+    if (peers.length > 0) {
+      // Find the hash from the first holder for verification
+      ws.send(JSON.stringify({
+        type: 'asset_available',
+        fileKey,
+        peers
+      }));
+      return;
+    }
+  }
+
+  // Check if someone is already fetching
+  const lease = assetLeases.get(fileKey);
+  if (lease && lease.leaseExpiry > Date.now()) {
+    // Already being fetched — queue this client
+    lease.waitQueue.push({ ws, username: client.username });
+    ws.send(JSON.stringify({
+      type: 'asset_queued',
+      fileKey,
+      position: lease.waitQueue.length
+    }));
+    return;
+  }
+
+  // Nobody fetching — assign this client
+  assetLeases.set(fileKey, {
+    assignee: client.username,
+    leaseExpiry: Date.now() + LEASE_TIMEOUT_MS,
+    waitQueue: []
+  });
+  ws.send(JSON.stringify({
+    type: 'asset_fetch_assigned',
+    fileKey
+  }));
+}
+
+function handleAssetHave(ws, message) {
+  const client = clients.get(ws);
+  if (!client?.username) return;
+  const { fileKey, hash } = message;
+  if (!fileKey) return;
+
+  // Register as holder
+  if (!assetHolders.has(fileKey)) {
+    assetHolders.set(fileKey, new Set());
+  }
+  assetHolders.get(fileKey).add(client.username);
+
+  // Notify anyone waiting
+  const lease = assetLeases.get(fileKey);
+  if (lease) {
+    const peers = [...(assetHolders.get(fileKey) || [])];
+    for (const waiter of lease.waitQueue) {
+      try {
+        if (waiter.ws.readyState === 1) {
+          waiter.ws.send(JSON.stringify({
+            type: 'asset_available',
+            fileKey,
+            peers,
+            hash
+          }));
+        }
+      } catch { /* ignore dead sockets */ }
+    }
+    assetLeases.delete(fileKey);
+  }
+}
+
+function handleAssetQuery(ws, message) {
+  const { fileKey } = message;
+  if (!fileKey) return;
+  const holders = assetHolders.get(fileKey);
+  const peers = holders ? [...holders] : [];
+  ws.send(JSON.stringify({
+    type: 'asset_holders',
+    fileKey,
+    peers
+  }));
+}
+
+function cleanupAssetLeases() {
+  const now = Date.now();
+  for (const [fileKey, lease] of assetLeases) {
+    if (lease.leaseExpiry <= now) {
+      // Lease expired — reassign to next waiter if any
+      const nextWaiter = lease.waitQueue.shift();
+      if (nextWaiter && nextWaiter.ws.readyState === 1) {
+        assetLeases.set(fileKey, {
+          assignee: nextWaiter.username,
+          leaseExpiry: now + LEASE_TIMEOUT_MS,
+          waitQueue: lease.waitQueue
+        });
+        nextWaiter.ws.send(JSON.stringify({
+          type: 'asset_fetch_assigned',
+          fileKey
+        }));
+      } else {
+        assetLeases.delete(fileKey);
+      }
+    }
+  }
+}
+
+function cleanupAssetHoldersForUser(username) {
+  for (const [fileKey, holders] of assetHolders) {
+    holders.delete(username);
+    if (holders.size === 0) {
+      assetHolders.delete(fileKey);
+    }
+  }
+  // Reassign any leases held by this user
+  for (const [fileKey, lease] of assetLeases) {
+    if (lease.assignee === username) {
+      const nextWaiter = lease.waitQueue.shift();
+      if (nextWaiter && nextWaiter.ws.readyState === 1) {
+        assetLeases.set(fileKey, {
+          assignee: nextWaiter.username,
+          leaseExpiry: Date.now() + LEASE_TIMEOUT_MS,
+          waitQueue: lease.waitQueue
+        });
+        nextWaiter.ws.send(JSON.stringify({
+          type: 'asset_fetch_assigned',
+          fileKey
+        }));
+      } else {
+        assetLeases.delete(fileKey);
+      }
+    }
+  }
+}
+
 function getOnlineUsers() {
   const users = [];
   for (const [, data] of clients) {
@@ -3258,6 +3407,39 @@ wss.on('connection', (ws) => {
             fromUsername: signalClient?.username,
             targetUsername,
             payload: signalPayload
+          });
+          break;
+        }
+
+        // ============================================
+        // P2P ASSET COORDINATION MESSAGES
+        // ============================================
+
+        case 'asset_need':
+          handleAssetNeed(ws, message);
+          break;
+
+        case 'asset_have':
+          handleAssetHave(ws, message);
+          break;
+
+        case 'asset_query':
+          handleAssetQuery(ws, message);
+          break;
+
+        case 'p2p_asset_signal': {
+          // Relay P2P asset transfer signaling (same pattern as webrtc_signal)
+          const p2pClient = clients.get(ws);
+          const { targetUsername: p2pTarget, subtype: p2pSubtype, payload: p2pPayload } = message;
+
+          if (!p2pTarget || !p2pSubtype) break;
+
+          sendToUser(p2pTarget, {
+            type: 'p2p_asset_signal',
+            subtype: p2pSubtype,
+            fromUsername: p2pClient?.username,
+            targetUsername: p2pTarget,
+            payload: p2pPayload
           });
           break;
         }
@@ -3626,6 +3808,9 @@ wss.on('connection', (ws) => {
           teacherUsername: client.username
         });
 
+        // Clean up asset coordination state
+        cleanupAssetHoldersForUser(client.username);
+
         // Handle Ghost Orbits arena leave
         if (client.orbitsArena) {
           const [cartridgeId, periodId] = client.orbitsArena.split(':');
@@ -3669,6 +3854,9 @@ setInterval(() => {
       }
     });
   }
+
+  // Clean up expired asset leases
+  cleanupAssetLeases();
 }, PRUNE_INTERVAL_MS);
 
 // ============================================
