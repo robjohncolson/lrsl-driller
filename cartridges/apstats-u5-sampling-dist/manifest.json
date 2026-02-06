@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u5-sampling-dist",
-    "name": "Sampling Distributions (5.1-5.2)",
+    "name": "Sampling Distributions (5.1-5.3)",
     "subject": "AP Statistics",
-    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations of normal random variables"
+    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations, Central Limit Theorem, randomization distributions"
   },
   "config": {
     "contextsFile": null,
@@ -11,7 +11,8 @@
       "VAR-1.G",
       "VAR-6.A",
       "VAR-6.B",
-      "VAR-6.C"
+      "VAR-6.C",
+      "UNC-3.H"
     ]
   },
   "display": {
@@ -284,6 +285,142 @@
           }
         ]
       }
+    },
+    {
+      "id": "l11-clt-concept",
+      "name": "5.3a: CLT Concepts",
+      "animation": "assets/CLTDemonstration.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "cltConceptAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l12-clt-application",
+      "name": "5.3b: CLT in Action",
+      "animation": "assets/CLTSampleSize.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "cltNormalChoice",
+            "type": "choice",
+            "label": "Is the sampling distribution of x\u0304 approximately normal?",
+            "options": [
+              "Yes, approximately normal",
+              "No, NOT approximately normal"
+            ]
+          },
+          {
+            "id": "cltNormalExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Reference the CLT conditions, population shape, and sample size..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l13-randomization-concept",
+      "name": "5.3c: Randomization Distributions",
+      "animation": "assets/RandomizationProcess.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "randDistAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l14-randomization-interpret",
+      "name": "5.3d: Interpret Randomization Results",
+      "animation": "assets/RandomizationPValue.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pValueCalc",
+            "type": "number",
+            "label": "Calculate the p-value (as decimal, e.g., 0.023):",
+            "min": 0,
+            "max": 1,
+            "step": 0.001
+          },
+          {
+            "id": "randConclusion",
+            "type": "choice",
+            "label": "What do you conclude?",
+            "options": [
+              "Convincing evidence \u2014 the observed result is unlikely due to chance alone",
+              "Not convincing evidence \u2014 the observed result could plausibly happen by chance"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l15-capstone-53",
+      "name": "5.3 Capstone",
+      "animation": "assets/CLTCapstone.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone53Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone53Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Show your work and explain..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -320,7 +457,15 @@
       "combSD2": "\u26a0\ufe0f VARIANCE TRAP: Don't add/subtract SDs directly! Add VARIANCES, then square root. \u03c3(X\u00b1Y) = \u221a(\u03c3X\u00b2 + \u03c3Y\u00b2). Variances ALWAYS add, even for differences!",
       "combProb": "Once you have \u03bc and \u03c3 for the difference/sum, use the z-score formula with those parameters: z = (value - \u03bc_diff) / \u03c3_diff, then find the probability.",
       "capstoneAnswer": "This question combines multiple concepts from 5.1-5.2. Review: sampling variability, normal probability, inverse normal, assessing normality, and linear combinations.",
-      "capstoneExplain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context."
+      "capstoneExplain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context.",
+      "cltConceptAnswer": "The Central Limit Theorem says that for LARGE ENOUGH samples, the sampling distribution of x\u0304 is approximately normal, REGARDLESS of the population shape. Key conditions: independent observations and sufficiently large n.",
+      "cltNormalChoice": "Ask yourself: (1) Is the population normal? If yes \u2192 sampling dist is normal for ANY n. (2) If not normal, is n \u2265 30? If yes \u2192 CLT says sampling dist is approximately normal.",
+      "cltNormalExplain": "Reference the CLT conditions: population shape and sample size. If population is normal \u2192 any n works. If population is non-normal \u2192 need n \u2265 30 (or larger for extreme shapes).",
+      "randDistAnswer": "A randomization distribution simulates what would happen BY CHANCE ALONE. We keep the same data values but randomly reassign them to treatment groups, then calculate the statistic each time.",
+      "pValueCalc": "The p-value is the proportion of simulated statistics that are as extreme as (or more extreme than) the observed result. P-value = (number of extreme simulations) / (total simulations).",
+      "randConclusion": "If the p-value is small (typically < 0.05), the observed result is unlikely to have happened by chance alone \u2192 convincing evidence of a real effect. If p-value is large \u2192 result could plausibly be due to chance.",
+      "capstone53Answer": "This question combines CLT concepts and randomization distributions from Topic 5.3. Review: what the CLT states, when it applies, how randomization distributions work, and how to interpret p-values.",
+      "capstone53Explain": "Show your work: identify the concept, explain the conditions or calculations, and connect your reasoning to the specific scenario."
     },
     "penalty": {
       "0": "gold",
@@ -413,6 +558,46 @@
           "gold": 3
         },
         "celebrationMessage": "UNIT 5.1-5.2 COMPLETE! You've mastered sampling distributions and normal probability!"
+      },
+      {
+        "id": "l11-clt-concept",
+        "name": "5.3a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "CLT concepts mastered! Next: applying the CLT to different populations."
+      },
+      {
+        "id": "l12-clt-application",
+        "name": "5.3b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You know when the CLT applies! Next: randomization distributions."
+      },
+      {
+        "id": "l13-randomization-concept",
+        "name": "5.3c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Randomization distributions understood! Next: interpreting randomization results."
+      },
+      {
+        "id": "l14-randomization-interpret",
+        "name": "5.3d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "P-value interpretation mastered! Final 5.3 capstone next."
+      },
+      {
+        "id": "l15-capstone-53",
+        "name": "5.3 Cap",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "TOPIC 5.3 COMPLETE! You've mastered the Central Limit Theorem and randomization distributions!"
       }
     ]
   }

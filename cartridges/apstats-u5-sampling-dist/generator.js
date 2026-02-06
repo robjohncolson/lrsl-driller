@@ -631,6 +631,440 @@ const capstoneBank = [
 ];
 
 
+// ---- L11: CLT Concept scenarios ----
+const cltConceptBank = [
+  {
+    question: "What does the Central Limit Theorem (CLT) state?",
+    correctAnswer: "When the sample size is sufficiently large, the sampling distribution of x\u0304 is approximately normal, regardless of the population shape",
+    wrongOptions: [
+      "All populations become normally distributed when you collect enough data",
+      "The sample mean always equals the population mean for large samples",
+      "Larger samples always produce larger means than smaller samples"
+    ]
+  },
+  {
+    question: "What conditions does the Central Limit Theorem require?",
+    correctAnswer: "Sample values must be independent and the sample size must be sufficiently large",
+    wrongOptions: [
+      "The population must already be normally distributed",
+      "The sample size must be greater than 1000",
+      "Samples must be taken with replacement only"
+    ]
+  },
+  {
+    question: "If a population is heavily right-skewed, the CLT says the sampling distribution of x\u0304 will be approximately normal when:",
+    correctAnswer: "The sample size is sufficiently large (generally n \u2265 30)",
+    wrongOptions: [
+      "The skewness is removed by transforming the data",
+      "Multiple samples are combined into one large sample",
+      "The population standard deviation is small"
+    ]
+  },
+  {
+    question: "If the population is already normally distributed, the sampling distribution of x\u0304 is:",
+    correctAnswer: "Normal for any sample size n, even n = 1",
+    wrongOptions: [
+      "Normal only when n \u2265 30",
+      "Approximately normal only for large n",
+      "The same shape as the population only when n is large"
+    ]
+  },
+  {
+    question: "As sample size n increases, the sampling distribution of x\u0304:",
+    correctAnswer: "Stays centered at \u03bc but becomes narrower (less variable)",
+    wrongOptions: [
+      "Shifts its center toward the sample mean",
+      "Becomes wider to capture more variation in the population",
+      "Changes its center to better match the true population mean"
+    ]
+  },
+  {
+    question: "A researcher simulates 10,000 samples of size n = 40 from a strongly right-skewed population. The histogram of the 10,000 sample means will most likely be:",
+    correctAnswer: "Approximately normal and centered at the population mean \u03bc",
+    wrongOptions: [
+      "Right-skewed, matching the shape of the population",
+      "Left-skewed, as a mirror image of the population",
+      "Uniform, since each sample mean is equally likely"
+    ]
+  },
+  {
+    question: "Why is the Central Limit Theorem considered one of the most important results in statistics?",
+    correctAnswer: "It allows us to use normal probability calculations for sampling distributions even when the population is not normal",
+    wrongOptions: [
+      "It proves that all real-world populations are secretly normal",
+      "It eliminates the need for random sampling",
+      "It guarantees that larger samples give the exact population mean"
+    ]
+  },
+  {
+    question: "The standard deviation of the sampling distribution of x\u0304 is \u03c3/\u221an. This means:",
+    correctAnswer: "The sampling distribution becomes less spread out as n increases, making x\u0304 a more precise estimator of \u03bc",
+    wrongOptions: [
+      "The population standard deviation decreases when you take larger samples",
+      "Individual data values become less variable in larger samples",
+      "The sample standard deviation is always smaller than the population standard deviation"
+    ]
+  },
+  {
+    question: "A sampling distribution of a statistic can be simulated by:",
+    correctAnswer: "Generating many repeated random samples from the population and recording the statistic from each",
+    wrongOptions: [
+      "Taking one very large sample and splitting it into smaller groups",
+      "Calculating the statistic once and assuming it represents the distribution",
+      "Using algebra to derive the exact distribution formula"
+    ]
+  }
+];
+
+// ---- L12: CLT Application scenarios ----
+const cltApplicationBank = [
+  {
+    popDesc: "A population of household incomes that is strongly right-skewed",
+    sampleSize: 5,
+    isNormal: false,
+    reason: "The population is strongly right-skewed and n = 5 is far too small for the CLT to apply. With such a small sample from a skewed population, the sampling distribution of x\u0304 will still be skewed.",
+    givenInfo: "Population: strongly right-skewed | n = 5"
+  },
+  {
+    popDesc: "A population of household incomes that is strongly right-skewed",
+    sampleSize: 50,
+    isNormal: true,
+    reason: "Although the population is strongly right-skewed, n = 50 is sufficiently large (\u2265 30) for the CLT to apply. The sampling distribution of x\u0304 will be approximately normal.",
+    givenInfo: "Population: strongly right-skewed | n = 50"
+  },
+  {
+    popDesc: "A normally distributed population of adult heights",
+    sampleSize: 3,
+    isNormal: true,
+    reason: "The population is already normal, so the sampling distribution of x\u0304 is normal for ANY sample size, even n = 3. The CLT condition on sample size only matters for non-normal populations.",
+    givenInfo: "Population: normal | n = 3"
+  },
+  {
+    popDesc: "A uniform (flat) population of random number generator outputs",
+    sampleSize: 40,
+    isNormal: true,
+    reason: "The uniform population is not normal, but n = 40 \u2265 30 is sufficiently large for the CLT to apply. The sampling distribution of x\u0304 will be approximately normal.",
+    givenInfo: "Population: uniform | n = 40"
+  },
+  {
+    popDesc: "A bimodal population (two peaks) of commute times for city and suburb workers combined",
+    sampleSize: 10,
+    isNormal: false,
+    reason: "The population is bimodal (far from normal) and n = 10 is too small for the CLT to overcome this non-normality. The sampling distribution of x\u0304 will not be approximately normal.",
+    givenInfo: "Population: bimodal | n = 10"
+  },
+  {
+    popDesc: "A bimodal population (two peaks) of commute times for city and suburb workers combined",
+    sampleSize: 100,
+    isNormal: true,
+    reason: "Although the population is bimodal, n = 100 is very large (\u2265 30). The CLT guarantees the sampling distribution of x\u0304 will be approximately normal for such a large sample.",
+    givenInfo: "Population: bimodal | n = 100"
+  },
+  {
+    popDesc: "A slightly left-skewed population of test scores",
+    sampleSize: 25,
+    isNormal: true,
+    reason: "With only slight skew and n = 25, the sampling distribution of x\u0304 is approximately normal. For mildly non-normal populations, sample sizes less than 30 can still produce approximately normal sampling distributions.",
+    givenInfo: "Population: slightly left-skewed | n = 25"
+  },
+  {
+    popDesc: "A heavily right-skewed population of medical costs with extreme outliers",
+    sampleSize: 15,
+    isNormal: false,
+    reason: "The population is heavily right-skewed with extreme outliers, and n = 15 is not large enough for the CLT to produce an approximately normal sampling distribution. Heavy skew and outliers require larger sample sizes.",
+    givenInfo: "Population: heavily right-skewed with outliers | n = 15"
+  },
+  {
+    popDesc: "A normally distributed population of SAT scores",
+    sampleSize: 100,
+    isNormal: true,
+    reason: "The population is normal, so the sampling distribution of x\u0304 is exactly normal for any n. With n = 100, it is also very narrow (small standard deviation \u03c3/\u221a100).",
+    givenInfo: "Population: normal | n = 100"
+  },
+  {
+    popDesc: "An exponential (strongly right-skewed) population of wait times at a bus stop",
+    sampleSize: 8,
+    isNormal: false,
+    reason: "Exponential distributions are strongly right-skewed, and n = 8 is too small for the CLT. The sampling distribution of x\u0304 will still be right-skewed, though less so than the population.",
+    givenInfo: "Population: exponential (right-skewed) | n = 8"
+  }
+];
+
+// ---- L13: Randomization Concept scenarios ----
+const randomizationConceptBank = [
+  {
+    question: "A randomization distribution is created by:",
+    correctAnswer: "Repeatedly randomly reassigning the observed response values to treatment groups and calculating the statistic each time",
+    wrongOptions: [
+      "Taking multiple random samples from the general population",
+      "Randomly choosing which statistical test to use for the data",
+      "Assigning participants to treatment groups in the original experiment"
+    ]
+  },
+  {
+    question: "In a randomization distribution, the values on the horizontal axis represent:",
+    correctAnswer: "Statistics (like differences in means) calculated from simulated random reassignments of the data",
+    wrongOptions: [
+      "The original individual data points from the experiment",
+      "Population parameters estimated from the experiment",
+      "Standard deviations from different random samples"
+    ]
+  },
+  {
+    question: "A randomization distribution is typically centered near 0 because:",
+    correctAnswer: "Under the assumption of no treatment effect, random reassignment should produce differences near 0 on average",
+    wrongOptions: [
+      "The mean of any statistical distribution must be 0",
+      "The treatment always has no effect in real experiments",
+      "Positive and negative outcomes are impossible in experiments"
+    ]
+  },
+  {
+    question: "The purpose of creating a randomization distribution is to:",
+    correctAnswer: "Determine how likely the observed experimental result would be if it happened by chance alone",
+    wrongOptions: [
+      "Prove that the experiment was conducted with proper random assignment",
+      "Find the exact true treatment effect in the population",
+      "Increase the effective sample size of the experiment"
+    ]
+  },
+  {
+    question: "In a randomization test, we keep the data values the same but shuffle which group each value belongs to. This simulates:",
+    correctAnswer: "What results we would see if the treatment had no real effect and the grouping was purely random",
+    wrongOptions: [
+      "What would happen if we ran the experiment again with new participants",
+      "The distribution of the variable in the general population",
+      "How measurement error affects the results"
+    ]
+  },
+  {
+    question: "When creating a randomization distribution for an experiment comparing two treatments with n\u2081 = 8 and n\u2082 = 8:",
+    correctAnswer: "We randomly assign 8 of the 16 total response values to Group 1 and the remaining 8 to Group 2, then find the difference in means",
+    wrongOptions: [
+      "We collect 16 new observations and split them randomly into two groups",
+      "We only shuffle the values within each original group, not between groups",
+      "We randomly select which 8 values to delete and compute the mean of the rest"
+    ]
+  },
+  {
+    question: "How does a randomization distribution differ from a sampling distribution?",
+    correctAnswer: "A randomization distribution reassigns existing experimental data to groups, while a sampling distribution comes from repeated random samples from a population",
+    wrongOptions: [
+      "They are the same thing with different names",
+      "A randomization distribution requires a normal population; a sampling distribution does not",
+      "A sampling distribution is always centered at 0; a randomization distribution is not"
+    ]
+  },
+  {
+    question: "A researcher conducts an experiment and observes a difference in means of 5.2 between treatment and control. The randomization distribution shows that such a large difference almost never occurs by chance. This means:",
+    correctAnswer: "There is convincing evidence that the treatment caused the observed difference, since it is unlikely to be due to random assignment alone",
+    wrongOptions: [
+      "The experiment must have been poorly designed",
+      "The researcher should collect more data before drawing any conclusion",
+      "The treatment effect is exactly 5.2 in the population"
+    ]
+  }
+];
+
+// ---- L14: Randomization Interpretation scenarios ----
+const randomizationInterpretBank = [
+  {
+    experimentDesc: "A pharmaceutical company tests Drug A vs. a placebo for reducing headache pain. 30 patients are randomly assigned to two groups.",
+    observedDiff: 4.2,
+    diffLabel: "Drug A mean - Placebo mean",
+    unit: "points on a pain scale",
+    extremeCount: 23,
+    totalTrials: 1000,
+    isConvincing: true,
+    explanation: "The p-value of 0.023 means only 2.3% of random reassignments produced a difference this large or larger. This is unlikely to happen by chance alone, providing convincing evidence that Drug A reduces pain more than the placebo."
+  },
+  {
+    experimentDesc: "A school compares two teaching methods for improving math scores. 40 students are randomly assigned to Method A or Method B.",
+    observedDiff: 2.1,
+    diffLabel: "Method A mean - Method B mean",
+    unit: "points",
+    extremeCount: 187,
+    totalTrials: 1000,
+    isConvincing: false,
+    explanation: "The p-value of 0.187 means 18.7% of random reassignments produced a difference this large or larger. This could plausibly happen by chance, so there is not convincing evidence that Method A is better than Method B."
+  },
+  {
+    experimentDesc: "Researchers test whether a new exercise program helps with weight loss. 24 participants are randomly assigned to the program or a control group.",
+    observedDiff: 3.5,
+    diffLabel: "Exercise mean - Control mean",
+    unit: "lbs lost",
+    extremeCount: 8,
+    totalTrials: 500,
+    isConvincing: true,
+    explanation: "The p-value of 0.016 means only 1.6% of random reassignments produced a difference this large or larger. This is unlikely by chance alone, providing convincing evidence that the exercise program increases weight loss."
+  },
+  {
+    experimentDesc: "A gardener tests a new fertilizer on tomato plants. 20 plants are randomly assigned to receive the fertilizer or plain water.",
+    observedDiff: 1.2,
+    diffLabel: "Fertilizer mean - Water mean",
+    unit: "cm of growth",
+    extremeCount: 342,
+    totalTrials: 1000,
+    isConvincing: false,
+    explanation: "The p-value of 0.342 means 34.2% of random reassignments produced a difference this large or larger. This could easily happen by chance, so there is not convincing evidence that the fertilizer increases growth."
+  },
+  {
+    experimentDesc: "A hospital tests whether a new medication reduces recovery time after surgery. 28 patients are randomly assigned to the new medication or standard care.",
+    observedDiff: 2.8,
+    diffLabel: "Standard mean - New medication mean",
+    unit: "days",
+    extremeCount: 3,
+    totalTrials: 500,
+    isConvincing: true,
+    explanation: "The p-value of 0.006 means only 0.6% of random reassignments produced a difference this large or larger. This is very unlikely by chance alone, providing strong evidence that the new medication reduces recovery time."
+  },
+  {
+    experimentDesc: "A tutoring company tests whether their program improves SAT scores. 36 students are randomly assigned to receive tutoring or no tutoring.",
+    observedDiff: 5.3,
+    diffLabel: "Tutored mean - Control mean",
+    unit: "points",
+    extremeCount: 47,
+    totalTrials: 1000,
+    isConvincing: true,
+    explanation: "The p-value of 0.047 means only 4.7% of random reassignments produced a difference this large or larger. This is unlikely by chance (just under 5%), providing evidence that tutoring improves scores."
+  },
+  {
+    experimentDesc: "Nutritionists compare Diet A vs. Diet B for weight loss over 8 weeks. 22 participants are randomly assigned to one of the diets.",
+    observedDiff: 0.8,
+    diffLabel: "Diet A mean - Diet B mean",
+    unit: "lbs lost",
+    extremeCount: 412,
+    totalTrials: 1000,
+    isConvincing: false,
+    explanation: "The p-value of 0.412 means 41.2% of random reassignments produced a difference this large or larger. This could very easily happen by chance, so there is no convincing evidence that Diet A is better than Diet B."
+  },
+  {
+    experimentDesc: "In a double-blind experiment, 16 nursing mothers were randomly assigned to take Melatonin or a Placebo to increase newborn nighttime sleep.",
+    observedDiff: 1.69,
+    diffLabel: "Melatonin mean - Placebo mean",
+    unit: "hours of sleep",
+    extremeCount: 12,
+    totalTrials: 1000,
+    isConvincing: true,
+    explanation: "The p-value of 0.012 means only 1.2% of random reassignments produced a difference of 1.69 hours or more. This is unlikely by chance alone, providing convincing evidence that melatonin increases newborn sleep time."
+  }
+];
+
+// ---- L15: 5.3 Capstone scenarios ----
+const capstone53Bank = [
+  {
+    scenarioText: "A population of reaction times is strongly right-skewed with \u03bc = 450 ms and \u03c3 = 120 ms. A researcher plans to take random samples of size n = 36. What can we say about the sampling distribution of x\u0304?",
+    correctAnswer: "It will be approximately normal with mean 450 ms and SD = 120/\u221a36 = 20 ms",
+    wrongOptions: [
+      "It will be right-skewed like the population, with SD = 120 ms",
+      "It will be approximately normal only if we take at least 1000 samples",
+      "We cannot determine anything about the sampling distribution without more information"
+    ],
+    explanation: "By the CLT, since n = 36 \u2265 30, the sampling distribution of x\u0304 is approximately normal regardless of population shape. Mean = \u03bc = 450, SD = \u03c3/\u221an = 120/\u221a36 = 20 ms.",
+    topicId: "5.3: CLT Application"
+  },
+  {
+    scenarioText: "In a randomized experiment, the observed difference in means between treatment and control was 3.7. A simulation of 1000 random reassignments produced 31 differences as extreme as or more extreme than 3.7. What is the p-value and what does it tell us?",
+    correctAnswer: "P-value = 0.031; there is convincing evidence that the treatment has a real effect because this result is unlikely by chance alone",
+    wrongOptions: [
+      "P-value = 0.031; the treatment effect is exactly 3.7 in the population",
+      "P-value = 0.969; most reassignments produced smaller differences, so the treatment works",
+      "P-value = 31; we need at least 50 extreme values to conclude anything"
+    ],
+    explanation: "P-value = 31/1000 = 0.031. Since only 3.1% of random reassignments produced a difference this extreme, the observed result is unlikely due to chance alone \u2014 convincing evidence of a real treatment effect.",
+    topicId: "5.3: Randomization Interpretation"
+  },
+  {
+    scenarioText: "A normally distributed population has \u03bc = 200 and \u03c3 = 30. If we take samples of n = 4, what is the sampling distribution of x\u0304?",
+    correctAnswer: "Exactly normal with mean 200 and SD = 30/\u221a4 = 15, because the population is normal",
+    wrongOptions: [
+      "Not enough information \u2014 n = 4 is too small for the CLT to apply",
+      "Approximately normal with mean 200 and SD = 30, same as the population",
+      "Right-skewed because small samples always produce skewed sampling distributions"
+    ],
+    explanation: "When the population is normal, the sampling distribution of x\u0304 is exactly normal for ANY sample size. Mean = 200, SD = 30/\u221a4 = 15. The CLT's n \u2265 30 rule is only needed for non-normal populations.",
+    topicId: "5.3: CLT Concepts"
+  },
+  {
+    scenarioText: "A researcher creates a randomization distribution by reassigning 20 experimental response values to two groups of 10. Each point in the distribution represents:",
+    correctAnswer: "The difference in means between the two groups after one random reassignment of the 20 values",
+    wrongOptions: [
+      "One individual data point from the original experiment",
+      "The mean of a random sample from the population",
+      "The standard deviation of one randomly assigned group"
+    ],
+    explanation: "Each point in a randomization distribution is a statistic (difference in means) calculated from one random reassignment of the existing data values to the treatment groups.",
+    topicId: "5.3: Randomization Concept"
+  },
+  {
+    scenarioText: "Two experiments test different treatments. Experiment A has p-value = 0.003 and Experiment B has p-value = 0.34. Which provides stronger evidence of a treatment effect?",
+    correctAnswer: "Experiment A \u2014 its smaller p-value means the observed result was very unlikely under chance alone",
+    wrongOptions: [
+      "Experiment B \u2014 its larger p-value means the treatment had a bigger effect",
+      "Both provide equal evidence since both ran randomized experiments",
+      "Neither provides evidence \u2014 p-values only measure sample size, not treatment effect"
+    ],
+    explanation: "Smaller p-values indicate stronger evidence against chance. P = 0.003 means only 0.3% of random reassignments matched the result, while P = 0.34 means 34% did \u2014 so Experiment A provides much stronger evidence.",
+    topicId: "5.3: Randomization Interpretation"
+  },
+  {
+    scenarioText: "An exponential (strongly right-skewed) population has \u03bc = 10 and \u03c3 = 10. Samples of size n = 5 are taken repeatedly. The sampling distribution of x\u0304 will be:",
+    correctAnswer: "Right-skewed \u2014 the population is strongly non-normal and n = 5 is too small for the CLT",
+    wrongOptions: [
+      "Approximately normal because the CLT applies to all sample sizes",
+      "Exactly normal because sampling distributions are always normal",
+      "Uniform because exponential populations produce flat sampling distributions"
+    ],
+    explanation: "The population is strongly right-skewed and n = 5 is far too small for the CLT (need n \u2265 30 for strongly non-normal populations). The sampling distribution will still show right skew.",
+    topicId: "5.3: CLT Application"
+  },
+  {
+    scenarioText: "Why does a randomization distribution help us determine whether an experimental result is due to the treatment rather than chance?",
+    correctAnswer: "It shows what differences we would expect from chance alone, so we can see if the observed difference is unusually large",
+    wrongOptions: [
+      "It removes all random variation from the data so we can see the true effect",
+      "It increases the sample size by creating simulated data points",
+      "It proves that the random assignment in the experiment was done correctly"
+    ],
+    explanation: "A randomization distribution simulates what would happen under chance alone (no treatment effect). If the observed result falls in the extreme tail, it's unlikely to be due to chance, suggesting a real treatment effect.",
+    topicId: "5.3: Randomization Concept"
+  },
+  {
+    scenarioText: "As sample size increases from n = 10 to n = 40, the sampling distribution of x\u0304 from a skewed population will:",
+    correctAnswer: "Become more approximately normal and narrower (less spread), with the same center \u03bc",
+    wrongOptions: [
+      "Stay the same shape but shift its center closer to the population mean",
+      "Become wider because larger samples capture more of the population's variability",
+      "Become more skewed because larger samples better reflect the skewed population"
+    ],
+    explanation: "The CLT tells us the sampling distribution becomes more normal as n increases. Also, SD = \u03c3/\u221an decreases as n increases, making it narrower. The center stays at \u03bc regardless of n.",
+    topicId: "5.3: CLT Concepts"
+  },
+  {
+    scenarioText: "A researcher observes a difference of 2.5 between treatment and control groups. The randomization distribution shows that 280 out of 1000 random reassignments produced a difference of 2.5 or greater. The researcher concludes there is strong evidence of a treatment effect. Is this correct?",
+    correctAnswer: "No \u2014 with p-value = 0.28, the observed difference could easily happen by chance, so there is not convincing evidence",
+    wrongOptions: [
+      "Yes \u2014 280 reassignments is a large number, confirming the treatment effect",
+      "Yes \u2014 any observed difference greater than 0 is evidence of a treatment effect",
+      "No \u2014 but only because the difference of 2.5 is too small to be meaningful"
+    ],
+    explanation: "P-value = 280/1000 = 0.28, meaning 28% of chance-alone reassignments produced a difference this large. Since this is not a small probability, the observed result could plausibly be due to chance \u2014 not convincing evidence.",
+    topicId: "5.3: Randomization Interpretation"
+  },
+  {
+    scenarioText: "A sampling distribution can be simulated by generating repeated random samples from a population. What is the key difference between this and a randomization distribution?",
+    correctAnswer: "A sampling distribution draws new samples from a population; a randomization distribution reshuffles existing experimental data between groups",
+    wrongOptions: [
+      "A sampling distribution requires normally distributed data; a randomization distribution does not",
+      "A randomization distribution uses larger sample sizes than a sampling distribution",
+      "They are identical \u2014 both involve taking repeated samples from a population"
+    ],
+    explanation: "Sampling distributions come from repeated random samples from a population (studying a parameter). Randomization distributions come from reshuffling existing experimental data (testing if a treatment effect is real).",
+    topicId: "5.3: CLT vs Randomization"
+  }
+];
+
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -1019,6 +1453,138 @@ export function generateProblem(modeId, context, mode) {
     answers = {
       capstoneAnswer: { value: scen.correctAnswer },
       capstoneExplain: { value: scen.explanation }
+    };
+
+    scenario = scen.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L11: CLT Concepts (5.3a) ==========
+  if (modeId === "l11-clt-concept") {
+    const scen = drawFromBag('cltConcept', cltConceptBank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "5.3: Central Limit Theorem",
+      scenarioText: scen.question,
+      givenText: "Select the best answer about the Central Limit Theorem.",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      cltConceptAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = scen.question;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L12: CLT Application (5.3b) ==========
+  if (modeId === "l12-clt-application") {
+    const scen = drawFromBag('cltApplication', cltApplicationBank);
+
+    const normalAnswer = scen.isNormal
+      ? "Yes, approximately normal"
+      : "No, NOT approximately normal";
+
+    ctx = {
+      topicId: "5.3: CLT Application",
+      scenarioText: `Consider the following scenario:\n\n${scen.popDesc} with sample size n = ${scen.sampleSize}.\n\nIs the sampling distribution of x\u0304 approximately normal?`,
+      givenText: scen.givenInfo,
+      isNormal: `${scen.isNormal}`,
+      sampleSize: `${scen.sampleSize}`,
+      reason: scen.reason,
+      expectedExplanation: scen.reason
+    };
+
+    answers = {
+      cltNormalChoice: { value: normalAnswer },
+      cltNormalExplain: { value: scen.reason }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L13: Randomization Concept (5.3c) ==========
+  if (modeId === "l13-randomization-concept") {
+    const scen = drawFromBag('randomizationConcept', randomizationConceptBank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "5.3: Randomization Distributions",
+      scenarioText: scen.question,
+      givenText: "Select the best answer about randomization distributions.",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      randDistAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = scen.question;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L14: Randomization Interpretation (5.3d) ==========
+  if (modeId === "l14-randomization-interpret") {
+    const scen = drawFromBag('randomizationInterpret', randomizationInterpretBank);
+
+    const pValue = Math.round((scen.extremeCount / scen.totalTrials) * 1000) / 1000;
+    const convincingAnswer = scen.isConvincing
+      ? "Convincing evidence \u2014 the observed result is unlikely due to chance alone"
+      : "Not convincing evidence \u2014 the observed result could plausibly happen by chance";
+
+    ctx = {
+      topicId: "5.3: Randomization Interpretation",
+      scenarioText: `${scen.experimentDesc}\n\nThe observed difference was ${scen.observedDiff} ${scen.unit} (${scen.diffLabel}).\n\nA simulation randomly reassigned the response values to the two groups ${scen.totalTrials} times. Of those, ${scen.extremeCount} reassignments produced a difference of ${scen.observedDiff} or greater.\n\nCalculate the p-value and determine what it tells us.`,
+      givenText: `Observed difference: ${scen.observedDiff} ${scen.unit} | Extreme simulations: ${scen.extremeCount} out of ${scen.totalTrials}`,
+      observedDiff: `${scen.observedDiff}`,
+      extremeCount: `${scen.extremeCount}`,
+      totalTrials: `${scen.totalTrials}`,
+      pValue: `${pValue}`,
+      isConvincing: `${scen.isConvincing}`,
+      explanation: scen.explanation
+    };
+
+    answers = {
+      pValueCalc: { value: pValue, tolerance: 0.002 },
+      randConclusion: { value: convincingAnswer }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L15: 5.3 Capstone ==========
+  if (modeId === "l15-capstone-53") {
+    const scen = drawFromBag('capstone53', capstone53Bank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: scen.topicId,
+      scenarioText: scen.scenarioText,
+      givenText: "Apply concepts from Topic 5.3 (CLT and Randomization Distributions).",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      explanation: scen.explanation,
+      expectedExplanation: scen.explanation
+    };
+
+    answers = {
+      capstone53Answer: { value: scen.correctAnswer },
+      capstone53Explain: { value: scen.explanation }
     };
 
     scenario = scen.scenarioText;

@@ -38,7 +38,9 @@ export function gradeField(fieldId, answer, context) {
   // Open-response fields
   const openResponseFields = new Set([
     "normalExplain",
-    "capstoneExplain"
+    "capstoneExplain",
+    "cltNormalExplain",
+    "capstone53Explain"
   ]);
 
   if (isBlank(answer)) {
@@ -48,7 +50,8 @@ export function gradeField(fieldId, answer, context) {
     // Number fields
     const numberFields = new Set([
       "zScoreAnswer", "zScore", "probability", "invZScore", "cutoffValue",
-      "combMean", "combSD", "combMean2", "combSD2", "combProb"
+      "combMean", "combSD", "combMean2", "combSD2", "combProb",
+      "pValueCalc"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -617,6 +620,189 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should reference the specific Unit 5 concept (sampling distribution, z-score, normal probability, inverse normal, or combining variables) and explain your reasoning."
+    };
+  }
+
+  // ========== LEVEL 11: CLT Concept (Dropdown) ==========
+  if (fieldId === "cltConceptAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You understand the Central Limit Theorem."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. The CLT states that for sufficiently large samples, the sampling distribution of x\u0304 is approximately normal regardless of population shape. Key conditions: independent observations and large enough n."
+    };
+  }
+
+  // ========== LEVEL 12: CLT Application Choice ==========
+  if (fieldId === "cltNormalChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.reason}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.reason}`
+    };
+  }
+
+  // ========== LEVEL 12: CLT Application Explain (Textarea) ==========
+  if (fieldId === "cltNormalExplain") {
+    const cltKeywords = ["clt", "central limit", "theorem"];
+    const shapeKeywords = ["normal", "skewed", "symmetric", "bell", "bimodal", "uniform", "shape"];
+    const sampleSizeKeywords = ["sample size", "n =", "n is", "large enough", "n \u2265", "n >=", "30"];
+    const popKeywords = ["population", "pop"];
+
+    const mentionsCLT = containsAny(answer, cltKeywords);
+    const mentionsShape = containsAny(answer, shapeKeywords);
+    const mentionsSampleSize = containsAny(answer, sampleSizeKeywords);
+    const mentionsPop = containsAny(answer, popKeywords);
+
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so"]);
+
+    if ((mentionsCLT || (mentionsShape && mentionsSampleSize)) && hasSubstance && hasReasoning) {
+      return {
+        score: "E",
+        feedback: "Excellent explanation! You correctly connected the population shape, sample size, and CLT conditions."
+      };
+    }
+    if ((mentionsShape || mentionsSampleSize || mentionsCLT || mentionsPop) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Be sure to reference both the population shape AND the sample size when explaining whether the CLT applies."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should reference the population shape and sample size. Key rule: if the population is normal \u2192 any n works. If non-normal \u2192 need n \u2265 30 for the CLT to apply."
+    };
+  }
+
+  // ========== LEVEL 13: Randomization Concept (Dropdown) ==========
+  if (fieldId === "randDistAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You understand how randomization distributions work."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. A randomization distribution is created by repeatedly randomly reassigning the observed response values to treatment groups and calculating the statistic each time. It simulates what would happen by chance alone."
+    };
+  }
+
+  // ========== LEVEL 14: P-Value Calculation ==========
+  if (fieldId === "pValueCalc") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.002;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check if student used complement
+    if (Math.abs(studentVal - (1 - expectedVal)) < 0.005) {
+      return {
+        score: "I",
+        feedback: `You found the complement! P-value = extreme count / total trials = ${context.extremeCount} / ${context.totalTrials} = ${expectedVal}, not ${Math.round((1 - expectedVal) * 1000) / 1000}.`
+      };
+    }
+
+    // Check if student used count instead of proportion
+    if (Math.abs(studentVal - parseFloat(context.extremeCount)) < 1) {
+      return {
+        score: "I",
+        feedback: `You gave the count, not the proportion! P-value = ${context.extremeCount} / ${context.totalTrials} = ${expectedVal}. Divide the extreme count by the total number of trials.`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P-value = ${context.extremeCount} / ${context.totalTrials} = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "P",
+        feedback: `Close! P-value = extreme count / total trials = ${context.extremeCount} / ${context.totalTrials} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. P-value = extreme count / total trials = ${context.extremeCount} / ${context.totalTrials} = ${expectedVal}`
+    };
+  }
+
+  // ========== LEVEL 14: Randomization Conclusion (Choice) ==========
+  if (fieldId === "randConclusion") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 15: 5.3 Capstone Answer (Dropdown) ==========
+  if (fieldId === "capstone53Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 15: 5.3 Capstone Explain (Textarea) ==========
+  if (fieldId === "capstone53Explain") {
+    const cltKeywords = ["clt", "central limit", "theorem", "sampling distribution", "sample size", "n \u2265"];
+    const randKeywords = ["randomization", "p-value", "chance alone", "reassign", "shuffle", "simulation"];
+    const normalKeywords = ["normal", "approximately normal", "bell", "symmetric"];
+    const evidenceKeywords = ["evidence", "convincing", "unlikely", "likely", "plausible"];
+
+    const mentionsCLT = containsAny(answer, cltKeywords);
+    const mentionsRand = containsAny(answer, randKeywords);
+    const mentionsNormal = containsAny(answer, normalKeywords);
+    const mentionsEvidence = containsAny(answer, evidenceKeywords);
+
+    const conceptMentioned = mentionsCLT || mentionsRand || mentionsNormal || mentionsEvidence;
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "means", "shows", "using"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if (conceptMentioned && hasReasoning && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent explanation! You clearly demonstrated understanding of Topic 5.3 concepts."
+      };
+    }
+    if (conceptMentioned && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Add more specific reasoning about WHY this concept applies to this scenario."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should reference the specific Topic 5.3 concept (CLT, sampling distribution shape, randomization distribution, or p-value interpretation) and explain your reasoning."
     };
   }
 
