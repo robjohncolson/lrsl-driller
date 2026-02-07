@@ -59,12 +59,16 @@ export class AssetResolver {
 
     // Tier 1: Session cache (instant)
     if (this._cache.has(fileKey)) {
+      console.log(`[AssetResolver] HIT session cache: ${fileKey}`);
       return this._cache.get(fileKey);
     }
 
     // Try Cache API restore
     const restored = await this._cache.restore(fileKey);
-    if (restored) return restored;
+    if (restored) {
+      console.log(`[AssetResolver] HIT Cache API: ${fileKey}`);
+      return restored;
+    }
 
     // Deduplicate concurrent requests
     if (this._inflight.has(fileKey)) {
@@ -87,11 +91,16 @@ export class AssetResolver {
   async _fetchThroughTiers(cartridgeId, animationPath, fileKey) {
     const filename = animationPath.replace(/^assets\//, '');
 
+    console.log(`[AssetResolver] MISS cache, fetching: ${fileKey}`);
+
     // Tier 2: P2P peer transfer (Phase 3 — skipped if no peer manager)
     if (this._peerManager && this._wsClient) {
       try {
         const blobUrl = await this._coordinatedFetch(fileKey, cartridgeId, filename);
-        if (blobUrl) return blobUrl;
+        if (blobUrl) {
+          console.log(`[AssetResolver] GOT via coordinated/P2P: ${fileKey}`);
+          return blobUrl;
+        }
       } catch (err) {
         console.warn('[AssetResolver] Coordinated/P2P fetch failed, falling through:', err.message);
       }
@@ -102,6 +111,7 @@ export class AssetResolver {
       const supabaseUrl = `${SUPABASE_VIDEO_BASE}/${cartridgeId}/${filename}`;
       const blob = await this._tryFetch(supabaseUrl);
       if (blob) {
+        console.log(`[AssetResolver] GOT from Supabase: ${fileKey} (${(blob.size / 1024).toFixed(0)}KB)`);
         const blobUrl = await this._cache.put(fileKey, blob);
         this._notifyHave(fileKey);
         return blobUrl;
@@ -112,6 +122,7 @@ export class AssetResolver {
     const localUrl = `/cartridges/${cartridgeId}/${animationPath}`;
     const localBlob = await this._tryFetch(localUrl);
     if (localBlob) {
+      console.log(`[AssetResolver] GOT from local: ${fileKey} (${(localBlob.size / 1024).toFixed(0)}KB)`);
       const blobUrl = await this._cache.put(fileKey, localBlob);
       this._notifyHave(fileKey);
       return blobUrl;
@@ -121,6 +132,7 @@ export class AssetResolver {
     const githubUrl = `${GITHUB_RAW_BASE}/${cartridgeId}/assets/${filename}`;
     const ghBlob = await this._tryFetch(githubUrl);
     if (ghBlob) {
+      console.log(`[AssetResolver] GOT from GitHub: ${fileKey} (${(ghBlob.size / 1024).toFixed(0)}KB)`);
       const blobUrl = await this._cache.put(fileKey, ghBlob);
       this._notifyHave(fileKey);
       return blobUrl;
@@ -157,33 +169,42 @@ export class AssetResolver {
       }
 
       this._wsClient._assetCallbacks.set(fileKey, async (msg) => {
+        if (msg.type === 'asset_queued') {
+          console.log(`[AssetResolver] QUEUED (position ${msg.position}): ${fileKey}`);
+          return;
+        }
+
         cleanup();
 
         if (msg.type === 'asset_fetch_assigned') {
-          // We're the chosen one — fetch from Supabase
+          console.log(`[AssetResolver] ASSIGNED to fetch: ${fileKey}`);
           const supabaseUrl = `${SUPABASE_VIDEO_BASE}/${cartridgeId}/${filename}`;
           const blob = await this._tryFetch(supabaseUrl);
           if (blob) {
+            console.log(`[AssetResolver] FETCHED from Supabase (assigned): ${fileKey} (${(blob.size / 1024).toFixed(0)}KB)`);
             const blobUrl = await this._cache.put(fileKey, blob);
             this._notifyHave(fileKey);
             resolve(blobUrl);
           } else {
+            console.warn(`[AssetResolver] Assigned fetch FAILED: ${fileKey}`);
             resolve(null);
           }
         } else if (msg.type === 'asset_available') {
-          // Peers have it — try P2P first
+          console.log(`[AssetResolver] PEERS available for ${fileKey}: [${msg.peers.join(', ')}]`);
           if (this._peerManager && msg.peers?.length > 0) {
             const expectedHash = msg.hash || null;
             for (const peerUsername of msg.peers) {
               try {
+                console.log(`[AssetResolver] Requesting P2P from ${peerUsername}: ${fileKey}`);
                 const blobUrl = await this._peerManager.requestFile(peerUsername, fileKey, expectedHash);
                 if (blobUrl) {
+                  console.log(`[AssetResolver] GOT via P2P from ${peerUsername}: ${fileKey}`);
                   this._notifyHave(fileKey);
                   resolve(blobUrl);
                   return;
                 }
-              } catch {
-                // Try next peer
+              } catch (err) {
+                console.warn(`[AssetResolver] P2P from ${peerUsername} failed: ${err.message}`);
               }
             }
           }
@@ -205,6 +226,7 @@ export class AssetResolver {
     if (this._wsClient?.isConnected()) {
       const hash = this._cache.getHash(fileKey);
       this._wsClient.send({ type: 'asset_have', fileKey, hash });
+      console.log(`[AssetResolver] Notified server: I have ${fileKey}`);
     }
     this._onAssetAcquired(fileKey);
   }

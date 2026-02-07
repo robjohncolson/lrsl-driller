@@ -90,6 +90,9 @@ export class P2PAssetTransfer {
       case 'ice_candidate':
         this._handleIceCandidate(fromUsername, payload);
         break;
+      case 'error':
+        this._handleSignalError(fromUsername, payload);
+        break;
     }
   }
 
@@ -206,6 +209,20 @@ export class P2PAssetTransfer {
   }
 
   /**
+   * Handle a signaling error (peer could not serve the file).
+   */
+  _handleSignalError(fromUsername, payload) {
+    const transferId = payload?.transferId;
+    const req = transferId ? this._pendingRequests.get(transferId) : null;
+    if (req) {
+      clearTimeout(req.timeout);
+      this._pendingRequests.delete(transferId);
+      req.reject(new Error(payload?.error || 'Peer reported error'));
+    }
+    this._cleanupConnection(fromUsername);
+  }
+
+  /**
    * Set up data channel on the requester side (receive file chunks).
    */
   _setupRequesterChannel(dc, transferId, fileKey) {
@@ -289,6 +306,7 @@ export class P2PAssetTransfer {
     const hash = this._cache.getHash(fileKey);
     const totalSize = blob.size;
     const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
+    console.log(`[P2P] Sending ${fileKey}: ${(totalSize / 1024).toFixed(0)}KB in ${totalChunks} chunks`);
 
     // Send metadata
     dc.send(JSON.stringify({
@@ -340,6 +358,7 @@ export class P2PAssetTransfer {
     switch (msg.type) {
       case 'file_meta':
         req.meta = msg;
+        console.log(`[P2P] Receiving ${msg.fileKey}: ${(msg.totalSize / 1024).toFixed(0)}KB in ${msg.totalChunks} chunks`);
         break;
 
       case 'file_complete': {
@@ -374,6 +393,7 @@ export class P2PAssetTransfer {
         // Store in cache
         const blobUrl = await this._cache.put(req.fileKey, blob);
         req.resolved = true;
+        console.log(`[P2P] COMPLETE: ${req.fileKey} (${(blob.size / 1024).toFixed(0)}KB from ${req.peerUsername})`);
 
         clearTimeout(req.timeout);
         this._pendingRequests.delete(transferId);

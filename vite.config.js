@@ -111,6 +111,22 @@ function localSignalingPlugin() {
     }
   }
 
+  function cleanupAssetLeasesForUser(username) {
+    for (const [fileKey, lease] of assetLeases) {
+      if (lease.assignee === username) {
+        const next = lease.waitQueue.shift()
+        if (next && next.ws.readyState === 1) {
+          assetLeases.set(fileKey, { assignee: next.username, leaseExpiry: Date.now() + LEASE_TIMEOUT_MS, waitQueue: lease.waitQueue })
+          next.ws.send(JSON.stringify({ type: 'asset_fetch_assigned', fileKey }))
+        } else {
+          assetLeases.delete(fileKey)
+        }
+      } else {
+        lease.waitQueue = lease.waitQueue.filter(waiter => waiter.username !== username && waiter.ws.readyState === 1)
+      }
+    }
+  }
+
   return {
     name: 'local-signaling',
     async configureServer(server) {
@@ -146,6 +162,7 @@ function localSignalingPlugin() {
               holders.delete(client.username)
               if (holders.size === 0) assetHolders.delete(fileKey)
             }
+            cleanupAssetLeasesForUser(client.username)
             broadcast({ type: 'user_offline', username: client.username })
           }
           clients.delete(ws)
@@ -210,6 +227,7 @@ export default defineConfig({
   plugins: [localSignalingPlugin(), copyRuntimeAssets()],
   // Dev server config
   server: {
-    open: '/platform/app.html'
+    open: '/platform/app.html',
+    host: true  // Listen on all interfaces (LAN access for P2P testing)
   }
 })
