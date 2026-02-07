@@ -178,6 +178,11 @@ export class AssetResolver {
 
         if (msg.type === 'asset_fetch_assigned') {
           console.log(`[AssetResolver] ASSIGNED to fetch: ${fileKey}`);
+          if (!this._useSupabase) {
+            console.warn(`[AssetResolver] Assigned but Supabase disabled, falling through: ${fileKey}`);
+            resolve(null);
+            return;
+          }
           const supabaseUrl = `${SUPABASE_VIDEO_BASE}/${cartridgeId}/${filename}`;
           const blob = await this._tryFetch(supabaseUrl);
           if (blob) {
@@ -190,10 +195,11 @@ export class AssetResolver {
             resolve(null);
           }
         } else if (msg.type === 'asset_available') {
-          console.log(`[AssetResolver] PEERS available for ${fileKey}: [${msg.peers.join(', ')}]`);
-          if (this._peerManager && msg.peers?.length > 0) {
+          const peers = msg.peers || [];
+          console.log(`[AssetResolver] PEERS available for ${fileKey}: [${peers.join(', ')}]`);
+          if (this._peerManager && peers.length > 0) {
             const expectedHash = msg.hash || null;
-            for (const peerUsername of msg.peers) {
+            for (const peerUsername of peers) {
               try {
                 console.log(`[AssetResolver] Requesting P2P from ${peerUsername}: ${fileKey}`);
                 const blobUrl = await this._peerManager.requestFile(peerUsername, fileKey, expectedHash);

@@ -4891,10 +4891,15 @@
         const source = document.getElementById('animation-source');
 
         // Async resolve through cache → P2P → Supabase → local → GitHub
+        // Token guards against stale results when user switches animations mid-fetch
+        const resolveToken = `${cartridgeId}:${animationPath}`;
+        video.dataset.resolveToken = resolveToken;
         assetResolver.resolve(cartridgeId, animationPath).then(blobUrl => {
+          if (video.dataset.resolveToken !== resolveToken) return; // stale
           if (!blobUrl) {
             // All tiers failed — fall back to legacy sync resolver
             const fallbackUrl = resolveVideoUrl(animationPath, cartridgeId);
+            if (video.dataset.resolveToken !== resolveToken) return; // stale
             if (fallbackUrl && source.getAttribute('src') !== fallbackUrl) {
               source.setAttribute('src', fallbackUrl);
               video.load();

@@ -101,6 +101,7 @@ export class P2PAssetTransfer {
    */
   async _initiateConnection(peerUsername, transferId, fileKey) {
     try {
+      this._cleanupConnection(peerUsername);
       const pc = new RTCPeerConnection(ICE_CONFIG);
       this._connections.set(peerUsername, pc);
 
@@ -147,6 +148,7 @@ export class P2PAssetTransfer {
     }
 
     try {
+      this._cleanupConnection(fromUsername);
       const pc = new RTCPeerConnection(ICE_CONFIG);
       this._connections.set(fromUsername, pc);
 
@@ -161,7 +163,7 @@ export class P2PAssetTransfer {
       pc.ondatachannel = (event) => {
         const dc = event.channel;
         if (dc.label === DATA_CHANNEL_LABEL) {
-          this._setupServerChannel(dc, fileKey, transferId);
+          this._setupServerChannel(dc, fileKey, transferId, fromUsername);
         }
       };
 
@@ -242,7 +244,11 @@ export class P2PAssetTransfer {
       if (!req) return;
 
       if (typeof event.data === 'string') {
-        this._handleControlMessage(transferId, JSON.parse(event.data));
+        try {
+          this._handleControlMessage(transferId, JSON.parse(event.data));
+        } catch (err) {
+          console.warn('[P2P] Malformed control message:', err.message);
+        }
       } else {
         // Binary data chunk
         const header = new DataView(event.data, 0, 8);
@@ -280,16 +286,28 @@ export class P2PAssetTransfer {
   /**
    * Set up data channel on the server side (send file chunks).
    */
-  _setupServerChannel(dc, fileKey, transferId) {
+  _setupServerChannel(dc, fileKey, transferId, fromUsername) {
     dc.binaryType = 'arraybuffer';
 
     dc.onmessage = async (event) => {
       if (typeof event.data !== 'string') return;
 
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'file_request' && msg.fileKey === fileKey) {
-        await this._sendFile(dc, msg.transferId, fileKey);
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'file_request' && msg.fileKey === fileKey) {
+          await this._sendFile(dc, msg.transferId, fileKey);
+        }
+      } catch (err) {
+        console.warn('[P2P] Malformed server channel message:', err.message);
       }
+    };
+
+    dc.onclose = () => {
+      this._cleanupConnection(fromUsername);
+    };
+
+    dc.onerror = () => {
+      this._cleanupConnection(fromUsername);
     };
   }
 
@@ -381,10 +399,10 @@ export class P2PAssetTransfer {
         // Verify hash if expected
         if (req.expectedHash) {
           const actualHash = await this._cache.computeHash(blob);
-          if (actualHash && actualHash !== req.expectedHash) {
+          if (!actualHash || actualHash !== req.expectedHash) {
             clearTimeout(req.timeout);
             this._pendingRequests.delete(transferId);
-            req.reject(new Error('Hash mismatch'));
+            req.reject(new Error(actualHash ? 'Hash mismatch' : 'Hash computation failed'));
             this._cleanupConnection(req.peerUsername);
             return;
           }

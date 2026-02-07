@@ -3239,19 +3239,25 @@ function cleanupAssetLeases() {
   const now = Date.now();
   for (const [fileKey, lease] of assetLeases) {
     if (lease.leaseExpiry <= now) {
-      // Lease expired — reassign to next waiter if any
-      const nextWaiter = lease.waitQueue.shift();
-      if (nextWaiter && nextWaiter.ws.readyState === 1) {
-        assetLeases.set(fileKey, {
-          assignee: nextWaiter.username,
-          leaseExpiry: now + LEASE_TIMEOUT_MS,
-          waitQueue: lease.waitQueue
-        });
-        nextWaiter.ws.send(JSON.stringify({
-          type: 'asset_fetch_assigned',
-          fileKey
-        }));
-      } else {
+      // Lease expired — find next live waiter
+      let assigned = false;
+      while (lease.waitQueue.length > 0) {
+        const nextWaiter = lease.waitQueue.shift();
+        if (nextWaiter && nextWaiter.ws.readyState === 1) {
+          assetLeases.set(fileKey, {
+            assignee: nextWaiter.username,
+            leaseExpiry: now + LEASE_TIMEOUT_MS,
+            waitQueue: lease.waitQueue
+          });
+          nextWaiter.ws.send(JSON.stringify({
+            type: 'asset_fetch_assigned',
+            fileKey
+          }));
+          assigned = true;
+          break;
+        }
+      }
+      if (!assigned) {
         assetLeases.delete(fileKey);
       }
     }
@@ -3268,18 +3274,24 @@ function cleanupAssetHoldersForUser(username) {
   // Reassign any leases held by this user
   for (const [fileKey, lease] of assetLeases) {
     if (lease.assignee === username) {
-      const nextWaiter = lease.waitQueue.shift();
-      if (nextWaiter && nextWaiter.ws.readyState === 1) {
-        assetLeases.set(fileKey, {
-          assignee: nextWaiter.username,
-          leaseExpiry: Date.now() + LEASE_TIMEOUT_MS,
-          waitQueue: lease.waitQueue
-        });
-        nextWaiter.ws.send(JSON.stringify({
-          type: 'asset_fetch_assigned',
-          fileKey
-        }));
-      } else {
+      let assigned = false;
+      while (lease.waitQueue.length > 0) {
+        const nextWaiter = lease.waitQueue.shift();
+        if (nextWaiter && nextWaiter.ws.readyState === 1) {
+          assetLeases.set(fileKey, {
+            assignee: nextWaiter.username,
+            leaseExpiry: Date.now() + LEASE_TIMEOUT_MS,
+            waitQueue: lease.waitQueue
+          });
+          nextWaiter.ws.send(JSON.stringify({
+            type: 'asset_fetch_assigned',
+            fileKey
+          }));
+          assigned = true;
+          break;
+        }
+      }
+      if (!assigned) {
         assetLeases.delete(fileKey);
       }
     }

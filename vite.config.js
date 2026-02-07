@@ -114,11 +114,17 @@ function localSignalingPlugin() {
   function cleanupAssetLeasesForUser(username) {
     for (const [fileKey, lease] of assetLeases) {
       if (lease.assignee === username) {
-        const next = lease.waitQueue.shift()
-        if (next && next.ws.readyState === 1) {
-          assetLeases.set(fileKey, { assignee: next.username, leaseExpiry: Date.now() + LEASE_TIMEOUT_MS, waitQueue: lease.waitQueue })
-          next.ws.send(JSON.stringify({ type: 'asset_fetch_assigned', fileKey }))
-        } else {
+        let assigned = false
+        while (lease.waitQueue.length > 0) {
+          const next = lease.waitQueue.shift()
+          if (next && next.ws.readyState === 1) {
+            assetLeases.set(fileKey, { assignee: next.username, leaseExpiry: Date.now() + LEASE_TIMEOUT_MS, waitQueue: lease.waitQueue })
+            next.ws.send(JSON.stringify({ type: 'asset_fetch_assigned', fileKey }))
+            assigned = true
+            break
+          }
+        }
+        if (!assigned) {
           assetLeases.delete(fileKey)
         }
       } else {
@@ -171,7 +177,7 @@ function localSignalingPlugin() {
       })
 
       // Stale connection cleanup
-      setInterval(() => {
+      const cleanupInterval = setInterval(() => {
         const now = Date.now()
         for (const [ws, data] of clients) {
           if (now - data.lastHeartbeat > 300000) {
@@ -182,16 +188,27 @@ function localSignalingPlugin() {
         // Lease expiry
         for (const [fileKey, lease] of assetLeases) {
           if (lease.leaseExpiry <= now) {
-            const next = lease.waitQueue.shift()
-            if (next && next.ws.readyState === 1) {
-              assetLeases.set(fileKey, { assignee: next.username, leaseExpiry: now + LEASE_TIMEOUT_MS, waitQueue: lease.waitQueue })
-              next.ws.send(JSON.stringify({ type: 'asset_fetch_assigned', fileKey }))
-            } else {
+            let assigned = false
+            while (lease.waitQueue.length > 0) {
+              const next = lease.waitQueue.shift()
+              if (next && next.ws.readyState === 1) {
+                assetLeases.set(fileKey, { assignee: next.username, leaseExpiry: now + LEASE_TIMEOUT_MS, waitQueue: lease.waitQueue })
+                next.ws.send(JSON.stringify({ type: 'asset_fetch_assigned', fileKey }))
+                assigned = true
+                break
+              }
+            }
+            if (!assigned) {
               assetLeases.delete(fileKey)
             }
           }
         }
       }, 60000)
+
+      server.httpServer?.on('close', () => {
+        clearInterval(cleanupInterval)
+        if (wss) wss.close()
+      })
 
       console.log('[Local Signaling] WebSocket server attached at /ws-signaling')
     }
