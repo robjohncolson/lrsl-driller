@@ -1,6 +1,7 @@
-// generator.js - AP Statistics Unit 5 (Topics 5.1–5.2): Sampling Distributions
+// generator.js - AP Statistics Unit 5 (Topics 5.1–5.4): Sampling Distributions
 // Sampling variability, sampling distributions, z-scores, normal probability,
-// inverse normal, AP solution elements, assessing normality, linear combinations
+// inverse normal, AP solution elements, assessing normality, linear combinations,
+// Central Limit Theorem, randomization distributions, biased/unbiased point estimates
 
 // ============ UTILITY FUNCTIONS ============
 
@@ -1065,6 +1066,404 @@ const capstone53Bank = [
 ];
 
 
+// ---- L16: Point Estimate Terminology scenarios ----
+const pointEstimateTermBank = [
+  {
+    question: "A researcher surveys 200 adults and finds the sample mean income is $52,400. In this context, the value $52,400 is called:",
+    correctAnswer: "A point estimate — the specific numerical value of the sample statistic",
+    wrongOptions: [
+      "A parameter — the true value of the population",
+      "A point estimator — the formula or method used to estimate",
+      "A sampling distribution — the distribution of all possible estimates"
+    ]
+  },
+  {
+    question: "A researcher uses the sample mean (x̄) to estimate the population mean income. In this context, x̄ is called:",
+    correctAnswer: "A point estimator — the statistic used to estimate the parameter",
+    wrongOptions: [
+      "A point estimate — the specific numerical value",
+      "A population parameter — the true value we're estimating",
+      "A sampling error — the difference between the estimate and parameter"
+    ]
+  },
+  {
+    question: "In a sample of 150 voters, 63% support a candidate. The sample proportion p̂ = 0.63 estimates the population proportion p. Which statement is correct?",
+    correctAnswer: "p̂ is the point estimator and 0.63 is the point estimate",
+    wrongOptions: [
+      "p is the point estimator and 0.63 is the point estimate",
+      "0.63 is the point estimator and p̂ is the point estimate",
+      "p̂ is the point estimate and p is the point estimator"
+    ]
+  },
+  {
+    question: "A sample statistic is a point estimator of the corresponding population parameter. Which pair is correctly matched?",
+    correctAnswer: "x̄ (sample mean) estimates μ (population mean)",
+    wrongOptions: [
+      "x̄ (sample mean) estimates σ (population standard deviation)",
+      "s (sample standard deviation) estimates μ (population mean)",
+      "p̂ (sample proportion) estimates σ (population standard deviation)"
+    ]
+  },
+  {
+    question: "What is the key difference between a point estimator and a point estimate?",
+    correctAnswer: "A point estimator is the statistic (formula/method), while a point estimate is the specific value calculated from one sample",
+    wrongOptions: [
+      "A point estimator is always unbiased, while a point estimate can be biased",
+      "A point estimator comes from the population, while a point estimate comes from a sample",
+      "A point estimator is exact, while a point estimate is always approximate"
+    ]
+  },
+  {
+    question: "A teacher measures the heights of 30 students and calculates s = 3.2 inches. Which statement is correct?",
+    correctAnswer: "s is the point estimator of σ, and 3.2 inches is the point estimate",
+    wrongOptions: [
+      "3.2 inches is the population standard deviation σ",
+      "s estimates the population mean μ, not the standard deviation",
+      "3.2 inches is the sampling distribution of the standard deviation"
+    ]
+  },
+  {
+    question: "When estimating a population parameter, an estimator exhibits variability. This means:",
+    correctAnswer: "Different samples produce different values of the estimator, and this variability can be modeled using probability",
+    wrongOptions: [
+      "The estimator is unreliable and should not be used for inference",
+      "The population parameter itself changes from sample to sample",
+      "We need to eliminate all variability before using the estimator"
+    ]
+  },
+  {
+    question: "A biologist takes a sample of 40 fish and calculates the sample median length as 24.5 cm to estimate the population median. Here, the sample median is:",
+    correctAnswer: "A point estimator — a sample statistic used to estimate the corresponding population parameter",
+    wrongOptions: [
+      "A population parameter that describes all fish in the lake",
+      "A sampling distribution of the median",
+      "A confidence interval for the population median"
+    ]
+  },
+  {
+    question: "Why is a sample statistic called a 'point' estimator?",
+    correctAnswer: "Because it provides a single value (point) as the estimate of the population parameter",
+    wrongOptions: [
+      "Because it only works when plotted on a graph as a point",
+      "Because it must be computed at a specific point in time",
+      "Because it is always located at the center of the sampling distribution"
+    ]
+  }
+];
+
+// ---- L17: Estimator Bias Concepts scenarios ----
+const estimatorBiasConceptBank = [
+  {
+    question: "An estimator is unbiased if:",
+    correctAnswer: "On average, the value of the estimator equals the population parameter",
+    wrongOptions: [
+      "Every sample produces an estimate exactly equal to the parameter",
+      "The estimator has no variability across samples",
+      "The sample size is large enough (n ≥ 30)"
+    ]
+  },
+  {
+    question: "The sample mean (x̄) is an unbiased estimator of the population mean (μ). This means:",
+    correctAnswer: "If we took all possible samples of the same size, the average of all the x̄ values would equal μ",
+    wrongOptions: [
+      "Every sample mean will be exactly equal to μ",
+      "The sample mean gets closer to μ as we collect more samples",
+      "The sample mean always has less variability than the population"
+    ]
+  },
+  {
+    question: "A breeder has 5 dogs with ages 0, 2, 5, 8, 10 (μ = 5). All possible samples of size 3 are taken, and the mean of all sample means is 5. This shows that:",
+    correctAnswer: "The sample mean is an unbiased estimator of the population mean because the mean of the sampling distribution equals μ",
+    wrongOptions: [
+      "Every sample of 3 dogs will have a mean of 5",
+      "The sample mean is biased because individual sample means differ from 5",
+      "We need more dogs in the population to determine if the estimator is unbiased"
+    ]
+  },
+  {
+    question: "For the same 5 dogs (ages 0, 2, 5, 8, 10, range = 10), the mean of all possible sample ranges is 7.8. This means the sample range is:",
+    correctAnswer: "A biased estimator of the population range because 7.8 ≠ 10 (the mean of the estimator doesn't equal the parameter)",
+    wrongOptions: [
+      "An unbiased estimator because 7.8 is close to 10",
+      "Unbiased because ranges can never be negative",
+      "Neither biased nor unbiased — we need more data to decide"
+    ]
+  },
+  {
+    question: "If an estimator is biased, it means that:",
+    correctAnswer: "On average, the estimator systematically overestimates or underestimates the population parameter",
+    wrongOptions: [
+      "The researcher made an error in data collection",
+      "The sample was not randomly selected",
+      "The estimator will never give a value close to the parameter"
+    ]
+  },
+  {
+    question: "Which of the following is TRUE about biased estimators?",
+    correctAnswer: "A biased estimator can still give a value close to the parameter for any individual sample — but on average, it misses",
+    wrongOptions: [
+      "A biased estimator always gives a value far from the parameter",
+      "Biased estimators can be fixed by increasing the sample size",
+      "Bias only occurs when the sample is not random"
+    ]
+  },
+  {
+    question: "The sample range consistently underestimates the population range. This is because:",
+    correctAnswer: "A sample cannot contain values outside the population's range, so sample ranges tend to be ≤ the population range",
+    wrongOptions: [
+      "Sample ranges are always exactly half of the population range",
+      "The range formula is incorrect for samples",
+      "Samples always miss the extreme values because of measurement error"
+    ]
+  },
+  {
+    question: "To determine if an estimator is unbiased, you would need to:",
+    correctAnswer: "Find the mean of the sampling distribution of the estimator and check if it equals the population parameter",
+    wrongOptions: [
+      "Calculate the estimator from one very large sample",
+      "Compare the estimator to a different statistic from the same sample",
+      "Check if the estimator has a normal distribution"
+    ]
+  },
+  {
+    question: "Which of these sample statistics is an unbiased estimator of its corresponding population parameter?",
+    correctAnswer: "The sample mean x̄ is an unbiased estimator of the population mean μ",
+    wrongOptions: [
+      "The sample range is an unbiased estimator of the population range",
+      "The sample maximum is an unbiased estimator of the population maximum",
+      "The sample minimum is an unbiased estimator of the population minimum"
+    ]
+  },
+  {
+    question: "A student says: 'My sample mean is 72 but the population mean is 70, so x̄ must be a biased estimator.' Is this correct?",
+    correctAnswer: "No — a single estimate not equaling the parameter is expected due to sampling variability; bias refers to the average across ALL possible samples",
+    wrongOptions: [
+      "Yes — since 72 ≠ 70, the estimator is clearly biased",
+      "Yes — any difference between the estimate and parameter indicates bias",
+      "No — but only because the difference is less than 5"
+    ]
+  }
+];
+
+// ---- L18: Identify Bias scenarios ----
+const identifyBiasBank = [
+  {
+    desc: "A population of 4 values: {2, 4, 6, 8} has a population mean μ = 5. All possible samples of size 2 are taken, and the mean of all sample means is calculated to be 5.0.",
+    estimatorName: "sample mean",
+    parameterName: "population mean",
+    parameterValue: 5,
+    samplingDistMean: 5,
+    isUnbiased: true,
+    reason: "The sample mean is unbiased because the mean of the sampling distribution (5.0) equals the population mean (μ = 5). On average, x̄ = μ.",
+    givenInfo: "Population: {2, 4, 6, 8}, μ = 5 | Mean of all sample means = 5.0"
+  },
+  {
+    desc: "A population of 4 values: {2, 4, 6, 8} has a population range of 6. All possible samples of size 2 are taken, and the mean of all sample ranges is calculated to be 4.0.",
+    estimatorName: "sample range",
+    parameterName: "population range",
+    parameterValue: 6,
+    samplingDistMean: 4,
+    isUnbiased: false,
+    reason: "The sample range is biased because the mean of the sampling distribution (4.0) does not equal the population range (6). On average, the sample range underestimates the population range.",
+    givenInfo: "Population: {2, 4, 6, 8}, Range = 6 | Mean of all sample ranges = 4.0"
+  },
+  {
+    desc: "A population of 5 dogs has ages {0, 2, 5, 8, 10} with μ = 5. All possible samples of size 3 are taken. The mean of all sample means is 5.0.",
+    estimatorName: "sample mean",
+    parameterName: "population mean",
+    parameterValue: 5,
+    samplingDistMean: 5,
+    isUnbiased: true,
+    reason: "The sample mean is unbiased because the mean of all sample means (5.0) equals the population mean (μ = 5). This is always true for the sample mean: μ_x̄ = μ.",
+    givenInfo: "Population: {0, 2, 5, 8, 10}, μ = 5 | Mean of all sample means = 5.0"
+  },
+  {
+    desc: "A population of 5 dogs has ages {0, 2, 5, 8, 10} with a population range of 10. All possible samples of size 3 are taken. The mean of all sample ranges is 7.8.",
+    estimatorName: "sample range",
+    parameterName: "population range",
+    parameterValue: 10,
+    samplingDistMean: 7.8,
+    isUnbiased: false,
+    reason: "The sample range is biased because the mean of all sample ranges (7.8) does not equal the population range (10). The sample range systematically underestimates the population range because samples cannot contain values outside the population's extremes.",
+    givenInfo: "Population: {0, 2, 5, 8, 10}, Range = 10 | Mean of all sample ranges = 7.8"
+  },
+  {
+    desc: "A population has a proportion p = 0.4. A statistician takes all possible samples of size 50 and calculates p̂ for each. The mean of all sample proportions is 0.4.",
+    estimatorName: "sample proportion",
+    parameterName: "population proportion",
+    parameterValue: 0.4,
+    samplingDistMean: 0.4,
+    isUnbiased: true,
+    reason: "The sample proportion p̂ is unbiased because the mean of the sampling distribution (0.4) equals the population proportion (p = 0.4). On average, p̂ = p.",
+    givenInfo: "Population: p = 0.4 | Mean of all sample proportions = 0.4"
+  },
+  {
+    desc: "A population of 4 values: {1, 3, 5, 7} has a population maximum of 7. All possible samples of size 2 are taken. The mean of all sample maximums is 5.67.",
+    estimatorName: "sample maximum",
+    parameterName: "population maximum",
+    parameterValue: 7,
+    samplingDistMean: 5.67,
+    isUnbiased: false,
+    reason: "The sample maximum is biased because the mean of all sample maximums (5.67) does not equal the population maximum (7). The sample maximum systematically underestimates the population maximum because most samples don't contain the largest value.",
+    givenInfo: "Population: {1, 3, 5, 7}, Max = 7 | Mean of all sample maximums = 5.67"
+  },
+  {
+    desc: "A population of 6 values: {10, 20, 30, 40, 50, 60} has a population mean μ = 35. All possible samples of size 3 are taken. The mean of all sample means is 35.0.",
+    estimatorName: "sample mean",
+    parameterName: "population mean",
+    parameterValue: 35,
+    samplingDistMean: 35,
+    isUnbiased: true,
+    reason: "The sample mean is unbiased because the mean of the sampling distribution (35.0) equals the population mean (μ = 35). The sample mean is always an unbiased estimator of μ.",
+    givenInfo: "Population: {10, 20, 30, 40, 50, 60}, μ = 35 | Mean of all sample means = 35.0"
+  },
+  {
+    desc: "A population of 5 values: {1, 2, 3, 4, 5} has a population minimum of 1. All possible samples of size 3 are taken. The mean of all sample minimums is 1.5.",
+    estimatorName: "sample minimum",
+    parameterName: "population minimum",
+    parameterValue: 1,
+    samplingDistMean: 1.5,
+    isUnbiased: false,
+    reason: "The sample minimum is biased because the mean of all sample minimums (1.5) does not equal the population minimum (1). The sample minimum systematically overestimates the population minimum because most samples don't contain the smallest value.",
+    givenInfo: "Population: {1, 2, 3, 4, 5}, Min = 1 | Mean of all sample minimums = 1.5"
+  },
+  {
+    desc: "A population of 6 values has a median of 25. All possible samples of size 4 are taken from this symmetric population. The mean of all sample medians is 25.0.",
+    estimatorName: "sample median",
+    parameterName: "population median",
+    parameterValue: 25,
+    samplingDistMean: 25,
+    isUnbiased: true,
+    reason: "The sample median is unbiased in this case because the mean of the sampling distribution (25.0) equals the population median (25). Note: the sample median is unbiased for symmetric populations.",
+    givenInfo: "Population median = 25 (symmetric pop.) | Mean of all sample medians = 25.0"
+  },
+  {
+    desc: "A population of 5 values: {2, 4, 6, 8, 10} has a population variance σ² = 8. All possible samples of size 3 are taken. The mean of all sample variances (using n in the denominator) is 5.33.",
+    estimatorName: "sample variance (using n)",
+    parameterName: "population variance",
+    parameterValue: 8,
+    samplingDistMean: 5.33,
+    isUnbiased: false,
+    reason: "The sample variance using n in the denominator is biased because 5.33 ≠ 8. It systematically underestimates σ². This is why statisticians use (n-1) in the denominator — the corrected version s² with (n-1) is unbiased.",
+    givenInfo: "Population: {2, 4, 6, 8, 10}, σ² = 8 | Mean of sample variances (÷n) = 5.33"
+  }
+];
+
+// ---- L19: 5.4 Capstone scenarios ----
+const capstone54Bank = [
+  {
+    scenarioText: "A researcher collects a sample of 100 patients and calculates x̄ = 128 mmHg for systolic blood pressure. The population mean is μ = 125 mmHg. Does this prove the sample mean is a biased estimator?",
+    correctAnswer: "No — one sample mean differing from μ is expected due to sampling variability; bias is about the average across ALL possible samples",
+    wrongOptions: [
+      "Yes — since 128 ≠ 125, the estimator is clearly biased by 3 mmHg",
+      "Yes — the sample mean is always biased when it doesn't equal the parameter",
+      "It depends on the sample size — with n = 100, any difference indicates bias"
+    ],
+    explanation: "A single sample mean not equaling μ is expected due to sampling variability. Bias refers to a systematic tendency across ALL possible samples. The sample mean is always unbiased: μ_x̄ = μ.",
+    topicId: "5.4: Unbiased Estimators"
+  },
+  {
+    scenarioText: "A data analyst calculates the sample median from 50 observations to be 42. In this scenario, '42' is called:",
+    correctAnswer: "A point estimate — the specific numerical value obtained from this sample",
+    wrongOptions: [
+      "A point estimator — the method used to estimate the parameter",
+      "A population parameter — the true value being estimated",
+      "A sampling distribution — the collection of all possible medians"
+    ],
+    explanation: "The number 42 is the point estimate — the specific value. The sample median (as a statistic/method) is the point estimator. The population median is the parameter being estimated.",
+    topicId: "5.4: Point Estimates"
+  },
+  {
+    scenarioText: "For a population of {3, 5, 7, 9}, the population range is 6. All possible samples of size 2 yield sample ranges with a mean of 4. Is the sample range biased or unbiased?",
+    correctAnswer: "Biased — the mean of all sample ranges (4) does not equal the population range (6); it systematically underestimates",
+    wrongOptions: [
+      "Unbiased — because 4 is close enough to 6",
+      "Unbiased — because the range is always a valid statistic",
+      "Cannot determine — we need larger samples to assess bias"
+    ],
+    explanation: "The sample range is biased because the mean of the sampling distribution (4) ≠ the population range (6). Since 4 < 6, the sample range systematically underestimates the population range.",
+    topicId: "5.4: Biased Estimators"
+  },
+  {
+    scenarioText: "The sample proportion p̂ is an unbiased estimator of the population proportion p. If p = 0.35 and we take all possible samples of size n, this means:",
+    correctAnswer: "The mean of all possible p̂ values equals 0.35, though individual sample proportions will vary around this value",
+    wrongOptions: [
+      "Every sample will produce p̂ = 0.35 exactly",
+      "At least 35% of all samples will have p̂ > 0.35",
+      "The sample proportion will always be within 0.05 of 0.35"
+    ],
+    explanation: "Unbiased means the average (expected value) of the estimator equals the parameter: μ_p̂ = p = 0.35. Individual sample proportions will vary due to sampling variability, but on average they equal p.",
+    topicId: "5.4: Unbiased Estimators"
+  },
+  {
+    scenarioText: "A student is asked to estimate the average commute time for all employees. They survey 40 employees and find x̄ = 27.5 minutes. Which correctly identifies the point estimator and point estimate?",
+    correctAnswer: "Point estimator: x̄ (the sample mean); Point estimate: 27.5 minutes",
+    wrongOptions: [
+      "Point estimator: 27.5 minutes; Point estimate: x̄",
+      "Point estimator: μ (population mean); Point estimate: 27.5 minutes",
+      "Point estimator: 40 (the sample size); Point estimate: x̄"
+    ],
+    explanation: "The point estimator is the statistic/method (x̄, the sample mean). The point estimate is the specific value obtained from this sample (27.5 minutes). The parameter being estimated is μ.",
+    topicId: "5.4: Point Estimates"
+  },
+  {
+    scenarioText: "Why does the sample range tend to underestimate the population range?",
+    correctAnswer: "Samples rarely include both the maximum and minimum values of the population, so sample ranges are limited to be ≤ the population range",
+    wrongOptions: [
+      "The range formula is different for samples and populations",
+      "Random sampling always excludes the most extreme values",
+      "The sample range is unbiased — it does not underestimate"
+    ],
+    explanation: "A sample can only contain values within the population's range, so the sample range can never exceed the population range. Since it often doesn't include both extremes, it tends to be smaller.",
+    topicId: "5.4: Biased Estimators"
+  },
+  {
+    scenarioText: "An estimator exhibits variability that can be modeled using probability. What does this mean in practice?",
+    correctAnswer: "Different random samples give different values for the estimator, but the pattern of values follows a predictable probability distribution",
+    wrongOptions: [
+      "The estimator's value is completely unpredictable and follows no pattern",
+      "The estimator will converge to the exact parameter value with enough samples",
+      "The variability means the estimator is biased and unreliable"
+    ],
+    explanation: "Estimator variability means values change from sample to sample, but this variation follows a predictable pattern (the sampling distribution). This is the foundation for statistical inference.",
+    topicId: "5.4: Estimator Variability"
+  },
+  {
+    scenarioText: "A statistician wants to determine if the sample median is an unbiased estimator of the population median for a particular population. What process should they use?",
+    correctAnswer: "Find all possible samples (or simulate many), calculate the median of each, then check if the mean of all sample medians equals the population median",
+    wrongOptions: [
+      "Take one large sample and check if the sample median equals the population median",
+      "Compare the sample median to the sample mean — if they're close, the median is unbiased",
+      "Check if the population is normally distributed — if so, the median is unbiased"
+    ],
+    explanation: "To assess bias, you must examine the sampling distribution. Find the mean of the sampling distribution of the statistic and compare it to the population parameter. If they're equal, the estimator is unbiased.",
+    topicId: "5.4: Unbiased Estimators"
+  },
+  {
+    scenarioText: "For a population of {1, 3, 5, 7, 9}, μ = 5. A researcher uses the sample maximum to estimate μ. All possible samples of size 2 are taken, and the mean of all sample maximums is 6.6. Is the sample maximum an unbiased estimator of μ?",
+    correctAnswer: "No — the mean of the sampling distribution (6.6) does not equal μ (5), so the sample maximum is a biased estimator of μ",
+    wrongOptions: [
+      "Yes — the sample maximum is always an unbiased estimator",
+      "No — but only because the sample size is too small at n = 2",
+      "Yes — because 6.6 is within one standard deviation of 5"
+    ],
+    explanation: "The sample maximum is biased as an estimator of μ because the mean of its sampling distribution (6.6) ≠ μ (5). It systematically overestimates μ. Being within one SD is irrelevant to bias assessment.",
+    topicId: "5.4: Biased Estimators"
+  },
+  {
+    scenarioText: "Two statistics are proposed to estimate a population parameter. Estimator A is unbiased with large variability. Estimator B is slightly biased but has much less variability. Which is necessarily better?",
+    correctAnswer: "Neither is necessarily better — unbiasedness and low variability are both desirable, and the best choice depends on the context",
+    wrongOptions: [
+      "Estimator A is always better because unbiasedness is the most important property",
+      "Estimator B is always better because low variability means more precise estimates",
+      "Both are equally bad because neither is both unbiased and low-variability"
+    ],
+    explanation: "Unbiasedness (hitting the target on average) and low variability (hitting close together) are both important properties. Sometimes a slightly biased estimator with much less variability can perform better overall.",
+    topicId: "5.4: Estimator Properties"
+  }
+];
+
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -1585,6 +1984,111 @@ export function generateProblem(modeId, context, mode) {
     answers = {
       capstone53Answer: { value: scen.correctAnswer },
       capstone53Explain: { value: scen.explanation }
+    };
+
+    scenario = scen.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L16: Point Estimate Terminology (5.4a) ==========
+  if (modeId === "l16-point-estimate-terminology") {
+    const scen = drawFromBag('pointEstimateTerm', pointEstimateTermBank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "5.4: Point Estimates",
+      scenarioText: scen.question,
+      givenText: "Select the best answer about point estimators and point estimates.",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      ptEstTermAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = scen.question;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L17: Estimator Bias Concepts (5.4b) ==========
+  if (modeId === "l17-estimator-bias-concept") {
+    const scen = drawFromBag('estimatorBiasConcept', estimatorBiasConceptBank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "5.4: Biased & Unbiased Estimators",
+      scenarioText: scen.question,
+      givenText: "Select the best answer about biased and unbiased estimators.",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      biasConceptAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = scen.question;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L18: Identify Bias (5.4c) ==========
+  if (modeId === "l18-identify-bias") {
+    const scen = drawFromBag('identifyBias', identifyBiasBank);
+
+    const biasAnswer = scen.isUnbiased
+      ? "Unbiased — the mean of the sampling distribution equals the parameter"
+      : "Biased — the mean of the sampling distribution does NOT equal the parameter";
+
+    ctx = {
+      topicId: "5.4: Identifying Bias",
+      scenarioText: `${scen.desc}\n\nIs the ${scen.estimatorName} an unbiased estimator of the ${scen.parameterName}?`,
+      givenText: scen.givenInfo,
+      isUnbiased: `${scen.isUnbiased}`,
+      estimatorName: scen.estimatorName,
+      parameterName: scen.parameterName,
+      parameterValue: `${scen.parameterValue}`,
+      samplingDistMean: `${scen.samplingDistMean}`,
+      reason: scen.reason,
+      expectedExplanation: scen.reason
+    };
+
+    answers = {
+      biasChoice: { value: biasAnswer },
+      biasExplain: { value: scen.reason }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L19: 5.4 Capstone ==========
+  if (modeId === "l19-capstone-54") {
+    const scen = drawFromBag('capstone54', capstone54Bank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: scen.topicId,
+      scenarioText: scen.scenarioText,
+      givenText: "Apply concepts from Topic 5.4 (Biased and Unbiased Point Estimates).",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      explanation: scen.explanation,
+      expectedExplanation: scen.explanation
+    };
+
+    answers = {
+      capstone54Answer: { value: scen.correctAnswer },
+      capstone54Explain: { value: scen.explanation }
     };
 
     scenario = scen.scenarioText;

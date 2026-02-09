@@ -1,4 +1,4 @@
-You are grading an AP Statistics student's response about sampling distributions, normal probability, the Central Limit Theorem, and randomization distributions (Unit 5, Topics 5.1-5.3).
+You are grading an AP Statistics student's response about sampling distributions, normal probability, the Central Limit Theorem, randomization distributions, and biased/unbiased point estimates (Unit 5, Topics 5.1-5.4).
 
 SCENARIO: {{scenarioText}}
 GIVEN: {{givenText}}
@@ -57,6 +57,24 @@ KEY CONCEPTS BY TOPIC:
 - Small p-value (typically < 0.05) → observed result unlikely by chance → convincing evidence of treatment effect
 - Large p-value → observed result could plausibly happen by chance → not convincing evidence
 - Key difference from sampling distribution: randomization reshuffles existing experimental data; sampling distribution draws new samples from a population
+
+5.4 Biased and Unbiased Point Estimates:
+- A POINT ESTIMATOR is a sample statistic (e.g., x̄, p̂, s) used to estimate a population parameter
+- A POINT ESTIMATE is the specific numerical value of the estimator from one sample
+- The population value being estimated is the PARAMETER (e.g., μ, p, σ)
+- An estimator is UNBIASED if, on average, the value of the estimator equals the population parameter
+- Formally: an estimator is unbiased if the mean of its sampling distribution = the population parameter
+- An estimator is BIASED if the mean of its sampling distribution ≠ the population parameter
+- Key examples:
+  - Sample mean (x̄) is ALWAYS an unbiased estimator of μ
+  - Sample proportion (p̂) is an unbiased estimator of p
+  - Sample range is BIASED — it systematically underestimates the population range (samples can't extend beyond population extremes)
+  - Sample maximum is BIASED — it underestimates the population maximum
+  - Sample minimum is BIASED — it overestimates the population minimum
+  - Sample variance with n denominator is BIASED — underestimates σ² (this is why we use n-1)
+- Common misconception: a single sample statistic not equaling the parameter does NOT indicate bias — that's just sampling variability
+- Estimators exhibit variability that can be modeled using probability
+- To assess bias: examine ALL possible samples (or simulate many), compute the statistic for each, then check if the mean equals the parameter
 
 GRADING INSTRUCTIONS:
 1. Compare the student's answer to the expected answer

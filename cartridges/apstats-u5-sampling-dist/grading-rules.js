@@ -1,6 +1,7 @@
-// grading-rules.js - AP Statistics Unit 5 Topics 5.1-5.2
+// grading-rules.js - AP Statistics Unit 5 Topics 5.1-5.4
 // Topics: Sampling variability, sampling distributions, z-scores, normal probability,
-// inverse normal, missing elements, normality assessment, combining random variables
+// inverse normal, missing elements, normality assessment, combining random variables,
+// Central Limit Theorem, randomization distributions, biased/unbiased point estimates
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -40,7 +41,9 @@ export function gradeField(fieldId, answer, context) {
     "normalExplain",
     "capstoneExplain",
     "cltNormalExplain",
-    "capstone53Explain"
+    "capstone53Explain",
+    "biasExplain",
+    "capstone54Explain"
   ]);
 
   if (isBlank(answer)) {
@@ -803,6 +806,135 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should reference the specific Topic 5.3 concept (CLT, sampling distribution shape, randomization distribution, or p-value interpretation) and explain your reasoning."
+    };
+  }
+
+  // ========== LEVEL 16: Point Estimate Terminology (Dropdown) ==========
+  if (fieldId === "ptEstTermAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You understand the distinction between point estimators and point estimates."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. Remember: a point ESTIMATOR is the statistic/method (like x̄ or p̂), while a point ESTIMATE is the specific numerical value from one sample. The population value is the PARAMETER."
+    };
+  }
+
+  // ========== LEVEL 17: Estimator Bias Concept (Dropdown) ==========
+  if (fieldId === "biasConceptAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You understand the concept of biased and unbiased estimators."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. An estimator is UNBIASED if, on average (across all possible samples), the value of the estimator equals the population parameter. A single sample not matching the parameter does NOT indicate bias."
+    };
+  }
+
+  // ========== LEVEL 18: Bias Choice (Choice) ==========
+  if (fieldId === "biasChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.reason}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.reason}`
+    };
+  }
+
+  // ========== LEVEL 18: Bias Explain (Textarea) ==========
+  if (fieldId === "biasExplain") {
+    const biasKeywords = ["biased", "unbiased", "bias"];
+    const meanKeywords = ["mean", "average", "expected value", "on average"];
+    const compareKeywords = ["equal", "equals", "not equal", "does not equal", "≠", "!=", "same as", "different from"];
+    const paramKeywords = ["parameter", "population", "μ", "range", "maximum", "minimum", "proportion"];
+    const sampDistKeywords = ["sampling distribution", "all possible", "all sample", "mean of all"];
+
+    const mentionsBias = containsAny(answer, biasKeywords);
+    const mentionsMean = containsAny(answer, meanKeywords);
+    const mentionsCompare = containsAny(answer, compareKeywords);
+    const mentionsParam = containsAny(answer, paramKeywords);
+    const mentionsSampDist = containsAny(answer, sampDistKeywords);
+
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so"]);
+
+    // E: mentions bias concept + comparison + substance + reasoning
+    if (mentionsBias && (mentionsCompare || mentionsSampDist) && hasSubstance && hasReasoning) {
+      return {
+        score: "E",
+        feedback: "Excellent explanation! You clearly justified whether the estimator is biased or unbiased by comparing the mean of the sampling distribution to the parameter."
+      };
+    }
+    // P: mentions at least one relevant concept + substance
+    if ((mentionsBias || mentionsMean || mentionsCompare || mentionsParam || mentionsSampDist) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Be more specific: compare the mean of the sampling distribution to the population parameter and state whether they are equal."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should state whether the mean of the sampling distribution equals the population parameter. If they're equal → unbiased; if not → biased."
+    };
+  }
+
+  // ========== LEVEL 19: 5.4 Capstone Answer (Dropdown) ==========
+  if (fieldId === "capstone54Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 19: 5.4 Capstone Explain (Textarea) ==========
+  if (fieldId === "capstone54Explain") {
+    const biasKeywords = ["biased", "unbiased", "bias"];
+    const estimatorKeywords = ["estimator", "estimate", "point estimate", "point estimator", "statistic"];
+    const paramKeywords = ["parameter", "population", "μ", "p", "σ"];
+    const sampDistKeywords = ["sampling distribution", "on average", "all possible", "mean of all", "expected value"];
+    const variabilityKeywords = ["variability", "vary", "varies", "different samples", "sampling variability"];
+
+    const mentionsBias = containsAny(answer, biasKeywords);
+    const mentionsEstimator = containsAny(answer, estimatorKeywords);
+    const mentionsParam = containsAny(answer, paramKeywords);
+    const mentionsSampDist = containsAny(answer, sampDistKeywords);
+    const mentionsVariability = containsAny(answer, variabilityKeywords);
+
+    const conceptMentioned = mentionsBias || mentionsEstimator || mentionsSampDist || mentionsVariability;
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "means", "shows", "using"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if (conceptMentioned && hasReasoning && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent explanation! You clearly demonstrated understanding of Topic 5.4 concepts."
+      };
+    }
+    if (conceptMentioned && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Add more specific reasoning about WHY this concept applies to this scenario."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should reference the specific Topic 5.4 concept (point estimator, point estimate, bias, unbiasedness, or estimator variability) and explain your reasoning."
     };
   }
 
