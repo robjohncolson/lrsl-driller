@@ -1,7 +1,8 @@
-// generator.js - AP Statistics Unit 5 (Topics 5.1–5.4): Sampling Distributions
+// generator.js - AP Statistics Unit 5 (Topics 5.1–5.5): Sampling Distributions
 // Sampling variability, sampling distributions, z-scores, normal probability,
 // inverse normal, AP solution elements, assessing normality, linear combinations,
-// Central Limit Theorem, randomization distributions, biased/unbiased point estimates
+// Central Limit Theorem, randomization distributions, biased/unbiased point estimates,
+// sampling distributions for sample proportions
 
 // ============ UTILITY FUNCTIONS ============
 
@@ -1464,6 +1465,241 @@ const capstone54Bank = [
 ];
 
 
+// ============ TOPIC 5.5 BANKS: Sampling Distributions for Sample Proportions ============
+
+const propContextBank = [
+  { label: "driver's license", context: "In a large city, 82% of adults have a valid driver's license", p: 0.82, n: 60, N: 250000 },
+  { label: "defective items", context: "A factory produces light bulbs, and historically 4% are defective", p: 0.04, n: 200, N: 50000 },
+  { label: "left-handed", context: "About 10% of the general population is left-handed", p: 0.10, n: 80, N: 100000 },
+  { label: "pet owners", context: "In a suburban community, 67% of households own at least one pet", p: 0.67, n: 50, N: 15000 },
+  { label: "college graduates", context: "In a state, 34% of adults aged 25+ have a bachelor's degree or higher", p: 0.34, n: 120, N: 500000 },
+  { label: "flu vaccination", context: "Last year, 52% of adults in a county received a flu vaccination", p: 0.52, n: 90, N: 200000 },
+  { label: "smartphone usage", context: "Among teenagers in a school district, 95% own a smartphone", p: 0.95, n: 40, N: 8000 },
+  { label: "organic food", context: "About 15% of shoppers at a grocery chain regularly buy organic produce", p: 0.15, n: 150, N: 300000 },
+  { label: "public transit", context: "In a metropolitan area, 28% of workers commute by public transit", p: 0.28, n: 100, N: 400000 },
+  { label: "early bird", context: "A survey found that 44% of adults consider themselves 'morning people'", p: 0.44, n: 75, N: 1000000 }
+];
+
+const largeCountsBank = [
+  { context: "A company claims 3% of its products are defective. A quality inspector randomly selects 150 products.", p: 0.03, n: 150, meetsCondition: false },
+  { context: "A political poll asks 500 randomly selected voters if they support a candidate who has 55% approval.", p: 0.55, n: 500, meetsCondition: true },
+  { context: "A rare blood type occurs in 2% of the population. A blood bank screens 80 donors.", p: 0.02, n: 80, meetsCondition: false },
+  { context: "About 70% of high school seniors plan to attend college. A counselor surveys 60 seniors.", p: 0.70, n: 60, meetsCondition: true },
+  { context: "A website has a 12% click-through rate on ads. An analyst examines 200 ad impressions.", p: 0.12, n: 200, meetsCondition: true },
+  { context: "Only 1% of emails sent by a company are opened. They analyze a batch of 300 emails.", p: 0.01, n: 300, meetsCondition: false },
+  { context: "In a large city, 40% of residents recycle regularly. An environmental group surveys 50 residents.", p: 0.40, n: 50, meetsCondition: true },
+  { context: "A genetic trait appears in 8% of a population. A researcher samples 90 individuals.", p: 0.08, n: 90, meetsCondition: false },
+  { context: "About 60% of dog owners buy premium dog food. A pet store surveys 80 customers.", p: 0.60, n: 80, meetsCondition: true },
+  { context: "A vaccine has a 97% effectiveness rate. Researchers study a sample of 250 vaccinated individuals.", p: 0.97, n: 250, meetsCondition: false }
+];
+
+const interpretParamsBank = [
+  {
+    context: "72% of residents in a city support a new park. Random samples of 100 residents are taken.",
+    p: 0.72, n: 100, paramType: "mean",
+    correctInterpretation: "The mean of the sampling distribution of p̂ is 0.72, meaning that across all possible samples of 100 residents, the average sample proportion who support the park is 0.72",
+    wrongInterpretations: [
+      "In every sample of 100 residents, exactly 72% will support the park",
+      "The mean of p̂ is 0.72, meaning 72 out of 100 residents in our sample support the park",
+      "The population proportion will be 0.72 in 72% of all samples"
+    ]
+  },
+  {
+    context: "15% of students at a university are international students. Random samples of 80 students are taken.",
+    p: 0.15, n: 80, paramType: "sd",
+    correctInterpretation: "σ_p̂ = 0.040, meaning the sample proportion of international students typically varies by about 0.040 from the true proportion of 0.15 across all possible samples of 80 students",
+    wrongInterpretations: [
+      "The standard deviation is 0.040, meaning exactly 4% of samples will differ from 15%",
+      "σ_p̂ = 0.040 means 4% of international students vary in each sample",
+      "The standard deviation of 0.040 means p̂ is always within 0.040 of the true proportion"
+    ]
+  },
+  {
+    context: "40% of adults in a county exercise regularly. Random samples of 200 adults are taken.",
+    p: 0.40, n: 200, paramType: "mean",
+    correctInterpretation: "μ_p̂ = 0.40, meaning that if we took all possible samples of 200 adults from this county, the average of all sample proportions who exercise regularly would be 0.40",
+    wrongInterpretations: [
+      "μ_p̂ = 0.40 means our sample will always have exactly 40% who exercise",
+      "The mean is 0.40 because 80 out of 200 adults in our sample exercise regularly",
+      "μ_p̂ = 0.40 means the population proportion changes to 0.40 after sampling"
+    ]
+  },
+  {
+    context: "88% of flights at an airport depart on time. Random samples of 50 flights are monitored.",
+    p: 0.88, n: 50, paramType: "sd",
+    correctInterpretation: "σ_p̂ ≈ 0.046, meaning the sample proportion of on-time flights typically differs from the true proportion of 0.88 by about 0.046 across all possible samples of 50 flights",
+    wrongInterpretations: [
+      "σ_p̂ = 0.046 means each flight has a 4.6% chance of being late",
+      "The standard deviation of 0.046 means exactly 4.6% of flights are always late",
+      "σ_p̂ = 0.046 means p̂ will always be between 0.834 and 0.926"
+    ]
+  },
+  {
+    context: "55% of voters in a state support a ballot measure. Random samples of 300 voters are polled.",
+    p: 0.55, n: 300, paramType: "mean",
+    correctInterpretation: "μ_p̂ = 0.55, meaning that across all possible random samples of 300 voters, the average sample proportion supporting the measure equals the true population proportion of 0.55",
+    wrongInterpretations: [
+      "μ_p̂ = 0.55 means exactly 165 voters in every sample of 300 will support the measure",
+      "The mean proportion is 0.55 because that was the result of our specific sample",
+      "μ_p̂ = 0.55 means the ballot measure will pass with 55% of the vote"
+    ]
+  },
+  {
+    context: "25% of packages shipped by a company arrive within one day. Random samples of 120 packages are tracked.",
+    p: 0.25, n: 120, paramType: "sd",
+    correctInterpretation: "σ_p̂ ≈ 0.040, meaning the sample proportion of one-day deliveries typically varies by about 0.040 from the true proportion of 0.25 across all possible samples of 120 packages",
+    wrongInterpretations: [
+      "σ_p̂ = 0.040 means 4% of packages are always delivered late",
+      "The standard deviation of 0.040 means p̂ is always exactly 0.040 away from p",
+      "σ_p̂ = 0.040 means there is a 4% chance of getting the wrong proportion"
+    ]
+  },
+  {
+    context: "63% of homeowners in a suburb have a two-car garage. Random samples of 90 homeowners are surveyed.",
+    p: 0.63, n: 90, paramType: "mean",
+    correctInterpretation: "μ_p̂ = 0.63, meaning that the average of the sample proportions from all possible samples of 90 homeowners equals the population proportion of 0.63 — p̂ is an unbiased estimator of p",
+    wrongInterpretations: [
+      "μ_p̂ = 0.63 means our specific sample will have exactly 63% with two-car garages",
+      "The mean is 0.63 because we surveyed 90 homeowners and found 63% in our sample",
+      "μ_p̂ = 0.63 means 63% of all possible samples will give the correct proportion"
+    ]
+  },
+  {
+    context: "About 30% of trees in a national forest are pine trees. Random samples of 150 trees are measured.",
+    p: 0.30, n: 150, paramType: "sd",
+    correctInterpretation: "σ_p̂ ≈ 0.037, meaning on average, the sample proportion of pine trees differs from the true proportion of 0.30 by about 0.037 across all possible samples of 150 trees",
+    wrongInterpretations: [
+      "σ_p̂ = 0.037 means 3.7% of the trees in our sample will not be pine trees",
+      "The standard deviation means p̂ is guaranteed to be within 0.037 of 0.30",
+      "σ_p̂ = 0.037 means the population proportion varies by 3.7%"
+    ]
+  },
+  {
+    context: "48% of registered voters in a district are female. Random samples of 250 voters are selected.",
+    p: 0.48, n: 250, paramType: "mean",
+    correctInterpretation: "μ_p̂ = 0.48, meaning that if we took all possible random samples of 250 voters from this district, the mean of all sample proportions of female voters would equal the true population proportion of 0.48",
+    wrongInterpretations: [
+      "μ_p̂ = 0.48 means exactly 120 female voters will appear in every sample of 250",
+      "The mean is 0.48 because that is what we observed in our specific sample",
+      "μ_p̂ = 0.48 means the sampling distribution is centered at the sample proportion, not the population proportion"
+    ]
+  }
+];
+
+const capstone55Bank = [
+  {
+    scenarioText: "In a large population, 35% of adults have type O+ blood. A blood bank takes a random sample of 200 donors. What are the mean and standard deviation of the sampling distribution of p̂?",
+    correctAnswer: "μ_p̂ = 0.35, σ_p̂ = √(0.35 × 0.65 / 200) ≈ 0.034",
+    wrongOptions: [
+      "μ_p̂ = 0.35, σ_p̂ = √(0.35 × 0.65) ≈ 0.477 (forgot to divide by n)",
+      "μ_p̂ = 70, σ_p̂ = 6.75 (used counts instead of proportions)",
+      "μ_p̂ = 0.65, σ_p̂ = 0.034 (used 1−p for the mean)"
+    ],
+    explanation: "μ_p̂ = p = 0.35. σ_p̂ = √(p(1−p)/n) = √(0.35 × 0.65 / 200) = √(0.001138) ≈ 0.034. The 10% condition is met since 200 < 10% of the large population.",
+    topicId: "5.5: Distribution Parameters"
+  },
+  {
+    scenarioText: "A factory knows that 3% of its products are defective. A quality inspector takes a random sample of 150 items. Can we use a normal model for the sampling distribution of p̂?",
+    correctAnswer: "No — np = 150(0.03) = 4.5 < 10, so the Large Counts condition is not met",
+    wrongOptions: [
+      "Yes — n = 150 is large enough for any proportion",
+      "Yes — n(1−p) = 145.5 ≥ 10 is sufficient on its own",
+      "No — but only because n = 150 is too small (need n ≥ 200)"
+    ],
+    explanation: "Large Counts requires BOTH np ≥ 10 AND n(1−p) ≥ 10. Here np = 150(0.03) = 4.5 < 10. Even though n(1−p) = 145.5, the condition fails because np < 10.",
+    topicId: "5.5: Large Counts Condition"
+  },
+  {
+    scenarioText: "60% of students at a large university live off campus. In random samples of 80 students, the sampling distribution of p̂ has σ_p̂ ≈ 0.055. Which interpretation is correct?",
+    correctAnswer: "The sample proportion of off-campus students typically varies by about 0.055 from the true proportion of 0.60 across all possible samples of 80 students",
+    wrongOptions: [
+      "Exactly 5.5% of students in each sample will live in a different location than expected",
+      "The population proportion changes by 0.055 each time we sample",
+      "The sample proportion will always be between 0.545 and 0.655"
+    ],
+    explanation: "σ_p̂ measures how much p̂ typically varies from p across all possible samples. It does NOT mean p̂ is always within one SD of p — 'typically' or 'on average' is the key language.",
+    topicId: "5.5: Interpreting Parameters"
+  },
+  {
+    scenarioText: "A political analyst knows that 52% of voters support a candidate. In a random sample of 400 voters, what is the probability that the sample proportion exceeds 0.55?",
+    correctAnswer: "About 0.115 — z = (0.55 − 0.52) / 0.025 = 1.2, P(Z > 1.2) ≈ 0.115",
+    wrongOptions: [
+      "About 0.885 — this is P(Z < 1.2), the wrong direction",
+      "About 0.55 — the probability equals the sample proportion",
+      "Cannot be calculated without knowing the population size"
+    ],
+    explanation: "σ_p̂ = √(0.52 × 0.48 / 400) = √(0.000624) ≈ 0.025. z = (0.55 − 0.52)/0.025 = 1.2. P(p̂ > 0.55) = P(Z > 1.2) = 1 − 0.8849 ≈ 0.115.",
+    topicId: "5.5: Probability Calculation"
+  },
+  {
+    scenarioText: "Why is the 10% condition (n < 0.10N) important when calculating σ_p̂?",
+    correctAnswer: "It ensures that sampling without replacement is approximately the same as sampling with replacement, so the formula σ_p̂ = √(p(1−p)/n) is valid",
+    wrongOptions: [
+      "It ensures the sample proportion will be within 10% of the population proportion",
+      "It guarantees that the sampling distribution will be approximately normal",
+      "It prevents the sample size from being too large for the normal approximation"
+    ],
+    explanation: "The 10% condition ensures independence (approximately). When n < 10% of N, removing sampled individuals doesn't meaningfully change the population composition, so the SD formula applies.",
+    topicId: "5.5: 10% Condition"
+  },
+  {
+    scenarioText: "A researcher finds that p̂ = 0.42 in a sample of 200 from a population where p = 0.45. The sampling distribution of p̂ has σ_p̂ ≈ 0.035. What is the z-score for this sample result?",
+    correctAnswer: "z = (0.42 − 0.45) / 0.035 ≈ −0.86",
+    wrongOptions: [
+      "z = (0.45 − 0.42) / 0.035 ≈ 0.86 (subtracted in wrong order)",
+      "z = (0.42 − 0.45) / 0.45 ≈ −0.067 (divided by p instead of σ_p̂)",
+      "z = 0.42 / 0.035 ≈ 12.0 (forgot to subtract p)"
+    ],
+    explanation: "z = (p̂ − p) / σ_p̂ = (0.42 − 0.45) / 0.035 = −0.03 / 0.035 ≈ −0.86. The negative z-score means p̂ is below the population proportion.",
+    topicId: "5.5: Z-Score Calculation"
+  },
+  {
+    scenarioText: "For a proportion with p = 0.50 and n = 100, compare the Large Counts check to p = 0.02 and n = 100. What's the key difference?",
+    correctAnswer: "p = 0.50: np = 50 and n(1−p) = 50, both ≥ 10 (passes). p = 0.02: np = 2 < 10 (fails). Proportions near 0 or 1 need much larger n to satisfy Large Counts",
+    wrongOptions: [
+      "Both pass the Large Counts condition because n = 100 is always large enough",
+      "Neither passes because n must be at least 200 for the Large Counts condition",
+      "The only difference is the shape of the population — proportion size doesn't matter"
+    ],
+    explanation: "With p = 0.50: np = 50 ✓, n(1−p) = 50 ✓. With p = 0.02: np = 2 ✗. Extreme proportions (near 0 or 1) require much larger sample sizes to meet Large Counts.",
+    topicId: "5.5: Large Counts Condition"
+  },
+  {
+    scenarioText: "In a town, 78% of homes have internet access. A researcher samples 60 homes. What is the probability that fewer than 70% of the sampled homes have internet?",
+    correctAnswer: "About 0.063 — σ_p̂ ≈ 0.053, z = (0.70 − 0.78)/0.053 ≈ −1.51, P(Z < −1.51) ≈ 0.066",
+    wrongOptions: [
+      "About 0.937 — this is P(Z > −1.51), the wrong direction",
+      "About 0.78 — the probability equals the population proportion",
+      "About 0.30 — this is 1 − 0.70, confusing complement with probability"
+    ],
+    explanation: "σ_p̂ = √(0.78 × 0.22 / 60) ≈ 0.053. z = (0.70 − 0.78)/0.053 ≈ −1.51. P(p̂ < 0.70) = P(Z < −1.51) ≈ 0.066.",
+    topicId: "5.5: Probability Calculation"
+  },
+  {
+    scenarioText: "A student writes: 'μ_p̂ = 0.35 means that every sample of 100 people will have 35% who prefer brand A.' Is this correct?",
+    correctAnswer: "No — μ_p̂ = 0.35 means the AVERAGE of all possible sample proportions equals 0.35; individual samples will vary around this value",
+    wrongOptions: [
+      "Yes — the mean of the sampling distribution guarantees each sample matches p",
+      "No — but only because 35% should be rounded to a whole number of people",
+      "Yes — as long as the Large Counts condition is met, every sample gives p̂ = p"
+    ],
+    explanation: "μ_p̂ = p means p̂ is an unbiased estimator of p — on AVERAGE across all possible samples, the sample proportion equals the population proportion. Individual sample proportions will vary due to sampling variability.",
+    topicId: "5.5: Interpreting Parameters"
+  },
+  {
+    scenarioText: "A poll finds p̂ = 0.48 from n = 600 voters, where the true proportion is p = 0.50. Is this result surprising?",
+    correctAnswer: "Not very — σ_p̂ ≈ 0.020, z = (0.48 − 0.50)/0.020 = −1.0, and P(p̂ < 0.48) ≈ 0.159, which is not unusual",
+    wrongOptions: [
+      "Very surprising — the sample proportion should always equal the population proportion",
+      "Not surprising — any result is equally likely when sampling",
+      "Very surprising — a difference of 0.02 is always statistically significant"
+    ],
+    explanation: "σ_p̂ = √(0.50 × 0.50 / 600) ≈ 0.020. z = (0.48 − 0.50)/0.020 = −1.0. P(Z < −1.0) ≈ 0.159. About 16% of samples would give p̂ ≤ 0.48, so this is not surprising.",
+    topicId: "5.5: Probability Calculation"
+  }
+];
+
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -2089,6 +2325,177 @@ export function generateProblem(modeId, context, mode) {
     answers = {
       capstone54Answer: { value: scen.correctAnswer },
       capstone54Explain: { value: scen.explanation }
+    };
+
+    scenario = scen.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L20: p̂ Distribution Parameters (5.5a) ==========
+  if (modeId === "l20-prop-dist-params") {
+    const scen = drawFromBag('propContext_l20', propContextBank);
+
+    const propMean = scen.p;
+    const propSD = Math.round(Math.sqrt(scen.p * (1 - scen.p) / scen.n) * 1000) / 1000;
+    const tenPctCheck = scen.n < 0.10 * scen.N;
+
+    ctx = {
+      topicId: "5.5: p̂ Distribution Parameters",
+      scenarioText: `${scen.context}. A random sample of ${scen.n} is selected from a population of ${scen.N.toLocaleString()}.\n\nFind the mean and standard deviation of the sampling distribution of p̂.`,
+      givenText: `p = ${scen.p}, n = ${scen.n}, N = ${scen.N.toLocaleString()} | 10% condition: ${scen.n} < ${Math.round(0.10 * scen.N)} → ${tenPctCheck ? "✓ Met" : "✗ Not met"}`,
+      p: `${scen.p}`,
+      n: `${scen.n}`,
+      N: `${scen.N}`,
+      propMean: `${propMean}`,
+      propSD: `${propSD}`,
+      tenPctMet: `${tenPctCheck}`
+    };
+
+    answers = {
+      propMean: { value: propMean, tolerance: 0.005 },
+      propSD: { value: propSD, tolerance: 0.005 }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L21: Large Counts Condition (5.5b) ==========
+  if (modeId === "l21-large-counts") {
+    const scen = drawFromBag('largeCounts', largeCountsBank);
+
+    const np = Math.round(scen.n * scen.p * 100) / 100;
+    const nq = Math.round(scen.n * (1 - scen.p) * 100) / 100;
+    const meetsCondition = np >= 10 && nq >= 10;
+    const normalAnswer = meetsCondition
+      ? "Yes — Large Counts condition is met (np ≥ 10 AND n(1−p) ≥ 10)"
+      : "No — Large Counts condition is NOT met";
+
+    ctx = {
+      topicId: "5.5: Large Counts Condition",
+      scenarioText: `${scen.context}\n\np = ${scen.p}, n = ${scen.n}\n\nIs the sampling distribution of p̂ approximately normal? Check the Large Counts condition.`,
+      givenText: `p = ${scen.p}, n = ${scen.n}`,
+      p: `${scen.p}`,
+      n: `${scen.n}`,
+      np: `${np}`,
+      nq: `${nq}`,
+      meetsCondition: `${meetsCondition}`,
+      reason: meetsCondition
+        ? `Yes. np = ${scen.n}(${scen.p}) = ${np} ≥ 10 ✓ and n(1−p) = ${scen.n}(${Math.round((1-scen.p)*100)/100}) = ${nq} ≥ 10 ✓. Both conditions are met, so the sampling distribution of p̂ is approximately normal.`
+        : `No. np = ${scen.n}(${scen.p}) = ${np}${np < 10 ? " < 10 ✗" : " ≥ 10 ✓"} and n(1−p) = ${scen.n}(${Math.round((1-scen.p)*100)/100}) = ${nq}${nq < 10 ? " < 10 ✗" : " ≥ 10 ✓"}. Since ${np < 10 ? "np" : "n(1−p)"} < 10, the Large Counts condition is not met and the sampling distribution of p̂ is NOT approximately normal.`
+    };
+
+    answers = {
+      largeCountsChoice: { value: normalAnswer },
+      largeCountsExplain: { value: ctx.reason }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L22: Interpret p̂ Parameters (5.5c) ==========
+  if (modeId === "l22-interpret-params") {
+    const scen = drawFromBag('interpretParams', interpretParamsBank);
+
+    const allOptions = shuffle([scen.correctInterpretation, ...scen.wrongInterpretations]);
+
+    ctx = {
+      topicId: "5.5: Interpreting Parameters",
+      scenarioText: `${scen.context}\n\n${scen.paramType === "mean"
+        ? `The mean of the sampling distribution of p̂ is μ_p̂ = ${scen.p}. Which interpretation is correct?`
+        : `The standard deviation of the sampling distribution of p̂ is σ_p̂ ≈ ${Math.round(Math.sqrt(scen.p * (1 - scen.p) / scen.n) * 1000) / 1000}. Which interpretation is correct?`}`,
+      givenText: `p = ${scen.p}, n = ${scen.n} | Interpreting: ${scen.paramType === "mean" ? "μ_p̂" : "σ_p̂"}`,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      paramType: scen.paramType,
+      p: `${scen.p}`,
+      n: `${scen.n}`
+    };
+
+    answers = {
+      interpretAnswer: { value: scen.correctInterpretation }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L23: p̂ Probability (5.5d) ==========
+  if (modeId === "l23-prop-probability") {
+    const scen = drawFromBag('propContext_l23', propContextBank);
+
+    const propSD = Math.sqrt(scen.p * (1 - scen.p) / scen.n);
+
+    // Generate a random p̂ boundary that's 0.5–2.5 SD away from p
+    const sdMultiplier = (randInt(50, 250)) / 100 * (Math.random() < 0.5 ? 1 : -1);
+    let pHat = scen.p + sdMultiplier * propSD;
+    // Clamp to (0, 1) and round to 2 decimals
+    pHat = Math.max(0.01, Math.min(0.99, pHat));
+    pHat = Math.round(pHat * 100) / 100;
+
+    // Pick direction
+    const greaterThan = Math.random() < 0.5;
+    const direction = greaterThan ? "GREATER THAN" : "LESS THAN";
+
+    const zExact = (pHat - scen.p) / propSD;
+    const z = Math.round(zExact * 100) / 100;
+
+    let prob;
+    if (greaterThan) {
+      prob = 1 - normalCDF(zExact);
+    } else {
+      prob = normalCDF(zExact);
+    }
+    prob = Math.round(prob * 10000) / 10000;
+
+    const propSDRounded = Math.round(propSD * 1000) / 1000;
+
+    ctx = {
+      topicId: "5.5: p̂ Probability",
+      scenarioText: `${scen.context} (p = ${scen.p}). A random sample of ${scen.n} is selected.\n\nWhat is the probability that the sample proportion p̂ is ${direction} ${pHat}?`,
+      givenText: `p = ${scen.p}, n = ${scen.n}, σ_p̂ = ${propSDRounded}`,
+      p: `${scen.p}`,
+      n: `${scen.n}`,
+      pHat: `${pHat}`,
+      propSD: `${propSDRounded}`,
+      direction: direction,
+      zScore: `${z}`,
+      probability: `${prob}`
+    };
+
+    answers = {
+      propZScore: { value: z, tolerance: 0.05 },
+      propProb: { value: prob, tolerance: 0.005 }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L24: 5.5 Capstone ==========
+  if (modeId === "l24-capstone-55") {
+    const scen = drawFromBag('capstone55', capstone55Bank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: scen.topicId,
+      scenarioText: scen.scenarioText,
+      givenText: "Apply concepts from Topic 5.5 (Sampling Distributions for Sample Proportions).",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      explanation: scen.explanation,
+      expectedExplanation: scen.explanation
+    };
+
+    answers = {
+      capstone55Answer: { value: scen.correctAnswer },
+      capstone55Explain: { value: scen.explanation }
     };
 
     scenario = scen.scenarioText;

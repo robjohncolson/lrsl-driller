@@ -1,4 +1,4 @@
-You are grading an AP Statistics student's response about sampling distributions, normal probability, the Central Limit Theorem, randomization distributions, and biased/unbiased point estimates (Unit 5, Topics 5.1-5.4).
+You are grading an AP Statistics student's response about sampling distributions, normal probability, the Central Limit Theorem, randomization distributions, biased/unbiased point estimates, and sampling distributions for sample proportions (Unit 5, Topics 5.1-5.5).
 
 SCENARIO: {{scenarioText}}
 GIVEN: {{givenText}}
@@ -75,6 +75,27 @@ KEY CONCEPTS BY TOPIC:
 - Common misconception: a single sample statistic not equaling the parameter does NOT indicate bias — that's just sampling variability
 - Estimators exhibit variability that can be modeled using probability
 - To assess bias: examine ALL possible samples (or simulate many), compute the statistic for each, then check if the mean equals the parameter
+
+5.5 Sampling Distributions for Sample Proportions:
+- The sampling distribution of p̂ describes the distribution of sample proportions from all possible samples of size n
+- Parameters: μ_p̂ = p (the population proportion), σ_p̂ = √(p(1−p)/n)
+- 10% condition: n must be less than 10% of the population N for the SD formula to apply (ensures approximate independence)
+- Large Counts condition: np ≥ 10 AND n(1−p) ≥ 10 → sampling distribution is approximately normal
+  - BOTH conditions must be checked — failing either one means the condition is NOT met
+  - Proportions near 0 or 1 require larger sample sizes to meet this condition
+- Interpreting μ_p̂: must reference "all possible samples of size n" — e.g., "across all possible samples of 80 students, the average sample proportion equals the true population proportion"
+- Interpreting σ_p̂: must include "typically" or "on average" — e.g., "the sample proportion typically varies by about 0.04 from the true proportion"
+  - Common error: saying p̂ is "always" within σ_p̂ of p (wrong — it's typical, not guaranteed)
+  - Common error: confusing σ_p̂ with a percentage of the population
+- Probability calculations: z = (p̂ − p) / σ_p̂, then use normal distribution (normalcdf or z-table)
+  - Check direction: P(p̂ > value) = 1 − P(Z < z); P(p̂ < value) = P(Z < z)
+  - Common complement error: using the wrong tail
+- Common student errors:
+  - Using p̂ (sample proportion) instead of p (population proportion) in the SD formula
+  - Forgetting the square root in σ_p̂ = √(p(1−p)/n)
+  - Forgetting to divide by n under the radical
+  - Confusing the σ/√n formula (for means) with the √(p(1−p)/n) formula (for proportions)
+  - Thinking one sample not matching p indicates the estimator is biased (that's just sampling variability)
 
 GRADING INSTRUCTIONS:
 1. Compare the student's answer to the expected answer

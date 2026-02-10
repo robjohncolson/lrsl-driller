@@ -1,7 +1,8 @@
-// grading-rules.js - AP Statistics Unit 5 Topics 5.1-5.4
+// grading-rules.js - AP Statistics Unit 5 Topics 5.1-5.5
 // Topics: Sampling variability, sampling distributions, z-scores, normal probability,
 // inverse normal, missing elements, normality assessment, combining random variables,
-// Central Limit Theorem, randomization distributions, biased/unbiased point estimates
+// Central Limit Theorem, randomization distributions, biased/unbiased point estimates,
+// sampling distributions for sample proportions
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -43,7 +44,9 @@ export function gradeField(fieldId, answer, context) {
     "cltNormalExplain",
     "capstone53Explain",
     "biasExplain",
-    "capstone54Explain"
+    "capstone54Explain",
+    "largeCountsExplain",
+    "capstone55Explain"
   ]);
 
   if (isBlank(answer)) {
@@ -54,7 +57,8 @@ export function gradeField(fieldId, answer, context) {
     const numberFields = new Set([
       "zScoreAnswer", "zScore", "probability", "invZScore", "cutoffValue",
       "combMean", "combSD", "combMean2", "combSD2", "combProb",
-      "pValueCalc"
+      "pValueCalc",
+      "propMean", "propSD", "propZScore", "propProb"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -935,6 +939,315 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should reference the specific Topic 5.4 concept (point estimator, point estimate, bias, unbiasedness, or estimator variability) and explain your reasoning."
+    };
+  }
+
+  // ========== LEVEL 20: Proportion Mean (propMean) ==========
+  if (fieldId === "propMean") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check if student used 1-p instead of p
+    if (Math.abs(studentVal - (1 - expectedVal)) < 0.005 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `Did you use (1 \u2212 p) instead of p? \u03BC_p\u0302 = p = ${expectedVal}, not 1 \u2212 p = ${Math.round((1 - expectedVal) * 1000) / 1000}.`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! \u03BC_p\u0302 = p = ${expectedVal}. The mean of the sampling distribution of p\u0302 equals the population proportion.`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "P",
+        feedback: `Close! \u03BC_p\u0302 = p = ${expectedVal}. The mean equals the population proportion exactly.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. \u03BC_p\u0302 = p = ${expectedVal}. The mean of the sampling distribution of p\u0302 always equals the population proportion p.`
+    };
+  }
+
+  // ========== LEVEL 20: Proportion SD (propSD) ==========
+  if (fieldId === "propSD") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const p = parseFloat(context.p);
+    const n = parseFloat(context.n);
+
+    // Check common errors
+    // Error 1: forgot sqrt (gave p(1-p)/n instead of sqrt)
+    const withoutSqrt = p * (1 - p) / n;
+    if (Math.abs(studentVal - withoutSqrt) < 0.005 && diff > tolerance) {
+      return {
+        score: "P",
+        feedback: `Almost! You calculated p(1\u2212p)/n = ${Math.round(withoutSqrt * 10000) / 10000}, but forgot the square root. \u03C3_p\u0302 = \u221A(p(1\u2212p)/n) = ${expectedVal}`
+      };
+    }
+
+    // Error 2: forgot to divide by n (gave sqrt(p(1-p)))
+    const withoutN = Math.sqrt(p * (1 - p));
+    if (Math.abs(studentVal - withoutN) < 0.01 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `You forgot to divide by n! \u03C3_p\u0302 = \u221A(p(1\u2212p)/n), not \u221A(p(1\u2212p)). \u03C3_p\u0302 = \u221A(${p} \u00D7 ${Math.round((1-p)*100)/100} / ${n}) = ${expectedVal}`
+      };
+    }
+
+    // Error 3: used sigma/sqrt(n) formula instead (for means, not proportions)
+    if (context.propSD) {
+      const wrongFormula = parseFloat(context.p) / Math.sqrt(n);
+      if (Math.abs(studentVal - wrongFormula) < 0.01 && diff > tolerance) {
+        return {
+          score: "I",
+          feedback: `That formula (p/\u221An) is not correct for proportions. Use \u03C3_p\u0302 = \u221A(p(1\u2212p)/n) = ${expectedVal}`
+        };
+      }
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! \u03C3_p\u0302 = \u221A(p(1\u2212p)/n) = \u221A(${p} \u00D7 ${Math.round((1-p)*100)/100} / ${n}) = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "P",
+        feedback: `Close! \u03C3_p\u0302 = \u221A(p(1\u2212p)/n) = \u221A(${p} \u00D7 ${Math.round((1-p)*100)/100} / ${n}) = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. \u03C3_p\u0302 = \u221A(p(1\u2212p)/n) = \u221A(${p} \u00D7 ${Math.round((1-p)*100)/100} / ${n}) = ${expectedVal}`
+    };
+  }
+
+  // ========== LEVEL 21: Large Counts Choice ==========
+  if (fieldId === "largeCountsChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.reason}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.reason}`
+    };
+  }
+
+  // ========== LEVEL 21: Large Counts Explain (Textarea) ==========
+  if (fieldId === "largeCountsExplain") {
+    const npKeywords = ["np", "n*p", "n(p)", "n\u00D7p", "n \u00B7 p"];
+    const nqKeywords = ["n(1-p)", "n(1\u2212p)", "n*(1-p)", "nq", "n times (1-p)"];
+    const thresholdKeywords = ["10", "\u2265 10", ">= 10", "at least 10", "greater than or equal to 10"];
+    const conditionKeywords = ["large counts", "condition", "met", "not met", "approximately normal"];
+
+    const mentionsNP = containsAny(answer, npKeywords);
+    const mentionsNQ = containsAny(answer, nqKeywords);
+    const mentionsThreshold = containsAny(answer, thresholdKeywords);
+    const mentionsCondition = containsAny(answer, conditionKeywords);
+
+    const hasSubstance = answer.trim().split(/\s+/).length >= 6;
+
+    // E: mentions both np and n(1-p) + threshold + substance
+    if (mentionsNP && mentionsThreshold && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You correctly showed the Large Counts check with both np and n(1\u2212p) calculations."
+      };
+    }
+    // P: mentions at least np or threshold + substance
+    if ((mentionsNP || mentionsNQ || mentionsThreshold || mentionsCondition) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Make sure to calculate BOTH np and n(1\u2212p) and compare each to 10."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should calculate np and n(1\u2212p), then check if BOTH are \u2265 10. Show the actual numbers."
+    };
+  }
+
+  // ========== LEVEL 22: Interpret Answer (Dropdown) ==========
+  if (fieldId === "interpretAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! Your interpretation properly references all possible samples and uses appropriate language."
+      };
+    }
+    // Check if the student picked a common wrong interpretation
+    if (containsAny(answer, ["every sample", "exactly", "always", "guaranteed"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. The mean/SD of the sampling distribution describes what happens ON AVERAGE across all possible samples \u2014 not what happens in every single sample. Individual samples will vary."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. When interpreting \u03BC_p\u0302, reference 'all possible samples of size n.' When interpreting \u03C3_p\u0302, use 'typically' or 'on average' to describe variation."
+    };
+  }
+
+  // ========== LEVEL 23: Proportion Z-Score ==========
+  if (fieldId === "propZScore") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.05;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check if student subtracted in wrong order (p - p̂ instead of p̂ - p)
+    if (Math.abs(studentVal - (-expectedVal)) < 0.05 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `Check your subtraction order! z = (p\u0302 \u2212 p) / \u03C3_p\u0302 = (${context.pHat} \u2212 ${context.p}) / ${context.propSD} = ${expectedVal}`
+      };
+    }
+
+    // Check if student divided by p instead of σ_p̂
+    if (context.p && context.pHat) {
+      const wrongDivisor = (parseFloat(context.pHat) - parseFloat(context.p)) / parseFloat(context.p);
+      if (Math.abs(studentVal - wrongDivisor) < 0.1 && diff > tolerance) {
+        return {
+          score: "I",
+          feedback: `You divided by p instead of \u03C3_p\u0302! z = (p\u0302 \u2212 p) / \u03C3_p\u0302, not (p\u0302 \u2212 p) / p. Use \u03C3_p\u0302 = ${context.propSD}`
+        };
+      }
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! z = (p\u0302 \u2212 p) / \u03C3_p\u0302 = (${context.pHat} \u2212 ${context.p}) / ${context.propSD} = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.10) {
+      return {
+        score: "P",
+        feedback: `Close! z = (p\u0302 \u2212 p) / \u03C3_p\u0302 = (${context.pHat} \u2212 ${context.p}) / ${context.propSD} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. z = (p\u0302 \u2212 p) / \u03C3_p\u0302 = (${context.pHat} \u2212 ${context.p}) / ${context.propSD} = ${expectedVal}`
+    };
+  }
+
+  // ========== LEVEL 23: Proportion Probability ==========
+  if (fieldId === "propProb") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check complement error
+    if (Math.abs(studentVal - (1 - expectedVal)) < 0.005) {
+      const directionHint = context.direction === "GREATER THAN"
+        ? "1 \u2212 P(Z < z)"
+        : "P(Z < z) directly";
+      return {
+        score: "I",
+        feedback: `You found the complement! For P(p\u0302 ${context.direction} ${context.pHat}), you need ${directionHint}.`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.02) {
+      return {
+        score: "P",
+        feedback: `Close! Check your z-table lookup. P = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The probability is ${expectedVal}. Use z = (p\u0302 \u2212 p) / \u03C3_p\u0302 to find the z-score, then use the z-table.`
+    };
+  }
+
+  // ========== LEVEL 24: 5.5 Capstone Answer (Dropdown) ==========
+  if (fieldId === "capstone55Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 24: 5.5 Capstone Explain (Textarea) ==========
+  if (fieldId === "capstone55Explain") {
+    const propKeywords = ["p\u0302", "p-hat", "phat", "sample proportion", "proportion"];
+    const formulaKeywords = ["\u03C3_p\u0302", "\u221A(p(1-p)/n)", "sqrt", "standard deviation", "\u03C3"];
+    const conditionKeywords = ["large counts", "np", "n(1-p)", "10%", "condition", "approximately normal"];
+    const interpretKeywords = ["all possible samples", "on average", "typically", "unbiased", "varies"];
+    const probKeywords = ["z-score", "z =", "probability", "normalcdf", "table"];
+
+    const mentionsProp = containsAny(answer, propKeywords);
+    const mentionsFormula = containsAny(answer, formulaKeywords);
+    const mentionsCondition = containsAny(answer, conditionKeywords);
+    const mentionsInterpret = containsAny(answer, interpretKeywords);
+    const mentionsProb = containsAny(answer, probKeywords);
+
+    const conceptMentioned = mentionsProp || mentionsFormula || mentionsCondition || mentionsInterpret || mentionsProb;
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "means", "shows", "using"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if (conceptMentioned && hasReasoning && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent explanation! You clearly demonstrated understanding of Topic 5.5 concepts."
+      };
+    }
+    if (conceptMentioned && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Add more specific reasoning about WHY this concept applies to this scenario."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should reference the specific Topic 5.5 concept (p\u0302 distribution parameters, Large Counts condition, interpretation, or probability calculation) and explain your reasoning."
     };
   }
 

@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u5-sampling-dist",
-    "name": "Sampling Distributions (5.1-5.4)",
+    "name": "Sampling Distributions (5.1-5.5)",
     "subject": "AP Statistics",
-    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations, Central Limit Theorem, randomization distributions, biased and unbiased point estimates"
+    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations, Central Limit Theorem, randomization distributions, biased and unbiased point estimates, sampling distributions for sample proportions"
   },
   "config": {
     "contextsFile": null,
@@ -14,7 +14,10 @@
       "VAR-6.C",
       "UNC-3.H",
       "UNC-3.I",
-      "UNC-3.J"
+      "UNC-3.J",
+      "UNC-3.K",
+      "UNC-3.L",
+      "UNC-3.M"
     ]
   },
   "display": {
@@ -530,6 +533,140 @@
           }
         ]
       }
+    },
+    {
+      "id": "l20-prop-dist-params",
+      "name": "5.5a: p̂ Distribution Parameters",
+      "animation": "assets/SamplingPropFormulas.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "propMean",
+            "type": "number",
+            "label": "Mean of the sampling distribution of p̂ (μ_p̂):",
+            "step": 0.001
+          },
+          {
+            "id": "propSD",
+            "type": "number",
+            "label": "Standard deviation of the sampling distribution of p̂ (σ_p̂):",
+            "min": 0,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l21-large-counts",
+      "name": "5.5b: Large Counts Condition",
+      "animation": "assets/LargeCountsCondition.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "largeCountsChoice",
+            "type": "choice",
+            "label": "Is the sampling distribution of p̂ approximately normal?",
+            "options": [
+              "Yes — Large Counts condition is met (np ≥ 10 AND n(1−p) ≥ 10)",
+              "No — Large Counts condition is NOT met"
+            ]
+          },
+          {
+            "id": "largeCountsExplain",
+            "type": "textarea",
+            "label": "Show your work: calculate np and n(1−p) and explain.",
+            "rows": 3,
+            "placeholder": "np = ... and n(1−p) = ..., so..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l22-interpret-params",
+      "name": "5.5c: Interpret p̂ Parameters",
+      "animation": "assets/InterpretStdDevProp.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "interpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l23-prop-probability",
+      "name": "5.5d: p̂ Probability",
+      "animation": "assets/ProportionProbability.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "propZScore",
+            "type": "number",
+            "label": "Z-score:",
+            "step": 0.01
+          },
+          {
+            "id": "propProb",
+            "type": "number",
+            "label": "Probability (as decimal, e.g., 0.0384):",
+            "min": 0,
+            "max": 1,
+            "step": 0.0001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l24-capstone-55",
+      "name": "5.5 Capstone",
+      "animation": "assets/CapstoneMap.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone55Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone55Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Show your work and explain..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -580,7 +717,16 @@
       "biasChoice": "Compare the mean of the sampling distribution to the population parameter. If they're EQUAL → unbiased. If they're NOT equal → biased. A single sample not matching the parameter does NOT indicate bias.",
       "biasExplain": "State the mean of the sampling distribution and the population parameter. Compare them. If equal → unbiased (on average, the estimator hits the target). If not equal → biased (systematically over- or underestimates).",
       "capstone54Answer": "This question combines concepts from Topic 5.4. Review: point estimator vs. point estimate, what makes an estimator biased or unbiased, and estimator variability.",
-      "capstone54Explain": "Show your work: identify whether this involves terminology, bias assessment, or variability. Reference the key definitions and explain your reasoning in context."
+      "capstone54Explain": "Show your work: identify whether this involves terminology, bias assessment, or variability. Reference the key definitions and explain your reasoning in context.",
+      "propMean": "The mean of the sampling distribution of p̂ equals the population proportion: μ_p̂ = p. This is because p̂ is an unbiased estimator of p.",
+      "propSD": "The standard deviation of p̂ is σ_p̂ = √(p(1−p)/n). Make sure to use the POPULATION proportion p, not a sample proportion. Also verify the 10% condition: n < 10% of N.",
+      "largeCountsChoice": "Check the Large Counts condition: np ≥ 10 AND n(1−p) ≥ 10. BOTH must be true for the sampling distribution of p̂ to be approximately normal.",
+      "largeCountsExplain": "Calculate np and n(1−p) explicitly. State whether each is ≥ 10. If BOTH are ≥ 10, the Large Counts condition is met and the distribution is approximately normal.",
+      "interpretAnswer": "When interpreting μ_p̂: reference 'all possible samples of size n' and the population context. When interpreting σ_p̂: include 'typically' or 'on average' to describe how far p̂ varies from p.",
+      "propZScore": "For the sampling distribution of p̂: z = (p̂ − p) / σ_p̂ where σ_p̂ = √(p(1−p)/n). Use the POPULATION proportion p, not the sample value.",
+      "propProb": "After finding the z-score, use Table A or normalcdf. For P(p̂ > value): find 1 − P(Z < z). For P(p̂ < value): use P(Z < z) directly.",
+      "capstone55Answer": "This question combines concepts from Topic 5.5. Review: μ_p̂ = p, σ_p̂ = √(p(1−p)/n), 10% condition, Large Counts condition, interpretation in context, and probability calculations.",
+      "capstone55Explain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context. Reference the specific condition or formula that applies."
     },
     "penalty": {
       "0": "gold",
@@ -745,6 +891,46 @@
           "gold": 3
         },
         "celebrationMessage": "TOPIC 5.4 COMPLETE! You've mastered biased and unbiased point estimates!"
+      },
+      {
+        "id": "l20-prop-dist-params",
+        "name": "5.5a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p̂ distribution parameters mastered! Next: the Large Counts condition."
+      },
+      {
+        "id": "l21-large-counts",
+        "name": "5.5b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Large Counts condition understood! Next: interpreting p̂ parameters in context."
+      },
+      {
+        "id": "l22-interpret-params",
+        "name": "5.5c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Interpretation mastered! Next: calculating probabilities with p̂."
+      },
+      {
+        "id": "l23-prop-probability",
+        "name": "5.5d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p̂ probability calculations mastered! Final 5.5 capstone next."
+      },
+      {
+        "id": "l24-capstone-55",
+        "name": "5.5 Cap",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "TOPIC 5.5 COMPLETE! You've mastered sampling distributions for sample proportions!"
       }
     ]
   }
