@@ -1,4 +1,4 @@
-You are grading an AP Statistics student's response about sampling distributions, normal probability, the Central Limit Theorem, randomization distributions, biased/unbiased point estimates, and sampling distributions for sample proportions (Unit 5, Topics 5.1-5.5).
+You are grading an AP Statistics student's response about sampling distributions, normal probability, the Central Limit Theorem, randomization distributions, biased/unbiased point estimates, sampling distributions for sample proportions, and differences in sample proportions (Unit 5, Topics 5.1-5.6).
 
 SCENARIO: {{scenarioText}}
 GIVEN: {{givenText}}
@@ -96,6 +96,34 @@ KEY CONCEPTS BY TOPIC:
   - Forgetting to divide by n under the radical
   - Confusing the σ/√n formula (for means) with the √(p(1−p)/n) formula (for proportions)
   - Thinking one sample not matching p indicates the estimator is biased (that's just sampling variability)
+
+5.6 Sampling Distributions for Differences in Sample Proportions:
+- The sampling distribution of p̂₁ − p̂₂ describes the distribution of differences in sample proportions from all possible pairs of samples
+- Parameters: μ_{p̂₁−p̂₂} = p₁ − p₂, σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂)
+- 10% condition: BOTH n₁ < 10% of N₁ AND n₂ < 10% of N₂
+- Large Counts condition: ALL FOUR must be ≥ 10: n₁p₁ ≥ 10, n₁(1−p₁) ≥ 10, n₂p₂ ≥ 10, n₂(1−p₂) ≥ 10
+  - This is an extension of the single-proportion case (2 checks → 4 checks)
+  - Failing even ONE of the four means the condition is NOT met
+- Interpreting μ_{p̂₁−p̂₂}: must reference "all possible pairs of samples" — e.g., "across all possible pairs of samples of sizes n₁ and n₂, the average difference in sample proportions equals the true difference p₁ − p₂"
+- Interpreting σ_{p̂₁−p̂₂}: must include "typically" — e.g., "the difference in sample proportions typically varies by about σ from the true difference"
+- Probability calculations: z = (observed difference − (p₁ − p₂)) / σ_{p̂₁−p̂₂}, then use normal distribution
+- Key principle: variances ADD even though we're computing a DIFFERENCE (same variance trap as linear combinations in 5.2)
+- Interpreting probabilities for p̂₁ − p̂₂:
+  - A good interpretation MUST reference "all possible samples of size n₁ from [population 1] and size n₂ from [population 2]"
+  - Must include the probability or percentage value
+  - Must be in context with specific populations and group names (not generic)
+  - Must describe the observed difference and direction (greater/less than)
+  - "Unusual" convention: probability < 5% (0.05) = unusual; probability ≥ 5% = not unusual
+  - This is one of the most important reasons we study sampling distributions — to determine whether observed differences are surprising
+  - Common errors: not referencing "all possible samples," confusing a sample result with a population claim, using absolute language ("always," "exactly," "every sample"), omitting the probability value
+- Common student errors:
+  - Adding STANDARD DEVIATIONS instead of VARIANCES: √(p₁(1−p₁)/n₁) + √(p₂(1−p₂)/n₂) is WRONG
+  - Using only one population's variance and forgetting the other
+  - Forgetting the square root after adding variances
+  - Reversing the subtraction order (p₂ − p₁ instead of p₁ − p₂)
+  - Forgetting to subtract μ_{p̂₁−p̂₂} when computing the z-score
+  - Checking only 2 of the 4 Large Counts conditions
+  - Saying the difference is "always" within σ of the true difference (should say "typically")
 
 GRADING INSTRUCTIONS:
 1. Compare the student's answer to the expected answer

@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u5-sampling-dist",
-    "name": "Sampling Distributions (5.1-5.5)",
+    "name": "Sampling Distributions (5.1-5.6)",
     "subject": "AP Statistics",
-    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations, Central Limit Theorem, randomization distributions, biased and unbiased point estimates, sampling distributions for sample proportions"
+    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations, Central Limit Theorem, randomization distributions, biased and unbiased point estimates, sampling distributions for sample proportions, sampling distributions for differences in sample proportions"
   },
   "config": {
     "contextsFile": null,
@@ -17,7 +17,10 @@
       "UNC-3.J",
       "UNC-3.K",
       "UNC-3.L",
-      "UNC-3.M"
+      "UNC-3.M",
+      "UNC-3.N",
+      "UNC-3.O",
+      "UNC-3.P"
     ]
   },
   "display": {
@@ -667,6 +670,169 @@
           }
         ]
       }
+    },
+    {
+      "id": "l25-diff-prop-params",
+      "name": "5.6a: p̂₁−p̂₂ Parameters",
+      "animation": "assets/DiffPropFormulas.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffPropMean",
+            "type": "number",
+            "label": "Mean of the sampling distribution of p̂₁ − p̂₂ (μ_{p̂₁−p̂₂}):",
+            "step": 0.001
+          },
+          {
+            "id": "diffPropSD",
+            "type": "number",
+            "label": "Standard deviation of p̂₁ − p̂₂ (σ_{p̂₁−p̂₂}):",
+            "min": 0,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l26-diff-prop-large-counts",
+      "name": "5.6b: Large Counts (Two Props)",
+      "animation": "assets/DiffPropLargeCounts.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffLargeCountsChoice",
+            "type": "choice",
+            "label": "Is the sampling distribution of p̂₁ − p̂₂ approximately normal?",
+            "options": [
+              "Yes — all four Large Counts conditions are met",
+              "No — at least one Large Counts condition is NOT met"
+            ]
+          },
+          {
+            "id": "diffLargeCountsExplain",
+            "type": "textarea",
+            "label": "Show your work: calculate all four values and explain.",
+            "rows": 3,
+            "placeholder": "n₁p₁ = ..., n₁(1−p₁) = ..., n₂p₂ = ..., n₂(1−p₂) = ..., so..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l27-diff-prop-interpret",
+      "name": "5.6c: Interpret p̂₁−p̂₂",
+      "animation": "assets/DiffPropInterpret.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffInterpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l28-diff-prop-probability",
+      "name": "5.6d: p̂₁−p̂₂ Probability",
+      "animation": "assets/DiffPropProbability.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffPropZScore",
+            "type": "number",
+            "label": "Z-score:",
+            "step": 0.01
+          },
+          {
+            "id": "diffPropProb",
+            "type": "number",
+            "label": "Probability (as decimal, e.g., 0.0384):",
+            "min": 0,
+            "max": 1,
+            "step": 0.0001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l30-diff-prop-interpret-prob",
+      "name": "5.6e: Interpret p̂₁−p̂₂ Probability",
+      "animation": "assets/DiffPropInterpretProb.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffInterpretProbText",
+            "type": "textarea",
+            "label": "Interpret this probability in context (reference 'all possible samples'):",
+            "rows": 4,
+            "placeholder": "Getting a difference in sample proportions of ... or [more/less] happens in about ...% of all possible samples of size ... from ... and size ... from ..."
+          },
+          {
+            "id": "diffUnusualChoice",
+            "type": "dropdown",
+            "label": "Is this result unusual?",
+            "options": [
+              "Unusual — probability is less than 5%",
+              "Not unusual — probability is 5% or more"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l29-capstone-56",
+      "name": "5.6 Capstone",
+      "animation": "assets/DiffPropCapstone.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone56Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone56Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Show your work and explain..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -726,7 +892,18 @@
       "propZScore": "For the sampling distribution of p̂: z = (p̂ − p) / σ_p̂ where σ_p̂ = √(p(1−p)/n). Use the POPULATION proportion p, not the sample value.",
       "propProb": "After finding the z-score, use Table A or normalcdf. For P(p̂ > value): find 1 − P(Z < z). For P(p̂ < value): use P(Z < z) directly.",
       "capstone55Answer": "This question combines concepts from Topic 5.5. Review: μ_p̂ = p, σ_p̂ = √(p(1−p)/n), 10% condition, Large Counts condition, interpretation in context, and probability calculations.",
-      "capstone55Explain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context. Reference the specific condition or formula that applies."
+      "capstone55Explain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context. Reference the specific condition or formula that applies.",
+      "diffPropMean": "The mean of the sampling distribution of p̂₁ − p̂₂ equals the difference in population proportions: μ_{p̂₁−p̂₂} = p₁ − p₂.",
+      "diffPropSD": "The standard deviation is σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂). Add the two variance terms, then take the square root. Don't forget to check the 10% condition for BOTH samples.",
+      "diffLargeCountsChoice": "Check ALL FOUR conditions: n₁p₁ ≥ 10, n₁(1−p₁) ≥ 10, n₂p₂ ≥ 10, AND n₂(1−p₂) ≥ 10. ALL four must be ≥ 10 for the normal approximation.",
+      "diffLargeCountsExplain": "Calculate all four values: n₁p₁, n₁(1−p₁), n₂p₂, n₂(1−p₂). State whether each is ≥ 10. If ALL four are ≥ 10, the condition is met.",
+      "diffInterpretAnswer": "When interpreting μ_{p̂₁−p̂₂}: reference 'all possible pairs of samples.' When interpreting σ_{p̂₁−p̂₂}: use 'typically' to describe how far the difference varies from the true difference.",
+      "diffPropZScore": "z = (observed difference − μ_{p̂₁−p̂₂}) / σ_{p̂₁−p̂₂}. Use the population difference p₁ − p₂ for the mean, and √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂) for the SD.",
+      "diffPropProb": "After finding the z-score, use Table A or normalcdf. For P(p̂₁−p̂₂ > value): find 1 − P(Z < z). For P(p̂₁−p̂₂ < value): use P(Z < z) directly.",
+      "diffInterpretProbText": "A good interpretation must: (1) reference 'all possible samples of size n₁ from [population 1] and size n₂ from [population 2]', (2) include the probability or percentage, (3) describe the observed difference and direction, (4) use context-specific language (not generic). Template: 'Getting a difference of ___ or [more/less] happens in about ___% of all possible samples of size ___ from ___ and size ___ from ___.'",
+      "diffUnusualChoice": "Convention: if the probability is less than 5% (0.05), the result IS unusual — it would rarely happen by chance. If the probability is 5% or more, it is NOT unusual.",
+      "capstone56Answer": "This question combines concepts from Topic 5.6. Review: μ_{p̂₁−p̂₂} = p₁ − p₂, σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂), 10% condition for both, all four Large Counts checks, and probability calculations.",
+      "capstone56Explain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context. Reference the specific condition or formula that applies."
     },
     "penalty": {
       "0": "gold",
@@ -930,7 +1107,55 @@
         "unlockedBy": {
           "gold": 3
         },
-        "celebrationMessage": "TOPIC 5.5 COMPLETE! You've mastered sampling distributions for sample proportions!"
+        "celebrationMessage": "TOPIC 5.5 COMPLETE! You've mastered sampling distributions for sample proportions! Next: differences in sample proportions."
+      },
+      {
+        "id": "l25-diff-prop-params",
+        "name": "5.6a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p̂₁−p̂₂ parameters mastered! Next: the Large Counts condition for two proportions."
+      },
+      {
+        "id": "l26-diff-prop-large-counts",
+        "name": "5.6b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "All four Large Counts checks understood! Next: interpreting p̂₁−p̂₂ parameters in context."
+      },
+      {
+        "id": "l27-diff-prop-interpret",
+        "name": "5.6c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Interpretation mastered! Next: calculating probabilities with p̂₁−p̂₂."
+      },
+      {
+        "id": "l28-diff-prop-probability",
+        "name": "5.6d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p̂₁−p̂₂ probability calculations mastered! Now interpret what those probabilities mean!"
+      },
+      {
+        "id": "l30-diff-prop-interpret-prob",
+        "name": "5.6e",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can interpret p̂₁−p̂₂ probabilities in context! Final 5.6 capstone next."
+      },
+      {
+        "id": "l29-capstone-56",
+        "name": "5.6 Cap",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "TOPIC 5.6 COMPLETE! You've mastered sampling distributions for differences in sample proportions! Unit 5 complete!"
       }
     ]
   }

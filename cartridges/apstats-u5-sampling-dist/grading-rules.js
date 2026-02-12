@@ -1,8 +1,8 @@
-// grading-rules.js - AP Statistics Unit 5 Topics 5.1-5.5
+// grading-rules.js - AP Statistics Unit 5 Topics 5.1-5.6
 // Topics: Sampling variability, sampling distributions, z-scores, normal probability,
 // inverse normal, missing elements, normality assessment, combining random variables,
 // Central Limit Theorem, randomization distributions, biased/unbiased point estimates,
-// sampling distributions for sample proportions
+// sampling distributions for sample proportions, differences in sample proportions
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -46,7 +46,10 @@ export function gradeField(fieldId, answer, context) {
     "biasExplain",
     "capstone54Explain",
     "largeCountsExplain",
-    "capstone55Explain"
+    "capstone55Explain",
+    "diffLargeCountsExplain",
+    "diffInterpretProbText",
+    "capstone56Explain"
   ]);
 
   if (isBlank(answer)) {
@@ -58,7 +61,8 @@ export function gradeField(fieldId, answer, context) {
       "zScoreAnswer", "zScore", "probability", "invZScore", "cutoffValue",
       "combMean", "combSD", "combMean2", "combSD2", "combProb",
       "pValueCalc",
-      "propMean", "propSD", "propZScore", "propProb"
+      "propMean", "propSD", "propZScore", "propProb",
+      "diffPropMean", "diffPropSD", "diffPropZScore", "diffPropProb"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -1248,6 +1252,384 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should reference the specific Topic 5.5 concept (p\u0302 distribution parameters, Large Counts condition, interpretation, or probability calculation) and explain your reasoning."
+    };
+  }
+
+  // ========== LEVEL 25: Difference in Proportions Mean (diffPropMean) ==========
+  if (fieldId === "diffPropMean") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const p1 = parseFloat(context.p1);
+    const p2 = parseFloat(context.p2);
+
+    // Check if student added instead of subtracted
+    if (Math.abs(studentVal - (p1 + p2)) < 0.01 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `You added the proportions instead of subtracting! μ_{p̂₁−p̂₂} = p₁ − p₂ = ${p1} − ${p2} = ${expectedVal}, not p₁ + p₂ = ${Math.round((p1 + p2) * 1000) / 1000}.`
+      };
+    }
+
+    // Check if student reversed the subtraction
+    if (Math.abs(studentVal - (p2 - p1)) < 0.005 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `You subtracted in the wrong order! μ_{p̂₁−p̂₂} = p₁ − p₂ = ${p1} − ${p2} = ${expectedVal}, not p₂ − p₁ = ${Math.round((p2 - p1) * 1000) / 1000}.`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! μ_{p̂₁−p̂₂} = p₁ − p₂ = ${p1} − ${p2} = ${expectedVal}. The mean equals the difference in population proportions.`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "P",
+        feedback: `Close! μ_{p̂₁−p̂₂} = p₁ − p₂ = ${p1} − ${p2} = ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. μ_{p̂₁−p̂₂} = p₁ − p₂ = ${p1} − ${p2} = ${expectedVal}.`
+    };
+  }
+
+  // ========== LEVEL 25: Difference in Proportions SD (diffPropSD) ==========
+  if (fieldId === "diffPropSD") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const p1 = parseFloat(context.p1);
+    const p2 = parseFloat(context.p2);
+    const n1 = parseFloat(context.n1);
+    const n2 = parseFloat(context.n2);
+    const var1 = p1 * (1 - p1) / n1;
+    const var2 = p2 * (1 - p2) / n2;
+    const sd1 = Math.sqrt(var1);
+    const sd2 = Math.sqrt(var2);
+
+    // Error: added SDs instead of variances
+    const sdSum = sd1 + sd2;
+    if (Math.abs(studentVal - sdSum) < 0.01 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `⚠️ VARIANCE TRAP! You added standard deviations (${Math.round(sd1 * 1000) / 1000} + ${Math.round(sd2 * 1000) / 1000}). You must add VARIANCES, then take one square root: σ = √(${Math.round(var1 * 10000) / 10000} + ${Math.round(var2 * 10000) / 10000}) = ${expectedVal}`
+      };
+    }
+
+    // Error: forgot square root (gave sum of variances)
+    const varSum = var1 + var2;
+    if (Math.abs(studentVal - varSum) < 0.005 && diff > tolerance) {
+      return {
+        score: "P",
+        feedback: `Almost! You added variances correctly, but forgot the square root! σ = √(${Math.round(varSum * 10000) / 10000}) = ${expectedVal}`
+      };
+    }
+
+    // Error: used only one term (forgot the other population)
+    if (Math.abs(studentVal - sd1) < 0.01 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `You only used one population's variance! Include BOTH: σ = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂) = ${expectedVal}`
+      };
+    }
+    if (Math.abs(studentVal - sd2) < 0.01 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `You only used one population's variance! Include BOTH: σ = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂) = ${expectedVal}`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂) = √(${Math.round(var1 * 10000) / 10000} + ${Math.round(var2 * 10000) / 10000}) = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "P",
+        feedback: `Close! σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂) = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂) = √(${Math.round(var1 * 10000) / 10000} + ${Math.round(var2 * 10000) / 10000}) = ${expectedVal}. Add both variance terms, then take the square root.`
+    };
+  }
+
+  // ========== LEVEL 26: Diff Large Counts Choice ==========
+  if (fieldId === "diffLargeCountsChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.reason}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.reason}`
+    };
+  }
+
+  // ========== LEVEL 26: Diff Large Counts Explain (Textarea) ==========
+  if (fieldId === "diffLargeCountsExplain") {
+    const npKeywords = ["n₁p₁", "n1p1", "n₁·p₁", "n1*p1", "n₂p₂", "n2p2", "n₂·p₂", "n2*p2", "np"];
+    const nqKeywords = ["n₁(1-p₁)", "n₁(1−p₁)", "n1(1-p1)", "n₂(1-p₂)", "n₂(1−p₂)", "n2(1-p2)", "nq", "n(1-p)"];
+    const thresholdKeywords = ["10", "≥ 10", ">= 10", "at least 10"];
+    const fourKeywords = ["four", "4", "all four", "all 4"];
+
+    const mentionsNP = containsAny(answer, npKeywords);
+    const mentionsNQ = containsAny(answer, nqKeywords);
+    const mentionsThreshold = containsAny(answer, thresholdKeywords);
+    const mentionsFour = containsAny(answer, fourKeywords);
+
+    const hasSubstance = answer.trim().split(/\s+/).length >= 6;
+
+    if (mentionsNP && mentionsThreshold && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You correctly checked all four Large Counts conditions for the two-proportion case."
+      };
+    }
+    if ((mentionsFour || mentionsNQ || mentionsThreshold) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Make sure to calculate ALL FOUR values: n₁p₁, n₁(1−p₁), n₂p₂, n₂(1−p₂) and compare each to 10."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should calculate all four values: n₁p₁, n₁(1−p₁), n₂p₂, n₂(1−p₂). Check if each is ≥ 10. ALL FOUR must pass."
+    };
+  }
+
+  // ========== LEVEL 27: Diff Interpret Answer (Dropdown) ==========
+  if (fieldId === "diffInterpretAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! Your interpretation properly references all possible pairs of samples and uses appropriate language."
+      };
+    }
+    if (containsAny(answer, ["every pair", "exactly", "always", "guaranteed"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. The mean/SD of the sampling distribution describes what happens ON AVERAGE across all possible pairs of samples — not what happens in every single pair."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. When interpreting μ_{p̂₁−p̂₂}, reference 'all possible pairs of samples.' When interpreting σ_{p̂₁−p̂₂}, use 'typically' or 'on average' to describe variation."
+    };
+  }
+
+  // ========== LEVEL 28: Diff Proportion Z-Score ==========
+  if (fieldId === "diffPropZScore") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.05;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check if student subtracted in wrong order
+    if (Math.abs(studentVal - (-expectedVal)) < 0.05 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `Check your subtraction order! z = (observed difference − μ_{p̂₁−p̂₂}) / σ_{p̂₁−p̂₂} = (${context.obsDiff} − ${context.trueDiff}) / ${context.diffPropSD} = ${expectedVal}`
+      };
+    }
+
+    // Check if student forgot to subtract the mean
+    const wrongZ = parseFloat(context.obsDiff) / parseFloat(context.diffPropSD);
+    if (Math.abs(studentVal - wrongZ) < 0.1 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `You forgot to subtract μ_{p̂₁−p̂₂}! z = (observed − μ) / σ = (${context.obsDiff} − ${context.trueDiff}) / ${context.diffPropSD} = ${expectedVal}`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! z = (${context.obsDiff} − ${context.trueDiff}) / ${context.diffPropSD} = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.10) {
+      return {
+        score: "P",
+        feedback: `Close! z = (${context.obsDiff} − ${context.trueDiff}) / ${context.diffPropSD} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. z = (observed difference − μ) / σ = (${context.obsDiff} − ${context.trueDiff}) / ${context.diffPropSD} = ${expectedVal}`
+    };
+  }
+
+  // ========== LEVEL 28: Diff Proportion Probability ==========
+  if (fieldId === "diffPropProb") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check complement error
+    if (Math.abs(studentVal - (1 - expectedVal)) < 0.005) {
+      const directionHint = context.direction === "GREATER THAN"
+        ? "1 − P(Z < z)"
+        : "P(Z < z) directly";
+      return {
+        score: "I",
+        feedback: `You found the complement! For P(p̂₁−p̂₂ ${context.direction} ${context.obsDiff}), you need ${directionHint}.`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.02) {
+      return {
+        score: "P",
+        feedback: `Close! Check your z-table lookup. P = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The probability is ${expectedVal}. Use z = (observed − μ) / σ, then use the z-table.`
+    };
+  }
+
+  // ========== LEVEL 30: Interpret p̂₁−p̂₂ Probability Text (Textarea) ==========
+  if (fieldId === "diffInterpretProbText") {
+    const allSamplesKeywords = ["all possible samples", "all possible pairs", "all samples of"];
+    const probKeywords = ["%", "percent", "probability", context.probability, context.probabilityPct];
+    const contextKeywords = [context.group1, context.group2, context.n1, context.n2].filter(Boolean);
+    const directionKeywords = ["greater", "more", "less", "fewer", "higher", "lower", "above", "below", context.obsDiff];
+
+    const mentionsAllSamples = containsAny(answer, allSamplesKeywords);
+    const mentionsProb = containsAny(answer, probKeywords);
+    const mentionsContext = contextKeywords.filter(kw => answer.toLowerCase().includes(String(kw).toLowerCase())).length >= 2;
+    const mentionsDirection = containsAny(answer, directionKeywords);
+
+    const errorKeywords = ["always", "exactly", "every sample", "guarantees", "proves"];
+    const hasError = containsAny(answer, errorKeywords);
+
+    const hasSubstance = answer.trim().split(/\s+/).length >= 12;
+
+    if (hasError) {
+      return {
+        score: "I",
+        feedback: "Be careful with absolute language! Probability describes what happens across all possible samples, not a guarantee about any single sample."
+      };
+    }
+    if (mentionsAllSamples && mentionsProb && mentionsContext && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent interpretation! You correctly referenced all possible samples, included the probability, and used context-specific language."
+      };
+    }
+    if ((mentionsProb || mentionsDirection) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Make sure to reference 'all possible samples of size n₁ and n₂' and include the specific populations and probability in your interpretation."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your interpretation should reference 'all possible samples of these sizes from these populations,' include the probability/percentage, and describe the observed difference in context."
+    };
+  }
+
+  // ========== LEVEL 30: Unusual Choice (Dropdown) ==========
+  if (fieldId === "diffUnusualChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! A probability of ${context.probability} is ${context.unusualAnswer === "Unusual" ? "less than 5%, making this unusual" : "5% or more, so this is not unusual"}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The probability is ${context.probability} (${context.probabilityPct}%). Since this is ${parseFloat(context.probability) < 0.05 ? "less than" : "greater than or equal to"} 0.05 (5%), the result is ${context.unusualAnswer === "Unusual" ? "unusual" : "not unusual"}.`
+    };
+  }
+
+  // ========== LEVEL 29: 5.6 Capstone Answer (Dropdown) ==========
+  if (fieldId === "capstone56Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 29: 5.6 Capstone Explain (Textarea) ==========
+  if (fieldId === "capstone56Explain") {
+    const diffPropKeywords = ["p̂₁", "p̂₂", "p-hat", "phat", "difference", "p̂₁ − p̂₂", "p1 - p2", "linear combination"];
+    const formulaKeywords = ["σ_{p̂₁−p̂₂}", "√(p₁(1-p₁)/n₁", "sqrt", "standard deviation", "σ", "variance"];
+    const conditionKeywords = ["large counts", "four", "4 conditions", "n₁p₁", "n₂p₂", "10%", "approximately normal"];
+    const interpretKeywords = ["all possible pairs", "on average", "typically", "varies", "vary"];
+    const probKeywords = ["z-score", "z =", "probability", "normalcdf", "table"];
+
+    const mentionsDiff = containsAny(answer, diffPropKeywords);
+    const mentionsFormula = containsAny(answer, formulaKeywords);
+    const mentionsCondition = containsAny(answer, conditionKeywords);
+    const mentionsInterpret = containsAny(answer, interpretKeywords);
+    const mentionsProb = containsAny(answer, probKeywords);
+
+    const conceptMentioned = mentionsDiff || mentionsFormula || mentionsCondition || mentionsInterpret || mentionsProb;
+    const categoryCount = [mentionsDiff, mentionsFormula, mentionsCondition, mentionsInterpret, mentionsProb].filter(Boolean).length;
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "means", "shows", "using"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if ((categoryCount >= 2 && hasSubstance) || (conceptMentioned && hasReasoning && hasSubstance)) {
+      return {
+        score: "E",
+        feedback: "Excellent explanation! You clearly demonstrated understanding of Topic 5.6 concepts."
+      };
+    }
+    if (conceptMentioned && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Add more specific reasoning about WHY this concept applies to this scenario."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should reference the specific Topic 5.6 concept (p̂₁−p̂₂ parameters, four Large Counts conditions, interpretation, or probability calculation) and explain your reasoning."
     };
   }
 

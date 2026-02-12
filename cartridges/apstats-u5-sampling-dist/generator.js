@@ -1,8 +1,8 @@
-// generator.js - AP Statistics Unit 5 (Topics 5.1–5.5): Sampling Distributions
+// generator.js - AP Statistics Unit 5 (Topics 5.1–5.6): Sampling Distributions
 // Sampling variability, sampling distributions, z-scores, normal probability,
 // inverse normal, AP solution elements, assessing normality, linear combinations,
 // Central Limit Theorem, randomization distributions, biased/unbiased point estimates,
-// sampling distributions for sample proportions
+// sampling distributions for sample proportions, differences in sample proportions
 
 // ============ UTILITY FUNCTIONS ============
 
@@ -1699,6 +1699,219 @@ const capstone55Bank = [
   }
 ];
 
+// ---- L25: Difference in Proportions contexts ----
+const diffPropContextBank = [
+  { label: "flu vaccine", group1: "adults aged 18-49", group2: "adults aged 50+", p1: 0.48, p2: 0.72, n1: 120, n2: 100, N1: 500000, N2: 300000, desc: "A health department compares flu vaccination rates between two age groups" },
+  { label: "online shopping", group1: "urban residents", group2: "rural residents", p1: 0.78, p2: 0.54, n1: 150, n2: 130, N1: 400000, N2: 200000, desc: "A marketing firm compares online shopping rates between urban and rural residents" },
+  { label: "exercise habits", group1: "college students", group2: "working professionals", p1: 0.62, p2: 0.41, n1: 80, n2: 100, N1: 50000, N2: 250000, desc: "A fitness study compares regular exercise rates between college students and working professionals" },
+  { label: "pet ownership", group1: "homeowners", group2: "renters", p1: 0.73, p2: 0.35, n1: 90, n2: 110, N1: 150000, N2: 200000, desc: "A survey compares pet ownership rates between homeowners and renters" },
+  { label: "public transit", group1: "downtown workers", group2: "suburban workers", p1: 0.56, p2: 0.18, n1: 200, n2: 180, N1: 100000, N2: 350000, desc: "A transportation study compares public transit usage between downtown and suburban workers" },
+  { label: "recycling", group1: "residents in City A", group2: "residents in City B", p1: 0.64, p2: 0.52, n1: 100, n2: 120, N1: 250000, N2: 300000, desc: "An environmental agency compares recycling participation rates between two cities" },
+  { label: "breakfast habits", group1: "high school students", group2: "middle school students", p1: 0.38, p2: 0.55, n1: 140, n2: 160, N1: 80000, N2: 60000, desc: "A nutrition study compares rates of eating breakfast daily between high school and middle school students" },
+  { label: "smartphone usage", group1: "teens", group2: "seniors", p1: 0.96, p2: 0.58, n1: 75, n2: 90, N1: 100000, N2: 200000, desc: "A tech survey compares smartphone ownership rates between teens and seniors" },
+  { label: "voter turnout", group1: "registered Democrats", group2: "registered Republicans", p1: 0.68, p2: 0.72, n1: 250, n2: 230, N1: 600000, N2: 550000, desc: "An election study compares voter turnout rates between two parties" },
+  { label: "organic food", group1: "shoppers under 40", group2: "shoppers 40 and older", p1: 0.31, p2: 0.22, n1: 180, n2: 150, N1: 400000, N2: 500000, desc: "A grocery study compares organic food purchase rates between younger and older shoppers" }
+];
+
+// ---- L26: Large Counts for two proportions ----
+const diffLargeCountsBank = [
+  { group1: "children", group2: "adults", p1: 0.03, p2: 0.12, n1: 200, n2: 150, desc: "A hospital compares infection rates between children and adults after a procedure" },
+  { group1: "men", group2: "women", p1: 0.45, p2: 0.52, n1: 100, n2: 120, desc: "A poll compares approval ratings of a policy between men and women" },
+  { group1: "treatment group", group2: "control group", p1: 0.85, p2: 0.60, n1: 80, n2: 90, desc: "A clinical trial compares recovery rates between treatment and control groups" },
+  { group1: "East region", group2: "West region", p1: 0.02, p2: 0.05, n1: 300, n2: 150, desc: "A company compares product defect rates between factories in two regions" },
+  { group1: "freshmen", group2: "seniors", p1: 0.72, p2: 0.88, n1: 50, n2: 60, desc: "A university compares on-time graduation rates between freshmen and seniors" },
+  { group1: "morning shift", group2: "night shift", p1: 0.91, p2: 0.78, n1: 70, n2: 55, desc: "A factory compares safety compliance rates between morning and night shifts" },
+  { group1: "brand A users", group2: "brand B users", p1: 0.07, p2: 0.04, n1: 100, n2: 80, desc: "A consumer report compares complaint rates between two phone brands" },
+  { group1: "vaccinated", group2: "unvaccinated", p1: 0.02, p2: 0.15, n1: 250, n2: 200, desc: "A study compares hospitalization rates between vaccinated and unvaccinated groups" },
+  { group1: "students with tutoring", group2: "students without tutoring", p1: 0.68, p2: 0.45, n1: 40, n2: 45, desc: "A school compares pass rates between students with and without after-school tutoring" },
+  { group1: "email recipients", group2: "social media audience", p1: 0.05, p2: 0.03, n1: 500, n2: 600, desc: "A marketing team compares click-through rates between email and social media campaigns" }
+];
+
+// ---- L27: Interpret difference in proportions ----
+const diffInterpretParamsBank = [
+  {
+    context: "65% of urban residents and 42% of rural residents use ride-sharing apps. Random samples of 100 urban and 80 rural residents are taken.",
+    p1: 0.65, p2: 0.42, n1: 100, n2: 80, paramType: "mean",
+    correctInterpretation: "μ_{p̂₁−p̂₂} = 0.23, meaning that across all possible pairs of samples (100 urban and 80 rural), the average difference in sample proportions who use ride-sharing equals the true difference of 0.23",
+    wrongInterpretations: [
+      "In every pair of samples, the difference in proportions will be exactly 0.23",
+      "The mean of 0.23 means 23% of ride-sharing users live in urban areas",
+      "μ_{p̂₁−p̂₂} = 0.23 means the population difference changes to 0.23 after sampling"
+    ]
+  },
+  {
+    context: "80% of morning shift workers and 65% of evening shift workers wear safety gear. Random samples of 90 morning and 110 evening workers are taken.",
+    p1: 0.80, p2: 0.65, n1: 90, n2: 110, paramType: "sd",
+    correctInterpretation: "σ_{p̂₁−p̂₂} ≈ 0.059, meaning the difference in sample proportions typically varies by about 0.059 from the true difference of 0.15 across all possible pairs of samples",
+    wrongInterpretations: [
+      "The standard deviation of 0.059 means exactly 5.9% of workers differ between shifts",
+      "σ_{p̂₁−p̂₂} = 0.059 means the difference p̂₁ − p̂₂ is always within 0.059 of the true difference",
+      "The standard deviation of 0.059 means the population difference varies by 5.9%"
+    ]
+  },
+  {
+    context: "48% of teens and 32% of adults read digital news daily. Random samples of 150 teens and 200 adults are taken.",
+    p1: 0.48, p2: 0.32, n1: 150, n2: 200, paramType: "mean",
+    correctInterpretation: "μ_{p̂₁−p̂₂} = 0.16, meaning that if we took all possible pairs of samples (150 teens and 200 adults), the average of all sample proportion differences would equal the true difference of 0.16",
+    wrongInterpretations: [
+      "μ_{p̂₁−p̂₂} = 0.16 means our specific pair of samples will have a 16% difference",
+      "The mean is 0.16 because 16% of the combined sample reads digital news",
+      "μ_{p̂₁−p̂₂} = 0.16 means 16% of all pairs of samples give the correct difference"
+    ]
+  },
+  {
+    context: "55% of women and 48% of men in a district support a ballot measure. Random samples of 200 women and 180 men are polled.",
+    p1: 0.55, p2: 0.48, n1: 200, n2: 180, paramType: "sd",
+    correctInterpretation: "σ_{p̂₁−p̂₂} ≈ 0.051, meaning on average the difference in sample proportions differs from the true difference of 0.07 by about 0.051 across all possible pairs of samples",
+    wrongInterpretations: [
+      "σ_{p̂₁−p̂₂} = 0.051 means 5.1% of voters changed their mind between samples",
+      "The standard deviation means the difference p̂₁ − p̂₂ is guaranteed to be within 0.051 of 0.07",
+      "σ_{p̂₁−p̂₂} = 0.051 means there is a 5.1% chance of getting the wrong difference"
+    ]
+  },
+  {
+    context: "72% of dog owners and 58% of cat owners buy premium pet food. Random samples of 120 dog owners and 100 cat owners are surveyed.",
+    p1: 0.72, p2: 0.58, n1: 120, n2: 100, paramType: "mean",
+    correctInterpretation: "μ_{p̂₁−p̂₂} = 0.14, meaning the average difference in sample proportions buying premium food across all possible pairs of samples (120 dog owners and 100 cat owners) equals 0.14",
+    wrongInterpretations: [
+      "In every pair of samples, exactly 14% more dog owners will buy premium food than cat owners",
+      "The mean of 0.14 means 14 out of every 100 pet owners buy premium food",
+      "μ_{p̂₁−p̂₂} = 0.14 means the sampling distribution is centered at the sample difference, not the population difference"
+    ]
+  },
+  {
+    context: "35% of freshmen and 22% of seniors at a university live on campus. Random samples of 80 freshmen and 100 seniors are selected.",
+    p1: 0.35, p2: 0.22, n1: 80, n2: 100, paramType: "sd",
+    correctInterpretation: "σ_{p̂₁−p̂₂} ≈ 0.063, meaning the difference in sample proportions living on campus typically differs from the true difference of 0.13 by about 0.063 across all possible pairs of samples",
+    wrongInterpretations: [
+      "σ_{p̂₁−p̂₂} = 0.063 means 6.3% of students change living arrangements between samples",
+      "The standard deviation means p̂₁ − p̂₂ will always be between 0.067 and 0.193",
+      "σ_{p̂₁−p̂₂} = 0.063 means the population proportions vary by 6.3%"
+    ]
+  },
+  {
+    context: "88% of suburban households and 62% of urban households have a car. Random samples of 150 suburban and 180 urban households are surveyed.",
+    p1: 0.88, p2: 0.62, n1: 150, n2: 180, paramType: "mean",
+    correctInterpretation: "μ_{p̂₁−p̂₂} = 0.26, meaning across all possible pairs of samples (150 suburban and 180 urban), the average difference in sample proportions with a car equals the true difference of 0.26",
+    wrongInterpretations: [
+      "μ_{p̂₁−p̂₂} = 0.26 means our samples will always show exactly 26% more suburban households have cars",
+      "The mean is 0.26 because that was the result of our specific pair of samples",
+      "μ_{p̂₁−p̂₂} = 0.26 means 26% of all possible samples will match the population difference"
+    ]
+  },
+  {
+    context: "40% of employees at Company A and 55% of employees at Company B work remotely. Random samples of 100 from each company are taken.",
+    p1: 0.40, p2: 0.55, n1: 100, n2: 100, paramType: "sd",
+    correctInterpretation: "σ_{p̂₁−p̂₂} ≈ 0.069, meaning the difference in sample proportions working remotely typically varies by about 0.069 from the true difference of −0.15 across all possible pairs of samples of 100",
+    wrongInterpretations: [
+      "σ_{p̂₁−p̂₂} = 0.069 means exactly 6.9% of remote workers differ between companies",
+      "The standard deviation guarantees p̂₁ − p̂₂ is within 0.069 of −0.15 every time",
+      "σ_{p̂₁−p̂₂} = 0.069 means there is a 6.9% probability of error in the difference"
+    ]
+  },
+  {
+    context: "75% of parents and 60% of non-parents support increased school funding. Random samples of 200 parents and 250 non-parents are polled.",
+    p1: 0.75, p2: 0.60, n1: 200, n2: 250, paramType: "mean",
+    correctInterpretation: "μ_{p̂₁−p̂₂} = 0.15, meaning the average of all possible sample proportion differences (from 200 parents and 250 non-parents) equals the true population difference of 0.15",
+    wrongInterpretations: [
+      "μ_{p̂₁−p̂₂} = 0.15 means every pair of samples will have exactly a 15% gap in support",
+      "The mean of 0.15 means 15% of respondents changed their mind between surveys",
+      "μ_{p̂₁−p̂₂} = 0.15 means only 15% of pairs of samples will show a difference"
+    ]
+  }
+];
+
+// ---- L29: 5.6 Capstone scenarios ----
+const capstone56Bank = [
+  {
+    scenarioText: "In a large population, 60% of women and 45% of men support a policy. Random samples of 120 women and 100 men are taken. What are the mean and standard deviation of the sampling distribution of p̂₁ − p̂₂?",
+    correctAnswer: "μ = 0.60 − 0.45 = 0.15, σ = √(0.60(0.40)/120 + 0.45(0.55)/100) ≈ 0.066",
+    wrongOptions: [
+      "μ = 0.15, σ = √(0.60(0.40)/120) + √(0.45(0.55)/100) ≈ 0.094 (added SDs instead of variances)",
+      "μ = 0.525, σ = 0.066 (averaged the proportions instead of subtracting)",
+      "μ = 0.15, σ = √(0.15(0.85)/220) ≈ 0.024 (used pooled proportion with combined n)"
+    ],
+    explanation: "μ_{p̂₁−p̂₂} = p₁ − p₂ = 0.60 − 0.45 = 0.15. σ = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂) = √(0.24/120 + 0.2475/100) = √(0.002 + 0.002475) = √0.004475 ≈ 0.066.",
+    topicId: "5.6: Distribution Parameters"
+  },
+  {
+    scenarioText: "A researcher compares two groups: n₁ = 80 with p₁ = 0.03 and n₂ = 100 with p₂ = 0.45. Can the sampling distribution of p̂₁ − p̂₂ be modeled with a normal distribution?",
+    correctAnswer: "No — n₁p₁ = 80(0.03) = 2.4 < 10, so at least one Large Counts condition fails",
+    wrongOptions: [
+      "Yes — the total sample size of 180 is large enough",
+      "Yes — n₂p₂ = 45 and n₂(1−p₂) = 55 both pass, so the condition is met",
+      "No — but only because the proportions are too different from each other"
+    ],
+    explanation: "All FOUR must be ≥ 10: n₁p₁ = 2.4 ✗, n₁(1−p₁) = 77.6 ✓, n₂p₂ = 45 ✓, n₂(1−p₂) = 55 ✓. Since n₁p₁ < 10, the condition fails and normal approximation is not appropriate.",
+    topicId: "5.6: Large Counts Condition"
+  },
+  {
+    scenarioText: "72% of suburbanites and 55% of city dwellers own a car. In random samples of 150 from each group, σ_{p̂₁−p̂₂} ≈ 0.054. Which interpretation is correct?",
+    correctAnswer: "The difference in sample proportions typically varies by about 0.054 from the true difference of 0.17 across all possible pairs of samples of 150",
+    wrongOptions: [
+      "Exactly 5.4% of people differ in car ownership between the two groups",
+      "The difference in sample proportions is always within 0.054 of 0.17",
+      "The population difference changes by 0.054 each time we sample"
+    ],
+    explanation: "σ_{p̂₁−p̂₂} describes how much p̂₁ − p̂₂ typically varies from p₁ − p₂ across all possible pairs of samples. 'Typically' is key — not every pair, and not guaranteed.",
+    topicId: "5.6: Interpreting Parameters"
+  },
+  {
+    scenarioText: "In two large populations, p₁ = 0.50 and p₂ = 0.40. Random samples of n₁ = 200 and n₂ = 250 are taken. What is the probability that p̂₁ − p̂₂ > 0.15?",
+    correctAnswer: "About 0.145 — σ ≈ 0.047, z = (0.15 − 0.10)/0.047 ≈ 1.06, P(Z > 1.06) ≈ 0.145",
+    wrongOptions: [
+      "About 0.855 — this is P(Z < 1.06), the wrong direction",
+      "About 0.15 — the probability equals the observed difference",
+      "Cannot be calculated without knowing the exact population sizes"
+    ],
+    explanation: "μ = 0.50 − 0.40 = 0.10. σ = √(0.50(0.50)/200 + 0.40(0.60)/250) = √(0.00125 + 0.00096) = √0.00221 ≈ 0.047. z = (0.15 − 0.10)/0.047 ≈ 1.06. P(Z > 1.06) ≈ 0.145.",
+    topicId: "5.6: Probability Calculation"
+  },
+  {
+    scenarioText: "Why does the formula σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂) add the two variance terms even though we're computing a DIFFERENCE?",
+    correctAnswer: "Because variances of independent random variables always ADD, whether the variables are added or subtracted — this is the same principle as the variance trap for linear combinations",
+    wrongOptions: [
+      "The formula actually subtracts the variances, but the negative sign cancels out",
+      "We add variances because we assume both populations are identical",
+      "Variances are added only when proportions are close to 0.50"
+    ],
+    explanation: "Var(X − Y) = Var(X) + Var(Y) when X and Y are independent. Variances ALWAYS add, even for differences. This is the same principle from Topic 5.2 linear combinations.",
+    topicId: "5.6: Variance Addition"
+  },
+  {
+    scenarioText: "A student computes σ_{p̂₁−p̂₂} by calculating √(0.60(0.40)/100) = 0.049 and √(0.45(0.55)/120) = 0.045, then ADDS them to get 0.094. What error did the student make?",
+    correctAnswer: "The student added STANDARD DEVIATIONS instead of VARIANCES. Correct: √(0.049² + 0.045²) = √(0.002400 + 0.002063) ≈ 0.067",
+    wrongOptions: [
+      "The student used the wrong proportions in the formula",
+      "The student forgot to subtract instead of add",
+      "The student should have averaged the two standard deviations: (0.049 + 0.045)/2 = 0.047"
+    ],
+    explanation: "You must add VARIANCES (0.049² + 0.045²), then take one square root. Adding SDs directly is the classic variance trap — same error as with linear combinations of random variables.",
+    topicId: "5.6: Variance Trap"
+  },
+  {
+    scenarioText: "Two populations have p₁ = 0.30, p₂ = 0.30 (equal proportions). What is μ_{p̂₁−p̂₂} and what does this tell us about the sampling distribution?",
+    correctAnswer: "μ_{p̂₁−p̂₂} = 0.30 − 0.30 = 0, meaning the sampling distribution is centered at 0 — when both populations have the same proportion, we expect no difference on average",
+    wrongOptions: [
+      "μ_{p̂₁−p̂₂} = 0.30 because the mean equals the common proportion",
+      "μ_{p̂₁−p̂₂} = 0.60 because we add the two proportions",
+      "μ_{p̂₁−p̂₂} is undefined when both proportions are equal"
+    ],
+    explanation: "μ_{p̂₁−p̂₂} = p₁ − p₂ = 0. When populations have equal proportions, the sampling distribution of the difference is centered at 0. Individual sample differences will still vary around 0 due to sampling variability.",
+    topicId: "5.6: Distribution Parameters"
+  },
+  {
+    scenarioText: "A study finds p̂₁ = 0.58 (n₁ = 100) and p̂₂ = 0.42 (n₂ = 120). The true proportions are p₁ = 0.55 and p₂ = 0.45. What is the z-score for the observed difference of 0.16?",
+    correctAnswer: "z = (0.16 − 0.10) / σ where σ = √(0.55(0.45)/100 + 0.45(0.55)/120) ≈ 0.067, so z ≈ 0.89",
+    wrongOptions: [
+      "z = 0.16 / 0.067 ≈ 2.39 (forgot to subtract the mean μ = p₁ − p₂ = 0.10)",
+      "z = (0.16 − 0.10) / (0.55 − 0.45) = 0.60 (divided by the population difference instead of σ)",
+      "z = (0.58 − 0.42) / 0.067 ≈ 2.39 (used p̂₁ − p̂₂ instead of subtracting μ)"
+    ],
+    explanation: "μ = p₁ − p₂ = 0.10. σ = √(0.2475/100 + 0.2475/120) = √(0.002475 + 0.002063) = √0.004538 ≈ 0.067. z = (0.16 − 0.10)/0.067 ≈ 0.89.",
+    topicId: "5.6: Z-Score Calculation"
+  }
+];
 
 // ============ MAIN GENERATOR FUNCTION ============
 
@@ -2496,6 +2709,280 @@ export function generateProblem(modeId, context, mode) {
     answers = {
       capstone55Answer: { value: scen.correctAnswer },
       capstone55Explain: { value: scen.explanation }
+    };
+
+    scenario = scen.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L25: p̂₁−p̂₂ Distribution Parameters (5.6a) ==========
+  if (modeId === "l25-diff-prop-params") {
+    const scen = drawFromBag('diffPropContext_l25', diffPropContextBank);
+
+    const diffMean = Math.round((scen.p1 - scen.p2) * 1000) / 1000;
+    const var1 = scen.p1 * (1 - scen.p1) / scen.n1;
+    const var2 = scen.p2 * (1 - scen.p2) / scen.n2;
+    const diffSD = Math.round(Math.sqrt(var1 + var2) * 1000) / 1000;
+    const tenPct1 = scen.n1 < 0.10 * scen.N1;
+    const tenPct2 = scen.n2 < 0.10 * scen.N2;
+
+    ctx = {
+      topicId: "5.6: p̂₁−p̂₂ Distribution Parameters",
+      scenarioText: `${scen.desc}.\n\nGroup 1 (${scen.group1}): p₁ = ${scen.p1}, n₁ = ${scen.n1}, N₁ = ${scen.N1.toLocaleString()}\nGroup 2 (${scen.group2}): p₂ = ${scen.p2}, n₂ = ${scen.n2}, N₂ = ${scen.N2.toLocaleString()}\n\nFind the mean and standard deviation of the sampling distribution of p̂₁ − p̂₂.`,
+      givenText: `p₁ = ${scen.p1}, n₁ = ${scen.n1} | p₂ = ${scen.p2}, n₂ = ${scen.n2} | 10% condition: ${tenPct1 && tenPct2 ? "✓ Met for both" : "Check carefully"}`,
+      p1: `${scen.p1}`,
+      p2: `${scen.p2}`,
+      n1: `${scen.n1}`,
+      n2: `${scen.n2}`,
+      diffPropMean: `${diffMean}`,
+      diffPropSD: `${diffSD}`,
+      var1: `${Math.round(var1 * 1000000) / 1000000}`,
+      var2: `${Math.round(var2 * 1000000) / 1000000}`
+    };
+
+    answers = {
+      diffPropMean: { value: diffMean, tolerance: 0.005 },
+      diffPropSD: { value: diffSD, tolerance: 0.005 }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L26: Large Counts for Two Proportions (5.6b) ==========
+  if (modeId === "l26-diff-prop-large-counts") {
+    const scen = drawFromBag('diffLargeCounts', diffLargeCountsBank);
+
+    const n1p1 = Math.round(scen.n1 * scen.p1 * 100) / 100;
+    const n1q1 = Math.round(scen.n1 * (1 - scen.p1) * 100) / 100;
+    const n2p2 = Math.round(scen.n2 * scen.p2 * 100) / 100;
+    const n2q2 = Math.round(scen.n2 * (1 - scen.p2) * 100) / 100;
+    const allMet = n1p1 >= 10 && n1q1 >= 10 && n2p2 >= 10 && n2q2 >= 10;
+
+    const normalAnswer = allMet
+      ? "Yes — all four Large Counts conditions are met"
+      : "No — at least one Large Counts condition is NOT met";
+
+    const failingChecks = [];
+    if (n1p1 < 10) failingChecks.push(`n₁p₁ = ${n1p1}`);
+    if (n1q1 < 10) failingChecks.push(`n₁(1−p₁) = ${n1q1}`);
+    if (n2p2 < 10) failingChecks.push(`n₂p₂ = ${n2p2}`);
+    if (n2q2 < 10) failingChecks.push(`n₂(1−p₂) = ${n2q2}`);
+
+    const reason = allMet
+      ? `Yes. n₁p₁ = ${n1p1} ≥ 10 ✓, n₁(1−p₁) = ${n1q1} ≥ 10 ✓, n₂p₂ = ${n2p2} ≥ 10 ✓, n₂(1−p₂) = ${n2q2} ≥ 10 ✓. All four conditions are met, so the sampling distribution of p̂₁ − p̂₂ is approximately normal.`
+      : `No. n₁p₁ = ${n1p1}${n1p1 < 10 ? " < 10 ✗" : " ≥ 10 ✓"}, n₁(1−p₁) = ${n1q1}${n1q1 < 10 ? " < 10 ✗" : " ≥ 10 ✓"}, n₂p₂ = ${n2p2}${n2p2 < 10 ? " < 10 ✗" : " ≥ 10 ✓"}, n₂(1−p₂) = ${n2q2}${n2q2 < 10 ? " < 10 ✗" : " ≥ 10 ✓"}. Since ${failingChecks.join(" and ")} < 10, the Large Counts condition is not met.`;
+
+    ctx = {
+      topicId: "5.6: Large Counts (Two Proportions)",
+      scenarioText: `${scen.desc}.\n\nGroup 1 (${scen.group1}): p₁ = ${scen.p1}, n₁ = ${scen.n1}\nGroup 2 (${scen.group2}): p₂ = ${scen.p2}, n₂ = ${scen.n2}\n\nIs the sampling distribution of p̂₁ − p̂₂ approximately normal? Check all four Large Counts conditions.`,
+      givenText: `p₁ = ${scen.p1}, n₁ = ${scen.n1} | p₂ = ${scen.p2}, n₂ = ${scen.n2}`,
+      p1: `${scen.p1}`,
+      p2: `${scen.p2}`,
+      n1: `${scen.n1}`,
+      n2: `${scen.n2}`,
+      n1p1: `${n1p1}`,
+      n1q1: `${n1q1}`,
+      n2p2: `${n2p2}`,
+      n2q2: `${n2q2}`,
+      allMet: `${allMet}`,
+      reason: reason
+    };
+
+    answers = {
+      diffLargeCountsChoice: { value: normalAnswer },
+      diffLargeCountsExplain: { value: reason }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L27: Interpret p̂₁−p̂₂ Parameters (5.6c) ==========
+  if (modeId === "l27-diff-prop-interpret") {
+    const scen = drawFromBag('diffInterpretParams', diffInterpretParamsBank);
+
+    const allOptions = shuffle([scen.correctInterpretation, ...scen.wrongInterpretations]);
+    const diff = Math.round((scen.p1 - scen.p2) * 1000) / 1000;
+    const sd = Math.round(Math.sqrt(scen.p1 * (1 - scen.p1) / scen.n1 + scen.p2 * (1 - scen.p2) / scen.n2) * 1000) / 1000;
+
+    ctx = {
+      topicId: "5.6: Interpreting Parameters",
+      scenarioText: `${scen.context}\n\n${scen.paramType === "mean"
+        ? `The mean of the sampling distribution of p̂₁ − p̂₂ is μ_{p̂₁−p̂₂} = ${diff}. Which interpretation is correct?`
+        : `The standard deviation of the sampling distribution of p̂₁ − p̂₂ is σ_{p̂₁−p̂₂} ≈ ${sd}. Which interpretation is correct?`}`,
+      givenText: `p₁ = ${scen.p1}, n₁ = ${scen.n1} | p₂ = ${scen.p2}, n₂ = ${scen.n2} | Interpreting: ${scen.paramType === "mean" ? "μ_{p̂₁−p̂₂}" : "σ_{p̂₁−p̂₂}"}`,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      paramType: scen.paramType,
+      p1: `${scen.p1}`,
+      p2: `${scen.p2}`,
+      n1: `${scen.n1}`,
+      n2: `${scen.n2}`
+    };
+
+    answers = {
+      diffInterpretAnswer: { value: scen.correctInterpretation }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L28: p̂₁−p̂₂ Probability (5.6d) ==========
+  if (modeId === "l28-diff-prop-probability") {
+    const scen = drawFromBag('diffPropContext_l28', diffPropContextBank);
+
+    const trueDiff = scen.p1 - scen.p2;
+    const var1 = scen.p1 * (1 - scen.p1) / scen.n1;
+    const var2 = scen.p2 * (1 - scen.p2) / scen.n2;
+    const diffSD = Math.sqrt(var1 + var2);
+
+    // Generate an observed difference 0.5–2.5 SD away from the true difference
+    const sdMultiplier = (randInt(50, 250)) / 100 * (Math.random() < 0.5 ? 1 : -1);
+    let obsDiff = trueDiff + sdMultiplier * diffSD;
+    obsDiff = Math.round(obsDiff * 100) / 100;
+
+    // Pick direction
+    const greaterThan = Math.random() < 0.5;
+    const direction = greaterThan ? "GREATER THAN" : "LESS THAN";
+
+    const zExact = (obsDiff - trueDiff) / diffSD;
+    const z = Math.round(zExact * 100) / 100;
+
+    let prob;
+    if (greaterThan) {
+      prob = 1 - normalCDF(zExact);
+    } else {
+      prob = normalCDF(zExact);
+    }
+    prob = Math.round(prob * 10000) / 10000;
+
+    const diffSDRounded = Math.round(diffSD * 1000) / 1000;
+    const trueDiffRounded = Math.round(trueDiff * 1000) / 1000;
+
+    ctx = {
+      topicId: "5.6: p̂₁−p̂₂ Probability",
+      scenarioText: `${scen.desc}.\n\nGroup 1 (${scen.group1}): p₁ = ${scen.p1}, n₁ = ${scen.n1}\nGroup 2 (${scen.group2}): p₂ = ${scen.p2}, n₂ = ${scen.n2}\n\nWhat is the probability that p̂₁ − p̂₂ is ${direction} ${obsDiff}?`,
+      givenText: `p₁ = ${scen.p1}, n₁ = ${scen.n1} | p₂ = ${scen.p2}, n₂ = ${scen.n2} | μ_{p̂₁−p̂₂} = ${trueDiffRounded}, σ_{p̂₁−p̂₂} = ${diffSDRounded}`,
+      p1: `${scen.p1}`,
+      p2: `${scen.p2}`,
+      n1: `${scen.n1}`,
+      n2: `${scen.n2}`,
+      obsDiff: `${obsDiff}`,
+      diffPropSD: `${diffSDRounded}`,
+      trueDiff: `${trueDiffRounded}`,
+      direction: direction,
+      zScore: `${z}`,
+      probability: `${prob}`
+    };
+
+    answers = {
+      diffPropZScore: { value: z, tolerance: 0.05 },
+      diffPropProb: { value: prob, tolerance: 0.005 }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L30: Interpret p̂₁−p̂₂ Probability (5.6e) ==========
+  if (modeId === "l30-diff-prop-interpret-prob") {
+    const scen = drawFromBag('diffPropContext_l30', diffPropContextBank);
+
+    const trueDiff = scen.p1 - scen.p2;
+    const var1 = scen.p1 * (1 - scen.p1) / scen.n1;
+    const var2 = scen.p2 * (1 - scen.p2) / scen.n2;
+    const diffSD = Math.sqrt(var1 + var2);
+
+    // Control observed difference to produce a mix of unusual (<5%) and not unusual (≥5%)
+    // ~40% chance of unusual result (>1.65 SDs away), ~60% not unusual
+    const isUnusual = Math.random() < 0.4;
+    let sdMultiplier;
+    if (isUnusual) {
+      // 1.70–2.80 SDs away → probability < 0.05
+      sdMultiplier = (randInt(170, 280)) / 100;
+    } else {
+      // 0.30–1.55 SDs away → probability ≥ 0.05
+      sdMultiplier = (randInt(30, 155)) / 100;
+    }
+    const sign = Math.random() < 0.5 ? 1 : -1;
+    let obsDiff = trueDiff + sign * sdMultiplier * diffSD;
+    obsDiff = Math.round(obsDiff * 100) / 100;
+
+    // Pick direction based on which side the observed diff is on
+    const greaterThan = (obsDiff - trueDiff) >= 0;
+    const direction = greaterThan ? "greater than" : "less than";
+    const directionOrMore = greaterThan ? "or greater" : "or less";
+
+    const zExact = (obsDiff - trueDiff) / diffSD;
+    const z = Math.round(zExact * 100) / 100;
+
+    let prob;
+    if (greaterThan) {
+      prob = 1 - normalCDF(zExact);
+    } else {
+      prob = normalCDF(zExact);
+    }
+    prob = Math.round(prob * 10000) / 10000;
+
+    const probPct = Math.round(prob * 10000) / 100;
+    const diffSDRounded = Math.round(diffSD * 1000) / 1000;
+    const trueDiffRounded = Math.round(trueDiff * 1000) / 1000;
+
+    const unusualAnswer = prob < 0.05 ? "Unusual" : "Not unusual";
+
+    ctx = {
+      topicId: "5.6: Interpreting Probability",
+      scenarioText: `${scen.desc}.\n\nGroup 1 (${scen.group1}): p₁ = ${scen.p1}, n₁ = ${scen.n1}\nGroup 2 (${scen.group2}): p₂ = ${scen.p2}, n₂ = ${scen.n2}\n\nThe probability that p̂₁ − p̂₂ is ${direction} ${obsDiff} is ${prob} (${probPct}%).\n\nInterpret this probability in context and determine whether this result is unusual.`,
+      givenText: `p₁ = ${scen.p1}, n₁ = ${scen.n1} | p₂ = ${scen.p2}, n₂ = ${scen.n2} | P(p̂₁ − p̂₂ ${greaterThan ? ">" : "<"} ${obsDiff}) = ${prob}`,
+      group1: scen.group1,
+      group2: scen.group2,
+      p1: `${scen.p1}`,
+      p2: `${scen.p2}`,
+      n1: `${scen.n1}`,
+      n2: `${scen.n2}`,
+      obsDiff: `${obsDiff}`,
+      direction: direction,
+      directionOrMore: directionOrMore,
+      probability: `${prob}`,
+      probabilityPct: `${probPct}`,
+      unusualAnswer: unusualAnswer,
+      expectedInterpretation: `Getting a difference (${scen.group1} − ${scen.group2}) in sample proportions of ${obsDiff} ${directionOrMore} happens in about ${probPct}% of all possible samples of size ${scen.n1} from ${scen.group1} and size ${scen.n2} from ${scen.group2}. This is ${unusualAnswer === "Unusual" ? "" : "not "}unusual.`
+    };
+
+    answers = {
+      diffInterpretProbText: { value: ctx.expectedInterpretation },
+      diffUnusualChoice: { value: unusualAnswer === "Unusual" ? "Unusual — probability is less than 5%" : "Not unusual — probability is 5% or more" }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L29: 5.6 Capstone ==========
+  if (modeId === "l29-capstone-56") {
+    const scen = drawFromBag('capstone56', capstone56Bank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: scen.topicId,
+      scenarioText: scen.scenarioText,
+      givenText: "Apply concepts from Topic 5.6 (Sampling Distributions for Differences in Sample Proportions).",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      explanation: scen.explanation,
+      expectedExplanation: scen.explanation
+    };
+
+    answers = {
+      capstone56Answer: { value: scen.correctAnswer },
+      capstone56Explain: { value: scen.explanation }
     };
 
     scenario = scen.scenarioText;
