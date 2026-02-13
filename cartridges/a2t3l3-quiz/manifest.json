@@ -1,0 +1,206 @@
+{
+  "meta": {
+    "id": "a2t3l3-quiz",
+    "name": "3-3 Quiz Prep: Cubes & Binomial Expansion",
+    "subject": "Algebra 2",
+    "description": "Master the Lesson 3-3 Quiz: sum/difference of cubes factoring and binomial theorem expansion, drilled from every angle."
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": ["A-SSE.A.2", "A-APR.C.4", "A-APR.C.5", "MP.2", "MP.3", "MP.7"]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      { "label": "Level", "value": "{{levelName}}" },
+      { "label": "Task", "value": "{{problemText}}" },
+      { "label": "Given", "value": "{{givenText}}" }
+    ]
+  },
+  "modes": [
+    {
+      "id": "l01-identify-cube-type",
+      "name": "Level 1: Sum or Difference of Cubes?",
+      "unlockedBy": "default",
+      "animation": "assets/QuizCubeRecognition.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "identityType",
+            "type": "choice",
+            "label": "Which cube identity applies?",
+            "options": ["Sum of Cubes", "Difference of Cubes"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-find-a-and-b",
+      "name": "Level 2: Identify a and b",
+      "unlockedBy": { "gold": 2 },
+      "animation": "assets/QuizFindAB.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "aValue",
+            "type": "text",
+            "label": "a = ",
+            "placeholder": "e.g. 2 or 5x"
+          },
+          {
+            "id": "bValue",
+            "type": "text",
+            "label": "b = ",
+            "placeholder": "e.g. 3 or 4y"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-factor-cubes",
+      "name": "Level 3: Factor Using the Identity",
+      "unlockedBy": { "gold": 2 },
+      "animation": "assets/QuizCubeFactoring.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "factoredForm",
+            "type": "text",
+            "label": "Factor completely (use ^ for exponents):",
+            "placeholder": "e.g. (2+5x)(4-10x+25x^2)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-explain-identity",
+      "name": "Level 4: Explain Your Reasoning",
+      "unlockedBy": { "gold": 2 },
+      "animation": "assets/QuizExplainChoice.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "identityChoice",
+            "type": "choice",
+            "label": "Which identity did you use?",
+            "options": ["Sum of Cubes", "Difference of Cubes"]
+          },
+          {
+            "id": "explanation",
+            "type": "textarea",
+            "label": "Explain how you knew which identity to use (1-2 sentences):",
+            "rows": 3,
+            "placeholder": "I used the ___ identity because..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-binomial-term-coeff",
+      "name": "Level 5: Binomial Term Coefficient",
+      "unlockedBy": { "gold": 2 },
+      "animation": "assets/QuizBinomialCoeffs.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "termCoeff",
+            "type": "number",
+            "label": "What is the coefficient?",
+            "min": -100000,
+            "max": 100000,
+            "step": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-full-expansion",
+      "name": "Level 6: Full Binomial Expansion",
+      "unlockedBy": { "gold": 2 },
+      "animation": "assets/QuizFullExpansion.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "expandedPoly",
+            "type": "text",
+            "label": "Write the expanded polynomial in standard form:",
+            "placeholder": "e.g. x^5 - 15x^4 + 90x^3 - 270x^2 + 405x - 243"
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "identityType": "Check the sign between the two terms: + means SUM of cubes, - means DIFFERENCE of cubes. Both terms must be perfect cubes.",
+      "aValue": "Find the cube root of the first perfect cube. If the first term is 8, then a = 2 because 2\u00b3 = 8. If it's 125x\u00b3, then a = 5x because (5x)\u00b3 = 125x\u00b3.",
+      "bValue": "Find the cube root of the second perfect cube. If the second term is 27a\u00b3, then b = 3a because (3a)\u00b3 = 27a\u00b3.",
+      "factoredForm": "Use SOAP: Same sign, Opposite sign, Always Positive.\n\u2022 Sum: (a+b)(a\u00b2-ab+b\u00b2)\n\u2022 Diff: (a-b)(a\u00b2+ab+b\u00b2)\nPlug in your a and b values.",
+      "identityChoice": "Is the expression adding (+) or subtracting (-)? That tells you sum vs difference.",
+      "explanation": "Your explanation should mention:\n1. The sign between terms (+ or -)\n2. Both terms are perfect cubes\n3. What the cube roots are (a and b)",
+      "termCoeff": "Steps: (1) Find the Pascal's Triangle coefficient C(n,k), (2) Evaluate the power of the constant, (3) Multiply them together. Watch the sign!",
+      "expandedPoly": "Steps: (1) Write Pascal's coefficients, (2) Multiply each by the appropriate power of the constant, (3) Watch alternating signs for negative constants, (4) Write in standard form (highest power first)."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "l01-identify-cube-type",
+        "name": "01",
+        "unlockedBy": "default",
+        "celebrationMessage": "You can spot the cube identity! Now find a and b."
+      },
+      {
+        "id": "l02-find-a-and-b",
+        "name": "02",
+        "unlockedBy": { "gold": 2 },
+        "celebrationMessage": "Cube roots identified! Time to factor."
+      },
+      {
+        "id": "l03-factor-cubes",
+        "name": "03",
+        "unlockedBy": { "gold": 2 },
+        "celebrationMessage": "Factoring mastered! Now explain your thinking."
+      },
+      {
+        "id": "l04-explain-identity",
+        "name": "04",
+        "unlockedBy": { "gold": 2 },
+        "celebrationMessage": "Great reasoning! Switching to Binomial Theorem."
+      },
+      {
+        "id": "l05-binomial-term-coeff",
+        "name": "05",
+        "unlockedBy": { "gold": 2 },
+        "celebrationMessage": "Coefficients nailed! Final level: full expansion."
+      },
+      {
+        "id": "l06-full-expansion",
+        "name": "06",
+        "unlockedBy": { "gold": 2 },
+        "celebrationMessage": "Quiz prep complete! You're ready for any version of this quiz!"
+      }
+    ]
+  }
+}
