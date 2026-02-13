@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u5-sampling-dist",
-    "name": "Sampling Distributions (5.1-5.6)",
+    "name": "Sampling Distributions (5.1-5.7)",
     "subject": "AP Statistics",
-    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations, Central Limit Theorem, randomization distributions, biased and unbiased point estimates, sampling distributions for sample proportions, sampling distributions for differences in sample proportions"
+    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations, Central Limit Theorem, randomization distributions, biased and unbiased point estimates, sampling distributions for sample proportions, sampling distributions for differences in sample proportions, sampling distributions for sample means"
   },
   "config": {
     "contextsFile": null,
@@ -20,7 +20,9 @@
       "UNC-3.M",
       "UNC-3.N",
       "UNC-3.O",
-      "UNC-3.P"
+      "UNC-3.P",
+      "UNC-3.Q",
+      "UNC-3.R"
     ]
   },
   "display": {
@@ -833,6 +835,140 @@
           }
         ]
       }
+    },
+    {
+      "id": "l31-mean-dist-params",
+      "name": "5.7a: x̄ Distribution Parameters",
+      "animation": "assets/SampleMeanFormulas.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meanMu",
+            "type": "number",
+            "label": "Mean of the sampling distribution of x̄ (μ_x̄):",
+            "step": 0.01
+          },
+          {
+            "id": "meanSigma",
+            "type": "number",
+            "label": "Standard deviation of the sampling distribution of x̄ (σ_x̄):",
+            "min": 0,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l32-mean-shape",
+      "name": "5.7b: Shape of x̄ Distribution",
+      "animation": "assets/MeanShapeCLT.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meanShapeChoice",
+            "type": "choice",
+            "label": "Is the sampling distribution of x̄ approximately normal?",
+            "options": [
+              "Yes, approximately normal",
+              "No, NOT approximately normal"
+            ]
+          },
+          {
+            "id": "meanShapeExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Reference the population shape, sample size, and CLT conditions..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l33-interpret-mean-params",
+      "name": "5.7c: Interpret x̄ Parameters",
+      "animation": "assets/InterpretMeanParams.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meanInterpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l34-mean-probability",
+      "name": "5.7d: x̄ Probability",
+      "animation": "assets/MeanProbability.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meanZScore",
+            "type": "number",
+            "label": "Z-score:",
+            "step": 0.01
+          },
+          {
+            "id": "meanProb",
+            "type": "number",
+            "label": "Probability (as decimal, e.g., 0.0384):",
+            "min": 0,
+            "max": 1,
+            "step": 0.0001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l35-capstone-57",
+      "name": "5.7 Capstone",
+      "animation": "assets/MeanCapstone.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone57Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone57Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Show your work and explain..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -903,7 +1039,16 @@
       "diffInterpretProbText": "A good interpretation must: (1) reference 'all possible samples of size n₁ from [population 1] and size n₂ from [population 2]', (2) include the probability or percentage, (3) describe the observed difference and direction, (4) use context-specific language (not generic). Template: 'Getting a difference of ___ or [more/less] happens in about ___% of all possible samples of size ___ from ___ and size ___ from ___.'",
       "diffUnusualChoice": "Convention: if the probability is less than 5% (0.05), the result IS unusual — it would rarely happen by chance. If the probability is 5% or more, it is NOT unusual.",
       "capstone56Answer": "This question combines concepts from Topic 5.6. Review: μ_{p̂₁−p̂₂} = p₁ − p₂, σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂), 10% condition for both, all four Large Counts checks, and probability calculations.",
-      "capstone56Explain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context. Reference the specific condition or formula that applies."
+      "capstone56Explain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context. Reference the specific condition or formula that applies.",
+      "meanMu": "The mean of the sampling distribution of x̄ equals the population mean: μ_x̄ = μ. This is because x̄ is an unbiased estimator of μ.",
+      "meanSigma": "The standard deviation of x̄ is σ_x̄ = σ/√n. Make sure to divide by √n, NOT by n. Also verify the 10% condition: n < 10% of N.",
+      "meanShapeChoice": "Two paths to normality: (1) Population is normal → x̄ is normal for ANY n. (2) Population is non-normal → need n ≥ 30 (CLT).",
+      "meanShapeExplain": "Reference the population shape and sample size. If population is normal → any n works. If population is non-normal → need n ≥ 30 for the CLT.",
+      "meanInterpretAnswer": "When interpreting μ_x̄: reference 'all possible samples of size n' and include units. When interpreting σ_x̄: include 'typically' or 'on average' to describe how far x̄ varies from μ, include units.",
+      "meanZScore": "For the sampling distribution of x̄: z = (x̄ − μ) / σ_x̄ where σ_x̄ = σ/√n. Use the POPULATION mean μ and divide σ by √n.",
+      "meanProb": "After finding the z-score, use Table A or normalcdf. For P(x̄ > value): find 1 − P(Z < z). For P(x̄ < value): use P(Z < z) directly.",
+      "capstone57Answer": "This question combines concepts from Topic 5.7. Review: μ_x̄ = μ, σ_x̄ = σ/√n, 10% condition, CLT for shape, interpretation in context, and probability calculations.",
+      "capstone57Explain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context. Reference the specific condition or formula that applies."
     },
     "penalty": {
       "0": "gold",
@@ -1155,7 +1300,47 @@
         "unlockedBy": {
           "gold": 3
         },
-        "celebrationMessage": "TOPIC 5.6 COMPLETE! You've mastered sampling distributions for differences in sample proportions! Unit 5 complete!"
+        "celebrationMessage": "TOPIC 5.6 COMPLETE! You've mastered sampling distributions for differences in sample proportions! Next: sampling distributions for sample means."
+      },
+      {
+        "id": "l31-mean-dist-params",
+        "name": "5.7a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "x̄ distribution parameters mastered! Next: determining the shape of the sampling distribution."
+      },
+      {
+        "id": "l32-mean-shape",
+        "name": "5.7b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You know when x̄ is approximately normal! Next: interpreting x̄ parameters in context."
+      },
+      {
+        "id": "l33-interpret-mean-params",
+        "name": "5.7c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Interpretation mastered! Next: calculating probabilities with x̄."
+      },
+      {
+        "id": "l34-mean-probability",
+        "name": "5.7d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "x̄ probability calculations mastered! Final 5.7 capstone next."
+      },
+      {
+        "id": "l35-capstone-57",
+        "name": "5.7 Cap",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "TOPIC 5.7 COMPLETE! You've mastered sampling distributions for sample means! Unit 5 complete!"
       }
     ]
   }

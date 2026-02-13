@@ -1,8 +1,9 @@
-// generator.js - AP Statistics Unit 5 (Topics 5.1–5.6): Sampling Distributions
+// generator.js - AP Statistics Unit 5 (Topics 5.1–5.7): Sampling Distributions
 // Sampling variability, sampling distributions, z-scores, normal probability,
 // inverse normal, AP solution elements, assessing normality, linear combinations,
 // Central Limit Theorem, randomization distributions, biased/unbiased point estimates,
-// sampling distributions for sample proportions, differences in sample proportions
+// sampling distributions for sample proportions, differences in sample proportions,
+// sampling distributions for sample means
 
 // ============ UTILITY FUNCTIONS ============
 
@@ -1913,6 +1914,302 @@ const capstone56Bank = [
   }
 ];
 
+// ---- L31: Sample Mean contexts (5.7a, 5.7d) ----
+const meanContextBank = [
+  { label: "lemon weights", context: "A large orchard produces lemons whose weights are normally distributed", mu: 4, sigma: 0.5, n: 6, N: 5000, unit: "oz", measurable: "weight" },
+  { label: "package weights", context: "A shipping company handles packages whose weights are approximately normally distributed", mu: 16, sigma: 0.8, n: 25, N: 100000, unit: "oz", measurable: "weight" },
+  { label: "student test scores", context: "Test scores at a large high school are approximately normally distributed", mu: 72, sigma: 12, n: 36, N: 2000, unit: "points", measurable: "test score" },
+  { label: "coffee cup fills", context: "A café fills cups of coffee with amounts that are approximately normally distributed", mu: 12, sigma: 0.3, n: 15, N: 50000, unit: "oz", measurable: "fill amount" },
+  { label: "battery lifetimes", context: "A factory produces batteries whose lifetimes are approximately normally distributed", mu: 500, sigma: 40, n: 40, N: 200000, unit: "hours", measurable: "lifetime" },
+  { label: "newborn weights", context: "Birth weights at a large hospital are approximately normally distributed", mu: 7.5, sigma: 1.1, n: 20, N: 15000, unit: "lb", measurable: "birth weight" },
+  { label: "commute times", context: "Commute times in a large metropolitan area are approximately normally distributed", mu: 32, sigma: 7, n: 50, N: 300000, unit: "min", measurable: "commute time" },
+  { label: "tree heights", context: "Heights of pine trees in a national forest are approximately normally distributed", mu: 55, sigma: 8, n: 30, N: 80000, unit: "ft", measurable: "height" },
+  { label: "water bottle volumes", context: "A bottling plant fills water bottles with volumes that are approximately normally distributed", mu: 500, sigma: 5, n: 10, N: 120000, unit: "mL", measurable: "volume" },
+  { label: "reaction times", context: "Reaction times for drivers at an intersection are approximately normally distributed", mu: 1.8, sigma: 0.4, n: 45, N: 250000, unit: "sec", measurable: "reaction time" }
+];
+
+// ---- L32: Shape of x̄ distribution (5.7b) ----
+const meanShapeBank = [
+  {
+    popDesc: "A normally distributed population of adult body temperatures",
+    sampleSize: 8,
+    isNormal: true,
+    reason: "The population is normally distributed, so the sampling distribution of x̄ is normal for ANY sample size, including n = 8.",
+    givenInfo: "Population: normal | n = 8"
+  },
+  {
+    popDesc: "A strongly right-skewed population of annual incomes",
+    sampleSize: 10,
+    isNormal: false,
+    reason: "The population is strongly right-skewed and n = 10 < 30. The CLT does not apply, so the sampling distribution of x̄ is NOT approximately normal.",
+    givenInfo: "Population: strongly right-skewed | n = 10"
+  },
+  {
+    popDesc: "A strongly right-skewed population of annual incomes",
+    sampleSize: 50,
+    isNormal: true,
+    reason: "Although the population is strongly right-skewed, n = 50 ≥ 30 is large enough for the CLT to apply. The sampling distribution of x̄ is approximately normal.",
+    givenInfo: "Population: strongly right-skewed | n = 50"
+  },
+  {
+    popDesc: "A normally distributed population of bolt diameters produced by a machine",
+    sampleSize: 4,
+    isNormal: true,
+    reason: "The population of bolt diameters is normally distributed. When the population is normal, the sampling distribution of x̄ is normal for any n, even n = 4.",
+    givenInfo: "Population: normal | n = 4"
+  },
+  {
+    popDesc: "A uniform (flat) distribution of random number generator outputs between 0 and 1",
+    sampleSize: 12,
+    isNormal: false,
+    reason: "The population is uniform (non-normal) and n = 12 < 30. The CLT requires n ≥ 30 for non-normal populations, so the sampling distribution of x̄ is NOT approximately normal.",
+    givenInfo: "Population: uniform | n = 12"
+  },
+  {
+    popDesc: "A uniform (flat) distribution of random number generator outputs between 0 and 1",
+    sampleSize: 35,
+    isNormal: true,
+    reason: "Although the population is uniform (non-normal), n = 35 ≥ 30 is large enough for the CLT to apply. The sampling distribution of x̄ is approximately normal.",
+    givenInfo: "Population: uniform | n = 35"
+  },
+  {
+    popDesc: "A bimodal distribution of marathon finish times for elite and recreational runners combined",
+    sampleSize: 15,
+    isNormal: false,
+    reason: "The population is bimodal (far from normal) and n = 15 < 30. The CLT does not apply, so the sampling distribution of x̄ is NOT approximately normal.",
+    givenInfo: "Population: bimodal | n = 15"
+  },
+  {
+    popDesc: "A bimodal distribution of marathon finish times for elite and recreational runners combined",
+    sampleSize: 60,
+    isNormal: true,
+    reason: "Although the population is bimodal, n = 60 is well above 30. The CLT guarantees the sampling distribution of x̄ is approximately normal for such a large sample.",
+    givenInfo: "Population: bimodal | n = 60"
+  },
+  {
+    popDesc: "A slightly left-skewed population of adult systolic blood pressures",
+    sampleSize: 25,
+    isNormal: true,
+    reason: "With only slight skew, n = 25 is typically sufficient. For mildly non-normal populations, sample sizes slightly below 30 can still produce approximately normal sampling distributions.",
+    givenInfo: "Population: slightly left-skewed | n = 25"
+  },
+  {
+    popDesc: "An exponential (heavily right-skewed) population of customer wait times at a bank",
+    sampleSize: 6,
+    isNormal: false,
+    reason: "Exponential distributions are heavily right-skewed, and n = 6 is far too small for the CLT. The sampling distribution of x̄ will still be right-skewed.",
+    givenInfo: "Population: exponential (right-skewed) | n = 6"
+  }
+];
+
+// ---- L33: Interpret x̄ parameters (5.7c) ----
+const meanInterpretParamsBank = [
+  {
+    context: "The mean weight of lemons from a large orchard is μ = 4 oz with σ = 0.5 oz. Random samples of 6 lemons are selected.",
+    mu: 4, sigma: 0.5, n: 6, unit: "oz", measurable: "weight", paramType: "mean",
+    correctInterpretation: "μ_x̄ = 4 oz, meaning that across all possible samples of 6 lemons, the average of all sample mean weights equals the population mean of 4 oz",
+    wrongInterpretations: [
+      "In every sample of 6 lemons, the sample mean weight will be exactly 4 oz",
+      "The mean of 4 oz means that each lemon in our sample weighs 4 oz",
+      "μ_x̄ = 4 oz means 4 out of 6 lemons will have a weight above average"
+    ]
+  },
+  {
+    context: "Battery lifetimes from a factory have μ = 500 hours and σ = 40 hours. Random samples of 40 batteries are tested.",
+    mu: 500, sigma: 40, n: 40, unit: "hours", measurable: "lifetime", paramType: "sd",
+    correctInterpretation: "σ_x̄ ≈ 6.325 hours, meaning the sample mean lifetime typically varies by about 6.325 hours from the true population mean of 500 hours across all possible samples of 40 batteries",
+    wrongInterpretations: [
+      "The standard deviation of 6.325 hours means every sample mean is within 6.325 hours of 500",
+      "σ_x̄ = 6.325 means each individual battery's lifetime varies by 6.325 hours from the mean",
+      "The standard deviation of 6.325 hours means 6.325% of batteries are defective"
+    ]
+  },
+  {
+    context: "Test scores at a large high school have μ = 72 points and σ = 12 points. Random samples of 36 students are selected.",
+    mu: 72, sigma: 12, n: 36, unit: "points", measurable: "test score", paramType: "mean",
+    correctInterpretation: "μ_x̄ = 72 points, meaning that if we took all possible samples of 36 students, the average of all sample mean test scores would equal the population mean of 72 points",
+    wrongInterpretations: [
+      "μ_x̄ = 72 points means our specific sample of 36 students will have a mean of exactly 72",
+      "The mean is 72 because that was the result of our specific sample",
+      "μ_x̄ = 72 means 72% of students scored above average"
+    ]
+  },
+  {
+    context: "Coffee cup fill amounts at a café have μ = 12 oz and σ = 0.3 oz. Random samples of 15 cups are measured.",
+    mu: 12, sigma: 0.3, n: 15, unit: "oz", measurable: "fill amount", paramType: "sd",
+    correctInterpretation: "σ_x̄ ≈ 0.077 oz, meaning the sample mean fill amount typically differs from the true mean of 12 oz by about 0.077 oz across all possible samples of 15 cups",
+    wrongInterpretations: [
+      "σ_x̄ = 0.077 oz means each cup is within 0.077 oz of 12 oz",
+      "The standard deviation of 0.077 oz means the machine is 0.077 oz off every time",
+      "σ_x̄ = 0.077 means there is a 7.7% chance of underfilling"
+    ]
+  },
+  {
+    context: "Heights of pine trees in a national forest have μ = 55 ft and σ = 8 ft. Random samples of 30 trees are measured.",
+    mu: 55, sigma: 8, n: 30, unit: "ft", measurable: "height", paramType: "mean",
+    correctInterpretation: "μ_x̄ = 55 ft, meaning that across all possible random samples of 30 trees from the forest, the average of all sample mean heights equals the true population mean of 55 ft",
+    wrongInterpretations: [
+      "μ_x̄ = 55 ft means every sample of 30 trees will have a mean height of exactly 55 ft",
+      "The mean is 55 ft because that is what we measured in our specific sample",
+      "μ_x̄ = 55 ft means 55% of all possible samples will match the population mean"
+    ]
+  },
+  {
+    context: "Commute times in a large metropolitan area have μ = 32 min and σ = 7 min. Random samples of 50 commuters are surveyed.",
+    mu: 32, sigma: 7, n: 50, unit: "min", measurable: "commute time", paramType: "sd",
+    correctInterpretation: "σ_x̄ ≈ 0.990 min, meaning on average the sample mean commute time differs from the true mean of 32 min by about 0.990 min across all possible samples of 50 commuters",
+    wrongInterpretations: [
+      "σ_x̄ = 0.990 min means each commuter's time varies by about 0.990 min from the mean",
+      "The standard deviation guarantees x̄ is always within 0.990 min of 32",
+      "σ_x̄ = 0.990 means there is a 0.99% probability of error in the mean"
+    ]
+  },
+  {
+    context: "Newborn weights at a large hospital have μ = 7.5 lb and σ = 1.1 lb. Random samples of 20 newborns are weighed.",
+    mu: 7.5, sigma: 1.1, n: 20, unit: "lb", measurable: "birth weight", paramType: "mean",
+    correctInterpretation: "μ_x̄ = 7.5 lb, meaning the average of the sample mean weights from all possible samples of 20 newborns equals the true population mean birth weight of 7.5 lb — x̄ is an unbiased estimator of μ",
+    wrongInterpretations: [
+      "μ_x̄ = 7.5 lb means our specific sample will have exactly 7.5 lb as its mean",
+      "The mean is 7.5 lb because we weighed 20 babies and found 7.5 lb in our sample",
+      "μ_x̄ = 7.5 lb means 7.5 out of 20 newborns will be above average"
+    ]
+  },
+  {
+    context: "Reaction times for drivers at an intersection have μ = 1.8 sec and σ = 0.4 sec. Random samples of 45 drivers are tested.",
+    mu: 1.8, sigma: 0.4, n: 45, unit: "sec", measurable: "reaction time", paramType: "sd",
+    correctInterpretation: "σ_x̄ ≈ 0.060 sec, meaning the sample mean reaction time typically varies by about 0.060 sec from the true population mean of 1.8 sec across all possible samples of 45 drivers",
+    wrongInterpretations: [
+      "σ_x̄ = 0.060 sec means each driver's reaction time is within 0.060 sec of 1.8 sec",
+      "The standard deviation of 0.060 sec means exactly 6% of drivers have slow reactions",
+      "σ_x̄ = 0.060 means x̄ is guaranteed to be between 1.740 and 1.860 sec"
+    ]
+  },
+  {
+    context: "Water bottle volumes from a bottling plant have μ = 500 mL and σ = 5 mL. Random samples of 10 bottles are inspected.",
+    mu: 500, sigma: 5, n: 10, unit: "mL", measurable: "volume", paramType: "mean",
+    correctInterpretation: "μ_x̄ = 500 mL, meaning that if we took all possible random samples of 10 bottles, the mean of all sample mean volumes would equal the true population mean of 500 mL",
+    wrongInterpretations: [
+      "μ_x̄ = 500 mL means every sample of 10 bottles will have a mean of exactly 500 mL",
+      "The mean of 500 mL is the result of our specific sample, not a property of all possible samples",
+      "μ_x̄ = 500 mL means the sampling distribution is centered at the sample mean, not the population mean"
+    ]
+  }
+];
+
+// ---- L35: 5.7 Capstone scenarios ----
+const capstone57Bank = [
+  {
+    scenarioText: "A factory produces bolts with mean diameter μ = 10 mm and σ = 0.2 mm. A quality inspector takes a random sample of 25 bolts from a day's production of 50,000 bolts. What are the mean and standard deviation of the sampling distribution of x̄?",
+    correctAnswer: "μ_x̄ = 10 mm, σ_x̄ = 0.2/√25 = 0.04 mm",
+    wrongOptions: [
+      "μ_x̄ = 10 mm, σ_x̄ = 0.2 mm (forgot to divide by √n)",
+      "μ_x̄ = 10 mm, σ_x̄ = 0.2/25 = 0.008 mm (divided by n instead of √n)",
+      "μ_x̄ = 250 mm, σ_x̄ = 0.04 mm (multiplied μ by n)"
+    ],
+    explanation: "μ_x̄ = μ = 10 mm. σ_x̄ = σ/√n = 0.2/√25 = 0.2/5 = 0.04 mm. The 10% condition is met: 25 < 0.10 × 50,000 = 5,000.",
+    topicId: "5.7: Distribution Parameters"
+  },
+  {
+    scenarioText: "Customer wait times at a bank are heavily right-skewed with μ = 8 min and σ = 5 min. A manager takes a random sample of 12 customers. Can we assume the sampling distribution of x̄ is approximately normal?",
+    correctAnswer: "No — the population is heavily right-skewed and n = 12 < 30, so the CLT does not apply",
+    wrongOptions: [
+      "Yes — the CLT says any sampling distribution is approximately normal",
+      "Yes — n = 12 is large enough for any population shape",
+      "No — but only because σ = 5 is too large relative to μ = 8"
+    ],
+    explanation: "For non-normal populations, the CLT requires n ≥ 30. Since the population is heavily right-skewed and n = 12 < 30, the sampling distribution of x̄ is NOT approximately normal.",
+    topicId: "5.7: Shape of x̄ Distribution"
+  },
+  {
+    scenarioText: "Adult male heights are normally distributed with μ = 70 in and σ = 3 in. For random samples of 9 men, σ_x̄ = 1.0 in. Which interpretation of σ_x̄ is correct?",
+    correctAnswer: "The sample mean height of 9 men typically varies by about 1.0 in from the true population mean of 70 in across all possible samples of 9 men",
+    wrongOptions: [
+      "Each man's height in the sample varies by exactly 1.0 in from 70 in",
+      "The sample mean will always be within 1.0 in of 70 in",
+      "1.0 in is the standard deviation of individual heights in any sample of 9"
+    ],
+    explanation: "σ_x̄ describes how much x̄ TYPICALLY varies from μ across all possible samples of the given size. It does NOT describe individual values, and it does NOT mean x̄ is always within σ_x̄ of μ.",
+    topicId: "5.7: Interpreting σ_x̄"
+  },
+  {
+    scenarioText: "A cereal company fills boxes with μ = 16 oz and σ = 0.4 oz (normally distributed). In a random sample of 20 boxes, what is the probability that the sample mean is less than 15.8 oz?",
+    correctAnswer: "σ_x̄ = 0.4/√20 ≈ 0.0894, z = (15.8 − 16)/0.0894 ≈ −2.24, P(x̄ < 15.8) ≈ 0.013",
+    wrongOptions: [
+      "z = (15.8 − 16)/0.4 = −0.50, P(x̄ < 15.8) ≈ 0.309 (used σ instead of σ/√n)",
+      "z = (16 − 15.8)/0.0894 ≈ 2.24, P ≈ 0.987 (wrong subtraction order and wrong tail)",
+      "Cannot be calculated because n = 20 < 30"
+    ],
+    explanation: "σ_x̄ = 0.4/√20 ≈ 0.0894. z = (15.8 − 16)/0.0894 ≈ −2.24. P(Z < −2.24) ≈ 0.013. Since the population is normal, the sampling distribution is normal for any n.",
+    topicId: "5.7: x̄ Probability"
+  },
+  {
+    scenarioText: "Why is σ_x̄ = σ/√n always SMALLER than σ? What does this mean about averages compared to individual values?",
+    correctAnswer: "Dividing by √n makes σ_x̄ < σ, meaning sample means are LESS variable than individual values — extreme values tend to cancel out when averaged",
+    wrongOptions: [
+      "σ_x̄ < σ because we are measuring fewer values, which reduces variation",
+      "σ_x̄ < σ only when the population is normal; otherwise they could be equal",
+      "σ_x̄ < σ because the sampling distribution is always centered at zero"
+    ],
+    explanation: "Since √n > 1 for any n > 1, dividing σ by √n always gives a smaller result. This is the key insight: averages are less variable than individual values because extreme observations in a sample tend to be offset by less extreme ones.",
+    topicId: "5.7: Variability of Averages"
+  },
+  {
+    scenarioText: "A student calculates σ_x̄ for a sample of 36 from a population with σ = 18. They write: σ_x̄ = 18/36 = 0.5. What error did the student make?",
+    correctAnswer: "The student divided by n = 36 instead of √n = √36 = 6. Correct answer: σ_x̄ = 18/6 = 3",
+    wrongOptions: [
+      "The student should have multiplied by √n: σ_x̄ = 18 × 6 = 108",
+      "The formula σ/√n only works for proportions, not means",
+      "The student used the wrong value of σ — they should have used σ² = 324"
+    ],
+    explanation: "σ_x̄ = σ/√n, NOT σ/n. For n = 36: σ_x̄ = 18/√36 = 18/6 = 3. Dividing by n instead of √n is a common error that makes σ_x̄ too small.",
+    topicId: "5.7: Common Error"
+  },
+  {
+    scenarioText: "A normally distributed population of water temperatures has μ = 68°F and σ = 4°F. For samples of n = 16, what is the probability that x̄ exceeds 69.5°F?",
+    correctAnswer: "σ_x̄ = 4/√16 = 1.0, z = (69.5 − 68)/1.0 = 1.5, P(x̄ > 69.5) = 1 − 0.9332 ≈ 0.067",
+    wrongOptions: [
+      "z = (69.5 − 68)/4 = 0.375, P ≈ 0.354 (used σ instead of σ/√n)",
+      "z = (69.5 − 68)/1.0 = 1.5, P ≈ 0.933 (forgot to take complement for 'greater than')",
+      "Cannot compute because 16 < 30"
+    ],
+    explanation: "σ_x̄ = 4/√16 = 1.0. z = (69.5 − 68)/1.0 = 1.5. P(x̄ > 69.5) = P(Z > 1.5) = 1 − 0.9332 = 0.0668. The population is normal, so the distribution is normal for any n.",
+    topicId: "5.7: x̄ Probability"
+  },
+  {
+    scenarioText: "Why does the 10% condition (n < 0.10N) matter when using σ_x̄ = σ/√n for sampling distributions of x̄?",
+    correctAnswer: "It ensures sampling without replacement is approximately the same as sampling with replacement, so the formula σ_x̄ = σ/√n is valid",
+    wrongOptions: [
+      "It guarantees the sampling distribution will be approximately normal",
+      "It ensures the sample mean will be within 10% of the population mean",
+      "It prevents the sample from being too large relative to the confidence level"
+    ],
+    explanation: "The 10% condition ensures approximate independence when sampling without replacement. When n < 10% of N, removing sampled individuals doesn't meaningfully change the remaining population, so the standard formula σ_x̄ = σ/√n applies.",
+    topicId: "5.7: 10% Condition"
+  },
+  {
+    scenarioText: "Two researchers study the same population (μ = 50, σ = 10). Researcher A uses n = 25 and Researcher B uses n = 100. Compare their σ_x̄ values.",
+    correctAnswer: "A: σ_x̄ = 10/√25 = 2.0; B: σ_x̄ = 10/√100 = 1.0. Larger samples produce less variable sample means — B's sampling distribution is half as spread out",
+    wrongOptions: [
+      "A: σ_x̄ = 2.0; B: σ_x̄ = 1.0. They are different because the populations differ",
+      "A: σ_x̄ = 0.4; B: σ_x̄ = 0.1. We divide σ by n, not √n",
+      "Both have σ_x̄ = 10 because σ doesn't change with sample size"
+    ],
+    explanation: "σ_x̄ = σ/√n. A: 10/√25 = 2.0. B: 10/√100 = 1.0. Quadrupling the sample size halves σ_x̄. Larger samples give more precise estimates of μ.",
+    topicId: "5.7: Effect of Sample Size"
+  },
+  {
+    scenarioText: "A population has μ = 100 and σ = 15 (right-skewed). A researcher takes samples of n = 40. What can we say about the sampling distribution of x̄?",
+    correctAnswer: "μ_x̄ = 100, σ_x̄ = 15/√40 ≈ 2.372, and the distribution is approximately normal by the CLT since n = 40 ≥ 30",
+    wrongOptions: [
+      "μ_x̄ = 100, σ_x̄ = 15, and the distribution is right-skewed like the population",
+      "μ_x̄ = 100, σ_x̄ ≈ 2.372, but we cannot determine the shape without more information",
+      "The CLT does not apply because the population is right-skewed"
+    ],
+    explanation: "μ_x̄ = μ = 100. σ_x̄ = σ/√n = 15/√40 ≈ 2.372. Since n = 40 ≥ 30, the CLT applies even though the population is right-skewed, so the sampling distribution of x̄ is approximately normal.",
+    topicId: "5.7: Full Synthesis"
+  }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -2983,6 +3280,182 @@ export function generateProblem(modeId, context, mode) {
     answers = {
       capstone56Answer: { value: scen.correctAnswer },
       capstone56Explain: { value: scen.explanation }
+    };
+
+    scenario = scen.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L31: x̄ Distribution Parameters (5.7a) ==========
+  if (modeId === "l31-mean-dist-params") {
+    const scen = drawFromBag('meanContext_l31', meanContextBank);
+
+    const meanMu = scen.mu;
+    const meanSigma = Math.round((scen.sigma / Math.sqrt(scen.n)) * 1000) / 1000;
+    const tenPctCheck = scen.n < 0.10 * scen.N;
+
+    ctx = {
+      topicId: "5.7: x̄ Distribution Parameters",
+      scenarioText: `${scen.context} with μ = ${scen.mu} ${scen.unit} and σ = ${scen.sigma} ${scen.unit}. A random sample of ${scen.n} ${scen.label} is selected from a population of ${scen.N.toLocaleString()}.\n\nFind the mean and standard deviation of the sampling distribution of x̄.`,
+      givenText: `μ = ${scen.mu} ${scen.unit}, σ = ${scen.sigma} ${scen.unit}, n = ${scen.n}, N = ${scen.N.toLocaleString()} | 10% condition: ${scen.n} < ${Math.round(0.10 * scen.N)} → ${tenPctCheck ? "✓ Met" : "✗ Not met"}`,
+      mu: `${scen.mu}`,
+      sigma: `${scen.sigma}`,
+      n: `${scen.n}`,
+      N: `${scen.N}`,
+      unit: scen.unit,
+      meanMu: `${meanMu}`,
+      meanSigma: `${meanSigma}`,
+      tenPctMet: `${tenPctCheck}`
+    };
+
+    answers = {
+      meanMu: { value: meanMu, tolerance: 0.1 },
+      meanSigma: { value: meanSigma, tolerance: 0.1 }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L32: Shape of x̄ Distribution (5.7b) ==========
+  if (modeId === "l32-mean-shape") {
+    const scen = drawFromBag('meanShape', meanShapeBank);
+
+    const normalAnswer = scen.isNormal
+      ? "Yes, approximately normal"
+      : "No, NOT approximately normal";
+
+    ctx = {
+      topicId: "5.7: Shape of x̄ Distribution",
+      scenarioText: `Consider the following scenario:\n\n${scen.popDesc} with sample size n = ${scen.sampleSize}.\n\nIs the sampling distribution of x̄ approximately normal?`,
+      givenText: scen.givenInfo,
+      isNormal: `${scen.isNormal}`,
+      sampleSize: `${scen.sampleSize}`,
+      reason: scen.reason,
+      expectedExplanation: scen.reason
+    };
+
+    answers = {
+      meanShapeChoice: { value: normalAnswer },
+      meanShapeExplain: { value: scen.reason }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L33: Interpret x̄ Parameters (5.7c) ==========
+  if (modeId === "l33-interpret-mean-params") {
+    const scen = drawFromBag('meanInterpretParams', meanInterpretParamsBank);
+
+    const allOptions = shuffle([scen.correctInterpretation, ...scen.wrongInterpretations]);
+    const sigmaXbar = Math.round((scen.sigma / Math.sqrt(scen.n)) * 1000) / 1000;
+
+    ctx = {
+      topicId: "5.7: Interpreting x̄ Parameters",
+      scenarioText: `${scen.context}\n\n${scen.paramType === "mean"
+        ? `The mean of the sampling distribution of x̄ is μ_x̄ = ${scen.mu} ${scen.unit}. Which interpretation is correct?`
+        : `The standard deviation of the sampling distribution of x̄ is σ_x̄ ≈ ${sigmaXbar} ${scen.unit}. Which interpretation is correct?`}`,
+      givenText: `μ = ${scen.mu} ${scen.unit}, σ = ${scen.sigma} ${scen.unit}, n = ${scen.n} | Interpreting: ${scen.paramType === "mean" ? "μ_x̄" : "σ_x̄"}`,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      paramType: scen.paramType,
+      mu: `${scen.mu}`,
+      sigma: `${scen.sigma}`,
+      n: `${scen.n}`,
+      unit: scen.unit
+    };
+
+    answers = {
+      meanInterpretAnswer: { value: scen.correctInterpretation }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L34: x̄ Probability (5.7d) ==========
+  if (modeId === "l34-mean-probability") {
+    const scen = drawFromBag('meanContext_l34', meanContextBank);
+
+    const meanSigma = scen.sigma / Math.sqrt(scen.n);
+
+    // Generate a random x̄ boundary that's 0.5–2.5 SD away from μ
+    const sdMultiplier = (randInt(50, 250)) / 100 * (Math.random() < 0.5 ? 1 : -1);
+    let xBar = scen.mu + sdMultiplier * meanSigma;
+    // Round to reasonable precision
+    if (scen.mu >= 100) {
+      xBar = Math.round(xBar * 10) / 10;
+    } else if (scen.mu >= 10) {
+      xBar = Math.round(xBar * 100) / 100;
+    } else {
+      xBar = Math.round(xBar * 1000) / 1000;
+    }
+
+    // Pick direction
+    const greaterThan = Math.random() < 0.5;
+    const direction = greaterThan ? "GREATER THAN" : "LESS THAN";
+
+    const zExact = (xBar - scen.mu) / meanSigma;
+    const z = Math.round(zExact * 100) / 100;
+
+    let prob;
+    if (greaterThan) {
+      prob = 1 - normalCDF(zExact);
+    } else {
+      prob = normalCDF(zExact);
+    }
+    prob = Math.round(prob * 10000) / 10000;
+
+    const meanSigmaRounded = Math.round(meanSigma * 1000) / 1000;
+
+    ctx = {
+      topicId: "5.7: x̄ Probability",
+      scenarioText: `${scen.context} with μ = ${scen.mu} ${scen.unit} and σ = ${scen.sigma} ${scen.unit}. A random sample of ${scen.n} is selected.\n\nWhat is the probability that the sample mean x̄ is ${direction} ${xBar} ${scen.unit}?`,
+      givenText: `μ = ${scen.mu} ${scen.unit}, σ = ${scen.sigma} ${scen.unit}, n = ${scen.n}, σ_x̄ = ${meanSigmaRounded} ${scen.unit}`,
+      mu: `${scen.mu}`,
+      sigma: `${scen.sigma}`,
+      n: `${scen.n}`,
+      xBar: `${xBar}`,
+      meanSigma: `${meanSigmaRounded}`,
+      unit: scen.unit,
+      direction: direction,
+      zScore: `${z}`,
+      probability: `${prob}`
+    };
+
+    answers = {
+      meanZScore: { value: z, tolerance: 0.05 },
+      meanProb: { value: prob, tolerance: 0.005 }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L35: 5.7 Capstone ==========
+  if (modeId === "l35-capstone-57") {
+    const scen = drawFromBag('capstone57', capstone57Bank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: scen.topicId,
+      scenarioText: scen.scenarioText,
+      givenText: "Apply concepts from Topic 5.7 (Sampling Distributions for Sample Means).",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      explanation: scen.explanation,
+      expectedExplanation: scen.explanation
+    };
+
+    answers = {
+      capstone57Answer: { value: scen.correctAnswer },
+      capstone57Explain: { value: scen.explanation }
     };
 
     scenario = scen.scenarioText;

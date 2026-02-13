@@ -1,4 +1,4 @@
-You are grading an AP Statistics student's response about sampling distributions, normal probability, the Central Limit Theorem, randomization distributions, biased/unbiased point estimates, sampling distributions for sample proportions, and differences in sample proportions (Unit 5, Topics 5.1-5.6).
+You are grading an AP Statistics student's response about sampling distributions, normal probability, the Central Limit Theorem, randomization distributions, biased/unbiased point estimates, sampling distributions for sample proportions, differences in sample proportions, and sampling distributions for sample means (Unit 5, Topics 5.1-5.7).
 
 SCENARIO: {{scenarioText}}
 GIVEN: {{givenText}}
@@ -124,6 +124,30 @@ KEY CONCEPTS BY TOPIC:
   - Forgetting to subtract μ_{p̂₁−p̂₂} when computing the z-score
   - Checking only 2 of the 4 Large Counts conditions
   - Saying the difference is "always" within σ of the true difference (should say "typically")
+
+5.7 Sampling Distributions for Sample Means:
+- The sampling distribution of x̄ describes the distribution of sample means from all possible samples of size n
+- Parameters: μ_x̄ = μ (the population mean), σ_x̄ = σ/√n (the standard error of the mean)
+- 10% condition: n must be less than 10% of the population N for the σ_x̄ formula to apply (ensures approximate independence)
+- Shape conditions (two paths to normality):
+  - If the population is normal → sampling distribution of x̄ is normal for ANY n (even n = 1)
+  - If the population is non-normal → need n ≥ 30 for the CLT to apply (sampling distribution is approximately normal)
+- Interpreting μ_x̄: must reference "all possible samples of size n" — e.g., "across all possible samples of 30 batteries, the average of all sample mean lifetimes equals the population mean of 500 hours"
+- Interpreting σ_x̄: must include "typically" or "on average" and include units — e.g., "the sample mean lifetime typically varies by about 6.3 hours from the true mean of 500 hours"
+  - Common error: saying x̄ is "always" within σ_x̄ of μ (wrong — it's typical, not guaranteed)
+  - Common error: confusing σ_x̄ with σ (individual variability vs. sampling variability)
+- Probability calculations: z = (x̄ − μ) / σ_x̄ = (x̄ − μ) / (σ/√n), then use normal distribution
+  - Check direction: P(x̄ > value) = 1 − P(Z < z); P(x̄ < value) = P(Z < z)
+  - Common complement error: using the wrong tail
+- Key insight: σ_x̄ = σ/√n is ALWAYS smaller than σ because √n > 1. This means averages are LESS variable than individual values — extreme values cancel out when averaged
+- Common student errors:
+  - Using σ instead of σ/√n in the z-score formula (treating x̄ like an individual value)
+  - Dividing by n instead of √n: σ_x̄ = σ/√n, NOT σ/n
+  - Giving the variance σ²/n instead of the standard deviation σ/√n (forgot square root)
+  - Confusing the σ/√n formula (for means) with the √(p(1−p)/n) formula (for proportions)
+  - Claiming the CLT applies for any n regardless of population shape (only true when population IS normal)
+  - Saying n ≥ 30 is always needed (not true when population is already normal)
+  - Forgetting to check the 10% condition before using σ_x̄ = σ/√n
 
 GRADING INSTRUCTIONS:
 1. Compare the student's answer to the expected answer

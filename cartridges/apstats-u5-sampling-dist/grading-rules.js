@@ -1,8 +1,9 @@
-// grading-rules.js - AP Statistics Unit 5 Topics 5.1-5.6
+// grading-rules.js - AP Statistics Unit 5 Topics 5.1-5.7
 // Topics: Sampling variability, sampling distributions, z-scores, normal probability,
 // inverse normal, missing elements, normality assessment, combining random variables,
 // Central Limit Theorem, randomization distributions, biased/unbiased point estimates,
-// sampling distributions for sample proportions, differences in sample proportions
+// sampling distributions for sample proportions, differences in sample proportions,
+// sampling distributions for sample means
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -49,7 +50,9 @@ export function gradeField(fieldId, answer, context) {
     "capstone55Explain",
     "diffLargeCountsExplain",
     "diffInterpretProbText",
-    "capstone56Explain"
+    "capstone56Explain",
+    "meanShapeExplain",
+    "capstone57Explain"
   ]);
 
   if (isBlank(answer)) {
@@ -62,7 +65,8 @@ export function gradeField(fieldId, answer, context) {
       "combMean", "combSD", "combMean2", "combSD2", "combProb",
       "pValueCalc",
       "propMean", "propSD", "propZScore", "propProb",
-      "diffPropMean", "diffPropSD", "diffPropZScore", "diffPropProb"
+      "diffPropMean", "diffPropSD", "diffPropZScore", "diffPropProb",
+      "meanMu", "meanSigma", "meanZScore", "meanProb"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -1630,6 +1634,315 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should reference the specific Topic 5.6 concept (p̂₁−p̂₂ parameters, four Large Counts conditions, interpretation, or probability calculation) and explain your reasoning."
+    };
+  }
+
+  // ========== LEVEL 31: Sample Mean Mu (meanMu) ==========
+  if (fieldId === "meanMu") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.1;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check if student used 1 - μ (nonsensical but possible confusion with proportions)
+    if (context.mu && Math.abs(studentVal - (1 - parseFloat(context.mu))) < 0.1 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `Did you confuse this with a proportion problem? For sample means, μ_x̄ = μ = ${expectedVal}. There is no (1 − μ) formula for means.`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! μ_x̄ = μ = ${expectedVal}. The mean of the sampling distribution of x̄ equals the population mean.`
+      };
+    }
+    if (diff <= 0.5) {
+      return {
+        score: "P",
+        feedback: `Close! μ_x̄ = μ = ${expectedVal}. The mean equals the population mean exactly.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. μ_x̄ = μ = ${expectedVal}. The mean of the sampling distribution of x̄ always equals the population mean μ.`
+    };
+  }
+
+  // ========== LEVEL 31: Sample Mean Sigma (meanSigma) ==========
+  if (fieldId === "meanSigma") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.1;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const mu = parseFloat(context.mu);
+    const sigma = parseFloat(context.sigma);
+    const n = parseFloat(context.n);
+
+    // Error 1: used σ instead of σ/√n (gave the population SD)
+    if (Math.abs(studentVal - sigma) < 0.1 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `You gave the population standard deviation σ = ${sigma} instead of σ_x̄! Remember: σ_x̄ = σ/√n = ${sigma}/√${n} = ${expectedVal}. Averages are LESS variable than individual values.`
+      };
+    }
+
+    // Error 2: forgot √ (divided by n instead of √n)
+    const withoutSqrt = sigma / n;
+    if (Math.abs(studentVal - withoutSqrt) < 0.1 && diff > tolerance) {
+      return {
+        score: "P",
+        feedback: `Almost! You divided by n instead of √n. σ_x̄ = σ/√n = ${sigma}/√${n} = ${expectedVal}, not σ/n = ${Math.round(withoutSqrt * 1000) / 1000}.`
+      };
+    }
+
+    // Error 3: gave variance instead of SD (σ²/n)
+    const variance = (sigma * sigma) / n;
+    if (Math.abs(studentVal - variance) < 0.1 && diff > tolerance) {
+      return {
+        score: "P",
+        feedback: `You calculated the variance (σ²/n = ${Math.round(variance * 1000) / 1000}) instead of the standard deviation. Take the square root: σ_x̄ = √(σ²/n) = σ/√n = ${expectedVal}`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! σ_x̄ = σ/√n = ${sigma}/√${n} = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.2) {
+      return {
+        score: "P",
+        feedback: `Close! σ_x̄ = σ/√n = ${sigma}/√${n} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. σ_x̄ = σ/√n = ${sigma}/√${n} = ${expectedVal}. Divide the population standard deviation by the square root of the sample size.`
+    };
+  }
+
+  // ========== LEVEL 32: Mean Shape Choice ==========
+  if (fieldId === "meanShapeChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.reason}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.reason}`
+    };
+  }
+
+  // ========== LEVEL 32: Mean Shape Explain (Textarea) ==========
+  if (fieldId === "meanShapeExplain") {
+    const normalKeywords = ["normal", "approximately normal", "bell"];
+    const populationKeywords = ["population", "pop"];
+    const sampleSizeKeywords = ["sample size", "n =", "n=", "n ≥", "n >="];
+    const cltKeywords = ["clt", "central limit", "theorem"];
+    const thresholdKeywords = ["30", "≥ 30", ">= 30"];
+
+    const mentionsNormal = containsAny(answer, normalKeywords);
+    const mentionsPopulation = containsAny(answer, populationKeywords);
+    const mentionsSampleSize = containsAny(answer, sampleSizeKeywords);
+    const mentionsCLT = containsAny(answer, cltKeywords);
+    const mentionsThreshold = containsAny(answer, thresholdKeywords);
+
+    const hasSubstance = answer.trim().split(/\s+/).length >= 6;
+
+    // E: mentions population shape + sample size/CLT context + substance
+    if ((mentionsPopulation || mentionsCLT) && (mentionsSampleSize || mentionsThreshold || mentionsNormal) && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You correctly identified the conditions for normality of the sampling distribution of x̄."
+      };
+    }
+    // P: mentions some relevant concepts
+    if ((mentionsNormal || mentionsCLT || mentionsThreshold || mentionsSampleSize) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Make sure to address BOTH the population shape AND the sample size. If population is normal → any n. If non-normal → need n ≥ 30."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should reference the population shape and sample size. Two paths to normality: (1) population is normal → any n, or (2) population non-normal → CLT requires n ≥ 30."
+    };
+  }
+
+  // ========== LEVEL 33: Mean Interpret Answer (Dropdown) ==========
+  if (fieldId === "meanInterpretAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! Your interpretation properly references all possible samples and uses appropriate language."
+      };
+    }
+    // Check if the student picked a common wrong interpretation
+    if (containsAny(answer, ["every sample", "exactly", "always", "guaranteed"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. The mean/SD of the sampling distribution describes what happens ON AVERAGE across all possible samples — not what happens in every single sample. Individual samples will vary."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. When interpreting μ_x̄, reference 'all possible samples of size n.' When interpreting σ_x̄, use 'typically' or 'on average' to describe variation."
+    };
+  }
+
+  // ========== LEVEL 34: Mean Z-Score ==========
+  if (fieldId === "meanZScore") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.05;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check if student subtracted in wrong order (μ - x̄ instead of x̄ - μ)
+    if (Math.abs(studentVal - (-expectedVal)) < 0.05 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `Check your subtraction order! z = (x̄ − μ) / σ_x̄ = (${context.xBar} − ${context.mu}) / ${context.meanSigma} = ${expectedVal}`
+      };
+    }
+
+    // Check if student divided by σ instead of σ/√n
+    if (context.sigma && context.mu && context.xBar) {
+      const wrongDivisor = (parseFloat(context.xBar) - parseFloat(context.mu)) / parseFloat(context.sigma);
+      if (Math.abs(studentVal - wrongDivisor) < 0.1 && diff > tolerance) {
+        return {
+          score: "I",
+          feedback: `You divided by σ instead of σ_x̄! z = (x̄ − μ) / σ_x̄ where σ_x̄ = σ/√n = ${context.meanSigma}, not σ = ${context.sigma}. z = ${expectedVal}`
+        };
+      }
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! z = (x̄ − μ) / σ_x̄ = (${context.xBar} − ${context.mu}) / ${context.meanSigma} = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.10) {
+      return {
+        score: "P",
+        feedback: `Close! z = (x̄ − μ) / σ_x̄ = (${context.xBar} − ${context.mu}) / ${context.meanSigma} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. z = (x̄ − μ) / σ_x̄ = (${context.xBar} − ${context.mu}) / ${context.meanSigma} = ${expectedVal}`
+    };
+  }
+
+  // ========== LEVEL 34: Mean Probability ==========
+  if (fieldId === "meanProb") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check complement error
+    if (Math.abs(studentVal - (1 - expectedVal)) < 0.005) {
+      const directionHint = context.direction === "GREATER THAN"
+        ? "1 − P(Z < z)"
+        : "P(Z < z) directly";
+      return {
+        score: "I",
+        feedback: `You found the complement! For P(x̄ ${context.direction} ${context.xBar}), you need ${directionHint}.`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.02) {
+      return {
+        score: "P",
+        feedback: `Close! Check your z-table lookup. P = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The probability is ${expectedVal}. Use z = (x̄ − μ) / σ_x̄ to find the z-score, then use the z-table.`
+    };
+  }
+
+  // ========== LEVEL 35: 5.7 Capstone Answer (Dropdown) ==========
+  if (fieldId === "capstone57Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 35: 5.7 Capstone Explain (Textarea) ==========
+  if (fieldId === "capstone57Explain") {
+    const meanKeywords = ["x̄", "x-bar", "xbar", "sample mean", "mean"];
+    const formulaKeywords = ["σ_x̄", "σ/√n", "sigma/sqrt", "standard deviation", "σ"];
+    const cltKeywords = ["clt", "central limit", "theorem", "n ≥ 30", "n >= 30"];
+    const interpretKeywords = ["all possible samples", "on average", "typically", "unbiased", "varies"];
+    const probKeywords = ["z-score", "z =", "probability", "normalcdf", "table"];
+
+    const mentionsMean = containsAny(answer, meanKeywords);
+    const mentionsFormula = containsAny(answer, formulaKeywords);
+    const mentionsCLT = containsAny(answer, cltKeywords);
+    const mentionsInterpret = containsAny(answer, interpretKeywords);
+    const mentionsProb = containsAny(answer, probKeywords);
+
+    const conceptMentioned = mentionsMean || mentionsFormula || mentionsCLT || mentionsInterpret || mentionsProb;
+    const categoryCount = [mentionsMean, mentionsFormula, mentionsCLT, mentionsInterpret, mentionsProb].filter(Boolean).length;
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "means", "shows", "using"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if ((categoryCount >= 2 && hasSubstance) || (conceptMentioned && hasReasoning && hasSubstance)) {
+      return {
+        score: "E",
+        feedback: "Excellent explanation! You clearly demonstrated understanding of Topic 5.7 concepts."
+      };
+    }
+    if (conceptMentioned && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Add more specific reasoning about WHY this concept applies to this scenario."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should reference the specific Topic 5.7 concept (x̄ distribution parameters, shape conditions, interpretation, or probability calculation) and explain your reasoning."
     };
   }
 

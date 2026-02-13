@@ -93,9 +93,9 @@
     },
     {
       "id": "apstats-u5-sampling-dist",
-      "name": "Sampling Distributions (5.1-5.5)",
+      "name": "Sampling Distributions (5.1-5.7)",
       "subject": "AP Statistics",
-      "description": "Sampling variability, normal distribution, z-scores, inverse normal, assessing normality, linear combinations, CLT, randomization distributions, biased/unbiased point estimates, sampling distributions for sample proportions",
+      "description": "Sampling variability, normal distribution, z-scores, inverse normal, assessing normality, linear combinations, CLT, randomization distributions, biased/unbiased point estimates, sampling distributions for sample proportions, differences in sample proportions, sampling distributions for sample means",
       "shortCode": "SAMP"
     }
   ]
