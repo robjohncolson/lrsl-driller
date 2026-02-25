@@ -24,9 +24,11 @@ function containsAny(answer, keywords) {
 function normalizeMath(str) {
   return normalize(str)
     .replace(/\s+/g, "")
-    .replace(/[(){}\[\]]/g, "")
-    .replace(/[·×*]/g, "")      // remove multiplication symbols
-    .replace(/−/g, "-");        // normalize unicode minus
+    .replace(/[(){}\[\]]/g, " ")  // replace brackets with space (preserves factor boundaries)
+    .replace(/[·×*]/g, "")       // remove multiplication symbols
+    .replace(/−/g, "-")          // normalize unicode minus
+    .replace(/\s+/g, " ")        // collapse multiple spaces
+    .trim();
 }
 
 function getExpectedObj(context, fieldId) {
