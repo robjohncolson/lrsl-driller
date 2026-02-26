@@ -1070,6 +1070,8 @@
       constructor(layerEl) {
         this.layerEl = layerEl;
         this.labels = [];
+        this.raycaster = new THREE.Raycaster();
+        this.occlusionMeshes = [];
       }
 
       clear() {
@@ -1140,6 +1142,10 @@
         this.labels = keep;
       }
 
+      setOcclusionMeshes(meshes) {
+        this.occlusionMeshes = Array.isArray(meshes) ? meshes : [];
+      }
+
       setOpacity(label, value) {
         if (!label || !label.el) return;
         const safe = String(clamp(value, 0, 1));
@@ -1156,6 +1162,13 @@
       update(camera, canvas, defaultDepthCull = false) {
         if (!camera || !canvas) return;
         const rect = canvas.getBoundingClientRect();
+        const cameraWorldPos = new THREE.Vector3();
+        camera.getWorldPosition(cameraWorldPos);
+        const orthoDir = new THREE.Vector3();
+        if (camera.isOrthographicCamera) {
+          orthoDir.set(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
+        }
+
         for (const label of this.labels) {
           if (!label.visible) continue;
           const world = label.getWorldPos
@@ -1167,7 +1180,32 @@
           const y = (-v.y * 0.5 + 0.5) * rect.height;
           const inView = v.z > -1 && v.z < 1;
           const useDepthCull = label.depthCull == null ? defaultDepthCull : !!label.depthCull;
-          if (!inView || (useDepthCull && (v.z > 1 || v.z < -1))) {
+          let occluded = false;
+
+          if (useDepthCull && inView && this.occlusionMeshes.length > 0) {
+            let distToLabel = 0;
+            if (camera.isOrthographicCamera) {
+              const origin = world.clone().sub(orthoDir.clone().multiplyScalar(100));
+              this.raycaster.set(origin, orthoDir);
+              distToLabel = 100;
+            } else {
+              const direction = world.clone().sub(cameraWorldPos);
+              distToLabel = direction.length();
+              if (distToLabel > 1e-5) {
+                direction.divideScalar(distToLabel);
+                this.raycaster.set(cameraWorldPos, direction);
+              }
+            }
+
+            if (distToLabel > 0) {
+              const hits = this.raycaster.intersectObjects(this.occlusionMeshes, false);
+              if (hits.length > 0 && hits[0].distance < distToLabel - 0.1) {
+                occluded = true;
+              }
+            }
+          }
+
+          if (!inView || occluded) {
             label.el.style.display = "none";
             label.el.style.opacity = "0";
           } else {
@@ -1978,6 +2016,7 @@
 
       onDeactivate() {
         if (this.controls) this.controls.enabled = false;
+        labelManager.setOcclusionMeshes([]);
         labelManager.clearGroup(this.id);
       }
 
@@ -1998,7 +2037,10 @@
         this.cubeMaterial = new THREE.MeshStandardMaterial({
           color: COLOR_NUM.a,
           roughness: 0.8,
-          metalness: 0.05
+          metalness: 0.05,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
         });
         this.cubeMesh = new THREE.InstancedMesh(this.cubeGeometry, this.cubeMaterial, this.totalCount);
         this.cubeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -2020,6 +2062,7 @@
         this.cubeMesh.instanceMatrix.needsUpdate = true;
         this.cubeMesh.count = this.totalCount;
         this.group.add(this.cubeMesh);
+        labelManager.setOcclusionMeshes([this.cubeMesh]);
         this.dimGroup.clear();
         labelManager.clearGroup(this.id);
         this.labels = [];
@@ -2212,7 +2255,10 @@
             roughness: 0.85,
             metalness: 0.03,
             transparent: true,
-            opacity: 0
+            opacity: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
           })
         );
         mesh.position.set(centerX, centerY, 0);
@@ -2261,7 +2307,10 @@
             transparent: true,
             opacity: 0,
             roughness: 0.92,
-            metalness: 0.02
+            metalness: 0.02,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
           })
         );
         this.group.add(this.baseSquare);
@@ -2657,7 +2706,10 @@
           roughness: 0.88,
           metalness: 0.03,
           transparent: true,
-          opacity: 0.95
+          opacity: 0.95,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
         });
         this.baseSquare = new THREE.Mesh(new THREE.PlaneGeometry(a, a), squareMaterial);
         this.baseSquare.position.set(0, 0, z);
@@ -2668,14 +2720,20 @@
           roughness: 0.86,
           metalness: 0.03,
           transparent: true,
-          opacity: 0
+          opacity: 0,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
         });
         const cutMaterial = new THREE.MeshStandardMaterial({
           color: COLOR_NUM.b,
           roughness: 0.86,
           metalness: 0.03,
           transparent: true,
-          opacity: 0.82
+          opacity: 0.82,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
         });
 
         this.bottomPiece = new THREE.Mesh(new THREE.PlaneGeometry(a, diff), remainingMaterial.clone());
@@ -3082,6 +3140,7 @@
       onDeactivate() {
         if (this.controls) this.controls.enabled = false;
         this.queue.clear();
+        labelManager.setOcclusionMeshes([]);
         labelManager.clearGroup(this.id);
       }
 
@@ -3098,7 +3157,10 @@
             roughness: 0.78,
             metalness: 0.05,
             transparent: true,
-            opacity: 0
+            opacity: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
           })
         );
         this.group.add(mesh);
@@ -3133,7 +3195,14 @@
 
         const floor = new THREE.Mesh(
           new THREE.PlaneGeometry(42, 42),
-          new THREE.MeshStandardMaterial({ color: 0x141436, roughness: 0.95, metalness: 0 })
+          new THREE.MeshStandardMaterial({
+            color: 0x141436,
+            roughness: 0.95,
+            metalness: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+          })
         );
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = -0.02;
@@ -3156,14 +3225,20 @@
           roughness: 0.8,
           metalness: 0.06,
           transparent: true,
-          opacity: 0.88
+          opacity: 0.88,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
         });
         const secondaryMat = new THREE.MeshStandardMaterial({
           color: secondaryColor,
           roughness: 0.8,
           metalness: 0.06,
           transparent: true,
-          opacity: 0.88
+          opacity: 0.88,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
         });
 
         const primaryFlushX = -B / 2;
@@ -3258,7 +3333,10 @@
             roughness: 0.76,
             metalness: 0.05,
             transparent: true,
-            opacity: 0
+            opacity: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
           })
         );
         this.slab1.userData.base = new THREE.Vector3(0, B / 2 + 0.1, -A * 0.55);
@@ -3272,7 +3350,10 @@
             roughness: 0.78,
             metalness: 0.05,
             transparent: true,
-            opacity: 0
+            opacity: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
           })
         );
         this.slab2.userData.base = new THREE.Vector3(0, B + A / 2 + 0.5, -A * 0.15);
@@ -3375,6 +3456,16 @@
           })
         };
 
+        labelManager.setOcclusionMeshes([
+          this.primaryCube,
+          this.secondaryCube,
+          this.block1,
+          this.block2,
+          this.block3,
+          this.slab1,
+          this.slab2
+        ]);
+
         this.equationStage = 0;
         this.orbitWeight = 0;
         this.applyStepState(1);
@@ -3433,11 +3524,32 @@
           .lerp(secondarySlab1Target, targets.slab1);
         this.secondaryCube.position.copy(secondaryPos);
 
-        this.primaryCube.material.opacity = 0.88 * (1 - 0.9 * targets.split) * (1 - 0.25 * targets.anchor);
-        this.secondaryCube.material.opacity = 0.88 * (1 - 0.95 * targets.slab1) * (1 - 0.25 * targets.anchor);
-        this.block1.material.opacity = 0.9 * targets.split * (1 - 0.93 * slab2SlideT);
-        this.block2.material.opacity = 0.9 * targets.split * (1 - 0.93 * slab2SlideT);
-        this.block3.material.opacity = 0.9 * targets.split * (1 - 0.95 * targets.slab1);
+        // Hard visibility: keep one geometric representation active per region.
+        const showPrimary = targets.split < 0.01;
+        const showSecondary = targets.slab1 < 0.01;
+        this.primaryCube.visible = showPrimary;
+        this.secondaryCube.visible = showSecondary;
+
+        if (targets.split > 0 && targets.split < 1) {
+          this.primaryCube.material.opacity = 0.88 * (1 - targets.split);
+        } else {
+          this.primaryCube.material.opacity = showPrimary ? 0.88 : 0;
+        }
+        if (!showPrimary) this.primaryCube.visible = false;
+
+        if (targets.slab1 > 0 && targets.slab1 < 1) {
+          this.secondaryCube.material.opacity = 0.88 * (1 - targets.slab1);
+        } else {
+          this.secondaryCube.material.opacity = showSecondary ? 0.88 : 0;
+        }
+        if (!showSecondary) this.secondaryCube.visible = false;
+
+        this.block1.visible = targets.split > 0.01 && slab2SlideT < 0.99;
+        this.block2.visible = targets.split > 0.01 && slab2SlideT < 0.99;
+        this.block3.visible = targets.split > 0.01 && targets.slab1 < 0.99;
+        this.block1.material.opacity = this.block1.visible ? 0.9 * Math.min(targets.split, 1 - slab2SlideT) : 0;
+        this.block2.material.opacity = this.block2.visible ? 0.9 * Math.min(targets.split, 1 - slab2SlideT) : 0;
+        this.block3.material.opacity = this.block3.visible ? 0.9 * Math.min(targets.split, 1 - targets.slab1) : 0;
 
         this.slab1.position.lerpVectors(this.slab1.userData.base, this.slab1.userData.reveal, targets.reveal);
         this.slab2.position.lerpVectors(
@@ -3445,8 +3557,10 @@
           this.slab2.userData.reveal,
           targets.reveal
         );
-        this.slab1.material.opacity = 0.9 * targets.slab1;
-        this.slab2.material.opacity = 0.92 * slab2SlideT;
+        this.slab1.visible = targets.slab1 > 0.01;
+        this.slab2.visible = slab2SlideT > 0.01;
+        this.slab1.material.opacity = this.slab1.visible ? 0.9 * targets.slab1 : 0;
+        this.slab2.material.opacity = this.slab2.visible ? 0.92 * slab2SlideT : 0;
 
         this.unifiedPrimaryEdges.material.opacity = 0.88 * targets.anchor * (1 - 0.7 * targets.reveal);
         this.unifiedSecondaryEdges.material.opacity = 0.88 * targets.anchor * (1 - 0.7 * targets.reveal);
@@ -3700,6 +3814,7 @@
       onDeactivate() {
         if (this.controls) this.controls.enabled = false;
         this.queue.clear();
+        labelManager.setOcclusionMeshes([]);
         labelManager.clearGroup(this.id);
       }
 
@@ -3716,7 +3831,10 @@
             roughness: 0.82,
             metalness: 0.05,
             transparent: true,
-            opacity: 0
+            opacity: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
           })
         );
         this.group.add(mesh);
@@ -3764,7 +3882,10 @@
             roughness: 0.84,
             metalness: 0.04,
             transparent: true,
-            opacity: 0.72
+            opacity: 0.72,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
           })
         );
         this.group.add(this.cubeFill);
@@ -3784,7 +3905,10 @@
             roughness: 0.8,
             metalness: 0.05,
             transparent: true,
-            opacity: 0.92
+            opacity: 0.92,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
           })
         );
         const corner = new THREE.Vector3(a / 2 - b / 2, a / 2 - b / 2, a / 2 - b / 2);
@@ -3978,6 +4102,14 @@
           })
         };
 
+        labelManager.setOcclusionMeshes([
+          this.cubeFill,
+          this.removedCube,
+          this.slabA,
+          this.slabAB,
+          this.slabB
+        ]);
+
         this.equationStage = 0;
         this.orbitWeight = 0;
         this.applyStepState(1);
@@ -3991,8 +4123,10 @@
         const corner = this.removedCube.userData.corner;
         this.removedCube.position.copy(corner.clone().add(diagonal));
         this.removedCube.material.opacity = 0.95 * Math.sin(Math.PI * clamp(targets.remove, 0, 1));
+        this.removedCube.visible = targets.remove > 0.01 && targets.remove < 0.99;
 
-        this.cubeFill.material.opacity = 0.72 * (1 - 0.96 * targets.decompose);
+        this.cubeFill.visible = targets.decompose < 0.99;
+        this.cubeFill.material.opacity = this.cubeFill.visible ? 0.72 * (1 - targets.decompose) : 0;
         this.cutLines.children.forEach((line) => {
           line.material.opacity = 0.85 * targets.decompose * (1 - 0.35 * targets.stack);
         });
@@ -4008,7 +4142,8 @@
           slab.position.copy(p);
           slab.rotation.x = slab.userData.rotX * alignRotateT;
           slab.rotation.y = slab.userData.rotY * alignRotateT;
-          slab.material.opacity = 0.06 + 0.82 * targets.decompose;
+          slab.visible = targets.decompose > 0.01;
+          slab.material.opacity = slab.visible ? 0.88 * targets.decompose : 0;
         }
 
         labelManager.setOpacity(this.labels.a2, targets.labels);
