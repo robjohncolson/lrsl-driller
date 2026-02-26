@@ -3762,7 +3762,7 @@
 
         this.dimA = [];
         this.dimB = null;
-        this.dimShared = null;
+        this.dimMaster = null;
         this.dimAligned = [];
         this.labels = {};
 
@@ -3792,7 +3792,9 @@
         this.scene.add(this.group);
 
         this.camera = new THREE.PerspectiveCamera(50, 1, 0.5, 220);
-        this.camera.position.set(13, 11, 15);
+        const maxDim = this.params.a;
+        const camDist = maxDim * 2.6;
+        this.camera.position.set(camDist, camDist * 0.85, camDist);
         this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.08;
@@ -3801,6 +3803,7 @@
         this.controls.maxDistance = 150;
         this.controls.maxPolarAngle = Math.PI * 0.95;
         this.controls.target.set(0, 0, 0);
+        this.camera.lookAt(0, 0, 0);
 
         this.rebuild();
       }
@@ -3874,6 +3877,9 @@
         const { a, b } = clampDiffPair(this.params.a, this.params.b, 6);
         const d = a - b;
         this.geo = { a, b, d };
+        const totalWidth = 2 * a + b;
+        const xStart = -totalWidth / 2;
+        const alignSpread = a * 0.5;
 
         this.cubeFill = new THREE.Mesh(
           new THREE.BoxGeometry(a, a, a),
@@ -3949,22 +3955,22 @@
 
         this.slabA.userData.base = new THREE.Vector3(0, 0, -b / 2);
         this.slabA.userData.explode = new THREE.Vector3(-a * 0.72, 0, -a * 0.78);
-        this.slabA.userData.align = this.slabA.userData.explode.clone();
-        this.slabA.userData.final = new THREE.Vector3(0, a * 0.58, -a * 0.84);
+        this.slabA.userData.align = new THREE.Vector3(xStart + a / 2 - alignSpread, 0, 0);
+        this.slabA.userData.final = new THREE.Vector3(xStart + a / 2, 0, 0);
         this.slabA.userData.rotX = 0;
         this.slabA.userData.rotY = 0;
 
         this.slabAB.userData.base = new THREE.Vector3(0, -b / 2, d / 2);
         this.slabAB.userData.explode = new THREE.Vector3(0, -a * 0.78, 0);
-        this.slabAB.userData.align = new THREE.Vector3(0, 0, -a * 0.84);
-        this.slabAB.userData.final = new THREE.Vector3(0, -a * 0.04, -a * 0.84);
+        this.slabAB.userData.align = new THREE.Vector3(xStart + a + a / 2, 0, 0);
+        this.slabAB.userData.final = new THREE.Vector3(xStart + a + a / 2, 0, 0);
         this.slabAB.userData.rotX = -Math.PI / 2;
         this.slabAB.userData.rotY = 0;
 
         this.slabB.userData.base = new THREE.Vector3(-b / 2, d / 2, d / 2);
         this.slabB.userData.explode = new THREE.Vector3(a * 0.82, 0, 0);
-        this.slabB.userData.align = new THREE.Vector3(a * 0.74, 0, -a * 0.84);
-        this.slabB.userData.final = new THREE.Vector3(0, -a * 0.66, -a * 0.84);
+        this.slabB.userData.align = new THREE.Vector3(xStart + 2 * a + b / 2 + alignSpread, 0, 0);
+        this.slabB.userData.final = new THREE.Vector3(xStart + 2 * a + b / 2, 0, 0);
         this.slabB.userData.rotX = 0;
         this.slabB.userData.rotY = Math.PI / 2;
 
@@ -4011,13 +4017,14 @@
           opacity: 0
         });
 
-        this.dimShared = createDimensionLine(this.group, labelManager, {
-          start: new THREE.Vector3(a * 0.72, 0, -a * 0.84 - d / 2),
-          end: new THREE.Vector3(a * 0.72, 0, -a * 0.84 + d / 2),
+        const masterX = xStart + totalWidth + 0.6;
+        this.dimMaster = createDimensionLine(this.group, labelManager, {
+          start: new THREE.Vector3(masterX, 0, -d / 2),
+          end: new THREE.Vector3(masterX, 0, d / 2),
           color: COLOR_NUM.result,
-          labelText: "a-b",
+          labelText: "a{\\text{-}}b",
           groupId: this.id,
-          offset: new THREE.Vector3(0.4, 0, 0),
+          offset: new THREE.Vector3(0.5, 0, 0),
           opacity: 0
         });
 
@@ -4081,7 +4088,11 @@
             className: "viz-label viz-label--medium",
             color: COLOR_HEX.a,
             groupId: this.id,
-            getWorldPos: () => this.slabA.position.clone().add(new THREE.Vector3(0, a * 0.52, 0)),
+            getWorldPos: () => {
+              const p = this.slabA.position.clone();
+              if (this.state.stack > 0.5) return p.add(new THREE.Vector3(0, 0, d / 2 + 0.3));
+              return p.add(new THREE.Vector3(0, a * 0.52, 0));
+            },
             opacity: 0
           }),
           ab: labelManager.addLabel({
@@ -4089,7 +4100,11 @@
             className: "viz-label viz-label--medium",
             color: COLOR_HEX.ab,
             groupId: this.id,
-            getWorldPos: () => this.slabAB.position.clone().add(new THREE.Vector3(0, b * 0.52, 0)),
+            getWorldPos: () => {
+              const p = this.slabAB.position.clone();
+              if (this.state.stack > 0.5) return p.add(new THREE.Vector3(0, 0, d / 2 + 0.3));
+              return p.add(new THREE.Vector3(0, b * 0.52, 0));
+            },
             opacity: 0
           }),
           b2: labelManager.addLabel({
@@ -4097,7 +4112,11 @@
             className: "viz-label viz-label--medium",
             color: COLOR_HEX.b,
             groupId: this.id,
-            getWorldPos: () => this.slabB.position.clone().add(new THREE.Vector3(0, b * 0.52, 0)),
+            getWorldPos: () => {
+              const p = this.slabB.position.clone();
+              if (this.state.stack > 0.5) return p.add(new THREE.Vector3(0, 0, d / 2 + 0.3));
+              return p.add(new THREE.Vector3(0, b * 0.52, 0));
+            },
             opacity: 0
           })
         };
@@ -4113,11 +4132,19 @@
         this.equationStage = 0;
         this.orbitWeight = 0;
         this.applyStepState(1);
+        if (this.camera && this.controls) {
+          const maxDim = this.geo.a;
+          const camDist = maxDim * 2.6;
+          this.camera.position.set(camDist, camDist * 0.85, camDist);
+          this.controls.target.set(0, 0, 0);
+          this.camera.lookAt(0, 0, 0);
+          this.controls.update();
+        }
       }
 
       applyVisualTargets(targets) {
         this.state = { ...targets };
-        const { a, b } = this.geo;
+        const { b } = this.geo;
 
         const diagonal = new THREE.Vector3(0.7, 1, 0.65).normalize().multiplyScalar(b * 2.5 * targets.remove);
         const corner = this.removedCube.userData.corner;
@@ -4127,8 +4154,13 @@
 
         this.cubeFill.visible = targets.decompose < 0.99;
         this.cubeFill.material.opacity = this.cubeFill.visible ? 0.72 * (1 - targets.decompose) : 0;
+        if (this.wire) {
+          const wireOpacity = 0.95 * (1 - 0.85 * targets.decompose);
+          this.wire.material.opacity = wireOpacity;
+          this.wire.visible = wireOpacity > 0.01;
+        }
         this.cutLines.children.forEach((line) => {
-          line.material.opacity = 0.85 * targets.decompose * (1 - 0.35 * targets.stack);
+          line.material.opacity = 0.85 * targets.decompose * (1 - targets.stack);
         });
 
         const slabs = [this.slabA, this.slabAB, this.slabB];
@@ -4152,9 +4184,9 @@
 
         this.setDimensionOpacityList(this.dimA, 1 - 0.55 * targets.decompose);
         this.setDimensionOpacity(this.dimB, clamp(targets.remove - 0.4 * targets.decompose, 0, 1));
-        const alignDimOpacity = clamp((targets.align - 0.12) / 0.88, 0, 1) * (1 - 0.85 * targets.stack);
+        const alignDimOpacity = clamp((targets.align - 0.12) / 0.88, 0, 1) * (1 - targets.stack);
         this.setDimensionOpacityList(this.dimAligned, alignDimOpacity);
-        this.setDimensionOpacity(this.dimShared, targets.stack);
+        this.setDimensionOpacity(this.dimMaster, targets.stack);
 
         this.equationStage = targets.eq;
         this.orbitWeight = clamp(0.25 * targets.explode + 0.45 * targets.align + 0.72 * targets.stack, 0, 1);
@@ -4260,8 +4292,9 @@
         if (!this.camera || !this.geo) return;
         // Only force camera position while animation queue is active
         if (this.orbitWeight > 0.001 && this.queue.active) {
-          const base = new THREE.Vector3(13, 11, 15);
-          const top = new THREE.Vector3(9.4, 15.2, 10.4);
+          const s = this.geo.a * 2.6;
+          const base = new THREE.Vector3(s, s * 0.85, s);
+          const top = new THREE.Vector3(s * 0.72, s * 1.17, s * 0.8);
           const blend = clamp(0.45 * this.orbitWeight + Math.sin(this.orbitPhase * 0.8) * 0.05 * this.orbitWeight, 0, 1);
           this.camera.position.lerpVectors(base, top, blend);
           const baseTarget = new THREE.Vector3(0, 0, -this.geo.a * 0.45);
