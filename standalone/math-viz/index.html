@@ -1730,7 +1730,7 @@
         this.totalCount = 0;
       }
 
-      init() {
+      init(manager) {
         if (this.scene) return;
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(COLOR_NUM.background);
@@ -1744,6 +1744,15 @@
         this.camera = new THREE.OrthographicCamera(-16, 16, 10, -10, 0.1, 200);
         this.camera.position.set(10, 16, 10);
         this.camera.lookAt(0, 0, 0);
+        this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.enableRotate = true;
+        this.controls.enableZoom = true;
+        this.controls.minZoom = 0.3;
+        this.controls.maxZoom = 5;
+        this.controls.maxPolarAngle = Math.PI * 0.95;
         const floor = new THREE.Mesh(
           new THREE.PlaneGeometry(42, 42),
           new THREE.MeshStandardMaterial({ color: 0x151535, roughness: 1, metalness: 0 })
@@ -1755,11 +1764,13 @@
       }
 
       onActivate(manager) {
-        this.init();
+        this.init(manager);
+        if (this.controls) this.controls.enabled = true;
         this.resize(manager.container.clientWidth, manager.container.clientHeight);
       }
 
       onDeactivate() {
+        if (this.controls) this.controls.enabled = false;
         labelManager.clearGroup(this.id);
       }
 
@@ -1944,16 +1955,16 @@
         this.scene.add(this.group);
         this.dimGroup = new THREE.Group();
         this.scene.add(this.dimGroup);
-        this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 250);
+        this.camera = new THREE.PerspectiveCamera(50, 1, 0.5, 250);
         this.camera.position.set(14, 12, 14);
         this.camera.lookAt(0, 0, 0);
         this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.08;
         this.controls.enablePan = true;
-        this.controls.minDistance = 4;
-        this.controls.maxDistance = 60;
-        this.controls.maxPolarAngle = Math.PI * 0.85;
+        this.controls.minDistance = 2;
+        this.controls.maxDistance = 150;
+        this.controls.maxPolarAngle = Math.PI * 0.95;
         this.controls.target.set(0, 0, 0);
         this.controls.enabled = true;
         this.rebuild();
@@ -2126,7 +2137,7 @@
         this.pulseStrength = 0;
       }
 
-      init() {
+      init(manager) {
         if (this.scene) return;
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(COLOR_NUM.background);
@@ -2136,15 +2147,25 @@
         this.camera = new THREE.OrthographicCamera(-14, 14, 10, -10, 0.1, 120);
         this.camera.position.set(0, 0, 40);
         this.camera.lookAt(0, 0, 0);
+        this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.enableRotate = false;
+        this.controls.enableZoom = true;
+        this.controls.minZoom = 0.3;
+        this.controls.maxZoom = 5;
         this.rebuild();
       }
 
       onActivate(manager) {
-        this.init();
+        this.init(manager);
+        if (this.controls) this.controls.enabled = true;
         this.resize(manager.container.clientWidth, manager.container.clientHeight);
       }
 
       onDeactivate() {
+        if (this.controls) this.controls.enabled = false;
         this.queue.clear();
         labelManager.clearGroup(this.id);
       }
@@ -2580,7 +2601,7 @@
         this.stepIndex = 1;
       }
 
-      init() {
+      init(manager) {
         if (this.scene) return;
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(COLOR_NUM.background);
@@ -2590,15 +2611,25 @@
         this.camera = new THREE.OrthographicCamera(-16, 16, 10, -10, 0.1, 150);
         this.camera.position.set(0, 0, 40);
         this.camera.lookAt(0, 0, 0);
+        this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.enableRotate = false;
+        this.controls.enableZoom = true;
+        this.controls.minZoom = 0.3;
+        this.controls.maxZoom = 5;
         this.rebuild();
       }
 
       onActivate(manager) {
-        this.init();
+        this.init(manager);
+        if (this.controls) this.controls.enabled = true;
         this.resize(manager.container.clientWidth, manager.container.clientHeight);
       }
 
       onDeactivate() {
+        if (this.controls) this.controls.enabled = false;
         this.queue.clear();
         labelManager.clearGroup(this.id);
       }
@@ -2662,8 +2693,9 @@
 
         this.topLeftOutline = new THREE.LineSegments(
           new THREE.EdgesGeometry(new THREE.PlaneGeometry(diff, b)),
-          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
         );
+        this.topLeftOutline.renderOrder = 1;
         this.topLeftPiece.add(this.topLeftOutline);
 
         this.cutRect = new THREE.Mesh(new THREE.PlaneGeometry(b, b), cutMaterial);
@@ -3027,15 +3059,15 @@
         this.group = new THREE.Group();
         this.scene.add(this.group);
 
-        this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 220);
+        this.camera = new THREE.PerspectiveCamera(48, 1, 0.5, 220);
         this.camera.position.set(12, 10, 14);
         this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.08;
         this.controls.enablePan = true;
-        this.controls.minDistance = 4;
-        this.controls.maxDistance = 60;
-        this.controls.maxPolarAngle = Math.PI * 0.85;
+        this.controls.minDistance = 2;
+        this.controls.maxDistance = 150;
+        this.controls.maxPolarAngle = Math.PI * 0.95;
         this.controls.target.set(0, 2.5, 0);
 
         this.rebuild();
@@ -3159,25 +3191,29 @@
 
         this.primaryEdges = new THREE.LineSegments(
           new THREE.EdgesGeometry(new THREE.BoxGeometry(A, A, A)),
-          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 })
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false })
         );
         this.secondaryEdges = new THREE.LineSegments(
           new THREE.EdgesGeometry(new THREE.BoxGeometry(B, B, B)),
-          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 })
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false })
         );
         this.primaryEdges.scale.setScalar(1.001);
         this.secondaryEdges.scale.setScalar(1.001);
+        this.primaryEdges.renderOrder = 1;
+        this.secondaryEdges.renderOrder = 1;
 
         this.unifiedPrimaryEdges = new THREE.LineSegments(
           new THREE.EdgesGeometry(new THREE.BoxGeometry(A, A, A)),
-          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
         );
         this.unifiedSecondaryEdges = new THREE.LineSegments(
           new THREE.EdgesGeometry(new THREE.BoxGeometry(B, B, B)),
-          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
         );
         this.unifiedPrimaryEdges.scale.setScalar(1.002);
         this.unifiedSecondaryEdges.scale.setScalar(1.002);
+        this.unifiedPrimaryEdges.renderOrder = 2;
+        this.unifiedSecondaryEdges.renderOrder = 2;
 
         this.primaryCube.add(this.primaryEdges, this.unifiedPrimaryEdges);
         this.secondaryCube.add(this.secondaryEdges, this.unifiedSecondaryEdges);
@@ -3534,7 +3570,8 @@
         this.queue.update(dtMs);
         this.orbitPhase += dt;
         if (!this.camera || !this.geo) return;
-        if (this.orbitWeight > 0.001) {
+        // Only force camera position while animation queue is active
+        if (this.orbitWeight > 0.001 && this.queue.active) {
           const base = new THREE.Vector3(12, 10, 14);
           const alt = new THREE.Vector3(10.4, 11.8, 16.2);
           const blend = clamp(0.42 * this.orbitWeight + Math.sin(this.orbitPhase * 0.8) * 0.05 * this.orbitWeight, 0, 1);
@@ -3640,15 +3677,15 @@
         this.group = new THREE.Group();
         this.scene.add(this.group);
 
-        this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 220);
+        this.camera = new THREE.PerspectiveCamera(50, 1, 0.5, 220);
         this.camera.position.set(13, 11, 15);
         this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.08;
         this.controls.enablePan = true;
-        this.controls.minDistance = 4;
-        this.controls.maxDistance = 60;
-        this.controls.maxPolarAngle = Math.PI * 0.85;
+        this.controls.minDistance = 2;
+        this.controls.maxDistance = 150;
+        this.controls.maxPolarAngle = Math.PI * 0.95;
         this.controls.target.set(0, 0, 0);
 
         this.rebuild();
@@ -3734,9 +3771,10 @@
 
         this.wire = new THREE.LineSegments(
           new THREE.EdgesGeometry(new THREE.BoxGeometry(a, a, a)),
-          new THREE.LineBasicMaterial({ color: COLOR_NUM.a, transparent: true, opacity: 0.95 })
+          new THREE.LineBasicMaterial({ color: COLOR_NUM.a, transparent: true, opacity: 0.95, depthWrite: false })
         );
         this.wire.scale.setScalar(1.001);
+        this.wire.renderOrder = 1;
         this.group.add(this.wire);
 
         this.removedCube = new THREE.Mesh(
@@ -3775,9 +3813,10 @@
         const makeEdges = (w, h, depth, color) => {
           const edges = new THREE.LineSegments(
             new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, depth)),
-            new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55 })
+            new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false })
           );
           edges.scale.setScalar(1.001);
+          edges.renderOrder = 1;
           return edges;
         };
         this.slabA.add(makeEdges(a, a, d, COLOR_NUM.a));
@@ -4084,7 +4123,8 @@
         this.queue.update(dtMs);
         this.orbitPhase += dt;
         if (!this.camera || !this.geo) return;
-        if (this.orbitWeight > 0.001) {
+        // Only force camera position while animation queue is active
+        if (this.orbitWeight > 0.001 && this.queue.active) {
           const base = new THREE.Vector3(13, 11, 15);
           const top = new THREE.Vector3(9.4, 15.2, 10.4);
           const blend = clamp(0.45 * this.orbitWeight + Math.sin(this.orbitPhase * 0.8) * 0.05 * this.orbitWeight, 0, 1);
