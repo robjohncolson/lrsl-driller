@@ -1085,11 +1085,13 @@
         groupId = "default",
         worldPos = null,
         getWorldPos = null,
-        opacity = 1
+        opacity = 1,
+        depthCull = null
       }) {
         const el = document.createElement("div");
         el.className = className;
-        el.style.opacity = String(opacity);
+        el.dataset.targetOpacity = String(clamp(opacity, 0, 1));
+        el.style.opacity = String(clamp(opacity, 0, 1));
         el.style.color = color;
         if (tex) {
           try {
@@ -1113,7 +1115,8 @@
           groupId,
           worldPos: worldPos ? worldPos.clone() : null,
           getWorldPos,
-          visible: true
+          visible: true,
+          depthCull
         };
         this.labels.push(label);
         return label;
@@ -1139,7 +1142,9 @@
 
       setOpacity(label, value) {
         if (!label || !label.el) return;
-        label.el.style.opacity = String(clamp(value, 0, 1));
+        const safe = String(clamp(value, 0, 1));
+        label.el.dataset.targetOpacity = safe;
+        label.el.style.opacity = safe;
       }
 
       setVisible(label, visible) {
@@ -1148,7 +1153,7 @@
         label.el.style.display = visible ? "" : "none";
       }
 
-      update(camera, canvas) {
+      update(camera, canvas, defaultDepthCull = false) {
         if (!camera || !canvas) return;
         const rect = canvas.getBoundingClientRect();
         for (const label of this.labels) {
@@ -1161,8 +1166,14 @@
           const x = (v.x * 0.5 + 0.5) * rect.width;
           const y = (-v.y * 0.5 + 0.5) * rect.height;
           const inView = v.z > -1 && v.z < 1;
-          label.el.style.display = inView ? "" : "none";
-          if (inView) {
+          const useDepthCull = label.depthCull == null ? defaultDepthCull : !!label.depthCull;
+          if (!inView || (useDepthCull && (v.z > 1 || v.z < -1))) {
+            label.el.style.display = "none";
+            label.el.style.opacity = "0";
+          } else {
+            const targetOpacity = label.el.dataset.targetOpacity || "1";
+            label.el.style.display = "";
+            label.el.style.opacity = targetOpacity;
             label.el.style.left = `${x}px`;
             label.el.style.top = `${y}px`;
           }
@@ -1175,6 +1186,7 @@
       const end = options.end.clone();
       const color = options.color ?? COLOR_NUM.a;
       const labelText = options.labelText ?? "";
+      const labelTex = options.labelTex ?? "";
       const labelClass = options.labelClass ?? "viz-label viz-label--dim";
       const offset = options.offset ? options.offset.clone() : new THREE.Vector3(0, 0, 0);
       const tickSize = options.tickSize ?? 0.15;
@@ -1204,14 +1216,16 @@
       const mid = a.clone().lerp(b, 0.5).add(perp.clone().multiplyScalar(2));
       const label = labelManager.addLabel({
         text: labelText,
+        tex: labelTex,
         className: labelClass,
         color: `#${color.toString(16).padStart(6, "0")}`,
         groupId: options.groupId || "default",
         worldPos: mid,
-        opacity: options.labelOpacity ?? opacity
+        opacity: options.labelOpacity ?? opacity,
+        depthCull: options.depthCull ?? null
       });
 
-      return { mesh: lines, label, start: a, end: b, midpoint: mid };
+      return { mesh: lines, line: lines, ticks: lines, label, start: a, end: b, midpoint: mid };
     }
 
     function notifyVisualUpdate() {
@@ -1935,9 +1949,11 @@
         this.camera.lookAt(0, 0, 0);
         this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.enablePan = false;
-        this.controls.minDistance = 5;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.minDistance = 4;
         this.controls.maxDistance = 60;
+        this.controls.maxPolarAngle = Math.PI * 0.85;
         this.controls.target.set(0, 0, 0);
         this.controls.enabled = true;
         this.rebuild();
@@ -2053,7 +2069,7 @@
       }
 
       updateLabels(canvas) {
-        labelManager.update(this.camera, canvas);
+        labelManager.update(this.camera, canvas, true);
       }
 
       equationTex() {
@@ -2790,9 +2806,11 @@
         const scale = 1 + 0.05 * targets.highlight;
         this.topLeftPiece.scale.set(scale, scale, 1);
 
-        this.topLeftPiece.position.lerpVectors(this.topLeftPiece.userData.base, this.topLeftPiece.userData.target, targets.move);
+        const rotateT = clamp(targets.rearrange * 2, 0, 1);
+        const slideT = clamp((targets.rearrange - 0.5) * 2, 0, 1);
+        this.topLeftPiece.position.lerpVectors(this.topLeftPiece.userData.base, this.topLeftPiece.userData.target, slideT);
         this.topLeftPiece.rotation.z = this.topLeftPiece.userData.baseRotation
-          + (this.topLeftPiece.userData.targetRotation - this.topLeftPiece.userData.baseRotation) * targets.move;
+          + (this.topLeftPiece.userData.targetRotation - this.topLeftPiece.userData.baseRotation) * rotateT;
 
         labelManager.setOpacity(this.squareLabel, targets.squareLabel);
         labelManager.setOpacity(this.resultLabel, targets.result);
@@ -2840,36 +2858,36 @@
       getStepTargets(step) {
         if (step <= 1) {
           return {
-            square: 0.98, lshape: 0, cut: 0, cutLine: 0, highlight: 0, move: 0,
+            square: 0.98, lshape: 0, cut: 0, cutLine: 0, highlight: 0, rearrange: 0,
             squareLabel: 1, result: 0, aDims: 1, bDims: 0, resultDims: 0, eq: 0
           };
         }
         if (step === 2) {
           return {
-            square: 0.45, lshape: 1, cut: 1, cutLine: 0, highlight: 0, move: 0,
+            square: 0.45, lshape: 1, cut: 1, cutLine: 0, highlight: 0, rearrange: 0,
             squareLabel: 0, result: 0, aDims: 0.3, bDims: 1, resultDims: 0, eq: 1
           };
         }
         if (step === 3) {
           return {
-            square: 0.22, lshape: 1, cut: 1, cutLine: 1, highlight: 0, move: 0,
+            square: 0.22, lshape: 1, cut: 1, cutLine: 1, highlight: 0, rearrange: 0,
             squareLabel: 0, result: 0, aDims: 0, bDims: 0, resultDims: 0, eq: 1
           };
         }
         if (step === 4) {
           return {
-            square: 0.22, lshape: 1, cut: 1, cutLine: 1, highlight: 1, move: 0,
+            square: 0.22, lshape: 1, cut: 1, cutLine: 1, highlight: 1, rearrange: 0,
             squareLabel: 0, result: 0, aDims: 0, bDims: 0, resultDims: 0, eq: 1
           };
         }
         if (step === 5) {
           return {
-            square: 0.16, lshape: 1, cut: 1, cutLine: 0.3, highlight: 0, move: 1,
+            square: 0.16, lshape: 1, cut: 1, cutLine: 0.3, highlight: 0, rearrange: 1,
             squareLabel: 0, result: 0.8, aDims: 0, bDims: 0, resultDims: 0, eq: 1
           };
         }
         return {
-          square: 0.12, lshape: 1, cut: 1, cutLine: 0, highlight: 0, move: 1,
+          square: 0.12, lshape: 1, cut: 1, cutLine: 0, highlight: 0, rearrange: 1,
           squareLabel: 0, result: 1, aDims: 0, bDims: 0, resultDims: 1, eq: 2
         };
       }
@@ -2968,6 +2986,8 @@
         this.secondaryLabelText = "";
         this.primaryEdges = null;
         this.secondaryEdges = null;
+        this.unifiedPrimaryEdges = null;
+        this.unifiedSecondaryEdges = null;
 
         this.block1 = null;
         this.block2 = null;
@@ -2988,10 +3008,11 @@
         this.orbitPhase = 0;
         this.state = {
           merge: 0,
+          anchor: 0,
           cuts: 0,
           split: 0,
           slab1: 0,
-          slab2: 0,
+          slab2Arrange: 0,
           reveal: 0,
           eq: 0
         };
@@ -3010,9 +3031,11 @@
         this.camera.position.set(12, 10, 14);
         this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.enablePan = false;
-        this.controls.minDistance = 6;
-        this.controls.maxDistance = 45;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.minDistance = 4;
+        this.controls.maxDistance = 60;
+        this.controls.maxPolarAngle = Math.PI * 0.85;
         this.controls.target.set(0, 2.5, 0);
 
         this.rebuild();
@@ -3142,8 +3165,22 @@
           new THREE.EdgesGeometry(new THREE.BoxGeometry(B, B, B)),
           new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 })
         );
-        this.primaryCube.add(this.primaryEdges);
-        this.secondaryCube.add(this.secondaryEdges);
+        this.primaryEdges.scale.setScalar(1.001);
+        this.secondaryEdges.scale.setScalar(1.001);
+
+        this.unifiedPrimaryEdges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(A, A, A)),
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
+        );
+        this.unifiedSecondaryEdges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(B, B, B)),
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
+        );
+        this.unifiedPrimaryEdges.scale.setScalar(1.002);
+        this.unifiedSecondaryEdges.scale.setScalar(1.002);
+
+        this.primaryCube.add(this.primaryEdges, this.unifiedPrimaryEdges);
+        this.secondaryCube.add(this.secondaryEdges, this.unifiedSecondaryEdges);
         this.group.add(this.primaryCube, this.secondaryCube);
 
         this.cutLines = new THREE.Group();
@@ -3266,6 +3303,16 @@
             getWorldPos: () => this.secondaryCube.position.clone().add(new THREE.Vector3(0, B / 2 + 0.75, 0)),
             opacity: 1
           }),
+          totalVolume: labelManager.addLabel({
+            text: `Total volume = ${rawA ** 3 + rawB ** 3}`,
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.result,
+            groupId: this.id,
+            getWorldPos: () => this.primaryCube.position.clone()
+              .lerp(this.secondaryCube.position, 0.5)
+              .add(new THREE.Vector3(0, A / 2 + 1.65, 0.15)),
+            opacity: 0
+          }),
           slab1Area: labelManager.addLabel({
             tex: `${B}^2`,
             className: "viz-label viz-label--medium",
@@ -3311,7 +3358,7 @@
         const xShift = primaryX - p.flushX;
         this.cutLines.position.x = xShift;
         this.cutLines.children.forEach((line) => {
-          line.material.opacity = 0.9 * targets.cuts * (1 - 0.28 * targets.reveal);
+          line.material.opacity = 0.9 * targets.cuts * (1 - 0.28 * targets.reveal) * (1 - 0.35 * targets.anchor);
         });
 
         const b1Base = this.block1.userData.base.clone().add(new THREE.Vector3(xShift, 0, 0));
@@ -3329,14 +3376,17 @@
         const block2Slab2Target = this.block2.userData.slab2Target.clone();
         const block3Slab1Target = this.block3.userData.slab1Target.clone();
 
-        block1Pos.lerp(block1Slab2Target, targets.slab2);
-        block2Pos.lerp(block2Slab2Target, targets.slab2);
+        const slab2RotateT = clamp(targets.slab2Arrange * 2, 0, 1);
+        const slab2SlideT = clamp((targets.slab2Arrange - 0.5) * 2, 0, 1);
+
+        block1Pos.lerp(block1Slab2Target, slab2SlideT);
+        block2Pos.lerp(block2Slab2Target, slab2SlideT);
         block3Pos.lerp(block3Slab1Target, targets.slab1);
 
         this.block1.position.copy(block1Pos);
         this.block2.position.copy(block2Pos);
         this.block3.position.copy(block3Pos);
-        this.block2.rotation.set(0, 0, this.block2.userData.slab2Rotation * targets.slab2);
+        this.block2.rotation.set(0, 0, this.block2.userData.slab2Rotation * slab2RotateT);
         this.block1.rotation.set(0, 0, 0);
         this.block3.rotation.set(0, 0, 0);
 
@@ -3347,10 +3397,10 @@
           .lerp(secondarySlab1Target, targets.slab1);
         this.secondaryCube.position.copy(secondaryPos);
 
-        this.primaryCube.material.opacity = 0.88 * (1 - 0.9 * targets.split);
-        this.secondaryCube.material.opacity = 0.88 * (1 - 0.95 * targets.slab1);
-        this.block1.material.opacity = 0.9 * targets.split * (1 - 0.93 * targets.slab2);
-        this.block2.material.opacity = 0.9 * targets.split * (1 - 0.93 * targets.slab2);
+        this.primaryCube.material.opacity = 0.88 * (1 - 0.9 * targets.split) * (1 - 0.25 * targets.anchor);
+        this.secondaryCube.material.opacity = 0.88 * (1 - 0.95 * targets.slab1) * (1 - 0.25 * targets.anchor);
+        this.block1.material.opacity = 0.9 * targets.split * (1 - 0.93 * slab2SlideT);
+        this.block2.material.opacity = 0.9 * targets.split * (1 - 0.93 * slab2SlideT);
         this.block3.material.opacity = 0.9 * targets.split * (1 - 0.95 * targets.slab1);
 
         this.slab1.position.lerpVectors(this.slab1.userData.base, this.slab1.userData.reveal, targets.reveal);
@@ -3360,9 +3410,12 @@
           targets.reveal
         );
         this.slab1.material.opacity = 0.9 * targets.slab1;
-        this.slab2.material.opacity = 0.92 * targets.slab2;
+        this.slab2.material.opacity = 0.92 * slab2SlideT;
 
-        const dimOpacity = clamp(targets.merge * (1 - 0.35 * targets.reveal), 0, 1);
+        this.unifiedPrimaryEdges.material.opacity = 0.88 * targets.anchor * (1 - 0.7 * targets.reveal);
+        this.unifiedSecondaryEdges.material.opacity = 0.88 * targets.anchor * (1 - 0.7 * targets.reveal);
+
+        const dimOpacity = clamp(targets.merge * (1 - 0.35 * targets.reveal) * (1 + 0.18 * targets.anchor), 0, 1);
         this.setDimensionOpacity(this.dimAB, dimOpacity);
         const slabDimOpacity = clamp((targets.reveal - 0.05) / 0.95, 0, 1);
         this.setDimensionOpacity(this.dimSlab1, slabDimOpacity);
@@ -3370,12 +3423,13 @@
 
         labelManager.setOpacity(this.labels.primaryVolume, 1 - 0.75 * targets.split);
         labelManager.setOpacity(this.labels.secondaryVolume, 1 - 0.55 * targets.slab1);
+        labelManager.setOpacity(this.labels.totalVolume, clamp(targets.anchor * (1 - 0.85 * targets.reveal), 0, 1));
         labelManager.setOpacity(this.labels.slab1Area, clamp((targets.slab1 - 0.1) / 0.9, 0, 1));
-        labelManager.setOpacity(this.labels.slab2Area, clamp((targets.slab2 - 0.1) / 0.9, 0, 1));
+        labelManager.setOpacity(this.labels.slab2Area, clamp((targets.slab2Arrange - 0.1) / 0.9, 0, 1));
         labelManager.setOpacity(this.labels.crossTotal, targets.reveal);
 
         this.equationStage = targets.eq;
-        this.orbitWeight = clamp(0.22 * targets.slab1 + 0.42 * targets.slab2 + 0.8 * targets.reveal, 0, 1);
+        this.orbitWeight = clamp(0.15 * targets.anchor + 0.22 * targets.slab1 + 0.42 * targets.slab2Arrange + 0.8 * targets.reveal, 0, 1);
       }
 
       lerpTargets(start, end, t) {
@@ -3406,7 +3460,7 @@
       }
 
       getStepCount() {
-        return 6;
+        return 7;
       }
 
       getStepIndex() {
@@ -3415,21 +3469,24 @@
 
       getStepTargets(step) {
         if (step <= 1) {
-          return { merge: 0, cuts: 0, split: 0, slab1: 0, slab2: 0, reveal: 0, eq: 0 };
+          return { merge: 0, anchor: 0, cuts: 0, split: 0, slab1: 0, slab2Arrange: 0, reveal: 0, eq: 0 };
         }
         if (step === 2) {
-          return { merge: 1, cuts: 0, split: 0, slab1: 0, slab2: 0, reveal: 0, eq: 1 };
+          return { merge: 1, anchor: 0, cuts: 0, split: 0, slab1: 0, slab2Arrange: 0, reveal: 0, eq: 1 };
         }
         if (step === 3) {
-          return { merge: 1, cuts: 1, split: 0, slab1: 0, slab2: 0, reveal: 0, eq: 1 };
+          return { merge: 1, anchor: 1, cuts: 0, split: 0, slab1: 0, slab2Arrange: 0, reveal: 0, eq: 1 };
         }
         if (step === 4) {
-          return { merge: 1, cuts: 1, split: 1, slab1: 0, slab2: 0, reveal: 0, eq: 1 };
+          return { merge: 1, anchor: 0.85, cuts: 1, split: 0, slab1: 0, slab2Arrange: 0, reveal: 0, eq: 1 };
         }
         if (step === 5) {
-          return { merge: 1, cuts: 1, split: 1, slab1: 1, slab2: 0, reveal: 0, eq: 1 };
+          return { merge: 1, anchor: 0.3, cuts: 1, split: 1, slab1: 1, slab2Arrange: 0, reveal: 0, eq: 1 };
         }
-        return { merge: 1, cuts: 0.45, split: 1, slab1: 1, slab2: 1, reveal: 1, eq: 2 };
+        if (step === 6) {
+          return { merge: 1, anchor: 0, cuts: 1, split: 1, slab1: 1, slab2Arrange: 1, reveal: 0.2, eq: 1 };
+        }
+        return { merge: 1, anchor: 0, cuts: 0.45, split: 1, slab1: 1, slab2Arrange: 1, reveal: 1, eq: 2 };
       }
 
       applyTargets(targets) {
@@ -3483,16 +3540,20 @@
           const blend = clamp(0.42 * this.orbitWeight + Math.sin(this.orbitPhase * 0.8) * 0.05 * this.orbitWeight, 0, 1);
           this.camera.position.lerpVectors(base, alt, blend);
           const targetY = this.geo.A * 0.35;
+          const baseTarget = new THREE.Vector3(0, targetY, 0);
+          const slabCentroid = this.slab1.position.clone().add(this.slab2.position).multiplyScalar(0.5);
+          const targetBlend = clamp(0.2 * this.state.slab1 + 0.45 * this.state.slab2Arrange + 0.9 * this.state.reveal, 0, 1);
+          const desiredTarget = baseTarget.clone().lerp(slabCentroid, targetBlend);
           if (this.controls) {
-            this.controls.target.set(0, targetY, 0);
+            this.controls.target.lerp(desiredTarget, 0.12);
           } else {
-            this.camera.lookAt(0, targetY, 0);
+            this.camera.lookAt(desiredTarget);
           }
         }
       }
 
       updateLabels(canvas) {
-        labelManager.update(this.camera, canvas);
+        labelManager.update(this.camera, canvas, true);
       }
 
       equationTex() {
@@ -3510,14 +3571,15 @@
         const messages = [
           "Two cubes on a shared floor",
           "Merge cubes flush to expose total width (a+b)",
+          "Show unified wireframe anchor: total volume = a^3 + b^3",
           "Dashed cuts define block1, block2, block3 in a^3",
-          "Split pieces apart; keep b^3 grouped with block3",
           "Snap b^3 to block3 to form slab1: (a+b) x b x b",
-          "Rotate block2 into block1 for slab2, then factor (a+b)"
+          "Rotate then slide block2 into block1 for slab2",
+          "Reveal both slabs sharing factor (a+b)"
         ];
         const { a, b } = this.params;
         return {
-          left: `Step ${this.stepIndex}/6 | a=${a}, b=${b}`,
+          left: `Step ${this.stepIndex}/7 | a=${a}, b=${b}`,
           right: messages[this.stepIndex - 1]
         };
       }
@@ -3559,6 +3621,15 @@
         this.geo = null;
         this.orbitWeight = 0;
         this.orbitPhase = 0;
+        this.state = {
+          remove: 0,
+          decompose: 0,
+          explode: 0,
+          align: 0,
+          stack: 0,
+          labels: 0,
+          eq: 0
+        };
       }
 
       init(manager) {
@@ -3573,9 +3644,11 @@
         this.camera.position.set(13, 11, 15);
         this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.enablePan = false;
-        this.controls.minDistance = 7;
-        this.controls.maxDistance = 45;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.minDistance = 4;
+        this.controls.maxDistance = 60;
+        this.controls.maxPolarAngle = Math.PI * 0.85;
         this.controls.target.set(0, 0, 0);
 
         this.rebuild();
@@ -3663,6 +3736,7 @@
           new THREE.EdgesGeometry(new THREE.BoxGeometry(a, a, a)),
           new THREE.LineBasicMaterial({ color: COLOR_NUM.a, transparent: true, opacity: 0.95 })
         );
+        this.wire.scale.setScalar(1.001);
         this.group.add(this.wire);
 
         this.removedCube = new THREE.Mesh(
@@ -3698,6 +3772,17 @@
         this.slabA = this.makeSlab(a, a, d, COLOR_NUM.a);
         this.slabAB = this.makeSlab(a, d, b, COLOR_NUM.ab);
         this.slabB = this.makeSlab(d, b, b, COLOR_NUM.b);
+        const makeEdges = (w, h, depth, color) => {
+          const edges = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, depth)),
+            new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55 })
+          );
+          edges.scale.setScalar(1.001);
+          return edges;
+        };
+        this.slabA.add(makeEdges(a, a, d, COLOR_NUM.a));
+        this.slabAB.add(makeEdges(a, d, b, COLOR_NUM.ab));
+        this.slabB.add(makeEdges(d, b, b, COLOR_NUM.b));
 
         this.slabA.userData.base = new THREE.Vector3(0, 0, -b / 2);
         this.slabA.userData.explode = new THREE.Vector3(-a * 0.72, 0, -a * 0.78);
@@ -3860,6 +3945,7 @@
       }
 
       applyVisualTargets(targets) {
+        this.state = { ...targets };
         const { a, b } = this.geo;
 
         const diagonal = new THREE.Vector3(0.7, 1, 0.65).normalize().multiplyScalar(b * 2.5 * targets.remove);
@@ -3873,14 +3959,16 @@
         });
 
         const slabs = [this.slabA, this.slabAB, this.slabB];
+        const alignRotateT = clamp(targets.align * 2, 0, 1);
+        const alignSlideT = clamp((targets.align - 0.5) * 2, 0, 1);
         for (const slab of slabs) {
           const p = slab.userData.base.clone()
             .lerp(slab.userData.explode, targets.explode)
-            .lerp(slab.userData.align, targets.align)
+            .lerp(slab.userData.align, alignSlideT)
             .lerp(slab.userData.final, targets.stack);
           slab.position.copy(p);
-          slab.rotation.x = slab.userData.rotX * targets.align;
-          slab.rotation.y = slab.userData.rotY * targets.align;
+          slab.rotation.x = slab.userData.rotX * alignRotateT;
+          slab.rotation.y = slab.userData.rotY * alignRotateT;
           slab.material.opacity = 0.06 + 0.82 * targets.decompose;
         }
 
@@ -4001,9 +4089,15 @@
           const top = new THREE.Vector3(9.4, 15.2, 10.4);
           const blend = clamp(0.45 * this.orbitWeight + Math.sin(this.orbitPhase * 0.8) * 0.05 * this.orbitWeight, 0, 1);
           this.camera.position.lerpVectors(base, top, blend);
-          const target = new THREE.Vector3(0, 0, -this.geo.a * 0.45);
+          const baseTarget = new THREE.Vector3(0, 0, -this.geo.a * 0.45);
+          const slabCentroid = this.slabA.position.clone()
+            .add(this.slabAB.position)
+            .add(this.slabB.position)
+            .multiplyScalar(1 / 3);
+          const targetBlend = clamp(0.45 * this.state.explode + 0.4 * this.state.align + 0.7 * this.state.stack, 0, 1);
+          const target = baseTarget.clone().lerp(slabCentroid, targetBlend);
           if (this.controls) {
-            this.controls.target.copy(target);
+            this.controls.target.lerp(target, 0.12);
           } else {
             this.camera.lookAt(target);
           }
@@ -4011,7 +4105,7 @@
       }
 
       updateLabels(canvas) {
-        labelManager.update(this.camera, canvas);
+        labelManager.update(this.camera, canvas, true);
       }
 
       equationTex() {
