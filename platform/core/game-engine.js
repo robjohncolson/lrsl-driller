@@ -227,12 +227,39 @@ export class GameEngine {
         this.unlockedTiers.push(tier.id);
         this.onTierUnlocked(tier);
         this.saveState();
+      } else {
+        // Sequential progression: if this tier is locked, all later tiers are locked too.
+        break;
       }
       // If previous level isn't complete, stop checking further levels
       // (they can't be unlocked without completing earlier ones)
     }
 
     return this.unlockedTiers;
+  }
+
+  /**
+   * Re-check unlock progression from scratch without re-emitting unlock events
+   * for tiers that were already unlocked before the re-check.
+   */
+  recheckUnlocks() {
+    if (!this.unlockRules) return this.unlockedTiers;
+
+    const previouslyUnlocked = new Set(this.unlockedTiers);
+    const originalOnTierUnlocked = this.onTierUnlocked;
+
+    this.unlockedTiers = [];
+    this.onTierUnlocked = (tier) => {
+      if (!previouslyUnlocked.has(tier.id)) {
+        originalOnTierUnlocked.call(this, tier);
+      }
+    };
+
+    try {
+      return this.checkUnlocks(this.unlockRules);
+    } finally {
+      this.onTierUnlocked = originalOnTierUnlocked;
+    }
   }
 
   /**
@@ -292,10 +319,11 @@ export class GameEngine {
     this.progressionOverrides = overrides || {};
     // Re-evaluate unlocks with new overrides
     if (this.unlockRules) {
-      // Clear unlocked tiers and re-check from scratch
-      this.unlockedTiers = [];
-      this.checkUnlocks(this.unlockRules);
-      this.currentTier = this.unlockedTiers[0] || null;
+      const savedTier = this.currentTier;
+      this.recheckUnlocks();
+      this.currentTier = this.unlockedTiers.includes(savedTier)
+        ? savedTier
+        : (this.unlockedTiers[0] || null);
     }
   }
 
@@ -306,8 +334,7 @@ export class GameEngine {
     this.progressionOverrides[modeId] = goldRequired;
     // Re-evaluate unlocks
     if (this.unlockRules) {
-      this.unlockedTiers = [];
-      this.checkUnlocks(this.unlockRules);
+      this.recheckUnlocks();
     }
   }
 
@@ -318,8 +345,7 @@ export class GameEngine {
     delete this.progressionOverrides[modeId];
     // Re-evaluate unlocks
     if (this.unlockRules) {
-      this.unlockedTiers = [];
-      this.checkUnlocks(this.unlockRules);
+      this.recheckUnlocks();
     }
   }
 
@@ -427,9 +453,11 @@ export class GameEngine {
       this.stateUpdatedAt = serverData.updated_at;
 
       // Recalculate unlocks from restored progress
-      this.unlockedTiers = [];
-      if (this.unlockRules) this.checkUnlocks(this.unlockRules);
-      this.currentTier = this.unlockedTiers[0] || null;
+      const savedTier = this.currentTier;
+      this.recheckUnlocks();
+      this.currentTier = this.unlockedTiers.includes(savedTier)
+        ? savedTier
+        : (this.unlockedTiers[0] || null);
 
       this.saveState();
       return { restored: true, source: 'server' };

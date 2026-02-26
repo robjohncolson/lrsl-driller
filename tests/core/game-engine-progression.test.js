@@ -127,6 +127,37 @@ describe('GameEngine Progression Overrides', () => {
 
       expect(engine.getRequiredGold('level-2')).toBe(3); // Back to manifest
     });
+
+    it('preserves currentTier when it is still unlocked after re-check', () => {
+      engine.starsPerMode['level-1'] = { gold: 3 };
+      engine.unlockedTiers = [];
+      engine.checkUnlocks(engine.unlockRules);
+      expect(engine.isModeUnlocked('level-2')).toBe(true);
+
+      engine.currentTier = 'level-2';
+      engine.setOverrides({});
+
+      expect(engine.currentTier).toBe('level-2');
+    });
+
+    it('falls back to first unlocked tier when currentTier is no longer unlocked', () => {
+      engine.currentTier = 'level-4'; // Not unlocked
+      engine.setOverrides({});
+
+      expect(engine.currentTier).toBe('level-1');
+    });
+
+    it('does not re-emit unlock events for tiers already unlocked before re-check', () => {
+      engine.starsPerMode['level-1'] = { gold: 3 };
+      engine.unlockedTiers = [];
+      engine.checkUnlocks(engine.unlockRules);
+      expect(engine.isModeUnlocked('level-2')).toBe(true);
+
+      const callsBefore = engine.onTierUnlocked.mock.calls.length;
+      engine.setOverrides({});
+
+      expect(engine.onTierUnlocked.mock.calls.length).toBe(callsBefore);
+    });
   });
 
   describe('updateOverride', () => {
@@ -239,6 +270,21 @@ describe('GameEngine Progression Overrides', () => {
       engine.updateOverride('level-2', 2);
       // Now level 2 should be unlocked
       expect(engine.isModeUnlocked('level-2')).toBe(true);
+    });
+
+    it('stops checking later tiers after first locked tier', () => {
+      engine.starsPerMode['level-1'] = { gold: 0 };
+      engine.starsPerMode['level-2'] = { gold: 99 };
+      engine.starsPerMode['level-3'] = { gold: 99 };
+
+      const requiredGoldSpy = vi.spyOn(engine, 'getRequiredGold');
+
+      engine.unlockedTiers = [];
+      engine.checkUnlocks(engine.unlockRules);
+
+      expect(engine.unlockedTiers).toEqual(['level-1']);
+      expect(requiredGoldSpy).toHaveBeenCalledTimes(1);
+      expect(requiredGoldSpy).toHaveBeenCalledWith('level-2');
     });
   });
 

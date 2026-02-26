@@ -4219,6 +4219,13 @@
       const tier = e.detail;
       console.log('[App] Tier unlocked:', tier.id, tier.name);
 
+      const gameEngine = platform?.gameEngine;
+      const currentModeId = gameEngine?.currentTier;
+      const modeOrder = gameEngine?.modeOrder || [];
+      const currentIndex = modeOrder.indexOf(currentModeId);
+      const unlockedIndex = modeOrder.indexOf(tier.id);
+      const isNextMode = currentIndex >= 0 && unlockedIndex === currentIndex + 1;
+
       // Track if user clicked the toast to go to new level
       let userNavigated = false;
 
@@ -4247,6 +4254,11 @@
       // Auto-advance to the newly unlocked level after a short delay
       // BUT: Don't auto-advance if user is viewing feedback (Next button visible)
       // The correct-answer flow's 10-second timer will handle auto-advance in that case
+      if (!isNextMode) {
+        console.log('[App] Skipping tier unlock auto-advance - unlocked tier is not next in sequence');
+        return;
+      }
+
       setTimeout(async () => {
         if (userNavigated) {
           console.log('[App] Skipping tier unlock auto-advance - user already clicked toast');
