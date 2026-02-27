@@ -149,6 +149,28 @@ KEY CONCEPTS BY TOPIC:
   - Saying n ≥ 30 is always needed (not true when population is already normal)
   - Forgetting to check the 10% condition before using σ_x̄ = σ/√n
 
+## Topic 5.8: Sampling Distributions for Differences in Sample Means
+- The sampling distribution of x̄₁ − x̄₂ describes differences in sample means from all possible pairs of samples
+- Parameters: μ_{x̄₁−x̄₂} = μ₁ − μ₂, σ_{x̄₁−x̄₂} = √(σ₁²/n₁ + σ₂²/n₂)
+- z-score: z = (observed difference − μ_{x̄₁−x̄₂}) / σ_{x̄₁−x̄₂}
+- Conditions:
+  - 10% condition for BOTH samples
+  - Samples must be independent
+  - Shape is approximately normal when BOTH populations are normal, OR BOTH n₁ ≥ 30 AND n₂ ≥ 30
+- Common student errors:
+  - Adding/subtracting standard deviations directly instead of using √(σ₁²/n₁ + σ₂²/n₂)
+  - Adding means instead of subtracting (μ₁ + μ₂ instead of μ₁ − μ₂)
+  - Forgetting to divide each σ² by n
+  - Checking only ONE population normality or only ONE sample size threshold
+  - Using n₁ + n₂ ≥ 30 instead of requiring BOTH n₁ ≥ 30 and n₂ ≥ 30
+  - Not specifying subtraction order (which group minus which)
+- Interpretation requirements:
+  - Reference specific populations and sample sizes from context
+  - Include units
+  - Use all-possible-samples framing (size n₁ from pop 1 AND size n₂ from pop 2)
+  - For σ_{x̄₁−x̄₂}, use "typically" or "on average"
+  - For probability, include % or decimal and classify unusual/not unusual using 5% threshold
+
 GRADING INSTRUCTIONS:
 1. Compare the student's answer to the expected answer
 2. For numeric answers: allow reasonable rounding tolerance

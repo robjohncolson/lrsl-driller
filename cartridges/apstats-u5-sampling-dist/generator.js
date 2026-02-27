@@ -2210,6 +2210,356 @@ const capstone57Bank = [
   }
 ];
 
+// ---- L36/L39/L40: Two-population contexts for xbar1 - xbar2 ----
+const diffMeanContextBank = [
+  {
+    context: "A tree produces lemons and a different tree produces oranges",
+    label1: "lemons", label2: "oranges",
+    pop1Desc: "Lemon weights are approximately normally distributed",
+    pop2Desc: "Orange weights are approximately normally distributed",
+    mu1: 4, sigma1: 0.5, n1: 6, N1: 5000,
+    mu2: 3, sigma2: 0.4, n2: 6, N2: 5000,
+    unit: "oz", measurable: "weight",
+    pop1Normal: true, pop2Normal: true
+  },
+  {
+    context: "A factory produces bolts on two different machines",
+    label1: "Machine A bolts", label2: "Machine B bolts",
+    pop1Desc: "Machine A bolt diameters are approximately normally distributed",
+    pop2Desc: "Machine B bolt diameters are approximately normally distributed",
+    mu1: 10, sigma1: 0.2, n1: 25, N1: 50000,
+    mu2: 9.8, sigma2: 0.15, n2: 30, N2: 50000,
+    unit: "mm", measurable: "diameter",
+    pop1Normal: true, pop2Normal: true
+  },
+  {
+    context: "Two competing coffee shops serve different cup sizes",
+    label1: "Shop A cups", label2: "Shop B cups",
+    pop1Desc: "Shop A fill amounts are approximately normally distributed",
+    pop2Desc: "Shop B fill amounts are approximately normally distributed",
+    mu1: 12.1, sigma1: 0.3, n1: 15, N1: 80000,
+    mu2: 11.8, sigma2: 0.25, n2: 20, N2: 60000,
+    unit: "oz", measurable: "fill amount",
+    pop1Normal: true, pop2Normal: true
+  },
+  {
+    context: "A hospital compares birth weights at two locations",
+    label1: "Hospital A newborns", label2: "Hospital B newborns",
+    pop1Desc: "Hospital A birth weights are approximately normally distributed",
+    pop2Desc: "Hospital B birth weights are approximately normally distributed",
+    mu1: 7.5, sigma1: 1.1, n1: 20, N1: 15000,
+    mu2: 7.2, sigma2: 0.9, n2: 25, N2: 12000,
+    unit: "lb", measurable: "birth weight",
+    pop1Normal: true, pop2Normal: true
+  },
+  {
+    context: "Two battery brands are compared for lifetime",
+    label1: "Brand X batteries", label2: "Brand Y batteries",
+    pop1Desc: "Brand X lifetimes are approximately normally distributed",
+    pop2Desc: "Brand Y lifetimes are approximately normally distributed",
+    mu1: 500, sigma1: 40, n1: 35, N1: 200000,
+    mu2: 480, sigma2: 35, n2: 40, N2: 150000,
+    unit: "hours", measurable: "lifetime",
+    pop1Normal: true, pop2Normal: true
+  },
+  {
+    context: "Test scores are compared between two large high schools",
+    label1: "School A students", label2: "School B students",
+    pop1Desc: "School A test scores are approximately normally distributed",
+    pop2Desc: "School B test scores are approximately normally distributed",
+    mu1: 74, sigma1: 11, n1: 36, N1: 2000,
+    mu2: 70, sigma2: 13, n2: 40, N2: 2500,
+    unit: "points", measurable: "test score",
+    pop1Normal: true, pop2Normal: true
+  },
+  {
+    context: "A researcher compares commute times in two cities",
+    label1: "City A commuters", label2: "City B commuters",
+    pop1Desc: "City A commute times are approximately normally distributed",
+    pop2Desc: "City B commute times are approximately normally distributed",
+    mu1: 35, sigma1: 8, n1: 50, N1: 300000,
+    mu2: 28, sigma2: 6, n2: 45, N2: 250000,
+    unit: "min", measurable: "commute time",
+    pop1Normal: true, pop2Normal: true
+  },
+  {
+    context: "Two farms grow apples of different varieties",
+    label1: "Honeycrisp apples", label2: "Fuji apples",
+    pop1Desc: "Honeycrisp apple weights are approximately normally distributed",
+    pop2Desc: "Fuji apple weights are approximately normally distributed",
+    mu1: 8, sigma1: 0.6, n1: 10, N1: 25000,
+    mu2: 7.2, sigma2: 0.5, n2: 12, N2: 30000,
+    unit: "oz", measurable: "weight",
+    pop1Normal: true, pop2Normal: true
+  },
+  {
+    context: "A manufacturer compares fill volumes from two bottling lines",
+    label1: "Line 1 bottles", label2: "Line 2 bottles",
+    pop1Desc: "Line 1 fill volumes are approximately normally distributed",
+    pop2Desc: "Line 2 fill volumes are approximately normally distributed",
+    mu1: 502, sigma1: 4, n1: 15, N1: 100000,
+    mu2: 498, sigma2: 5, n2: 18, N2: 100000,
+    unit: "mL", measurable: "fill volume",
+    pop1Normal: true, pop2Normal: true
+  },
+  {
+    context: "Reaction times are compared for two age groups of drivers",
+    label1: "younger drivers (20-30)", label2: "older drivers (60-70)",
+    pop1Desc: "Younger driver reaction times are approximately normally distributed",
+    pop2Desc: "Older driver reaction times are approximately normally distributed",
+    mu1: 1.5, sigma1: 0.3, n1: 40, N1: 500000,
+    mu2: 2.1, sigma2: 0.5, n2: 35, N2: 400000,
+    unit: "sec", measurable: "reaction time",
+    pop1Normal: true, pop2Normal: true
+  }
+];
+
+// ---- L37: Shape of xbar1 - xbar2 distribution (5.8b) ----
+const diffMeanShapeBank = [
+  {
+    pop1Desc: "Population 1 is approximately normally distributed",
+    pop2Desc: "Population 2 is approximately normally distributed",
+    n1: 8, n2: 10,
+    isNormal: true,
+    reason: "Both populations are approximately normal, so the sampling distribution of xbar1 - xbar2 is approximately normal for ANY sample sizes, including n1 = 8 and n2 = 10.",
+    givenInfo: "Pop 1: normal | Pop 2: normal | n1 = 8, n2 = 10"
+  },
+  {
+    pop1Desc: "Population 1 is strongly right-skewed",
+    pop2Desc: "Population 2 is approximately normally distributed",
+    n1: 15, n2: 20,
+    isNormal: false,
+    reason: "Population 1 is strongly right-skewed and n1 = 15 < 30. Even though Population 2 is normal, BOTH populations must be normal (or BOTH n >= 30) for xbar1 - xbar2 to be approximately normal.",
+    givenInfo: "Pop 1: strongly right-skewed | Pop 2: normal | n1 = 15, n2 = 20"
+  },
+  {
+    pop1Desc: "Population 1 is right-skewed",
+    pop2Desc: "Population 2 is left-skewed",
+    n1: 50, n2: 45,
+    isNormal: true,
+    reason: "Neither population is normal, but BOTH sample sizes are >= 30 (n1 = 50 and n2 = 45). By the CLT, the sampling distribution of xbar1 - xbar2 is approximately normal.",
+    givenInfo: "Pop 1: right-skewed | Pop 2: left-skewed | n1 = 50, n2 = 45"
+  },
+  {
+    pop1Desc: "Population 1 is uniform",
+    pop2Desc: "Population 2 is bimodal",
+    n1: 35, n2: 20,
+    isNormal: false,
+    reason: "Neither population is normal. Although n1 = 35 >= 30, n2 = 20 < 30. BOTH sample sizes must be >= 30 for the CLT to apply to xbar1 - xbar2. Since n2 is too small, the distribution is NOT approximately normal.",
+    givenInfo: "Pop 1: uniform | Pop 2: bimodal | n1 = 35, n2 = 20"
+  },
+  {
+    pop1Desc: "Population 1 is approximately normally distributed",
+    pop2Desc: "Population 2 is approximately normally distributed",
+    n1: 4, n2: 5,
+    isNormal: true,
+    reason: "Both populations are approximately normal. When BOTH populations are normal, the sampling distribution of xbar1 - xbar2 is normal for any sample sizes, even very small ones like n1 = 4 and n2 = 5.",
+    givenInfo: "Pop 1: normal | Pop 2: normal | n1 = 4, n2 = 5"
+  },
+  {
+    pop1Desc: "Population 1 is heavily right-skewed (exponential)",
+    pop2Desc: "Population 2 is heavily right-skewed (exponential)",
+    n1: 10, n2: 12,
+    isNormal: false,
+    reason: "Both populations are heavily right-skewed and both sample sizes are < 30 (n1 = 10, n2 = 12). The CLT requires BOTH n >= 30 for non-normal populations.",
+    givenInfo: "Pop 1: exponential | Pop 2: exponential | n1 = 10, n2 = 12"
+  },
+  {
+    pop1Desc: "Population 1 is heavily right-skewed (exponential)",
+    pop2Desc: "Population 2 is heavily right-skewed (exponential)",
+    n1: 40, n2: 35,
+    isNormal: true,
+    reason: "Both populations are non-normal, but BOTH n1 = 40 >= 30 AND n2 = 35 >= 30. The CLT applies to both, making xbar1 - xbar2 approximately normal.",
+    givenInfo: "Pop 1: exponential | Pop 2: exponential | n1 = 40, n2 = 35"
+  },
+  {
+    pop1Desc: "Population 1 is approximately normally distributed",
+    pop2Desc: "Population 2 is strongly left-skewed",
+    n1: 50, n2: 8,
+    isNormal: false,
+    reason: "Population 1 is normal but Population 2 is strongly left-skewed with n2 = 8 < 30. For xbar1 - xbar2 to be approximately normal, BOTH populations must be normal OR BOTH n >= 30. Neither condition is fully met.",
+    givenInfo: "Pop 1: normal | Pop 2: strongly left-skewed | n1 = 50, n2 = 8"
+  },
+  {
+    pop1Desc: "Population 1 is slightly skewed",
+    pop2Desc: "Population 2 is slightly skewed",
+    n1: 30, n2: 30,
+    isNormal: true,
+    reason: "Both populations are slightly non-normal, but BOTH n1 = 30 AND n2 = 30 meet the CLT threshold. The sampling distribution of xbar1 - xbar2 is approximately normal.",
+    givenInfo: "Pop 1: slightly skewed | Pop 2: slightly skewed | n1 = 30, n2 = 30"
+  },
+  {
+    pop1Desc: "Population 1 is bimodal",
+    pop2Desc: "Population 2 is uniform",
+    n1: 25, n2: 40,
+    isNormal: false,
+    reason: "Population 1 is bimodal and n1 = 25 < 30. Even though n2 = 40 >= 30, BOTH sample sizes must be >= 30 for the CLT to guarantee approximate normality. Since n1 < 30, the condition is not met.",
+    givenInfo: "Pop 1: bimodal | Pop 2: uniform | n1 = 25, n2 = 40"
+  }
+];
+
+// ---- L38: Interpret xbar1 - xbar2 parameters (5.8c) ----
+const diffMeanInterpretBank = [
+  {
+    context: "Lemons (mu1 = 4 oz, sigma1 = 0.5 oz) and oranges (mu2 = 3 oz, sigma2 = 0.4 oz). Random samples of 6 lemons and 6 oranges are selected.",
+    mu1: 4, sigma1: 0.5, n1: 6, mu2: 3, sigma2: 0.4, n2: 6, unit: "oz",
+    label1: "lemons", label2: "oranges", paramType: "mean",
+    correctInterpretation: "mu_(xbar1-xbar2) = 1 oz, meaning that across all possible samples of 6 lemons and 6 oranges, the average difference (L - O) in sample mean weights equals the true difference of 1 oz",
+    wrongInterpretations: [
+      "In every pair of samples, the difference in sample means will be exactly 1 oz",
+      "The mean of 1 oz means each lemon weighs exactly 1 oz more than each orange",
+      "mu_(xbar1-xbar2) = 1 oz means 100% of sample differences will be positive"
+    ]
+  },
+  {
+    context: "Lemons (mu1 = 4 oz, sigma1 = 0.5 oz) and oranges (mu2 = 3 oz, sigma2 = 0.4 oz). Random samples of 6 lemons and 6 oranges are selected.",
+    mu1: 4, sigma1: 0.5, n1: 6, mu2: 3, sigma2: 0.4, n2: 6, unit: "oz",
+    label1: "lemons", label2: "oranges", paramType: "sd",
+    correctInterpretation: "sigma_(xbar1-xbar2) ~= 0.261 oz, meaning the difference in sample mean weights typically varies by about 0.261 oz from the true difference of 1 oz across all possible samples of 6 lemons and 6 oranges",
+    wrongInterpretations: [
+      "The standard deviation of 0.261 oz means every sample difference is within 0.261 oz of 1",
+      "sigma_(xbar1-xbar2) = 0.261 means each individual fruit weight varies by 0.261 oz",
+      "The standard deviation means there is a 26.1% chance of error"
+    ]
+  },
+  {
+    context: "Bolts from Machine A (mu1 = 10 mm, sigma1 = 0.2 mm) and Machine B (mu2 = 9.8 mm, sigma2 = 0.15 mm). Samples of 25 from A and 30 from B.",
+    mu1: 10, sigma1: 0.2, n1: 25, mu2: 9.8, sigma2: 0.15, n2: 30, unit: "mm",
+    label1: "Machine A bolts", label2: "Machine B bolts", paramType: "mean",
+    correctInterpretation: "mu_(xbar1-xbar2) = 0.2 mm, meaning across all possible samples of 25 bolts from Machine A and 30 from Machine B, the average difference (A - B) in sample mean diameters equals 0.2 mm",
+    wrongInterpretations: [
+      "Every pair of samples will show exactly 0.2 mm difference",
+      "0.2 mm is the difference we observed in our specific pair of samples",
+      "mu_(xbar1-xbar2) = 0.2 means Machine A is always 0.2 mm better than Machine B"
+    ]
+  },
+  {
+    context: "Brand X batteries (mu1 = 500 hr, sigma1 = 40 hr) and Brand Y batteries (mu2 = 480 hr, sigma2 = 35 hr). Samples of 35 from X and 40 from Y.",
+    mu1: 500, sigma1: 40, n1: 35, mu2: 480, sigma2: 35, n2: 40, unit: "hours",
+    label1: "Brand X", label2: "Brand Y", paramType: "sd",
+    correctInterpretation: "sigma_(xbar1-xbar2) ~= 8.515 hours, meaning the difference (X - Y) in sample mean lifetimes typically varies by about 8.515 hours from the true difference of 20 hours across all possible samples of 35 Brand X and 40 Brand Y batteries",
+    wrongInterpretations: [
+      "The standard deviation guarantees xbar1 - xbar2 is always within 8.515 hours of 20",
+      "sigma_(xbar1-xbar2) = 8.515 means each individual battery's lifetime varies by 8.515 hours",
+      "The standard deviation of 8.515 hours means there is an 85.15% confidence level"
+    ]
+  },
+  {
+    context: "School A students (mu1 = 74 pts, sigma1 = 11 pts) and School B students (mu2 = 70 pts, sigma2 = 13 pts). Samples of 36 from A and 40 from B.",
+    mu1: 74, sigma1: 11, n1: 36, mu2: 70, sigma2: 13, n2: 40, unit: "points",
+    label1: "School A", label2: "School B", paramType: "mean",
+    correctInterpretation: "mu_(xbar1-xbar2) = 4 points, meaning that if we took all possible samples of 36 School A and 40 School B students, the average of all differences (A - B) in sample mean test scores would equal 4 points",
+    wrongInterpretations: [
+      "Our specific samples will always show a 4-point difference",
+      "4 points is the result of our particular pair of samples, not a property of all possible samples",
+      "mu_(xbar1-xbar2) = 4 means School A scores are always 4 points higher than School B"
+    ]
+  },
+  {
+    context: "City A commuters (mu1 = 35 min, sigma1 = 8 min) and City B commuters (mu2 = 28 min, sigma2 = 6 min). Samples of 50 from A and 45 from B.",
+    mu1: 35, sigma1: 8, n1: 50, mu2: 28, sigma2: 6, n2: 45, unit: "min",
+    label1: "City A", label2: "City B", paramType: "sd",
+    correctInterpretation: "sigma_(xbar1-xbar2) ~= 1.381 min, meaning the difference (A - B) in sample mean commute times typically varies by about 1.381 min from the true difference of 7 min across all possible samples of 50 from City A and 45 from City B",
+    wrongInterpretations: [
+      "sigma_(xbar1-xbar2) = 1.381 min means each commuter's time varies by 1.381 min from the mean",
+      "The standard deviation guarantees xbar1 - xbar2 is always between 5.619 and 8.381 min",
+      "sigma_(xbar1-xbar2) = 1.381 means there is a 1.381% probability of error"
+    ]
+  },
+  {
+    context: "Honeycrisp apples (mu1 = 8 oz, sigma1 = 0.6 oz) and Fuji apples (mu2 = 7.2 oz, sigma2 = 0.5 oz). Samples of 10 Honeycrisp and 12 Fuji.",
+    mu1: 8, sigma1: 0.6, n1: 10, mu2: 7.2, sigma2: 0.5, n2: 12, unit: "oz",
+    label1: "Honeycrisp", label2: "Fuji", paramType: "mean",
+    correctInterpretation: "mu_(xbar1-xbar2) = 0.8 oz, meaning across all possible samples of 10 Honeycrisp and 12 Fuji apples, the average difference in sample mean weights equals the true population difference of 0.8 oz",
+    wrongInterpretations: [
+      "Every Honeycrisp apple weighs exactly 0.8 oz more than every Fuji apple",
+      "0.8 oz is the difference we will observe in our specific sample pair",
+      "mu_(xbar1-xbar2) = 0.8 oz means the difference will be between 0 and 1.6 oz"
+    ]
+  },
+  {
+    context: "Hospital A newborns (mu1 = 7.5 lb, sigma1 = 1.1 lb) and Hospital B newborns (mu2 = 7.2 lb, sigma2 = 0.9 lb). Samples of 20 from A and 25 from B.",
+    mu1: 7.5, sigma1: 1.1, n1: 20, mu2: 7.2, sigma2: 0.9, n2: 25, unit: "lb",
+    label1: "Hospital A", label2: "Hospital B", paramType: "sd",
+    correctInterpretation: "sigma_(xbar1-xbar2) ~= 0.300 lb, meaning the difference (A - B) in sample mean birth weights typically varies by about 0.300 lb from the true difference of 0.3 lb across all possible samples of 20 from Hospital A and 25 from Hospital B",
+    wrongInterpretations: [
+      "sigma_(xbar1-xbar2) = 0.300 lb means each newborn's weight varies by 0.300 lb from the mean",
+      "The standard deviation of 0.300 lb means the difference is guaranteed to be between 0 and 0.6 lb",
+      "sigma_(xbar1-xbar2) = 0.300 means a 30% chance of observing a negative difference"
+    ]
+  }
+];
+
+// ---- L41: 5.8 Capstone scenarios ----
+const capstone58Bank = [
+  {
+    scenarioText: "Lemons have mu1 = 4 oz, sigma1 = 0.5 oz and oranges have mu2 = 3 oz, sigma2 = 0.4 oz. Random samples of 6 from each tree are selected. What are the mean and standard deviation of the sampling distribution of xbar_L - xbar_O?",
+    correctAnswer: "mu = 4 - 3 = 1 oz, sigma = sqrt(0.5^2/6 + 0.4^2/6) = sqrt(0.0417 + 0.0267) ~= 0.261 oz",
+    wrongOptions: [
+      "mu = 1 oz, sigma = sqrt(0.5^2 + 0.4^2) = 0.640 oz (forgot to divide by n)",
+      "mu = 1 oz, sigma = 0.5/sqrt(6) + 0.4/sqrt(6) = 0.367 oz (added SD/sqrt(n) terms instead of sqrt(sum of variances))",
+      "mu = 7 oz, sigma = sqrt(0.5^2/6 + 0.4^2/6) ~= 0.261 oz (added means instead of subtracting)"
+    ],
+    explanation: "mu_(xbar1-xbar2) = mu1 - mu2 = 4 - 3 = 1 oz. sigma_(xbar1-xbar2) = sqrt(sigma1^2/n1 + sigma2^2/n2) = sqrt(0.25/6 + 0.16/6) = sqrt(0.0683) ~= 0.261 oz. The 10% condition is met for both (6 < 500).",
+    topicId: "5.8: Distribution Parameters"
+  },
+  {
+    scenarioText: "Population 1 is right-skewed with n1 = 35. Population 2 is approximately normal with n2 = 12. Is the sampling distribution of xbar1 - xbar2 approximately normal?",
+    correctAnswer: "No - Population 2 is normal but Population 1 is not, AND n2 = 12 < 30 so the CLT doesn't cover both",
+    wrongOptions: [
+      "Yes - Population 2 is normal so the whole distribution is normal",
+      "Yes - n1 = 35 >= 30 is large enough for both populations",
+      "Yes - the sum n1 + n2 = 47 >= 30 satisfies the CLT"
+    ],
+    explanation: "For xbar1 - xbar2 to be approximately normal: BOTH populations must be normal, OR BOTH n >= 30. Here Pop 1 is not normal (ruling out condition 1), and n2 = 12 < 30 (ruling out condition 2). BOTH conditions fail.",
+    topicId: "5.8: Shape Conditions"
+  },
+  {
+    scenarioText: "Battery Brand X: mu1 = 500 hr, sigma1 = 40 hr, n1 = 35. Brand Y: mu2 = 480 hr, sigma2 = 35 hr, n2 = 40. What is P(xbar_X - xbar_Y > 30)?",
+    correctAnswer: "z = (30 - 20)/8.515 ~= 1.17, P = 1 - 0.8790 = 0.1210",
+    wrongOptions: [
+      "z = (30 - 20)/40 = 0.25, P = 0.4013 (used sigma1 instead of sigma_(xbar1-xbar2))",
+      "z = (30 - 20)/75 = 0.133, P = 0.4471 (added sigma values instead of variances)",
+      "z = (30 - 0)/8.515 ~= 3.52, P ~= 0.0002 (used 0 as the mean instead of mu1 - mu2)"
+    ],
+    explanation: "mu_(xbar1-xbar2) = 500 - 480 = 20. sigma_(xbar1-xbar2) = sqrt(40^2/35 + 35^2/40) = sqrt(45.71 + 30.625) = sqrt(76.34) ~= 8.515. z = (30 - 20)/8.515 ~= 1.17. P(Z > 1.17) ~= 0.1210.",
+    topicId: "5.8: Probability Calculation"
+  },
+  {
+    scenarioText: "The standard deviation of the sampling distribution of xbar1 - xbar2 is 0.26 oz for samples of 6 lemons and 6 oranges (true difference = 1 oz). Which interpretation is correct?",
+    correctAnswer: "The difference in sample mean weights typically varies by about 0.26 oz from the true difference of 1 oz across all possible samples of 6 lemons and 6 oranges",
+    wrongOptions: [
+      "Every sample difference will be within 0.26 oz of 1 oz",
+      "Individual lemons and oranges vary by 0.26 oz from the mean",
+      "There is a 26% chance that the sample difference equals the true difference"
+    ],
+    explanation: "sigma_(xbar1-xbar2) measures how much the sample statistic xbar1 - xbar2 typically varies from the true difference mu1 - mu2. It describes variation across ALL possible sample pairs, not individual observations.",
+    topicId: "5.8: Interpretation"
+  },
+  {
+    scenarioText: "Two populations are both right-skewed. Samples of n1 = 50 and n2 = 45 are taken. A student claims xbar1 - xbar2 is NOT approximately normal because neither population is normal. Is the student correct?",
+    correctAnswer: "No - the student is wrong. Both n1 = 50 >= 30 AND n2 = 45 >= 30, so the CLT applies to BOTH and xbar1 - xbar2 IS approximately normal",
+    wrongOptions: [
+      "Yes - both populations must be normal for xbar1 - xbar2 to be normal",
+      "Yes - right-skewed populations can never produce normal sampling distributions",
+      "No - only ONE sample size needs to be >= 30"
+    ],
+    explanation: "There are TWO paths to normality: (1) BOTH populations normal, OR (2) BOTH n >= 30. The student only checked condition 1. Since BOTH n1 = 50 >= 30 AND n2 = 45 >= 30, the CLT applies and xbar1 - xbar2 IS approximately normal.",
+    topicId: "5.8: Shape Conditions"
+  },
+  {
+    scenarioText: "Coffee Shop A: mu1 = 12.1 oz, sigma1 = 0.3 oz, n1 = 15. Coffee Shop B: mu2 = 11.8 oz, sigma2 = 0.25 oz, n2 = 20. A student calculates sigma_(xbar1-xbar2) = (0.3/sqrt(15)) - (0.25/sqrt(20)) = 0.0215. What error did the student make?",
+    correctAnswer: "The student subtracted sigma/sqrt(n) values instead of adding variances under a square root: sigma = sqrt(0.3^2/15 + 0.25^2/20) ~= 0.094 oz",
+    wrongOptions: [
+      "The student should have added sigma/sqrt(n) values: 0.3/sqrt(15) + 0.25/sqrt(20) = 0.133 oz",
+      "The student should have used sigma1 - sigma2 = 0.05 oz",
+      "The student's calculation is correct"
+    ],
+    explanation: "Variances ALWAYS add, even for differences. sigma_(xbar1-xbar2) = sqrt(sigma1^2/n1 + sigma2^2/n2) = sqrt(0.09/15 + 0.0625/20) = sqrt(0.006 + 0.003125) = sqrt(0.009125) ~= 0.094 oz. Never subtract standard deviations.",
+    topicId: "5.8: Variance Addition"
+  }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -3456,6 +3806,260 @@ export function generateProblem(modeId, context, mode) {
     answers = {
       capstone57Answer: { value: scen.correctAnswer },
       capstone57Explain: { value: scen.explanation }
+    };
+
+    scenario = scen.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L36: xbar1-xbar2 Distribution Parameters (5.8a) ==========
+  if (modeId === "l36-diff-mean-params") {
+    const scen = drawFromBag('diffMeanContext_l36', diffMeanContextBank);
+
+    const diffMu = Math.round((scen.mu1 - scen.mu2) * 100) / 100;
+    const var1 = (scen.sigma1 * scen.sigma1) / scen.n1;
+    const var2 = (scen.sigma2 * scen.sigma2) / scen.n2;
+    const diffSD = Math.round(Math.sqrt(var1 + var2) * 1000) / 1000;
+    const tenPct1 = scen.n1 < 0.10 * scen.N1;
+    const tenPct2 = scen.n2 < 0.10 * scen.N2;
+
+    ctx = {
+      topicId: "5.8: xbar1-xbar2 Distribution Parameters",
+      scenarioText: `${scen.context}.\n\nGroup 1 (${scen.label1}): mu1 = ${scen.mu1} ${scen.unit}, sigma1 = ${scen.sigma1} ${scen.unit}, n1 = ${scen.n1}, N1 = ${scen.N1.toLocaleString()}\nGroup 2 (${scen.label2}): mu2 = ${scen.mu2} ${scen.unit}, sigma2 = ${scen.sigma2} ${scen.unit}, n2 = ${scen.n2}, N2 = ${scen.N2.toLocaleString()}\n\nFind the mean and standard deviation of the sampling distribution of xbar1 - xbar2.`,
+      givenText: `mu1 = ${scen.mu1}, sigma1 = ${scen.sigma1}, n1 = ${scen.n1} | mu2 = ${scen.mu2}, sigma2 = ${scen.sigma2}, n2 = ${scen.n2} | 10%: ${tenPct1 && tenPct2 ? "Met for both" : "Check carefully"}`,
+      mu1: `${scen.mu1}`, sigma1: `${scen.sigma1}`, n1: `${scen.n1}`, N1: `${scen.N1}`,
+      mu2: `${scen.mu2}`, sigma2: `${scen.sigma2}`, n2: `${scen.n2}`, N2: `${scen.N2}`,
+      unit: scen.unit,
+      diffMeanMu: `${diffMu}`,
+      diffMeanSD: `${diffSD}`
+    };
+
+    answers = {
+      diffMeanMu: { value: diffMu, tolerance: 0.1 },
+      diffMeanSD: { value: diffSD, tolerance: 0.1 }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L37: Shape of xbar1-xbar2 Distribution (5.8b) ==========
+  if (modeId === "l37-diff-mean-shape") {
+    const scen = drawFromBag('diffMeanShape', diffMeanShapeBank);
+
+    const normalAnswer = scen.isNormal
+      ? "Yes, approximately normal"
+      : "No, NOT approximately normal";
+
+    ctx = {
+      topicId: "5.8: Shape of xbar1-xbar2 Distribution",
+      scenarioText: `Consider the following scenario:\n\n${scen.pop1Desc} with sample size n1 = ${scen.n1}.\n${scen.pop2Desc} with sample size n2 = ${scen.n2}.\n\nIs the sampling distribution of xbar1 - xbar2 approximately normal?`,
+      givenText: scen.givenInfo,
+      isNormal: `${scen.isNormal}`,
+      n1: `${scen.n1}`,
+      n2: `${scen.n2}`,
+      reason: scen.reason,
+      expectedExplanation: scen.reason
+    };
+
+    answers = {
+      diffMeanShapeChoice: { value: normalAnswer },
+      diffMeanShapeExplain: { value: scen.reason }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L38: Interpret xbar1-xbar2 Parameters (5.8c) ==========
+  if (modeId === "l38-diff-mean-interpret") {
+    const scen = drawFromBag('diffMeanInterpret', diffMeanInterpretBank);
+
+    const allOptions = shuffle([scen.correctInterpretation, ...scen.wrongInterpretations]);
+    const diffMu = Math.round((scen.mu1 - scen.mu2) * 100) / 100;
+    const diffSD = Math.round(Math.sqrt(scen.sigma1 * scen.sigma1 / scen.n1 + scen.sigma2 * scen.sigma2 / scen.n2) * 1000) / 1000;
+
+    ctx = {
+      topicId: "5.8: Interpreting xbar1-xbar2 Parameters",
+      scenarioText: `${scen.context}\n\n${scen.paramType === "mean"
+        ? `The mean of the sampling distribution of xbar1 - xbar2 is mu_(xbar1-xbar2) = ${diffMu} ${scen.unit}. Which interpretation is correct?`
+        : `The standard deviation of the sampling distribution of xbar1 - xbar2 is sigma_(xbar1-xbar2) ~= ${diffSD} ${scen.unit}. Which interpretation is correct?`}`,
+      givenText: `mu1 = ${scen.mu1}, sigma1 = ${scen.sigma1}, n1 = ${scen.n1} | mu2 = ${scen.mu2}, sigma2 = ${scen.sigma2}, n2 = ${scen.n2} | Interpreting: ${scen.paramType === "mean" ? "mu_(xbar1-xbar2)" : "sigma_(xbar1-xbar2)"}`,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      paramType: scen.paramType,
+      mu1: `${scen.mu1}`, sigma1: `${scen.sigma1}`, n1: `${scen.n1}`,
+      mu2: `${scen.mu2}`, sigma2: `${scen.sigma2}`, n2: `${scen.n2}`,
+      unit: scen.unit
+    };
+
+    answers = {
+      diffMeanInterpretAnswer: { value: scen.correctInterpretation }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L39: xbar1-xbar2 Probability (5.8d) ==========
+  if (modeId === "l39-diff-mean-probability") {
+    const scen = drawFromBag('diffMeanContext_l39', diffMeanContextBank);
+
+    const diffMu = scen.mu1 - scen.mu2;
+    const var1 = (scen.sigma1 * scen.sigma1) / scen.n1;
+    const var2 = (scen.sigma2 * scen.sigma2) / scen.n2;
+    const diffSD = Math.sqrt(var1 + var2);
+
+    // Generate a random observed difference 0.5-2.5 SD away from the true mean
+    const sdMultiplier = (randInt(50, 250)) / 100 * (Math.random() < 0.5 ? 1 : -1);
+    let obsDiff = diffMu + sdMultiplier * diffSD;
+    if (Math.abs(diffMu) >= 100) {
+      obsDiff = Math.round(obsDiff * 10) / 10;
+    } else if (Math.abs(diffMu) >= 10) {
+      obsDiff = Math.round(obsDiff * 100) / 100;
+    } else {
+      obsDiff = Math.round(obsDiff * 1000) / 1000;
+    }
+
+    const greaterThan = Math.random() < 0.5;
+    const direction = greaterThan ? "GREATER THAN" : "LESS THAN";
+
+    const zExact = (obsDiff - diffMu) / diffSD;
+    const z = Math.round(zExact * 100) / 100;
+
+    let prob;
+    if (greaterThan) {
+      prob = 1 - normalCDF(zExact);
+    } else {
+      prob = normalCDF(zExact);
+    }
+    prob = Math.round(prob * 10000) / 10000;
+
+    const diffSDRounded = Math.round(diffSD * 1000) / 1000;
+    const diffMuRounded = Math.round(diffMu * 100) / 100;
+
+    ctx = {
+      topicId: "5.8: xbar1-xbar2 Probability",
+      scenarioText: `${scen.context}.\n\nGroup 1 (${scen.label1}): mu1 = ${scen.mu1} ${scen.unit}, sigma1 = ${scen.sigma1} ${scen.unit}, n1 = ${scen.n1}\nGroup 2 (${scen.label2}): mu2 = ${scen.mu2} ${scen.unit}, sigma2 = ${scen.sigma2} ${scen.unit}, n2 = ${scen.n2}\n\nWhat is the probability that xbar1 - xbar2 is ${direction} ${obsDiff} ${scen.unit}?`,
+      givenText: `mu1 = ${scen.mu1}, sigma1 = ${scen.sigma1}, n1 = ${scen.n1} | mu2 = ${scen.mu2}, sigma2 = ${scen.sigma2}, n2 = ${scen.n2} | mu_(xbar1-xbar2) = ${diffMuRounded}, sigma_(xbar1-xbar2) = ${diffSDRounded}`,
+      mu1: `${scen.mu1}`, sigma1: `${scen.sigma1}`, n1: `${scen.n1}`,
+      mu2: `${scen.mu2}`, sigma2: `${scen.sigma2}`, n2: `${scen.n2}`,
+      obsDiff: `${obsDiff}`,
+      diffMeanSD: `${diffSDRounded}`,
+      diffMeanMu: `${diffMuRounded}`,
+      unit: scen.unit,
+      direction: direction,
+      label1: scen.label1,
+      label2: scen.label2,
+      zScore: `${z}`,
+      probability: `${prob}`
+    };
+
+    answers = {
+      diffMeanZScore: { value: z, tolerance: 0.05 },
+      diffMeanProb: { value: prob, tolerance: 0.005 }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L40: Interpret xbar1-xbar2 Probability (5.8e) ==========
+  if (modeId === "l40-diff-mean-interpret-prob") {
+    const scen = drawFromBag('diffMeanContext_l40', diffMeanContextBank);
+
+    const diffMu = scen.mu1 - scen.mu2;
+    const var1 = (scen.sigma1 * scen.sigma1) / scen.n1;
+    const var2 = (scen.sigma2 * scen.sigma2) / scen.n2;
+    const diffSD = Math.sqrt(var1 + var2);
+
+    // ~40% unusual, ~60% not unusual
+    const isUnusual = Math.random() < 0.4;
+    let sdMultiplier;
+    if (isUnusual) {
+      sdMultiplier = (randInt(170, 280)) / 100;
+    } else {
+      sdMultiplier = (randInt(30, 155)) / 100;
+    }
+    const sign = Math.random() < 0.5 ? 1 : -1;
+    let obsDiff = diffMu + sign * sdMultiplier * diffSD;
+    if (Math.abs(diffMu) >= 100) {
+      obsDiff = Math.round(obsDiff * 10) / 10;
+    } else if (Math.abs(diffMu) >= 10) {
+      obsDiff = Math.round(obsDiff * 100) / 100;
+    } else {
+      obsDiff = Math.round(obsDiff * 1000) / 1000;
+    }
+
+    const greaterThan = (obsDiff - diffMu) >= 0;
+    const direction = greaterThan ? "greater than" : "less than";
+    const directionOrMore = greaterThan ? "or greater" : "or less";
+
+    const zExact = (obsDiff - diffMu) / diffSD;
+    const z = Math.round(zExact * 100) / 100;
+
+    let prob;
+    if (greaterThan) {
+      prob = 1 - normalCDF(zExact);
+    } else {
+      prob = normalCDF(zExact);
+    }
+    prob = Math.round(prob * 10000) / 10000;
+
+    const probPct = Math.round(prob * 10000) / 100;
+
+    const unusualAnswer = prob < 0.05 ? "Unusual" : "Not unusual";
+
+    ctx = {
+      topicId: "5.8: Interpreting Probability",
+      scenarioText: `${scen.context}.\n\nGroup 1 (${scen.label1}): mu1 = ${scen.mu1} ${scen.unit}, sigma1 = ${scen.sigma1} ${scen.unit}, n1 = ${scen.n1}\nGroup 2 (${scen.label2}): mu2 = ${scen.mu2} ${scen.unit}, sigma2 = ${scen.sigma2} ${scen.unit}, n2 = ${scen.n2}\n\nThe probability that xbar1 - xbar2 is ${direction} ${obsDiff} ${scen.unit} is ${prob} (${probPct}%).\n\nInterpret this probability in context and determine whether this result is unusual.`,
+      givenText: `mu1 = ${scen.mu1}, sigma1 = ${scen.sigma1}, n1 = ${scen.n1} | mu2 = ${scen.mu2}, sigma2 = ${scen.sigma2}, n2 = ${scen.n2} | P(xbar1 - xbar2 ${greaterThan ? ">" : "<"} ${obsDiff}) = ${prob}`,
+      label1: scen.label1,
+      label2: scen.label2,
+      mu1: `${scen.mu1}`, sigma1: `${scen.sigma1}`, n1: `${scen.n1}`,
+      mu2: `${scen.mu2}`, sigma2: `${scen.sigma2}`, n2: `${scen.n2}`,
+      obsDiff: `${obsDiff}`,
+      direction: direction,
+      directionOrMore: directionOrMore,
+      probability: `${prob}`,
+      probabilityPct: `${probPct}`,
+      unusualAnswer: unusualAnswer,
+      unit: scen.unit,
+      expectedInterpretation: `Getting a difference (${scen.label1} - ${scen.label2}) in sample mean ${scen.measurable}s of ${obsDiff} ${scen.unit} ${directionOrMore} happens in about ${probPct}% of all possible samples of size ${scen.n1} from ${scen.label1} and size ${scen.n2} from ${scen.label2}. This is ${unusualAnswer === "Unusual" ? "" : "not "}unusual.`
+    };
+
+    answers = {
+      diffMeanInterpretProbText: { value: ctx.expectedInterpretation },
+      diffMeanUnusualChoice: { value: unusualAnswer === "Unusual" ? "Unusual — probability is less than 5%" : "Not unusual — probability is 5% or more" }
+    };
+
+    scenario = ctx.scenarioText;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L41: 5.8 Capstone ==========
+  if (modeId === "l41-capstone-58") {
+    const scen = drawFromBag('capstone58', capstone58Bank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: scen.topicId,
+      scenarioText: scen.scenarioText,
+      givenText: "Apply concepts from Topic 5.8 (Sampling Distributions for Differences in Sample Means).",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      explanation: scen.explanation,
+      expectedExplanation: scen.explanation
+    };
+
+    answers = {
+      capstone58Answer: { value: scen.correctAnswer },
+      capstone58Explain: { value: scen.explanation }
     };
 
     scenario = scen.scenarioText;

@@ -1,9 +1,9 @@
-// grading-rules.js - AP Statistics Unit 5 Topics 5.1-5.7
+// grading-rules.js - AP Statistics Unit 5 Topics 5.1-5.8
 // Topics: Sampling variability, sampling distributions, z-scores, normal probability,
 // inverse normal, missing elements, normality assessment, combining random variables,
 // Central Limit Theorem, randomization distributions, biased/unbiased point estimates,
 // sampling distributions for sample proportions, differences in sample proportions,
-// sampling distributions for sample means
+// sampling distributions for sample means, differences in sample means
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -52,7 +52,10 @@ export function gradeField(fieldId, answer, context) {
     "diffInterpretProbText",
     "capstone56Explain",
     "meanShapeExplain",
-    "capstone57Explain"
+    "capstone57Explain",
+    "diffMeanShapeExplain",
+    "diffMeanInterpretProbText",
+    "capstone58Explain"
   ]);
 
   if (isBlank(answer)) {
@@ -66,7 +69,8 @@ export function gradeField(fieldId, answer, context) {
       "pValueCalc",
       "propMean", "propSD", "propZScore", "propProb",
       "diffPropMean", "diffPropSD", "diffPropZScore", "diffPropProb",
-      "meanMu", "meanSigma", "meanZScore", "meanProb"
+      "meanMu", "meanSigma", "meanZScore", "meanProb",
+      "diffMeanMu", "diffMeanSD", "diffMeanZScore", "diffMeanProb"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -1943,6 +1947,396 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should reference the specific Topic 5.7 concept (x̄ distribution parameters, shape conditions, interpretation, or probability calculation) and explain your reasoning."
+    };
+  }
+
+  // ========== LEVEL 36: Diff Mean Mu (5.8a) ==========
+  if (fieldId === "diffMeanMu") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.1;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const mu1 = parseFloat(context.mu1);
+    const mu2 = parseFloat(context.mu2);
+
+    if (!isNaN(mu1) && !isNaN(mu2)) {
+      const wrongSum = mu1 + mu2;
+      if (Math.abs(studentVal - wrongSum) < 0.1 && diff > tolerance) {
+        return {
+          score: "I",
+          feedback: `You added means instead of subtracting. Use mu_(xbar1-xbar2) = mu1 - mu2 = ${mu1} - ${mu2} = ${expectedVal}.`
+        };
+      }
+      if ((Math.abs(studentVal - mu1) < 0.1 || Math.abs(studentVal - mu2) < 0.1) && diff > tolerance) {
+        return {
+          score: "I",
+          feedback: `Use the difference of means, not a single population mean. mu_(xbar1-xbar2) = mu1 - mu2 = ${expectedVal}.`
+        };
+      }
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! mu_(xbar1-xbar2) = mu1 - mu2 = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.5) {
+      return {
+        score: "P",
+        feedback: `Close! mu_(xbar1-xbar2) = mu1 - mu2 = ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The mean is mu_(xbar1-xbar2) = mu1 - mu2 = ${expectedVal}.`
+    };
+  }
+
+  // ========== LEVEL 36: Diff Mean SD (5.8a) ==========
+  if (fieldId === "diffMeanSD") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.1;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const sigma1 = parseFloat(context.sigma1);
+    const sigma2 = parseFloat(context.sigma2);
+    const n1 = parseFloat(context.n1);
+    const n2 = parseFloat(context.n2);
+
+    if (!isNaN(sigma1) && !isNaN(sigma2) && !isNaN(n1) && !isNaN(n2) && n1 > 0 && n2 > 0) {
+      const forgotDivideByN = Math.sqrt(sigma1 * sigma1 + sigma2 * sigma2);
+      const subtractedSDTerms = Math.abs((sigma1 / Math.sqrt(n1)) - (sigma2 / Math.sqrt(n2)));
+      const addedSDTerms = (sigma1 / Math.sqrt(n1)) + (sigma2 / Math.sqrt(n2));
+      const varianceNoRoot = (sigma1 * sigma1) / n1 + (sigma2 * sigma2) / n2;
+
+      if (Math.abs(studentVal - forgotDivideByN) < 0.1 && diff > tolerance) {
+        return {
+          score: "I",
+          feedback: "You forgot to divide each variance by n. Use sqrt(sigma1^2/n1 + sigma2^2/n2)."
+        };
+      }
+      if (Math.abs(studentVal - subtractedSDTerms) < 0.1 && diff > tolerance) {
+        return {
+          score: "I",
+          feedback: "Variances ALWAYS add, even for differences. Do not subtract SD terms."
+        };
+      }
+      if (Math.abs(studentVal - addedSDTerms) < 0.1 && diff > tolerance) {
+        return {
+          score: "P",
+          feedback: "Close, but you added SD terms directly. Add variances first, then take the square root."
+        };
+      }
+      if (Math.abs(studentVal - varianceNoRoot) < 0.1 && diff > tolerance) {
+        return {
+          score: "P",
+          feedback: "You found the variance sum correctly, but forgot the square root."
+        };
+      }
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! sigma_(xbar1-xbar2) = sqrt(sigma1^2/n1 + sigma2^2/n2) = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.2) {
+      return {
+        score: "P",
+        feedback: `Close! sigma_(xbar1-xbar2) = sqrt(sigma1^2/n1 + sigma2^2/n2) = ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Use sigma_(xbar1-xbar2) = sqrt(sigma1^2/n1 + sigma2^2/n2) = ${expectedVal}.`
+    };
+  }
+
+  // ========== LEVEL 37: Diff Mean Shape Choice (5.8b) ==========
+  if (fieldId === "diffMeanShapeChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.reason}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.reason}`
+    };
+  }
+
+  // ========== LEVEL 37: Diff Mean Shape Explain (5.8b) ==========
+  if (fieldId === "diffMeanShapeExplain") {
+    const normalKeywords = ["normal", "approximately normal", "bell"];
+    const populationKeywords = ["population", "pop"];
+    const sampleSizeKeywords = ["sample size", "n1", "n2", "n1 =", "n2 =", "n1>=", "n2>="];
+    const cltKeywords = ["clt", "central limit", "theorem"];
+    const thresholdKeywords = ["30", ">= 30", ">=30", "at least 30"];
+    const bothKeywords = ["both"];
+
+    const mentionsNormal = containsAny(answer, normalKeywords);
+    const mentionsPopulation = containsAny(answer, populationKeywords);
+    const mentionsSampleSize = containsAny(answer, sampleSizeKeywords);
+    const mentionsCLT = containsAny(answer, cltKeywords);
+    const mentionsThreshold = containsAny(answer, thresholdKeywords);
+    const mentionsBoth = containsAny(answer, bothKeywords);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if (mentionsBoth && (mentionsPopulation || mentionsCLT) && (mentionsSampleSize || mentionsThreshold || mentionsNormal) && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You addressed BOTH populations and BOTH sample sizes for the shape condition."
+      };
+    }
+    if ((mentionsNormal || mentionsPopulation || mentionsCLT || mentionsSampleSize || mentionsThreshold) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start. Explicitly state that BOTH populations must be normal OR BOTH sample sizes must be at least 30."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should reference both population shapes and both sample sizes (or CLT) to justify normality."
+    };
+  }
+
+  // ========== LEVEL 38: Diff Mean Interpret Answer (5.8c) ==========
+  if (fieldId === "diffMeanInterpretAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! Your interpretation references long-run behavior across all possible samples."
+      };
+    }
+    if (containsAny(answer, ["every", "exactly", "always", "guaranteed"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. Interpretations should describe what happens across all possible samples, not what happens in every single sample."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. Interpret mu_(xbar1-xbar2) or sigma_(xbar1-xbar2) using all possible samples, context, and subtraction order."
+    };
+  }
+
+  // ========== LEVEL 39: Diff Mean Z-Score (5.8d) ==========
+  if (fieldId === "diffMeanZScore") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.05;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const obsDiff = parseFloat(context.obsDiff);
+    const diffMeanMu = parseFloat(context.diffMeanMu);
+
+    if (Math.abs(studentVal - (-expectedVal)) < 0.05 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `Check your subtraction order. z = (observed - mu_(xbar1-xbar2)) / sigma_(xbar1-xbar2) = (${context.obsDiff} - ${context.diffMeanMu}) / ${context.diffMeanSD} = ${expectedVal}.`
+      };
+    }
+
+    if (!isNaN(obsDiff) && !isNaN(diffMeanMu)) {
+      const sigma1 = parseFloat(context.sigma1);
+      const sigma2 = parseFloat(context.sigma2);
+      if (!isNaN(sigma1) && sigma1 !== 0) {
+        const wrong1 = (obsDiff - diffMeanMu) / sigma1;
+        if (Math.abs(studentVal - wrong1) < 0.1 && diff > tolerance) {
+          return {
+            score: "I",
+            feedback: "You divided by sigma1 instead of sigma_(xbar1-xbar2). Use the SD of the sampling distribution."
+          };
+        }
+      }
+      if (!isNaN(sigma2) && sigma2 !== 0) {
+        const wrong2 = (obsDiff - diffMeanMu) / sigma2;
+        if (Math.abs(studentVal - wrong2) < 0.1 && diff > tolerance) {
+          return {
+            score: "I",
+            feedback: "You divided by sigma2 instead of sigma_(xbar1-xbar2). Use the SD of the sampling distribution."
+          };
+        }
+      }
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! z = (${context.obsDiff} - ${context.diffMeanMu}) / ${context.diffMeanSD} = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.10) {
+      return {
+        score: "P",
+        feedback: `Close! z = (${context.obsDiff} - ${context.diffMeanMu}) / ${context.diffMeanSD} = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. z = (observed difference - mu_(xbar1-xbar2)) / sigma_(xbar1-xbar2) = (${context.obsDiff} - ${context.diffMeanMu}) / ${context.diffMeanSD} = ${expectedVal}`
+    };
+  }
+
+  // ========== LEVEL 39: Diff Mean Probability (5.8d) ==========
+  if (fieldId === "diffMeanProb") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+    const tolerance = 0.005;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    if (Math.abs(studentVal - (1 - expectedVal)) < 0.005) {
+      const directionHint = context.direction === "GREATER THAN"
+        ? "1 - P(Z < z)"
+        : "P(Z < z) directly";
+      return {
+        score: "I",
+        feedback: `You found the complement. For P(xbar1-xbar2 ${context.direction} ${context.obsDiff}), you need ${directionHint}.`
+      };
+    }
+
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct! P = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.02) {
+      return {
+        score: "P",
+        feedback: `Close! Check your z-table lookup. P = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The probability is ${expectedVal}.`
+    };
+  }
+
+  // ========== LEVEL 40: Interpret Diff Mean Probability Text (5.8e) ==========
+  if (fieldId === "diffMeanInterpretProbText") {
+    const allSamplesKeywords = ["all possible samples", "all samples of"];
+    const probKeywords = ["%", "percent", "probability", context.probability, context.probabilityPct];
+    const conceptKeywords = ["difference", "sample mean", "xbar1", "xbar2"];
+    const contextKeywords = [context.label1, context.label2, context.n1, context.n2, context.unit].filter(Boolean);
+    const directionKeywords = ["greater", "less", "higher", "lower", "more", "fewer", context.obsDiff];
+
+    const mentionsAllSamples = containsAny(answer, allSamplesKeywords);
+    const mentionsProb = containsAny(answer, probKeywords);
+    const mentionsConcept = containsAny(answer, conceptKeywords);
+    const mentionsContext = contextKeywords.filter(kw => answer.toLowerCase().includes(String(kw).toLowerCase())).length >= 2;
+    const mentionsDirection = containsAny(answer, directionKeywords);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 12;
+
+    const errorKeywords = ["always", "exactly", "every sample", "guarantees", "proves"];
+    if (containsAny(answer, errorKeywords)) {
+      return {
+        score: "I",
+        feedback: "Avoid absolute language. Probability statements describe what happens across all possible samples, not guarantees."
+      };
+    }
+    if (mentionsAllSamples && mentionsProb && mentionsConcept && mentionsContext && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent interpretation! You referenced all possible samples, probability, and context."
+      };
+    }
+    if ((mentionsProb || mentionsConcept || mentionsDirection) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start. Include both populations, both sample sizes, and the all-possible-samples framing."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your interpretation should include all possible samples, probability/percent, direction of difference, and both populations with sample sizes."
+    };
+  }
+
+  // ========== LEVEL 40: Diff Mean Unusual Choice (5.8e) ==========
+  if (fieldId === "diffMeanUnusualChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! A probability of ${context.probability} is ${context.unusualAnswer === "Unusual" ? "less than 5%, so this is unusual" : "5% or more, so this is not unusual"}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. If P < 0.05, the result is unusual. Here P = ${context.probability}, so this is ${context.unusualAnswer === "Unusual" ? "unusual" : "not unusual"}.`
+    };
+  }
+
+  // ========== LEVEL 41: 5.8 Capstone Answer (Dropdown) ==========
+  if (fieldId === "capstone58Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${context.explanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.explanation}`
+    };
+  }
+
+  // ========== LEVEL 41: 5.8 Capstone Explain (Textarea) ==========
+  if (fieldId === "capstone58Explain") {
+    const diffKeywords = ["xbar1", "xbar2", "difference", "sample mean", "means", "xbar1 - xbar2"];
+    const formulaKeywords = ["mu1 - mu2", "sigma", "variance", "sqrt", "standard deviation", "z"];
+    const cltKeywords = ["clt", "normal", "both", "n1", "n2", "30"];
+    const interpretKeywords = ["all possible samples", "typically", "on average", "context", "unusual"];
+    const probKeywords = ["probability", "z-score", "normalcdf", "table", "complement", "tail"];
+
+    const mentionsDiff = containsAny(answer, diffKeywords);
+    const mentionsFormula = containsAny(answer, formulaKeywords);
+    const mentionsCLT = containsAny(answer, cltKeywords);
+    const mentionsInterpret = containsAny(answer, interpretKeywords);
+    const mentionsProb = containsAny(answer, probKeywords);
+
+    const conceptMentioned = mentionsDiff || mentionsFormula || mentionsCLT || mentionsInterpret || mentionsProb;
+    const categoryCount = [mentionsDiff, mentionsFormula, mentionsCLT, mentionsInterpret, mentionsProb].filter(Boolean).length;
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so", "means", "shows", "using"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if ((categoryCount >= 2 && hasSubstance) || (conceptMentioned && hasReasoning && hasSubstance)) {
+      return {
+        score: "E",
+        feedback: "Excellent explanation! You clearly demonstrated understanding of Topic 5.8 concepts."
+      };
+    }
+    if (conceptMentioned && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start! Add more specific reasoning about why the 5.8 concept applies in this scenario."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should reference the relevant Topic 5.8 concept (parameters, shape conditions, interpretation, probability, or capstone synthesis) and explain your reasoning."
     };
   }
 
