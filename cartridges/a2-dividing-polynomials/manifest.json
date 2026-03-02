@@ -1,0 +1,199 @@
+{
+  "meta": {
+    "id": "a2-dividing-polynomials",
+    "name": "Dividing Polynomials",
+    "subject": "Algebra 2",
+    "description": "Practice polynomial long division, the Remainder Theorem, and factoring with known factors."
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "A-APR.A.1a",
+      "A-APR.A.1b",
+      "A-APR.B.2",
+      "A-APR.D.6",
+      "A-SSE.A.2",
+      "MP.2",
+      "MP.6",
+      "MP.7"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      { "label": "Level", "value": "{{levelName}}" },
+      { "label": "Task", "value": "{{problemText}}" },
+      { "label": "Given", "value": "{{givenText}}" }
+    ]
+  },
+  "modes": [
+    {
+      "id": "remainder-eval",
+      "name": "Remainder by Evaluation",
+      "unlockedBy": "default",
+      "animation": "assets/RemainderByEvaluation.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "remainder",
+            "type": "number",
+            "label": "P({{a}}) =",
+            "step": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "long-division",
+      "name": "Polynomial Long Division",
+      "unlockedBy": "default",
+      "animation": "assets/PolynomialLongDivision.mp4",
+      "layout": {
+        "inputs": [
+          { "id": "coeff-x2", "type": "number", "label": "x\u00b2 coefficient of quotient", "step": 1 },
+          { "id": "coeff-x1", "type": "number", "label": "x coefficient of quotient", "step": 1 },
+          { "id": "coeff-x0", "type": "number", "label": "Constant term of quotient", "step": 1 },
+          { "id": "remainder", "type": "number", "label": "Remainder", "step": 1 }
+        ]
+      }
+    },
+    {
+      "id": "remainder-theorem-verify",
+      "name": "Verify Remainder Theorem",
+      "unlockedBy": { "gold": 3, "modes": ["remainder-eval", "long-division"] },
+      "animation": "assets/RemainderTheoremVerify.mp4",
+      "layout": {
+        "inputs": [
+          { "id": "division-remainder", "type": "number", "label": "Remainder from division", "step": 1 },
+          { "id": "pa-value", "type": "number", "label": "P({{a}}) =", "step": 1 },
+          {
+            "id": "verify",
+            "type": "dropdown",
+            "label": "Does this verify the Remainder Theorem?",
+            "options": ["Yes", "No"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "factor-and-quotient",
+      "name": "Factor with Known Factor",
+      "unlockedBy": { "gold": 5, "modes": ["remainder-theorem-verify"] },
+      "animation": "assets/FactorWithKnownFactor.mp4",
+      "layout": {
+        "inputs": [
+          { "id": "factor2", "type": "text", "label": "Second factor", "placeholder": "e.g. (x+3)" },
+          { "id": "factor3", "type": "text", "label": "Third factor", "placeholder": "e.g. (x-1)" }
+        ]
+      }
+    },
+    {
+      "id": "quotient-expression",
+      "name": "Write q(x) + r/(x \u2212 a)",
+      "unlockedBy": { "gold": 5, "modes": ["factor-and-quotient"] },
+      "animation": "assets/QuotientExpression.mp4",
+      "layout": {
+        "inputs": [
+          { "id": "quotient-poly", "type": "text", "label": "q(x) =", "placeholder": "e.g. x^2+3x-1" },
+          { "id": "remainder-fraction", "type": "text", "label": "+ remainder fraction =", "placeholder": "e.g. 5/(x-2)" }
+        ]
+      }
+    },
+    {
+      "id": "is-it-a-factor",
+      "name": "Factor or Not?",
+      "unlockedBy": { "gold": 8, "modes": ["remainder-eval"] },
+      "animation": "assets/IsItAFactor.mp4",
+      "layout": {
+        "inputs": [
+          { "id": "pa-value", "type": "number", "label": "P({{a}}) =", "step": 1 },
+          {
+            "id": "is-factor",
+            "type": "dropdown",
+            "label": "Is {{divisor}} a factor of P(x)?",
+            "options": ["Yes \u2014 remainder is 0", "No \u2014 remainder is not 0"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "remainder": "Substitute x = {{a}} into P(x) and evaluate step by step. The remainder when dividing by the divisor equals P({{a}}).",
+      "coeff-x2": "Divide the leading term of the dividend by x. That gives the first term of the quotient.",
+      "coeff-x1": "After subtracting the first partial product, divide the new leading term by x.",
+      "coeff-x0": "Continue long division for the final term of the quotient.",
+      "division-remainder": "Perform long division (or synthetic division) to find the remainder.",
+      "pa-value": "Plug in x = {{a}} and evaluate each power step by step.",
+      "verify": "If the remainder from division equals P({{a}}), the Remainder Theorem is verified \u2014 select Yes.",
+      "factor2": "Divide P(x) by the known factor to get a quadratic, then factor that quadratic.",
+      "factor3": "Look at the quadratic quotient \u2014 what two binomials multiply to give it?",
+      "quotient-poly": "Perform the division first. The quotient is everything except the remainder.",
+      "remainder-fraction": "Write the remainder over the divisor: r/(x \u2212 a). Include the sign of r.",
+      "is-factor": "If P({{a}}) = 0, then the divisor IS a factor. If P({{a}}) \u2260 0, it is NOT."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "remainder-eval",
+        "name": "P(a)",
+        "unlockedBy": "default",
+        "celebrationMessage": "You can evaluate polynomials! Now try long division."
+      },
+      {
+        "id": "long-division",
+        "name": "\u00f7 Poly",
+        "unlockedBy": "default",
+        "celebrationMessage": "Long division mastered! Keep building gold stars."
+      },
+      {
+        "id": "remainder-theorem-verify",
+        "name": "Verify",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Remainder Theorem verified! Now use it to factor."
+      },
+      {
+        "id": "factor-and-quotient",
+        "name": "Factor",
+        "unlockedBy": { "gold": 5 },
+        "celebrationMessage": "Great factoring! Now express results as q(x) + r/(x\u2212a)."
+      },
+      {
+        "id": "quotient-expression",
+        "name": "Express",
+        "unlockedBy": { "gold": 5 },
+        "celebrationMessage": "You can write complete division results! Try the factor challenge."
+      },
+      {
+        "id": "is-it-a-factor",
+        "name": "Yes/No",
+        "unlockedBy": { "gold": 8 },
+        "celebrationMessage": "Polynomial division master! You've conquered all 6 levels."
+      }
+    ]
+  }
+}
