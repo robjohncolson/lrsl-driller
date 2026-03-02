@@ -104,6 +104,13 @@
       "subject": "AP Statistics",
       "description": "Sampling variability, normal distribution, z-scores, inverse normal, assessing normality, linear combinations, CLT, randomization distributions, biased/unbiased point estimates, sampling distributions for sample proportions, differences in sample proportions, sampling distributions for sample means",
       "shortCode": "SAMP"
+    },
+    {
+      "id": "apstats-u6-inference-prop",
+      "name": "Inference for Proportions (6.1-6.2)",
+      "subject": "AP Statistics",
+      "description": "Logic of significance testing, confidence intervals for a population proportion: procedures, conditions, standard error, critical values, margin of error, CI construction, minimum sample size",
+      "shortCode": "CI-P"
     }
   ]
 }

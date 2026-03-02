@@ -1,0 +1,412 @@
+{
+  "meta": {
+    "id": "apstats-u6-inference-prop",
+    "name": "Inference for Proportions (6.1-6.2)",
+    "subject": "AP Statistics",
+    "description": "Logic of significance testing, confidence intervals for a population proportion: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, and minimum sample size"
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "VAR-1.H",
+      "UNC-4.A",
+      "UNC-4.B",
+      "UNC-4.C",
+      "UNC-4.D",
+      "UNC-4.E"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      {
+        "label": "Topic",
+        "value": "{{topicId}}"
+      },
+      {
+        "label": "Scenario",
+        "value": "{{scenarioText}}"
+      },
+      {
+        "label": "Given",
+        "value": "{{givenText}}"
+      }
+    ]
+  },
+  "modes": [
+    {
+      "id": "l01-identify-evidence",
+      "name": "6.1a: Identify Evidence",
+      "animation": "assets/IdentifyEvidence.mp4",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "evidenceAnswer",
+            "type": "choice",
+            "label": "{{questionText}}",
+            "options": [
+              "{{optA}}",
+              "{{optB}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-two-explanations",
+      "name": "6.1b: Two Explanations",
+      "animation": "assets/TwoExplanations.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "explanationAnswer",
+            "type": "dropdown",
+            "label": "Which correctly describes the two possible explanations for the study result?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-convincing-evidence",
+      "name": "6.1c: Is Evidence Convincing?",
+      "animation": "assets/ConvincingEvidence.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "convincingAnswer",
+            "type": "choice",
+            "label": "Do the data provide convincing evidence for the claim?",
+            "options": [
+              "Yes, convincing evidence",
+              "No, not convincing evidence"
+            ]
+          },
+          {
+            "id": "convincingExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Reference the simulation probability..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-identify-procedure",
+      "name": "6.2a: Identify the Procedure",
+      "animation": "assets/IdentifyProcedure.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "procedureAnswer",
+            "type": "dropdown",
+            "label": "What inference procedure should be used?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-check-conditions",
+      "name": "6.2b: Check Conditions",
+      "animation": "assets/CheckConditions.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "conditionsMet",
+            "type": "choice",
+            "label": "Are ALL conditions for inference met?",
+            "options": [
+              "Yes, all conditions are met",
+              "No, at least one condition fails"
+            ]
+          },
+          {
+            "id": "conditionsExplain",
+            "type": "textarea",
+            "label": "Explain which conditions are met or not met:",
+            "rows": 3,
+            "placeholder": "Check: random, 10%, large counts..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-standard-error",
+      "name": "6.2c: Standard Error",
+      "animation": "assets/StandardError.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "seAnswer",
+            "type": "number",
+            "label": "Calculate SE(p\u0302) = \u221a(p\u0302(1\u2212p\u0302)/n). Round to 4 decimal places:",
+            "step": 0.0001,
+            "min": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "l07-critical-value",
+      "name": "6.2d: Critical Values",
+      "animation": "assets/CriticalValues.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "zStarAnswer",
+            "type": "number",
+            "label": "What is the critical value z* for a {{confLevel}}% confidence interval?",
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l08-margin-of-error",
+      "name": "6.2e: Margin of Error",
+      "animation": "assets/MarginOfError.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meAnswer",
+            "type": "number",
+            "label": "Calculate the margin of error (z* \u00d7 SE). Round to 4 decimal places:",
+            "step": 0.0001,
+            "min": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "l09-confidence-interval",
+      "name": "6.2f: Calculate the CI",
+      "animation": "assets/ConfidenceInterval.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "ciLower",
+            "type": "number",
+            "label": "Lower bound of the confidence interval:",
+            "step": 0.001
+          },
+          {
+            "id": "ciUpper",
+            "type": "number",
+            "label": "Upper bound of the confidence interval:",
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l10-min-sample-size",
+      "name": "6.2g: Minimum Sample Size",
+      "animation": "assets/MinSampleSize.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "sampleSizeAnswer",
+            "type": "number",
+            "label": "What is the minimum sample size needed? (Round UP to nearest integer)",
+            "step": 1,
+            "min": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l11-capstone-62",
+      "name": "6.2 Capstone",
+      "animation": "assets/CapstoneSynthesis.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstoneConditions",
+            "type": "choice",
+            "label": "Are all conditions for inference met?",
+            "options": [
+              "Yes, all conditions are met",
+              "No, at least one condition fails"
+            ]
+          },
+          {
+            "id": "capstoneLower",
+            "type": "number",
+            "label": "Lower bound of the CI:",
+            "step": 0.001
+          },
+          {
+            "id": "capstoneUpper",
+            "type": "number",
+            "label": "Upper bound of the CI:",
+            "step": 0.001
+          },
+          {
+            "id": "capstoneExplain",
+            "type": "textarea",
+            "label": "Interpret the confidence interval in context:",
+            "rows": 3,
+            "placeholder": "We are __% confident that..."
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "evidenceAnswer": "Evidence = how the sample result (p\u0302) compares to the expected value. Is p\u0302 above or below what we'd expect if the claim were false?",
+      "explanationAnswer": "There are always exactly two explanations: (1) the result happened by CHANCE alone, or (2) there is a REAL effect.",
+      "convincingAnswer": "If the probability of getting the result by chance alone is small (roughly less than 5%), the evidence IS convincing.",
+      "convincingExplain": "Reference the simulation: 'Because ___ out of ___ simulations produced results this extreme, it is [likely/unlikely] to happen by chance alone.'",
+      "procedureAnswer": "Ask: How many samples? (one) What data type? (proportion) What's the goal? (estimate with CI) \u2192 One-sample z-interval for p.",
+      "conditionsMet": "Three conditions: (1) Random sample, (2) n \u2264 10% of N, (3) np\u0302 \u2265 10 AND n(1\u2212p\u0302) \u2265 10. ALL must be met.",
+      "conditionsExplain": "Show the numbers for each: Random? \u2713/\u2717. 10%: n = ___ \u2264 10% of N = ___? Large counts: np\u0302 = ___ \u2265 10? n(1\u2212p\u0302) = ___ \u2265 10?",
+      "seAnswer": "SE(p\u0302) = \u221a(p\u0302(1\u2212p\u0302)/n). Plug in the sample proportion and sample size.",
+      "zStarAnswer": "Common z* values: 90% \u2192 1.645, 95% \u2192 1.960, 99% \u2192 2.576.",
+      "meAnswer": "Margin of error = z* \u00d7 SE(p\u0302). Multiply the critical value by the standard error.",
+      "ciLower": "Lower bound = p\u0302 \u2212 (margin of error) = p\u0302 \u2212 z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n)",
+      "ciUpper": "Upper bound = p\u0302 + (margin of error) = p\u0302 + z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n)",
+      "sampleSizeAnswer": "Solve: n \u2265 p\u0302(1\u2212p\u0302) \u00d7 (z*/ME)\u00b2. Use p\u0302 = 0.5 if no prior estimate. Always round UP!",
+      "capstoneConditions": "Check: (1) Random? (2) n \u2264 10% of N? (3) Both np\u0302 \u2265 10 and n(1\u2212p\u0302) \u2265 10?",
+      "capstoneLower": "Lower bound = p\u0302 \u2212 z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n)",
+      "capstoneUpper": "Upper bound = p\u0302 + z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n)",
+      "capstoneExplain": "Template: 'We are __% confident that the interval from ___ to ___ captures the true proportion of [context].'"
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "l01-identify-evidence",
+        "name": "01",
+        "unlockedBy": "default",
+        "celebrationMessage": "You can spot evidence! Now learn the two possible explanations."
+      },
+      {
+        "id": "l02-two-explanations",
+        "name": "02",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Chance or real effect \u2014 you've got it! Now determine which one is more plausible."
+      },
+      {
+        "id": "l03-convincing-evidence",
+        "name": "03",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Strong reasoning! Time to learn about confidence intervals."
+      },
+      {
+        "id": "l04-identify-procedure",
+        "name": "04",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You know the procedure! Now let's check the conditions."
+      },
+      {
+        "id": "l05-check-conditions",
+        "name": "05",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Conditions checked! Time to calculate the standard error."
+      },
+      {
+        "id": "l06-standard-error",
+        "name": "06",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "SE mastered! Now find the critical value."
+      },
+      {
+        "id": "l07-critical-value",
+        "name": "07",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "z* nailed! On to margin of error."
+      },
+      {
+        "id": "l08-margin-of-error",
+        "name": "08",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Margin of error done! Now build the full confidence interval."
+      },
+      {
+        "id": "l09-confidence-interval",
+        "name": "09",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Full CI calculated! Now learn to find the right sample size."
+      },
+      {
+        "id": "l10-min-sample-size",
+        "name": "10",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Sample size planning done! Time for the capstone challenge."
+      },
+      {
+        "id": "l11-capstone-62",
+        "name": "11",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Topic 6.2 mastered! You can construct and interpret confidence intervals for a population proportion!"
+      }
+    ]
+  }
+}
