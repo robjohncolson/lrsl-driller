@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u6-inference-prop",
-    "name": "Inference for Proportions (6.1-6.2)",
+    "name": "Inference for Proportions (6.1-6.3)",
     "subject": "AP Statistics",
-    "description": "Logic of significance testing, confidence intervals for a population proportion: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, and minimum sample size"
+    "description": "Logic of significance testing, confidence intervals for a population proportion: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, and factors affecting margin of error"
   },
   "config": {
     "contextsFile": null,
@@ -13,7 +13,10 @@
       "UNC-4.B",
       "UNC-4.C",
       "UNC-4.D",
-      "UNC-4.E"
+      "UNC-4.E",
+      "UNC-4.F",
+      "UNC-4.G",
+      "UNC-4.H"
     ]
   },
   "display": {
@@ -296,6 +299,134 @@
           }
         ]
       }
+    },
+    {
+      "id": "l12-interpret-ci",
+      "name": "6.3a: Interpret a CI",
+      "animation": "assets/InterpretCI.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "ciInterpretation",
+            "type": "textarea",
+            "label": "Interpret the {{confLevel}}% confidence interval ({{ciLower}}, {{ciUpper}}) in context:",
+            "rows": 3,
+            "placeholder": "We are __% confident that..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l13-justify-claim",
+      "name": "6.3b: Justify a Claim",
+      "animation": "assets/JustifyClaim.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "claimAnswer",
+            "type": "choice",
+            "label": "Based on the confidence interval, is there convincing evidence for the claim?",
+            "options": [
+              "Yes, convincing evidence",
+              "No, not convincing evidence"
+            ]
+          },
+          {
+            "id": "claimExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Because all/some values in the interval..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l14-confidence-level",
+      "name": "6.3c: Confidence Level Meaning",
+      "animation": "assets/ConfidenceLevel.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "confLevelAnswer",
+            "type": "dropdown",
+            "label": "Which is the correct interpretation of the {{confLevel}}% confidence level?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose the correct interpretation..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l15-factors-me",
+      "name": "6.3d: Factors Affecting ME",
+      "animation": "assets/FactorsME.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "factorAnswer",
+            "type": "choice",
+            "label": "{{questionText}}",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l16-capstone-63",
+      "name": "6.3 Capstone",
+      "animation": "assets/Capstone63.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "cap63Interpret",
+            "type": "textarea",
+            "label": "Interpret the {{confLevel}}% confidence interval ({{ciLower}}, {{ciUpper}}) in context:",
+            "rows": 3,
+            "placeholder": "We are __% confident that..."
+          },
+          {
+            "id": "cap63Justify",
+            "type": "choice",
+            "label": "Based on this interval, is there convincing evidence for the claim: {{claimText}}?",
+            "options": [
+              "Yes, convincing evidence",
+              "No, not convincing evidence"
+            ]
+          },
+          {
+            "id": "cap63JustifyExplain",
+            "type": "textarea",
+            "label": "Explain your justification:",
+            "rows": 3,
+            "placeholder": "Because all/some values in the interval..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -328,7 +459,15 @@
       "capstoneConditions": "Check: (1) Random? (2) n \u2264 10% of N? (3) Both np\u0302 \u2265 10 and n(1\u2212p\u0302) \u2265 10?",
       "capstoneLower": "Lower bound = p\u0302 \u2212 z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n)",
       "capstoneUpper": "Upper bound = p\u0302 + z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n)",
-      "capstoneExplain": "Template: 'We are __% confident that the interval from ___ to ___ captures the true proportion of [context].'"
+      "capstoneExplain": "Template: 'We are __% confident that the interval from ___ to ___ captures the true proportion of [context].'",
+      "ciInterpretation": "Template: 'We are __% confident that the interval from ___ to ___ captures the true proportion of [context].' Include all three elements!",
+      "claimAnswer": "If ALL values in the CI are consistent with the claim \u2192 convincing evidence. If ANY value is inconsistent \u2192 not convincing evidence.",
+      "claimExplain": "Reference whether the claim value falls inside or outside the interval. If the entire CI is above/below the threshold, that's convincing evidence.",
+      "confLevelAnswer": "The confidence level describes the long-run success rate of the METHOD, not the probability for a single interval. Think: repeated sampling.",
+      "factorAnswer": "ME = z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n). Larger n \u2192 smaller ME. Higher confidence \u2192 larger z* \u2192 larger ME. Width = 2 \u00d7 ME.",
+      "cap63Interpret": "Template: 'We are __% confident that the interval from ___ to ___ captures the true proportion of [context].'",
+      "cap63Justify": "Check if the claim value falls entirely inside or outside the CI range.",
+      "cap63JustifyExplain": "State whether ALL values in the interval are consistent or inconsistent with the claim, and why."
     },
     "penalty": {
       "0": "gold",
@@ -406,6 +545,36 @@
         "name": "11",
         "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Topic 6.2 mastered! You can construct and interpret confidence intervals for a population proportion!"
+      },
+      {
+        "id": "l12-interpret-ci",
+        "name": "12",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can interpret CIs! Now justify claims using intervals."
+      },
+      {
+        "id": "l13-justify-claim",
+        "name": "13",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Claim justified! Now learn what the confidence level really means."
+      },
+      {
+        "id": "l14-confidence-level",
+        "name": "14",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Confidence level mastered! Now explore factors affecting margin of error."
+      },
+      {
+        "id": "l15-factors-me",
+        "name": "15",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You understand what affects precision! Time for the 6.3 capstone."
+      },
+      {
+        "id": "l16-capstone-63",
+        "name": "16",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Topic 6.3 mastered! You can interpret CIs, justify claims, and understand confidence levels!"
       }
     ]
   }

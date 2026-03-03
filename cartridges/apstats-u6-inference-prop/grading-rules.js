@@ -1,8 +1,10 @@
-// grading-rules.js - AP Statistics Unit 6 Topics 6.1-6.2
-// Topics: Logic of significance testing, confidence intervals for a population proportion
+// grading-rules.js - AP Statistics Unit 6 Topics 6.1-6.3
+// Topics: Logic of significance testing, confidence intervals for a population proportion,
+// interpreting CIs, justifying claims, confidence level meaning, factors affecting ME
 // Identify evidence, two explanations, convincing evidence, identify procedure,
 // check conditions, standard error, critical values, margin of error,
-// confidence intervals, minimum sample size, capstone
+// confidence intervals, minimum sample size, capstone, CI interpretation,
+// claim justification, confidence level interpretation, ME factors, capstone 6.3
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -41,7 +43,11 @@ export function gradeField(fieldId, answer, context) {
   const openResponseFields = new Set([
     "convincingExplain",
     "conditionsExplain",
-    "capstoneExplain"
+    "capstoneExplain",
+    "ciInterpretation",
+    "claimExplain",
+    "cap63Interpret",
+    "cap63JustifyExplain"
   ]);
 
   if (isBlank(answer)) {
@@ -595,6 +601,148 @@ export function gradeField(fieldId, answer, context) {
       score: "I",
       feedback: "Your interpretation must include three elements: (1) the confidence level ('We are __% confident'), (2) the interval bounds ('from ___ to ___'), and (3) the context ('the true proportion of [what]'). Template: 'We are __% confident that the interval from ___ to ___ captures the true proportion of [context].'"
     };
+  }
+
+  // ========== L12: CI Interpretation (Textarea) ==========
+  if (fieldId === "ciInterpretation") {
+    const confKeywords = ["confident", "confidence"];
+    const boundsKeywords = ["from", "between", "interval", "to"];
+    const contextKeywords = ["proportion", "population", "true proportion", "all", "who", "captures"];
+
+    const mentionsConfidence = containsAny(answer, confKeywords);
+    const mentionsBounds = containsAny(answer, boundsKeywords);
+    const mentionsContext = containsAny(answer, contextKeywords);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    // Check for probability misconception
+    const hasProbMisconception = containsAny(answer, ["probability that", "% probability", "chance that the true"]);
+    if (hasProbMisconception) {
+      return { score: "P", feedback: "Careful! Say 'We are __% confident...' not 'There is a __% probability...' The confidence level describes the method's reliability, not the probability for a single interval." };
+    }
+
+    // E: all three elements + substance
+    if (mentionsConfidence && mentionsBounds && mentionsContext && hasSubstance) {
+      return { score: "E", feedback: "Excellent! Your interpretation includes the confidence level, interval bounds, and context." };
+    }
+    // P: two of three + substance
+    const count = [mentionsConfidence, mentionsBounds, mentionsContext].filter(Boolean).length;
+    if (count >= 2 && hasSubstance) {
+      const missing = [];
+      if (!mentionsConfidence) missing.push("confidence level ('We are __% confident...')");
+      if (!mentionsBounds) missing.push("interval bounds ('from ___ to ___')");
+      if (!mentionsContext) missing.push("context (what the proportion represents)");
+      return { score: "P", feedback: `Good start! Also include: ${missing.join(", ")}` };
+    }
+    return { score: "I", feedback: "Include three elements: (1) 'We are __% confident', (2) 'the interval from ___ to ___', (3) 'captures the true proportion of [context]'." };
+  }
+
+  // ========== L13: Claim Answer (Choice) ==========
+  if (fieldId === "claimAnswer") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You correctly determined whether the CI provides convincing evidence for the claim." };
+    }
+    return { score: "I", feedback: `Incorrect. ${expected}. If ALL values in the CI are consistent with the claim → convincing evidence. If ANY value is inconsistent → not convincing evidence.` };
+  }
+
+  // ========== L13: Claim Explain (Textarea) ==========
+  if (fieldId === "claimExplain") {
+    const allKeywords = ["all values", "all of the values", "every value", "entire interval", "all plausible"];
+    const someKeywords = ["some values", "includes", "contains", "straddles", "not all", "one or more"];
+    const intervalKeywords = ["interval", "from", "between", "to"];
+
+    const mentionsAllOrSome = containsAny(answer, [...allKeywords, ...someKeywords]);
+    const mentionsInterval = containsAny(answer, intervalKeywords);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so"]);
+
+    if (mentionsAllOrSome && mentionsInterval && hasSubstance && hasReasoning) {
+      return { score: "E", feedback: "Excellent! You clearly connected the CI values to whether they're all consistent with the claim." };
+    }
+    if ((mentionsAllOrSome || mentionsInterval) && hasSubstance) {
+      return { score: "P", feedback: "Good start! Make sure to explain whether ALL or SOME values in the interval are consistent with the claim, and connect this to your conclusion." };
+    }
+    return { score: "I", feedback: "Explain whether ALL values in the CI are consistent with the claim (convincing) or if SOME values are inconsistent (not convincing). Reference the specific interval bounds and the claim threshold." };
+  }
+
+  // ========== L14: Confidence Level Answer (Dropdown) ==========
+  if (fieldId === "confLevelAnswer") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! The confidence level describes what happens in repeated sampling — approximately C% of intervals will capture the true parameter." };
+    }
+    // Check for probability misconception
+    if (containsAny(answer, ["probability", "chance"])) {
+      return { score: "I", feedback: `Incorrect. A common misconception! The confidence level does NOT give the probability that a particular interval captures the parameter. ${expected}` };
+    }
+    return { score: "I", feedback: `Incorrect. ${expected}. The confidence level describes the long-run capture rate of the METHOD — in repeated sampling, about C% of CIs will capture the true proportion.` };
+  }
+
+  // ========== L15: Factor Answer (Choice) ==========
+  if (fieldId === "factorAnswer") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! ME = z* × √(p̂(1−p̂)/n). Larger n → smaller ME. Higher confidence → larger z* → larger ME." };
+    }
+    return { score: "I", feedback: `Incorrect. The correct answer is: ${expected}. Remember: ME = z* × √(p̂(1−p̂)/n). Increasing n makes ME smaller (n is in denominator). Increasing confidence level makes z* larger, which increases ME.` };
+  }
+
+  // ========== L16 Capstone: CI Interpretation (Textarea) ==========
+  if (fieldId === "cap63Interpret") {
+    const confKeywords = ["confident", "confidence"];
+    const boundsKeywords = ["from", "between", "interval", "to"];
+    const contextKeywords = ["proportion", "population", "true proportion", "all", "who", "captures"];
+
+    const mentionsConfidence = containsAny(answer, confKeywords);
+    const mentionsBounds = containsAny(answer, boundsKeywords);
+    const mentionsContext = containsAny(answer, contextKeywords);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    // Check for probability misconception
+    const hasProbMisconception = containsAny(answer, ["probability that", "% probability", "chance that the true"]);
+    if (hasProbMisconception) {
+      return { score: "P", feedback: "Careful! Say 'We are __% confident...' not 'There is a __% probability...' The confidence level describes the method's reliability, not the probability for a single interval." };
+    }
+
+    // E: all three elements + substance
+    if (mentionsConfidence && mentionsBounds && mentionsContext && hasSubstance) {
+      return { score: "E", feedback: "Excellent! Your interpretation includes the confidence level, interval bounds, and context." };
+    }
+    // P: two of three + substance
+    const count63 = [mentionsConfidence, mentionsBounds, mentionsContext].filter(Boolean).length;
+    if (count63 >= 2 && hasSubstance) {
+      const missing = [];
+      if (!mentionsConfidence) missing.push("confidence level ('We are __% confident...')");
+      if (!mentionsBounds) missing.push("interval bounds ('from ___ to ___')");
+      if (!mentionsContext) missing.push("context (what the proportion represents)");
+      return { score: "P", feedback: `Good start! Also include: ${missing.join(", ")}` };
+    }
+    return { score: "I", feedback: "Include three elements: (1) 'We are __% confident', (2) 'the interval from ___ to ___', (3) 'captures the true proportion of [context]'." };
+  }
+
+  // ========== L16 Capstone: Justify (Choice) ==========
+  if (fieldId === "cap63Justify") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You correctly determined whether the CI provides convincing evidence for the claim." };
+    }
+    return { score: "I", feedback: `Incorrect. ${expected}. If ALL values in the CI are consistent with the claim → convincing evidence. If ANY value is inconsistent → not convincing evidence.` };
+  }
+
+  // ========== L16 Capstone: Justify Explain (Textarea) ==========
+  if (fieldId === "cap63JustifyExplain") {
+    const allKeywords = ["all values", "all of the values", "every value", "entire interval", "all plausible"];
+    const someKeywords = ["some values", "includes", "contains", "straddles", "not all", "one or more"];
+    const intervalKeywords = ["interval", "from", "between", "to"];
+
+    const mentionsAllOrSome = containsAny(answer, [...allKeywords, ...someKeywords]);
+    const mentionsInterval = containsAny(answer, intervalKeywords);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+    const hasReasoning = containsAny(answer, ["because", "since", "therefore", "so"]);
+
+    if (mentionsAllOrSome && mentionsInterval && hasSubstance && hasReasoning) {
+      return { score: "E", feedback: "Excellent! You clearly connected the CI values to whether they're all consistent with the claim." };
+    }
+    if ((mentionsAllOrSome || mentionsInterval) && hasSubstance) {
+      return { score: "P", feedback: "Good start! Make sure to explain whether ALL or SOME values in the interval are consistent with the claim, and connect this to your conclusion." };
+    }
+    return { score: "I", feedback: "Explain whether ALL values in the CI are consistent with the claim (convincing) or if SOME values are inconsistent (not convincing). Reference the specific interval bounds and the claim threshold." };
   }
 
   // ========== GENERIC FALLBACK ==========

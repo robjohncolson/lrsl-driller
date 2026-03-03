@@ -826,6 +826,558 @@ const capstone62Bank = [
   }
 ];
 
+// ---- L12: Interpret CI scenarios (6.3a) ----
+const interpretCIBank = [
+  {
+    context: "A city council surveyed a random sample of 400 residents (population 150,000) about support for a new park.",
+    population: "all residents in the city",
+    successDesc: "support the new park",
+    pHat: 0.62, n: 400, confLevel: 95,
+    ciLower: 0.572, ciUpper: 0.668,
+    expectedInterpretation: "We are 95% confident that the interval from 0.572 to 0.668 captures the true proportion of all residents in the city who support the new park."
+  },
+  {
+    context: "A hospital randomly surveyed 350 patients (from a patient population of 90,000) about satisfaction with nursing care.",
+    population: "all patients at the hospital",
+    successDesc: "are satisfied with nursing care",
+    pHat: 0.78, n: 350, confLevel: 90,
+    ciLower: 0.744, ciUpper: 0.816,
+    expectedInterpretation: "We are 90% confident that the interval from 0.744 to 0.816 captures the true proportion of all patients at the hospital who are satisfied with nursing care."
+  },
+  {
+    context: "An environmental agency randomly sampled 500 households (population 200,000) to determine how many recycle weekly.",
+    population: "all households in the region",
+    successDesc: "recycle weekly",
+    pHat: 0.44, n: 500, confLevel: 95,
+    ciLower: 0.396, ciUpper: 0.484,
+    expectedInterpretation: "We are 95% confident that the interval from 0.396 to 0.484 captures the true proportion of all households in the region who recycle weekly."
+  },
+  {
+    context: "A university randomly surveyed 600 students (enrollment 35,000) about whether they use the campus tutoring center.",
+    population: "all students at the university",
+    successDesc: "use the campus tutoring center",
+    pHat: 0.31, n: 600, confLevel: 99,
+    ciLower: 0.261, ciUpper: 0.359,
+    expectedInterpretation: "We are 99% confident that the interval from 0.261 to 0.359 captures the true proportion of all students at the university who use the campus tutoring center."
+  },
+  {
+    context: "A tech company randomly surveyed 450 employees (workforce of 12,000) about whether they prefer remote work.",
+    population: "all employees at the company",
+    successDesc: "prefer remote work",
+    pHat: 0.71, n: 450, confLevel: 95,
+    ciLower: 0.668, ciUpper: 0.752,
+    expectedInterpretation: "We are 95% confident that the interval from 0.668 to 0.752 captures the true proportion of all employees at the company who prefer remote work."
+  },
+  {
+    context: "A sports league randomly surveyed 300 fans (from an estimated 2 million fans) about their willingness to pay for a streaming package.",
+    population: "all fans of the league",
+    successDesc: "are willing to pay for the streaming package",
+    pHat: 0.53, n: 300, confLevel: 90,
+    ciLower: 0.483, ciUpper: 0.577,
+    expectedInterpretation: "We are 90% confident that the interval from 0.483 to 0.577 captures the true proportion of all fans of the league who are willing to pay for the streaming package."
+  },
+  {
+    context: "A school district randomly surveyed 250 parents (from 40,000 families) about support for extending the school day by 30 minutes.",
+    population: "all parents in the school district",
+    successDesc: "support extending the school day",
+    pHat: 0.38, n: 250, confLevel: 95,
+    ciLower: 0.320, ciUpper: 0.440,
+    expectedInterpretation: "We are 95% confident that the interval from 0.320 to 0.440 captures the true proportion of all parents in the school district who support extending the school day."
+  },
+  {
+    context: "A nonprofit randomly surveyed 380 donors (from a donor base of 50,000) about whether they plan to increase their contribution next year.",
+    population: "all donors to the nonprofit",
+    successDesc: "plan to increase their contribution next year",
+    pHat: 0.27, n: 380, confLevel: 95,
+    ciLower: 0.225, ciUpper: 0.315,
+    expectedInterpretation: "We are 95% confident that the interval from 0.225 to 0.315 captures the true proportion of all donors to the nonprofit who plan to increase their contribution next year."
+  },
+  {
+    context: "A state transportation department randomly surveyed 550 drivers (population 4 million licensed drivers) about whether they support higher tolls to fund road repairs.",
+    population: "all licensed drivers in the state",
+    successDesc: "support higher tolls to fund road repairs",
+    pHat: 0.42, n: 550, confLevel: 99,
+    ciLower: 0.366, ciUpper: 0.474,
+    expectedInterpretation: "We are 99% confident that the interval from 0.366 to 0.474 captures the true proportion of all licensed drivers in the state who support higher tolls to fund road repairs."
+  },
+  {
+    context: "A veterinary association randomly surveyed 280 pet owners (from approximately 60 million U.S. pet owners) about whether they buy premium pet food.",
+    population: "all pet owners in the United States",
+    successDesc: "buy premium pet food",
+    pHat: 0.35, n: 280, confLevel: 90,
+    ciLower: 0.303, ciUpper: 0.397,
+    expectedInterpretation: "We are 90% confident that the interval from 0.303 to 0.397 captures the true proportion of all pet owners in the United States who buy premium pet food."
+  },
+  {
+    context: "A music streaming platform randomly surveyed 420 subscribers (from 80 million subscribers) about whether they listen to podcasts on the platform.",
+    population: "all subscribers on the platform",
+    successDesc: "listen to podcasts on the platform",
+    pHat: 0.58, n: 420, confLevel: 95,
+    ciLower: 0.533, ciUpper: 0.627,
+    expectedInterpretation: "We are 95% confident that the interval from 0.533 to 0.627 captures the true proportion of all subscribers on the platform who listen to podcasts on the platform."
+  },
+  {
+    context: "A national retailer randomly surveyed 500 shoppers (from millions of annual customers) about whether they use the store's mobile app for purchases.",
+    population: "all shoppers at the retailer",
+    successDesc: "use the store's mobile app for purchases",
+    pHat: 0.24, n: 500, confLevel: 95,
+    ciLower: 0.203, ciUpper: 0.277,
+    expectedInterpretation: "We are 95% confident that the interval from 0.203 to 0.277 captures the true proportion of all shoppers at the retailer who use the store's mobile app for purchases."
+  }
+];
+
+// ---- L13: Justify Claim scenarios (6.3b) ----
+const justifyClaimBank = [
+  {
+    context: "A polling firm surveyed 500 registered voters about a ballot measure.",
+    population: "all registered voters",
+    successDesc: "support the ballot measure",
+    ciLower: 0.518, ciUpper: 0.622, confLevel: 95,
+    claimValue: 0.5, claimText: "a majority of registered voters support the ballot measure",
+    convincing: true,
+    explanation: "Because all values in the 95% confidence interval (0.518 to 0.622) are greater than 0.5, there is convincing evidence that a majority of registered voters support the ballot measure."
+  },
+  {
+    context: "A health department randomly surveyed 400 adults about their exercise habits.",
+    population: "all adults in the county",
+    successDesc: "exercise at least 3 times per week",
+    ciLower: 0.285, ciUpper: 0.375, confLevel: 95,
+    claimValue: 0.5, claimText: "a majority of adults in the county exercise at least 3 times per week",
+    convincing: false,
+    explanation: "Because the entire 95% confidence interval (0.285 to 0.375) is below 0.5, the data do not provide convincing evidence that a majority exercise at least 3 times per week. In fact, the data suggest the proportion is less than a majority."
+  },
+  {
+    context: "A school board randomly surveyed 350 parents about a proposed uniform policy.",
+    population: "all parents in the district",
+    successDesc: "favor the uniform policy",
+    ciLower: 0.462, ciUpper: 0.578, confLevel: 95,
+    claimValue: 0.5, claimText: "a majority of parents in the district favor the uniform policy",
+    convincing: false,
+    explanation: "Because the 95% confidence interval (0.462 to 0.578) contains 0.5, we cannot be confident that the true proportion is above 0.5. There is not convincing evidence that a majority of parents favor the uniform policy."
+  },
+  {
+    context: "A consumer group randomly surveyed 600 smartphone users about data privacy concerns.",
+    population: "all smartphone users",
+    successDesc: "are concerned about data privacy",
+    ciLower: 0.712, ciUpper: 0.788, confLevel: 99,
+    claimValue: 0.70, claimText: "more than 70% of smartphone users are concerned about data privacy",
+    convincing: true,
+    explanation: "Because all values in the 99% confidence interval (0.712 to 0.788) are greater than 0.70, there is convincing evidence that more than 70% of smartphone users are concerned about data privacy."
+  },
+  {
+    context: "A restaurant chain randomly surveyed 300 customers about their dining satisfaction.",
+    population: "all customers of the restaurant chain",
+    successDesc: "are satisfied with their dining experience",
+    ciLower: 0.641, ciUpper: 0.759, confLevel: 95,
+    claimValue: 0.70, claimText: "more than 70% of customers are satisfied with their dining experience",
+    convincing: false,
+    explanation: "Because the 95% confidence interval (0.641 to 0.759) contains 0.70, we cannot rule out that the true proportion is at or below 0.70. There is not convincing evidence that more than 70% of customers are satisfied."
+  },
+  {
+    context: "A wildlife agency randomly tagged and observed 250 deer to estimate the proportion carrying a tick-borne pathogen.",
+    population: "all deer in the region",
+    successDesc: "carry the tick-borne pathogen",
+    ciLower: 0.082, ciUpper: 0.158, confLevel: 95,
+    claimValue: 0.20, claimText: "fewer than 20% of deer in the region carry the tick-borne pathogen",
+    convincing: true,
+    explanation: "Because all values in the 95% confidence interval (0.082 to 0.158) are less than 0.20, there is convincing evidence that fewer than 20% of deer in the region carry the pathogen."
+  },
+  {
+    context: "An HR department randomly surveyed 450 employees about job satisfaction at a large corporation (15,000 employees).",
+    population: "all employees at the corporation",
+    successDesc: "are satisfied with their job",
+    ciLower: 0.554, ciUpper: 0.646, confLevel: 90,
+    claimValue: 0.5, claimText: "a majority of employees at the corporation are satisfied with their job",
+    convincing: true,
+    explanation: "Because all values in the 90% confidence interval (0.554 to 0.646) are greater than 0.5, there is convincing evidence that a majority of employees are satisfied with their job."
+  },
+  {
+    context: "A city government randomly surveyed 380 homeowners about support for a property tax increase to fund public schools.",
+    population: "all homeowners in the city",
+    successDesc: "support the property tax increase",
+    ciLower: 0.341, ciUpper: 0.439, confLevel: 95,
+    claimValue: 0.5, claimText: "a majority of homeowners in the city support the property tax increase",
+    convincing: false,
+    explanation: "Because the entire 95% confidence interval (0.341 to 0.439) is below 0.5, there is not convincing evidence that a majority support the tax increase. The data actually suggest fewer than half of homeowners support it."
+  },
+  {
+    context: "A tech startup randomly surveyed 500 app users about their willingness to pay for a premium version.",
+    population: "all users of the app",
+    successDesc: "are willing to pay for the premium version",
+    ciLower: 0.142, ciUpper: 0.218, confLevel: 95,
+    claimValue: 0.25, claimText: "fewer than 25% of users are willing to pay for the premium version",
+    convincing: true,
+    explanation: "Because all values in the 95% confidence interval (0.142 to 0.218) are less than 0.25, there is convincing evidence that fewer than 25% of users are willing to pay for the premium version."
+  },
+  {
+    context: "A public health organization randomly surveyed 320 teenagers about vaping habits.",
+    population: "all teenagers in the state",
+    successDesc: "have vaped in the past 30 days",
+    ciLower: 0.112, ciUpper: 0.208, confLevel: 95,
+    claimValue: 0.15, claimText: "more than 15% of teenagers in the state have vaped in the past 30 days",
+    convincing: false,
+    explanation: "Because the 95% confidence interval (0.112 to 0.208) contains 0.15, we cannot be confident that the true proportion is above 0.15. There is not convincing evidence that more than 15% of teenagers have vaped in the past 30 days."
+  },
+  {
+    context: "An agricultural extension office randomly surveyed 280 farmers about adoption of cover cropping practices.",
+    population: "all farmers in the state",
+    successDesc: "use cover cropping practices",
+    ciLower: 0.318, ciUpper: 0.422, confLevel: 90,
+    claimValue: 0.30, claimText: "more than 30% of farmers in the state use cover cropping practices",
+    convincing: true,
+    explanation: "Because all values in the 90% confidence interval (0.318 to 0.422) are greater than 0.30, there is convincing evidence that more than 30% of farmers use cover cropping practices."
+  },
+  {
+    context: "A national survey randomly sampled 550 adults about whether they read at least one book per month.",
+    population: "all adults in the country",
+    successDesc: "read at least one book per month",
+    ciLower: 0.238, ciUpper: 0.322, confLevel: 95,
+    claimValue: 0.30, claimText: "fewer than 30% of adults in the country read at least one book per month",
+    convincing: false,
+    explanation: "Because the 95% confidence interval (0.238 to 0.322) contains 0.30, we cannot be confident the true proportion is below 0.30. There is not convincing evidence that fewer than 30% of adults read at least one book per month."
+  }
+];
+
+// ---- L14: Confidence Level Meaning scenarios (6.3c) ----
+const confidenceLevelBank = [
+  {
+    context: "A polling company constructs a 95% confidence interval for the proportion of voters who support a school bond measure, using a random sample of 400 voters.",
+    confLevel: 95, n: 400,
+    correctAnswer: "If we took many random samples of size 400 from all voters and constructed a 95% confidence interval from each sample, about 95% of those intervals would capture the true proportion of voters who support the school bond measure.",
+    wrongOptions: [
+      "There is a 95% probability that the true proportion of voters who support the school bond measure is in this particular interval.",
+      "95% of all voters support the school bond measure.",
+      "The sample proportion is within 95% of the true proportion of voters who support the school bond measure."
+    ]
+  },
+  {
+    context: "A university constructs a 90% confidence interval for the proportion of alumni who donate annually, based on a random sample of 300 alumni.",
+    confLevel: 90, n: 300,
+    correctAnswer: "If we took many random samples of size 300 from all alumni and constructed a 90% confidence interval from each sample, about 90% of those intervals would capture the true proportion of alumni who donate annually.",
+    wrongOptions: [
+      "There is a 90% probability that the true proportion of alumni who donate annually is in this particular interval.",
+      "90% of all alumni donate annually.",
+      "The sample proportion is within 90% of the true proportion of alumni who donate annually."
+    ]
+  },
+  {
+    context: "A health department constructs a 99% confidence interval for the proportion of residents who have been vaccinated, using a random sample of 500 residents.",
+    confLevel: 99, n: 500,
+    correctAnswer: "If we took many random samples of size 500 from all residents and constructed a 99% confidence interval from each sample, about 99% of those intervals would capture the true proportion of residents who have been vaccinated.",
+    wrongOptions: [
+      "There is a 99% probability that the true proportion of vaccinated residents is in this particular interval.",
+      "99% of all residents have been vaccinated.",
+      "The sample proportion is within 99% of the true proportion of vaccinated residents."
+    ]
+  },
+  {
+    context: "A market research firm constructs an 80% confidence interval for the proportion of consumers who prefer brand A, based on a random sample of 250 consumers.",
+    confLevel: 80, n: 250,
+    correctAnswer: "If we took many random samples of size 250 from all consumers and constructed an 80% confidence interval from each sample, about 80% of those intervals would capture the true proportion of consumers who prefer brand A.",
+    wrongOptions: [
+      "There is an 80% probability that the true proportion of consumers who prefer brand A is in this particular interval.",
+      "80% of all consumers prefer brand A.",
+      "The sample proportion is within 80% of the true proportion of consumers who prefer brand A."
+    ]
+  },
+  {
+    context: "An environmental group constructs a 95% confidence interval for the proportion of households that compost, based on a random sample of 350 households.",
+    confLevel: 95, n: 350,
+    correctAnswer: "If we took many random samples of size 350 from all households and constructed a 95% confidence interval from each sample, about 95% of those intervals would capture the true proportion of households that compost.",
+    wrongOptions: [
+      "There is a 95% probability that the true proportion of households that compost is in this particular interval.",
+      "95% of all households compost.",
+      "The sample proportion is within 95% of the true proportion of households that compost."
+    ]
+  },
+  {
+    context: "A software company constructs a 90% confidence interval for the proportion of users who experience a specific bug, based on a random sample of 600 users.",
+    confLevel: 90, n: 600,
+    correctAnswer: "If we took many random samples of size 600 from all users and constructed a 90% confidence interval from each sample, about 90% of those intervals would capture the true proportion of users who experience the bug.",
+    wrongOptions: [
+      "There is a 90% probability that the true proportion of users who experience the bug is in this particular interval.",
+      "90% of all users experience the bug.",
+      "The sample proportion is within 90% of the true proportion of users who experience the bug."
+    ]
+  },
+  {
+    context: "A city transit authority constructs a 95% confidence interval for the proportion of riders who are satisfied with the service, based on a random sample of 450 riders.",
+    confLevel: 95, n: 450,
+    correctAnswer: "If we took many random samples of size 450 from all riders and constructed a 95% confidence interval from each sample, about 95% of those intervals would capture the true proportion of riders who are satisfied with the service.",
+    wrongOptions: [
+      "There is a 95% probability that the true proportion of satisfied riders is in this particular interval.",
+      "95% of all riders are satisfied with the service.",
+      "The sample proportion is within 95% of the true proportion of satisfied riders."
+    ]
+  },
+  {
+    context: "A national sports league constructs a 99% confidence interval for the proportion of fans who watch games on TV, based on a random sample of 800 fans.",
+    confLevel: 99, n: 800,
+    correctAnswer: "If we took many random samples of size 800 from all fans and constructed a 99% confidence interval from each sample, about 99% of those intervals would capture the true proportion of fans who watch games on TV.",
+    wrongOptions: [
+      "There is a 99% probability that the true proportion of fans who watch games on TV is in this particular interval.",
+      "99% of all fans watch games on TV.",
+      "The sample proportion is within 99% of the true proportion of fans who watch games on TV."
+    ]
+  },
+  {
+    context: "An airline constructs a 90% confidence interval for the proportion of flights that depart on time, based on a random sample of 500 flights.",
+    confLevel: 90, n: 500,
+    correctAnswer: "If we took many random samples of size 500 from all flights and constructed a 90% confidence interval from each sample, about 90% of those intervals would capture the true proportion of flights that depart on time.",
+    wrongOptions: [
+      "There is a 90% probability that the true proportion of on-time departures is in this particular interval.",
+      "90% of all flights depart on time.",
+      "The sample proportion is within 90% of the true proportion of on-time departures."
+    ]
+  },
+  {
+    context: "A food safety agency constructs a 95% confidence interval for the proportion of restaurant inspections that result in a violation, based on a random sample of 380 inspections.",
+    confLevel: 95, n: 380,
+    correctAnswer: "If we took many random samples of size 380 from all inspections and constructed a 95% confidence interval from each sample, about 95% of those intervals would capture the true proportion of inspections that result in a violation.",
+    wrongOptions: [
+      "There is a 95% probability that the true proportion of inspections resulting in a violation is in this particular interval.",
+      "95% of all inspections result in a violation.",
+      "The sample proportion is within 95% of the true proportion of inspections that result in a violation."
+    ]
+  },
+  {
+    context: "A real estate company constructs an 80% confidence interval for the proportion of homes that sell within 30 days, based on a random sample of 200 recent listings.",
+    confLevel: 80, n: 200,
+    correctAnswer: "If we took many random samples of size 200 from all recent listings and constructed an 80% confidence interval from each sample, about 80% of those intervals would capture the true proportion of homes that sell within 30 days.",
+    wrongOptions: [
+      "There is an 80% probability that the true proportion of homes selling within 30 days is in this particular interval.",
+      "80% of all homes sell within 30 days.",
+      "The sample proportion is within 80% of the true proportion of homes that sell within 30 days."
+    ]
+  }
+];
+
+// ---- L15: Factors Affecting ME scenarios (6.3d) ----
+const factorsMEBank = [
+  {
+    questionText: "A researcher increases the sample size from 200 to 800 while keeping the confidence level at 95%. What happens to the margin of error?",
+    correctAnswer: "The margin of error is cut in half",
+    wrongOptions: [
+      "The margin of error is cut to one-fourth",
+      "The margin of error stays the same"
+    ],
+    explanation: "ME = z*sqrt(p-hat(1-p-hat)/n). Quadrupling n divides sqrt(n) by 2, so ME is halved."
+  },
+  {
+    questionText: "A researcher changes the confidence level from 90% (z* = 1.645) to 99% (z* = 2.576) while keeping the sample size the same. What happens to the width of the confidence interval?",
+    correctAnswer: "The interval becomes wider",
+    wrongOptions: [
+      "The interval becomes narrower",
+      "The interval width stays the same"
+    ],
+    explanation: "A higher confidence level uses a larger z*, which increases the margin of error and makes the interval wider."
+  },
+  {
+    questionText: "To cut the margin of error in half while keeping the confidence level at 95%, a researcher must...",
+    correctAnswer: "Multiply the sample size by 4",
+    wrongOptions: [
+      "Double the sample size",
+      "Multiply the sample size by 8"
+    ],
+    explanation: "Since ME involves sqrt(n) in the denominator, halving ME requires quadrupling n (because sqrt(4n) = 2*sqrt(n))."
+  },
+  {
+    questionText: "Which confidence interval would be narrower: a 90% CI with n = 200, or a 95% CI with n = 200?",
+    correctAnswer: "The 90% CI would be narrower",
+    wrongOptions: [
+      "The 95% CI would be narrower",
+      "Both intervals would have the same width"
+    ],
+    explanation: "With the same sample size, a lower confidence level uses a smaller z*, producing a smaller margin of error and a narrower interval."
+  },
+  {
+    questionText: "A researcher wants a more precise estimate of a population proportion. Which change would reduce the margin of error?",
+    correctAnswer: "Increase the sample size",
+    wrongOptions: [
+      "Increase the confidence level",
+      "Use a different random sampling method"
+    ],
+    explanation: "Increasing n decreases sqrt(p-hat(1-p-hat)/n), which decreases the margin of error. Increasing the confidence level would increase z* and make ME larger."
+  },
+  {
+    questionText: "A 95% confidence interval is (0.42, 0.58). If the researcher had used a 90% confidence level with the same data, the new interval would...",
+    correctAnswer: "Be narrower than (0.42, 0.58)",
+    wrongOptions: [
+      "Be wider than (0.42, 0.58)",
+      "Be the same as (0.42, 0.58)"
+    ],
+    explanation: "Lowering the confidence level from 95% to 90% decreases z*, which reduces the margin of error and produces a narrower interval."
+  },
+  {
+    questionText: "Two researchers study the same population. Researcher A uses n = 100 and Researcher B uses n = 400. Both use a 95% confidence level. How do their margins of error compare?",
+    correctAnswer: "Researcher B's margin of error is about half of Researcher A's",
+    wrongOptions: [
+      "Researcher B's margin of error is about one-fourth of Researcher A's",
+      "Both margins of error are approximately the same"
+    ],
+    explanation: "ME is proportional to 1/sqrt(n). Since sqrt(400)/sqrt(100) = 20/10 = 2, Researcher B's ME is about half of Researcher A's."
+  },
+  {
+    questionText: "A survey produces a margin of error of 0.04 with n = 600 at the 95% confidence level. If the researcher wants ME = 0.02 at the same confidence level, approximately what sample size is needed?",
+    correctAnswer: "n = 2400",
+    wrongOptions: [
+      "n = 1200",
+      "n = 3600"
+    ],
+    explanation: "Cutting ME in half requires quadrupling the sample size: 600 x 4 = 2400."
+  },
+  {
+    questionText: "If the sample proportion p-hat is close to 0.5, compared to p-hat close to 0.1, how does the margin of error change (same n and confidence level)?",
+    correctAnswer: "The margin of error is larger when p-hat is close to 0.5",
+    wrongOptions: [
+      "The margin of error is smaller when p-hat is close to 0.5",
+      "The value of p-hat has no effect on the margin of error"
+    ],
+    explanation: "The quantity p-hat(1-p-hat) is maximized when p-hat = 0.5, so the standard error (and thus ME) is largest when p-hat is near 0.5."
+  },
+  {
+    questionText: "A researcher increases the sample size from 100 to 900 while keeping the confidence level at 95%. By what factor does the margin of error decrease?",
+    correctAnswer: "The margin of error decreases by a factor of 3",
+    wrongOptions: [
+      "The margin of error decreases by a factor of 9",
+      "The margin of error decreases by a factor of 4.5"
+    ],
+    explanation: "ME is proportional to 1/sqrt(n). sqrt(900)/sqrt(100) = 30/10 = 3, so ME decreases by a factor of 3."
+  },
+  {
+    questionText: "A polling organization uses n = 1000 and a 95% confidence level. To achieve the same margin of error with a 99% confidence level, they would need to...",
+    correctAnswer: "Increase the sample size",
+    wrongOptions: [
+      "Decrease the sample size",
+      "Keep the sample size the same"
+    ],
+    explanation: "A 99% confidence level uses a larger z* than 95%, which increases ME. To compensate and keep ME the same, the sample size must increase."
+  },
+  {
+    questionText: "Which combination would produce the widest confidence interval?",
+    correctAnswer: "99% confidence level with n = 100",
+    wrongOptions: [
+      "90% confidence level with n = 100",
+      "99% confidence level with n = 500"
+    ],
+    explanation: "The highest confidence level (largest z*) and the smallest sample size (largest 1/sqrt(n)) together produce the widest interval."
+  }
+];
+
+// ---- L16: Capstone 6.3 scenarios ----
+const capstone63Bank = [
+  {
+    context: "A state transportation department randomly surveyed 500 licensed drivers (population 3 million) about support for increasing the speed limit on rural highways.",
+    population: "all licensed drivers in the state",
+    successDesc: "support increasing the speed limit",
+    pHat: 0.57, n: 500, confLevel: 95,
+    ciLower: 0.527, ciUpper: 0.613,
+    claimValue: 0.5, claimText: "a majority of licensed drivers support increasing the speed limit",
+    convincing: true,
+    expectedInterpretation: "We are 95% confident that the interval from 0.527 to 0.613 captures the true proportion of all licensed drivers in the state who support increasing the speed limit.",
+    claimExplanation: "Because all values in the 95% confidence interval (0.527 to 0.613) are greater than 0.5, there is convincing evidence that a majority of licensed drivers support increasing the speed limit."
+  },
+  {
+    context: "A hospital system randomly surveyed 400 patients (from a patient population of 200,000) about satisfaction with wait times in the emergency department.",
+    population: "all patients in the hospital system",
+    successDesc: "are satisfied with ER wait times",
+    pHat: 0.48, n: 400, confLevel: 95,
+    ciLower: 0.431, ciUpper: 0.529,
+    claimValue: 0.5, claimText: "a majority of patients are satisfied with ER wait times",
+    convincing: false,
+    expectedInterpretation: "We are 95% confident that the interval from 0.431 to 0.529 captures the true proportion of all patients in the hospital system who are satisfied with ER wait times.",
+    claimExplanation: "Because the 95% confidence interval (0.431 to 0.529) contains 0.5, we cannot be confident the true proportion is above 0.5. There is not convincing evidence that a majority of patients are satisfied with ER wait times."
+  },
+  {
+    context: "A university randomly surveyed 350 undergraduate students (enrollment 28,000) about whether they have used the campus mental health services.",
+    population: "all undergraduate students at the university",
+    successDesc: "have used campus mental health services",
+    pHat: 0.22, n: 350, confLevel: 90,
+    ciLower: 0.183, ciUpper: 0.257,
+    claimValue: 0.25, claimText: "fewer than 25% of undergraduates have used campus mental health services",
+    convincing: true,
+    expectedInterpretation: "We are 90% confident that the interval from 0.183 to 0.257 captures the true proportion of all undergraduate students at the university who have used campus mental health services.",
+    claimExplanation: "Because not all values in the 90% confidence interval (0.183 to 0.257) are below 0.25 — the upper bound of 0.257 exceeds 0.25 — there is not convincing evidence that fewer than 25% of undergraduates have used mental health services."
+  },
+  {
+    context: "A consumer watchdog group randomly surveyed 600 online shoppers (from millions of online shoppers) about whether they experienced fraudulent charges on their account.",
+    population: "all online shoppers",
+    successDesc: "have experienced fraudulent charges",
+    pHat: 0.08, n: 600, confLevel: 95,
+    ciLower: 0.058, ciUpper: 0.102,
+    claimValue: 0.10, claimText: "fewer than 10% of online shoppers have experienced fraudulent charges",
+    convincing: false,
+    expectedInterpretation: "We are 95% confident that the interval from 0.058 to 0.102 captures the true proportion of all online shoppers who have experienced fraudulent charges.",
+    claimExplanation: "Because the 95% confidence interval (0.058 to 0.102) contains 0.10, we cannot be confident the true proportion is below 0.10. There is not convincing evidence that fewer than 10% of online shoppers have experienced fraudulent charges."
+  },
+  {
+    context: "A fitness company randomly surveyed 450 gym members (from a membership base of 75,000) about whether they use personal training services.",
+    population: "all gym members",
+    successDesc: "use personal training services",
+    pHat: 0.14, n: 450, confLevel: 95,
+    ciLower: 0.108, ciUpper: 0.172,
+    claimValue: 0.20, claimText: "fewer than 20% of gym members use personal training services",
+    convincing: true,
+    expectedInterpretation: "We are 95% confident that the interval from 0.108 to 0.172 captures the true proportion of all gym members who use personal training services.",
+    claimExplanation: "Because all values in the 95% confidence interval (0.108 to 0.172) are less than 0.20, there is convincing evidence that fewer than 20% of gym members use personal training services."
+  },
+  {
+    context: "A school district randomly surveyed 380 parents (from 50,000 families) about whether they support a four-day school week.",
+    population: "all parents in the school district",
+    successDesc: "support a four-day school week",
+    pHat: 0.64, n: 380, confLevel: 99,
+    ciLower: 0.577, ciUpper: 0.703,
+    claimValue: 0.5, claimText: "a majority of parents support a four-day school week",
+    convincing: true,
+    expectedInterpretation: "We are 99% confident that the interval from 0.577 to 0.703 captures the true proportion of all parents in the school district who support a four-day school week.",
+    claimExplanation: "Because all values in the 99% confidence interval (0.577 to 0.703) are greater than 0.5, there is convincing evidence that a majority of parents support a four-day school week."
+  },
+  {
+    context: "A tech company randomly surveyed 500 employees (workforce of 20,000) about whether they would prefer a hybrid work schedule.",
+    population: "all employees at the company",
+    successDesc: "prefer a hybrid work schedule",
+    pHat: 0.73, n: 500, confLevel: 95,
+    ciLower: 0.691, ciUpper: 0.769,
+    claimValue: 0.70, claimText: "more than 70% of employees prefer a hybrid work schedule",
+    convincing: false,
+    expectedInterpretation: "We are 95% confident that the interval from 0.691 to 0.769 captures the true proportion of all employees at the company who prefer a hybrid work schedule.",
+    claimExplanation: "Because the 95% confidence interval (0.691 to 0.769) contains 0.70, we cannot be confident the true proportion is above 0.70. There is not convincing evidence that more than 70% of employees prefer a hybrid work schedule."
+  },
+  {
+    context: "An environmental nonprofit randomly surveyed 300 homeowners (from a city of 120,000 homeowners) about whether they have installed energy-efficient windows.",
+    population: "all homeowners in the city",
+    successDesc: "have installed energy-efficient windows",
+    pHat: 0.33, n: 300, confLevel: 95,
+    ciLower: 0.277, ciUpper: 0.383,
+    claimValue: 0.40, claimText: "fewer than 40% of homeowners have installed energy-efficient windows",
+    convincing: true,
+    expectedInterpretation: "We are 95% confident that the interval from 0.277 to 0.383 captures the true proportion of all homeowners in the city who have installed energy-efficient windows.",
+    claimExplanation: "Because all values in the 95% confidence interval (0.277 to 0.383) are less than 0.40, there is convincing evidence that fewer than 40% of homeowners have installed energy-efficient windows."
+  },
+  {
+    context: "A national reading initiative randomly surveyed 550 adults (from the general population) about whether they read for pleasure at least once a week.",
+    population: "all adults in the country",
+    successDesc: "read for pleasure at least once a week",
+    pHat: 0.41, n: 550, confLevel: 90,
+    ciLower: 0.376, ciUpper: 0.444,
+    claimValue: 0.5, claimText: "a majority of adults read for pleasure at least once a week",
+    convincing: false,
+    expectedInterpretation: "We are 90% confident that the interval from 0.376 to 0.444 captures the true proportion of all adults in the country who read for pleasure at least once a week.",
+    claimExplanation: "Because the entire 90% confidence interval (0.376 to 0.444) is below 0.5, there is not convincing evidence that a majority of adults read for pleasure weekly. In fact, the data suggest fewer than half do."
+  },
+  {
+    context: "A public library system randomly surveyed 420 cardholders (from 180,000 cardholders) about whether they have attended a library program in the past year.",
+    population: "all library cardholders",
+    successDesc: "have attended a library program in the past year",
+    pHat: 0.29, n: 420, confLevel: 95,
+    ciLower: 0.247, ciUpper: 0.333,
+    claimValue: 0.25, claimText: "more than 25% of library cardholders have attended a program in the past year",
+    convincing: false,
+    expectedInterpretation: "We are 95% confident that the interval from 0.247 to 0.333 captures the true proportion of all library cardholders who have attended a library program in the past year.",
+    claimExplanation: "Because the 95% confidence interval (0.247 to 0.333) contains 0.25, we cannot be confident that the true proportion is above 0.25. There is not convincing evidence that more than 25% of cardholders have attended a program."
+  }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -1170,6 +1722,145 @@ export function generateProblem(modeId, context, mode) {
     };
 
     scenario = `${scen.scenario}\n\np̂ = ${scen.pHat}, n = ${scen.n}, N = ${scen.N.toLocaleString()}\n\n(1) Check all conditions. (2) Construct a ${scen.confLevel}% confidence interval. (3) Interpret the interval in context.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L12: Interpret CI (6.3a) ==========
+  if (modeId === "l12-interpret-ci") {
+    const scen = drawFromBag('interpretCI', interpretCIBank);
+
+    ctx = {
+      topicId: "6.3: Interpreting Confidence Intervals",
+      scenarioText: scen.context,
+      givenText: `p̂ = ${scen.pHat}, n = ${scen.n}, ${scen.confLevel}% confidence interval: (${scen.ciLower}, ${scen.ciUpper})`,
+      confLevel: `${scen.confLevel}`,
+      ciLower: `${scen.ciLower}`,
+      ciUpper: `${scen.ciUpper}`,
+      population: scen.population,
+      successDesc: scen.successDesc
+    };
+
+    answers = {
+      ciInterpretation: { value: scen.expectedInterpretation }
+    };
+
+    scenario = `${scen.context}\n\nA ${scen.confLevel}% confidence interval for the true proportion of ${scen.population} who ${scen.successDesc} is (${scen.ciLower}, ${scen.ciUpper}).\n\nInterpret this confidence interval in context.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L13: Justify Claim (6.3b) ==========
+  if (modeId === "l13-justify-claim") {
+    const scen = drawFromBag('justifyClaim', justifyClaimBank);
+
+    ctx = {
+      topicId: "6.3: Justifying Claims with CIs",
+      scenarioText: scen.context,
+      givenText: `${scen.confLevel}% CI: (${scen.ciLower}, ${scen.ciUpper}). Claim: ${scen.claimText}.`,
+      claimText: scen.claimText,
+      claimValue: `${scen.claimValue}`,
+      ciLower: `${scen.ciLower}`,
+      ciUpper: `${scen.ciUpper}`,
+      confLevel: `${scen.confLevel}`,
+      population: scen.population,
+      successDesc: scen.successDesc
+    };
+
+    answers = {
+      claimAnswer: {
+        value: scen.convincing
+          ? "Yes, the confidence interval provides convincing evidence"
+          : "No, the confidence interval does not provide convincing evidence"
+      },
+      claimExplain: { value: scen.explanation }
+    };
+
+    scenario = `${scen.context}\n\nA ${scen.confLevel}% confidence interval for the proportion of ${scen.population} who ${scen.successDesc} is (${scen.ciLower}, ${scen.ciUpper}).\n\nClaim: ${scen.claimText}.\n\nDoes the confidence interval provide convincing evidence for this claim? Explain.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L14: Confidence Level Meaning (6.3c) ==========
+  if (modeId === "l14-confidence-level") {
+    const scen = drawFromBag('confLevel', confidenceLevelBank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "6.3: Meaning of Confidence Level",
+      scenarioText: scen.context,
+      givenText: `Confidence level: ${scen.confLevel}%, n = ${scen.n}`,
+      confLevel: `${scen.confLevel}`,
+      n: `${scen.n}`,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      confLevelAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = `${scen.context}\n\nWhat is the correct interpretation of the ${scen.confLevel}% confidence level?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L15: Factors Affecting ME (6.3d) ==========
+  if (modeId === "l15-factors-me") {
+    const scen = drawFromBag('factorsME', factorsMEBank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "6.3: Factors Affecting Margin of Error",
+      scenarioText: scen.questionText,
+      givenText: `ME = z* × √(p̂(1−p̂)/n)`,
+      questionText: scen.questionText,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      expectedExplanation: scen.explanation
+    };
+
+    answers = {
+      factorAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = `${scen.questionText}\n\nRecall: ME = z* × √(p̂(1−p̂)/n)`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L16: Capstone 6.3 ==========
+  if (modeId === "l16-capstone-63") {
+    const scen = drawFromBag('capstone63', capstone63Bank);
+
+    ctx = {
+      topicId: "6.3: Capstone — Interpret and Justify",
+      scenarioText: scen.context,
+      givenText: `p̂ = ${scen.pHat}, n = ${scen.n}, ${scen.confLevel}% CI: (${scen.ciLower}, ${scen.ciUpper}). Claim: ${scen.claimText}.`,
+      pHat: `${scen.pHat}`,
+      n: `${scen.n}`,
+      confLevel: `${scen.confLevel}`,
+      ciLower: `${scen.ciLower}`,
+      ciUpper: `${scen.ciUpper}`,
+      claimText: scen.claimText,
+      claimValue: `${scen.claimValue}`,
+      population: scen.population,
+      successDesc: scen.successDesc,
+      expectedInterpretation: scen.expectedInterpretation,
+      expectedClaimExplanation: scen.claimExplanation
+    };
+
+    answers = {
+      cap63Interpret: { value: scen.expectedInterpretation },
+      cap63Justify: {
+        value: scen.convincing
+          ? "Yes, the confidence interval provides convincing evidence"
+          : "No, the confidence interval does not provide convincing evidence"
+      },
+      cap63JustifyExplain: { value: scen.claimExplanation }
+    };
+
+    scenario = `${scen.context}\n\nA ${scen.confLevel}% confidence interval for the proportion of ${scen.population} who ${scen.successDesc} is (${scen.ciLower}, ${scen.ciUpper}).\n\n(1) Interpret this confidence interval in context.\n(2) Claim: ${scen.claimText}. Does the CI provide convincing evidence for this claim? Explain.`;
     return { context: ctx, graphConfig, answers, scenario };
   }
 
