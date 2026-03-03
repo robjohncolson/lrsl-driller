@@ -338,7 +338,13 @@ export class GameEngine {
     this.progressionOverrides[modeId] = goldRequired;
     // Re-evaluate unlocks
     if (this.unlockRules) {
+      const savedTier = this.currentTier;
+      const wasUnlocked = this.unlockedTiers.includes(savedTier);
       this.recheckUnlocks();
+      // Only fall back if the current tier was previously unlocked but got relocked
+      if (wasUnlocked && !this.unlockedTiers.includes(savedTier)) {
+        this.currentTier = this.unlockedTiers[this.unlockedTiers.length - 1] || null;
+      }
     }
   }
 

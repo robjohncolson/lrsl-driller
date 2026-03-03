@@ -72,31 +72,34 @@ describe('GameEngine Progression Fix (fix-progression-regression)', () => {
     vi.restoreAllMocks();
   });
 
-  // ========== TEST 1: All non-capstone modes unlock immediately ==========
-  describe('All non-capstone modes unlock immediately', () => {
-    it('unlocks every non-capstone mode without earning any stars', () => {
+  /** Give 1 gold star to each of modes l01–l08 so the full non-capstone chain unlocks */
+  function setupFullUnlockChain(engine) {
+    const preceding = [
+      'l01-sampling-variability', 'l02-sampling-dist-concept', 'l03-sample-size-effect',
+      'l04-pop-vs-sampling-dist', 'l05-mean-sd-sampling', 'l06-normal-approx',
+      'l07-assess-normality', 'l08-sampling-proportions'
+    ];
+    for (const id of preceding) {
+      engine.starsPerMode[id] = { gold: 1, silver: 0, bronze: 0, tin: 0 };
+    }
+  }
+
+  // ========== TEST 1: Sequential progression unlocks non-capstone modes ==========
+  describe('Sequential progression unlocks non-capstone modes', () => {
+    it('unlocks levels sequentially as gold stars are earned on each', () => {
       engine.loadCartridge(apStatsManifest);
+      expect(engine.unlockedTiers).toEqual(['l01-sampling-variability']);
 
-      const state = engine.getState();
-      const nonCapstoneIds = [
-        'l01-sampling-variability',
-        'l02-sampling-dist-concept',
-        'l03-sample-size-effect',
-        'l04-pop-vs-sampling-dist',
-        'l05-mean-sd-sampling',
-        'l06-normal-approx',
-        'l07-assess-normality',
-        'l08-sampling-proportions',
-        'l09-inference-preview',
-        'l11-clt-randomization',
-      ];
+      engine.starsPerMode['l01-sampling-variability'] = { gold: 1, silver: 0, bronze: 0, tin: 0 };
+      engine.unlockedTiers = [];
+      engine.checkUnlocks(engine.unlockRules);
+      expect(engine.unlockedTiers).toContain('l02-sampling-dist-concept');
 
-      for (const modeId of nonCapstoneIds) {
-        expect(
-          state.unlockedTiers,
-          `Expected "${modeId}" to be in unlockedTiers`
-        ).toContain(modeId);
-      }
+      setupFullUnlockChain(engine);
+      engine.unlockedTiers = [];
+      engine.checkUnlocks(engine.unlockRules);
+      expect(engine.unlockedTiers).toContain('l09-inference-preview');
+      expect(engine.unlockedTiers).not.toContain('l10-capstone');
     });
   });
 
@@ -118,14 +121,10 @@ describe('GameEngine Progression Fix (fix-progression-regression)', () => {
 
     it('unlocks capstone after previous level earns required gold stars', () => {
       engine.loadCartridge(apStatsManifest);
-
-      // Award 3 gold to the mode immediately before l10-capstone (l09-inference-preview)
+      setupFullUnlockChain(engine);
       engine.starsPerMode['l09-inference-preview'] = { gold: 3, silver: 0, bronze: 0, tin: 0 };
-
-      // Re-check unlocks
       engine.unlockedTiers = [];
       engine.checkUnlocks(engine.unlockRules);
-
       expect(engine.unlockedTiers).toContain('l10-capstone');
     });
   });
@@ -233,31 +232,18 @@ describe('GameEngine Progression Fix (fix-progression-regression)', () => {
   describe('Capstone relocking falls back gracefully', () => {
     it('falls back to highest unlocked non-capstone mode when capstone is relocked', () => {
       engine.loadCartridge(apStatsManifest);
-
-      // Give the student enough stars to unlock the first capstone
+      setupFullUnlockChain(engine);
       engine.starsPerMode['l09-inference-preview'] = { gold: 3, silver: 0, bronze: 0, tin: 0 };
       engine.unlockedTiers = [];
       engine.checkUnlocks(engine.unlockRules);
 
-      // Verify capstone is unlocked
       expect(engine.unlockedTiers).toContain('l10-capstone');
 
-      // Student navigates to the capstone
       engine.currentTier = 'l10-capstone';
-
-      // Teacher raises the gold requirement for the capstone beyond earned stars
-      // Previous mode has 3 gold, raise requirement to 5
       engine.updateOverride('l10-capstone', 5);
 
-      // Capstone should now be relocked
       expect(engine.unlockedTiers).not.toContain('l10-capstone');
-
-      // currentTier should fall back to the highest unlocked non-capstone mode
-      // NOT to 'l01-sampling-variability' (the first level)
       expect(engine.currentTier).not.toBe('l01-sampling-variability');
-
-      // It should be the highest unlocked mode (the last non-capstone before capstone,
-      // or the last in the unlocked list)
       const lastUnlocked = engine.unlockedTiers[engine.unlockedTiers.length - 1];
       expect(engine.currentTier).toBe(lastUnlocked);
     });

@@ -4796,33 +4796,11 @@
           }
 
           if (targetMode) {
-            const studentUnlocked = gameState.unlockedTiers.includes(targetMode.id);
-
-            // Teachers and students with unlocked access go directly
-            if (isTeacher || studentUnlocked) {
-              console.log(`[App] Jumping to URL-requested level: ${targetMode.id}`);
-              platform.setMode(targetMode.id, isTeacher && !studentUnlocked);
-              platform.gameEngine.setProgressionFloor(targetMode.id);
-              renderModeTabs();
-            } else {
-              // Student accessing locked level - show modal with choice
-              console.log(`[App] Student accessing locked level ${targetMode.id} via URL - showing modal`);
-
-              // Find highest unlocked level for resume
-              let resumeMode = modes[0]; // Default to first level
-              for (let i = modes.length - 1; i >= 0; i--) {
-                if (gameState.unlockedTiers.includes(modes[i].id)) {
-                  resumeMode = modes[i];
-                  break;
-                }
-              }
-
-              // Show modal - don't set mode yet, wait for user choice
-              showLockedLevelModal(targetMode, resumeMode);
-              // Note: loadProblem will be called after user makes choice
-              requestedStartLevel = null;
-              return; // Exit early - modal handlers will continue
-            }
+            // URL is the authorization — go directly to the requested level
+            console.log(`[App] Jumping to URL-requested level: ${targetMode.id}`);
+            platform.gameEngine.setProgressionFloor(targetMode.id);
+            platform.setMode(targetMode.id, true);
+            renderModeTabs();
           } else {
             console.warn(`[App] URL-requested level not found: ${JSON.stringify(requestedStartLevel)}`);
           }
