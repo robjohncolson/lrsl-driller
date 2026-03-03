@@ -119,15 +119,7 @@ export class Platform {
       // Sync gameEngine.currentTier with platform.currentMode
       // This ensures stars are tracked to the correct mode
       if (this.currentMode) {
-        const success = this.gameEngine.setTier(this.currentMode);
-        if (!success) {
-          console.warn(`[Platform] Failed to set tier ${this.currentMode}, falling back to first unlocked mode`);
-          const firstUnlocked = this.gameEngine.unlockedTiers[0] || modes[0]?.id;
-          if (firstUnlocked) {
-            this.currentMode = firstUnlocked;
-            this.gameEngine.setTier(firstUnlocked);
-          }
-        }
+        this.gameEngine.setTier(this.currentMode, true);
         console.log(`[Platform] Synced gameEngine.currentTier: ${this.gameEngine.currentTier}`);
       }
 
@@ -167,7 +159,7 @@ export class Platform {
 
     this.currentMode = modeId;
     // Save to game engine so it persists across refreshes
-    this.gameEngine.setTier(modeId);
+    this.gameEngine.setTier(modeId, force);
     this.onStateChange(this.getState());
     console.log(`[Platform] Mode set to: ${modeId}${force ? ' (forced)' : ''}`);
     return true;

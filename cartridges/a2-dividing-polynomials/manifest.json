@@ -61,7 +61,7 @@
     {
       "id": "remainder-theorem-verify",
       "name": "Verify Remainder Theorem",
-      "unlockedBy": { "gold": 3, "modes": ["remainder-eval", "long-division"] },
+      "unlockedBy": { "gold": 1 },
       "animation": "assets/RemainderTheoremVerify.mp4",
       "layout": {
         "inputs": [
@@ -80,7 +80,7 @@
     {
       "id": "factor-and-quotient",
       "name": "Factor with Known Factor",
-      "unlockedBy": { "gold": 5, "modes": ["remainder-theorem-verify"] },
+      "unlockedBy": { "gold": 1 },
       "animation": "assets/FactorWithKnownFactor.mp4",
       "layout": {
         "inputs": [
@@ -92,7 +92,7 @@
     {
       "id": "quotient-expression",
       "name": "Write q(x) + r/(x \u2212 a)",
-      "unlockedBy": { "gold": 5, "modes": ["factor-and-quotient"] },
+      "unlockedBy": { "gold": 1 },
       "animation": "assets/QuotientExpression.mp4",
       "layout": {
         "inputs": [
@@ -104,7 +104,7 @@
     {
       "id": "is-it-a-factor",
       "name": "Factor or Not?",
-      "unlockedBy": { "gold": 8, "modes": ["remainder-eval"] },
+      "unlockedBy": { "gold": 1 },
       "animation": "assets/IsItAFactor.mp4",
       "layout": {
         "inputs": [

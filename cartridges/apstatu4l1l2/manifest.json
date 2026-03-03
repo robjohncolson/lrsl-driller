@@ -270,7 +270,7 @@
       "id": "l11-capstone",
       "name": "4.1-4.2 Capstone",
       "unlockedBy": {
-        "gold": 1
+        "gold": 3
       },
       "layout": {
         "inputs": [
@@ -581,7 +581,7 @@
       "id": "l24-mixed-4-4-5",
       "name": "4.4-4.5 Capstone",
       "unlockedBy": {
-        "gold": 1
+        "gold": 3
       },
       "layout": {
         "inputs": [
@@ -771,7 +771,7 @@
       "id": "l32-mixed-4-6",
       "name": "4.6 Capstone",
       "unlockedBy": {
-        "gold": 1
+        "gold": 3
       },
       "layout": {
         "inputs": [
@@ -949,7 +949,7 @@
       "id": "l40-interpret-params",
       "name": "4.7-4.8 Capstone",
       "unlockedBy": {
-        "gold": 1
+        "gold": 3
       },
       "layout": {
         "inputs": [
@@ -1107,7 +1107,7 @@
       "id": "l48-capstone-49",
       "name": "4.9 Capstone",
       "unlockedBy": {
-        "gold": 1
+        "gold": 3
       },
       "animation": "assets/Capstone49.mp4",
       "layout": {
@@ -1675,7 +1675,7 @@
         "id": "l11-capstone",
         "name": "Capstone",
         "unlockedBy": {
-          "gold": 1
+          "gold": 3
         },
         "celebrationMessage": "Unit 4.1-4.2 COMPLETE! Now onto probability rules..."
       },
@@ -1779,7 +1779,7 @@
         "id": "l24-mixed-4-4-5",
         "name": "4.4-4.5 Capstone",
         "unlockedBy": {
-          "gold": 1
+          "gold": 3
         },
         "celebrationMessage": "Topics 4.4-4.5 complete! Now onto independent events and unions..."
       },
@@ -1843,7 +1843,7 @@
         "id": "l32-mixed-4-6",
         "name": "4.6 Capstone",
         "unlockedBy": {
-          "gold": 1
+          "gold": 3
         },
         "celebrationMessage": "Topics 4.1-4.6 complete! Now onto random variables..."
       },
@@ -1907,7 +1907,7 @@
         "id": "l40-interpret-params",
         "name": "4.7-4.8 Capstone",
         "unlockedBy": {
-          "gold": 1
+          "gold": 3
         },
         "celebrationMessage": "Topics 4.7-4.8 complete! Now onto combining random variables..."
       },
@@ -1971,7 +1971,7 @@
         "id": "l48-capstone-49",
         "name": "4.9 Capstone",
         "unlockedBy": {
-          "gold": 1
+          "gold": 3
         },
         "celebrationMessage": "UNIT 4.1-4.9 COMPLETE! You've mastered probability, random variables, AND combining them!"
       },

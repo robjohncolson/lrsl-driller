@@ -140,11 +140,12 @@ describe('GameEngine Progression Overrides', () => {
       expect(engine.currentTier).toBe('level-2');
     });
 
-    it('falls back to first unlocked tier when currentTier is no longer unlocked', () => {
-      engine.currentTier = 'level-4'; // Not unlocked
+    it('preserves currentTier even when it is not in unlockedTiers (active mode independence)', () => {
+      engine.currentTier = 'level-4'; // Not unlocked, but student is actively working here
       engine.setOverrides({});
 
-      expect(engine.currentTier).toBe('level-1');
+      // currentTier should NOT be reset — the student's active mode is independent of unlock state
+      expect(engine.currentTier).toBe('level-4');
     });
 
     it('does not re-emit unlock events for tiers already unlocked before re-check', () => {

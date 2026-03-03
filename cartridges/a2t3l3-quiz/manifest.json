@@ -38,7 +38,7 @@
     {
       "id": "l02-find-a-and-b",
       "name": "Level 2: Identify a and b",
-      "unlockedBy": { "gold": 2 },
+      "unlockedBy": { "gold": 1 },
       "animation": "assets/QuizFindAB.mp4",
       "layout": {
         "inputs": [
@@ -60,7 +60,7 @@
     {
       "id": "l03-factor-cubes",
       "name": "Level 3: Factor Using the Identity",
-      "unlockedBy": { "gold": 2 },
+      "unlockedBy": { "gold": 1 },
       "animation": "assets/QuizCubeFactoring.mp4",
       "layout": {
         "inputs": [
@@ -76,7 +76,7 @@
     {
       "id": "l04-explain-identity",
       "name": "Level 4: Explain Your Reasoning",
-      "unlockedBy": { "gold": 2 },
+      "unlockedBy": { "gold": 1 },
       "animation": "assets/QuizExplainChoice.mp4",
       "layout": {
         "inputs": [
@@ -99,7 +99,7 @@
     {
       "id": "l05-binomial-term-coeff",
       "name": "Level 5: Binomial Term Coefficient",
-      "unlockedBy": { "gold": 2 },
+      "unlockedBy": { "gold": 1 },
       "animation": "assets/QuizBinomialCoeffs.mp4",
       "layout": {
         "inputs": [
@@ -117,7 +117,7 @@
     {
       "id": "l06-full-expansion",
       "name": "Level 6: Full Binomial Expansion",
-      "unlockedBy": { "gold": 2 },
+      "unlockedBy": { "gold": 1 },
       "animation": "assets/QuizFullExpansion.mp4",
       "layout": {
         "inputs": [
@@ -174,31 +174,31 @@
       {
         "id": "l02-find-a-and-b",
         "name": "02",
-        "unlockedBy": { "gold": 2 },
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Cube roots identified! Time to factor."
       },
       {
         "id": "l03-factor-cubes",
         "name": "03",
-        "unlockedBy": { "gold": 2 },
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Factoring mastered! Now explain your thinking."
       },
       {
         "id": "l04-explain-identity",
         "name": "04",
-        "unlockedBy": { "gold": 2 },
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Great reasoning! Switching to Binomial Theorem."
       },
       {
         "id": "l05-binomial-term-coeff",
         "name": "05",
-        "unlockedBy": { "gold": 2 },
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Coefficients nailed! Final level: full expansion."
       },
       {
         "id": "l06-full-expansion",
         "name": "06",
-        "unlockedBy": { "gold": 2 },
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Quiz prep complete! You're ready for any version of this quiz!"
       }
     ]

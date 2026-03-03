@@ -319,11 +319,10 @@ export class GameEngine {
     this.progressionOverrides = overrides || {};
     // Re-evaluate unlocks with new overrides
     if (this.unlockRules) {
-      const savedTier = this.currentTier;
       this.recheckUnlocks();
-      this.currentTier = this.unlockedTiers.includes(savedTier)
-        ? savedTier
-        : (this.unlockedTiers[0] || null);
+      if (!this.currentTier) {
+        this.currentTier = this.unlockedTiers[0] || null;
+      }
     }
   }
 
@@ -453,11 +452,10 @@ export class GameEngine {
       this.stateUpdatedAt = serverData.updated_at;
 
       // Recalculate unlocks from restored progress
-      const savedTier = this.currentTier;
       this.recheckUnlocks();
-      this.currentTier = this.unlockedTiers.includes(savedTier)
-        ? savedTier
-        : (this.unlockedTiers[0] || null);
+      if (!this.currentTier) {
+        this.currentTier = this.unlockedTiers[0] || null;
+      }
 
       this.saveState();
       return { restored: true, source: 'server' };
@@ -487,8 +485,8 @@ export class GameEngine {
   /**
    * Set current tier (for mode switching)
    */
-  setTier(tierId) {
-    if (this.unlockedTiers.includes(tierId)) {
+  setTier(tierId, force = false) {
+    if (force || this.unlockedTiers.includes(tierId)) {
       this.currentTier = tierId;
       this.saveState();
       return true;
