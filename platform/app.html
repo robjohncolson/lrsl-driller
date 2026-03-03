@@ -4003,8 +4003,8 @@
       }
       const mode = pendingLockedLevel.targetMode;
       closeLockedLevelModal();
+      platform.gameEngine.setProgressionFloor(mode.id);
       platform.setMode(mode.id, true); // force=true to bypass lock
-      sessionStorage.setItem('driller_forcedMode', mode.id);
       renderModeTabs();
       await platform.loadProblem();
       updateScenarioDisplay();
@@ -4177,7 +4177,7 @@
           btn.addEventListener('click', async () => {
             // Teachers can force access to locked modes
             const forceAccess = teacherBypass;
-            sessionStorage.removeItem('driller_forcedMode');
+            platform.gameEngine.clearProgressionFloor();
             if (!platform.setMode(mode.id, forceAccess)) return;
             closeLevelModal(); // Close modal after selection
             renderModeTabs(); // Update active state
@@ -4659,15 +4659,6 @@
         // Render mode tabs (call the reusable function)
         renderModeTabs();
 
-        // Restore forced mode from sessionStorage (survives page refresh)
-        if (!requestedStartLevel) {
-          const forcedMode = sessionStorage.getItem('driller_forcedMode');
-          if (forcedMode) {
-            requestedStartLevel = { type: 'id', value: forcedMode };
-            console.log('[App] Restored forced mode from session:', forcedMode);
-          }
-        }
-
         // Handle URL-requested level (?level=l12-sample-space or ?start=12)
         if (requestedStartLevel) {
           const modes = platform.currentCartridge.manifest.modes;
@@ -4693,7 +4684,7 @@
             if (isTeacher || studentUnlocked) {
               console.log(`[App] Jumping to URL-requested level: ${targetMode.id}`);
               platform.setMode(targetMode.id, isTeacher && !studentUnlocked);
-              sessionStorage.setItem('driller_forcedMode', targetMode.id);
+              platform.gameEngine.setProgressionFloor(targetMode.id);
               renderModeTabs();
             } else {
               // Student accessing locked level - show modal with choice

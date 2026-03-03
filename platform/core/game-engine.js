@@ -17,6 +17,7 @@ export class GameEngine {
     this.starsPerMode = {};  // Track stars earned per level/mode
     this.currentTier = null;
     this.unlockedTiers = [];
+    this.progressionFloor = null;  // null = no floor, number = index in modeOrder
     this.modeOrder = [];  // Ordered list of mode IDs for sequential unlock
 
     // Hint tracking for current problem
@@ -198,41 +199,45 @@ export class GameEngine {
    * Levels must be completed in order - no skipping allowed
    */
   checkUnlocks(tierRules) {
+    let normalChainBroken = false;
     for (let i = 0; i < tierRules.length; i++) {
       const tier = tierRules[i];
       if (this.unlockedTiers.includes(tier.id)) continue;
 
-      // First level is always unlocked
+      const atOrAboveFloor = this.progressionFloor !== null && i >= this.progressionFloor;
+
+      // First level or default - always unlocked
       if (i === 0 || tier.unlockedBy === 'default') {
         this.unlockedTiers.push(tier.id);
-        // Set first default tier as current if none set
-        if (!this.currentTier) {
-          this.currentTier = tier.id;
-        }
+        if (!this.currentTier) this.currentTier = tier.id;
         continue;
       }
 
-      // STRICT sequential unlock: previous level MUST have enough gold stars
-      // Uses per-level requirements (override > manifest > global default)
+      // If normal chain broken and not in floor range, skip
+      if (normalChainBroken && !atOrAboveFloor) continue;
+
+      // Floor level itself: unlocks unconditionally
+      if (atOrAboveFloor && i === this.progressionFloor) {
+        this.unlockedTiers.push(tier.id);
+        this.onTierUnlocked(tier);
+        this.saveState();
+        continue;
+      }
+
+      // Normal progression check (works for both normal chain and above-floor)
       const previousModeId = this.modeOrder[i - 1];
       const previousModeStars = this.starsPerMode[previousModeId] || { gold: 0 };
-
-      // Also check that the previous level is actually unlocked (prevents skipping)
       const previousUnlocked = this.unlockedTiers.includes(previousModeId);
-
-      // Get the required gold for the CURRENT tier (what you need to unlock it)
       const requiredGold = this.getRequiredGold(tier.id);
 
       if (previousUnlocked && previousModeStars.gold >= requiredGold) {
         this.unlockedTiers.push(tier.id);
         this.onTierUnlocked(tier);
         this.saveState();
-      } else {
-        // Sequential progression: if this tier is locked, all later tiers are locked too.
-        break;
+      } else if (!atOrAboveFloor) {
+        normalChainBroken = true;
       }
-      // If previous level isn't complete, stop checking further levels
-      // (they can't be unlocked without completing earlier ones)
+      // If at/above floor but can't unlock yet: just continue
     }
 
     return this.unlockedTiers;
@@ -348,6 +353,21 @@ export class GameEngine {
     }
   }
 
+  setProgressionFloor(modeId) {
+    const idx = this.modeOrder.indexOf(modeId);
+    if (idx >= 0) {
+      this.progressionFloor = idx;
+      this.currentTier = modeId;
+      if (this.unlockRules) this.recheckUnlocks();
+      this.saveState();
+    }
+  }
+
+  clearProgressionFloor() {
+    this.progressionFloor = null;
+    this.saveState();
+  }
+
   /**
    * Check if a mode has an active override
    */
@@ -386,6 +406,7 @@ export class GameEngine {
       starsPerMode: this.starsPerMode,
       currentTier: this.currentTier,
       unlockedTiers: this.unlockedTiers,
+      progressionFloor: this.progressionFloor,
       updated_at: this.stateUpdatedAt
     };
     localStorage.setItem(this.storagePrefix + 'gameState', JSON.stringify(state));
@@ -404,6 +425,7 @@ export class GameEngine {
         this.starsPerMode = { ...this.starsPerMode, ...state.starsPerMode };
         this.currentTier = state.currentTier || null;
         this.unlockedTiers = state.unlockedTiers || [];
+        this.progressionFloor = state.progressionFloor ?? null;
         this.stateUpdatedAt = state.updated_at || null;
       } catch (e) {
         console.warn('Failed to load game state:', e);
@@ -479,6 +501,7 @@ export class GameEngine {
     // Reset to first level only
     this.currentTier = this.modeOrder[0] || null;
     this.unlockedTiers = this.modeOrder[0] ? [this.modeOrder[0]] : [];
+    this.progressionFloor = null;
     this.saveState();
   }
 

@@ -198,7 +198,7 @@
       {
         "id": "l06-full-expansion",
         "name": "06",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Quiz prep complete! You're ready for any version of this quiz!"
       }
     ]

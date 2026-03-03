@@ -173,25 +173,25 @@
       {
         "id": "remainder-theorem-verify",
         "name": "Verify",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Remainder Theorem verified! Now use it to factor."
       },
       {
         "id": "factor-and-quotient",
         "name": "Factor",
-        "unlockedBy": { "gold": 5 },
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Great factoring! Now express results as q(x) + r/(x\u2212a)."
       },
       {
         "id": "quotient-expression",
         "name": "Express",
-        "unlockedBy": { "gold": 5 },
+        "unlockedBy": { "gold": 1 },
         "celebrationMessage": "You can write complete division results! Try the factor challenge."
       },
       {
         "id": "is-it-a-factor",
         "name": "Yes/No",
-        "unlockedBy": { "gold": 8 },
+        "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Polynomial division master! You've conquered all 6 levels."
       }
     ]
