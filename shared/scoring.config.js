@@ -124,5 +124,9 @@ export default SCORING_CONFIG;
 
 // CommonJS export (for server/Node.js)
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { SCORING_CONFIG, calculateWeightedPoints, getLevelMultiplier, getPointsBreakdown };
+  try {
+    module.exports = { SCORING_CONFIG, calculateWeightedPoints, getLevelMultiplier, getPointsBreakdown };
+  } catch {
+    // Some ESM test runners expose a read-only module shim; ignore in that context.
+  }
 }

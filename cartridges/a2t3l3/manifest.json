@@ -177,7 +177,7 @@
       "id": "l06-binomial-term-error",
       "name": "Level 6: Binomial Term Finder (Error Analysis)",
       "unlockedBy": {
-        "gold": 1
+        "gold": 3
       },
       "animation": "assets/BinomialTermFinder.mp4",
       "layout": {
@@ -310,7 +310,7 @@
         "id": "l06-binomial-term-error",
         "name": "06",
         "unlockedBy": {
-          "gold": 1
+          "gold": 3
         },
         "celebrationMessage": "Capstone complete! You can use structure, coefficients, and reasoning to avoid common errors."
       }

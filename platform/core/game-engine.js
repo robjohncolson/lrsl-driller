@@ -17,6 +17,7 @@ export class GameEngine {
     this.starsPerMode = {};  // Track stars earned per level/mode
     this.currentTier = null;
     this.unlockedTiers = [];
+    this.progressionFloor = null;  // null = no floor, number = index in modeOrder
     this.modeOrder = [];  // Ordered list of mode IDs for sequential unlock
 
     // Hint tracking for current problem
@@ -194,51 +195,76 @@ export class GameEngine {
 
   /**
    * Check and unlock tiers/modes based on progression rules
-   * Non-capstone modes unlock immediately (no gold-star gate).
-   * Capstone modes (unlockedBy.gold >= 3) retain sequential gating:
-   *   previous level must be unlocked AND have the required gold stars.
-   * First mode (index 0) and "unlockedBy: 'default'" modes always unlock.
+   * STRICT sequential unlocking: each level requires goldToUnlock gold stars on the previous level
+   * Levels must be completed in order - no skipping allowed
    */
   checkUnlocks(tierRules) {
+    let normalChainBroken = false;
     for (let i = 0; i < tierRules.length; i++) {
       const tier = tierRules[i];
       if (this.unlockedTiers.includes(tier.id)) continue;
 
-      // First level is always unlocked
+      const atOrAboveFloor = this.progressionFloor !== null && i >= this.progressionFloor;
+
+      // First level or default - always unlocked
       if (i === 0 || tier.unlockedBy === 'default') {
         this.unlockedTiers.push(tier.id);
-        // Set first default tier as current if none set
-        if (!this.currentTier) {
-          this.currentTier = tier.id;
-        }
+        if (!this.currentTier) this.currentTier = tier.id;
         continue;
       }
 
-      // Capstone modes (unlockedBy.gold >= 3) keep the sequential gate
-      const isCapstone = tier.unlockedBy?.gold >= 3;
+      // If normal chain broken and not in floor range, skip
+      if (normalChainBroken && !atOrAboveFloor) continue;
 
-      if (isCapstone) {
-        // Sequential unlock: previous level MUST have enough gold stars
-        const previousModeId = this.modeOrder[i - 1];
-        const previousModeStars = this.starsPerMode[previousModeId] || { gold: 0 };
-        const previousUnlocked = this.unlockedTiers.includes(previousModeId);
-        const requiredGold = this.getRequiredGold(tier.id);
-
-        if (previousUnlocked && previousModeStars.gold >= requiredGold) {
-          this.unlockedTiers.push(tier.id);
-          this.onTierUnlocked(tier);
-          this.saveState();
-        }
-        // Capstone not yet earned — skip but keep checking remaining tiers
-      } else {
-        // Non-capstone: unlock immediately
+      // Floor level itself: unlocks unconditionally
+      if (atOrAboveFloor && i === this.progressionFloor) {
         this.unlockedTiers.push(tier.id);
         this.onTierUnlocked(tier);
         this.saveState();
+        continue;
       }
+
+      // Normal progression check (works for both normal chain and above-floor)
+      const previousModeId = this.modeOrder[i - 1];
+      const previousModeStars = this.starsPerMode[previousModeId] || { gold: 0 };
+      const previousUnlocked = this.unlockedTiers.includes(previousModeId);
+      const requiredGold = this.getRequiredGold(tier.id);
+
+      if (previousUnlocked && previousModeStars.gold >= requiredGold) {
+        this.unlockedTiers.push(tier.id);
+        this.onTierUnlocked(tier);
+        this.saveState();
+      } else if (!atOrAboveFloor) {
+        normalChainBroken = true;
+      }
+      // If at/above floor but can't unlock yet: just continue
     }
 
     return this.unlockedTiers;
+  }
+
+  /**
+   * Re-check unlock progression from scratch without re-emitting unlock events
+   * for tiers that were already unlocked before the re-check.
+   */
+  recheckUnlocks() {
+    if (!this.unlockRules) return this.unlockedTiers;
+
+    const previouslyUnlocked = new Set(this.unlockedTiers);
+    const originalOnTierUnlocked = this.onTierUnlocked;
+
+    this.unlockedTiers = [];
+    this.onTierUnlocked = (tier) => {
+      if (!previouslyUnlocked.has(tier.id)) {
+        originalOnTierUnlocked.call(this, tier);
+      }
+    };
+
+    try {
+      return this.checkUnlocks(this.unlockRules);
+    } finally {
+      this.onTierUnlocked = originalOnTierUnlocked;
+    }
   }
 
   /**
@@ -298,14 +324,10 @@ export class GameEngine {
     this.progressionOverrides = overrides || {};
     // Re-evaluate unlocks with new overrides
     if (this.unlockRules) {
-      const savedTier = this.currentTier;
-      // Clear unlocked tiers and re-check from scratch
-      this.unlockedTiers = [];
-      this.checkUnlocks(this.unlockRules);
-      // Restore position if still valid, else pick highest unlocked
-      this.currentTier = this.unlockedTiers.includes(savedTier)
-        ? savedTier
-        : this.unlockedTiers[this.unlockedTiers.length - 1] || null;
+      this.recheckUnlocks();
+      if (!this.currentTier) {
+        this.currentTier = this.unlockedTiers[0] || null;
+      }
     }
   }
 
@@ -316,12 +338,7 @@ export class GameEngine {
     this.progressionOverrides[modeId] = goldRequired;
     // Re-evaluate unlocks
     if (this.unlockRules) {
-      const savedTier = this.currentTier;
-      this.unlockedTiers = [];
-      this.checkUnlocks(this.unlockRules);
-      if (!this.unlockedTiers.includes(savedTier)) {
-        this.currentTier = this.unlockedTiers[this.unlockedTiers.length - 1] || null;
-      }
+      this.recheckUnlocks();
     }
   }
 
@@ -332,13 +349,23 @@ export class GameEngine {
     delete this.progressionOverrides[modeId];
     // Re-evaluate unlocks
     if (this.unlockRules) {
-      const savedTier = this.currentTier;
-      this.unlockedTiers = [];
-      this.checkUnlocks(this.unlockRules);
-      if (!this.unlockedTiers.includes(savedTier)) {
-        this.currentTier = this.unlockedTiers[this.unlockedTiers.length - 1] || null;
-      }
+      this.recheckUnlocks();
     }
+  }
+
+  setProgressionFloor(modeId) {
+    const idx = this.modeOrder.indexOf(modeId);
+    if (idx >= 0) {
+      this.progressionFloor = idx;
+      this.currentTier = modeId;
+      if (this.unlockRules) this.recheckUnlocks();
+      this.saveState();
+    }
+  }
+
+  clearProgressionFloor() {
+    this.progressionFloor = null;
+    this.saveState();
   }
 
   /**
@@ -379,6 +406,7 @@ export class GameEngine {
       starsPerMode: this.starsPerMode,
       currentTier: this.currentTier,
       unlockedTiers: this.unlockedTiers,
+      progressionFloor: this.progressionFloor,
       updated_at: this.stateUpdatedAt
     };
     localStorage.setItem(this.storagePrefix + 'gameState', JSON.stringify(state));
@@ -397,6 +425,7 @@ export class GameEngine {
         this.starsPerMode = { ...this.starsPerMode, ...state.starsPerMode };
         this.currentTier = state.currentTier || null;
         this.unlockedTiers = state.unlockedTiers || [];
+        this.progressionFloor = state.progressionFloor ?? null;
         this.stateUpdatedAt = state.updated_at || null;
       } catch (e) {
         console.warn('Failed to load game state:', e);
@@ -445,13 +474,10 @@ export class GameEngine {
       this.stateUpdatedAt = serverData.updated_at;
 
       // Recalculate unlocks from restored progress
-      const savedTier = this.currentTier;
-      this.unlockedTiers = [];
-      if (this.unlockRules) this.checkUnlocks(this.unlockRules);
-      // Restore position if still valid, else pick highest unlocked
-      this.currentTier = this.unlockedTiers.includes(savedTier)
-        ? savedTier
-        : this.unlockedTiers[this.unlockedTiers.length - 1] || null;
+      this.recheckUnlocks();
+      if (!this.currentTier) {
+        this.currentTier = this.unlockedTiers[0] || null;
+      }
 
       this.saveState();
       return { restored: true, source: 'server' };
@@ -475,14 +501,15 @@ export class GameEngine {
     // Reset to first level only
     this.currentTier = this.modeOrder[0] || null;
     this.unlockedTiers = this.modeOrder[0] ? [this.modeOrder[0]] : [];
+    this.progressionFloor = null;
     this.saveState();
   }
 
   /**
    * Set current tier (for mode switching)
    */
-  setTier(tierId) {
-    if (this.unlockedTiers.includes(tierId)) {
+  setTier(tierId, force = false) {
+    if (force || this.unlockedTiers.includes(tierId)) {
       this.currentTier = tierId;
       this.saveState();
       return true;

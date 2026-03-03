@@ -237,7 +237,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: 'index.html',
-        app: 'platform/app.html'
+        app: 'platform/app.html',
+        mathViz: 'standalone/math-viz/index.html'
       }
     }
   },

@@ -1,4 +1,4 @@
-You are grading an AP Statistics student's response about sampling distributions, normal probability, the Central Limit Theorem, and randomization distributions (Unit 5, Topics 5.1-5.3).
+You are grading an AP Statistics student's response about sampling distributions, normal probability, the Central Limit Theorem, randomization distributions, biased/unbiased point estimates, sampling distributions for sample proportions, differences in sample proportions, and sampling distributions for sample means (Unit 5, Topics 5.1-5.7).
 
 SCENARIO: {{scenarioText}}
 GIVEN: {{givenText}}
@@ -57,6 +57,119 @@ KEY CONCEPTS BY TOPIC:
 - Small p-value (typically < 0.05) → observed result unlikely by chance → convincing evidence of treatment effect
 - Large p-value → observed result could plausibly happen by chance → not convincing evidence
 - Key difference from sampling distribution: randomization reshuffles existing experimental data; sampling distribution draws new samples from a population
+
+5.4 Biased and Unbiased Point Estimates:
+- A POINT ESTIMATOR is a sample statistic (e.g., x̄, p̂, s) used to estimate a population parameter
+- A POINT ESTIMATE is the specific numerical value of the estimator from one sample
+- The population value being estimated is the PARAMETER (e.g., μ, p, σ)
+- An estimator is UNBIASED if, on average, the value of the estimator equals the population parameter
+- Formally: an estimator is unbiased if the mean of its sampling distribution = the population parameter
+- An estimator is BIASED if the mean of its sampling distribution ≠ the population parameter
+- Key examples:
+  - Sample mean (x̄) is ALWAYS an unbiased estimator of μ
+  - Sample proportion (p̂) is an unbiased estimator of p
+  - Sample range is BIASED — it systematically underestimates the population range (samples can't extend beyond population extremes)
+  - Sample maximum is BIASED — it underestimates the population maximum
+  - Sample minimum is BIASED — it overestimates the population minimum
+  - Sample variance with n denominator is BIASED — underestimates σ² (this is why we use n-1)
+- Common misconception: a single sample statistic not equaling the parameter does NOT indicate bias — that's just sampling variability
+- Estimators exhibit variability that can be modeled using probability
+- To assess bias: examine ALL possible samples (or simulate many), compute the statistic for each, then check if the mean equals the parameter
+
+5.5 Sampling Distributions for Sample Proportions:
+- The sampling distribution of p̂ describes the distribution of sample proportions from all possible samples of size n
+- Parameters: μ_p̂ = p (the population proportion), σ_p̂ = √(p(1−p)/n)
+- 10% condition: n must be less than 10% of the population N for the SD formula to apply (ensures approximate independence)
+- Large Counts condition: np ≥ 10 AND n(1−p) ≥ 10 → sampling distribution is approximately normal
+  - BOTH conditions must be checked — failing either one means the condition is NOT met
+  - Proportions near 0 or 1 require larger sample sizes to meet this condition
+- Interpreting μ_p̂: must reference "all possible samples of size n" — e.g., "across all possible samples of 80 students, the average sample proportion equals the true population proportion"
+- Interpreting σ_p̂: must include "typically" or "on average" — e.g., "the sample proportion typically varies by about 0.04 from the true proportion"
+  - Common error: saying p̂ is "always" within σ_p̂ of p (wrong — it's typical, not guaranteed)
+  - Common error: confusing σ_p̂ with a percentage of the population
+- Probability calculations: z = (p̂ − p) / σ_p̂, then use normal distribution (normalcdf or z-table)
+  - Check direction: P(p̂ > value) = 1 − P(Z < z); P(p̂ < value) = P(Z < z)
+  - Common complement error: using the wrong tail
+- Common student errors:
+  - Using p̂ (sample proportion) instead of p (population proportion) in the SD formula
+  - Forgetting the square root in σ_p̂ = √(p(1−p)/n)
+  - Forgetting to divide by n under the radical
+  - Confusing the σ/√n formula (for means) with the √(p(1−p)/n) formula (for proportions)
+  - Thinking one sample not matching p indicates the estimator is biased (that's just sampling variability)
+
+5.6 Sampling Distributions for Differences in Sample Proportions:
+- The sampling distribution of p̂₁ − p̂₂ describes the distribution of differences in sample proportions from all possible pairs of samples
+- Parameters: μ_{p̂₁−p̂₂} = p₁ − p₂, σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂)
+- 10% condition: BOTH n₁ < 10% of N₁ AND n₂ < 10% of N₂
+- Large Counts condition: ALL FOUR must be ≥ 10: n₁p₁ ≥ 10, n₁(1−p₁) ≥ 10, n₂p₂ ≥ 10, n₂(1−p₂) ≥ 10
+  - This is an extension of the single-proportion case (2 checks → 4 checks)
+  - Failing even ONE of the four means the condition is NOT met
+- Interpreting μ_{p̂₁−p̂₂}: must reference "all possible pairs of samples" — e.g., "across all possible pairs of samples of sizes n₁ and n₂, the average difference in sample proportions equals the true difference p₁ − p₂"
+- Interpreting σ_{p̂₁−p̂₂}: must include "typically" — e.g., "the difference in sample proportions typically varies by about σ from the true difference"
+- Probability calculations: z = (observed difference − (p₁ − p₂)) / σ_{p̂₁−p̂₂}, then use normal distribution
+- Key principle: variances ADD even though we're computing a DIFFERENCE (same variance trap as linear combinations in 5.2)
+- Interpreting probabilities for p̂₁ − p̂₂:
+  - A good interpretation MUST reference "all possible samples of size n₁ from [population 1] and size n₂ from [population 2]"
+  - Must include the probability or percentage value
+  - Must be in context with specific populations and group names (not generic)
+  - Must describe the observed difference and direction (greater/less than)
+  - "Unusual" convention: probability < 5% (0.05) = unusual; probability ≥ 5% = not unusual
+  - This is one of the most important reasons we study sampling distributions — to determine whether observed differences are surprising
+  - Common errors: not referencing "all possible samples," confusing a sample result with a population claim, using absolute language ("always," "exactly," "every sample"), omitting the probability value
+- Common student errors:
+  - Adding STANDARD DEVIATIONS instead of VARIANCES: √(p₁(1−p₁)/n₁) + √(p₂(1−p₂)/n₂) is WRONG
+  - Using only one population's variance and forgetting the other
+  - Forgetting the square root after adding variances
+  - Reversing the subtraction order (p₂ − p₁ instead of p₁ − p₂)
+  - Forgetting to subtract μ_{p̂₁−p̂₂} when computing the z-score
+  - Checking only 2 of the 4 Large Counts conditions
+  - Saying the difference is "always" within σ of the true difference (should say "typically")
+
+5.7 Sampling Distributions for Sample Means:
+- The sampling distribution of x̄ describes the distribution of sample means from all possible samples of size n
+- Parameters: μ_x̄ = μ (the population mean), σ_x̄ = σ/√n (the standard error of the mean)
+- 10% condition: n must be less than 10% of the population N for the σ_x̄ formula to apply (ensures approximate independence)
+- Shape conditions (two paths to normality):
+  - If the population is normal → sampling distribution of x̄ is normal for ANY n (even n = 1)
+  - If the population is non-normal → need n ≥ 30 for the CLT to apply (sampling distribution is approximately normal)
+- Interpreting μ_x̄: must reference "all possible samples of size n" — e.g., "across all possible samples of 30 batteries, the average of all sample mean lifetimes equals the population mean of 500 hours"
+- Interpreting σ_x̄: must include "typically" or "on average" and include units — e.g., "the sample mean lifetime typically varies by about 6.3 hours from the true mean of 500 hours"
+  - Common error: saying x̄ is "always" within σ_x̄ of μ (wrong — it's typical, not guaranteed)
+  - Common error: confusing σ_x̄ with σ (individual variability vs. sampling variability)
+- Probability calculations: z = (x̄ − μ) / σ_x̄ = (x̄ − μ) / (σ/√n), then use normal distribution
+  - Check direction: P(x̄ > value) = 1 − P(Z < z); P(x̄ < value) = P(Z < z)
+  - Common complement error: using the wrong tail
+- Key insight: σ_x̄ = σ/√n is ALWAYS smaller than σ because √n > 1. This means averages are LESS variable than individual values — extreme values cancel out when averaged
+- Common student errors:
+  - Using σ instead of σ/√n in the z-score formula (treating x̄ like an individual value)
+  - Dividing by n instead of √n: σ_x̄ = σ/√n, NOT σ/n
+  - Giving the variance σ²/n instead of the standard deviation σ/√n (forgot square root)
+  - Confusing the σ/√n formula (for means) with the √(p(1−p)/n) formula (for proportions)
+  - Claiming the CLT applies for any n regardless of population shape (only true when population IS normal)
+  - Saying n ≥ 30 is always needed (not true when population is already normal)
+  - Forgetting to check the 10% condition before using σ_x̄ = σ/√n
+
+## Topic 5.8: Sampling Distributions for Differences in Sample Means
+- The sampling distribution of x̄₁ − x̄₂ describes differences in sample means from all possible pairs of samples
+- Parameters: μ_{x̄₁−x̄₂} = μ₁ − μ₂, σ_{x̄₁−x̄₂} = √(σ₁²/n₁ + σ₂²/n₂)
+- z-score: z = (observed difference − μ_{x̄₁−x̄₂}) / σ_{x̄₁−x̄₂}
+- Conditions:
+  - 10% condition for BOTH samples
+  - Samples must be independent
+  - Shape is approximately normal when BOTH populations are normal, OR BOTH n₁ ≥ 30 AND n₂ ≥ 30
+- Common student errors:
+  - Adding/subtracting standard deviations directly instead of using √(σ₁²/n₁ + σ₂²/n₂)
+  - Adding means instead of subtracting (μ₁ + μ₂ instead of μ₁ − μ₂)
+  - Forgetting to divide each σ² by n
+  - Checking only ONE population normality or only ONE sample size threshold
+  - Using n₁ + n₂ ≥ 30 instead of requiring BOTH n₁ ≥ 30 and n₂ ≥ 30
+  - Not specifying subtraction order (which group minus which)
+- Interpretation requirements:
+  - Reference specific populations and sample sizes from context
+  - Include units
+  - Use all-possible-samples framing (size n₁ from pop 1 AND size n₂ from pop 2)
+  - For σ_{x̄₁−x̄₂}, use "typically" or "on average"
+  - For probability, include % or decimal and classify unusual/not unusual using 5% threshold
 
 GRADING INSTRUCTIONS:
 1. Compare the student's answer to the expected answer

@@ -265,6 +265,83 @@ describe('GameEngine restoreFromServer', () => {
       expect(engine.unlockedTiers).toContain('l02');
       expect(engine.unlockedTiers).toContain('l03');
     });
+
+    it('preserves currentTier when restored unlocks still include it', async () => {
+      const manifest = {
+        meta: { id: 'test-cartridge', name: 'Test' },
+        modes: [
+          { id: 'l01', unlockedBy: 'default' },
+          { id: 'l02', unlockedBy: { gold: 2 } }
+        ]
+      };
+      engine.loadCartridge(manifest);
+
+      // Simulate local position on l02 before restore
+      engine.starsPerMode['l01'] = { gold: 2, silver: 0, bronze: 0, tin: 0 };
+      engine.unlockedTiers = [];
+      engine.checkUnlocks(engine.unlockRules);
+      engine.currentTier = 'l02';
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          found: true,
+          data: {
+            gold_stars: 2,
+            silver_stars: 0,
+            bronze_stars: 0,
+            tin_stars: 0,
+            mode_progress: {
+              'l01': { gold: 2, silver: 0, bronze: 0, tin: 0 }
+            },
+            updated_at: new Date(Date.now() + 1000).toISOString()
+          }
+        })
+      });
+
+      await engine.restoreFromServer('http://localhost', 'testuser');
+
+      expect(engine.unlockedTiers).toContain('l02');
+      expect(engine.currentTier).toBe('l02');
+    });
+
+    it('does not re-emit unlock events for already unlocked tiers during restore', async () => {
+      const manifest = {
+        meta: { id: 'test-cartridge', name: 'Test' },
+        modes: [
+          { id: 'l01', unlockedBy: 'default' },
+          { id: 'l02', unlockedBy: { gold: 2 } }
+        ]
+      };
+      engine.loadCartridge(manifest);
+
+      engine.starsPerMode['l01'] = { gold: 2, silver: 0, bronze: 0, tin: 0 };
+      engine.unlockedTiers = [];
+      engine.checkUnlocks(engine.unlockRules);
+      expect(engine.unlockedTiers).toContain('l02');
+      const callsBeforeRestore = engine.onTierUnlocked.mock.calls.length;
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          found: true,
+          data: {
+            gold_stars: 2,
+            silver_stars: 0,
+            bronze_stars: 0,
+            tin_stars: 0,
+            mode_progress: {
+              'l01': { gold: 2, silver: 0, bronze: 0, tin: 0 }
+            },
+            updated_at: new Date(Date.now() + 1000).toISOString()
+          }
+        })
+      });
+
+      await engine.restoreFromServer('http://localhost', 'testuser');
+
+      expect(engine.onTierUnlocked.mock.calls.length).toBe(callsBeforeRestore);
+    });
   });
 
   describe('Network error handling', () => {

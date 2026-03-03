@@ -328,7 +328,7 @@
         <p id="scenario-text" class="text-sm text-gray-600 mb-3"></p>
 
         <!-- Info Panel -->
-        <div id="info-panel" class="flex flex-wrap gap-2 text-sm"></div>
+        <div id="info-panel" class="flex flex-wrap gap-2 text-sm overflow-hidden break-words"></div>
       </div>
 
       <!-- Animation Panel - shows concept videos alongside problems -->
@@ -4121,6 +4121,7 @@
       }
       const mode = pendingLockedLevel.targetMode;
       closeLockedLevelModal();
+      platform.gameEngine.setProgressionFloor(mode.id);
       platform.setMode(mode.id, true); // force=true to bypass lock
       renderModeTabs();
       await platform.loadProblem();
@@ -4294,6 +4295,7 @@
           btn.addEventListener('click', async () => {
             // Teachers can force access to locked modes
             const forceAccess = teacherBypass;
+            platform.gameEngine.clearProgressionFloor();
             if (!platform.setMode(mode.id, forceAccess)) return;
             closeLevelModal(); // Close modal after selection
             renderModeTabs(); // Update active state
@@ -4337,6 +4339,12 @@
       const tier = e.detail;
       console.log('[App] Tier unlocked:', tier.id, tier.name);
 
+      const currentModeId = platform?.currentMode;
+      const modeOrder = platform?.gameEngine?.modeOrder || [];
+      const currentIndex = modeOrder.indexOf(currentModeId);
+      const unlockedIndex = modeOrder.indexOf(tier.id);
+      const isNextMode = currentIndex >= 0 && unlockedIndex === currentIndex + 1;
+
       // Track if user clicked the toast to go to new level
       let userNavigated = false;
 
@@ -4365,6 +4373,11 @@
       // Auto-advance to the newly unlocked level after a short delay
       // BUT: Don't auto-advance if user is viewing feedback (Next button visible)
       // The correct-answer flow's 10-second timer will handle auto-advance in that case
+      if (!isNextMode) {
+        console.log('[App] Skipping tier unlock auto-advance - unlocked tier is not next in sequence');
+        return;
+      }
+
       setTimeout(async () => {
         if (userNavigated) {
           console.log('[App] Skipping tier unlock auto-advance - user already clicked toast');
@@ -4789,6 +4802,7 @@
             if (isTeacher || studentUnlocked) {
               console.log(`[App] Jumping to URL-requested level: ${targetMode.id}`);
               platform.setMode(targetMode.id, isTeacher && !studentUnlocked);
+              platform.gameEngine.setProgressionFloor(targetMode.id);
               renderModeTabs();
             } else {
               // Student accessing locked level - show modal with choice
@@ -5537,6 +5551,9 @@
         'ident': 'a2t3l3',
         'binomial': 'a2t3l3',
         'pascal': 'a2t3l3',
+        'q33': 'a2t3l3-quiz',
+        'quiz33': 'a2t3l3-quiz',
+        'cubequiz': 'a2t3l3-quiz',
         'samp': 'sampling',
         'dat': 'sampling',
         'mit': 'mit-6-0001-lec1',

@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u5-sampling-dist",
-    "name": "Sampling Distributions (5.1-5.3)",
+    "name": "Sampling Distributions (5.1-5.8)",
     "subject": "AP Statistics",
-    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations, Central Limit Theorem, randomization distributions"
+    "description": "Sampling variability, normal distribution revisited, z-scores, inverse normal, assessing normality, linear combinations, Central Limit Theorem, randomization distributions, biased and unbiased point estimates, sampling distributions for sample proportions, sampling distributions for differences in sample proportions, sampling distributions for sample means, sampling distributions for differences in sample means"
   },
   "config": {
     "contextsFile": null,
@@ -12,7 +12,20 @@
       "VAR-6.A",
       "VAR-6.B",
       "VAR-6.C",
-      "UNC-3.H"
+      "UNC-3.H",
+      "UNC-3.I",
+      "UNC-3.J",
+      "UNC-3.K",
+      "UNC-3.L",
+      "UNC-3.M",
+      "UNC-3.N",
+      "UNC-3.O",
+      "UNC-3.P",
+      "UNC-3.Q",
+      "UNC-3.R",
+      "UNC-3.T",
+      "UNC-3.U",
+      "UNC-3.V"
     ]
   },
   "display": {
@@ -322,7 +335,7 @@
           {
             "id": "cltNormalChoice",
             "type": "choice",
-            "label": "Is the sampling distribution of x\u0304 approximately normal?",
+            "label": "Is the sampling distribution of x̄ approximately normal?",
             "options": [
               "Yes, approximately normal",
               "No, NOT approximately normal"
@@ -384,8 +397,8 @@
             "type": "choice",
             "label": "What do you conclude?",
             "options": [
-              "Convincing evidence \u2014 the observed result is unlikely due to chance alone",
-              "Not convincing evidence \u2014 the observed result could plausibly happen by chance"
+              "Convincing evidence — the observed result is unlikely due to chance alone",
+              "Not convincing evidence — the observed result could plausibly happen by chance"
             ]
           }
         ]
@@ -421,6 +434,707 @@
           }
         ]
       }
+    },
+    {
+      "id": "l16-point-estimate-terminology",
+      "name": "5.4a: Point Estimates",
+      "animation": "assets/PointEstimateTerminology.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "ptEstTermAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l17-estimator-bias-concept",
+      "name": "5.4b: Bias Concepts",
+      "animation": "assets/EstimatorBiasConcept.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "biasConceptAnswer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l18-identify-bias",
+      "name": "5.4c: Identify Bias",
+      "animation": "assets/BiasedUnbiasedComparison.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "biasChoice",
+            "type": "choice",
+            "label": "Is this estimator unbiased?",
+            "options": [
+              "Unbiased — the mean of the sampling distribution equals the parameter",
+              "Biased — the mean of the sampling distribution does NOT equal the parameter"
+            ]
+          },
+          {
+            "id": "biasExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Compare the mean of the sampling distribution to the population parameter..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l19-capstone-54",
+      "name": "5.4 Capstone",
+      "animation": "assets/PointEstimateCapstone.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone54Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone54Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Show your work and explain..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l20-prop-dist-params",
+      "name": "5.5a: p̂ Distribution Parameters",
+      "animation": "assets/SamplingPropFormulas.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "propMean",
+            "type": "number",
+            "label": "Mean of the sampling distribution of p̂ (μ_p̂):",
+            "step": 0.001
+          },
+          {
+            "id": "propSD",
+            "type": "number",
+            "label": "Standard deviation of the sampling distribution of p̂ (σ_p̂):",
+            "min": 0,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l21-large-counts",
+      "name": "5.5b: Large Counts Condition",
+      "animation": "assets/LargeCountsCondition.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "largeCountsChoice",
+            "type": "choice",
+            "label": "Is the sampling distribution of p̂ approximately normal?",
+            "options": [
+              "Yes — Large Counts condition is met (np ≥ 10 AND n(1−p) ≥ 10)",
+              "No — Large Counts condition is NOT met"
+            ]
+          },
+          {
+            "id": "largeCountsExplain",
+            "type": "textarea",
+            "label": "Show your work: calculate np and n(1−p) and explain.",
+            "rows": 3,
+            "placeholder": "np = ... and n(1−p) = ..., so..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l22-interpret-params",
+      "name": "5.5c: Interpret p̂ Parameters",
+      "animation": "assets/InterpretStdDevProp.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "interpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l23-prop-probability",
+      "name": "5.5d: p̂ Probability",
+      "animation": "assets/ProportionProbability.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "propZScore",
+            "type": "number",
+            "label": "Z-score:",
+            "step": 0.01
+          },
+          {
+            "id": "propProb",
+            "type": "number",
+            "label": "Probability (as decimal, e.g., 0.0384):",
+            "min": 0,
+            "max": 1,
+            "step": 0.0001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l24-capstone-55",
+      "name": "5.5 Capstone",
+      "animation": "assets/CapstoneMap.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone55Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone55Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Show your work and explain..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l25-diff-prop-params",
+      "name": "5.6a: p̂₁−p̂₂ Parameters",
+      "animation": "assets/DiffPropFormulas.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffPropMean",
+            "type": "number",
+            "label": "Mean of the sampling distribution of p̂₁ − p̂₂ (μ_{p̂₁−p̂₂}):",
+            "step": 0.001
+          },
+          {
+            "id": "diffPropSD",
+            "type": "number",
+            "label": "Standard deviation of p̂₁ − p̂₂ (σ_{p̂₁−p̂₂}):",
+            "min": 0,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l26-diff-prop-large-counts",
+      "name": "5.6b: Large Counts (Two Props)",
+      "animation": "assets/DiffPropLargeCounts.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffLargeCountsChoice",
+            "type": "choice",
+            "label": "Is the sampling distribution of p̂₁ − p̂₂ approximately normal?",
+            "options": [
+              "Yes — all four Large Counts conditions are met",
+              "No — at least one Large Counts condition is NOT met"
+            ]
+          },
+          {
+            "id": "diffLargeCountsExplain",
+            "type": "textarea",
+            "label": "Show your work: calculate all four values and explain.",
+            "rows": 3,
+            "placeholder": "n₁p₁ = ..., n₁(1−p₁) = ..., n₂p₂ = ..., n₂(1−p₂) = ..., so..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l27-diff-prop-interpret",
+      "name": "5.6c: Interpret p̂₁−p̂₂",
+      "animation": "assets/DiffPropInterpret.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffInterpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l28-diff-prop-probability",
+      "name": "5.6d: p̂₁−p̂₂ Probability",
+      "animation": "assets/DiffPropProbability.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffPropZScore",
+            "type": "number",
+            "label": "Z-score:",
+            "step": 0.01
+          },
+          {
+            "id": "diffPropProb",
+            "type": "number",
+            "label": "Probability (as decimal, e.g., 0.0384):",
+            "min": 0,
+            "max": 1,
+            "step": 0.0001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l30-diff-prop-interpret-prob",
+      "name": "5.6e: Interpret p̂₁−p̂₂ Probability",
+      "animation": "assets/DiffPropInterpretProb.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffInterpretProbText",
+            "type": "textarea",
+            "label": "Interpret this probability in context (reference 'all possible samples'):",
+            "rows": 4,
+            "placeholder": "Getting a difference in sample proportions of ... or [more/less] happens in about ...% of all possible samples of size ... from ... and size ... from ..."
+          },
+          {
+            "id": "diffUnusualChoice",
+            "type": "dropdown",
+            "label": "Is this result unusual?",
+            "options": [
+              "Unusual — probability is less than 5%",
+              "Not unusual — probability is 5% or more"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l29-capstone-56",
+      "name": "5.6 Capstone",
+      "animation": "assets/DiffPropCapstone.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone56Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone56Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Show your work and explain..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l31-mean-dist-params",
+      "name": "5.7a: x̄ Distribution Parameters",
+      "animation": "assets/SampleMeanFormulas.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meanMu",
+            "type": "number",
+            "label": "Mean of the sampling distribution of x̄ (μ_x̄):",
+            "step": 0.01
+          },
+          {
+            "id": "meanSigma",
+            "type": "number",
+            "label": "Standard deviation of the sampling distribution of x̄ (σ_x̄):",
+            "min": 0,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l32-mean-shape",
+      "name": "5.7b: Shape of x̄ Distribution",
+      "animation": "assets/MeanShapeCLT.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meanShapeChoice",
+            "type": "choice",
+            "label": "Is the sampling distribution of x̄ approximately normal?",
+            "options": [
+              "Yes, approximately normal",
+              "No, NOT approximately normal"
+            ]
+          },
+          {
+            "id": "meanShapeExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Reference the population shape, sample size, and CLT conditions..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l33-interpret-mean-params",
+      "name": "5.7c: Interpret x̄ Parameters",
+      "animation": "assets/InterpretMeanParams.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meanInterpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l34-mean-probability",
+      "name": "5.7d: x̄ Probability",
+      "animation": "assets/MeanProbability.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meanZScore",
+            "type": "number",
+            "label": "Z-score:",
+            "step": 0.01
+          },
+          {
+            "id": "meanProb",
+            "type": "number",
+            "label": "Probability (as decimal, e.g., 0.0384):",
+            "min": 0,
+            "max": 1,
+            "step": 0.0001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l35-capstone-57",
+      "name": "5.7 Capstone",
+      "animation": "assets/MeanCapstone.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone57Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone57Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Show your work and explain..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l36-diff-mean-params",
+      "name": "5.8a: x̄₁−x̄₂ Parameters",
+      "animation": "assets/DiffMeanFormulas.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeanMu",
+            "type": "number",
+            "label": "Mean of the sampling distribution of x̄₁ − x̄₂ (μ_{x̄₁−x̄₂}):",
+            "step": 0.01
+          },
+          {
+            "id": "diffMeanSD",
+            "type": "number",
+            "label": "Standard deviation of x̄₁ − x̄₂ (σ_{x̄₁−x̄₂}):",
+            "min": 0,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l37-diff-mean-shape",
+      "name": "5.8b: Shape of x̄₁−x̄₂",
+      "animation": "assets/DiffMeanShape.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeanShapeChoice",
+            "type": "choice",
+            "label": "Is the sampling distribution of x̄₁ − x̄₂ approximately normal?",
+            "options": [
+              "Yes, approximately normal",
+              "No, NOT approximately normal"
+            ]
+          },
+          {
+            "id": "diffMeanShapeExplain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Reference both population shapes, both sample sizes, and CLT conditions..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l38-diff-mean-interpret",
+      "name": "5.8c: Interpret x̄₁−x̄₂",
+      "animation": "assets/DiffMeanInterpret.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeanInterpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l39-diff-mean-probability",
+      "name": "5.8d: x̄₁−x̄₂ Probability",
+      "animation": "assets/DiffMeanProbability.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeanZScore",
+            "type": "number",
+            "label": "Z-score:",
+            "step": 0.01
+          },
+          {
+            "id": "diffMeanProb",
+            "type": "number",
+            "label": "Probability (as decimal, e.g., 0.2206):",
+            "min": 0,
+            "max": 1,
+            "step": 0.0001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l40-diff-mean-interpret-prob",
+      "name": "5.8e: Interpret Probability",
+      "animation": "assets/DiffMeanInterpretProb.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeanInterpretProbText",
+            "type": "textarea",
+            "label": "Interpret this probability in context (reference 'all possible samples'):",
+            "rows": 4,
+            "placeholder": "Getting a difference in sample means of ... or [more/less] happens in about ...% of all possible samples of size ... from ... and size ... from ..."
+          },
+          {
+            "id": "diffMeanUnusualChoice",
+            "type": "dropdown",
+            "label": "Is this result unusual?",
+            "options": [
+              "Unusual — probability is less than 5%",
+              "Not unusual — probability is 5% or more"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l41-capstone-58",
+      "name": "5.8 Capstone",
+      "animation": "assets/DiffMeanCapstone.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "capstone58Answer",
+            "type": "dropdown",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "capstone58Explain",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Show your work and explain..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -443,29 +1157,75 @@
     "perField": {
       "sampleVarAnswer": "Different random samples from the same population naturally produce different statistics. This is called SAMPLING VARIABILITY. A single sample statistic is like a roll of the dice - unpredictable individually, but predictable in the long run.",
       "sampDistAnswer": "A SAMPLING DISTRIBUTION shows the distribution of a statistic from ALL possible samples of a given size. Individual statistics vary, but the pattern of variation is predictable and centered around the true population parameter.",
-      "zScoreAnswer": "Z-score formula: z = (x - \u03bc) / \u03c3. It tells you how many standard deviations a value is from the mean. Positive z = above mean, negative z = below mean.",
-      "zScore": "Z-score formula: z = (x - \u03bc) / \u03c3. Calculate this first, then use a z-table or normalcdf to find the probability.",
+      "zScoreAnswer": "Z-score formula: z = (x - μ) / σ. It tells you how many standard deviations a value is from the mean. Positive z = above mean, negative z = below mean.",
+      "zScore": "Z-score formula: z = (x - μ) / σ. Calculate this first, then use a z-table or normalcdf to find the probability.",
       "probability": "After finding the z-score, use Table A or normalcdf. For P(X > value): find 1 - P(Z < z). For P(X < value): use P(Z < z) directly.",
-      "invZScore": "For inverse normal: find the z-score that corresponds to the given area using invNorm or Table A. Bottom 25% \u2192 z = -0.67. Top 10% \u2192 z = 1.28.",
-      "cutoffValue": "Once you have the z-score, use algebra: x = \u03bc + z\u00b7\u03c3. Plug in the z-score, mean, and standard deviation to find the cutoff value.",
-      "missingElement": "AP exam solutions need: (1) Define the random variable, (2) Show it's normal (sketch or z-formula), (3) Identify parameters (\u03bc and \u03c3), (4) Show the value of interest with direction, (5) Correct probability answer.",
+      "invZScore": "For inverse normal: find the z-score that corresponds to the given area using invNorm or Table A. Bottom 25% → z = -0.67. Top 10% → z = 1.28.",
+      "cutoffValue": "Once you have the z-score, use algebra: x = μ + z·σ. Plug in the z-score, mean, and standard deviation to find the cutoff value.",
+      "missingElement": "AP exam solutions need: (1) Define the random variable, (2) Show it's normal (sketch or z-formula), (3) Identify parameters (μ and σ), (4) Show the value of interest with direction, (5) Correct probability answer.",
       "normalChoice": "Check: Is the distribution unimodal, roughly symmetric, and bell-shaped? Does the 68-95-99.7 rule apply? For binomial: is n large enough that the histogram looks bell-shaped?",
       "normalExplain": "Mention specific characteristics: unimodal, roughly symmetric, bell-shaped. If checking empirical rule: ~68% within 1 SD, ~95% within 2 SD, ~99.7% within 3 SD.",
-      "combMean": "For the mean of X \u00b1 Y: just add or subtract the means! \u03bc(X-Y) = \u03bcX - \u03bcY or \u03bc(X+Y) = \u03bcX + \u03bcY.",
-      "combSD": "\u26a0\ufe0f VARIANCE TRAP: Don't add/subtract SDs directly! Add VARIANCES, then square root. \u03c3(X\u00b1Y) = \u221a(\u03c3X\u00b2 + \u03c3Y\u00b2). Variances ALWAYS add, even for differences!",
-      "combMean2": "For the mean of X \u00b1 Y: just add or subtract the means! \u03bc(X-Y) = \u03bcX - \u03bcY or \u03bc(X+Y) = \u03bcX + \u03bcY.",
-      "combSD2": "\u26a0\ufe0f VARIANCE TRAP: Don't add/subtract SDs directly! Add VARIANCES, then square root. \u03c3(X\u00b1Y) = \u221a(\u03c3X\u00b2 + \u03c3Y\u00b2). Variances ALWAYS add, even for differences!",
-      "combProb": "Once you have \u03bc and \u03c3 for the difference/sum, use the z-score formula with those parameters: z = (value - \u03bc_diff) / \u03c3_diff, then find the probability.",
+      "combMean": "For the mean of X ± Y: just add or subtract the means! μ(X-Y) = μX - μY or μ(X+Y) = μX + μY.",
+      "combSD": "⚠️ VARIANCE TRAP: Don't add/subtract SDs directly! Add VARIANCES, then square root. σ(X±Y) = √(σX² + σY²). Variances ALWAYS add, even for differences!",
+      "combMean2": "For the mean of X ± Y: just add or subtract the means! μ(X-Y) = μX - μY or μ(X+Y) = μX + μY.",
+      "combSD2": "⚠️ VARIANCE TRAP: Don't add/subtract SDs directly! Add VARIANCES, then square root. σ(X±Y) = √(σX² + σY²). Variances ALWAYS add, even for differences!",
+      "combProb": "Once you have μ and σ for the difference/sum, use the z-score formula with those parameters: z = (value - μ_diff) / σ_diff, then find the probability.",
       "capstoneAnswer": "This question combines multiple concepts from 5.1-5.2. Review: sampling variability, normal probability, inverse normal, assessing normality, and linear combinations.",
       "capstoneExplain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context.",
-      "cltConceptAnswer": "The Central Limit Theorem says that for LARGE ENOUGH samples, the sampling distribution of x\u0304 is approximately normal, REGARDLESS of the population shape. Key conditions: independent observations and sufficiently large n.",
-      "cltNormalChoice": "Ask yourself: (1) Is the population normal? If yes \u2192 sampling dist is normal for ANY n. (2) If not normal, is n \u2265 30? If yes \u2192 CLT says sampling dist is approximately normal.",
-      "cltNormalExplain": "Reference the CLT conditions: population shape and sample size. If population is normal \u2192 any n works. If population is non-normal \u2192 need n \u2265 30 (or larger for extreme shapes).",
+      "cltConceptAnswer": "The Central Limit Theorem says that for LARGE ENOUGH samples, the sampling distribution of x̄ is approximately normal, REGARDLESS of the population shape. Key conditions: independent observations and sufficiently large n.",
+      "cltNormalChoice": "Ask yourself: (1) Is the population normal? If yes → sampling dist is normal for ANY n. (2) If not normal, is n ≥ 30? If yes → CLT says sampling dist is approximately normal.",
+      "cltNormalExplain": "Reference the CLT conditions: population shape and sample size. If population is normal → any n works. If population is non-normal → need n ≥ 30 (or larger for extreme shapes).",
       "randDistAnswer": "A randomization distribution simulates what would happen BY CHANCE ALONE. We keep the same data values but randomly reassign them to treatment groups, then calculate the statistic each time.",
       "pValueCalc": "The p-value is the proportion of simulated statistics that are as extreme as (or more extreme than) the observed result. P-value = (number of extreme simulations) / (total simulations).",
-      "randConclusion": "If the p-value is small (typically < 0.05), the observed result is unlikely to have happened by chance alone \u2192 convincing evidence of a real effect. If p-value is large \u2192 result could plausibly be due to chance.",
+      "randConclusion": "If the p-value is small (typically < 0.05), the observed result is unlikely to have happened by chance alone → convincing evidence of a real effect. If p-value is large → result could plausibly be due to chance.",
       "capstone53Answer": "This question combines CLT concepts and randomization distributions from Topic 5.3. Review: what the CLT states, when it applies, how randomization distributions work, and how to interpret p-values.",
-      "capstone53Explain": "Show your work: identify the concept, explain the conditions or calculations, and connect your reasoning to the specific scenario."
+      "capstone53Explain": "Show your work: identify the concept, explain the conditions or calculations, and connect your reasoning to the specific scenario.",
+      "ptEstTermAnswer": "A POINT ESTIMATOR is the sample statistic (the method/formula, like x̄ or p̂). A POINT ESTIMATE is the specific numerical value from one sample. The PARAMETER is the true population value being estimated.",
+      "biasConceptAnswer": "An estimator is UNBIASED if, on average (across all possible samples), its value equals the population parameter. Key: x̄ is always unbiased for μ. The sample range is biased (underestimates population range).",
+      "biasChoice": "Compare the mean of the sampling distribution to the population parameter. If they're EQUAL → unbiased. If they're NOT equal → biased. A single sample not matching the parameter does NOT indicate bias.",
+      "biasExplain": "State the mean of the sampling distribution and the population parameter. Compare them. If equal → unbiased (on average, the estimator hits the target). If not equal → biased (systematically over- or underestimates).",
+      "capstone54Answer": "This question combines concepts from Topic 5.4. Review: point estimator vs. point estimate, what makes an estimator biased or unbiased, and estimator variability.",
+      "capstone54Explain": "Show your work: identify whether this involves terminology, bias assessment, or variability. Reference the key definitions and explain your reasoning in context.",
+      "propMean": "The mean of the sampling distribution of p̂ equals the population proportion: μ_p̂ = p. This is because p̂ is an unbiased estimator of p.",
+      "propSD": "The standard deviation of p̂ is σ_p̂ = √(p(1−p)/n). Make sure to use the POPULATION proportion p, not a sample proportion. Also verify the 10% condition: n < 10% of N.",
+      "largeCountsChoice": "Check the Large Counts condition: np ≥ 10 AND n(1−p) ≥ 10. BOTH must be true for the sampling distribution of p̂ to be approximately normal.",
+      "largeCountsExplain": "Calculate np and n(1−p) explicitly. State whether each is ≥ 10. If BOTH are ≥ 10, the Large Counts condition is met and the distribution is approximately normal.",
+      "interpretAnswer": "When interpreting μ_p̂: reference 'all possible samples of size n' and the population context. When interpreting σ_p̂: include 'typically' or 'on average' to describe how far p̂ varies from p.",
+      "propZScore": "For the sampling distribution of p̂: z = (p̂ − p) / σ_p̂ where σ_p̂ = √(p(1−p)/n). Use the POPULATION proportion p, not the sample value.",
+      "propProb": "After finding the z-score, use Table A or normalcdf. For P(p̂ > value): find 1 − P(Z < z). For P(p̂ < value): use P(Z < z) directly.",
+      "capstone55Answer": "This question combines concepts from Topic 5.5. Review: μ_p̂ = p, σ_p̂ = √(p(1−p)/n), 10% condition, Large Counts condition, interpretation in context, and probability calculations.",
+      "capstone55Explain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context. Reference the specific condition or formula that applies.",
+      "diffPropMean": "The mean of the sampling distribution of p̂₁ − p̂₂ equals the difference in population proportions: μ_{p̂₁−p̂₂} = p₁ − p₂.",
+      "diffPropSD": "The standard deviation is σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂). Add the two variance terms, then take the square root. Don't forget to check the 10% condition for BOTH samples.",
+      "diffLargeCountsChoice": "Check ALL FOUR conditions: n₁p₁ ≥ 10, n₁(1−p₁) ≥ 10, n₂p₂ ≥ 10, AND n₂(1−p₂) ≥ 10. ALL four must be ≥ 10 for the normal approximation.",
+      "diffLargeCountsExplain": "Calculate all four values: n₁p₁, n₁(1−p₁), n₂p₂, n₂(1−p₂). State whether each is ≥ 10. If ALL four are ≥ 10, the condition is met.",
+      "diffInterpretAnswer": "When interpreting μ_{p̂₁−p̂₂}: reference 'all possible pairs of samples.' When interpreting σ_{p̂₁−p̂₂}: use 'typically' to describe how far the difference varies from the true difference.",
+      "diffPropZScore": "z = (observed difference − μ_{p̂₁−p̂₂}) / σ_{p̂₁−p̂₂}. Use the population difference p₁ − p₂ for the mean, and √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂) for the SD.",
+      "diffPropProb": "After finding the z-score, use Table A or normalcdf. For P(p̂₁−p̂₂ > value): find 1 − P(Z < z). For P(p̂₁−p̂₂ < value): use P(Z < z) directly.",
+      "diffInterpretProbText": "A good interpretation must: (1) reference 'all possible samples of size n₁ from [population 1] and size n₂ from [population 2]', (2) include the probability or percentage, (3) describe the observed difference and direction, (4) use context-specific language (not generic). Template: 'Getting a difference of ___ or [more/less] happens in about ___% of all possible samples of size ___ from ___ and size ___ from ___.'",
+      "diffUnusualChoice": "Convention: if the probability is less than 5% (0.05), the result IS unusual — it would rarely happen by chance. If the probability is 5% or more, it is NOT unusual.",
+      "capstone56Answer": "This question combines concepts from Topic 5.6. Review: μ_{p̂₁−p̂₂} = p₁ − p₂, σ_{p̂₁−p̂₂} = √(p₁(1−p₁)/n₁ + p₂(1−p₂)/n₂), 10% condition for both, all four Large Counts checks, and probability calculations.",
+      "capstone56Explain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context. Reference the specific condition or formula that applies.",
+      "meanMu": "The mean of the sampling distribution of x̄ equals the population mean: μ_x̄ = μ. This is because x̄ is an unbiased estimator of μ.",
+      "meanSigma": "The standard deviation of x̄ is σ_x̄ = σ/√n. Make sure to divide by √n, NOT by n. Also verify the 10% condition: n < 10% of N.",
+      "meanShapeChoice": "Two paths to normality: (1) Population is normal → x̄ is normal for ANY n. (2) Population is non-normal → need n ≥ 30 (CLT).",
+      "meanShapeExplain": "Reference the population shape and sample size. If population is normal → any n works. If population is non-normal → need n ≥ 30 for the CLT.",
+      "meanInterpretAnswer": "When interpreting μ_x̄: reference 'all possible samples of size n' and include units. When interpreting σ_x̄: include 'typically' or 'on average' to describe how far x̄ varies from μ, include units.",
+      "meanZScore": "For the sampling distribution of x̄: z = (x̄ − μ) / σ_x̄ where σ_x̄ = σ/√n. Use the POPULATION mean μ and divide σ by √n.",
+      "meanProb": "After finding the z-score, use Table A or normalcdf. For P(x̄ > value): find 1 − P(Z < z). For P(x̄ < value): use P(Z < z) directly.",
+      "capstone57Answer": "This question combines concepts from Topic 5.7. Review: μ_x̄ = μ, σ_x̄ = σ/√n, 10% condition, CLT for shape, interpretation in context, and probability calculations.",
+      "capstone57Explain": "Show your work: identify the concept, write the formula, plug in values, and explain your reasoning in context. Reference the specific condition or formula that applies.",
+      "diffMeanMu": "The mean of the sampling distribution of x̄₁ - x̄₂ equals the difference in population means: μ_{x̄₁−x̄₂} = μ₁ - μ₂.",
+      "diffMeanSD": "The standard deviation is σ_{x̄₁−x̄₂} = √(σ₁²/n₁ + σ₂²/n₂). VARIANCE TRAP: add variances first, then take the square root. Don't forget the 10% condition for BOTH samples.",
+      "diffMeanShapeChoice": "Two paths to normality for x̄₁ - x̄₂: (1) BOTH populations are normal, or (2) BOTH sample sizes are >= 30 (CLT).",
+      "diffMeanShapeExplain": "Reference both population shapes and both sample sizes. If BOTH populations are normal -> any n1, n2. If either is non-normal -> need BOTH n1 >= 30 AND n2 >= 30.",
+      "diffMeanInterpretAnswer": "When interpreting μ_{x̄₁−x̄₂}: reference 'all possible samples of size n1 from pop 1 and size n2 from pop 2,' include units, and specify subtraction order. For σ_{x̄₁−x̄₂}, use 'typically'.",
+      "diffMeanZScore": "z = (observed difference - μ_{x̄₁−x̄₂}) / σ_{x̄₁−x̄₂}. Use μ₁ - μ₂ and √(σ₁²/n₁ + σ₂²/n₂).",
+      "diffMeanProb": "After finding z, use Table A or normalcdf. For P(x̄₁−x̄₂ > value): 1 - P(Z < z). For P(x̄₁−x̄₂ < value): P(Z < z).",
+      "diffMeanInterpretProbText": "A good interpretation references all possible samples, includes the probability/percent, describes direction, and uses context/units.",
+      "diffMeanUnusualChoice": "Convention: probability < 5% (0.05) is unusual. Probability >= 5% is not unusual.",
+      "capstone58Answer": "This question combines Topic 5.8 concepts: μ_{x̄₁−x̄₂}, σ_{x̄₁−x̄₂}, 10% for both, shape conditions, and probability.",
+      "capstone58Explain": "Show your work: identify the concept, write the formula, plug in values, and explain reasoning in context."
     },
     "penalty": {
       "0": "gold",
@@ -598,6 +1358,214 @@
           "gold": 3
         },
         "celebrationMessage": "TOPIC 5.3 COMPLETE! You've mastered the Central Limit Theorem and randomization distributions!"
+      },
+      {
+        "id": "l16-point-estimate-terminology",
+        "name": "5.4a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Point estimate terminology mastered! Next: biased vs unbiased estimators."
+      },
+      {
+        "id": "l17-estimator-bias-concept",
+        "name": "5.4b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Bias concepts understood! Next: identify bias in practice."
+      },
+      {
+        "id": "l18-identify-bias",
+        "name": "5.4c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can identify biased and unbiased estimators! Final 5.4 capstone next."
+      },
+      {
+        "id": "l19-capstone-54",
+        "name": "5.4 Cap",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "TOPIC 5.4 COMPLETE! You've mastered biased and unbiased point estimates!"
+      },
+      {
+        "id": "l20-prop-dist-params",
+        "name": "5.5a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p̂ distribution parameters mastered! Next: the Large Counts condition."
+      },
+      {
+        "id": "l21-large-counts",
+        "name": "5.5b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Large Counts condition understood! Next: interpreting p̂ parameters in context."
+      },
+      {
+        "id": "l22-interpret-params",
+        "name": "5.5c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Interpretation mastered! Next: calculating probabilities with p̂."
+      },
+      {
+        "id": "l23-prop-probability",
+        "name": "5.5d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p̂ probability calculations mastered! Final 5.5 capstone next."
+      },
+      {
+        "id": "l24-capstone-55",
+        "name": "5.5 Cap",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "TOPIC 5.5 COMPLETE! You've mastered sampling distributions for sample proportions! Next: differences in sample proportions."
+      },
+      {
+        "id": "l25-diff-prop-params",
+        "name": "5.6a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p̂₁−p̂₂ parameters mastered! Next: the Large Counts condition for two proportions."
+      },
+      {
+        "id": "l26-diff-prop-large-counts",
+        "name": "5.6b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "All four Large Counts checks understood! Next: interpreting p̂₁−p̂₂ parameters in context."
+      },
+      {
+        "id": "l27-diff-prop-interpret",
+        "name": "5.6c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Interpretation mastered! Next: calculating probabilities with p̂₁−p̂₂."
+      },
+      {
+        "id": "l28-diff-prop-probability",
+        "name": "5.6d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p̂₁−p̂₂ probability calculations mastered! Now interpret what those probabilities mean!"
+      },
+      {
+        "id": "l30-diff-prop-interpret-prob",
+        "name": "5.6e",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can interpret p̂₁−p̂₂ probabilities in context! Final 5.6 capstone next."
+      },
+      {
+        "id": "l29-capstone-56",
+        "name": "5.6 Cap",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "TOPIC 5.6 COMPLETE! You've mastered sampling distributions for differences in sample proportions! Next: sampling distributions for sample means."
+      },
+      {
+        "id": "l31-mean-dist-params",
+        "name": "5.7a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "x̄ distribution parameters mastered! Next: determining the shape of the sampling distribution."
+      },
+      {
+        "id": "l32-mean-shape",
+        "name": "5.7b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You know when x̄ is approximately normal! Next: interpreting x̄ parameters in context."
+      },
+      {
+        "id": "l33-interpret-mean-params",
+        "name": "5.7c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Interpretation mastered! Next: calculating probabilities with x̄."
+      },
+      {
+        "id": "l34-mean-probability",
+        "name": "5.7d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "x̄ probability calculations mastered! Final 5.7 capstone next."
+      },
+      {
+        "id": "l35-capstone-57",
+        "name": "5.7 Cap",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "TOPIC 5.7 COMPLETE! You've mastered sampling distributions for sample means! Next: differences in sample means."
+      },
+      {
+        "id": "l36-diff-mean-params",
+        "name": "5.8a",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "x̄₁−x̄₂ parameters mastered! Next: determining the shape of the distribution."
+      },
+      {
+        "id": "l37-diff-mean-shape",
+        "name": "5.8b",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You know when x̄₁−x̄₂ is approximately normal! Next: interpreting parameters in context."
+      },
+      {
+        "id": "l38-diff-mean-interpret",
+        "name": "5.8c",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Interpretation mastered! Next: calculating probabilities with x̄₁−x̄₂."
+      },
+      {
+        "id": "l39-diff-mean-probability",
+        "name": "5.8d",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "x̄₁−x̄₂ probability calculations mastered! Next: interpret what those probabilities mean."
+      },
+      {
+        "id": "l40-diff-mean-interpret-prob",
+        "name": "5.8e",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can interpret x̄₁−x̄₂ probabilities in context! Final 5.8 capstone next."
+      },
+      {
+        "id": "l41-capstone-58",
+        "name": "5.8 Cap",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "TOPIC 5.8 COMPLETE! You've mastered sampling distributions for differences in sample means! Unit 5 complete!"
       }
     ]
   }

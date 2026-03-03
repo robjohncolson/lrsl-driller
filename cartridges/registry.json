@@ -57,6 +57,20 @@
       "shortCode": "IDENT"
     },
     {
+      "id": "a2t3l3-quiz",
+      "name": "3-3 Quiz Prep: Cubes & Binomial Expansion",
+      "subject": "Algebra 2",
+      "description": "Quiz prep: sum/difference of cubes factoring, binomial theorem expansion from every angle",
+      "shortCode": "Q33"
+    },
+    {
+      "id": "a2-dividing-polynomials",
+      "name": "Dividing Polynomials",
+      "subject": "Algebra 2",
+      "description": "Long division, Remainder Theorem, factoring with known factors, quotient expressions",
+      "shortCode": "DIV"
+    },
+    {
       "id": "sampling",
       "name": "Collecting Data (3.1-3.3)",
       "subject": "AP Statistics",
@@ -93,10 +107,17 @@
     },
     {
       "id": "apstats-u5-sampling-dist",
-      "name": "Sampling Distributions (5.1-5.2)",
+      "name": "Sampling Distributions (5.1-5.7)",
       "subject": "AP Statistics",
-      "description": "Sampling variability, normal distribution, z-scores, inverse normal, assessing normality, linear combinations",
+      "description": "Sampling variability, normal distribution, z-scores, inverse normal, assessing normality, linear combinations, CLT, randomization distributions, biased/unbiased point estimates, sampling distributions for sample proportions, differences in sample proportions, sampling distributions for sample means",
       "shortCode": "SAMP"
+    },
+    {
+      "id": "apstats-u6-inference-prop",
+      "name": "Inference for Proportions (6.1-6.2)",
+      "subject": "AP Statistics",
+      "description": "Logic of significance testing, confidence intervals for a population proportion: procedures, conditions, standard error, critical values, margin of error, CI construction, minimum sample size",
+      "shortCode": "CI-P"
     }
   ]
 }

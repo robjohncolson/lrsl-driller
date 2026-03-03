@@ -1,0 +1,5329 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math Foundations Visualizer & Drill</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --panel: #0f0f23;
+      --panel-2: #141433;
+      --text: #e8e8e8;
+      --muted: #6b7280;
+      --accent: #7c3aed;
+      --a: #58c4dd;
+      --b: #fcba03;
+      --ab: #83c167;
+      --result: #ff6b6b;
+      --prime: #58c4dd;
+      --composite: #a9a9a9;
+      --ok: #83c167;
+      --bad: #ff6b6b;
+      --edge: rgba(255, 255, 255, 0.08);
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: radial-gradient(circle at 20% 20%, #25254a 0%, var(--bg) 40%, #111120 100%);
+      color: var(--text);
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 14px 14px 20px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .topbar {
+      display: grid;
+      gap: 10px;
+      background: linear-gradient(160deg, rgba(19, 19, 46, 0.98), rgba(15, 15, 35, 0.98));
+      border: 1px solid var(--edge);
+      border-radius: 14px;
+      padding: 10px 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .brand-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.84rem;
+      color: var(--text);
+      background: rgba(124, 58, 237, 0.15);
+      border: 1px solid rgba(124, 58, 237, 0.4);
+      border-radius: 999px;
+      padding: 7px 11px;
+      min-height: 44px;
+    }
+
+    .toggle input {
+      accent-color: var(--accent);
+    }
+
+    .stats-btn {
+      min-height: 44px;
+      padding: 8px 14px;
+      border: 1px solid rgba(124, 58, 237, 0.6);
+      background: linear-gradient(180deg, rgba(124, 58, 237, 0.35), rgba(124, 58, 237, 0.2));
+      color: var(--text);
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tab-btn {
+      min-height: 44px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      padding: 8px 13px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: all 120ms ease;
+    }
+
+    .tab-btn:hover {
+      border-color: rgba(124, 58, 237, 0.6);
+      background: rgba(124, 58, 237, 0.2);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(180deg, rgba(124, 58, 237, 0.45), rgba(124, 58, 237, 0.22));
+      border-color: rgba(124, 58, 237, 0.75);
+      box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.3) inset;
+    }
+
+    .workspace {
+      display: grid;
+      gap: 12px;
+    }
+
+    .viz-drill-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 12px;
+      min-height: 430px;
+    }
+
+    .panel {
+      background: linear-gradient(170deg, rgba(20, 20, 51, 0.95), rgba(15, 15, 35, 0.96));
+      border: 1px solid var(--edge);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .viz-panel {
+      position: relative;
+      overflow: hidden;
+      min-height: 430px;
+      display: flex;
+    }
+
+    .viz-wrapper {
+      position: relative;
+      width: 100%;
+      min-height: 430px;
+    }
+
+    .render-root {
+      position: absolute;
+      inset: 0;
+      min-height: 430px;
+    }
+
+    .tree-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+    }
+
+    .label-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    .viz-label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-weight: 700;
+      white-space: nowrap;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.55);
+    }
+
+    .viz-label--large {
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+
+    .viz-label--medium {
+      font-size: 1.1rem;
+    }
+
+    .viz-label--dim {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .viz-overlay {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      right: 12px;
+      pointer-events: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .overlay-chip {
+      pointer-events: auto;
+      font-size: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(10, 10, 30, 0.7);
+      border-radius: 999px;
+      padding: 6px 10px;
+    }
+
+    .drill-panel {
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto auto auto 1fr auto auto auto;
+      gap: 10px;
+      min-height: 430px;
+    }
+
+    .panel-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 0.96rem;
+      letter-spacing: 0.02em;
+    }
+
+    .difficulty-pill {
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #0d1025;
+      background: linear-gradient(180deg, #d5c9ff, #a487ff);
+    }
+
+    .question-katex {
+      min-height: 44px;
+      border: 1px dashed rgba(255, 255, 255, 0.16);
+      border-radius: 10px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      overflow: auto;
+    }
+
+    .question-text {
+      color: var(--text);
+      line-height: 1.35;
+      font-size: 0.92rem;
+      min-height: 44px;
+    }
+
+    .answer-area {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 10px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .answer-text,
+    .answer-number {
+      width: 100%;
+      min-height: 44px;
+      border-radius: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(10, 10, 25, 0.8);
+      color: var(--text);
+      padding: 10px;
+    }
+
+    .answer-options {
+      display: grid;
+      gap: 8px;
+    }
+
+    .answer-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      cursor: pointer;
+      min-height: 44px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .yesno-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .yesno-btn {
+      min-width: 96px;
+      min-height: 44px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .yesno-btn.selected {
+      border-color: rgba(124, 58, 237, 0.8);
+      background: rgba(124, 58, 237, 0.35);
+    }
+
+    .drill-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      min-height: 44px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn.primary {
+      border-color: rgba(124, 58, 237, 0.8);
+      background: linear-gradient(180deg, rgba(124, 58, 237, 0.5), rgba(124, 58, 237, 0.24));
+    }
+
+    .feedback {
+      min-height: 46px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.03);
+      line-height: 1.3;
+      font-size: 0.88rem;
+    }
+
+    .feedback.ok {
+      border-color: rgba(131, 193, 103, 0.65);
+      color: var(--ok);
+      background: rgba(131, 193, 103, 0.12);
+    }
+
+    .feedback.bad {
+      border-color: rgba(255, 107, 107, 0.65);
+      color: var(--bad);
+      background: rgba(255, 107, 107, 0.1);
+    }
+
+    .streak-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .streak-dots {
+      letter-spacing: 0.08em;
+      font-size: 1rem;
+      color: var(--text);
+      font-family: "Consolas", "Menlo", monospace;
+    }
+
+    .explore-panel {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .controls-grid {
+      display: grid;
+      gap: 9px;
+    }
+
+    .control {
+      display: grid;
+      grid-template-columns: 110px 1fr 58px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .control label {
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .control input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .control-value {
+      text-align: right;
+      font-family: "Consolas", "Menlo", monospace;
+      font-size: 0.85rem;
+    }
+
+    .explore-right {
+      display: grid;
+      gap: 8px;
+      min-width: 265px;
+    }
+
+    .equation-card {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 68px;
+      background: rgba(255, 255, 255, 0.02);
+      overflow: auto;
+    }
+
+    .explore-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .step-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0 2px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.14);
+    }
+
+    .step-counter {
+      min-width: 92px;
+      text-align: center;
+      font-size: 0.84rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .step-btn {
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .step-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .stats-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(2, 3, 14, 0.7);
+      z-index: 30;
+      padding: 14px;
+    }
+
+    .stats-modal.open {
+      display: grid;
+    }
+
+    .stats-card {
+      width: min(900px, 100%);
+      max-height: 90vh;
+      overflow: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: linear-gradient(170deg, rgba(20, 20, 51, 0.98), rgba(15, 15, 35, 0.99));
+      box-shadow: var(--shadow);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .stats-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 10px;
+    }
+
+    .stats-item {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .stats-item strong {
+      color: var(--text);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 0.78rem;
+    }
+
+    .legend-chip {
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 5px 10px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    @media (max-width: 1100px) {
+      .viz-drill-grid {
+        grid-template-columns: minmax(0, 1fr) 330px;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .explore-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .viz-drill-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .viz-panel,
+      .drill-panel {
+        min-height: 360px;
+      }
+
+      .render-root {
+        min-height: 360px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .control {
+        grid-template-columns: 1fr;
+      }
+
+      .control-value {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar panel">
+      <div class="brand-row">
+        <div class="brand">
+          <h1>Math Foundations Visualizer & Drill</h1>
+          <p>Prime factors, perfect powers, and cube/binomial identities</p>
+        </div>
+        <div class="header-actions">
+          <label class="toggle">
+            <input id="reduceMotionToggle" type="checkbox">
+            Reduce Motion
+          </label>
+          <button id="statsBtn" class="stats-btn" type="button">Stats</button>
+        </div>
+      </div>
+      <nav id="modeTabs" class="tabs" aria-label="Modes"></nav>
+    </header>
+
+    <main class="workspace">
+      <section class="viz-drill-grid">
+        <section class="viz-panel panel">
+          <div id="vizWrapper" class="viz-wrapper">
+            <div id="renderRoot" class="render-root"></div>
+            <canvas id="factorTreeCanvas" class="tree-canvas" aria-label="Prime factor tree"></canvas>
+            <div id="labelLayer" class="label-layer"></div>
+          </div>
+          <div id="vizOverlay" class="viz-overlay">
+            <div id="overlayLeft" class="overlay-chip">Mode Ready</div>
+            <div id="overlayRight" class="overlay-chip">30+ FPS target</div>
+          </div>
+        </section>
+
+        <aside class="drill-panel panel">
+          <div class="panel-title-row">
+            <h2 class="panel-title">Drill Panel</h2>
+            <span id="difficultyPill" class="difficulty-pill">L1</span>
+          </div>
+
+          <div id="questionKatex" class="question-katex"></div>
+          <div id="questionText" class="question-text"></div>
+          <div id="answerArea" class="answer-area"></div>
+
+          <div class="drill-actions">
+            <button id="checkBtn" class="btn primary" type="button">Check</button>
+            <button id="nextBtn" class="btn" type="button">Next Problem</button>
+          </div>
+
+          <div id="feedback" class="feedback" aria-live="polite">Pick a mode and solve your first problem.</div>
+
+          <div class="streak-row">
+            <span>Streak</span>
+            <span id="streakDots" class="streak-dots">○○○○○</span>
+          </div>
+        </aside>
+      </section>
+
+      <section class="explore-panel panel">
+        <div id="exploreControls" class="controls-grid"></div>
+        <div class="explore-right">
+          <div id="equationCard" class="equation-card"></div>
+          <div class="explore-actions">
+            <button id="playBtn" class="btn primary" type="button">Play All</button>
+            <button id="resetBtn" class="btn" type="button">Reset</button>
+          </div>
+          <div id="stepControls" class="step-controls hidden">
+            <button id="stepPrevBtn" class="step-btn" type="button" title="Previous step">‹</button>
+            <span id="stepCounter" class="step-counter">Step 1 / 1</span>
+            <button id="stepNextBtn" class="step-btn" type="button" title="Next step">›</button>
+            <button id="stepPlayBtn" class="step-btn" type="button" title="Play all">▶</button>
+          </div>
+          <div class="legend-row">
+            <span class="legend-chip">a: <span style="color:var(--a)">#58c4dd</span></span>
+            <span class="legend-chip">ab: <span style="color:var(--ab)">#83c167</span></span>
+            <span class="legend-chip">b: <span style="color:var(--b)">#fcba03</span></span>
+            <span class="legend-chip">result: <span style="color:var(--result)">#ff6b6b</span></span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="statsModal" class="stats-modal" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+    <div class="stats-card">
+      <div class="stats-header">
+        <h2 id="statsTitle" style="margin:0">MathViz Stats</h2>
+        <button id="closeStatsBtn" class="btn" type="button">Close</button>
+      </div>
+      <div id="globalStats" class="stats-item"></div>
+      <div id="modeStats" class="stats-grid"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    // ===== Constants =====
+    const STORAGE_KEY = "mathVizDriller";
+    const STORAGE_VERSION = 1;
+    const DEFAULT_STEP_MS = 400;
+    const INTER_STEP_PAUSE_MS = 200;
+    const REDUCED_STEP_MS = 80;
+    const PRIME_PARSE_FORMATS = "Accepted: 2^3 * 3^2 * 5 or 2 * 2 * 2 * 3 * 3 * 5";
+
+    const COLOR_HEX = {
+      background: "#1a1a2e",
+      panel: "#0f0f23",
+      a: "#58c4dd",
+      b: "#fcba03",
+      ab: "#83c167",
+      result: "#ff6b6b",
+      prime: "#58c4dd",
+      composite: "#a9a9a9",
+      accent: "#7c3aed",
+      text: "#e8e8e8",
+      muted: "#6b7280"
+    };
+
+    const COLOR_NUM = {
+      background: 0x1a1a2e,
+      a: 0x58c4dd,
+      b: 0xfcba03,
+      ab: 0x83c167,
+      result: 0xff6b6b,
+      prime: 0x58c4dd,
+      composite: 0xa9a9a9
+    };
+
+    const DIFFICULTY_RANGES = {
+      1: [2, 30],
+      2: [30, 200],
+      3: [200, 1000]
+    };
+
+    const MODE_DEFS = [
+      {
+        id: "prime",
+        label: "Prime Factorization",
+        controls: [
+          { key: "number", label: "Number N", min: 2, max: 500, step: 1 }
+        ],
+        defaultParams: { number: 84 }
+      },
+      {
+        id: "squares",
+        label: "Perfect Squares",
+        controls: [
+          { key: "n", label: "n", min: 1, max: 20, step: 1 }
+        ],
+        defaultParams: { n: 8 }
+      },
+      {
+        id: "cubes",
+        label: "Perfect Cubes",
+        controls: [
+          { key: "n", label: "n", min: 1, max: 12, step: 1 }
+        ],
+        defaultParams: { n: 5 }
+      },
+      {
+        id: "ab2",
+        label: "(a+b)^2",
+        controls: [
+          { key: "a", label: "a", min: 1, max: 10, step: 1 },
+          { key: "b", label: "b", min: 1, max: 10, step: 1 }
+        ],
+        defaultParams: { a: 4, b: 3 }
+      },
+      {
+        id: "diff2",
+        label: "a^2-b^2",
+        controls: [
+          { key: "a", label: "a", min: 2, max: 10, step: 1 },
+          { key: "b", label: "b", min: 1, max: 9, step: 1, dynamicMax: (params) => Math.max(1, params.a - 1) }
+        ],
+        defaultParams: { a: 7, b: 3 }
+      },
+      {
+        id: "sum3",
+        label: "a^3+b^3",
+        controls: [
+          { key: "a", label: "a", min: 1, max: 6, step: 1 },
+          { key: "b", label: "b", min: 1, max: 6, step: 1 }
+        ],
+        defaultParams: { a: 2, b: 3 }
+      },
+      {
+        id: "diff3",
+        label: "a^3-b^3",
+        controls: [
+          { key: "a", label: "a", min: 2, max: 6, step: 1 },
+          { key: "b", label: "b", min: 1, max: 5, step: 1, dynamicMax: (params) => Math.max(1, params.a - 1) }
+        ],
+        defaultParams: { a: 5, b: 2 }
+      }
+    ];
+
+    const modeMap = Object.fromEntries(MODE_DEFS.map((m) => [m.id, m]));
+    const modeIds = MODE_DEFS.map((m) => m.id);
+
+    const dom = {
+      modeTabs: document.getElementById("modeTabs"),
+      reduceMotionToggle: document.getElementById("reduceMotionToggle"),
+      statsBtn: document.getElementById("statsBtn"),
+      closeStatsBtn: document.getElementById("closeStatsBtn"),
+      statsModal: document.getElementById("statsModal"),
+      globalStats: document.getElementById("globalStats"),
+      modeStats: document.getElementById("modeStats"),
+      vizWrapper: document.getElementById("vizWrapper"),
+      renderRoot: document.getElementById("renderRoot"),
+      treeCanvas: document.getElementById("factorTreeCanvas"),
+      labelLayer: document.getElementById("labelLayer"),
+      overlayLeft: document.getElementById("overlayLeft"),
+      overlayRight: document.getElementById("overlayRight"),
+      exploreControls: document.getElementById("exploreControls"),
+      equationCard: document.getElementById("equationCard"),
+      playBtn: document.getElementById("playBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+      stepControls: document.getElementById("stepControls"),
+      stepPrevBtn: document.getElementById("stepPrevBtn"),
+      stepNextBtn: document.getElementById("stepNextBtn"),
+      stepPlayBtn: document.getElementById("stepPlayBtn"),
+      stepCounter: document.getElementById("stepCounter"),
+      questionKatex: document.getElementById("questionKatex"),
+      questionText: document.getElementById("questionText"),
+      answerArea: document.getElementById("answerArea"),
+      checkBtn: document.getElementById("checkBtn"),
+      nextBtn: document.getElementById("nextBtn"),
+      feedback: document.getElementById("feedback"),
+      difficultyPill: document.getElementById("difficultyPill"),
+      streakDots: document.getElementById("streakDots")
+    };
+
+    const appState = {
+      activeModeId: "prime",
+      reduceMotion: false,
+      params: Object.fromEntries(MODE_DEFS.map((m) => [m.id, { ...m.defaultParams }])),
+      currentProblemByMode: {},
+      progress: null,
+      runtime: Object.fromEntries(modeIds.map((id) => [id, { streak: 0, consecutiveCorrect: 0, recent: [] }])),
+      answerDraft: {},
+      step: {
+        indexByMode: {},
+        autoplayTimer: 0
+      }
+    };
+
+    // ===== Utilities =====
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function choice(arr) {
+      return arr[randInt(0, arr.length - 1)];
+    }
+
+    function shuffle(arr) {
+      const copy = arr.slice();
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = randInt(0, i);
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
+    function nearlyEqual(a, b, epsilon = 1e-9) {
+      return Math.abs(a - b) <= epsilon;
+    }
+
+    function isPrime(n) {
+      if (!Number.isInteger(n) || n < 2) return false;
+      if (n === 2) return true;
+      if (n % 2 === 0) return false;
+      const end = Math.floor(Math.sqrt(n));
+      for (let i = 3; i <= end; i += 2) {
+        if (n % i === 0) return false;
+      }
+      return true;
+    }
+
+    function splitComposite(n) {
+      if (isPrime(n)) return null;
+      for (let i = 2; i <= Math.floor(Math.sqrt(n)); i += 1) {
+        if (n % i === 0) return [i, Math.floor(n / i)];
+      }
+      return null;
+    }
+
+    function factorizePrimePowers(n) {
+      let remaining = Math.abs(n);
+      const out = [];
+      let p = 2;
+      while (p * p <= remaining) {
+        let count = 0;
+        while (remaining % p === 0) {
+          remaining = Math.floor(remaining / p);
+          count += 1;
+        }
+        if (count > 0) out.push([p, count]);
+        p = p === 2 ? 3 : p + 2;
+      }
+      if (remaining > 1) out.push([remaining, 1]);
+      return out;
+    }
+
+    function canonicalizeFactorArray(factors) {
+      const map = new Map();
+      for (const [base, exp] of factors) {
+        map.set(base, (map.get(base) || 0) + exp);
+      }
+      return Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+    }
+
+    function parsePrimeFactorInput(raw) {
+      if (typeof raw !== "string") return null;
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+      if (trimmed.includes("**")) return null;
+      const normalized = trimmed
+        .replace(/×/g, "*")
+        .replace(/\bx\b/gi, "*")
+        .replace(/\s+/g, "");
+      if (!normalized) return null;
+      const tokens = normalized.split("*").filter(Boolean);
+      if (tokens.length === 0) return null;
+      const hasCaret = normalized.includes("^");
+      if (hasCaret) {
+        const factors = [];
+        for (const token of tokens) {
+          if (!/^\d+(\^\d+)?$/.test(token)) return null;
+          const [baseText, expText] = token.split("^");
+          const base = Number.parseInt(baseText, 10);
+          const exp = expText ? Number.parseInt(expText, 10) : 1;
+          if (!isPrime(base) || exp < 1) return null;
+          factors.push([base, exp]);
+        }
+        return canonicalizeFactorArray(factors);
+      }
+      const factors = [];
+      for (const token of tokens) {
+        if (!/^\d+$/.test(token)) return null;
+        const value = Number.parseInt(token, 10);
+        if (!isPrime(value)) return null;
+        factors.push([value, 1]);
+      }
+      return canonicalizeFactorArray(factors);
+    }
+
+    function areFactorizationsEqual(a, b) {
+      if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i += 1) {
+        if (a[i][0] !== b[i][0] || a[i][1] !== b[i][1]) return false;
+      }
+      return true;
+    }
+
+    function primeFactorsToKatex(factors) {
+      const parts = factors.map(([base, exp]) => {
+        if (exp === 1) return `${base}`;
+        let expToken = `${exp}`;
+        if (exp % 2 === 0 && exp % 3 === 0) {
+          expToken = `\\color{${COLOR_HEX.result}}{${exp}}`;
+        } else if (exp % 2 === 0) {
+          expToken = `\\color{${COLOR_HEX.ab}}{${exp}}`;
+        } else if (exp % 3 === 0) {
+          expToken = `\\color{${COLOR_HEX.b}}{${exp}}`;
+        }
+        return `${base}^{${expToken}}`;
+      });
+      return parts.join(" \\times ");
+    }
+
+    function isPerfectSquare(n) {
+      if (n < 0) return false;
+      const root = Math.sqrt(n);
+      return Number.isInteger(root);
+    }
+
+    function isPerfectCube(n) {
+      if (n < 0) return false;
+      const root = Math.cbrt(n);
+      return nearlyEqual(root, Math.round(root), 1e-10);
+    }
+
+    function nearestPerfectSquare(n) {
+      const lowRoot = Math.floor(Math.sqrt(n));
+      const highRoot = Math.ceil(Math.sqrt(n));
+      const lowSq = lowRoot * lowRoot;
+      const highSq = highRoot * highRoot;
+      const nearest = Math.abs(n - lowSq) <= Math.abs(highSq - n) ? lowSq : highSq;
+      return { lowRoot, highRoot, lowSq, highSq, nearest };
+    }
+
+    function parsePairInput(raw) {
+      if (typeof raw !== "string") return null;
+      const cleaned = raw.trim();
+      if (!cleaned) return null;
+      const split = cleaned
+        .replace(/×/g, "x")
+        .replace(/\s+/g, "")
+        .split(/[x,*]/g)
+        .map((t) => t.trim())
+        .filter(Boolean);
+      if (split.length !== 2) return null;
+      const values = split.map((t) => Number.parseInt(t, 10));
+      if (values.some((v) => Number.isNaN(v))) return null;
+      return values.sort((a, b) => a - b);
+    }
+
+    function createStreakDots(streak) {
+      const filled = Math.max(0, Math.min(5, streak));
+      return `${"●".repeat(filled)}${"○".repeat(5 - filled)}`;
+    }
+
+    function renderKatex(target, tex, displayMode = true) {
+      if (!target) return;
+      if (!window.katex || !tex) {
+        target.textContent = tex || "";
+        return;
+      }
+      try {
+        window.katex.render(tex, target, { throwOnError: false, displayMode });
+      } catch (error) {
+        target.textContent = tex;
+      }
+    }
+
+    class LabelManager {
+      constructor(layerEl) {
+        this.layerEl = layerEl;
+        this.labels = [];
+        this.raycaster = new THREE.Raycaster();
+        this.occlusionMeshes = [];
+      }
+
+      clear() {
+        this.labels.forEach((label) => label.el.remove());
+        this.labels = [];
+      }
+
+      addLabel({
+        text = "",
+        tex = "",
+        className = "viz-label viz-label--medium",
+        color = COLOR_HEX.text,
+        groupId = "default",
+        worldPos = null,
+        getWorldPos = null,
+        opacity = 1,
+        depthCull = null
+      }) {
+        const el = document.createElement("div");
+        el.className = className;
+        el.dataset.targetOpacity = String(clamp(opacity, 0, 1));
+        el.style.opacity = String(clamp(opacity, 0, 1));
+        el.style.color = color;
+        if (tex) {
+          try {
+            if (window.katex) {
+              el.innerHTML = window.katex.renderToString(tex, {
+                throwOnError: false,
+                displayMode: false
+              });
+            } else {
+              el.textContent = text || tex;
+            }
+          } catch (error) {
+            el.textContent = text || tex;
+          }
+        } else {
+          el.textContent = text;
+        }
+        this.layerEl.appendChild(el);
+        const label = {
+          el,
+          groupId,
+          worldPos: worldPos ? worldPos.clone() : null,
+          getWorldPos,
+          visible: true,
+          depthCull
+        };
+        this.labels.push(label);
+        return label;
+      }
+
+      removeLabel(label) {
+        if (!label) return;
+        label.el.remove();
+        this.labels = this.labels.filter((x) => x !== label);
+      }
+
+      clearGroup(groupId) {
+        const keep = [];
+        for (const label of this.labels) {
+          if (label.groupId === groupId) {
+            label.el.remove();
+          } else {
+            keep.push(label);
+          }
+        }
+        this.labels = keep;
+      }
+
+      setOcclusionMeshes(meshes) {
+        this.occlusionMeshes = Array.isArray(meshes) ? meshes : [];
+      }
+
+      setOpacity(label, value) {
+        if (!label || !label.el) return;
+        const safe = String(clamp(value, 0, 1));
+        label.el.dataset.targetOpacity = safe;
+        label.el.style.opacity = safe;
+      }
+
+      setVisible(label, visible) {
+        if (!label || !label.el) return;
+        label.visible = visible;
+        label.el.style.display = visible ? "" : "none";
+      }
+
+      update(camera, canvas, defaultDepthCull = false) {
+        if (!camera || !canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const cameraWorldPos = new THREE.Vector3();
+        camera.getWorldPosition(cameraWorldPos);
+        const orthoDir = new THREE.Vector3();
+        if (camera.isOrthographicCamera) {
+          orthoDir.set(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
+        }
+
+        for (const label of this.labels) {
+          if (!label.visible) continue;
+          const world = label.getWorldPos
+            ? label.getWorldPos()
+            : label.worldPos;
+          if (!world) continue;
+          const v = world.clone().project(camera);
+          const x = (v.x * 0.5 + 0.5) * rect.width;
+          const y = (-v.y * 0.5 + 0.5) * rect.height;
+          const inView = v.z > -1 && v.z < 1;
+          const useDepthCull = label.depthCull == null ? defaultDepthCull : !!label.depthCull;
+          let occluded = false;
+
+          if (useDepthCull && inView && this.occlusionMeshes.length > 0) {
+            let distToLabel = 0;
+            if (camera.isOrthographicCamera) {
+              const origin = world.clone().sub(orthoDir.clone().multiplyScalar(100));
+              this.raycaster.set(origin, orthoDir);
+              distToLabel = 100;
+            } else {
+              const direction = world.clone().sub(cameraWorldPos);
+              distToLabel = direction.length();
+              if (distToLabel > 1e-5) {
+                direction.divideScalar(distToLabel);
+                this.raycaster.set(cameraWorldPos, direction);
+              }
+            }
+
+            if (distToLabel > 0) {
+              const hits = this.raycaster.intersectObjects(this.occlusionMeshes, false);
+              if (hits.length > 0 && hits[0].distance < distToLabel - 0.1) {
+                occluded = true;
+              }
+            }
+          }
+
+          if (!inView || occluded) {
+            label.el.style.display = "none";
+            label.el.style.opacity = "0";
+          } else {
+            const targetOpacity = label.el.dataset.targetOpacity || "1";
+            label.el.style.display = "";
+            label.el.style.opacity = targetOpacity;
+            label.el.style.left = `${x}px`;
+            label.el.style.top = `${y}px`;
+          }
+        }
+      }
+    }
+
+    function createDimensionLine(scene, labelManager, options) {
+      const start = options.start.clone();
+      const end = options.end.clone();
+      const color = options.color ?? COLOR_NUM.a;
+      const labelText = options.labelText ?? "";
+      const labelTex = options.labelTex ?? "";
+      const labelClass = options.labelClass ?? "viz-label viz-label--dim";
+      const offset = options.offset ? options.offset.clone() : new THREE.Vector3(0, 0, 0);
+      const tickSize = options.tickSize ?? 0.15;
+
+      const a = start.clone().add(offset);
+      const b = end.clone().add(offset);
+      const dir = b.clone().sub(a);
+      const len = dir.length() || 1;
+      const dirNorm = dir.clone().normalize();
+      let perp = new THREE.Vector3(-dirNorm.y, dirNorm.x, 0);
+      if (perp.lengthSq() < 1e-6) {
+        perp = new THREE.Vector3(0, 1, 0);
+      }
+      perp.normalize().multiplyScalar(tickSize);
+
+      const points = [
+        a.clone(), b.clone(),
+        a.clone().sub(perp), a.clone().add(perp),
+        b.clone().sub(perp), b.clone().add(perp)
+      ];
+      const geom = new THREE.BufferGeometry().setFromPoints(points);
+      const opacity = options.opacity ?? 1;
+      const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+      const lines = new THREE.LineSegments(geom, mat);
+      scene.add(lines);
+
+      const mid = a.clone().lerp(b, 0.5).add(perp.clone().multiplyScalar(2));
+      const label = labelManager.addLabel({
+        text: labelText,
+        tex: labelTex,
+        className: labelClass,
+        color: `#${color.toString(16).padStart(6, "0")}`,
+        groupId: options.groupId || "default",
+        worldPos: mid,
+        opacity: options.labelOpacity ?? opacity,
+        depthCull: options.depthCull ?? null
+      });
+
+      return { mesh: lines, line: lines, ticks: lines, label, start: a, end: b, midpoint: mid };
+    }
+
+    function notifyVisualUpdate() {
+      window.dispatchEvent(new Event("mathviz-mode-update"));
+    }
+
+    function safePercent(correct, attempts) {
+      if (!attempts) return "0.0";
+      return ((100 * correct) / attempts).toFixed(1);
+    }
+
+    function randomByDifficulty(level) {
+      if (level === 3 && Math.random() < 0.2) {
+        return choice([441, 512, 625, 729, 900, 972]);
+      }
+      const [min, max] = DIFFICULTY_RANGES[level];
+      return randInt(min, max);
+    }
+
+    function randomCompositeByDifficulty(level) {
+      const [min, max] = DIFFICULTY_RANGES[level];
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const n = randInt(min, max);
+        if (!isPrime(n) && n > 1) return n;
+      }
+      return 12;
+    }
+
+    function randomABForDiff(level, maxA) {
+      if (level === 1) {
+        return { a: randInt(1, Math.min(4, maxA)), b: randInt(1, Math.min(4, maxA)) };
+      }
+      if (level === 2) {
+        return { a: randInt(2, Math.min(7, maxA)), b: randInt(2, Math.min(7, maxA)) };
+      }
+      return { a: randInt(4, maxA), b: randInt(3, maxA) };
+    }
+
+    function clampDiffPair(a, b, maxA) {
+      const aa = clamp(a, 2, maxA);
+      const bb = clamp(b, 1, aa - 1);
+      return { a: aa, b: bb };
+    }
+
+    // ===== Animation Queue =====
+    class StepQueue {
+      constructor(getReduceMotion) {
+        this.getReduceMotion = getReduceMotion;
+        this.steps = [];
+        this.active = false;
+        this.index = 0;
+        this.elapsed = 0;
+        this.pauseRemaining = 0;
+        this.pendingStart = false;
+      }
+
+      run(steps) {
+        this.steps = Array.isArray(steps) ? steps.slice() : [];
+        this.active = this.steps.length > 0;
+        this.index = 0;
+        this.elapsed = 0;
+        this.pauseRemaining = 0;
+        this.pendingStart = false;
+        if (this.active && this.steps[0].onStart) this.steps[0].onStart();
+      }
+
+      clear() {
+        this.steps = [];
+        this.active = false;
+        this.index = 0;
+        this.elapsed = 0;
+        this.pauseRemaining = 0;
+        this.pendingStart = false;
+      }
+
+      update(dtMs) {
+        if (!this.active || this.index >= this.steps.length) return;
+        if (this.pauseRemaining > 0) {
+          this.pauseRemaining = Math.max(0, this.pauseRemaining - dtMs);
+          if (this.pauseRemaining === 0 && this.pendingStart) {
+            const next = this.steps[this.index];
+            if (next && next.onStart) next.onStart();
+            this.pendingStart = false;
+          }
+          return;
+        }
+        const step = this.steps[this.index];
+        const durationBase = step.duration ?? DEFAULT_STEP_MS;
+        const duration = this.getReduceMotion()
+          ? Math.min(durationBase, REDUCED_STEP_MS)
+          : durationBase;
+        this.elapsed += dtMs;
+        const t = duration <= 0 ? 1 : clamp(this.elapsed / duration, 0, 1);
+        const eased = (step.easing || easeOutCubic)(t);
+        if (step.onUpdate) step.onUpdate(eased, t);
+        if (t >= 1) {
+          if (step.onEnd) step.onEnd();
+          this.pauseRemaining = this.getReduceMotion() ? 0 : (step.pause ?? 0);
+          this.index += 1;
+          this.elapsed = 0;
+          if (this.index >= this.steps.length) {
+            this.active = false;
+            this.steps = [];
+          } else {
+            const next = this.steps[this.index];
+            if (this.pauseRemaining > 0) {
+              this.pendingStart = true;
+            } else if (next.onStart) {
+              next.onStart();
+            }
+          }
+        }
+      }
+    }
+
+    // ===== Scene Manager =====
+    function disposeObject3D(root) {
+      if (!root) return;
+      root.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach((m) => {
+              if (m.map) m.map.dispose();
+              m.dispose();
+            });
+          } else {
+            if (child.material.map) child.material.map.dispose();
+            child.material.dispose();
+          }
+        }
+      });
+    }
+
+    function addSoftLights(scene) {
+      const ambient = new THREE.AmbientLight(0xffffff, 0.75);
+      const directional = new THREE.DirectionalLight(0xffffff, 0.85);
+      directional.position.set(8, 12, 6);
+      scene.add(ambient, directional);
+    }
+
+    class SceneManager {
+      constructor(container) {
+        this.container = container;
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        this.renderer.setSize(container.clientWidth, container.clientHeight);
+        this.renderer.setClearColor(COLOR_NUM.background, 1);
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.container.appendChild(this.renderer.domElement);
+
+        this.activeMode = null;
+        this.raf = 0;
+        this.last = performance.now();
+        this.loop = this.loop.bind(this);
+        this.onResize = this.onResize.bind(this);
+
+        window.addEventListener("resize", this.onResize);
+        document.addEventListener("visibilitychange", () => {
+          this.last = performance.now();
+        });
+        this.raf = requestAnimationFrame(this.loop);
+      }
+
+      setMode(mode) {
+        if (this.activeMode && this.activeMode.onDeactivate) this.activeMode.onDeactivate();
+        this.activeMode = mode || null;
+        if (this.activeMode && this.activeMode.onActivate) this.activeMode.onActivate(this);
+        this.onResize();
+      }
+
+      loop(now) {
+        const dtMs = Math.min(64, now - this.last);
+        const dt = dtMs / 1000;
+        this.last = now;
+        if (this.activeMode) {
+          if (this.activeMode.tick) this.activeMode.tick(dt, dtMs);
+          if (this.activeMode.scene && this.activeMode.camera) {
+            if (this.activeMode.controls) this.activeMode.controls.update();
+            this.renderer.render(this.activeMode.scene, this.activeMode.camera);
+            if (this.activeMode.updateLabels) {
+              this.activeMode.updateLabels(this.renderer.domElement);
+            }
+          }
+        }
+        this.raf = requestAnimationFrame(this.loop);
+      }
+
+      onResize() {
+        const width = this.container.clientWidth || 1;
+        const height = this.container.clientHeight || 1;
+        this.renderer.setSize(width, height);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        if (this.activeMode && this.activeMode.resize) this.activeMode.resize(width, height);
+      }
+    }
+
+    // ===== Mode Implementations =====
+    // (Chunk 2 and 3 patches append all mode classes.)
+
+    class FactorTreeRenderer {
+      constructor(canvas, getReduceMotion) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext("2d");
+        this.getReduceMotion = getReduceMotion;
+        this.number = 84;
+        this.root = null;
+        this.sequence = [];
+        this.visibleCount = 0;
+        this.playing = false;
+        this.framePhase = 0;
+        this.nodeById = new Map();
+        this.nextId = 1;
+      }
+
+      resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = this.canvas.getBoundingClientRect();
+        const width = Math.max(20, Math.floor(rect.width * dpr));
+        const height = Math.max(20, Math.floor(rect.height * dpr));
+        if (this.canvas.width !== width || this.canvas.height !== height) {
+          this.canvas.width = width;
+          this.canvas.height = height;
+        }
+      }
+
+      setNumber(n) {
+        this.number = n;
+        this.nextId = 1;
+        this.nodeById.clear();
+        this.root = this.buildTree(n);
+        this.layoutTree();
+        this.sequence = this.collectBfs();
+        this.visibleCount = this.sequence.length;
+        this.playing = false;
+        this.draw();
+      }
+
+      buildTree(value) {
+        const pair = splitComposite(value);
+        const node = {
+          id: this.nextId += 1,
+          value,
+          prime: isPrime(value),
+          left: null,
+          right: null,
+          x: 0,
+          y: 0,
+          depth: 0
+        };
+        this.nodeById.set(node.id, node);
+        if (pair) {
+          node.prime = false;
+          node.left = this.buildTree(pair[0]);
+          node.right = this.buildTree(pair[1]);
+        }
+        return node;
+      }
+
+      layoutTree() {
+        const width = this.canvas.width || 1;
+        const maxDepth = this.getDepth(this.root);
+        const horizontalPadding = 70;
+        const topPadding = 50;
+        const bottomPadding = 95;
+        const usableHeight = Math.max(60, this.canvas.height - topPadding - bottomPadding);
+
+        const assign = (node, depth, minX, maxX) => {
+          if (!node) return;
+          node.depth = depth;
+          node.y = topPadding + (maxDepth === 0 ? 0 : (depth / maxDepth) * usableHeight);
+          if (!node.left || !node.right) {
+            node.x = (minX + maxX) / 2;
+            return;
+          }
+          const mid = (minX + maxX) / 2;
+          assign(node.left, depth + 1, minX, mid);
+          assign(node.right, depth + 1, mid, maxX);
+          node.x = (node.left.x + node.right.x) / 2;
+        };
+
+        assign(this.root, 0, horizontalPadding, width - horizontalPadding);
+      }
+
+      getDepth(node) {
+        if (!node) return 0;
+        if (!node.left && !node.right) return 0;
+        return 1 + Math.max(this.getDepth(node.left), this.getDepth(node.right));
+      }
+
+      collectBfs() {
+        const out = [];
+        const q = [this.root];
+        while (q.length) {
+          const node = q.shift();
+          if (!node) continue;
+          out.push(node);
+          if (node.left) q.push(node.left);
+          if (node.right) q.push(node.right);
+        }
+        return out;
+      }
+
+      play() {
+        if (!this.sequence.length) return;
+        this.visibleCount = 0;
+        this.playing = true;
+      }
+
+      tick(dtMs) {
+        this.framePhase += dtMs / 1000;
+        if (this.playing) {
+          const step = this.getReduceMotion() ? REDUCED_STEP_MS : DEFAULT_STEP_MS;
+          this.visibleCount += dtMs / Math.max(1, step);
+          if (this.visibleCount >= this.sequence.length) {
+            this.visibleCount = this.sequence.length;
+            this.playing = false;
+          }
+        }
+        this.draw();
+      }
+
+      draw() {
+        this.resize();
+        const ctx = this.ctx;
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "#101228";
+        ctx.fillRect(0, 0, width, height);
+
+        const visibleNodes = new Set();
+        const reveal = Math.floor(this.visibleCount);
+        for (let i = 0; i < reveal; i += 1) {
+          if (this.sequence[i]) visibleNodes.add(this.sequence[i].id);
+        }
+
+        ctx.strokeStyle = "rgba(255,255,255,0.25)";
+        ctx.lineWidth = 2;
+        const drawEdge = (parent, child) => {
+          if (!parent || !child) return;
+          if (!visibleNodes.has(parent.id) || !visibleNodes.has(child.id)) return;
+          ctx.beginPath();
+          ctx.moveTo(parent.x, parent.y + 18);
+          ctx.lineTo(child.x, child.y - 18);
+          ctx.stroke();
+        };
+
+        const dfsEdge = (node) => {
+          if (!node) return;
+          drawEdge(node, node.left);
+          drawEdge(node, node.right);
+          dfsEdge(node.left);
+          dfsEdge(node.right);
+        };
+        dfsEdge(this.root);
+
+        const pulse = 0.15 + Math.sin(this.framePhase * 4) * 0.12;
+        const drawNode = (node) => {
+          if (!node || !visibleNodes.has(node.id)) return;
+          const radius = 18 + (node.prime ? pulse * 8 : 0);
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = node.prime ? COLOR_HEX.prime : COLOR_HEX.composite;
+          ctx.globalAlpha = node.prime ? 0.95 : 0.9;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = "rgba(255,255,255,0.35)";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.fillStyle = "#0f0f23";
+          ctx.font = "bold 14px Segoe UI";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(String(node.value), node.x, node.y);
+        };
+
+        const dfsNode = (node) => {
+          if (!node) return;
+          drawNode(node);
+          dfsNode(node.left);
+          dfsNode(node.right);
+        };
+        dfsNode(this.root);
+
+        const factors = factorizePrimePowers(this.number);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.font = "13px Segoe UI";
+        ctx.fillStyle = "rgba(232,232,232,0.8)";
+        ctx.fillText(`N = ${this.number}`, 16, height - 72);
+        ctx.fillStyle = "rgba(131,193,103,0.95)";
+        ctx.fillText("Even exponent => perfect square", 16, height - 48);
+        ctx.fillStyle = "rgba(252,186,3,0.95)";
+        ctx.fillText("Exponent multiple of 3 => perfect cube", 16, height - 28);
+
+        let x = width - 16;
+        for (let i = factors.length - 1; i >= 0; i -= 1) {
+          const [prime, exp] = factors[i];
+          const token = `${prime}${exp > 1 ? `^${exp}` : ""}`;
+          ctx.font = "bold 14px Consolas";
+          const tokenWidth = ctx.measureText(token).width;
+          x -= tokenWidth;
+          ctx.fillStyle = exp % 2 === 0 && exp % 3 === 0
+            ? COLOR_HEX.result
+            : exp % 2 === 0
+              ? COLOR_HEX.ab
+              : exp % 3 === 0
+                ? COLOR_HEX.b
+                : COLOR_HEX.text;
+          ctx.fillText(token, x, height - 72);
+          if (i > 0) {
+            const mult = " × ";
+            ctx.font = "13px Segoe UI";
+            const mw = ctx.measureText(mult).width;
+            x -= mw;
+            ctx.fillStyle = "rgba(232,232,232,0.8)";
+            ctx.fillText(mult, x, height - 72);
+          }
+        }
+      }
+    }
+
+    class PrimeMode {
+      constructor(canvas, getReduceMotion) {
+        this.id = "prime";
+        this.canvas = canvas;
+        this.tree = new FactorTreeRenderer(canvas, getReduceMotion);
+        this.params = { number: 84 };
+      }
+
+      onActivate() {
+        this.canvas.style.display = "block";
+        this.tree.resize();
+        this.tree.setNumber(this.params.number);
+      }
+
+      onDeactivate() {
+        this.canvas.style.display = "none";
+      }
+
+      setParams(params) {
+        this.params = { ...this.params, ...params };
+        this.tree.setNumber(this.params.number);
+      }
+
+      resetExplore() {
+        this.setParams({ number: 84 });
+      }
+
+      playAnimation() {
+        this.tree.play();
+      }
+
+      tick(_dt, dtMs) {
+        this.tree.tick(dtMs);
+      }
+
+      resize() {
+        this.tree.resize();
+        this.tree.draw();
+      }
+
+      equationTex() {
+        const factors = factorizePrimePowers(this.params.number);
+        return `\\color{${COLOR_HEX.text}}{${this.params.number}} = ${primeFactorsToKatex(factors)}`;
+      }
+
+      overlay() {
+        return {
+          left: `N = ${this.params.number}`,
+          right: "Prime leaves glow cyan"
+        };
+      }
+
+      showDrillFeedback(problem) {
+        if (problem && problem.n) {
+          this.setParams({ number: problem.n });
+          this.playAnimation();
+        }
+      }
+    }
+
+    class PerfectSquaresMode {
+      constructor(getReduceMotion) {
+        this.id = "squares";
+        this.getReduceMotion = getReduceMotion;
+        this.params = { n: 8 };
+        this.scene = null;
+        this.camera = null;
+        this.controls = null;
+        this.tileMesh = null;
+        this.tileGeometry = null;
+        this.tileMaterial = null;
+        this.group = null;
+        this.boundingGroup = null;
+        this.dimGroup = null;
+        this.labels = [];
+        this.animating = false;
+        this.progress = 1;
+        this.totalCount = 0;
+      }
+
+      init(manager) {
+        if (this.scene) return;
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(COLOR_NUM.background);
+        addSoftLights(this.scene);
+        this.group = new THREE.Group();
+        this.scene.add(this.group);
+        this.boundingGroup = new THREE.Group();
+        this.scene.add(this.boundingGroup);
+        this.dimGroup = new THREE.Group();
+        this.scene.add(this.dimGroup);
+        this.camera = new THREE.OrthographicCamera(-16, 16, 10, -10, 0.1, 200);
+        this.camera.position.set(10, 16, 10);
+        this.camera.lookAt(0, 0, 0);
+        this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.enableRotate = true;
+        this.controls.enableZoom = true;
+        this.controls.minZoom = 0.3;
+        this.controls.maxZoom = 5;
+        this.controls.maxPolarAngle = Math.PI * 0.95;
+        const floor = new THREE.Mesh(
+          new THREE.PlaneGeometry(42, 42),
+          new THREE.MeshStandardMaterial({ color: 0x151535, roughness: 1, metalness: 0 })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.06;
+        this.scene.add(floor);
+        this.rebuildTiles();
+      }
+
+      onActivate(manager) {
+        this.init(manager);
+        if (this.controls) this.controls.enabled = true;
+        this.resize(manager.container.clientWidth, manager.container.clientHeight);
+      }
+
+      onDeactivate() {
+        if (this.controls) this.controls.enabled = false;
+        labelManager.clearGroup(this.id);
+      }
+
+      resize(width, height) {
+        const aspect = width / Math.max(1, height);
+        const view = 24;
+        this.camera.left = -(view * aspect) / 2;
+        this.camera.right = (view * aspect) / 2;
+        this.camera.top = view / 2;
+        this.camera.bottom = -view / 2;
+        this.camera.updateProjectionMatrix();
+      }
+
+      clearMesh() {
+        if (!this.tileMesh) return;
+        this.group.remove(this.tileMesh);
+        this.tileMesh.material.dispose();
+        this.tileMesh = null;
+      }
+
+      rebuildTiles() {
+        this.clearMesh();
+        const n = this.params.n;
+        this.totalCount = n * n;
+        this.tileGeometry = this.tileGeometry || new THREE.BoxGeometry(0.94, 0.08, 0.94);
+        this.tileMaterial = new THREE.MeshStandardMaterial({
+          color: COLOR_NUM.a,
+          roughness: 0.85,
+          metalness: 0.05
+        });
+        this.tileMesh = new THREE.InstancedMesh(this.tileGeometry, this.tileMaterial, this.totalCount);
+        this.tileMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        const matrix = new THREE.Matrix4();
+        let index = 0;
+        for (let row = 0; row < n; row += 1) {
+          for (let col = 0; col < n; col += 1) {
+            const x = col - (n - 1) / 2;
+            const z = row - (n - 1) / 2;
+            matrix.makeTranslation(x, 0, z);
+            this.tileMesh.setMatrixAt(index, matrix);
+            index += 1;
+          }
+        }
+        this.tileMesh.instanceMatrix.needsUpdate = true;
+        this.tileMesh.count = this.totalCount;
+        this.group.add(this.tileMesh);
+        this.dimGroup.clear();
+        labelManager.clearGroup(this.id);
+        this.labels = [];
+
+        this.labels.push(
+          labelManager.addLabel({
+            text: `Area = ${n * n}`,
+            className: "viz-label viz-label--large",
+            color: COLOR_HEX.a,
+            groupId: this.id,
+            worldPos: new THREE.Vector3(0, 0.8, -n * 0.7 - 1.4)
+          })
+        );
+
+        createDimensionLine(this.dimGroup, labelManager, {
+          start: new THREE.Vector3(-(n / 2), 0.08, n / 2 + 0.45),
+          end: new THREE.Vector3(n / 2, 0.08, n / 2 + 0.45),
+          color: COLOR_NUM.a,
+          labelText: `${n}`,
+          labelClass: "viz-label viz-label--dim",
+          groupId: this.id,
+          offset: new THREE.Vector3(0, 0, 0)
+        });
+        createDimensionLine(this.dimGroup, labelManager, {
+          start: new THREE.Vector3(n / 2 + 0.45, 0.08, -n / 2),
+          end: new THREE.Vector3(n / 2 + 0.45, 0.08, n / 2),
+          color: COLOR_NUM.a,
+          labelText: `${n}`,
+          labelClass: "viz-label viz-label--dim",
+          groupId: this.id,
+          offset: new THREE.Vector3(0, 0, 0)
+        });
+      }
+
+      clearBoundingSquares() {
+        this.boundingGroup.clear();
+      }
+
+      showBoundingSquares(n) {
+        this.clearBoundingSquares();
+        if (isPerfectSquare(n)) return;
+        const { lowRoot, highRoot } = nearestPerfectSquare(n);
+        const createLine = (size, color, yOffset) => {
+          const half = size / 2;
+          const points = [
+            new THREE.Vector3(-half, yOffset, -half),
+            new THREE.Vector3(half, yOffset, -half),
+            new THREE.Vector3(half, yOffset, half),
+            new THREE.Vector3(-half, yOffset, half),
+            new THREE.Vector3(-half, yOffset, -half)
+          ];
+          const geometry = new THREE.BufferGeometry().setFromPoints(points);
+          const material = new THREE.LineBasicMaterial({ color });
+          const line = new THREE.Line(geometry, material);
+          this.boundingGroup.add(line);
+        };
+        createLine(lowRoot, 0x83c167, 0.12);
+        createLine(highRoot, 0xfcba03, 0.2);
+      }
+
+      setParams(params) {
+        this.params = { ...this.params, ...params };
+        this.rebuildTiles();
+        this.clearBoundingSquares();
+      }
+
+      resetExplore() {
+        this.setParams({ n: 8 });
+        this.progress = 1;
+        this.animating = false;
+      }
+
+      playAnimation() {
+        this.progress = 0;
+        this.animating = true;
+      }
+
+      tick(dt) {
+        if (!this.animating || !this.tileMesh) return;
+        const duration = this.getReduceMotion() ? 0.1 : Math.max(1, this.params.n * 0.24);
+        this.progress = clamp(this.progress + dt / duration, 0, 1);
+        this.tileMesh.count = Math.max(1, Math.floor(this.totalCount * this.progress));
+        if (this.progress >= 1) {
+          this.tileMesh.count = this.totalCount;
+          this.animating = false;
+        }
+      }
+
+      updateLabels(canvas) {
+        labelManager.update(this.camera, canvas);
+      }
+
+      equationTex() {
+        const n = this.params.n;
+        return `\\color{${COLOR_HEX.a}}{${n}^2} = ${n * n}`;
+      }
+
+      overlay() {
+        return {
+          left: `n = ${this.params.n} (tiles = ${this.params.n ** 2})`,
+          right: "Orthographic n×n tile model"
+        };
+      }
+
+      showDrillFeedback(problem) {
+        if (!problem) return;
+        if (typeof problem.n === "number") this.showBoundingSquares(problem.n);
+      }
+    }
+
+    class PerfectCubesMode {
+      constructor(getReduceMotion) {
+        this.id = "cubes";
+        this.getReduceMotion = getReduceMotion;
+        this.params = { n: 5 };
+        this.scene = null;
+        this.camera = null;
+        this.controls = null;
+        this.group = null;
+        this.cubeGeometry = null;
+        this.cubeMaterial = null;
+        this.cubeMesh = null;
+        this.dimGroup = null;
+        this.labels = [];
+        this.totalCount = 0;
+        this.progress = 1;
+        this.animating = false;
+      }
+
+      init(manager) {
+        if (this.scene) return;
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(COLOR_NUM.background);
+        addSoftLights(this.scene);
+        this.group = new THREE.Group();
+        this.scene.add(this.group);
+        this.dimGroup = new THREE.Group();
+        this.scene.add(this.dimGroup);
+        this.camera = new THREE.PerspectiveCamera(50, 1, 0.5, 250);
+        this.camera.position.set(14, 12, 14);
+        this.camera.lookAt(0, 0, 0);
+        this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.minDistance = 2;
+        this.controls.maxDistance = 150;
+        this.controls.maxPolarAngle = Math.PI * 0.95;
+        this.controls.target.set(0, 0, 0);
+        this.controls.enabled = true;
+        this.rebuild();
+      }
+
+      onActivate(manager) {
+        this.init(manager);
+        this.controls.enabled = true;
+        this.resize(manager.container.clientWidth, manager.container.clientHeight);
+      }
+
+      onDeactivate() {
+        if (this.controls) this.controls.enabled = false;
+        labelManager.setOcclusionMeshes([]);
+        labelManager.clearGroup(this.id);
+      }
+
+      resize(width, height) {
+        this.camera.aspect = width / Math.max(1, height);
+        this.camera.updateProjectionMatrix();
+      }
+
+      rebuild() {
+        if (this.cubeMesh) {
+          this.group.remove(this.cubeMesh);
+          this.cubeMesh.material.dispose();
+          this.cubeMesh = null;
+        }
+        const n = this.params.n;
+        this.totalCount = n * n * n;
+        this.cubeGeometry = this.cubeGeometry || new THREE.BoxGeometry(0.9, 0.9, 0.9);
+        this.cubeMaterial = new THREE.MeshStandardMaterial({
+          color: COLOR_NUM.a,
+          roughness: 0.8,
+          metalness: 0.05,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
+        });
+        this.cubeMesh = new THREE.InstancedMesh(this.cubeGeometry, this.cubeMaterial, this.totalCount);
+        this.cubeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        const matrix = new THREE.Matrix4();
+        let idx = 0;
+        for (let y = 0; y < n; y += 1) {
+          for (let z = 0; z < n; z += 1) {
+            for (let x = 0; x < n; x += 1) {
+              matrix.makeTranslation(
+                x - (n - 1) / 2,
+                y - (n - 1) / 2,
+                z - (n - 1) / 2
+              );
+              this.cubeMesh.setMatrixAt(idx, matrix);
+              idx += 1;
+            }
+          }
+        }
+        this.cubeMesh.instanceMatrix.needsUpdate = true;
+        this.cubeMesh.count = this.totalCount;
+        this.group.add(this.cubeMesh);
+        labelManager.setOcclusionMeshes([this.cubeMesh]);
+        this.dimGroup.clear();
+        labelManager.clearGroup(this.id);
+        this.labels = [];
+
+        this.labels.push(
+          labelManager.addLabel({
+            text: `Volume = ${n ** 3}`,
+            className: "viz-label viz-label--large",
+            color: COLOR_HEX.a,
+            groupId: this.id,
+            worldPos: new THREE.Vector3(0, n * 0.75 + 1.3, 0)
+          })
+        );
+
+        createDimensionLine(this.dimGroup, labelManager, {
+          start: new THREE.Vector3(-(n / 2), -n / 2 - 0.6, n / 2 + 0.6),
+          end: new THREE.Vector3(n / 2, -n / 2 - 0.6, n / 2 + 0.6),
+          color: COLOR_NUM.a,
+          labelText: `${n}`,
+          labelClass: "viz-label viz-label--dim",
+          groupId: this.id
+        });
+        createDimensionLine(this.dimGroup, labelManager, {
+          start: new THREE.Vector3(n / 2 + 0.6, -n / 2, n / 2),
+          end: new THREE.Vector3(n / 2 + 0.6, n / 2, n / 2),
+          color: COLOR_NUM.a,
+          labelText: `${n}`,
+          labelClass: "viz-label viz-label--dim",
+          groupId: this.id
+        });
+      }
+
+      setParams(params) {
+        this.params = { ...this.params, ...params };
+        this.rebuild();
+      }
+
+      resetExplore() {
+        this.setParams({ n: 5 });
+        this.progress = 1;
+        this.animating = false;
+      }
+
+      playAnimation() {
+        this.progress = 0;
+        this.animating = true;
+      }
+
+      tick(dt) {
+        if (!this.animating || !this.cubeMesh) return;
+        const duration = this.getReduceMotion() ? 0.1 : Math.max(1.2, this.params.n * 0.25);
+        this.progress = clamp(this.progress + dt / duration, 0, 1);
+        this.cubeMesh.count = Math.max(1, Math.floor(this.totalCount * this.progress));
+        if (this.progress >= 1) {
+          this.cubeMesh.count = this.totalCount;
+          this.animating = false;
+        }
+      }
+
+      updateLabels(canvas) {
+        labelManager.update(this.camera, canvas, true);
+      }
+
+      equationTex() {
+        const n = this.params.n;
+        return `\\color{${COLOR_HEX.a}}{${n}^3} = ${n ** 3}`;
+      }
+
+      overlay() {
+        return {
+          left: `n = ${this.params.n} (cubes = ${this.params.n ** 3})`,
+          right: "Perspective + OrbitControls"
+        };
+      }
+
+      showDrillFeedback(problem) {
+        if (problem && typeof problem.n === "number") {
+          const root = Math.round(Math.cbrt(problem.n));
+          const clamped = clamp(root, 1, 12);
+          this.setParams({ n: clamped });
+          this.playAnimation();
+        }
+      }
+    }
+
+    class AB2Mode {
+      constructor(getReduceMotion) {
+        this.id = "ab2";
+        this.getReduceMotion = getReduceMotion;
+        this.params = { a: 4, b: 3 };
+        this.scene = null;
+        this.camera = null;
+        this.controls = null;
+        this.group = null;
+        this.hLines = [];
+        this.vLines = [];
+        this.partitionLines = [];
+        this.dimBottom = [];
+        this.dimLeft = [];
+        this.baseSquare = null;
+        this.regions = [];
+        this.regionLabels = [];
+        this.bigLabel = null;
+        this.baseRegionColor = new THREE.Color(0x2a2a4a);
+        this.regionColorTargets = [
+          new THREE.Color(COLOR_NUM.a),
+          new THREE.Color(COLOR_NUM.ab),
+          new THREE.Color(COLOR_NUM.ab),
+          new THREE.Color(COLOR_NUM.b)
+        ];
+        this.queue = new StepQueue(getReduceMotion);
+        this.equationStage = 0;
+        this.stepIndex = 1;
+        this.pulsePhase = 0;
+        this.pulseStrength = 0;
+      }
+
+      init(manager) {
+        if (this.scene) return;
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(COLOR_NUM.background);
+        addSoftLights(this.scene);
+        this.group = new THREE.Group();
+        this.scene.add(this.group);
+        this.camera = new THREE.OrthographicCamera(-14, 14, 10, -10, 0.1, 120);
+        this.camera.position.set(0, 0, 40);
+        this.camera.lookAt(0, 0, 0);
+        this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.enableRotate = false;
+        this.controls.enableZoom = true;
+        this.controls.minZoom = 0.3;
+        this.controls.maxZoom = 5;
+        this.rebuild();
+      }
+
+      onActivate(manager) {
+        this.init(manager);
+        if (this.controls) this.controls.enabled = true;
+        this.resize(manager.container.clientWidth, manager.container.clientHeight);
+      }
+
+      onDeactivate() {
+        if (this.controls) this.controls.enabled = false;
+        this.queue.clear();
+        labelManager.clearGroup(this.id);
+      }
+
+      resize(width, height) {
+        const aspect = width / Math.max(1, height);
+        const view = 26;
+        this.camera.left = -(view * aspect) / 2;
+        this.camera.right = (view * aspect) / 2;
+        this.camera.top = view / 2;
+        this.camera.bottom = -view / 2;
+        this.camera.updateProjectionMatrix();
+      }
+
+      clearGroup() {
+        if (!this.group) return;
+        disposeObject3D(this.group);
+        this.group.clear();
+        this.regions = [];
+        this.hLines = [];
+        this.vLines = [];
+        this.partitionLines = [];
+        this.dimBottom = [];
+        this.dimLeft = [];
+        labelManager.clearGroup(this.id);
+        this.regionLabels = [];
+        this.bigLabel = null;
+      }
+
+      makeSegment(start, end, color) {
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([start, end]),
+          new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0 })
+        );
+        this.group.add(line);
+        return line;
+      }
+
+      makeRegion(width, height, centerX, centerY) {
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(width, height),
+          new THREE.MeshStandardMaterial({
+            color: this.baseRegionColor,
+            roughness: 0.85,
+            metalness: 0.03,
+            transparent: true,
+            opacity: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+          })
+        );
+        mesh.position.set(centerX, centerY, 0);
+        this.group.add(mesh);
+        this.regions.push(mesh);
+      }
+
+      rebuild() {
+        this.clearGroup();
+        const { a, b } = this.params;
+        const total = a + b;
+        const offset = total / 2;
+        const z = 0.24;
+        const splitX = a - offset;
+        const splitY = a - offset;
+
+        this.hLines = [
+          this.makeSegment(
+            new THREE.Vector3(-offset, -offset, z),
+            new THREE.Vector3(splitX, -offset, z),
+            COLOR_NUM.a
+          ),
+          this.makeSegment(
+            new THREE.Vector3(splitX, -offset, z),
+            new THREE.Vector3(offset, -offset, z),
+            COLOR_NUM.b
+          )
+        ];
+        this.vLines = [
+          this.makeSegment(
+            new THREE.Vector3(-offset, -offset, z),
+            new THREE.Vector3(-offset, splitY, z),
+            COLOR_NUM.a
+          ),
+          this.makeSegment(
+            new THREE.Vector3(-offset, splitY, z),
+            new THREE.Vector3(-offset, offset, z),
+            COLOR_NUM.b
+          )
+        ];
+
+        this.baseSquare = new THREE.Mesh(
+          new THREE.PlaneGeometry(total, total),
+          new THREE.MeshStandardMaterial({
+            color: 0x2a2a4a,
+            transparent: true,
+            opacity: 0,
+            roughness: 0.92,
+            metalness: 0.02,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+          })
+        );
+        this.group.add(this.baseSquare);
+
+        const makePartition = (start, end) => {
+          const line = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([start, end]),
+            new THREE.LineDashedMaterial({
+              color: 0xffffff,
+              dashSize: 0.34,
+              gapSize: 0.2,
+              transparent: true,
+              opacity: 0
+            })
+          );
+          line.computeLineDistances();
+          this.group.add(line);
+          this.partitionLines.push(line);
+        };
+        makePartition(
+          new THREE.Vector3(splitX, -offset, z),
+          new THREE.Vector3(splitX, offset, z)
+        );
+        makePartition(
+          new THREE.Vector3(-offset, splitY, z),
+          new THREE.Vector3(offset, splitY, z)
+        );
+
+        this.makeRegion(a, a, a / 2 - offset, a / 2 - offset);
+        this.makeRegion(a, b, a / 2 - offset, a + b / 2 - offset);
+        this.makeRegion(b, a, a + b / 2 - offset, a / 2 - offset);
+        this.makeRegion(b, b, a + b / 2 - offset, a + b / 2 - offset);
+
+        this.bigLabel = labelManager.addLabel({
+          tex: "(a+b)^2",
+          className: "viz-label viz-label--large",
+          color: COLOR_HEX.text,
+          groupId: this.id,
+          worldPos: new THREE.Vector3(0, 0, 0.4),
+          opacity: 0
+        });
+        this.regionLabels = [
+          labelManager.addLabel({
+            tex: "a^2",
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.a,
+            groupId: this.id,
+            getWorldPos: () => this.regions[0].position.clone().setZ(0.45),
+            opacity: 0
+          }),
+          labelManager.addLabel({
+            tex: "ab",
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.ab,
+            groupId: this.id,
+            getWorldPos: () => this.regions[1].position.clone().setZ(0.45),
+            opacity: 0
+          }),
+          labelManager.addLabel({
+            tex: "ab",
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.ab,
+            groupId: this.id,
+            getWorldPos: () => this.regions[2].position.clone().setZ(0.45),
+            opacity: 0
+          }),
+          labelManager.addLabel({
+            tex: "b^2",
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.b,
+            groupId: this.id,
+            getWorldPos: () => this.regions[3].position.clone().setZ(0.45),
+            opacity: 0
+          })
+        ];
+
+        this.dimBottom = [
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(-offset, -offset, z),
+            end: new THREE.Vector3(splitX, -offset, z),
+            color: COLOR_NUM.a,
+            labelText: "a",
+            groupId: this.id,
+            offset: new THREE.Vector3(0, -0.62, 0),
+            opacity: 0
+          }),
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(splitX, -offset, z),
+            end: new THREE.Vector3(offset, -offset, z),
+            color: COLOR_NUM.b,
+            labelText: "b",
+            groupId: this.id,
+            offset: new THREE.Vector3(0, -0.62, 0),
+            opacity: 0
+          })
+        ];
+        this.dimLeft = [
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(-offset, -offset, z),
+            end: new THREE.Vector3(-offset, splitY, z),
+            color: COLOR_NUM.a,
+            labelText: "a",
+            groupId: this.id,
+            offset: new THREE.Vector3(-0.62, 0, 0),
+            opacity: 0
+          }),
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(-offset, splitY, z),
+            end: new THREE.Vector3(-offset, offset, z),
+            color: COLOR_NUM.b,
+            labelText: "b",
+            groupId: this.id,
+            offset: new THREE.Vector3(-0.62, 0, 0),
+            opacity: 0
+          })
+        ];
+
+        this.equationStage = 0;
+        this.pulseStrength = 0;
+        this.applyStepState(1);
+      }
+
+      setDimensionOpacity(items, opacity) {
+        for (const item of items) {
+          item.mesh.material.opacity = opacity;
+          labelManager.setOpacity(item.label, opacity);
+        }
+      }
+
+      applyTargets(targets) {
+        for (const line of this.hLines) line.material.opacity = targets.hLine;
+        for (const line of this.vLines) line.material.opacity = targets.vLine;
+        this.baseSquare.material.opacity = targets.baseSquare;
+        for (const line of this.partitionLines) line.material.opacity = targets.partition;
+
+        for (let i = 0; i < this.regions.length; i += 1) {
+          const region = this.regions[i];
+          const mat = region.material;
+          mat.opacity = targets.regionAlpha;
+          mat.color.copy(this.baseRegionColor).lerp(this.regionColorTargets[i], targets.regionColor);
+        }
+
+        labelManager.setOpacity(this.bigLabel, targets.bigLabel);
+        for (const label of this.regionLabels) labelManager.setOpacity(label, targets.regionLabel);
+        this.setDimensionOpacity(this.dimBottom, targets.bottomDims);
+        this.setDimensionOpacity(this.dimLeft, targets.leftDims);
+
+        this.equationStage = targets.eq;
+        this.pulseStrength = targets.pulse;
+      }
+
+      lerpTargets(start, end, t) {
+        const out = {};
+        for (const key of Object.keys(end)) {
+          if (key === "eq") {
+            out[key] = t < 0.7 ? start[key] : end[key];
+          } else {
+            out[key] = start[key] + (end[key] - start[key]) * t;
+          }
+        }
+        return out;
+      }
+
+      setParams(params) {
+        this.params = { ...this.params, ...params };
+        this.rebuild();
+      }
+
+      resetExplore() {
+        this.setParams({ a: 4, b: 3 });
+      }
+
+      hasStepControls() {
+        return true;
+      }
+
+      getStepCount() {
+        return 6;
+      }
+
+      getStepIndex() {
+        return this.stepIndex;
+      }
+
+      getStepTargets(step) {
+        if (step <= 1) {
+          return {
+            hLine: 1, vLine: 0, baseSquare: 0, partition: 0, regionColor: 0, regionAlpha: 0, regionLabel: 0,
+            bottomDims: 1, leftDims: 0, bigLabel: 0, eq: 0, pulse: 0
+          };
+        }
+        if (step === 2) {
+          return {
+            hLine: 1, vLine: 1, baseSquare: 0, partition: 0, regionColor: 0, regionAlpha: 0, regionLabel: 0,
+            bottomDims: 1, leftDims: 0, bigLabel: 0, eq: 0, pulse: 0
+          };
+        }
+        if (step === 3) {
+          return {
+            hLine: 0.6, vLine: 0.6, baseSquare: 0.88, partition: 0, regionColor: 0, regionAlpha: 0, regionLabel: 0,
+            bottomDims: 0, leftDims: 0, bigLabel: 1, eq: 1, pulse: 0
+          };
+        }
+        if (step === 4) {
+          return {
+            hLine: 0.3, vLine: 0.3, baseSquare: 0.88, partition: 1, regionColor: 0, regionAlpha: 0, regionLabel: 0,
+            bottomDims: 0, leftDims: 0, bigLabel: 0.9, eq: 2, pulse: 0
+          };
+        }
+        if (step === 5) {
+          return {
+            hLine: 0.15, vLine: 0.15, baseSquare: 0.35, partition: 1, regionColor: 1, regionAlpha: 0.98, regionLabel: 1,
+            bottomDims: 1, leftDims: 1, bigLabel: 0, eq: 3, pulse: 0
+          };
+        }
+        return {
+          hLine: 0.15, vLine: 0.15, baseSquare: 0.25, partition: 1, regionColor: 1, regionAlpha: 0.98, regionLabel: 1,
+          bottomDims: 1, leftDims: 1, bigLabel: 0, eq: 4, pulse: 1
+        };
+      }
+
+      applyStepState(step) {
+        const clamped = clamp(step, 1, this.getStepCount());
+        this.stepIndex = clamped;
+        this.queue.clear();
+        this.applyTargets(this.getStepTargets(clamped));
+        notifyVisualUpdate();
+      }
+
+      setStep(step, animate = false) {
+        const clamped = clamp(step, 1, this.getStepCount());
+        if (!animate || this.getReduceMotion()) {
+          this.applyStepState(clamped);
+          return;
+        }
+        const start = this.getStepTargets(this.stepIndex);
+        const end = this.getStepTargets(clamped);
+        this.queue.clear();
+        this.queue.run([
+          {
+            duration: DEFAULT_STEP_MS,
+            pause: INTER_STEP_PAUSE_MS,
+            onUpdate: (t) => {
+              this.applyTargets(this.lerpTargets(start, end, t));
+            },
+            onEnd: () => {
+              this.stepIndex = clamped;
+              this.applyTargets(end);
+              notifyVisualUpdate();
+            }
+          }
+        ]);
+      }
+
+      playAnimation() {
+        this.setStep(this.getStepCount(), true);
+      }
+
+      tick(_dt, dtMs) {
+        this.queue.update(dtMs);
+        this.pulsePhase += dtMs / 1000;
+        const scale = 1 + Math.sin(this.pulsePhase * 8) * 0.07 * this.pulseStrength;
+        for (let i = 1; i <= 2; i += 1) {
+          const label = this.regionLabels[i];
+          if (!label || !label.el) continue;
+          label.el.style.transform = `translate(-50%, -50%) scale(${scale.toFixed(3)})`;
+        }
+      }
+
+      updateLabels(canvas) {
+        labelManager.update(this.camera, canvas);
+      }
+
+      equationTex() {
+        const { a, b } = this.params;
+        if (this.equationStage === 0) {
+          return `${a}+${b}`;
+        }
+        if (this.equationStage === 1) {
+          return `(${a}+${b})^2`;
+        }
+        if (this.equationStage === 2) {
+          return `(${a}+${b})^2 = ?`;
+        }
+        if (this.equationStage === 3) {
+          return `(${a}+${b})^2 = \\color{${COLOR_HEX.a}}{${a ** 2}} + \\color{${COLOR_HEX.ab}}{${a * b}} + \\color{${COLOR_HEX.ab}}{${a * b}} + \\color{${COLOR_HEX.b}}{${b ** 2}}`;
+        }
+        return `(${a}+${b})^2 = \\color{${COLOR_HEX.a}}{${a ** 2}} + \\color{${COLOR_HEX.ab}}{${2 * a * b}} + \\color{${COLOR_HEX.b}}{${b ** 2}}`;
+      }
+
+      overlay() {
+        const messages = [
+          "Side length a+b",
+          "Duplicate and rotate side",
+          "Sweep square area",
+          "Partition into four regions",
+          "Color and label regions",
+          "Combine like terms (2ab)"
+        ];
+        const { a, b } = this.params;
+        return {
+          left: `Step ${this.stepIndex}/6 | a=${a}, b=${b}`,
+          right: messages[this.stepIndex - 1]
+        };
+      }
+
+      showDrillFeedback(problem) {
+        if (!problem) return;
+        if (problem.a && problem.b) this.setParams({ a: problem.a, b: problem.b });
+        this.playAnimation();
+      }
+    }
+
+
+    class DiffSquaresMode {
+      constructor(getReduceMotion) {
+        this.id = "diff2";
+        this.getReduceMotion = getReduceMotion;
+        this.params = { a: 7, b: 3 };
+        this.scene = null;
+        this.camera = null;
+        this.controls = null;
+        this.group = null;
+        this.baseSquare = null;
+        this.bottomPiece = null;
+        this.topLeftPiece = null;
+        this.topLeftOutline = null;
+        this.cutRect = null;
+        this.cutLine = null;
+        this.squareLabel = null;
+        this.resultLabel = null;
+        this.dimA = [];
+        this.dimB = [];
+        this.dimResult = [];
+        this.queue = new StepQueue(getReduceMotion);
+        this.equationStage = 0;
+        this.stepIndex = 1;
+      }
+
+      init(manager) {
+        if (this.scene) return;
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(COLOR_NUM.background);
+        addSoftLights(this.scene);
+        this.group = new THREE.Group();
+        this.scene.add(this.group);
+        this.camera = new THREE.OrthographicCamera(-16, 16, 10, -10, 0.1, 150);
+        this.camera.position.set(0, 0, 40);
+        this.camera.lookAt(0, 0, 0);
+        this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.enableRotate = false;
+        this.controls.enableZoom = true;
+        this.controls.minZoom = 0.3;
+        this.controls.maxZoom = 5;
+        this.rebuild();
+      }
+
+      onActivate(manager) {
+        this.init(manager);
+        if (this.controls) this.controls.enabled = true;
+        this.resize(manager.container.clientWidth, manager.container.clientHeight);
+      }
+
+      onDeactivate() {
+        if (this.controls) this.controls.enabled = false;
+        this.queue.clear();
+        labelManager.clearGroup(this.id);
+      }
+
+      resize(width, height) {
+        const aspect = width / Math.max(1, height);
+        const view = 28;
+        this.camera.left = -(view * aspect) / 2;
+        this.camera.right = (view * aspect) / 2;
+        this.camera.top = view / 2;
+        this.camera.bottom = -view / 2;
+        this.camera.updateProjectionMatrix();
+      }
+
+      rebuild() {
+        disposeObject3D(this.group);
+        this.group.clear();
+        const { a, b } = this.params;
+        const diff = a - b;
+        const centerShift = a / 2;
+        const z = 0.02;
+
+        const squareMaterial = new THREE.MeshStandardMaterial({
+          color: COLOR_NUM.a,
+          roughness: 0.88,
+          metalness: 0.03,
+          transparent: true,
+          opacity: 0.95,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
+        });
+        this.baseSquare = new THREE.Mesh(new THREE.PlaneGeometry(a, a), squareMaterial);
+        this.baseSquare.position.set(0, 0, z);
+        this.group.add(this.baseSquare);
+
+        const remainingMaterial = new THREE.MeshStandardMaterial({
+          color: COLOR_NUM.a,
+          roughness: 0.86,
+          metalness: 0.03,
+          transparent: true,
+          opacity: 0,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
+        });
+        const cutMaterial = new THREE.MeshStandardMaterial({
+          color: COLOR_NUM.b,
+          roughness: 0.86,
+          metalness: 0.03,
+          transparent: true,
+          opacity: 0.82,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
+        });
+
+        this.bottomPiece = new THREE.Mesh(new THREE.PlaneGeometry(a, diff), remainingMaterial.clone());
+        this.bottomPiece.position.set(0, -centerShift + diff / 2, z + 0.02);
+        this.bottomPiece.userData.base = this.bottomPiece.position.clone();
+        this.group.add(this.bottomPiece);
+
+        this.topLeftPiece = new THREE.Mesh(new THREE.PlaneGeometry(diff, b), remainingMaterial.clone());
+        this.topLeftPiece.position.set(-centerShift + diff / 2, centerShift - b / 2, z + 0.03);
+        this.topLeftPiece.userData.base = this.topLeftPiece.position.clone();
+        this.topLeftPiece.userData.target = new THREE.Vector3(a / 2 + b / 2, this.bottomPiece.position.y, z + 0.03);
+        this.topLeftPiece.userData.baseRotation = 0;
+        this.topLeftPiece.userData.targetRotation = -Math.PI / 2;
+        this.group.add(this.topLeftPiece);
+
+        this.topLeftOutline = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.PlaneGeometry(diff, b)),
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
+        );
+        this.topLeftOutline.renderOrder = 1;
+        this.topLeftPiece.add(this.topLeftOutline);
+
+        this.cutRect = new THREE.Mesh(new THREE.PlaneGeometry(b, b), cutMaterial);
+        this.cutRect.position.set(centerShift - b / 2, centerShift - b / 2, z + 0.05);
+        this.cutRect.userData.base = this.cutRect.position.clone();
+        this.group.add(this.cutRect);
+
+        const frame = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(-centerShift, -centerShift, z + 0.09),
+            new THREE.Vector3(centerShift, -centerShift, z + 0.09),
+            new THREE.Vector3(centerShift, centerShift, z + 0.09),
+            new THREE.Vector3(-centerShift, centerShift, z + 0.09),
+            new THREE.Vector3(-centerShift, -centerShift, z + 0.09)
+          ]),
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 })
+        );
+        this.group.add(frame);
+
+        this.cutLine = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(-centerShift, diff - centerShift, z + 0.1),
+            new THREE.Vector3(centerShift, diff - centerShift, z + 0.1)
+          ]),
+          new THREE.LineDashedMaterial({
+            color: COLOR_NUM.result,
+            dashSize: 0.3,
+            gapSize: 0.2,
+            transparent: true,
+            opacity: 0
+          })
+        );
+        this.cutLine.computeLineDistances();
+        this.group.add(this.cutLine);
+
+        labelManager.clearGroup(this.id);
+        this.squareLabel = labelManager.addLabel({
+          tex: "a^2",
+          className: "viz-label viz-label--large",
+          color: COLOR_HEX.a,
+          groupId: this.id,
+          worldPos: new THREE.Vector3(0, 0, 0.45),
+          opacity: 1
+        });
+        this.resultLabel = labelManager.addLabel({
+          text: `(${a + b})(${a - b}) = ${(a + b) * (a - b)}`,
+          className: "viz-label viz-label--medium",
+          color: COLOR_HEX.result,
+          groupId: this.id,
+          getWorldPos: () => {
+            const left = this.bottomPiece.position.x - a / 2;
+            const right = this.topLeftPiece.position.x + b / 2;
+            const centerX = (left + right) / 2;
+            return new THREE.Vector3(centerX, this.bottomPiece.position.y, 0.45);
+          },
+          opacity: 0
+        });
+
+        this.dimA = [
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(-centerShift, -centerShift, z + 0.1),
+            end: new THREE.Vector3(centerShift, -centerShift, z + 0.1),
+            color: COLOR_NUM.a,
+            labelText: "a",
+            groupId: this.id,
+            offset: new THREE.Vector3(0, -0.62, 0),
+            opacity: 1
+          }),
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(-centerShift, -centerShift, z + 0.1),
+            end: new THREE.Vector3(-centerShift, centerShift, z + 0.1),
+            color: COLOR_NUM.a,
+            labelText: "a",
+            groupId: this.id,
+            offset: new THREE.Vector3(-0.62, 0, 0),
+            opacity: 1
+          })
+        ];
+        this.dimB = [
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(centerShift - b, centerShift - b, z + 0.1),
+            end: new THREE.Vector3(centerShift, centerShift - b, z + 0.1),
+            color: COLOR_NUM.b,
+            labelText: "b",
+            groupId: this.id,
+            offset: new THREE.Vector3(0, -0.38, 0),
+            opacity: 0
+          }),
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(centerShift - b, centerShift - b, z + 0.1),
+            end: new THREE.Vector3(centerShift - b, centerShift, z + 0.1),
+            color: COLOR_NUM.b,
+            labelText: "b",
+            groupId: this.id,
+            offset: new THREE.Vector3(-0.38, 0, 0),
+            opacity: 0
+          })
+        ];
+        this.dimResult = [
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(-a / 2, this.bottomPiece.position.y - diff / 2, z + 0.1),
+            end: new THREE.Vector3(a / 2 + b, this.bottomPiece.position.y - diff / 2, z + 0.1),
+            color: COLOR_NUM.result,
+            labelText: "a+b",
+            groupId: this.id,
+            offset: new THREE.Vector3(0, -0.62, 0),
+            opacity: 0
+          }),
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(-a / 2, this.bottomPiece.position.y - diff / 2, z + 0.1),
+            end: new THREE.Vector3(-a / 2, this.bottomPiece.position.y + diff / 2, z + 0.1),
+            color: COLOR_NUM.a,
+            labelText: "a-b",
+            groupId: this.id,
+            offset: new THREE.Vector3(-0.62, 0, 0),
+            opacity: 0
+          })
+        ];
+        this.equationStage = 0;
+        this.applyStepState(1);
+      }
+
+      setDimOpacity(dims, opacity) {
+        for (const dim of dims) {
+          dim.mesh.material.opacity = opacity;
+          labelManager.setOpacity(dim.label, opacity);
+        }
+      }
+
+      applyVisualTargets(targets) {
+        this.baseSquare.material.opacity = targets.square;
+        this.bottomPiece.material.opacity = targets.lshape;
+        this.topLeftPiece.material.opacity = targets.lshape;
+
+        this.cutRect.material.opacity = 0.82 * (1 - targets.cut);
+        this.cutRect.scale.setScalar(1 - 0.15 * targets.cut);
+
+        this.cutLine.material.opacity = targets.cutLine;
+        this.topLeftOutline.material.opacity = targets.highlight;
+        const scale = 1 + 0.05 * targets.highlight;
+        this.topLeftPiece.scale.set(scale, scale, 1);
+
+        const rotateT = clamp(targets.rearrange * 2, 0, 1);
+        const slideT = clamp((targets.rearrange - 0.5) * 2, 0, 1);
+        this.topLeftPiece.position.lerpVectors(this.topLeftPiece.userData.base, this.topLeftPiece.userData.target, slideT);
+        this.topLeftPiece.rotation.z = this.topLeftPiece.userData.baseRotation
+          + (this.topLeftPiece.userData.targetRotation - this.topLeftPiece.userData.baseRotation) * rotateT;
+
+        labelManager.setOpacity(this.squareLabel, targets.squareLabel);
+        labelManager.setOpacity(this.resultLabel, targets.result);
+        this.setDimOpacity(this.dimA, targets.aDims);
+        this.setDimOpacity(this.dimB, targets.bDims);
+        this.setDimOpacity(this.dimResult, targets.resultDims);
+
+        this.equationStage = targets.eq;
+      }
+
+      lerpTargets(start, end, t) {
+        const out = {};
+        for (const key of Object.keys(end)) {
+          if (key === "eq") {
+            out[key] = t < 0.7 ? start[key] : end[key];
+          } else {
+            out[key] = start[key] + (end[key] - start[key]) * t;
+          }
+        }
+        return out;
+      }
+
+      setParams(params) {
+        const { a, b } = clampDiffPair(params.a ?? this.params.a, params.b ?? this.params.b, 10);
+        this.params = { a, b };
+        this.rebuild();
+      }
+
+      resetExplore() {
+        this.setParams({ a: 7, b: 3 });
+      }
+
+      hasStepControls() {
+        return true;
+      }
+
+      getStepCount() {
+        return 6;
+      }
+
+      getStepIndex() {
+        return this.stepIndex;
+      }
+
+      getStepTargets(step) {
+        if (step <= 1) {
+          return {
+            square: 0.98, lshape: 0, cut: 0, cutLine: 0, highlight: 0, rearrange: 0,
+            squareLabel: 1, result: 0, aDims: 1, bDims: 0, resultDims: 0, eq: 0
+          };
+        }
+        if (step === 2) {
+          return {
+            square: 0.45, lshape: 1, cut: 1, cutLine: 0, highlight: 0, rearrange: 0,
+            squareLabel: 0, result: 0, aDims: 0.3, bDims: 1, resultDims: 0, eq: 1
+          };
+        }
+        if (step === 3) {
+          return {
+            square: 0.22, lshape: 1, cut: 1, cutLine: 1, highlight: 0, rearrange: 0,
+            squareLabel: 0, result: 0, aDims: 0, bDims: 0, resultDims: 0, eq: 1
+          };
+        }
+        if (step === 4) {
+          return {
+            square: 0.22, lshape: 1, cut: 1, cutLine: 1, highlight: 1, rearrange: 0,
+            squareLabel: 0, result: 0, aDims: 0, bDims: 0, resultDims: 0, eq: 1
+          };
+        }
+        if (step === 5) {
+          return {
+            square: 0.16, lshape: 1, cut: 1, cutLine: 0.3, highlight: 0, rearrange: 1,
+            squareLabel: 0, result: 0.8, aDims: 0, bDims: 0, resultDims: 0, eq: 1
+          };
+        }
+        return {
+          square: 0.12, lshape: 1, cut: 1, cutLine: 0, highlight: 0, rearrange: 1,
+          squareLabel: 0, result: 1, aDims: 0, bDims: 0, resultDims: 1, eq: 2
+        };
+      }
+
+      applyTargets(targets) {
+        this.applyVisualTargets(targets);
+      }
+
+      applyStepState(step) {
+        const clamped = clamp(step, 1, this.getStepCount());
+        this.queue.clear();
+        this.stepIndex = clamped;
+        this.applyTargets(this.getStepTargets(clamped));
+        notifyVisualUpdate();
+      }
+
+      setStep(step, animate = false) {
+        const clamped = clamp(step, 1, this.getStepCount());
+        if (!animate || this.getReduceMotion()) {
+          this.applyStepState(clamped);
+          return;
+        }
+        const start = this.getStepTargets(this.stepIndex);
+        const end = this.getStepTargets(clamped);
+        this.queue.clear();
+        this.queue.run([
+          {
+            duration: DEFAULT_STEP_MS,
+            pause: INTER_STEP_PAUSE_MS,
+            onUpdate: (t) => {
+              this.applyTargets(this.lerpTargets(start, end, t));
+            },
+            onEnd: () => {
+              this.stepIndex = clamped;
+              this.applyTargets(end);
+              notifyVisualUpdate();
+            }
+          }
+        ]);
+      }
+
+      playAnimation() {
+        this.setStep(this.getStepCount(), true);
+      }
+
+      tick(_dt, dtMs) {
+        this.queue.update(dtMs);
+      }
+
+      updateLabels(canvas) {
+        labelManager.update(this.camera, canvas);
+      }
+
+      equationTex() {
+        const { a, b } = this.params;
+        if (this.equationStage <= 0) return `${a}^2`;
+        if (this.equationStage === 1) return `${a}^2 - ${b}^2`;
+        return `${a}^2 - ${b}^2 = (${a}+${b})(${a}-${b}) = ${(a + b) * (a - b)}`;
+      }
+
+      overlay() {
+        const messages = [
+          "Start with a by a square",
+          "Remove b by b corner",
+          "Cut into two rectangles",
+          "Highlight moving piece",
+          "Rotate and snap to rectangle",
+          "Result dimensions (a+b) by (a-b)"
+        ];
+        const { a, b } = this.params;
+        return {
+          left: `Step ${this.stepIndex}/6 | a=${a}, b=${b}`,
+          right: messages[this.stepIndex - 1]
+        };
+      }
+
+      showDrillFeedback(problem) {
+        if (problem && problem.a && problem.b) this.setParams({ a: problem.a, b: problem.b });
+        this.playAnimation();
+      }
+    }
+
+    class SumCubesMode {
+      constructor(getReduceMotion) {
+        this.id = "sum3";
+        this.getReduceMotion = getReduceMotion;
+        this.params = { a: 2, b: 3 };
+        this.scene = null;
+        this.camera = null;
+        this.controls = null;
+        this.group = null;
+
+        this.primaryCube = null;
+        this.secondaryCube = null;
+        this.primaryLabelText = "";
+        this.secondaryLabelText = "";
+        this.primaryEdges = null;
+        this.secondaryEdges = null;
+        this.unifiedPrimaryEdges = null;
+        this.unifiedSecondaryEdges = null;
+
+        this.block1 = null;
+        this.block2 = null;
+        this.block3 = null;
+        this.slab1 = null;
+        this.slab2 = null;
+        this.cutLines = null;
+
+        this.dimAB = null;
+        this.dimSlab1 = null;
+        this.dimSlab2 = null;
+        this.labels = {};
+
+        this.queue = new StepQueue(getReduceMotion);
+        this.stepIndex = 1;
+        this.equationStage = 0;
+        this.orbitWeight = 0;
+        this.orbitPhase = 0;
+        this.state = {
+          merge: 0,
+          anchor: 0,
+          cuts: 0,
+          split: 0,
+          slab1: 0,
+          slab2Arrange: 0,
+          reveal: 0,
+          eq: 0
+        };
+        this.geo = null;
+      }
+
+      init(manager) {
+        if (this.scene) return;
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(COLOR_NUM.background);
+        addSoftLights(this.scene);
+        this.group = new THREE.Group();
+        this.scene.add(this.group);
+
+        this.camera = new THREE.PerspectiveCamera(48, 1, 0.5, 220);
+        this.camera.position.set(12, 10, 14);
+        this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.minDistance = 2;
+        this.controls.maxDistance = 150;
+        this.controls.maxPolarAngle = Math.PI * 0.95;
+        this.controls.target.set(0, 2.5, 0);
+
+        this.rebuild();
+      }
+
+      onActivate(manager) {
+        this.init(manager);
+        this.controls.enabled = true;
+        this.resize(manager.container.clientWidth, manager.container.clientHeight);
+      }
+
+      onDeactivate() {
+        if (this.controls) this.controls.enabled = false;
+        this.queue.clear();
+        labelManager.setOcclusionMeshes([]);
+        labelManager.clearGroup(this.id);
+      }
+
+      resize(width, height) {
+        this.camera.aspect = width / Math.max(1, height);
+        this.camera.updateProjectionMatrix();
+      }
+
+      makeBlock(width, height, depth, color) {
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(width, height, depth),
+          new THREE.MeshStandardMaterial({
+            color,
+            roughness: 0.78,
+            metalness: 0.05,
+            transparent: true,
+            opacity: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+          })
+        );
+        this.group.add(mesh);
+        return mesh;
+      }
+
+      makeDashedLine(a, b, color = 0xffffff) {
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([a, b]),
+          new THREE.LineDashedMaterial({
+            color,
+            dashSize: 0.34,
+            gapSize: 0.2,
+            transparent: true,
+            opacity: 0
+          })
+        );
+        line.computeLineDistances();
+        this.cutLines.add(line);
+        return line;
+      }
+
+      setDimensionOpacity(dim, opacity) {
+        if (!dim) return;
+        dim.mesh.material.opacity = opacity;
+        labelManager.setOpacity(dim.label, opacity);
+      }
+
+      rebuild() {
+        disposeObject3D(this.group);
+        this.group.clear();
+
+        const floor = new THREE.Mesh(
+          new THREE.PlaneGeometry(42, 42),
+          new THREE.MeshStandardMaterial({
+            color: 0x141436,
+            roughness: 0.95,
+            metalness: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+          })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.02;
+        this.group.add(floor);
+
+        const rawA = clamp(this.params.a, 1, 6);
+        const rawB = clamp(this.params.b, 1, 6);
+        const A = Math.max(rawA, rawB);
+        const B = Math.min(rawA, rawB);
+        const D = Math.max(0.001, A - B);
+        this.geo = { rawA, rawB, A, B, D };
+
+        const primaryColor = rawA >= rawB ? COLOR_NUM.a : COLOR_NUM.b;
+        const secondaryColor = rawA >= rawB ? COLOR_NUM.b : COLOR_NUM.a;
+        this.primaryLabelText = `${Math.max(rawA, rawB)}^3`;
+        this.secondaryLabelText = `${Math.min(rawA, rawB)}^3`;
+
+        const primaryMat = new THREE.MeshStandardMaterial({
+          color: primaryColor,
+          roughness: 0.8,
+          metalness: 0.06,
+          transparent: true,
+          opacity: 0.88,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
+        });
+        const secondaryMat = new THREE.MeshStandardMaterial({
+          color: secondaryColor,
+          roughness: 0.8,
+          metalness: 0.06,
+          transparent: true,
+          opacity: 0.88,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          polygonOffsetUnits: 1
+        });
+
+        const primaryFlushX = -B / 2;
+        const secondaryFlushX = A / 2;
+        const gap = 0.9 + (A + B) * 0.18;
+        const primaryStartX = primaryFlushX - gap;
+        const secondaryStartX = secondaryFlushX + gap;
+
+        this.primaryCube = new THREE.Mesh(new THREE.BoxGeometry(A, A, A), primaryMat);
+        this.secondaryCube = new THREE.Mesh(new THREE.BoxGeometry(B, B, B), secondaryMat);
+        this.primaryCube.position.set(primaryStartX, A / 2, 0);
+        this.secondaryCube.position.set(secondaryStartX, B / 2, 0);
+        this.primaryCube.userData = {
+          flushX: primaryFlushX,
+          startX: primaryStartX,
+          y: A / 2,
+          z: 0
+        };
+        this.secondaryCube.userData = {
+          flushX: secondaryFlushX,
+          startX: secondaryStartX,
+          y: B / 2,
+          z: 0
+        };
+
+        this.primaryEdges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(A, A, A)),
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false })
+        );
+        this.secondaryEdges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(B, B, B)),
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false })
+        );
+        this.primaryEdges.scale.setScalar(1.001);
+        this.secondaryEdges.scale.setScalar(1.001);
+        this.primaryEdges.renderOrder = 1;
+        this.secondaryEdges.renderOrder = 1;
+
+        this.unifiedPrimaryEdges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(A, A, A)),
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
+        );
+        this.unifiedSecondaryEdges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(B, B, B)),
+          new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
+        );
+        this.unifiedPrimaryEdges.scale.setScalar(1.002);
+        this.unifiedSecondaryEdges.scale.setScalar(1.002);
+        this.unifiedPrimaryEdges.renderOrder = 2;
+        this.unifiedSecondaryEdges.renderOrder = 2;
+
+        this.primaryCube.add(this.primaryEdges, this.unifiedPrimaryEdges);
+        this.secondaryCube.add(this.secondaryEdges, this.unifiedSecondaryEdges);
+        this.group.add(this.primaryCube, this.secondaryCube);
+
+        this.cutLines = new THREE.Group();
+        this.group.add(this.cutLines);
+
+        const xL = primaryFlushX - A / 2;
+        const xR = primaryFlushX + A / 2;
+        const yBottom = 0;
+        const ySplit = B;
+        const yTop = A;
+        const zFront = A / 2;
+        const zCut = A / 2 - D;
+        const zBack = -A / 2;
+
+        this.makeDashedLine(new THREE.Vector3(xL, yBottom, zCut), new THREE.Vector3(xR, yBottom, zCut));
+        this.makeDashedLine(new THREE.Vector3(xL, yTop, zCut), new THREE.Vector3(xR, yTop, zCut));
+        this.makeDashedLine(new THREE.Vector3(xR, ySplit, zCut), new THREE.Vector3(xR, ySplit, zBack));
+        this.makeDashedLine(new THREE.Vector3(xL, ySplit, zCut), new THREE.Vector3(xL, ySplit, zBack));
+        this.makeDashedLine(new THREE.Vector3(xL, ySplit, zBack), new THREE.Vector3(xR, ySplit, zBack));
+
+        this.block1 = this.makeBlock(A, A, D, 0x6dbed4); // A x A x (A-B)
+        this.block2 = this.makeBlock(A, B, D, 0x4da4bf); // A x B x (A-B)
+        this.block3 = this.makeBlock(A, B, B, 0x8fb16a); // A x B x B
+
+        this.block1.userData.base = new THREE.Vector3(primaryFlushX, A / 2, zFront - D / 2);
+        this.block2.userData.base = new THREE.Vector3(primaryFlushX, B / 2, zFront - D / 2);
+        this.block3.userData.base = new THREE.Vector3(primaryFlushX, B / 2, zBack + B / 2);
+
+        this.block1.userData.split = this.block1.userData.base.clone().add(new THREE.Vector3(-A * 0.25, A * 0.08, A * 0.24));
+        this.block2.userData.split = this.block2.userData.base.clone().add(new THREE.Vector3(A * 0.24, -A * 0.06, -A * 0.28));
+        this.block3.userData.split = this.block3.userData.base.clone().add(new THREE.Vector3(A * 0.34, 0, -A * 0.2));
+
+        this.block3.userData.slab1Target = new THREE.Vector3(-B / 2, B / 2, -A * 0.55);
+
+        this.slab1 = new THREE.Mesh(
+          new THREE.BoxGeometry(A + B, B, B), // (A+B) x B x B
+          new THREE.MeshStandardMaterial({
+            color: 0xc0b85f,
+            roughness: 0.76,
+            metalness: 0.05,
+            transparent: true,
+            opacity: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+          })
+        );
+        this.slab1.userData.base = new THREE.Vector3(0, B / 2 + 0.1, -A * 0.55);
+        this.slab1.userData.reveal = new THREE.Vector3(0, B / 2 - 0.85, -A * 0.55);
+        this.group.add(this.slab1);
+
+        this.slab2 = new THREE.Mesh(
+          new THREE.BoxGeometry(A + B, A, D), // (A+B) x A x (A-B)
+          new THREE.MeshStandardMaterial({
+            color: 0x58c4dd,
+            roughness: 0.78,
+            metalness: 0.05,
+            transparent: true,
+            opacity: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+          })
+        );
+        this.slab2.userData.base = new THREE.Vector3(0, B + A / 2 + 0.5, -A * 0.15);
+        this.slab2.userData.reveal = new THREE.Vector3(0, B + A / 2 + 1.25, -A * 0.15);
+        this.group.add(this.slab2);
+
+        this.block1.userData.slab2Target = new THREE.Vector3(-B / 2, this.slab2.userData.base.y, this.slab2.userData.base.z);
+        this.block2.userData.slab2Target = new THREE.Vector3(A / 2, this.slab2.userData.base.y, this.slab2.userData.base.z);
+        this.block2.userData.slab2Rotation = -Math.PI / 2;
+
+        this.secondaryCube.userData.groupSplit = this.block3.userData.split.clone().add(new THREE.Vector3(A / 2 + B / 2 + 0.25, 0, 0));
+        this.secondaryCube.userData.slab1Target = new THREE.Vector3(A / 2, B / 2, -A * 0.55);
+
+        labelManager.clearGroup(this.id);
+
+        this.dimAB = createDimensionLine(this.group, labelManager, {
+          start: new THREE.Vector3(-(A + B) / 2, 0.02, A / 2 + 0.8),
+          end: new THREE.Vector3((A + B) / 2, 0.02, A / 2 + 0.8),
+          color: COLOR_NUM.result,
+          labelText: "a+b",
+          labelClass: "viz-label viz-label--dim",
+          groupId: this.id,
+          opacity: 0
+        });
+
+        const slab1Reveal = this.slab1.userData.reveal;
+        const slab2Reveal = this.slab2.userData.reveal;
+        this.dimSlab1 = createDimensionLine(this.group, labelManager, {
+          start: new THREE.Vector3(slab1Reveal.x - (A + B) / 2, slab1Reveal.y, slab1Reveal.z),
+          end: new THREE.Vector3(slab1Reveal.x + (A + B) / 2, slab1Reveal.y, slab1Reveal.z),
+          color: COLOR_NUM.result,
+          labelText: "a+b",
+          labelClass: "viz-label viz-label--dim",
+          groupId: this.id,
+          offset: new THREE.Vector3(0, -B * 0.58 - 0.28, B * 0.65 + 0.44),
+          opacity: 0
+        });
+
+        this.dimSlab2 = createDimensionLine(this.group, labelManager, {
+          start: new THREE.Vector3(slab2Reveal.x - (A + B) / 2, slab2Reveal.y, slab2Reveal.z),
+          end: new THREE.Vector3(slab2Reveal.x + (A + B) / 2, slab2Reveal.y, slab2Reveal.z),
+          color: COLOR_NUM.result,
+          labelText: "a+b",
+          labelClass: "viz-label viz-label--dim",
+          groupId: this.id,
+          offset: new THREE.Vector3(0, A * 0.58 + 0.3, D * 0.65 + 0.42),
+          opacity: 0
+        });
+
+        this.labels = {
+          primaryVolume: labelManager.addLabel({
+            tex: this.primaryLabelText,
+            className: "viz-label viz-label--medium",
+            color: `#${primaryColor.toString(16).padStart(6, "0")}`,
+            groupId: this.id,
+            getWorldPos: () => this.primaryCube.position.clone().add(new THREE.Vector3(0, A / 2 + 0.75, 0)),
+            opacity: 1
+          }),
+          secondaryVolume: labelManager.addLabel({
+            tex: this.secondaryLabelText,
+            className: "viz-label viz-label--medium",
+            color: `#${secondaryColor.toString(16).padStart(6, "0")}`,
+            groupId: this.id,
+            getWorldPos: () => this.secondaryCube.position.clone().add(new THREE.Vector3(0, B / 2 + 0.75, 0)),
+            opacity: 1
+          }),
+          totalVolume: labelManager.addLabel({
+            text: `Total volume = ${rawA ** 3 + rawB ** 3}`,
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.result,
+            groupId: this.id,
+            getWorldPos: () => this.primaryCube.position.clone()
+              .lerp(this.secondaryCube.position, 0.5)
+              .add(new THREE.Vector3(0, A / 2 + 1.65, 0.15)),
+            opacity: 0
+          }),
+          slab1Area: labelManager.addLabel({
+            tex: `${B}^2`,
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.b,
+            groupId: this.id,
+            getWorldPos: () => this.slab1.position.clone().add(new THREE.Vector3(0, B / 2 + 0.55, 0)),
+            opacity: 0
+          }),
+          slab2Area: labelManager.addLabel({
+            tex: `${A}^2-${A * B}`,
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.a,
+            groupId: this.id,
+            getWorldPos: () => this.slab2.position.clone().add(new THREE.Vector3(0, D / 2 + 0.55, 0)),
+            opacity: 0
+          }),
+          crossTotal: labelManager.addLabel({
+            tex: `${A}^2-${A * B}+${B}^2`,
+            className: "viz-label viz-label--dim",
+            color: COLOR_HEX.result,
+            groupId: this.id,
+            worldPos: new THREE.Vector3(0, A + 1.2, B / 2),
+            opacity: 0
+          })
+        };
+
+        labelManager.setOcclusionMeshes([
+          this.primaryCube,
+          this.secondaryCube,
+          this.block1,
+          this.block2,
+          this.block3,
+          this.slab1,
+          this.slab2
+        ]);
+
+        this.equationStage = 0;
+        this.orbitWeight = 0;
+        this.applyStepState(1);
+      }
+
+      applyVisualTargets(targets) {
+        this.state = { ...targets };
+        const { A, B, D } = this.geo;
+
+        const p = this.primaryCube.userData;
+        const s = this.secondaryCube.userData;
+        const primaryX = p.startX + (p.flushX - p.startX) * targets.merge;
+        const secondaryX = s.startX + (s.flushX - s.startX) * targets.merge;
+
+        this.primaryCube.position.set(primaryX, p.y, p.z);
+
+        const xShift = primaryX - p.flushX;
+        this.cutLines.position.x = xShift;
+        this.cutLines.children.forEach((line) => {
+          line.material.opacity = 0.9 * targets.cuts * (1 - 0.28 * targets.reveal) * (1 - 0.35 * targets.anchor);
+        });
+
+        const b1Base = this.block1.userData.base.clone().add(new THREE.Vector3(xShift, 0, 0));
+        const b2Base = this.block2.userData.base.clone().add(new THREE.Vector3(xShift, 0, 0));
+        const b3Base = this.block3.userData.base.clone().add(new THREE.Vector3(xShift, 0, 0));
+        const b1Split = this.block1.userData.split.clone().add(new THREE.Vector3(xShift, 0, 0));
+        const b2Split = this.block2.userData.split.clone().add(new THREE.Vector3(xShift, 0, 0));
+        const b3Split = this.block3.userData.split.clone().add(new THREE.Vector3(xShift, 0, 0));
+
+        const block1Pos = b1Base.clone().lerp(b1Split, targets.split);
+        const block2Pos = b2Base.clone().lerp(b2Split, targets.split);
+        const block3Pos = b3Base.clone().lerp(b3Split, targets.split);
+
+        const block1Slab2Target = this.block1.userData.slab2Target.clone();
+        const block2Slab2Target = this.block2.userData.slab2Target.clone();
+        const block3Slab1Target = this.block3.userData.slab1Target.clone();
+
+        const slab2RotateT = clamp(targets.slab2Arrange * 2, 0, 1);
+        const slab2SlideT = clamp((targets.slab2Arrange - 0.5) * 2, 0, 1);
+
+        block1Pos.lerp(block1Slab2Target, slab2SlideT);
+        block2Pos.lerp(block2Slab2Target, slab2SlideT);
+        block3Pos.lerp(block3Slab1Target, targets.slab1);
+
+        this.block1.position.copy(block1Pos);
+        this.block2.position.copy(block2Pos);
+        this.block3.position.copy(block3Pos);
+        this.block2.rotation.set(0, 0, this.block2.userData.slab2Rotation * slab2RotateT);
+        this.block1.rotation.set(0, 0, 0);
+        this.block3.rotation.set(0, 0, 0);
+
+        const secondaryGrouped = this.secondaryCube.userData.groupSplit.clone().add(new THREE.Vector3(xShift, 0, 0));
+        const secondarySlab1Target = this.secondaryCube.userData.slab1Target.clone();
+        const secondaryPos = new THREE.Vector3(secondaryX, s.y, s.z)
+          .lerp(secondaryGrouped, targets.split)
+          .lerp(secondarySlab1Target, targets.slab1);
+        this.secondaryCube.position.copy(secondaryPos);
+
+        // Hard visibility: keep one geometric representation active per region.
+        const showPrimary = targets.split < 0.01;
+        const showSecondary = targets.slab1 < 0.01;
+        this.primaryCube.visible = showPrimary;
+        this.secondaryCube.visible = showSecondary;
+
+        if (targets.split > 0 && targets.split < 1) {
+          this.primaryCube.material.opacity = 0.88 * (1 - targets.split);
+        } else {
+          this.primaryCube.material.opacity = showPrimary ? 0.88 : 0;
+        }
+        if (!showPrimary) this.primaryCube.visible = false;
+
+        if (targets.slab1 > 0 && targets.slab1 < 1) {
+          this.secondaryCube.material.opacity = 0.88 * (1 - targets.slab1);
+        } else {
+          this.secondaryCube.material.opacity = showSecondary ? 0.88 : 0;
+        }
+        if (!showSecondary) this.secondaryCube.visible = false;
+
+        this.block1.visible = targets.split > 0.01 && slab2SlideT < 0.99;
+        this.block2.visible = targets.split > 0.01 && slab2SlideT < 0.99;
+        this.block3.visible = targets.split > 0.01 && targets.slab1 < 0.99;
+        this.block1.material.opacity = this.block1.visible ? 0.9 * Math.min(targets.split, 1 - slab2SlideT) : 0;
+        this.block2.material.opacity = this.block2.visible ? 0.9 * Math.min(targets.split, 1 - slab2SlideT) : 0;
+        this.block3.material.opacity = this.block3.visible ? 0.9 * Math.min(targets.split, 1 - targets.slab1) : 0;
+
+        this.slab1.position.lerpVectors(this.slab1.userData.base, this.slab1.userData.reveal, targets.reveal);
+        this.slab2.position.lerpVectors(
+          this.slab2.userData.base,
+          this.slab2.userData.reveal,
+          targets.reveal
+        );
+        this.slab1.visible = targets.slab1 > 0.01;
+        this.slab2.visible = slab2SlideT > 0.01;
+        this.slab1.material.opacity = this.slab1.visible ? 0.9 * targets.slab1 : 0;
+        this.slab2.material.opacity = this.slab2.visible ? 0.92 * slab2SlideT : 0;
+
+        this.unifiedPrimaryEdges.material.opacity = 0.88 * targets.anchor * (1 - 0.7 * targets.reveal);
+        this.unifiedSecondaryEdges.material.opacity = 0.88 * targets.anchor * (1 - 0.7 * targets.reveal);
+
+        const dimOpacity = clamp(targets.merge * (1 - 0.35 * targets.reveal) * (1 + 0.18 * targets.anchor), 0, 1);
+        this.setDimensionOpacity(this.dimAB, dimOpacity);
+        const slabDimOpacity = clamp((targets.reveal - 0.05) / 0.95, 0, 1);
+        this.setDimensionOpacity(this.dimSlab1, slabDimOpacity);
+        this.setDimensionOpacity(this.dimSlab2, slabDimOpacity);
+
+        labelManager.setOpacity(this.labels.primaryVolume, 1 - 0.75 * targets.split);
+        labelManager.setOpacity(this.labels.secondaryVolume, 1 - 0.55 * targets.slab1);
+        labelManager.setOpacity(this.labels.totalVolume, clamp(targets.anchor * (1 - 0.85 * targets.reveal), 0, 1));
+        labelManager.setOpacity(this.labels.slab1Area, clamp((targets.slab1 - 0.1) / 0.9, 0, 1));
+        labelManager.setOpacity(this.labels.slab2Area, clamp((targets.slab2Arrange - 0.1) / 0.9, 0, 1));
+        labelManager.setOpacity(this.labels.crossTotal, targets.reveal);
+
+        this.equationStage = targets.eq;
+        this.orbitWeight = clamp(0.15 * targets.anchor + 0.22 * targets.slab1 + 0.42 * targets.slab2Arrange + 0.8 * targets.reveal, 0, 1);
+      }
+
+      lerpTargets(start, end, t) {
+        const out = {};
+        for (const key of Object.keys(end)) {
+          if (key === "eq") {
+            out[key] = t < 0.72 ? start[key] : end[key];
+          } else {
+            out[key] = start[key] + (end[key] - start[key]) * t;
+          }
+        }
+        return out;
+      }
+
+      setParams(params) {
+        const a = clamp(params.a ?? this.params.a, 1, 6);
+        const b = clamp(params.b ?? this.params.b, 1, 6);
+        this.params = { a, b };
+        this.rebuild();
+      }
+
+      resetExplore() {
+        this.setParams({ a: 2, b: 3 });
+      }
+
+      hasStepControls() {
+        return true;
+      }
+
+      getStepCount() {
+        return 7;
+      }
+
+      getStepIndex() {
+        return this.stepIndex;
+      }
+
+      getStepTargets(step) {
+        if (step <= 1) {
+          return { merge: 0, anchor: 0, cuts: 0, split: 0, slab1: 0, slab2Arrange: 0, reveal: 0, eq: 0 };
+        }
+        if (step === 2) {
+          return { merge: 1, anchor: 0, cuts: 0, split: 0, slab1: 0, slab2Arrange: 0, reveal: 0, eq: 1 };
+        }
+        if (step === 3) {
+          return { merge: 1, anchor: 1, cuts: 0, split: 0, slab1: 0, slab2Arrange: 0, reveal: 0, eq: 1 };
+        }
+        if (step === 4) {
+          return { merge: 1, anchor: 0.85, cuts: 1, split: 0, slab1: 0, slab2Arrange: 0, reveal: 0, eq: 1 };
+        }
+        if (step === 5) {
+          return { merge: 1, anchor: 0.3, cuts: 1, split: 1, slab1: 1, slab2Arrange: 0, reveal: 0, eq: 1 };
+        }
+        if (step === 6) {
+          return { merge: 1, anchor: 0, cuts: 1, split: 1, slab1: 1, slab2Arrange: 1, reveal: 0.2, eq: 1 };
+        }
+        return { merge: 1, anchor: 0, cuts: 0.45, split: 1, slab1: 1, slab2Arrange: 1, reveal: 1, eq: 2 };
+      }
+
+      applyTargets(targets) {
+        this.applyVisualTargets(targets);
+      }
+
+      applyStepState(step) {
+        const clamped = clamp(step, 1, this.getStepCount());
+        this.queue.clear();
+        this.stepIndex = clamped;
+        this.applyTargets(this.getStepTargets(clamped));
+        notifyVisualUpdate();
+      }
+
+      setStep(step, animate = false) {
+        const clamped = clamp(step, 1, this.getStepCount());
+        if (!animate || this.getReduceMotion()) {
+          this.applyStepState(clamped);
+          return;
+        }
+        const start = this.getStepTargets(this.stepIndex);
+        const end = this.getStepTargets(clamped);
+        this.queue.clear();
+        this.queue.run([
+          {
+            duration: DEFAULT_STEP_MS,
+            pause: INTER_STEP_PAUSE_MS,
+            onUpdate: (t) => {
+              this.applyTargets(this.lerpTargets(start, end, t));
+            },
+            onEnd: () => {
+              this.stepIndex = clamped;
+              this.applyTargets(end);
+              notifyVisualUpdate();
+            }
+          }
+        ]);
+      }
+
+      playAnimation() {
+        this.setStep(this.getStepCount(), true);
+      }
+
+      tick(dt, dtMs) {
+        this.queue.update(dtMs);
+        this.orbitPhase += dt;
+        if (!this.camera || !this.geo) return;
+        // Only force camera position while animation queue is active
+        if (this.orbitWeight > 0.001 && this.queue.active) {
+          const base = new THREE.Vector3(12, 10, 14);
+          const alt = new THREE.Vector3(10.4, 11.8, 16.2);
+          const blend = clamp(0.42 * this.orbitWeight + Math.sin(this.orbitPhase * 0.8) * 0.05 * this.orbitWeight, 0, 1);
+          this.camera.position.lerpVectors(base, alt, blend);
+          const targetY = this.geo.A * 0.35;
+          const baseTarget = new THREE.Vector3(0, targetY, 0);
+          const slabCentroid = this.slab1.position.clone().add(this.slab2.position).multiplyScalar(0.5);
+          const targetBlend = clamp(0.2 * this.state.slab1 + 0.45 * this.state.slab2Arrange + 0.9 * this.state.reveal, 0, 1);
+          const desiredTarget = baseTarget.clone().lerp(slabCentroid, targetBlend);
+          if (this.controls) {
+            this.controls.target.lerp(desiredTarget, 0.12);
+          } else {
+            this.camera.lookAt(desiredTarget);
+          }
+        }
+      }
+
+      updateLabels(canvas) {
+        labelManager.update(this.camera, canvas, true);
+      }
+
+      equationTex() {
+        const { a, b } = this.params;
+        if (this.equationStage <= 0) {
+          return `\\color{${COLOR_HEX.a}}{${a}^3} + \\color{${COLOR_HEX.b}}{${b}^3}`;
+        }
+        if (this.equationStage === 1) {
+          return `\\color{${COLOR_HEX.a}}{${a}^3} + \\color{${COLOR_HEX.b}}{${b}^3} = ?`;
+        }
+        return `\\color{${COLOR_HEX.a}}{${a}^3} + \\color{${COLOR_HEX.b}}{${b}^3} = (${a}+${b})(\\color{${COLOR_HEX.a}}{${a ** 2}}-\\color{${COLOR_HEX.ab}}{${a * b}}+\\color{${COLOR_HEX.b}}{${b ** 2}})`;
+      }
+
+      overlay() {
+        const messages = [
+          "Two cubes on a shared floor",
+          "Merge cubes flush to expose total width (a+b)",
+          "Show unified wireframe anchor: total volume = a^3 + b^3",
+          "Dashed cuts define block1, block2, block3 in a^3",
+          "Snap b^3 to block3 to form slab1: (a+b) x b x b",
+          "Rotate then slide block2 into block1 for slab2",
+          "Reveal both slabs sharing factor (a+b)"
+        ];
+        const { a, b } = this.params;
+        return {
+          left: `Step ${this.stepIndex}/7 | a=${a}, b=${b}`,
+          right: messages[this.stepIndex - 1]
+        };
+      }
+
+      showDrillFeedback(problem) {
+        if (problem && problem.a && problem.b) this.setParams({ a: problem.a, b: problem.b });
+        this.playAnimation();
+      }
+    }
+
+
+    class DiffCubesMode {
+      constructor(getReduceMotion) {
+        this.id = "diff3";
+        this.getReduceMotion = getReduceMotion;
+        this.params = { a: 5, b: 2 };
+        this.scene = null;
+        this.camera = null;
+        this.controls = null;
+        this.group = null;
+
+        this.cubeFill = null;
+        this.wire = null;
+        this.removedCube = null;
+        this.cutLines = null;
+        this.slabA = null;
+        this.slabAB = null;
+        this.slabB = null;
+
+        this.dimA = [];
+        this.dimB = null;
+        this.dimMaster = null;
+        this.dimAligned = [];
+        this.labels = {};
+
+        this.queue = new StepQueue(getReduceMotion);
+        this.stepIndex = 1;
+        this.equationStage = 0;
+        this.geo = null;
+        this.orbitWeight = 0;
+        this.orbitPhase = 0;
+        this.state = {
+          remove: 0,
+          decompose: 0,
+          explode: 0,
+          align: 0,
+          stack: 0,
+          labels: 0,
+          eq: 0
+        };
+      }
+
+      init(manager) {
+        if (this.scene) return;
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(COLOR_NUM.background);
+        addSoftLights(this.scene);
+        this.group = new THREE.Group();
+        this.scene.add(this.group);
+
+        this.camera = new THREE.PerspectiveCamera(50, 1, 0.5, 220);
+        const maxDim = this.params.a;
+        const camDist = maxDim * 2.6;
+        this.camera.position.set(camDist, camDist * 0.85, camDist);
+        this.controls = new OrbitControls(this.camera, manager.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enablePan = true;
+        this.controls.minDistance = 2;
+        this.controls.maxDistance = 150;
+        this.controls.maxPolarAngle = Math.PI * 0.95;
+        this.controls.target.set(0, 0, 0);
+        this.camera.lookAt(0, 0, 0);
+
+        this.rebuild();
+      }
+
+      onActivate(manager) {
+        this.init(manager);
+        this.controls.enabled = true;
+        this.resize(manager.container.clientWidth, manager.container.clientHeight);
+      }
+
+      onDeactivate() {
+        if (this.controls) this.controls.enabled = false;
+        this.queue.clear();
+        labelManager.setOcclusionMeshes([]);
+        labelManager.clearGroup(this.id);
+      }
+
+      resize(width, height) {
+        this.camera.aspect = width / Math.max(1, height);
+        this.camera.updateProjectionMatrix();
+      }
+
+      makeSlab(width, height, depth, color) {
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(width, height, depth),
+          new THREE.MeshStandardMaterial({
+            color,
+            roughness: 0.82,
+            metalness: 0.05,
+            transparent: true,
+            opacity: 0,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+          })
+        );
+        this.group.add(mesh);
+        return mesh;
+      }
+
+      makeDashedLine(a, b, color = 0xffffff) {
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([a, b]),
+          new THREE.LineDashedMaterial({
+            color,
+            dashSize: 0.34,
+            gapSize: 0.2,
+            transparent: true,
+            opacity: 0
+          })
+        );
+        line.computeLineDistances();
+        this.cutLines.add(line);
+        return line;
+      }
+
+      setDimensionOpacity(dim, opacity) {
+        if (!dim) return;
+        dim.mesh.material.opacity = opacity;
+        labelManager.setOpacity(dim.label, opacity);
+      }
+
+      setDimensionOpacityList(list, opacity) {
+        list.forEach((d) => this.setDimensionOpacity(d, opacity));
+      }
+
+      rebuild() {
+        disposeObject3D(this.group);
+        this.group.clear();
+
+        const { a, b } = clampDiffPair(this.params.a, this.params.b, 6);
+        const d = a - b;
+        this.geo = { a, b, d };
+        const totalWidth = 2 * a + b;
+        const xStart = -totalWidth / 2;
+        const alignSpread = a * 0.5;
+        const floorY = 0;
+
+        this.cubeFill = new THREE.Mesh(
+          new THREE.BoxGeometry(a, a, a),
+          new THREE.MeshStandardMaterial({
+            color: COLOR_NUM.a,
+            roughness: 0.84,
+            metalness: 0.04,
+            transparent: true,
+            opacity: 0.72,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+          })
+        );
+        this.group.add(this.cubeFill);
+
+        this.wire = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(a, a, a)),
+          new THREE.LineBasicMaterial({ color: COLOR_NUM.a, transparent: true, opacity: 0.95, depthWrite: false })
+        );
+        this.wire.scale.setScalar(1.001);
+        this.wire.renderOrder = 1;
+        this.group.add(this.wire);
+
+        this.removedCube = new THREE.Mesh(
+          new THREE.BoxGeometry(b, b, b),
+          new THREE.MeshStandardMaterial({
+            color: COLOR_NUM.b,
+            roughness: 0.8,
+            metalness: 0.05,
+            transparent: true,
+            opacity: 0.92,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+          })
+        );
+        const corner = new THREE.Vector3(a / 2 - b / 2, a / 2 - b / 2, a / 2 - b / 2);
+        this.removedCube.userData.corner = corner.clone();
+        this.removedCube.position.copy(corner);
+        this.group.add(this.removedCube);
+
+        this.cutLines = new THREE.Group();
+        this.group.add(this.cutLines);
+        const xL = -a / 2;
+        const xR = a / 2;
+        const yB = -a / 2;
+        const yTopSplit = a / 2 - b;
+        const yT = a / 2;
+        const zBackSplit = a / 2 - b;
+        const zF = a / 2;
+
+        this.makeDashedLine(new THREE.Vector3(xL, yB, zBackSplit), new THREE.Vector3(xR, yB, zBackSplit));
+        this.makeDashedLine(new THREE.Vector3(xL, yTopSplit, zF), new THREE.Vector3(xR, yTopSplit, zF));
+        this.makeDashedLine(new THREE.Vector3(xR - b, yTopSplit, zBackSplit), new THREE.Vector3(xR - b, yT, zBackSplit));
+        this.makeDashedLine(new THREE.Vector3(xR - b, yTopSplit, zF), new THREE.Vector3(xR - b, yTopSplit, zBackSplit));
+
+        this.slabA = this.makeSlab(a, a, d, COLOR_NUM.a);
+        this.slabAB = this.makeSlab(a, d, b, COLOR_NUM.ab);
+        this.slabB = this.makeSlab(d, b, b, COLOR_NUM.b);
+        const makeEdges = (w, h, depth, color) => {
+          const edges = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, depth)),
+            new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false })
+          );
+          edges.scale.setScalar(1.001);
+          edges.renderOrder = 1;
+          return edges;
+        };
+        this.slabA.add(makeEdges(a, a, d, COLOR_NUM.a));
+        this.slabAB.add(makeEdges(a, d, b, COLOR_NUM.ab));
+        this.slabB.add(makeEdges(d, b, b, COLOR_NUM.b));
+
+        this.slabA.userData.base = new THREE.Vector3(0, 0, -b / 2);
+        this.slabA.userData.explode = new THREE.Vector3(-a * 0.72, 0, -a * 0.78);
+        this.slabA.userData.align = new THREE.Vector3(xStart + a / 2 - alignSpread, floorY + a / 2, 0);
+        this.slabA.userData.final = new THREE.Vector3(xStart + a / 2, floorY + a / 2, 0);
+        this.slabA.userData.rotX = 0;
+        this.slabA.userData.rotY = 0;
+
+        this.slabAB.userData.base = new THREE.Vector3(0, -b / 2, d / 2);
+        this.slabAB.userData.explode = new THREE.Vector3(0, -a * 0.78, 0);
+        this.slabAB.userData.align = new THREE.Vector3(xStart + a + a / 2, floorY + b / 2, 0);
+        this.slabAB.userData.final = new THREE.Vector3(xStart + a + a / 2, floorY + b / 2, 0);
+        this.slabAB.userData.rotX = -Math.PI / 2;
+        this.slabAB.userData.rotY = 0;
+
+        this.slabB.userData.base = new THREE.Vector3(-b / 2, d / 2, d / 2);
+        this.slabB.userData.explode = new THREE.Vector3(a * 0.82, 0, 0);
+        this.slabB.userData.align = new THREE.Vector3(xStart + 2 * a + b / 2 + alignSpread, floorY + b / 2, 0);
+        this.slabB.userData.final = new THREE.Vector3(xStart + 2 * a + b / 2, floorY + b / 2, 0);
+        this.slabB.userData.rotX = 0;
+        this.slabB.userData.rotY = Math.PI / 2;
+
+        labelManager.clearGroup(this.id);
+
+        this.dimA = [
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(-a / 2, -a / 2, a / 2),
+            end: new THREE.Vector3(a / 2, -a / 2, a / 2),
+            color: COLOR_NUM.a,
+            labelText: "a",
+            groupId: this.id,
+            offset: new THREE.Vector3(0, -0.58, 0),
+            opacity: 1
+          }),
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(-a / 2, -a / 2, a / 2),
+            end: new THREE.Vector3(-a / 2, a / 2, a / 2),
+            color: COLOR_NUM.a,
+            labelText: "a",
+            groupId: this.id,
+            offset: new THREE.Vector3(-0.58, 0, 0),
+            opacity: 1
+          }),
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(-a / 2, -a / 2, -a / 2),
+            end: new THREE.Vector3(-a / 2, -a / 2, a / 2),
+            color: COLOR_NUM.a,
+            labelText: "a",
+            groupId: this.id,
+            offset: new THREE.Vector3(-0.42, -0.2, 0),
+            opacity: 1
+          })
+        ];
+
+        const cornerEdgeStart = corner.clone().add(new THREE.Vector3(-b / 2, -b / 2, b / 2));
+        this.dimB = createDimensionLine(this.group, labelManager, {
+          start: cornerEdgeStart,
+          end: cornerEdgeStart.clone().add(new THREE.Vector3(b, 0, 0)),
+          color: COLOR_NUM.b,
+          labelText: "b",
+          groupId: this.id,
+          offset: new THREE.Vector3(0, 0.45, 0),
+          opacity: 0
+        });
+
+        const masterX = xStart + totalWidth + 0.6;
+        this.dimMaster = createDimensionLine(this.group, labelManager, {
+          start: new THREE.Vector3(masterX, 0, -d / 2),
+          end: new THREE.Vector3(masterX, 0, d / 2),
+          color: COLOR_NUM.result,
+          labelText: "a - b",
+          groupId: this.id,
+          offset: new THREE.Vector3(0.5, 0, 0),
+          opacity: 0
+        });
+
+        this.dimAligned = [
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(
+              this.slabA.userData.align.x,
+              this.slabA.userData.align.y,
+              this.slabA.userData.align.z - d / 2
+            ),
+            end: new THREE.Vector3(
+              this.slabA.userData.align.x,
+              this.slabA.userData.align.y,
+              this.slabA.userData.align.z + d / 2
+            ),
+            color: COLOR_NUM.result,
+            labelText: "a-b",
+            groupId: this.id,
+            offset: new THREE.Vector3(a * 0.58, 0, 0),
+            opacity: 0
+          }),
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(
+              this.slabAB.userData.align.x,
+              this.slabAB.userData.align.y,
+              this.slabAB.userData.align.z - d / 2
+            ),
+            end: new THREE.Vector3(
+              this.slabAB.userData.align.x,
+              this.slabAB.userData.align.y,
+              this.slabAB.userData.align.z + d / 2
+            ),
+            color: COLOR_NUM.result,
+            labelText: "a-b",
+            groupId: this.id,
+            offset: new THREE.Vector3(a * 0.58, 0, 0),
+            opacity: 0
+          }),
+          createDimensionLine(this.group, labelManager, {
+            start: new THREE.Vector3(
+              this.slabB.userData.align.x,
+              this.slabB.userData.align.y,
+              this.slabB.userData.align.z - d / 2
+            ),
+            end: new THREE.Vector3(
+              this.slabB.userData.align.x,
+              this.slabB.userData.align.y,
+              this.slabB.userData.align.z + d / 2
+            ),
+            color: COLOR_NUM.result,
+            labelText: "a-b",
+            groupId: this.id,
+            offset: new THREE.Vector3(b * 0.62, 0, 0),
+            opacity: 0
+          })
+        ];
+
+        this.labels = {
+          a2: labelManager.addLabel({
+            tex: "a^2",
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.a,
+            groupId: this.id,
+            getWorldPos: () => {
+              const p = this.slabA.position.clone();
+              if (this.state.stack > 0.5) return p.add(new THREE.Vector3(0, 0, d / 2 + 0.5));
+              return p.add(new THREE.Vector3(0, a * 0.52, 0));
+            },
+            opacity: 0
+          }),
+          ab: labelManager.addLabel({
+            tex: "ab",
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.ab,
+            groupId: this.id,
+            getWorldPos: () => {
+              const p = this.slabAB.position.clone();
+              if (this.state.stack > 0.5) return p.add(new THREE.Vector3(0, 0, d / 2 + 0.5));
+              return p.add(new THREE.Vector3(0, b * 0.52, 0));
+            },
+            opacity: 0
+          }),
+          b2: labelManager.addLabel({
+            tex: "b^2",
+            className: "viz-label viz-label--medium",
+            color: COLOR_HEX.b,
+            groupId: this.id,
+            getWorldPos: () => {
+              const p = this.slabB.position.clone();
+              if (this.state.stack > 0.5) return p.add(new THREE.Vector3(0, 0, d / 2 + 0.5));
+              return p.add(new THREE.Vector3(0, b * 0.52, 0));
+            },
+            opacity: 0
+          })
+        };
+
+        labelManager.setOcclusionMeshes([
+          this.cubeFill,
+          this.removedCube,
+          this.slabA,
+          this.slabAB,
+          this.slabB
+        ]);
+
+        this.equationStage = 0;
+        this.orbitWeight = 0;
+        this.applyStepState(1);
+        if (this.camera && this.controls) {
+          const maxDim = this.geo.a;
+          const camDist = maxDim * 2.6;
+          this.camera.position.set(camDist, camDist * 0.85, camDist);
+          this.controls.target.set(0, 0, 0);
+          this.camera.lookAt(0, 0, 0);
+          this.controls.update();
+        }
+      }
+
+      applyVisualTargets(targets) {
+        this.state = { ...targets };
+        const { b } = this.geo;
+
+        const diagonal = new THREE.Vector3(0.7, 1, 0.65).normalize().multiplyScalar(b * 2.5 * targets.remove);
+        const corner = this.removedCube.userData.corner;
+        this.removedCube.position.copy(corner.clone().add(diagonal));
+        this.removedCube.material.opacity = 0.95 * Math.sin(Math.PI * clamp(targets.remove, 0, 1));
+        this.removedCube.visible = targets.remove > 0.01 && targets.remove < 0.99;
+
+        this.cubeFill.visible = targets.decompose < 0.99;
+        this.cubeFill.material.opacity = this.cubeFill.visible ? 0.72 * (1 - targets.decompose) : 0;
+        if (this.wire) {
+          const wireOpacity = 0.95 * (1 - 0.85 * targets.decompose) * (1 - targets.stack);
+          this.wire.material.opacity = wireOpacity;
+          this.wire.visible = wireOpacity > 0.01;
+        }
+        this.cutLines.children.forEach((line) => {
+          line.material.opacity = 0.85 * targets.decompose * (1 - targets.stack);
+        });
+
+        const slabs = [this.slabA, this.slabAB, this.slabB];
+        const alignRotateT = clamp(targets.align * 2, 0, 1);
+        const alignSlideT = clamp((targets.align - 0.5) * 2, 0, 1);
+        for (const slab of slabs) {
+          const p = slab.userData.base.clone()
+            .lerp(slab.userData.explode, targets.explode)
+            .lerp(slab.userData.align, alignSlideT)
+            .lerp(slab.userData.final, targets.stack);
+          slab.position.copy(p);
+          slab.rotation.x = slab.userData.rotX * alignRotateT;
+          slab.rotation.y = slab.userData.rotY * alignRotateT;
+          slab.visible = targets.decompose > 0.01;
+          slab.material.opacity = slab.visible ? 0.88 * targets.decompose : 0;
+        }
+
+        labelManager.setOpacity(this.labels.a2, targets.labels);
+        labelManager.setOpacity(this.labels.ab, targets.labels);
+        labelManager.setOpacity(this.labels.b2, targets.labels);
+
+        this.setDimensionOpacityList(this.dimA, 1 - 0.55 * targets.decompose);
+        this.setDimensionOpacity(this.dimB, clamp(targets.remove - 0.4 * targets.decompose, 0, 1));
+        const alignDimOpacity = clamp((targets.align - 0.12) / 0.88, 0, 1) * (1 - targets.stack);
+        this.setDimensionOpacityList(this.dimAligned, alignDimOpacity);
+        this.setDimensionOpacity(this.dimMaster, targets.stack);
+
+        this.equationStage = targets.eq;
+        this.orbitWeight = clamp(0.25 * targets.explode + 0.45 * targets.align + 0.72 * targets.stack, 0, 1);
+      }
+
+      lerpTargets(start, end, t) {
+        const out = {};
+        for (const key of Object.keys(end)) {
+          if (key === "eq") {
+            out[key] = t < 0.72 ? start[key] : end[key];
+          } else {
+            out[key] = start[key] + (end[key] - start[key]) * t;
+          }
+        }
+        return out;
+      }
+
+      setParams(params) {
+        const { a, b } = clampDiffPair(params.a ?? this.params.a, params.b ?? this.params.b, 6);
+        this.params = { a, b };
+        this.rebuild();
+      }
+
+      resetExplore() {
+        this.setParams({ a: 5, b: 2 });
+      }
+
+      hasStepControls() {
+        return true;
+      }
+
+      getStepCount() {
+        return 6;
+      }
+
+      getStepIndex() {
+        return this.stepIndex;
+      }
+
+      getStepTargets(step) {
+        if (step <= 1) {
+          return { remove: 0, decompose: 0, explode: 0, align: 0, stack: 0, labels: 0, eq: 0 };
+        }
+        if (step === 2) {
+          return { remove: 1, decompose: 0, explode: 0, align: 0, stack: 0, labels: 0, eq: 1 };
+        }
+        if (step === 3) {
+          return { remove: 1, decompose: 1, explode: 0, align: 0, stack: 0, labels: 0.25, eq: 1 };
+        }
+        if (step === 4) {
+          return { remove: 1, decompose: 1, explode: 1, align: 0, stack: 0, labels: 0.85, eq: 1 };
+        }
+        if (step === 5) {
+          return { remove: 1, decompose: 1, explode: 1, align: 1, stack: 0, labels: 1, eq: 1 };
+        }
+        return { remove: 1, decompose: 1, explode: 1, align: 1, stack: 1, labels: 1, eq: 2 };
+      }
+
+      applyTargets(targets) {
+        this.applyVisualTargets(targets);
+      }
+
+      applyStepState(step) {
+        const clamped = clamp(step, 1, this.getStepCount());
+        this.queue.clear();
+        this.stepIndex = clamped;
+        this.applyTargets(this.getStepTargets(clamped));
+        notifyVisualUpdate();
+      }
+
+      setStep(step, animate = false) {
+        const clamped = clamp(step, 1, this.getStepCount());
+        if (!animate || this.getReduceMotion()) {
+          this.applyStepState(clamped);
+          return;
+        }
+        const start = this.getStepTargets(this.stepIndex);
+        const end = this.getStepTargets(clamped);
+        this.queue.clear();
+        this.queue.run([
+          {
+            duration: DEFAULT_STEP_MS,
+            pause: INTER_STEP_PAUSE_MS,
+            onUpdate: (t) => {
+              this.applyTargets(this.lerpTargets(start, end, t));
+            },
+            onEnd: () => {
+              this.stepIndex = clamped;
+              this.applyTargets(end);
+              notifyVisualUpdate();
+            }
+          }
+        ]);
+      }
+
+      playAnimation() {
+        this.setStep(this.getStepCount(), true);
+      }
+
+      tick(dt, dtMs) {
+        this.queue.update(dtMs);
+        this.orbitPhase += dt;
+        if (!this.camera || !this.geo) return;
+        // Only force camera position while animation queue is active
+        if (this.orbitWeight > 0.001 && this.queue.active) {
+          const s = this.geo.a * 2.6;
+          const base = new THREE.Vector3(s, s * 0.85, s);
+          const top = new THREE.Vector3(s * 0.72, s * 1.17, s * 0.8);
+          const blend = clamp(0.45 * this.orbitWeight + Math.sin(this.orbitPhase * 0.8) * 0.05 * this.orbitWeight, 0, 1);
+          this.camera.position.lerpVectors(base, top, blend);
+          const stackT = this.state?.stack || 0;
+          const targetY = stackT * (this.geo.a / 2);
+          const baseTarget = new THREE.Vector3(0, targetY, -this.geo.a * 0.45);
+          const slabCentroid = this.slabA.position.clone()
+            .add(this.slabAB.position)
+            .add(this.slabB.position)
+            .multiplyScalar(1 / 3);
+          const targetBlend = clamp(0.45 * this.state.explode + 0.4 * this.state.align + 0.7 * this.state.stack, 0, 1);
+          const target = baseTarget.clone().lerp(slabCentroid, targetBlend);
+          target.y = THREE.MathUtils.lerp(target.y, targetY, stackT);
+          if (this.controls) {
+            this.controls.target.lerp(target, 0.12);
+          } else {
+            this.camera.lookAt(target);
+          }
+        }
+      }
+
+      updateLabels(canvas) {
+        labelManager.update(this.camera, canvas, true);
+      }
+
+      equationTex() {
+        const { a, b } = this.params;
+        if (this.equationStage <= 0) {
+          return `\\color{${COLOR_HEX.a}}{${a}^3}`;
+        }
+        if (this.equationStage === 1) {
+          return `\\color{${COLOR_HEX.a}}{${a}^3} - \\color{${COLOR_HEX.b}}{${b}^3}`;
+        }
+        return `\\color{${COLOR_HEX.a}}{${a}^3} - \\color{${COLOR_HEX.b}}{${b}^3} = (${a}-${b})(\\color{${COLOR_HEX.a}}{${a ** 2}}+\\color{${COLOR_HEX.ab}}{${a * b}}+\\color{${COLOR_HEX.b}}{${b ** 2}})`;
+      }
+
+      overlay() {
+        const messages = [
+          "Solid a^3 cube with edge dimensions",
+          "Extract the b^3 corner along the diagonal",
+          "Cut the L-solid into three slabs in place",
+          "Explode slabs along X/Y/Z for separation",
+          "Rotate slabs 2 and 3 to align thickness (a-b)",
+          "Stack aligned slabs and factor (a-b)"
+        ];
+        const { a, b } = this.params;
+        return {
+          left: `Step ${this.stepIndex}/6 | a=${a}, b=${b}`,
+          right: messages[this.stepIndex - 1]
+        };
+      }
+
+      showDrillFeedback(problem) {
+        if (problem && problem.a && problem.b) this.setParams({ a: problem.a, b: problem.b });
+        this.playAnimation();
+      }
+    }
+
+
+    // ===== Drill Engine =====
+    class DrillEngine {
+      constructor() {
+        this.bags = new Map();
+        this.recent = new Map();
+      }
+
+      bagKey(modeId, level) {
+        return `${modeId}-L${level}`;
+      }
+
+      generateBank(modeId, level) {
+        if (modeId === "prime") return this.buildPrimeBank(level);
+        if (modeId === "squares") return this.buildSquaresBank(level);
+        if (modeId === "cubes") return this.buildCubesBank(level);
+        if (modeId === "ab2") return this.buildAB2Bank(level);
+        if (modeId === "diff2") return this.buildDiff2Bank(level);
+        if (modeId === "sum3") return this.buildSum3Bank(level);
+        if (modeId === "diff3") return this.buildDiff3Bank(level);
+        return [];
+      }
+
+      draw(modeId, level) {
+        const key = this.bagKey(modeId, level);
+        if (!this.bags.has(key) || this.bags.get(key).length === 0) {
+          this.bags.set(key, shuffle(this.generateBank(modeId, level)));
+        }
+        const bag = this.bags.get(key);
+        const recentKey = `${modeId}-recent`;
+        if (!this.recent.has(recentKey)) this.recent.set(recentKey, []);
+        const recent = this.recent.get(recentKey);
+
+        let problem = null;
+        for (let i = 0; i < 8 && bag.length > 0; i += 1) {
+          const candidate = bag.pop();
+          if (!recent.includes(candidate.signature)) {
+            problem = candidate;
+            break;
+          }
+          bag.unshift(candidate);
+        }
+        if (!problem) problem = bag.pop();
+
+        recent.push(problem.signature);
+        while (recent.length > 3) recent.shift();
+        return problem;
+      }
+
+      buildPrimeBank(level) {
+        const bank = [];
+        for (let i = 0; i < 16; i += 1) {
+          const type = Math.random() < 0.75 ? "factor" : "inference";
+          if (type === "factor") {
+            const n = randomCompositeByDifficulty(level);
+            bank.push({
+              modeId: "prime",
+              kind: "prime-factor",
+              signature: `pf-${n}`,
+              n,
+              inputType: "prime",
+              promptText: `Find the prime factorization of ${n}.`,
+              promptKatex: `${n} = \\;?`,
+              answerCanonical: factorizePrimePowers(n),
+              explanation: `Prime powers multiply to ${n}.`
+            });
+          } else {
+            const n = randomByDifficulty(level);
+            const target = Math.random() < 0.5 ? "square" : "cube";
+            const expected = target === "square" ? isPerfectSquare(n) : isPerfectCube(n);
+            bank.push({
+              modeId: "prime",
+              kind: "prime-inference",
+              signature: `pi-${target}-${n}`,
+              n,
+              target,
+              inputType: "yesno",
+              promptText: `From prime exponents, is ${n} a perfect ${target}?`,
+              promptKatex: `${n}`,
+              answer: expected ? "yes" : "no",
+              explanation: target === "square"
+                ? "All prime exponents must be even for a perfect square."
+                : "All prime exponents must be multiples of 3 for a perfect cube."
+            });
+          }
+        }
+        return bank;
+      }
+
+      buildSquaresBank(level) {
+        const bank = [];
+        for (let i = 0; i < 16; i += 1) {
+          if (Math.random() < 0.6) {
+            const n = randomByDifficulty(level);
+            const perfect = isPerfectSquare(n);
+            bank.push({
+              modeId: "squares",
+              kind: "square-check",
+              signature: `sq-check-${n}`,
+              n,
+              inputType: "text",
+              promptText: `What is the side length of a square with area ${n}? (Enter a whole number, or "none")`,
+              promptKatex: `\\text{Area }= ${n}`,
+              answer: { perfect, root: perfect ? Math.sqrt(n) : null },
+              explanation: perfect
+                ? `${n} = ${Math.sqrt(n)}^2.`
+                : `${n} is between ${Math.floor(Math.sqrt(n))}^2 and ${Math.ceil(Math.sqrt(n))}^2.`
+            });
+          } else {
+            const n = randomByDifficulty(level);
+            const nearest = nearestPerfectSquare(n);
+            bank.push({
+              modeId: "squares",
+              kind: "closest-square",
+              signature: `sq-near-${n}`,
+              n,
+              inputType: "number",
+              promptText: `Which perfect square is closest to ${n}?`,
+              promptKatex: `${n}`,
+              answer: nearest.nearest,
+              explanation: `${nearest.lowSq} and ${nearest.highSq} bound ${n}; nearest is ${nearest.nearest}.`
+            });
+          }
+        }
+        return bank;
+      }
+
+      buildCubesBank(level) {
+        const bank = [];
+        for (let i = 0; i < 16; i += 1) {
+          const n = randomByDifficulty(level);
+          const perfect = isPerfectCube(n);
+          bank.push({
+            modeId: "cubes",
+            kind: "cube-check",
+            signature: `cube-check-${n}`,
+            n,
+            inputType: "text",
+            promptText: `What is the edge length of a cube with volume ${n}? (Enter a whole number, or "none")`,
+            promptKatex: `\\text{Volume }= ${n}`,
+            answer: { perfect, root: perfect ? Math.round(Math.cbrt(n)) : null },
+            explanation: perfect ? `${n} = ${Math.round(Math.cbrt(n))}^3.` : `${n} is not an integer cube.`
+          });
+        }
+        return bank;
+      }
+
+      buildAB2Bank(level) {
+        const bank = [];
+        for (let i = 0; i < 16; i += 1) {
+          const { a, b } = randomABForDiff(level, 10);
+          const kindChoice = randInt(0, 2);
+          if (kindChoice === 0) {
+            bank.push({
+              modeId: "ab2",
+              kind: "ab2-value",
+              signature: `ab2-value-${a}-${b}`,
+              a,
+              b,
+              inputType: "number",
+              promptText: `Given a=${a}, b=${b}, evaluate (a+b)^2.`,
+              promptKatex: `(${a}+${b})^2`,
+              answer: (a + b) ** 2,
+              explanation: `(a+b)^2 = a^2 + 2ab + b^2 = ${a ** 2} + ${2 * a * b} + ${b ** 2}.`
+            });
+          } else if (kindChoice === 1) {
+            bank.push({
+              modeId: "ab2",
+              kind: "ab2-area",
+              signature: `ab2-ab-${a}-${b}`,
+              a,
+              b,
+              inputType: "number",
+              promptText: `Given a=${a}, b=${b}, what is the area of one ab region?`,
+              promptKatex: `${a}\\cdot${b}`,
+              answer: a * b,
+              explanation: `Each green rectangle has area a*b = ${a * b}.`
+            });
+          } else {
+            const correct = `${a ** 2}+${2 * a * b}+${b ** 2}`;
+            const options = shuffle([
+              correct,
+              `${a ** 2}+${a * b}+${b ** 2}`,
+              `${a ** 2}-${2 * a * b}+${b ** 2}`,
+              `${(a + b) ** 2}`
+            ]);
+            bank.push({
+              modeId: "ab2",
+              kind: "ab2-expand",
+              signature: `ab2-expand-${a}-${b}`,
+              a,
+              b,
+              inputType: "mc",
+              promptText: `Expand (a+b)^2 for a=${a}, b=${b}.`,
+              promptKatex: `(${a}+${b})^2`,
+              options,
+              answer: correct,
+              explanation: `Middle term is 2ab, so ${correct}.`
+            });
+          }
+        }
+        return bank;
+      }
+
+      buildDiff2Bank(level) {
+        const bank = [];
+        for (let i = 0; i < 16; i += 1) {
+          let a;
+          let b;
+          if (level === 1) {
+            a = randInt(3, 6);
+            b = randInt(1, a - 1);
+          } else if (level === 2) {
+            a = randInt(5, 8);
+            b = randInt(1, a - 1);
+          } else {
+            a = randInt(7, 10);
+            b = randInt(2, a - 1);
+          }
+          if (Math.random() < 0.55) {
+            bank.push({
+              modeId: "diff2",
+              kind: "diff2-dims",
+              signature: `d2-dims-${a}-${b}`,
+              a,
+              b,
+              inputType: "pair",
+              promptText: `For a=${a}, b=${b}, give the dimensions of (a+b)(a-b).`,
+              promptKatex: `${a}^2-${b}^2`,
+              answerPair: [a + b, a - b].sort((x, y) => x - y),
+              explanation: `Difference of squares factors to (${a}+${b})(${a}-${b}).`
+            });
+          } else {
+            const correct = `${a + b}x${a - b}`;
+            const options = shuffle([
+              correct,
+              `${a - b}x${a - b}`,
+              `${a + b}x${a + b}`,
+              `${a * b}`
+            ]);
+            bank.push({
+              modeId: "diff2",
+              kind: "diff2-factor-mc",
+              signature: `d2-mc-${a}-${b}`,
+              a,
+              b,
+              inputType: "mc",
+              promptText: `Choose the correct factor dimensions for ${a}^2-${b}^2.`,
+              promptKatex: `${a}^2-${b}^2`,
+              options,
+              answer: correct,
+              explanation: "Always (a+b)(a-b)."
+            });
+          }
+        }
+        return bank;
+      }
+
+      buildSum3Bank(level) {
+        const bank = [];
+        for (let i = 0; i < 16; i += 1) {
+          let a;
+          let b;
+          if (level === 1) {
+            a = randInt(1, 3);
+            b = randInt(1, 3);
+          } else if (level === 2) {
+            a = randInt(2, 5);
+            b = randInt(2, 5);
+          } else {
+            a = randInt(3, 6);
+            b = randInt(2, 6);
+          }
+          const correct = `(${a}+${b})(${a ** 2}-${a * b}+${b ** 2})`;
+          const options = shuffle([
+            correct,
+            `(${a}+${b})(${a ** 2}+${a * b}+${b ** 2})`,
+            `(${a}-${b})(${a ** 2}-${a * b}+${b ** 2})`,
+            `${(a + b) ** 3}`
+          ]);
+          bank.push({
+            modeId: "sum3",
+            kind: "sum3-factor",
+            signature: `sum3-${a}-${b}`,
+            a,
+            b,
+            inputType: "mc",
+            promptText: `Factor ${a}^3+${b}^3 using the identity.`,
+            promptKatex: `${a}^3+${b}^3`,
+            options,
+            answer: correct,
+            explanation: "Sum of cubes uses (a+b)(a^2-ab+b^2)."
+          });
+        }
+        return bank;
+      }
+
+      buildDiff3Bank(level) {
+        const bank = [];
+        for (let i = 0; i < 16; i += 1) {
+          let a;
+          let b;
+          if (level === 1) {
+            a = randInt(2, 4);
+            b = randInt(1, a - 1);
+          } else if (level === 2) {
+            a = randInt(3, 5);
+            b = randInt(1, a - 1);
+          } else {
+            a = randInt(4, 6);
+            b = randInt(1, a - 1);
+          }
+          const correct = `(${a}-${b})(${a ** 2}+${a * b}+${b ** 2})`;
+          const options = shuffle([
+            correct,
+            `(${a}-${b})(${a ** 2}-${a * b}+${b ** 2})`,
+            `(${a}+${b})(${a ** 2}+${a * b}+${b ** 2})`,
+            `${(a - b) ** 3}`
+          ]);
+          bank.push({
+            modeId: "diff3",
+            kind: "diff3-factor",
+            signature: `diff3-${a}-${b}`,
+            a,
+            b,
+            inputType: "mc",
+            promptText: `Factor ${a}^3-${b}^3 using the identity.`,
+            promptKatex: `${a}^3-${b}^3`,
+            options,
+            answer: correct,
+            explanation: "Difference of cubes uses (a-b)(a^2+ab+b^2)."
+          });
+        }
+        return bank;
+      }
+    }
+
+    function defaultProgress() {
+      return {
+        version: STORAGE_VERSION,
+        updatedAt: Date.now(),
+        global: { attempts: 0, correct: 0 },
+        prefs: { reduceMotion: false },
+        modes: Object.fromEntries(modeIds.map((id) => [
+          id,
+          { attempts: 0, correct: 0, bestStreak: 0, difficulty: 1 }
+        ]))
+      };
+    }
+
+    function loadProgress() {
+      const fallback = defaultProgress();
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return fallback;
+        const merged = defaultProgress();
+        merged.global = { ...merged.global, ...(parsed.global || {}) };
+        merged.prefs = { ...merged.prefs, ...(parsed.prefs || {}) };
+        for (const id of modeIds) {
+          merged.modes[id] = { ...merged.modes[id], ...((parsed.modes || {})[id] || {}) };
+          merged.modes[id].difficulty = clamp(Number(merged.modes[id].difficulty) || 1, 1, 3);
+        }
+        return merged;
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    function saveProgress() {
+      try {
+        appState.progress.updatedAt = Date.now();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.progress));
+      } catch (error) {
+        // Ignore write failures.
+      }
+    }
+
+    // ===== UI Controller =====
+    const labelManager = new LabelManager(dom.labelLayer);
+    const sceneManager = new SceneManager(dom.renderRoot);
+    const drillEngine = new DrillEngine();
+    const modeImpl = {
+      prime: new PrimeMode(dom.treeCanvas, () => appState.reduceMotion),
+      squares: new PerfectSquaresMode(() => appState.reduceMotion),
+      cubes: new PerfectCubesMode(() => appState.reduceMotion),
+      ab2: new AB2Mode(() => appState.reduceMotion),
+      diff2: new DiffSquaresMode(() => appState.reduceMotion),
+      sum3: new SumCubesMode(() => appState.reduceMotion),
+      diff3: new DiffCubesMode(() => appState.reduceMotion)
+    };
+
+    function getModeStat(modeId) {
+      return appState.progress.modes[modeId];
+    }
+
+    function setOverlay(left, right) {
+      dom.overlayLeft.textContent = left || "";
+      dom.overlayRight.textContent = right || "";
+    }
+
+    function refreshOverlay() {
+      const mode = modeImpl[appState.activeModeId];
+      const info = mode.overlay ? mode.overlay() : { left: "", right: "" };
+      setOverlay(info.left, info.right);
+    }
+
+    function refreshEquation() {
+      const mode = modeImpl[appState.activeModeId];
+      const tex = mode.equationTex ? mode.equationTex() : "";
+      renderKatex(dom.equationCard, tex, true);
+    }
+
+    function refreshDifficultyPill() {
+      const stat = getModeStat(appState.activeModeId);
+      dom.difficultyPill.textContent = `L${stat.difficulty}`;
+    }
+
+    function refreshStreakDots() {
+      const runtime = appState.runtime[appState.activeModeId];
+      dom.streakDots.textContent = createStreakDots(runtime.streak);
+    }
+
+    function clearFeedback() {
+      dom.feedback.classList.remove("ok", "bad");
+      dom.feedback.textContent = "Submit an answer, then use Next Problem for another drill.";
+    }
+
+    function showFeedback(correct, text) {
+      dom.feedback.classList.remove("ok", "bad");
+      dom.feedback.classList.add(correct ? "ok" : "bad");
+      dom.feedback.textContent = text;
+    }
+
+    function renderTabs() {
+      dom.modeTabs.innerHTML = "";
+      for (const def of MODE_DEFS) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `tab-btn${def.id === appState.activeModeId ? " active" : ""}`;
+        btn.textContent = def.label;
+        btn.dataset.modeId = def.id;
+        btn.addEventListener("click", () => setActiveMode(def.id));
+        dom.modeTabs.appendChild(btn);
+      }
+    }
+
+    function getControlMax(control, params) {
+      if (typeof control.dynamicMax === "function") return control.dynamicMax(params);
+      return control.max;
+    }
+
+    function renderControls() {
+      const def = modeMap[appState.activeModeId];
+      const params = appState.params[appState.activeModeId];
+      dom.exploreControls.innerHTML = "";
+
+      for (const control of def.controls) {
+        const max = getControlMax(control, params);
+        if (params[control.key] > max) params[control.key] = max;
+        if (params[control.key] < control.min) params[control.key] = control.min;
+
+        const row = document.createElement("div");
+        row.className = "control";
+
+        const label = document.createElement("label");
+        label.setAttribute("for", `ctrl-${control.key}`);
+        label.textContent = `${control.label} (${control.min}-${max})`;
+
+        const input = document.createElement("input");
+        input.type = "range";
+        input.id = `ctrl-${control.key}`;
+        input.min = String(control.min);
+        input.max = String(max);
+        input.step = String(control.step ?? 1);
+        input.value = String(params[control.key]);
+
+        const valueText = document.createElement("div");
+        valueText.className = "control-value";
+        valueText.textContent = `${params[control.key]}`;
+
+        input.addEventListener("input", () => {
+          const value = Number.parseInt(input.value, 10);
+          params[control.key] = value;
+          if (appState.activeModeId === "diff2" || appState.activeModeId === "diff3") {
+            const bControl = def.controls.find((c) => c.key === "b");
+            if (bControl) {
+              const bMax = getControlMax(bControl, params);
+              params.b = clamp(params.b, bControl.min, bMax);
+            }
+          }
+          valueText.textContent = `${params[control.key]}`;
+          modeImpl[appState.activeModeId].setParams(params);
+          refreshEquation();
+          refreshOverlay();
+          if (control.dynamicMax || control.key === "a") renderControls();
+        });
+
+        row.append(label, input, valueText);
+        dom.exploreControls.appendChild(row);
+      }
+    }
+
+    function clearStepAutoplay() {
+      if (appState.step.autoplayTimer) {
+        window.clearTimeout(appState.step.autoplayTimer);
+        appState.step.autoplayTimer = 0;
+      }
+    }
+
+    function getActiveStepMode() {
+      const mode = modeImpl[appState.activeModeId];
+      if (!mode || !mode.hasStepControls || !mode.hasStepControls()) return null;
+      return mode;
+    }
+
+    function getStepPacingMs() {
+      if (appState.reduceMotion) return { duration: REDUCED_STEP_MS, pause: 0 };
+      return { duration: DEFAULT_STEP_MS, pause: INTER_STEP_PAUSE_MS };
+    }
+
+    function refreshStepControls() {
+      const mode = getActiveStepMode();
+      if (!mode) {
+        dom.stepControls.classList.add("hidden");
+        dom.stepCounter.textContent = "Step 1 / 1";
+        dom.stepPrevBtn.disabled = true;
+        dom.stepNextBtn.disabled = true;
+        return;
+      }
+      dom.stepControls.classList.remove("hidden");
+      const total = Math.max(1, Number(mode.getStepCount?.() ?? 1));
+      const index = clamp(Number(mode.getStepIndex?.() ?? 1), 1, total);
+      appState.step.indexByMode[appState.activeModeId] = index;
+      dom.stepCounter.textContent = `Step ${index} / ${total}`;
+      dom.stepPrevBtn.disabled = index <= 1;
+      dom.stepNextBtn.disabled = index >= total;
+    }
+
+    function stepMode(delta) {
+      clearStepAutoplay();
+      const mode = getActiveStepMode();
+      if (!mode) return;
+      const current = mode.getStepIndex();
+      const target = clamp(current + delta, 1, mode.getStepCount());
+      if (target === current) {
+        refreshStepControls();
+        return;
+      }
+      mode.setStep(target, delta > 0);
+      refreshStepControls();
+      const { duration, pause } = getStepPacingMs();
+      window.setTimeout(refreshStepControls, duration + pause + 20);
+    }
+
+    function playRemainingSteps() {
+      clearStepAutoplay();
+      const mode = getActiveStepMode();
+      if (!mode) return;
+
+      const tick = () => {
+        const active = getActiveStepMode();
+        if (!active || active !== mode) {
+          clearStepAutoplay();
+          return;
+        }
+        const current = active.getStepIndex();
+        const total = active.getStepCount();
+        if (current >= total) {
+          clearStepAutoplay();
+          refreshStepControls();
+          return;
+        }
+        active.setStep(current + 1, true);
+        refreshStepControls();
+        const { duration, pause } = getStepPacingMs();
+        appState.step.autoplayTimer = window.setTimeout(tick, duration + pause + 24);
+      };
+
+      tick();
+    }
+
+    function renderAnswerInputs(problem) {
+      dom.answerArea.innerHTML = "";
+      appState.answerDraft = {};
+      if (!problem) return;
+
+      if (problem.inputType === "number") {
+        const input = document.createElement("input");
+        input.type = "number";
+        input.className = "answer-number";
+        input.placeholder = "Enter a number";
+        input.addEventListener("input", () => { appState.answerDraft.number = input.value; });
+        dom.answerArea.appendChild(input);
+        return;
+      }
+
+      if (problem.inputType === "prime" || problem.inputType === "text" || problem.inputType === "pair") {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "answer-text";
+        input.placeholder = problem.inputType === "prime"
+          ? PRIME_PARSE_FORMATS
+          : problem.inputType === "pair"
+            ? "Example: 10,4 or 10x4"
+            : "Type your answer";
+        input.addEventListener("input", () => { appState.answerDraft.text = input.value; });
+        dom.answerArea.appendChild(input);
+        if (problem.inputType === "prime") {
+          const note = document.createElement("div");
+          note.className = "muted";
+          note.style.fontSize = "0.78rem";
+          note.textContent = PRIME_PARSE_FORMATS;
+          dom.answerArea.appendChild(note);
+        }
+        return;
+      }
+
+      if (problem.inputType === "yesno") {
+        const row = document.createElement("div");
+        row.className = "yesno-row";
+        for (const value of ["yes", "no"]) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "yesno-btn";
+          btn.textContent = value.toUpperCase();
+          btn.addEventListener("click", () => {
+            appState.answerDraft.choice = value;
+            Array.from(row.children).forEach((node) => node.classList.remove("selected"));
+            btn.classList.add("selected");
+          });
+          row.appendChild(btn);
+        }
+        dom.answerArea.appendChild(row);
+        return;
+      }
+
+      if (problem.inputType === "mc") {
+        const wrap = document.createElement("div");
+        wrap.className = "answer-options";
+        problem.options.forEach((option, index) => {
+          const id = `opt-${appState.activeModeId}-${index}`;
+          const label = document.createElement("label");
+          label.className = "answer-option";
+          label.setAttribute("for", id);
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = "answer-mc";
+          radio.id = id;
+          radio.value = option;
+          radio.addEventListener("change", () => { appState.answerDraft.choice = radio.value; });
+          const span = document.createElement("span");
+          span.textContent = option;
+          label.append(radio, span);
+          wrap.appendChild(label);
+        });
+        dom.answerArea.appendChild(wrap);
+      }
+    }
+
+    function renderProblem(problem) {
+      if (!problem) {
+        dom.questionText.textContent = "No problem available.";
+        dom.questionKatex.textContent = "";
+        dom.answerArea.innerHTML = "";
+        return;
+      }
+      dom.questionText.textContent = problem.promptText || "";
+      renderKatex(dom.questionKatex, problem.promptKatex || "", false);
+      renderAnswerInputs(problem);
+    }
+
+    function gradeProblem(problem, draft) {
+      if (!problem) return { valid: false, correct: false, message: "No problem loaded." };
+
+      if (problem.inputType === "number") {
+        const value = Number.parseFloat(draft.number);
+        if (Number.isNaN(value)) return { valid: false, correct: false, message: "Enter a numeric answer." };
+        const correct = nearlyEqual(value, Number(problem.answer));
+        return { valid: true, correct, message: correct ? "Correct." : `Incorrect. Correct answer: ${problem.answer}.` };
+      }
+
+      if (problem.inputType === "prime") {
+        const parsed = parsePrimeFactorInput(draft.text || "");
+        if (!parsed) return { valid: false, correct: false, message: `Use one of the two accepted forms. ${PRIME_PARSE_FORMATS}` };
+        const correct = areFactorizationsEqual(parsed, problem.answerCanonical);
+        return {
+          valid: true,
+          correct,
+          message: correct
+            ? "Correct prime factorization."
+            : `Incorrect. Expected factors: ${problem.answerCanonical.map(([p, e]) => `${p}${e > 1 ? `^${e}` : ""}`).join(" * ")}.`
+        };
+      }
+
+      if (problem.inputType === "text") {
+        const text = (draft.text || "").trim();
+        if (!text) return { valid: false, correct: false, message: "Enter an answer." };
+        if (problem.answer && typeof problem.answer === "object" && Object.hasOwn(problem.answer, "perfect")) {
+          const normalized = text.toLowerCase();
+          const asNumber = Number.parseInt(text, 10);
+          if (normalized === "none") {
+            const correct = !problem.answer.perfect;
+            return {
+              valid: true,
+              correct,
+              message: correct
+                ? "Correct."
+                : `Incorrect. This value is a perfect power with root ${problem.answer.root}.`
+            };
+          }
+          if (!/^[-]?\d+$/.test(text)) {
+            return { valid: false, correct: false, message: "Enter a whole number or \"none\"." };
+          }
+          const correct = problem.answer.perfect && asNumber === problem.answer.root;
+          return {
+            valid: true,
+            correct,
+            message: correct
+              ? "Correct."
+              : (problem.answer.perfect
+                ? `Incorrect. The whole-number root is ${problem.answer.root}.`
+                : "Incorrect. This value is not a perfect power, so enter \"none\".")
+          };
+        }
+        const correct = text.toLowerCase() === String(problem.answer).toLowerCase();
+        return { valid: true, correct, message: correct ? "Correct." : `Incorrect. Expected: ${problem.answer}.` };
+      }
+
+      if (problem.inputType === "pair") {
+        const parsed = parsePairInput(draft.text || "");
+        if (!parsed) return { valid: false, correct: false, message: "Enter two numbers like 10,4 or 10x4." };
+        const expected = problem.answerPair.slice().sort((a, b) => a - b);
+        const correct = parsed[0] === expected[0] && parsed[1] === expected[1];
+        return { valid: true, correct, message: correct ? "Correct dimensions." : `Incorrect. Dimensions are ${expected[1]} and ${expected[0]}.` };
+      }
+
+      if (problem.inputType === "yesno") {
+        const choiceValue = draft.choice;
+        if (!choiceValue) return { valid: false, correct: false, message: "Choose YES or NO." };
+        const correct = choiceValue === problem.answer;
+        return { valid: true, correct, message: correct ? "Correct." : `Incorrect. Answer is ${String(problem.answer).toUpperCase()}.` };
+      }
+
+      if (problem.inputType === "mc") {
+        const selected = draft.choice;
+        if (!selected) return { valid: false, correct: false, message: "Select an option." };
+        const correct = selected === problem.answer;
+        return { valid: true, correct, message: correct ? "Correct choice." : `Incorrect. Correct choice: ${problem.answer}.` };
+      }
+
+      return { valid: false, correct: false, message: "Unsupported input type." };
+    }
+
+    function pullCurrentProblem(modeId) {
+      return appState.currentProblemByMode[modeId] || null;
+    }
+
+    function loadNextProblem(modeId = appState.activeModeId) {
+      const stat = getModeStat(modeId);
+      const problem = drillEngine.draw(modeId, stat.difficulty);
+      appState.currentProblemByMode[modeId] = problem;
+      if (modeId === appState.activeModeId) {
+        renderProblem(problem);
+        clearFeedback();
+      }
+      return problem;
+    }
+
+    function updateDifficulty(modeId, correct) {
+      const stat = getModeStat(modeId);
+      const runtime = appState.runtime[modeId];
+      runtime.recent.push(correct);
+      while (runtime.recent.length > 3) runtime.recent.shift();
+      runtime.consecutiveCorrect = correct ? runtime.consecutiveCorrect + 1 : 0;
+      let levelMessage = "";
+      if (runtime.consecutiveCorrect >= 3 && stat.difficulty < 3) {
+        stat.difficulty += 1;
+        runtime.consecutiveCorrect = 0;
+        runtime.recent = [];
+        levelMessage = ` Level up -> L${stat.difficulty}.`;
+      } else if (!correct) {
+        const wrongCount = runtime.recent.filter((v) => !v).length;
+        if (wrongCount >= 2 && stat.difficulty > 1) {
+          stat.difficulty -= 1;
+          runtime.recent = [];
+          runtime.consecutiveCorrect = 0;
+          levelMessage = ` Level down -> L${stat.difficulty}.`;
+        }
+      }
+      return levelMessage;
+    }
+
+    function onCheckAnswer() {
+      const modeId = appState.activeModeId;
+      const problem = pullCurrentProblem(modeId);
+      if (!problem) return;
+
+      const result = gradeProblem(problem, appState.answerDraft);
+      if (!result.valid) {
+        showFeedback(false, result.message);
+        return;
+      }
+
+      const stat = getModeStat(modeId);
+      const runtime = appState.runtime[modeId];
+      stat.attempts += 1;
+      appState.progress.global.attempts += 1;
+      if (result.correct) {
+        stat.correct += 1;
+        appState.progress.global.correct += 1;
+        runtime.streak += 1;
+        stat.bestStreak = Math.max(stat.bestStreak, runtime.streak);
+      } else {
+        runtime.streak = 0;
+      }
+
+      const levelMessage = updateDifficulty(modeId, result.correct);
+      const explanation = problem.explanation ? ` ${problem.explanation}` : "";
+      showFeedback(result.correct, `${result.message}${explanation}${levelMessage}`);
+      refreshStreakDots();
+      refreshDifficultyPill();
+      refreshStatsModal();
+      saveProgress();
+
+      const active = modeImpl[modeId];
+      if (active && active.showDrillFeedback) active.showDrillFeedback(problem, result);
+      refreshOverlay();
+    }
+
+    function refreshStatsModal() {
+      const g = appState.progress.global;
+      dom.globalStats.innerHTML = [
+        "<strong>Global Accuracy</strong>",
+        `Attempts: ${g.attempts}`,
+        `Correct: ${g.correct}`,
+        `Accuracy: ${safePercent(g.correct, g.attempts)}%`,
+        `<div class="muted">Difficulty ranges: L1 2-30, L2 30-200, L3 200-1000 (tricky: 441, 729).</div>`
+      ].join("<br>");
+
+      dom.modeStats.innerHTML = "";
+      for (const def of MODE_DEFS) {
+        const m = appState.progress.modes[def.id];
+        const card = document.createElement("div");
+        card.className = "stats-item";
+        card.innerHTML = [
+          `<strong>${def.label}</strong>`,
+          `Attempts: ${m.attempts}`,
+          `Correct: ${m.correct}`,
+          `Accuracy: ${safePercent(m.correct, m.attempts)}%`,
+          `Best streak: ${m.bestStreak}`,
+          `Current level: L${m.difficulty}`
+        ].join("<br>");
+        dom.modeStats.appendChild(card);
+      }
+    }
+
+    function setActiveMode(modeId) {
+      if (!modeMap[modeId]) return;
+      clearStepAutoplay();
+      labelManager.clear();
+      appState.activeModeId = modeId;
+      renderTabs();
+      refreshDifficultyPill();
+      refreshStreakDots();
+
+      if (modeId === "prime") {
+        dom.treeCanvas.style.display = "block";
+        sceneManager.renderer.domElement.style.display = "none";
+      } else {
+        dom.treeCanvas.style.display = "none";
+        sceneManager.renderer.domElement.style.display = "block";
+      }
+
+      sceneManager.setMode(modeImpl[modeId]);
+      modeImpl[modeId].setParams(appState.params[modeId]);
+      renderControls();
+      refreshEquation();
+      refreshOverlay();
+      if (!appState.currentProblemByMode[modeId]) loadNextProblem(modeId);
+      renderProblem(appState.currentProblemByMode[modeId]);
+      clearFeedback();
+      refreshStepControls();
+    }
+
+    function wireHeaderAndModal() {
+      dom.reduceMotionToggle.addEventListener("change", () => {
+        appState.reduceMotion = dom.reduceMotionToggle.checked;
+        appState.progress.prefs.reduceMotion = appState.reduceMotion;
+        saveProgress();
+      });
+      dom.statsBtn.addEventListener("click", () => {
+        refreshStatsModal();
+        dom.statsModal.classList.add("open");
+      });
+      dom.closeStatsBtn.addEventListener("click", () => {
+        dom.statsModal.classList.remove("open");
+      });
+      dom.statsModal.addEventListener("click", (event) => {
+        if (event.target === dom.statsModal) dom.statsModal.classList.remove("open");
+      });
+    }
+
+    function wireExploreButtons() {
+      dom.playBtn.addEventListener("click", () => {
+        const mode = modeImpl[appState.activeModeId];
+        if (mode && mode.hasStepControls && mode.hasStepControls()) {
+          playRemainingSteps();
+          return;
+        }
+        if (mode.playAnimation) mode.playAnimation();
+      });
+      dom.resetBtn.addEventListener("click", () => {
+        clearStepAutoplay();
+        const def = modeMap[appState.activeModeId];
+        appState.params[appState.activeModeId] = { ...def.defaultParams };
+        modeImpl[appState.activeModeId].resetExplore();
+        renderControls();
+        refreshEquation();
+        refreshOverlay();
+        refreshStepControls();
+      });
+    }
+
+    function wireStepButtons() {
+      dom.stepPrevBtn.addEventListener("click", () => {
+        stepMode(-1);
+      });
+      dom.stepNextBtn.addEventListener("click", () => {
+        stepMode(1);
+      });
+      dom.stepPlayBtn.addEventListener("click", () => {
+        playRemainingSteps();
+      });
+    }
+
+    function wireDrillButtons() {
+      dom.checkBtn.addEventListener("click", onCheckAnswer);
+      dom.nextBtn.addEventListener("click", () => {
+        loadNextProblem(appState.activeModeId);
+        refreshOverlay();
+      });
+    }
+
+    function initialize() {
+      appState.progress = loadProgress();
+      appState.reduceMotion = !!appState.progress.prefs.reduceMotion;
+      dom.reduceMotionToggle.checked = appState.reduceMotion;
+
+      for (const id of modeIds) {
+        const defaultLevel = appState.progress.modes[id].difficulty;
+        appState.progress.modes[id].difficulty = clamp(defaultLevel, 1, 3);
+      }
+
+      wireHeaderAndModal();
+      wireExploreButtons();
+      wireStepButtons();
+      wireDrillButtons();
+      window.addEventListener("mathviz-mode-update", () => {
+        refreshEquation();
+        refreshOverlay();
+        refreshStepControls();
+      });
+      renderTabs();
+      refreshStatsModal();
+      setActiveMode(appState.activeModeId);
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
+
