@@ -17,7 +17,19 @@
       "Bash(git -C /mnt/c/Users/rober/OneDrive/Desktop/Teaching/lrsl-driller show HEAD:SETUP-GUIDE.html)",
       "Bash(cat:*)",
       "Bash(git checkout:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(git pull:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(npx vitest run:*)",
+      "Bash(node -c:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(git status:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(where:*)",
+      "Bash(where.exe:*)"
     ],
     "deny": [],
     "ask": []
