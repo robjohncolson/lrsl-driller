@@ -1,4 +1,4 @@
-You are grading an AP Statistics student's response about inference for proportions: the logic of significance testing, confidence intervals for a population proportion, checking conditions, calculating standard error, critical values, margin of error, interpreting confidence intervals, justifying claims using CIs, understanding confidence level meaning, and factors affecting margin of error (Unit 6, Topics 6.1-6.3).
+You are grading an AP Statistics student's response about inference for proportions: the logic of significance testing, confidence intervals for a population proportion, checking conditions, calculating standard error, critical values, margin of error, interpreting confidence intervals, justifying claims using CIs, understanding confidence level meaning, factors affecting margin of error, stating null and alternative hypotheses, identifying test procedures, and verifying test conditions (Unit 6, Topics 6.1-6.4).
 
 SCENARIO: {{scenarioText}}
 GIVEN: {{givenText}}
@@ -107,6 +107,58 @@ KEY CONCEPTS BY TOPIC:
   - Omitting context (just saying "the true proportion" without specifying of WHAT and for WHOM)
   - Saying "between" instead of "from ___ to ___" is acceptable, but the endpoints must be referenced
   - Saying the parameter "is" in the interval with certainty, rather than that the interval "captures" or "contains" it
+
+6.4 Setting Up a Test for a Population Proportion:
+
+6.4 Null Hypothesis (nullHypothesis, cap64Null):
+- H0 ALWAYS contains "=" and uses the population parameter p (NOT p-hat)
+- H0: p = p0, where p0 is the claimed/null value
+- E: Correctly states H0: p = p0 with the right p0 value
+- P: Right structure but wrong p0 value or minor notation error
+- I: Uses p-hat, uses inequality, or fundamentally wrong
+
+6.4 Alternative Hypothesis (altHypothesis, cap64Alt):
+- Ha uses a strict inequality: < , > , or ≠ (never =)
+- Direction determined by the RESEARCH QUESTION, not the data:
+  - "greater than" / "more" / "higher" / "increased" → Ha: p > p0
+  - "less than" / "fewer" / "lower" / "decreased" → Ha: p < p0
+  - "different from" / "differs" / "changed" → Ha: p ≠ p0
+- E: Correct direction and p0 value, uses p (not p-hat)
+- P: Correct p0 but wrong direction, or minor notation issues
+- I: Uses p-hat, uses equality, or fundamentally wrong
+
+6.4 Parameter Definition (paramDef, cap64ParamDef):
+- Must define p using POPULATION language: "the proportion of ALL [population] who WOULD [action]"
+- Key words: "all", "every", "would" indicate population (good)
+- Bad sample language: "surveyed", "said", "in the sample" (these are about the sample, not population)
+- E: Includes "proportion" + population language ("all", "would") + context
+- P: Mentions proportion and context but uses sample language
+- I: Missing proportion, missing context, or completely wrong
+
+6.4 Identify Test Procedure (testAnswer, cap64Procedure):
+- One sample + categorical data + testing a claim → One-sample z-test for a population proportion
+- Common errors: choosing z-INTERVAL (that's for estimating, not testing), t-test (that's for means), two-sample (only one group here)
+- E: Selects "One-sample z-test for a population proportion"
+- I: Any other choice
+
+6.4 Test Conditions (testConditionsExplain, cap64ConditionsWork):
+- Three conditions: Random, 10%, Large Counts
+- CRITICAL DISTINCTION: Test conditions use p0 (null value), NOT p-hat!
+  - CI conditions: np-hat ≥ 10 and n(1-p-hat) ≥ 10
+  - TEST conditions: np0 ≥ 10 and n(1-p0) ≥ 10
+  - Why? When testing, we ASSUME H0 is true, so we use p0
+- E: Checks all 3 conditions with calculations using p0 (not p-hat)
+- P: Checks some conditions, or checks all but uses p-hat instead of p0
+- I: Missing most conditions or completely wrong approach
+
+6.4 Hypothesis Error Detection (errorAnswer):
+- Common student errors to identify:
+  1. Using p-hat instead of p in hypotheses
+  2. Putting inequality in H0 (H0 must use =)
+  3. Using equality in Ha (Ha must use <, >, or ≠)
+  4. Wrong direction for Ha (doesn't match research question)
+  5. Defining parameter with sample language instead of population language
+  6. Using wrong p0 value
 
 COMMON MISCONCEPTIONS TO DETECT (across all topics):
 - "There is a __% probability that the true proportion is in this interval" -> WRONG (should be "confident," not "probability")

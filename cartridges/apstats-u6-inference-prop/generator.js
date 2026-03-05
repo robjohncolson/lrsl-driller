@@ -1378,6 +1378,137 @@ const capstone63Bank = [
   }
 ];
 
+// ---- L17-L20, L23: Hypothesis scenarios (6.4a-d, capstone) ----
+const hypothesisScenarioBank = [
+  { context: "A newspaper reports that 40% of adults say football is their favorite sport. The mayor of a town wonders if the proportion in her town differs.",
+    p0: 0.40, direction: "!=", population: "all adults in the town",
+    successDesc: "would say football is their favorite sport", keyword: "differs" },
+  { context: "A company claims that 75% of its customers are satisfied. A consumer group suspects the true proportion is lower.",
+    p0: 0.75, direction: "<", population: "all customers of the company",
+    successDesc: "are satisfied", keyword: "lower" },
+  { context: "Researchers investigate whether the color green makes products seem more natural. If so, more than 50% of subjects would choose the green cup.",
+    p0: 0.50, direction: ">", population: "all students at the school",
+    successDesc: "would choose the green cup", keyword: "more than" },
+  { context: "A drug manufacturer claims their medication has a 10% side effect rate. A doctor suspects it may be higher.",
+    p0: 0.10, direction: ">", population: "all patients who take this medication",
+    successDesc: "experience side effects", keyword: "higher" },
+  { context: "A school board claims that 90% of seniors graduate on time. A parent group thinks the true rate is different.",
+    p0: 0.90, direction: "!=", population: "all seniors at the school",
+    successDesc: "graduate on time", keyword: "different" },
+  { context: "A political analyst claims 55% of voters favor a new policy. An opposing campaign believes the support is less than claimed.",
+    p0: 0.55, direction: "<", population: "all voters in the district",
+    successDesc: "favor the new policy", keyword: "less than" },
+  { context: "A fitness app claims that 30% of users exercise daily. A researcher wants to know if the proportion is actually higher.",
+    p0: 0.30, direction: ">", population: "all users of the fitness app",
+    successDesc: "exercise daily", keyword: "higher" },
+  { context: "A university reports that 65% of alumni donate within 5 years of graduation. An administrator wonders if this proportion has changed.",
+    p0: 0.65, direction: "!=", population: "all alumni of the university",
+    successDesc: "donate within 5 years of graduation", keyword: "changed" },
+  { context: "A cereal company claims that 20% of boxes contain a prize. A suspicious buyer thinks the true proportion is less.",
+    p0: 0.20, direction: "<", population: "all cereal boxes produced",
+    successDesc: "contain a prize", keyword: "less" },
+  { context: "A wildlife biologist suspects that more than 15% of tagged fish in a lake have migrated. The historical rate is 15%.",
+    p0: 0.15, direction: ">", population: "all tagged fish in the lake",
+    successDesc: "have migrated", keyword: "more than" },
+  { context: "A textbook publisher claims 80% of students find their digital platform helpful. A professor is skeptical and thinks fewer students agree.",
+    p0: 0.80, direction: "<", population: "all students using the platform",
+    successDesc: "find the digital platform helpful", keyword: "fewer" },
+  { context: "A city claims that 50% of households recycle. An environmental group believes the true proportion is different from this claim.",
+    p0: 0.50, direction: "!=", population: "all households in the city",
+    successDesc: "recycle regularly", keyword: "different" }
+];
+
+// ---- L20: Hypothesis error scenarios (6.4d) ----
+const hypothesisErrorBank = [
+  { errorType: "p-hat in null",
+    wrongH0: "H\u2080: p\u0302 = 0.50", wrongHa: "H\u2090: p\u0302 > 0.50",
+    correctError: "Uses p\u0302 (sample proportion) instead of p (population proportion) in the hypotheses",
+    distractors: ["The null should use an inequality", "The direction of the alternative is wrong", "The value 0.50 is incorrect"] },
+  { errorType: "inequality in null",
+    wrongH0: "H\u2080: p > 0.40", wrongHa: "H\u2090: p \u2264 0.40",
+    correctError: "The null hypothesis must contain an equality sign (=), not an inequality",
+    distractors: ["Uses p\u0302 instead of p", "The value 0.40 is incorrect", "The alternative should use a strict inequality"] },
+  { errorType: "equality in alt",
+    wrongH0: "H\u2080: p = 0.75", wrongHa: "H\u2090: p = 0.60",
+    correctError: "The alternative hypothesis must use a strict inequality (<, >, or \u2260), not an equality sign",
+    distractors: ["Uses p\u0302 instead of p", "The null should use an inequality", "The parameter is not defined in context"] },
+  { errorType: "wrong direction",
+    wrongH0: "H\u2080: p = 0.30", wrongHa: "H\u2090: p < 0.30",
+    scenarioHint: "The researcher suspects the proportion is HIGHER than 30%.",
+    correctError: "The direction of the alternative is wrong \u2014 it should be p > 0.30 based on the research question",
+    distractors: ["Uses p\u0302 instead of p", "The null should use an inequality", "The value 0.30 is incorrect"] },
+  { errorType: "sample language",
+    wrongH0: "H\u2080: p = 0.60", wrongHa: "H\u2090: p \u2260 0.60",
+    paramError: "p = the proportion of students surveyed who said yes",
+    correctError: "The parameter is defined using sample language ('surveyed', 'said') instead of population language ('all', 'would')",
+    distractors: ["Uses p\u0302 instead of p", "The null should use an inequality", "The direction of the alternative is wrong"] },
+  { errorType: "wrong p0",
+    wrongH0: "H\u2080: p = 0.50", wrongHa: "H\u2090: p > 0.50",
+    scenarioHint: "The company claims that 35% of customers prefer their product. A researcher suspects the proportion is higher.",
+    correctError: "The null value is wrong \u2014 it should be p = 0.35 to match the claimed proportion, not 0.50",
+    distractors: ["Uses p\u0302 instead of p", "The direction of the alternative is wrong", "The alternative should use equality"] }
+];
+
+// ---- L21: Identify Test scenarios (6.4e) ----
+const identifyTestBank = [
+  { scenario: "A company claims that 40% of its customers prefer Brand A. A researcher surveys a random sample of 200 customers to test this claim.",
+    given: "One sample, categorical data (prefer or not), goal: test a claim about a proportion" },
+  { scenario: "A school board claims 85% of parents support the new policy. A parent group surveys 150 parents to see if the true support is lower.",
+    given: "One sample, categorical data (support or not), goal: test a claim about a proportion" },
+  { scenario: "A health department claims that 25% of adults smoke. A researcher surveys 300 adults to test whether the rate has changed.",
+    given: "One sample, categorical data (smoke or not), goal: test a claim about a proportion" },
+  { scenario: "A politician claims 55% voter support. A polling firm surveys 400 voters to see if support is actually lower than claimed.",
+    given: "One sample, categorical data (support or not), goal: test a claim about a proportion" },
+  { scenario: "A seed company claims 95% germination. A gardener plants 120 seeds to test whether the rate is really that high.",
+    given: "One sample, categorical data (germinate or not), goal: test a claim about a proportion" },
+  { scenario: "A coffee chain claims 35% of customers order decaf. A manager surveys 160 customers to test if the proportion is higher.",
+    given: "One sample, categorical data (decaf or not), goal: test a claim about a proportion" },
+  { scenario: "A university claims 70% of students graduate in 4 years. A newspaper investigates whether this rate is lower than claimed.",
+    given: "One sample, categorical data (graduate on time or not), goal: test a claim about a proportion" },
+  { scenario: "An airline claims 90% on-time arrival. A consumer group checks 250 flights to test whether the rate is lower.",
+    given: "One sample, categorical data (on time or not), goal: test a claim about a proportion" },
+  { scenario: "A website claims 30% of visitors click the ad. After a redesign, they test whether the click rate is now higher.",
+    given: "One sample, categorical data (click or not), goal: test a claim about a proportion" },
+  { scenario: "A gym claims 45% of members attend 3+ times per week. A researcher tests whether the actual rate differs from this claim.",
+    given: "One sample, categorical data (attend 3+ or not), goal: test a claim about a proportion" }
+];
+
+// ---- L22, L23: Test conditions scenarios (6.4f, capstone) ----
+const testConditionsBank = [
+  { n: 120, p0: 0.30, random: true, popSize: 5000,
+    np0: 36, nq0: 84, allMet: true,
+    desc: "A random sample of 120 customers from a loyalty program with 5,000 members is surveyed about product satisfaction.",
+    pHatDistractor: 0.35 },
+  { n: 25, p0: 0.02, random: true, popSize: 1000,
+    np0: 0.5, nq0: 24.5, allMet: false, failedCondition: "large counts (np\u2080 = 0.5 < 10)",
+    desc: "A random sample of 25 electronic components from a batch of 1,000 is tested for a rare defect (claimed rate: 2%).",
+    pHatDistractor: 0.04 },
+  { n: 200, p0: 0.50, random: false, popSize: 10000,
+    np0: 100, nq0: 100, allMet: false, failedCondition: "random (convenience sample)",
+    desc: "The first 200 people leaving a store were asked whether they support a bag tax. The store serves about 10,000 customers per month.",
+    pHatDistractor: 0.54 },
+  { n: 50, p0: 0.40, random: true, popSize: 300,
+    np0: 20, nq0: 30, allMet: false, failedCondition: "10% condition (50 > 10% of 300 = 30)",
+    desc: "A random sample of 50 students from a school of 300 is surveyed about lunch preferences (claimed: 40% prefer hot lunch).",
+    pHatDistractor: 0.46 },
+  { n: 80, p0: 0.85, random: true, popSize: 4000,
+    np0: 68, nq0: 12, allMet: true,
+    desc: "A random sample of 80 patients from a hospital with 4,000 annual patients is checked for satisfaction (claimed rate: 85%).",
+    pHatDistractor: 0.80 },
+  { n: 40, p0: 0.05, random: true, popSize: 2000,
+    np0: 2, nq0: 38, allMet: false, failedCondition: "large counts (np\u2080 = 2 < 10)",
+    desc: "A random sample of 40 airplane flights from an airline with 2,000 monthly flights is checked for delays (claimed rate: 5%).",
+    pHatDistractor: 0.075 },
+  { n: 150, p0: 0.60, random: true, popSize: 8000,
+    np0: 90, nq0: 60, allMet: true,
+    desc: "A random sample of 150 employees from a company with 8,000 employees is surveyed about job satisfaction (claimed: 60% satisfied).",
+    pHatDistractor: 0.57 },
+  { n: 100, p0: 0.50, random: true, popSize: 600,
+    np0: 50, nq0: 50, allMet: false, failedCondition: "10% condition (100 > 10% of 600 = 60)",
+    desc: "A random sample of 100 members from a club with 600 total members is surveyed about a rule change (claimed: 50% support).",
+    pHatDistractor: 0.55 }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -1861,6 +1992,227 @@ export function generateProblem(modeId, context, mode) {
     };
 
     scenario = `${scen.context}\n\nA ${scen.confLevel}% confidence interval for the proportion of ${scen.population} who ${scen.successDesc} is (${scen.ciLower}, ${scen.ciUpper}).\n\n(1) Interpret this confidence interval in context.\n(2) Claim: ${scen.claimText}. Does the CI provide convincing evidence for this claim? Explain.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L17: State Null Hypothesis (6.4a) ==========
+  if (modeId === "l17-state-null") {
+    const scen = drawFromBag('hypothesisScen_l17', hypothesisScenarioBank);
+
+    const correctNull = `H\u2080: p = ${scen.p0}`;
+    const distractors = [
+      `H\u2080: p\u0302 = ${scen.p0}`,
+      `H\u2080: p > ${scen.p0}`,
+      `H\u2080: p \u2260 ${scen.p0}`
+    ];
+    const allOptions = shuffle([correctNull, ...distractors]);
+
+    ctx = {
+      topicId: "6.4: State the Null Hypothesis",
+      scenarioText: scen.context,
+      givenText: `Claimed proportion: ${scen.p0}`,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      nullAnswer: { value: correctNull }
+    };
+
+    scenario = `${scen.context}\n\nSelect the correct null hypothesis.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L18: State Alternative Hypothesis (6.4b) ==========
+  if (modeId === "l18-state-alt") {
+    const scen = drawFromBag('hypothesisScen_l18', hypothesisScenarioBank);
+
+    const dirSymbol = scen.direction === ">" ? ">" : scen.direction === "<" ? "<" : "\u2260";
+    const correctAlt = `H\u2090: p ${dirSymbol} ${scen.p0}`;
+
+    // Generate distractors with wrong directions and errors
+    const otherDirs = [">", "<", "\u2260"].filter(d => d !== dirSymbol);
+    const distractors = [
+      `H\u2090: p ${otherDirs[0]} ${scen.p0}`,
+      `H\u2090: p ${otherDirs[1]} ${scen.p0}`,
+      `H\u2090: p\u0302 ${dirSymbol} ${scen.p0}`
+    ];
+    const allOptions = shuffle([correctAlt, ...distractors]);
+
+    ctx = {
+      topicId: "6.4: State the Alternative Hypothesis",
+      scenarioText: `${scen.context}\n\nH\u2080: p = ${scen.p0}`,
+      givenText: `Claimed proportion: ${scen.p0}. Key phrase: "${scen.keyword}"`,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      altAnswer: { value: correctAlt }
+    };
+
+    scenario = `${scen.context}\n\nGiven H\u2080: p = ${scen.p0}, select the correct alternative hypothesis.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L19: Write Both Hypotheses (6.4c) ==========
+  if (modeId === "l19-write-hypotheses") {
+    const scen = drawFromBag('hypothesisScen_l19', hypothesisScenarioBank);
+
+    const dirSymbol = scen.direction === ">" ? ">" : scen.direction === "<" ? "<" : "\u2260";
+
+    ctx = {
+      topicId: "6.4: Write Both Hypotheses",
+      scenarioText: scen.context,
+      givenText: `Population: ${scen.population}. Claimed proportion: ${scen.p0}.`,
+      p0: `${scen.p0}`,
+      direction: scen.direction,
+      population: scen.population,
+      successDesc: scen.successDesc
+    };
+
+    answers = {
+      nullHypothesis: { value: `H\u2080: p = ${scen.p0}` },
+      altHypothesis: { value: `H\u2090: p ${dirSymbol} ${scen.p0}` },
+      paramDef: { value: `p = the proportion of ${scen.population} who ${scen.successDesc}` }
+    };
+
+    scenario = `${scen.context}\n\n(1) Write the null hypothesis.\n(2) Write the alternative hypothesis.\n(3) Define the parameter p in context.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L20: Hypothesis Error Detection (6.4d) ==========
+  if (modeId === "l20-hypothesis-errors") {
+    const err = drawFromBag('hypothesisErrors', hypothesisErrorBank);
+
+    const allOptions = shuffle([err.correctError, ...err.distractors]);
+
+    let scenarioExtra = "";
+    if (err.scenarioHint) scenarioExtra = `\n\nContext: ${err.scenarioHint}`;
+    if (err.paramError) scenarioExtra = `\n\nParameter definition given: "${err.paramError}"`;
+
+    ctx = {
+      topicId: "6.4: Find the Hypothesis Error",
+      scenarioText: `Given hypotheses:\n${err.wrongH0}\n${err.wrongHa}${scenarioExtra}`,
+      givenText: `Error type to identify`,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      errorAnswer: { value: err.correctError }
+    };
+
+    scenario = `The following hypotheses contain an error:\n\n${err.wrongH0}\n${err.wrongHa}${scenarioExtra}\n\nWhat error is in these hypotheses?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L21: Identify Test Procedure (6.4e) ==========
+  if (modeId === "l21-identify-test") {
+    const scen = drawFromBag('identifyTest', identifyTestBank);
+
+    ctx = {
+      topicId: "6.4: Identify the Test Procedure",
+      scenarioText: scen.scenario,
+      givenText: scen.given
+    };
+
+    answers = {
+      testAnswer: { value: "One-sample z-test for a population proportion" }
+    };
+
+    scenario = `${scen.scenario}\n\nWhat significance test procedure is appropriate?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L22: Check Test Conditions (6.4f) ==========
+  if (modeId === "l22-check-test-conditions") {
+    const scen = drawFromBag('testConditions', testConditionsBank);
+
+    const tenPctThreshold = Math.round(scen.popSize * 0.1);
+
+    ctx = {
+      topicId: "6.4: Check Test Conditions",
+      scenarioText: scen.desc,
+      givenText: `n = ${scen.n}, p\u2080 = ${scen.p0}, N = ${scen.popSize.toLocaleString()}, p\u0302 = ${scen.pHatDistractor} (observed sample proportion)`,
+      n: `${scen.n}`,
+      p0: `${scen.p0}`,
+      N: `${scen.popSize}`,
+      pHat: `${scen.pHatDistractor}`,
+      np0: `${scen.np0}`,
+      nq0: `${scen.nq0}`,
+      tenPctThreshold: `${tenPctThreshold}`,
+      isRandom: scen.random,
+      allConditionsMet: scen.allMet
+    };
+
+    const condDetail = scen.allMet
+      ? `Random: \u2713. 10%: ${scen.n} \u2264 ${tenPctThreshold} \u2713. Large counts: np\u2080 = ${scen.np0} \u2265 10 \u2713 and n(1\u2212p\u2080) = ${scen.nq0} \u2265 10 \u2713. All conditions met.`
+      : `Failed condition: ${scen.failedCondition}.`;
+
+    answers = {
+      testConditionsMet: {
+        value: scen.allMet ? "Yes, all conditions are met" : "No, at least one condition fails"
+      },
+      testConditionsExplain: { value: condDetail }
+    };
+
+    scenario = `${scen.desc}\n\nn = ${scen.n}, p\u2080 = ${scen.p0}, N = ${scen.popSize.toLocaleString()}\nObserved: p\u0302 = ${scen.pHatDistractor}\n\nAre all conditions for a one-sample z-test met? Show your work.\n(Important: Use p\u2080, not p\u0302, for the large counts check!)`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L23: Capstone 6.4 ==========
+  if (modeId === "l23-capstone-64") {
+    const hypScen = drawFromBag('hypothesisScen_l23', hypothesisScenarioBank);
+    const condScen = drawFromBag('testConditions_l23', testConditionsBank);
+
+    const dirSymbol = hypScen.direction === ">" ? ">" : hypScen.direction === "<" ? "<" : "\u2260";
+    const tenPctThreshold = Math.round(condScen.popSize * 0.1);
+
+    // Merge scenario: use hypothesis scenario's context but condition scenario's numbers
+    const capstoneDesc = `${hypScen.context}\n\nA random sample of ${condScen.n} from a population of ${condScen.popSize.toLocaleString()} is taken. The claimed proportion is ${hypScen.p0}.`;
+
+    // Recalculate np0/nq0 with the hypothesis p0
+    const np0 = Math.round(condScen.n * hypScen.p0 * 100) / 100;
+    const nq0 = Math.round(condScen.n * (1 - hypScen.p0) * 100) / 100;
+    const capAllMet = condScen.random && (condScen.n <= tenPctThreshold) && np0 >= 10 && nq0 >= 10;
+
+    ctx = {
+      topicId: "6.4: Capstone \u2014 Full Test Setup",
+      scenarioText: capstoneDesc,
+      givenText: `n = ${condScen.n}, p\u2080 = ${hypScen.p0}, N = ${condScen.popSize.toLocaleString()}`,
+      n: `${condScen.n}`,
+      p0: `${hypScen.p0}`,
+      N: `${condScen.popSize}`,
+      direction: hypScen.direction,
+      population: hypScen.population,
+      successDesc: hypScen.successDesc,
+      np0: `${np0}`,
+      nq0: `${nq0}`
+    };
+
+    const condDetail = capAllMet
+      ? `Random: \u2713 (random sample stated). 10%: ${condScen.n} \u2264 ${tenPctThreshold} \u2713. Large counts: np\u2080 = ${np0} \u2265 10 \u2713 and n(1\u2212p\u2080) = ${nq0} \u2265 10 \u2713.`
+      : `Check each condition with n = ${condScen.n}, p\u2080 = ${hypScen.p0}, N = ${condScen.popSize}.`;
+
+    answers = {
+      cap64Null: { value: `H\u2080: p = ${hypScen.p0}` },
+      cap64Alt: { value: `H\u2090: p ${dirSymbol} ${hypScen.p0}` },
+      cap64ParamDef: { value: `p = the proportion of ${hypScen.population} who ${hypScen.successDesc}` },
+      cap64Procedure: { value: "One-sample z-test for a population proportion" },
+      cap64ConditionsMet: {
+        value: capAllMet ? "Yes, all conditions are met" : "No, at least one condition fails"
+      },
+      cap64ConditionsWork: { value: condDetail }
+    };
+
+    scenario = `${capstoneDesc}\n\n(1) Write H\u2080 and H\u2090.\n(2) Define the parameter p.\n(3) Name the test procedure.\n(4) Check all conditions (use p\u2080, not p\u0302!).`;
     return { context: ctx, graphConfig, answers, scenario };
   }
 

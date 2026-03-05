@@ -1,6 +1,7 @@
-// grading-rules.js - AP Statistics Unit 6 Topics 6.1-6.3
+// grading-rules.js - AP Statistics Unit 6 Topics 6.1-6.4
 // Topics: Logic of significance testing, confidence intervals for a population proportion,
-// interpreting CIs, justifying claims, confidence level meaning, factors affecting ME
+// interpreting CIs, justifying claims, confidence level meaning, factors affecting ME,
+// null/alternative hypotheses, identify test procedure, test conditions
 // Identify evidence, two explanations, convincing evidence, identify procedure,
 // check conditions, standard error, critical values, margin of error,
 // confidence intervals, minimum sample size, capstone, CI interpretation,
@@ -47,7 +48,11 @@ export function gradeField(fieldId, answer, context) {
     "ciInterpretation",
     "claimExplain",
     "cap63Interpret",
-    "cap63JustifyExplain"
+    "cap63JustifyExplain",
+    "paramDef",
+    "testConditionsExplain",
+    "cap64ParamDef",
+    "cap64ConditionsWork"
   ]);
 
   if (isBlank(answer)) {
@@ -743,6 +748,174 @@ export function gradeField(fieldId, answer, context) {
       return { score: "P", feedback: "Good start! Make sure to explain whether ALL or SOME values in the interval are consistent with the claim, and connect this to your conclusion." };
     }
     return { score: "I", feedback: "Explain whether ALL values in the CI are consistent with the claim (convincing) or if SOME values are inconsistent (not convincing). Reference the specific interval bounds and the claim threshold." };
+  }
+
+  // ========== L17: Null Hypothesis Answer (Dropdown) ==========
+  if (fieldId === "nullAnswer") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! The null hypothesis always uses '=' and the population parameter p (not p\u0302)." };
+    }
+    if (containsAny(answer, ["p\u0302", "p-hat", "phat"])) {
+      return { score: "I", feedback: `Incorrect. You chose an option with p\u0302 (sample proportion). Hypotheses are about the POPULATION parameter p, not the sample statistic. The correct answer is: ${expected}` };
+    }
+    if (containsAny(answer, [">", "<", "\u2260"])) {
+      return { score: "I", feedback: `Incorrect. The NULL hypothesis must always contain an equality sign (=). Inequalities belong in the alternative. The correct answer is: ${expected}` };
+    }
+    return { score: "I", feedback: `Incorrect. The correct null hypothesis is: ${expected}. Remember: H\u2080 always uses '=' and the population parameter p.` };
+  }
+
+  // ========== L18: Alternative Hypothesis Answer (Dropdown) ==========
+  if (fieldId === "altAnswer") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You identified the right direction for the alternative hypothesis based on the research question." };
+    }
+    if (containsAny(answer, ["p\u0302", "p-hat", "phat"])) {
+      return { score: "I", feedback: `Incorrect. Hypotheses use the population parameter p, not the sample proportion p\u0302. The correct answer is: ${expected}` };
+    }
+    return { score: "I", feedback: `Incorrect. The correct alternative is: ${expected}. Look for keywords: 'more/greater/higher' \u2192 >, 'less/fewer/lower' \u2192 <, 'different/differs/changed' \u2192 \u2260.` };
+  }
+
+  // ========== L19/L23: Null Hypothesis (Text) ==========
+  if (fieldId === "nullHypothesis" || fieldId === "cap64Null") {
+    const p0 = context?.p0 || "";
+    const hasPHat = containsAny(answer, ["p\u0302", "p-hat", "phat", "p hat"]);
+    const hasEquality = studentNorm.includes("=") && !studentNorm.includes("!=") && !studentNorm.includes("\u2260");
+    const hasCorrectP0 = studentNorm.includes(String(p0));
+
+    if (hasPHat) {
+      return { score: "I", feedback: `Hypotheses use p (population parameter), NOT p\u0302 (sample statistic). Correct: H\u2080: p = ${p0}` };
+    }
+    if (hasEquality && hasCorrectP0) {
+      return { score: "E", feedback: `Correct! H\u2080: p = ${p0}. The null always contains '='.` };
+    }
+    if (hasEquality && !hasCorrectP0) {
+      return { score: "P", feedback: `The structure is right (uses '='), but check your p\u2080 value. The claimed proportion is ${p0}. Correct: H\u2080: p = ${p0}` };
+    }
+    if (!hasEquality && hasCorrectP0) {
+      return { score: "I", feedback: `The null hypothesis must contain '=' (equality). Correct: H\u2080: p = ${p0}` };
+    }
+    return { score: "I", feedback: `Incorrect. The null hypothesis is: H\u2080: p = ${p0}. Always uses '=' and the parameter p.` };
+  }
+
+  // ========== L19/L23: Alternative Hypothesis (Text) ==========
+  if (fieldId === "altHypothesis" || fieldId === "cap64Alt") {
+    const p0 = context?.p0 || "";
+    const dir = context?.direction || "";
+    const hasPHat = containsAny(answer, ["p\u0302", "p-hat", "phat", "p hat"]);
+    const hasCorrectP0 = studentNorm.includes(String(p0));
+
+    const dirMap = { ">": [">"], "<": ["<"], "!=": ["\u2260", "!=", "not equal", "=/="] };
+    const expectedDirSymbols = dirMap[dir] || [];
+    const hasCorrectDir = expectedDirSymbols.some(d => studentNorm.includes(d));
+
+    if (hasPHat) {
+      return { score: "I", feedback: `Hypotheses use p (population parameter), NOT p\u0302. Correct: ${expected}` };
+    }
+    if (hasCorrectDir && hasCorrectP0) {
+      return { score: "E", feedback: `Correct! ${expected}` };
+    }
+    if (hasCorrectP0 && !hasCorrectDir) {
+      return { score: "P", feedback: `Right p\u2080 value, but check the direction. The keyword "${context?.keyword || ""}" suggests the alternative should use "${dir}". Correct: ${expected}` };
+    }
+    if (hasCorrectDir && !hasCorrectP0) {
+      return { score: "P", feedback: `Right direction, but the p\u2080 value should be ${p0}. Correct: ${expected}` };
+    }
+    return { score: "I", feedback: `Incorrect. The correct alternative is: ${expected}. Direction comes from the research question keywords.` };
+  }
+
+  // ========== L19/L23: Parameter Definition (Textarea) ==========
+  if (fieldId === "paramDef" || fieldId === "cap64ParamDef") {
+    const mentionsProportion = containsAny(answer, ["proportion", "percent", "percentage", "fraction"]);
+    const mentionsPopulation = containsAny(answer, ["all", "every", "would", "population", "true"]);
+    const mentionsContext = answer.trim().split(/\s+/).length >= 5;
+
+    // Check for sample language (bad)
+    const hasSampleLang = containsAny(answer, ["surveyed", "sampled", "in the sample", "who said", "who were asked", "who responded"]) && !mentionsPopulation;
+
+    if (mentionsProportion && mentionsPopulation && mentionsContext) {
+      return { score: "E", feedback: "Excellent! You defined the parameter using population language ('all', 'would') and included context." };
+    }
+    if (hasSampleLang) {
+      return { score: "P", feedback: "You're using sample language. Define p using population language: 'the proportion of ALL [population] who WOULD [action].' Use 'all' or 'every' and 'would' to refer to the entire population." };
+    }
+    if (mentionsProportion && mentionsContext && !mentionsPopulation) {
+      return { score: "P", feedback: "Good! You mentioned the proportion and context, but add population language ('all', 'would') to distinguish from the sample. Example: 'p = the proportion of ALL [population] who would [action]'." };
+    }
+    return { score: "I", feedback: "Define p in context: 'p = the proportion of ALL [population] who [would do something].' Must include 'proportion,' population language ('all'/'would'), and context." };
+  }
+
+  // ========== L20: Hypothesis Error Detection (Dropdown) ==========
+  if (fieldId === "errorAnswer") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You identified the error in the hypotheses." };
+    }
+    return { score: "I", feedback: `Incorrect. The error is: ${expected}. Common errors: using p\u0302 instead of p, putting inequality in H\u2080, using equality in H\u2090, wrong direction, sample language in parameter definition, wrong p\u2080 value.` };
+  }
+
+  // ========== L21: Identify Test Procedure (Dropdown) ==========
+  if (fieldId === "testAnswer") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! One sample, categorical data, testing a claim \u2192 One-sample z-test for a population proportion." };
+    }
+    if (containsAny(answer, ["interval", "z-interval"])) {
+      return { score: "I", feedback: `Incorrect. The goal is to TEST a claim, not to ESTIMATE. Use a z-TEST, not a z-INTERVAL. The correct procedure is: ${expected}` };
+    }
+    if (containsAny(answer, ["two-sample", "two sample"])) {
+      return { score: "I", feedback: `Incorrect. There is only ONE sample here, not two groups being compared. The correct procedure is: ${expected}` };
+    }
+    if (containsAny(answer, ["t-test", "t test"])) {
+      return { score: "I", feedback: `Incorrect. The data are categorical (proportions), not quantitative (means). Use a z-test, not a t-test. The correct procedure is: ${expected}` };
+    }
+    return { score: "I", feedback: `Incorrect. The correct procedure is: ${expected}. Ask: (1) Test or estimate? (2) Proportions or means? (3) One sample or two?` };
+  }
+
+  // ========== L22/L23: Test Conditions Met (Choice) ==========
+  if (fieldId === "testConditionsMet" || fieldId === "cap64ConditionsMet") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You correctly assessed whether all three conditions (Random, 10%, Large Counts) are met for the z-test." };
+    }
+    return { score: "I", feedback: `Incorrect. The correct answer is: ${expected}. Check: (1) Random sample? (2) n \u2264 10% of N? (3) np\u2080 \u2265 10 AND n(1\u2212p\u2080) \u2265 10? Remember: use p\u2080 (null value), NOT p\u0302!` };
+  }
+
+  // ========== L22/L23: Test Conditions Explain (Textarea) ==========
+  if (fieldId === "testConditionsExplain" || fieldId === "cap64ConditionsWork") {
+    const randomKeywords = ["random", "randomly", "srs", "random sample", "random assignment"];
+    const tenPctKeywords = ["10%", "ten percent", "10 percent", "less than 10", "\u2264"];
+    const largeCountKeywords = ["large counts", "np", "n(1", "np\u2080", "\u2265 10", ">= 10", "at least 10"];
+
+    const mentionsRandom = containsAny(answer, randomKeywords);
+    const mentionsTenPct = containsAny(answer, tenPctKeywords);
+    const mentionsLargeCounts = containsAny(answer, largeCountKeywords);
+
+    const conditionCount = [mentionsRandom, mentionsTenPct, mentionsLargeCounts].filter(Boolean).length;
+    const hasSubstance = answer.trim().split(/\s+/).length >= 6;
+
+    // Check for common error: using p-hat instead of p0
+    const usesPHat = containsAny(answer, ["p\u0302", "p-hat", "phat", "sample proportion"]) && !containsAny(answer, ["p\u2080", "p0", "null", "claimed"]);
+
+    if (usesPHat && mentionsLargeCounts) {
+      return { score: "P", feedback: "Careful! For a significance TEST, the large counts condition uses p\u2080 (the null value), NOT p\u0302 (the sample proportion). This is because we ASSUME H\u2080 is true when checking conditions. Recalculate: np\u2080 and n(1\u2212p\u2080)." };
+    }
+
+    if (conditionCount >= 3 && hasSubstance) {
+      return { score: "E", feedback: "Excellent! You checked all three conditions using p\u2080 (null value) for the large counts check." };
+    }
+    if (conditionCount >= 1 && hasSubstance) {
+      const missing = [];
+      if (!mentionsRandom) missing.push("Random (data from random sample/experiment)");
+      if (!mentionsTenPct) missing.push("10% condition (n \u2264 10% of N)");
+      if (!mentionsLargeCounts) missing.push("Large Counts (np\u2080 \u2265 10 and n(1\u2212p\u2080) \u2265 10)");
+      return { score: "P", feedback: `Good start! Missing: ${missing.join(", ")}. Remember to use p\u2080 (not p\u0302) for the large counts check.` };
+    }
+    return { score: "I", feedback: "Check all three conditions: (1) Random sample? (2) n \u2264 10% of N? (3) np\u2080 \u2265 10 AND n(1\u2212p\u2080) \u2265 10? IMPORTANT: Use p\u2080 (null value), NOT p\u0302, for the large counts check." };
+  }
+
+  // ========== L21/L23: Test Procedure (Dropdown, capstone) ==========
+  if (fieldId === "cap64Procedure") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! One-sample z-test for a population proportion." };
+    }
+    return { score: "I", feedback: `Incorrect. The correct procedure is: ${expected}. One sample + categorical data + testing a claim = one-sample z-test for p.` };
   }
 
   // ========== GENERIC FALLBACK ==========

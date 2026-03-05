@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u6-inference-prop",
-    "name": "Inference for Proportions (6.1-6.3)",
+    "name": "Inference for Proportions (6.1-6.4)",
     "subject": "AP Statistics",
-    "description": "Logic of significance testing, confidence intervals for a population proportion: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, and factors affecting margin of error"
+    "description": "Logic of significance testing, confidence intervals for a population proportion: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0"
   },
   "config": {
     "contextsFile": null,
@@ -16,7 +16,10 @@
       "UNC-4.E",
       "UNC-4.F",
       "UNC-4.G",
-      "UNC-4.H"
+      "UNC-4.H",
+      "VAR-6.D",
+      "VAR-6.E",
+      "VAR-6.F"
     ]
   },
   "display": {
@@ -427,6 +430,220 @@
           }
         ]
       }
+    },
+    {
+      "id": "l17-state-null",
+      "name": "6.4a: State the Null Hypothesis",
+      "animation": "assets/StateNull.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "nullAnswer",
+            "type": "dropdown",
+            "label": "Select the correct null hypothesis:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l18-state-alt",
+      "name": "6.4b: State the Alternative Hypothesis",
+      "animation": "assets/StateAlt.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "altAnswer",
+            "type": "dropdown",
+            "label": "Select the correct alternative hypothesis:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l19-write-hypotheses",
+      "name": "6.4c: Write Both Hypotheses",
+      "animation": "assets/WriteBothHypotheses.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "nullHypothesis",
+            "type": "text",
+            "label": "Write the null hypothesis (e.g., H0: p = 0.5):",
+            "placeholder": "H0: p = ..."
+          },
+          {
+            "id": "altHypothesis",
+            "type": "text",
+            "label": "Write the alternative hypothesis (e.g., Ha: p > 0.5):",
+            "placeholder": "Ha: p ..."
+          },
+          {
+            "id": "paramDef",
+            "type": "textarea",
+            "label": "Define the parameter p in context:",
+            "rows": 2,
+            "placeholder": "p = the proportion of all ... who ..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l20-hypothesis-errors",
+      "name": "6.4d: Find the Error",
+      "animation": "assets/HypothesisErrors.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "errorAnswer",
+            "type": "dropdown",
+            "label": "What error is in these hypotheses?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l21-identify-test",
+      "name": "6.4e: Identify the Test",
+      "animation": "assets/IdentifyTest.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "testAnswer",
+            "type": "dropdown",
+            "label": "What significance test procedure is appropriate?",
+            "options": [
+              "One-sample z-test for a population proportion",
+              "One-sample z-interval for a population proportion",
+              "Two-sample z-test for a difference in proportions",
+              "One-sample t-test for a population mean"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l22-check-test-conditions",
+      "name": "6.4f: Check Test Conditions",
+      "animation": "assets/TestConditions.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "testConditionsMet",
+            "type": "choice",
+            "label": "Are ALL conditions for the z-test met?",
+            "options": [
+              "Yes, all conditions are met",
+              "No, at least one condition fails"
+            ]
+          },
+          {
+            "id": "testConditionsExplain",
+            "type": "textarea",
+            "label": "Show your work checking each condition:",
+            "rows": 4,
+            "placeholder": "Random: ...\n10%: n = ___ \u2264 10% of N = ___?\nLarge counts: np\u2080 = ___ \u2265 10? n(1-p\u2080) = ___ \u2265 10?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l23-capstone-64",
+      "name": "6.4 Capstone",
+      "animation": "assets/Capstone64.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "cap64Null",
+            "type": "text",
+            "label": "Write the null hypothesis:",
+            "placeholder": "H0: p = ..."
+          },
+          {
+            "id": "cap64Alt",
+            "type": "text",
+            "label": "Write the alternative hypothesis:",
+            "placeholder": "Ha: p ..."
+          },
+          {
+            "id": "cap64ParamDef",
+            "type": "textarea",
+            "label": "Define the parameter p in context:",
+            "rows": 2,
+            "placeholder": "p = the proportion of all ... who ..."
+          },
+          {
+            "id": "cap64Procedure",
+            "type": "dropdown",
+            "label": "What test procedure is appropriate?",
+            "options": [
+              "One-sample z-test for a population proportion",
+              "One-sample z-interval for a population proportion",
+              "Two-sample z-test for a difference in proportions",
+              "One-sample t-test for a population mean"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "cap64ConditionsMet",
+            "type": "choice",
+            "label": "Are all conditions met?",
+            "options": [
+              "Yes, all conditions are met",
+              "No, at least one condition fails"
+            ]
+          },
+          {
+            "id": "cap64ConditionsWork",
+            "type": "textarea",
+            "label": "Show your work checking conditions:",
+            "rows": 4,
+            "placeholder": "Random: ...\n10%: ...\nLarge counts: np\u2080 = ... n(1-p\u2080) = ..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -467,7 +684,22 @@
       "factorAnswer": "ME = z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n). Larger n \u2192 smaller ME. Higher confidence \u2192 larger z* \u2192 larger ME. Width = 2 \u00d7 ME.",
       "cap63Interpret": "Template: 'We are __% confident that the interval from ___ to ___ captures the true proportion of [context].'",
       "cap63Justify": "Check if the claim value falls entirely inside or outside the CI range.",
-      "cap63JustifyExplain": "State whether ALL values in the interval are consistent or inconsistent with the claim, and why."
+      "cap63JustifyExplain": "State whether ALL values in the interval are consistent or inconsistent with the claim, and why.",
+      "nullAnswer": "The null hypothesis is always H\u2080: p = [claimed value]. It uses '=' and the parameter p (not p\u0302).",
+      "altAnswer": "Look for keywords: 'greater/more/higher' \u2192 p > p\u2080, 'less/fewer/lower' \u2192 p < p\u2080, 'different/differs/changed' \u2192 p \u2260 p\u2080.",
+      "nullHypothesis": "Format: H\u2080: p = [value]. The null always contains '=' and uses p (the population proportion), never p\u0302.",
+      "altHypothesis": "Format: H\u2090: p [< or > or \u2260] [value]. The direction comes from the research question. Use p, not p\u0302.",
+      "paramDef": "Define p as 'the proportion of ALL [population] who [would do something].' Use 'all' and 'would' to indicate population, not sample.",
+      "errorAnswer": "Common errors: using p\u0302 instead of p, putting inequality in H\u2080, wrong direction for H\u2090, defining parameter with sample language.",
+      "testAnswer": "Testing a claim about ONE proportion? \u2192 One-sample z-test. Estimating? \u2192 z-interval. Two groups? \u2192 Two-sample.",
+      "testConditionsMet": "Three conditions: (1) Random sample, (2) n \u2264 10% of N, (3) np\u2080 \u2265 10 AND n(1\u2212p\u2080) \u2265 10. Use p\u2080, NOT p\u0302!",
+      "testConditionsExplain": "Show: Random? 10%: n = ___ \u2264 10% of N? Large counts: np\u2080 = n\u00d7p\u2080 = ___ \u2265 10? n(1\u2212p\u2080) = ___ \u2265 10? Use the NULL value p\u2080!",
+      "cap64Null": "H\u2080: p = [claimed value]. Always uses '=' sign.",
+      "cap64Alt": "H\u2090: p [direction] [value]. Direction from the research question.",
+      "cap64ParamDef": "p = the proportion of ALL [population] who [would do something].",
+      "cap64Procedure": "One categorical variable, one sample, testing a claim \u2192 One-sample z-test for a population proportion.",
+      "cap64ConditionsMet": "Check all three: Random, 10%, Large counts (using p\u2080).",
+      "cap64ConditionsWork": "Show calculations: np\u2080 = ___ and n(1\u2212p\u2080) = ___. Remember to use p\u2080 from the null hypothesis, not the sample proportion!"
     },
     "penalty": {
       "0": "gold",
@@ -575,6 +807,48 @@
         "name": "16",
         "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Topic 6.3 mastered! You can interpret CIs, justify claims, and understand confidence levels!"
+      },
+      {
+        "id": "l17-state-null",
+        "name": "17",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can state null hypotheses! Now identify the alternative."
+      },
+      {
+        "id": "l18-state-alt",
+        "name": "18",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Alternative hypothesis nailed! Now write both together."
+      },
+      {
+        "id": "l19-write-hypotheses",
+        "name": "19",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Full hypothesis writing mastered! Now spot the errors."
+      },
+      {
+        "id": "l20-hypothesis-errors",
+        "name": "20",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Error detective! Now identify the right test procedure."
+      },
+      {
+        "id": "l21-identify-test",
+        "name": "21",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Correct test identified! Now check the conditions."
+      },
+      {
+        "id": "l22-check-test-conditions",
+        "name": "22",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Conditions verified! Time for the 6.4 capstone."
+      },
+      {
+        "id": "l23-capstone-64",
+        "name": "23",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Topic 6.4 mastered! You can set up a complete significance test for a population proportion!"
       }
     ]
   }
