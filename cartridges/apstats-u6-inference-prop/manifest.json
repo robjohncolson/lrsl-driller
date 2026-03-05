@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u6-inference-prop",
-    "name": "Inference for Proportions (6.1-6.4)",
+    "name": "Inference for Proportions (6.1-6.5)",
     "subject": "AP Statistics",
-    "description": "Logic of significance testing, confidence intervals for a population proportion: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0"
+    "description": "Logic of significance testing, confidence intervals for a population proportion: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided)"
   },
   "config": {
     "contextsFile": null,
@@ -19,7 +19,9 @@
       "UNC-4.H",
       "VAR-6.D",
       "VAR-6.E",
-      "VAR-6.F"
+      "VAR-6.F",
+      "VAR-6.G",
+      "VAR-6.H"
     ]
   },
   "display": {
@@ -644,6 +646,132 @@
           }
         ]
       }
+    },
+    {
+      "id": "l24-test-statistic",
+      "name": "6.5a: Calculate Test Statistic",
+      "animation": "assets/TestStatistic.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "zStatAnswer",
+            "type": "number",
+            "label": "Calculate the test statistic: z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Round to 2 decimal places:",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l25-calculate-pvalue",
+      "name": "6.5b: Calculate p-Value",
+      "animation": "assets/CalculatePValue.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pvalueAnswer",
+            "type": "number",
+            "label": "Calculate the p-value using the standard normal distribution. Round to 4 decimal places:",
+            "step": 0.0001,
+            "min": 0,
+            "max": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l26-interpret-pvalue",
+      "name": "6.5c: Interpret p-Value",
+      "animation": "assets/InterpretPValue.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pvalueInterpretation",
+            "type": "textarea",
+            "label": "Interpret the p-value in context:",
+            "rows": 4,
+            "placeholder": "Assuming [null hypothesis is true], there is a [p-value] probability of getting a sample proportion..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l27-test-direction",
+      "name": "6.5d: Test Direction",
+      "animation": "assets/TestDirection.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "directionAnswer",
+            "type": "dropdown",
+            "label": "How should the p-value be calculated for this test?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l28-capstone-65",
+      "name": "6.5 Capstone",
+      "animation": "assets/Capstone65.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "cap65Null",
+            "type": "text",
+            "label": "Write the null hypothesis:",
+            "placeholder": "H0: p = ..."
+          },
+          {
+            "id": "cap65Alt",
+            "type": "text",
+            "label": "Write the alternative hypothesis:",
+            "placeholder": "Ha: p ..."
+          },
+          {
+            "id": "cap65ZStat",
+            "type": "number",
+            "label": "Calculate the test statistic z:",
+            "step": 0.01
+          },
+          {
+            "id": "cap65PValue",
+            "type": "number",
+            "label": "Calculate the p-value:",
+            "step": 0.0001,
+            "min": 0,
+            "max": 1
+          },
+          {
+            "id": "cap65Interpret",
+            "type": "textarea",
+            "label": "Interpret the p-value in context:",
+            "rows": 4,
+            "placeholder": "Assuming [null hypothesis is true], there is a [p-value] probability of getting..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -699,7 +827,16 @@
       "cap64ParamDef": "p = the proportion of ALL [population] who [would do something].",
       "cap64Procedure": "One categorical variable, one sample, testing a claim \u2192 One-sample z-test for a population proportion.",
       "cap64ConditionsMet": "Check all three: Random, 10%, Large counts (using p\u2080).",
-      "cap64ConditionsWork": "Show calculations: np\u2080 = ___ and n(1\u2212p\u2080) = ___. Remember to use p\u2080 from the null hypothesis, not the sample proportion!"
+      "cap64ConditionsWork": "Show calculations: np\u2080 = ___ and n(1\u2212p\u2080) = ___. Remember to use p\u2080 from the null hypothesis, not the sample proportion!",
+      "zStatAnswer": "z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Use p\u2080 in the denominator because we assume H\u2080 is true.",
+      "pvalueAnswer": "For Ha: p > p\u2080, find P(Z \u2265 z). For Ha: p < p\u2080, find P(Z \u2264 z). For Ha: p \u2260 p\u2080, find 2 \u00d7 P(Z \u2265 |z|).",
+      "pvalueInterpretation": "Template: 'Assuming [null is true], there is a [p-value] probability of getting a sample proportion of [p\u0302] or [more extreme] by chance alone in a random sample of [n] from [population].'",
+      "directionAnswer": "Ha: p > p\u2080 \u2192 right tail. Ha: p < p\u2080 \u2192 left tail. Ha: p \u2260 p\u2080 \u2192 both tails (double the one-tail area).",
+      "cap65Null": "H\u2080: p = [claimed value]. Always uses '=' sign.",
+      "cap65Alt": "H\u2090: p [direction] [value]. Direction from the research question.",
+      "cap65ZStat": "z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Use p\u2080 in the standard deviation.",
+      "cap65PValue": "Match the tail direction to Ha. One-sided: single tail. Two-sided: double the one-tail area.",
+      "cap65Interpret": "Include: (1) assume H\u2080 true, (2) the p-value probability, (3) sample proportion 'or more extreme', (4) 'by chance alone', (5) context."
     },
     "penalty": {
       "0": "gold",
@@ -849,6 +986,36 @@
         "name": "23",
         "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Topic 6.4 mastered! You can set up a complete significance test for a population proportion!"
+      },
+      {
+        "id": "l24-test-statistic",
+        "name": "24",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Test statistic calculated! Now learn to find the p-value."
+      },
+      {
+        "id": "l25-calculate-pvalue",
+        "name": "25",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "p-value calculated! Now learn to interpret what it means."
+      },
+      {
+        "id": "l26-interpret-pvalue",
+        "name": "26",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "p-value interpreted! Now identify the direction of the test."
+      },
+      {
+        "id": "l27-test-direction",
+        "name": "27",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Test direction mastered! Time for the 6.5 capstone."
+      },
+      {
+        "id": "l28-capstone-65",
+        "name": "28",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Topic 6.5 mastered! You can calculate and interpret test statistics and p-values for a population proportion!"
       }
     ]
   }

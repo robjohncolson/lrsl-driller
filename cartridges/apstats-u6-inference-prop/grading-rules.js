@@ -1,11 +1,14 @@
-// grading-rules.js - AP Statistics Unit 6 Topics 6.1-6.4
+// grading-rules.js - AP Statistics Unit 6 Topics 6.1-6.5
 // Topics: Logic of significance testing, confidence intervals for a population proportion,
 // interpreting CIs, justifying claims, confidence level meaning, factors affecting ME,
-// null/alternative hypotheses, identify test procedure, test conditions
+// null/alternative hypotheses, identify test procedure, test conditions,
+// calculate test statistic (z-score), calculate p-value, interpret p-value,
+// test direction (one-sided vs two-sided)
 // Identify evidence, two explanations, convincing evidence, identify procedure,
 // check conditions, standard error, critical values, margin of error,
 // confidence intervals, minimum sample size, capstone, CI interpretation,
-// claim justification, confidence level interpretation, ME factors, capstone 6.3
+// claim justification, confidence level interpretation, ME factors, capstone 6.3,
+// test statistic, p-value, p-value interpretation, test direction, capstone 6.5
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -52,7 +55,9 @@ export function gradeField(fieldId, answer, context) {
     "paramDef",
     "testConditionsExplain",
     "cap64ParamDef",
-    "cap64ConditionsWork"
+    "cap64ConditionsWork",
+    "pvalueInterpretation",
+    "cap65Interpret"
   ]);
 
   if (isBlank(answer)) {
@@ -64,7 +69,9 @@ export function gradeField(fieldId, answer, context) {
       "seAnswer", "zStarAnswer", "meAnswer",
       "ciLower", "ciUpper",
       "sampleSizeAnswer",
-      "capstoneLower", "capstoneUpper"
+      "capstoneLower", "capstoneUpper",
+      "zStatAnswer", "pvalueAnswer",
+      "cap65ZStat", "cap65PValue"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -916,6 +923,261 @@ export function gradeField(fieldId, answer, context) {
       return { score: "E", feedback: "Correct! One-sample z-test for a population proportion." };
     }
     return { score: "I", feedback: `Incorrect. The correct procedure is: ${expected}. One sample + categorical data + testing a claim = one-sample z-test for p.` };
+  }
+
+  // ========== L24/L28: Test Statistic z (Number) ==========
+  if (fieldId === "zStatAnswer" || fieldId === "cap65ZStat") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check if student used p-hat instead of p0 in the denominator
+    if (context.pHat !== undefined && context.p0 !== undefined && context.n !== undefined) {
+      const pHat = parseFloat(context.pHat);
+      const p0 = parseFloat(context.p0);
+      const n = parseFloat(context.n);
+      if (pHat !== p0) {
+        const wrongSD = Math.sqrt(pHat * (1 - pHat) / n);
+        const wrongZ = Math.round((pHat - p0) / wrongSD * 100) / 100;
+        if (Math.abs(studentVal - wrongZ) < 0.03 && diff > 0.03) {
+          return {
+            score: "I",
+            feedback: `It looks like you used p\u0302 = ${pHat} in the denominator instead of p\u2080 = ${p0}. For a significance test, use p\u2080 in the standard deviation because we ASSUME H\u2080 is true. z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n) = ${expectedVal}`
+          };
+        }
+      }
+    }
+
+    // Check if student forgot to subtract (gave p-hat / SD)
+    if (context.pHat !== undefined && context.p0 !== undefined && context.n !== undefined) {
+      const pHat = parseFloat(context.pHat);
+      const p0 = parseFloat(context.p0);
+      const n = parseFloat(context.n);
+      const sd = Math.sqrt(p0 * (1 - p0) / n);
+      const wrongZ = Math.round(pHat / sd * 100) / 100;
+      if (Math.abs(studentVal - wrongZ) < 0.03 && diff > 0.03) {
+        return {
+          score: "I",
+          feedback: `It looks like you divided p\u0302 by the standard deviation without subtracting p\u2080 first. The numerator is (p\u0302 \u2212 p\u2080), not just p\u0302. z = (${pHat} \u2212 ${p0}) / \u221a(${p0}(1\u2212${p0})/${n}) = ${expectedVal}`
+        };
+      }
+    }
+
+    if (diff <= 0.02) {
+      return {
+        score: "E",
+        feedback: `Correct! z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n) = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.10) {
+      return {
+        score: "P",
+        feedback: `Close! Check your arithmetic. z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n) = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). The correct test statistic is ${expectedVal}. Make sure you're using p\u2080 (the null value) in the denominator, not p\u0302.`
+    };
+  }
+
+  // ========== L25/L28: p-Value (Number) ==========
+  if (fieldId === "pvalueAnswer" || fieldId === "cap65PValue") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    if (studentVal < 0 || studentVal > 1) {
+      return { score: "I", feedback: "A p-value must be between 0 and 1." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check if student did one-tail when they should have done two-tail (or vice versa)
+    if (context.direction === "!=" && expectedVal > 0) {
+      const halfPValue = Math.round(expectedVal / 2 * 10000) / 10000;
+      if (Math.abs(studentVal - halfPValue) < 0.002 && diff > 0.002) {
+        return {
+          score: "P",
+          feedback: `You found the one-tail area, but this is a TWO-sided test (H\u2090: p \u2260 p\u2080). You need to DOUBLE the tail area. p-value = 2 \u00d7 ${halfPValue} = ${expectedVal}`
+        };
+      }
+    }
+    if ((context.direction === ">" || context.direction === "<") && expectedVal > 0) {
+      const doublePValue = Math.round(expectedVal * 2 * 10000) / 10000;
+      if (Math.abs(studentVal - doublePValue) < 0.002 && diff > 0.002) {
+        return {
+          score: "P",
+          feedback: `You doubled the tail area, but this is a ONE-sided test. For H\u2090: p ${context.direction} p\u2080, use just the single tail area. p-value = ${expectedVal}`
+        };
+      }
+    }
+
+    // Check if student used the wrong tail
+    if (context.direction === ">" && expectedVal < 0.5) {
+      const wrongTail = Math.round((1 - expectedVal) * 10000) / 10000;
+      if (Math.abs(studentVal - wrongTail) < 0.002 && diff > 0.002) {
+        return {
+          score: "I",
+          feedback: `You found the area in the wrong tail. For H\u2090: p > p\u2080, find the area to the RIGHT of z (upper tail). p-value = ${expectedVal}`
+        };
+      }
+    }
+    if (context.direction === "<" && expectedVal < 0.5) {
+      const wrongTail = Math.round((1 - expectedVal) * 10000) / 10000;
+      if (Math.abs(studentVal - wrongTail) < 0.002 && diff > 0.002) {
+        return {
+          score: "I",
+          feedback: `You found the area in the wrong tail. For H\u2090: p < p\u2080, find the area to the LEFT of z (lower tail). p-value = ${expectedVal}`
+        };
+      }
+    }
+
+    if (diff <= 0.002) {
+      return {
+        score: "E",
+        feedback: `Correct! p-value = ${expectedVal}. ${context.direction === "!=" ? "For a two-sided test, we doubled the one-tail area." : "For a one-sided test, we used the single tail area in the direction of H\u2090."}`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "P",
+        feedback: `Close! Check your calculation. The p-value is ${expectedVal}. Make sure you're using the correct tail direction for H\u2090.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The p-value is ${expectedVal}. For H\u2090 with ">", use the right tail. For "<", use the left tail. For "\u2260", double the one-tail area.`
+    };
+  }
+
+  // ========== L26/L28: p-Value Interpretation (Textarea) ==========
+  if (fieldId === "pvalueInterpretation" || fieldId === "cap65Interpret") {
+    const assumeKeywords = ["assuming", "if the null", "if h0", "if h\u2080", "under the null", "given that"];
+    const probKeywords = ["probability", "likely", "likelihood", "chance"];
+    const extremeKeywords = ["or greater", "or more extreme", "or less", "or stronger", "as extreme", "in either direction", "or more"];
+    const chanceKeywords = ["by chance", "by chance alone", "random chance", "due to chance", "due to random"];
+    const contextKeywords = ["sample proportion", "p\u0302", "p-hat", "sample"];
+
+    const mentionsAssume = containsAny(answer, assumeKeywords);
+    const mentionsProb = containsAny(answer, probKeywords);
+    const mentionsExtreme = containsAny(answer, extremeKeywords);
+    const mentionsChance = containsAny(answer, chanceKeywords);
+    const mentionsContext = containsAny(answer, contextKeywords);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 10;
+
+    // Check for the misconception: "probability that the null is true"
+    const hasNullProbMisconception = containsAny(answer, ["probability that the null", "probability that h0", "probability that h\u2080", "chance the null is true", "probability the null is false"]);
+    if (hasNullProbMisconception) {
+      return {
+        score: "I",
+        feedback: "The p-value is NOT the probability that H\u2080 is true (or false). The p-value is the probability of getting evidence this strong or stronger FOR H\u2090, assuming H\u2080 IS true. The p-value is calculated UNDER the assumption that H\u2080 is true."
+      };
+    }
+
+    const elementCount = [mentionsAssume, mentionsProb, mentionsExtreme, mentionsChance, mentionsContext].filter(Boolean).length;
+
+    // E: mentions assuming null true + probability + extreme/stronger + chance alone + context
+    if (elementCount >= 4 && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent interpretation! You included the assumption that H\u2080 is true, the probability, the 'or more extreme' language, and 'by chance alone.'"
+      };
+    }
+    // P: mentions at least 2 key elements + substance
+    if (elementCount >= 2 && hasSubstance) {
+      const missing = [];
+      if (!mentionsAssume) missing.push("state that H\u2080 is assumed true ('Assuming...')");
+      if (!mentionsProb) missing.push("the probability value");
+      if (!mentionsExtreme) missing.push("'or more extreme' / 'or greater' / 'or less'");
+      if (!mentionsChance) missing.push("'by chance alone'");
+      if (!mentionsContext) missing.push("the sample proportion in context");
+      return {
+        score: "P",
+        feedback: `Good start! To earn full credit, also include: ${missing.join(", ")}. Template: 'Assuming [H\u2080 true], there is a [p-value] probability of getting a sample proportion of [value] or [more extreme] by chance alone in a random sample of [n].`
+      };
+    }
+    return {
+      score: "I",
+      feedback: "A p-value interpretation must include: (1) assume H\u2080 is true, (2) the p-value probability, (3) getting a sample proportion 'or more extreme', (4) 'by chance alone', (5) context. Template: 'Assuming [null is true], there is a [p-value] probability of getting a sample proportion of [p\u0302] or [more extreme] by chance alone in a random sample of [n] from [population].'"
+    };
+  }
+
+  // ========== L27: Test Direction (Dropdown) ==========
+  if (fieldId === "directionAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You matched the tail direction to the alternative hypothesis. H\u2090 with > uses the right tail, < uses the left tail, and \u2260 uses both tails."
+      };
+    }
+    // Check for specific misconceptions
+    if (containsAny(answer, ["between"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. We never find the area BETWEEN \u2212z and z for a p-value. The p-value is always a tail area (or two tail areas). The correct approach is: ${expected}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${expected}. Remember: H\u2090: p > p\u2080 \u2192 right tail, H\u2090: p < p\u2080 \u2192 left tail, H\u2090: p \u2260 p\u2080 \u2192 both tails (2 \u00d7 tail area).`
+    };
+  }
+
+  // ========== L28: Capstone Null (Text, reuse L19/L23 logic) ==========
+  if (fieldId === "cap65Null") {
+    const p0 = context?.p0 || "";
+    const hasPHat = containsAny(answer, ["p\u0302", "p-hat", "phat", "p hat"]);
+    const hasEquality = studentNorm.includes("=") && !studentNorm.includes("!=") && !studentNorm.includes("\u2260");
+    const hasCorrectP0 = studentNorm.includes(String(p0));
+
+    if (hasPHat) {
+      return { score: "I", feedback: `Hypotheses use p (population parameter), NOT p\u0302 (sample statistic). Correct: H\u2080: p = ${p0}` };
+    }
+    if (hasEquality && hasCorrectP0) {
+      return { score: "E", feedback: `Correct! H\u2080: p = ${p0}. The null always contains '='.` };
+    }
+    if (hasEquality && !hasCorrectP0) {
+      return { score: "P", feedback: `The structure is right (uses '='), but check your p\u2080 value. The claimed proportion is ${p0}. Correct: H\u2080: p = ${p0}` };
+    }
+    if (!hasEquality && hasCorrectP0) {
+      return { score: "I", feedback: `The null hypothesis must contain '=' (equality). Correct: H\u2080: p = ${p0}` };
+    }
+    return { score: "I", feedback: `Incorrect. The null hypothesis is: H\u2080: p = ${p0}. Always uses '=' and the parameter p.` };
+  }
+
+  // ========== L28: Capstone Alt (Text, reuse L19/L23 logic) ==========
+  if (fieldId === "cap65Alt") {
+    const p0 = context?.p0 || "";
+    const dir = context?.direction || "";
+    const hasPHat = containsAny(answer, ["p\u0302", "p-hat", "phat", "p hat"]);
+    const hasCorrectP0 = studentNorm.includes(String(p0));
+
+    const dirMap = { ">": [">"], "<": ["<"], "!=": ["\u2260", "!=", "not equal", "=/="] };
+    const expectedDirSymbols = dirMap[dir] || [];
+    const hasCorrectDir = expectedDirSymbols.some(d => studentNorm.includes(d));
+
+    if (hasPHat) {
+      return { score: "I", feedback: `Hypotheses use p (population parameter), NOT p\u0302. Correct: ${expected}` };
+    }
+    if (hasCorrectDir && hasCorrectP0) {
+      return { score: "E", feedback: `Correct! ${expected}` };
+    }
+    if (hasCorrectP0 && !hasCorrectDir) {
+      return { score: "P", feedback: `Right p\u2080 value, but check the direction. The keyword "${context?.keyword || ""}" suggests the alternative should use "${dir}". Correct: ${expected}` };
+    }
+    if (hasCorrectDir && !hasCorrectP0) {
+      return { score: "P", feedback: `Right direction, but the p\u2080 value should be ${p0}. Correct: ${expected}` };
+    }
+    return { score: "I", feedback: `Incorrect. The correct alternative is: ${expected}. Direction comes from the research question keywords.` };
   }
 
   // ========== GENERIC FALLBACK ==========

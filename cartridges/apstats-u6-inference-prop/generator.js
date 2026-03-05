@@ -1,8 +1,11 @@
-// generator.js - AP Statistics Unit 6 (Topics 6.1–6.2): Inference for Proportions
+// generator.js - AP Statistics Unit 6 (Topics 6.1–6.5): Inference for Proportions
 // Significance testing logic, confidence intervals for a population proportion:
 // identify evidence, two explanations, convincing evidence, identify procedure,
 // check conditions, standard error, critical values, margin of error,
-// confidence intervals, minimum sample size
+// confidence intervals, minimum sample size, interpret CIs, justify claims,
+// confidence level meaning, factors affecting ME, hypotheses, test procedure,
+// test conditions, test statistic (z-score), p-value, p-value interpretation,
+// test direction (one-sided vs two-sided)
 
 // ============ UTILITY FUNCTIONS ============
 
@@ -1509,6 +1512,218 @@ const testConditionsBank = [
     pHatDistractor: 0.55 }
 ];
 
+// ---- L24-L28: Test statistic and p-value scenarios (6.5) ----
+// Normal CDF approximation for p-value calculations
+function normalCDF(z) {
+  // Abramowitz & Stegun approximation
+  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+  const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+  const sign = z < 0 ? -1 : 1;
+  const x = Math.abs(z) / Math.sqrt(2);
+  const t = 1.0 / (1.0 + p * x);
+  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+  return 0.5 * (1.0 + sign * y);
+}
+
+const testStatisticBank = [
+  {
+    context: "A newspaper reports that 40% of adults would say football is their favorite sport. The mayor wonders if the proportion in her town differs.",
+    population: "all adults in the town",
+    successDesc: "would say football is their favorite sport",
+    p0: 0.40, direction: "!=", pHat: 0.29, n: 100, keyword: "differs"
+  },
+  {
+    context: "Researchers investigate whether high school students associate the color green with being more natural. If so, more than 50% would choose the green cup.",
+    population: "all students at the school",
+    successDesc: "would choose the green cup",
+    p0: 0.50, direction: ">", pHat: 0.60, n: 30, keyword: "more than"
+  },
+  {
+    context: "A company claims 75% of customers are satisfied. A consumer group suspects the true proportion is lower.",
+    population: "all customers of the company",
+    successDesc: "are satisfied",
+    p0: 0.75, direction: "<", pHat: 0.68, n: 200, keyword: "lower"
+  },
+  {
+    context: "A drug manufacturer claims their medication has a 10% side effect rate. A doctor suspects it may be higher after observing patient outcomes.",
+    population: "all patients who take this medication",
+    successDesc: "experience side effects",
+    p0: 0.10, direction: ">", pHat: 0.15, n: 150, keyword: "higher"
+  },
+  {
+    context: "A school board claims that 90% of seniors graduate on time. A parent group thinks the true rate is different.",
+    population: "all seniors at the school",
+    successDesc: "graduate on time",
+    p0: 0.90, direction: "!=", pHat: 0.84, n: 120, keyword: "different"
+  },
+  {
+    context: "A fitness app claims that 30% of users exercise daily. A researcher wants to know if the proportion is actually higher.",
+    population: "all users of the fitness app",
+    successDesc: "exercise daily",
+    p0: 0.30, direction: ">", pHat: 0.36, n: 250, keyword: "higher"
+  },
+  {
+    context: "A cereal company claims that 20% of boxes contain a prize. A suspicious buyer thinks the true proportion is less.",
+    population: "all cereal boxes produced",
+    successDesc: "contain a prize",
+    p0: 0.20, direction: "<", pHat: 0.14, n: 180, keyword: "less"
+  },
+  {
+    context: "A university reports that 65% of alumni donate within 5 years of graduation. An administrator wonders if this proportion has changed.",
+    population: "all alumni of the university",
+    successDesc: "donate within 5 years of graduation",
+    p0: 0.65, direction: "!=", pHat: 0.58, n: 300, keyword: "changed"
+  },
+  {
+    context: "A political analyst claims 55% of voters favor a new policy. An opposing campaign believes the support is less than claimed.",
+    population: "all voters in the district",
+    successDesc: "favor the new policy",
+    p0: 0.55, direction: "<", pHat: 0.48, n: 400, keyword: "less than"
+  },
+  {
+    context: "A wildlife biologist suspects that more than 15% of tagged fish in a lake have migrated. The historical rate is 15%.",
+    population: "all tagged fish in the lake",
+    successDesc: "have migrated",
+    p0: 0.15, direction: ">", pHat: 0.22, n: 120, keyword: "more than"
+  },
+  {
+    context: "A textbook publisher claims 80% of students find their digital platform helpful. A professor is skeptical and thinks fewer students agree.",
+    population: "all students using the platform",
+    successDesc: "find the digital platform helpful",
+    p0: 0.80, direction: "<", pHat: 0.73, n: 200, keyword: "fewer"
+  },
+  {
+    context: "A city claims that 50% of households recycle. An environmental group believes the true proportion is different from this claim.",
+    population: "all households in the city",
+    successDesc: "recycle regularly",
+    p0: 0.50, direction: "!=", pHat: 0.56, n: 350, keyword: "different"
+  }
+];
+
+// ---- L27: Test Direction scenarios (6.5d) ----
+const testDirectionBank = [
+  {
+    context: "A researcher claims that more than 60% of college students prefer online classes. Ha: p > 0.60.",
+    direction: ">", p0: 0.60,
+    correctAnswer: "Find the area to the RIGHT of z (one-sided, upper tail)",
+    wrongOptions: [
+      "Find the area to the LEFT of z (one-sided, lower tail)",
+      "Find the area in BOTH tails (two-sided, 2 × tail area)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A consumer group suspects fewer than 40% of shoppers read nutrition labels. Ha: p < 0.40.",
+    direction: "<", p0: 0.40,
+    correctAnswer: "Find the area to the LEFT of z (one-sided, lower tail)",
+    wrongOptions: [
+      "Find the area to the RIGHT of z (one-sided, upper tail)",
+      "Find the area in BOTH tails (two-sided, 2 × tail area)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A school board wonders if the proportion of parents who support a policy differs from 50%. Ha: p \u2260 0.50.",
+    direction: "!=", p0: 0.50,
+    correctAnswer: "Find the area in BOTH tails (two-sided, 2 \u00d7 tail area)",
+    wrongOptions: [
+      "Find the area to the RIGHT of z (one-sided, upper tail)",
+      "Find the area to the LEFT of z (one-sided, lower tail)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A factory tests whether the defect rate is higher than the claimed 5%. Ha: p > 0.05.",
+    direction: ">", p0: 0.05,
+    correctAnswer: "Find the area to the RIGHT of z (one-sided, upper tail)",
+    wrongOptions: [
+      "Find the area to the LEFT of z (one-sided, lower tail)",
+      "Find the area in BOTH tails (two-sided, 2 × tail area)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A health department wonders if the vaccination rate in a county has changed from 75%. Ha: p \u2260 0.75.",
+    direction: "!=", p0: 0.75,
+    correctAnswer: "Find the area in BOTH tails (two-sided, 2 \u00d7 tail area)",
+    wrongOptions: [
+      "Find the area to the RIGHT of z (one-sided, upper tail)",
+      "Find the area to the LEFT of z (one-sided, lower tail)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A company suspects employee satisfaction has dropped below 70%. Ha: p < 0.70.",
+    direction: "<", p0: 0.70,
+    correctAnswer: "Find the area to the LEFT of z (one-sided, lower tail)",
+    wrongOptions: [
+      "Find the area to the RIGHT of z (one-sided, upper tail)",
+      "Find the area in BOTH tails (two-sided, 2 × tail area)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A researcher tests whether the proportion of teens using social media daily exceeds 85%. Ha: p > 0.85.",
+    direction: ">", p0: 0.85,
+    correctAnswer: "Find the area to the RIGHT of z (one-sided, upper tail)",
+    wrongOptions: [
+      "Find the area to the LEFT of z (one-sided, lower tail)",
+      "Find the area in BOTH tails (two-sided, 2 × tail area)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A city official investigates whether the proportion of residents who compost differs from the national average of 25%. Ha: p \u2260 0.25.",
+    direction: "!=", p0: 0.25,
+    correctAnswer: "Find the area in BOTH tails (two-sided, 2 \u00d7 tail area)",
+    wrongOptions: [
+      "Find the area to the RIGHT of z (one-sided, upper tail)",
+      "Find the area to the LEFT of z (one-sided, lower tail)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A nonprofit suspects that less than 20% of donors give monthly. Ha: p < 0.20.",
+    direction: "<", p0: 0.20,
+    correctAnswer: "Find the area to the LEFT of z (one-sided, lower tail)",
+    wrongOptions: [
+      "Find the area to the RIGHT of z (one-sided, upper tail)",
+      "Find the area in BOTH tails (two-sided, 2 × tail area)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A teacher wonders if more than 45% of students complete homework on time. Ha: p > 0.45.",
+    direction: ">", p0: 0.45,
+    correctAnswer: "Find the area to the RIGHT of z (one-sided, upper tail)",
+    wrongOptions: [
+      "Find the area to the LEFT of z (one-sided, lower tail)",
+      "Find the area in BOTH tails (two-sided, 2 × tail area)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A car dealership tests whether the proportion of customers who finance their purchase has changed from 60%. Ha: p \u2260 0.60.",
+    direction: "!=", p0: 0.60,
+    correctAnswer: "Find the area in BOTH tails (two-sided, 2 \u00d7 tail area)",
+    wrongOptions: [
+      "Find the area to the RIGHT of z (one-sided, upper tail)",
+      "Find the area to the LEFT of z (one-sided, lower tail)",
+      "Find the area between \u2212z and z"
+    ]
+  },
+  {
+    context: "A hospital suspects the readmission rate is lower than the national average of 18%. Ha: p < 0.18.",
+    direction: "<", p0: 0.18,
+    correctAnswer: "Find the area to the LEFT of z (one-sided, lower tail)",
+    wrongOptions: [
+      "Find the area to the RIGHT of z (one-sided, upper tail)",
+      "Find the area in BOTH tails (two-sided, 2 × tail area)",
+      "Find the area between \u2212z and z"
+    ]
+  }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -2213,6 +2428,198 @@ export function generateProblem(modeId, context, mode) {
     };
 
     scenario = `${capstoneDesc}\n\n(1) Write H\u2080 and H\u2090.\n(2) Define the parameter p.\n(3) Name the test procedure.\n(4) Check all conditions (use p\u2080, not p\u0302!).`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L24: Calculate Test Statistic (6.5a) ==========
+  if (modeId === "l24-test-statistic") {
+    const scen = drawFromBag('testStat_l24', testStatisticBank);
+
+    const sd = Math.sqrt(scen.p0 * (1 - scen.p0) / scen.n);
+    const zStat = (scen.pHat - scen.p0) / sd;
+    const zRounded = Math.round(zStat * 100) / 100;
+
+    ctx = {
+      topicId: "6.5: Calculate Test Statistic",
+      scenarioText: `${scen.context}\n\nA random sample of ${scen.n} yielded p\u0302 = ${scen.pHat}.`,
+      givenText: `p\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}`,
+      pHat: `${scen.pHat}`,
+      p0: `${scen.p0}`,
+      n: `${scen.n}`
+    };
+
+    answers = {
+      zStatAnswer: { value: zRounded, tolerance: 0.02 }
+    };
+
+    scenario = `${scen.context}\n\np\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}\n\nCalculate the test statistic: z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Round to 2 decimal places.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L25: Calculate p-Value (6.5b) ==========
+  if (modeId === "l25-calculate-pvalue") {
+    const scen = drawFromBag('testStat_l25', testStatisticBank);
+
+    const sd = Math.sqrt(scen.p0 * (1 - scen.p0) / scen.n);
+    const zStat = (scen.pHat - scen.p0) / sd;
+    const zRounded = Math.round(zStat * 100) / 100;
+
+    let pValue;
+    const dirSymbol = scen.direction === ">" ? ">" : scen.direction === "<" ? "<" : "\u2260";
+    if (scen.direction === ">") {
+      pValue = 1 - normalCDF(zRounded);
+    } else if (scen.direction === "<") {
+      pValue = normalCDF(zRounded);
+    } else {
+      pValue = 2 * (1 - normalCDF(Math.abs(zRounded)));
+    }
+    const pValueRounded = Math.round(pValue * 10000) / 10000;
+
+    const dirDesc = scen.direction === ">" ? "right tail: P(Z \u2265 z)"
+      : scen.direction === "<" ? "left tail: P(Z \u2264 z)"
+      : "both tails: 2 \u00d7 P(Z \u2265 |z|)";
+
+    ctx = {
+      topicId: "6.5: Calculate p-Value",
+      scenarioText: `${scen.context}\n\nH\u2080: p = ${scen.p0}, H\u2090: p ${dirSymbol} ${scen.p0}.\nTest statistic: z = ${zRounded}.`,
+      givenText: `z = ${zRounded}, H\u2090: p ${dirSymbol} ${scen.p0} (${dirDesc})`,
+      zStat: `${zRounded}`,
+      direction: scen.direction,
+      p0: `${scen.p0}`,
+      pHat: `${scen.pHat}`,
+      n: `${scen.n}`
+    };
+
+    answers = {
+      pvalueAnswer: { value: pValueRounded, tolerance: 0.002 }
+    };
+
+    scenario = `${scen.context}\n\nH\u2080: p = ${scen.p0}, H\u2090: p ${dirSymbol} ${scen.p0}\nTest statistic: z = ${zRounded}\n\nCalculate the p-value. (${dirDesc}) Round to 4 decimal places.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L26: Interpret p-Value (6.5c) ==========
+  if (modeId === "l26-interpret-pvalue") {
+    const scen = drawFromBag('testStat_l26', testStatisticBank);
+
+    const sd = Math.sqrt(scen.p0 * (1 - scen.p0) / scen.n);
+    const zStat = (scen.pHat - scen.p0) / sd;
+    const zRounded = Math.round(zStat * 100) / 100;
+    const dirSymbol = scen.direction === ">" ? ">" : scen.direction === "<" ? "<" : "\u2260";
+
+    let pValue;
+    if (scen.direction === ">") {
+      pValue = 1 - normalCDF(zRounded);
+    } else if (scen.direction === "<") {
+      pValue = normalCDF(zRounded);
+    } else {
+      pValue = 2 * (1 - normalCDF(Math.abs(zRounded)));
+    }
+    const pValueRounded = Math.round(pValue * 10000) / 10000;
+
+    const extremePhrase = scen.direction === ">"
+      ? `${scen.pHat} or greater`
+      : scen.direction === "<"
+        ? `${scen.pHat} or less`
+        : `as extreme as or more extreme than ${scen.pHat} in either direction`;
+
+    const expectedInterpretation = `Assuming that ${scen.p0 * 100}% of ${scen.population} ${scen.successDesc}, there is a ${pValueRounded} probability of getting a sample proportion of ${extremePhrase} by chance alone in a random sample of ${scen.n}.`;
+
+    ctx = {
+      topicId: "6.5: Interpret p-Value",
+      scenarioText: `${scen.context}\n\nH\u2080: p = ${scen.p0}, H\u2090: p ${dirSymbol} ${scen.p0}\np\u0302 = ${scen.pHat}, n = ${scen.n}, z = ${zRounded}, p-value = ${pValueRounded}`,
+      givenText: `p\u2080 = ${scen.p0}, p\u0302 = ${scen.pHat}, n = ${scen.n}, p-value = ${pValueRounded}`,
+      p0: `${scen.p0}`,
+      pHat: `${scen.pHat}`,
+      n: `${scen.n}`,
+      zStat: `${zRounded}`,
+      pValue: `${pValueRounded}`,
+      direction: scen.direction,
+      population: scen.population,
+      successDesc: scen.successDesc
+    };
+
+    answers = {
+      pvalueInterpretation: { value: expectedInterpretation }
+    };
+
+    scenario = `${scen.context}\n\nH\u2080: p = ${scen.p0}, H\u2090: p ${dirSymbol} ${scen.p0}\np\u0302 = ${scen.pHat}, n = ${scen.n}, p-value = ${pValueRounded}\n\nInterpret the p-value in context.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L27: Test Direction (6.5d) ==========
+  if (modeId === "l27-test-direction") {
+    const scen = drawFromBag('testDirection', testDirectionBank);
+
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "6.5: Test Direction",
+      scenarioText: scen.context,
+      givenText: `Alternative hypothesis direction: ${scen.direction === ">" ? "greater than" : scen.direction === "<" ? "less than" : "not equal to"} ${scen.p0}`,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      directionAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = `${scen.context}\n\nHow should the p-value be calculated for this test?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L28: Capstone 6.5 ==========
+  if (modeId === "l28-capstone-65") {
+    const scen = drawFromBag('testStat_l28', testStatisticBank);
+
+    const dirSymbol = scen.direction === ">" ? ">" : scen.direction === "<" ? "<" : "\u2260";
+    const sd = Math.sqrt(scen.p0 * (1 - scen.p0) / scen.n);
+    const zStat = (scen.pHat - scen.p0) / sd;
+    const zRounded = Math.round(zStat * 100) / 100;
+
+    let pValue;
+    if (scen.direction === ">") {
+      pValue = 1 - normalCDF(zRounded);
+    } else if (scen.direction === "<") {
+      pValue = normalCDF(zRounded);
+    } else {
+      pValue = 2 * (1 - normalCDF(Math.abs(zRounded)));
+    }
+    const pValueRounded = Math.round(pValue * 10000) / 10000;
+
+    const extremePhrase = scen.direction === ">"
+      ? `${scen.pHat} or greater`
+      : scen.direction === "<"
+        ? `${scen.pHat} or less`
+        : `as extreme as or more extreme than ${scen.pHat} in either direction`;
+
+    const expectedInterpretation = `Assuming that ${scen.p0 * 100}% of ${scen.population} ${scen.successDesc}, there is a ${pValueRounded} probability of getting a sample proportion of ${extremePhrase} by chance alone in a random sample of ${scen.n}.`;
+
+    ctx = {
+      topicId: "6.5: Capstone \u2014 Test Statistic through p-Value",
+      scenarioText: `${scen.context}\n\nA random sample of ${scen.n} yielded p\u0302 = ${scen.pHat}. The claimed proportion is ${scen.p0}.`,
+      givenText: `p\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}`,
+      p0: `${scen.p0}`,
+      pHat: `${scen.pHat}`,
+      n: `${scen.n}`,
+      direction: scen.direction,
+      population: scen.population,
+      successDesc: scen.successDesc,
+      keyword: scen.keyword
+    };
+
+    answers = {
+      cap65Null: { value: `H\u2080: p = ${scen.p0}` },
+      cap65Alt: { value: `H\u2090: p ${dirSymbol} ${scen.p0}` },
+      cap65ZStat: { value: zRounded, tolerance: 0.02 },
+      cap65PValue: { value: pValueRounded, tolerance: 0.002 },
+      cap65Interpret: { value: expectedInterpretation }
+    };
+
+    scenario = `${scen.context}\n\np\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}\n\n(1) Write H\u2080 and H\u2090.\n(2) Calculate the test statistic z.\n(3) Calculate the p-value.\n(4) Interpret the p-value in context.`;
     return { context: ctx, graphConfig, answers, scenario };
   }
 

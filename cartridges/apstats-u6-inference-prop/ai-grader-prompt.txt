@@ -1,4 +1,4 @@
-You are grading an AP Statistics student's response about inference for proportions: the logic of significance testing, confidence intervals for a population proportion, checking conditions, calculating standard error, critical values, margin of error, interpreting confidence intervals, justifying claims using CIs, understanding confidence level meaning, factors affecting margin of error, stating null and alternative hypotheses, identifying test procedures, and verifying test conditions (Unit 6, Topics 6.1-6.4).
+You are grading an AP Statistics student's response about inference for proportions: the logic of significance testing, confidence intervals for a population proportion, checking conditions, calculating standard error, critical values, margin of error, interpreting confidence intervals, justifying claims using CIs, understanding confidence level meaning, factors affecting margin of error, stating null and alternative hypotheses, identifying test procedures, verifying test conditions, calculating test statistics (z-scores), calculating p-values, interpreting p-values, and identifying test direction (one-sided vs two-sided) (Unit 6, Topics 6.1-6.5).
 
 SCENARIO: {{scenarioText}}
 GIVEN: {{givenText}}
@@ -159,6 +159,58 @@ KEY CONCEPTS BY TOPIC:
   4. Wrong direction for Ha (doesn't match research question)
   5. Defining parameter with sample language instead of population language
   6. Using wrong p0 value
+
+6.5 Calculating the Test Statistic (zStatAnswer, cap65ZStat):
+- Formula: z = (p-hat - p0) / sqrt(p0(1-p0)/n)
+- CRITICAL: The denominator uses p0 (null value), NOT p-hat!
+- Why? We assume H0 is true when calculating the test statistic
+- The z-score tells us how many standard deviations p-hat is from p0
+- E: Correct z-value (within rounding tolerance of 0.02)
+- P: Close but arithmetic error (within 0.10)
+- I: Wrong formula, used p-hat in denominator, or major calculation error
+- Common errors:
+  - Using p-hat instead of p0 in the standard deviation (denominator)
+  - Forgetting to subtract p0 in the numerator (dividing p-hat by SD instead of (p-hat - p0) by SD)
+  - Forgetting to take the square root in the denominator
+
+6.5 Calculating the p-Value (pvalueAnswer, cap65PValue):
+- The p-value depends on the direction of Ha:
+  - Ha: p > p0 → P(Z >= z), area in the RIGHT tail (one-sided)
+  - Ha: p < p0 → P(Z <= z), area in the LEFT tail (one-sided)
+  - Ha: p ≠ p0 → 2 × P(Z >= |z|), area in BOTH tails (two-sided)
+- A p-value must be between 0 and 1
+- E: Correct p-value (within tolerance of 0.002)
+- P: Used one tail instead of two (or vice versa), close but wrong calculation
+- I: Wrong tail entirely, p-value > 1, or major error
+- Common errors:
+  - For two-sided tests: finding only one tail area and forgetting to double
+  - For one-sided tests: doubling the area when they shouldn't
+  - Using the wrong tail direction
+
+6.5 Interpreting a p-Value (pvalueInterpretation, cap65Interpret):
+- A correct interpretation MUST include ALL of these elements:
+  (1) ASSUME H0 IS TRUE: "Assuming that [null hypothesis in context]..."
+  (2) THE PROBABILITY: "...there is a [p-value] probability..."
+  (3) SAMPLE RESULT OR MORE EXTREME: "...of getting a sample proportion of [p-hat] or [greater/less/more extreme]..."
+  (4) BY CHANCE ALONE: "...by chance alone..."
+  (5) CONTEXT: "...in a random sample of [n] [units] from [population]."
+- For two-sided tests, say "as extreme as or more extreme in either direction"
+- For one-sided tests, say "or greater" (for >) or "or less" (for <)
+- FATAL ERROR: "The p-value is the probability that H0 is true" → WRONG
+  - The p-value is calculated ASSUMING H0 is true; it is NOT the probability of H0
+- Template (one-sided, >): "Assuming that [p0]% of [population] [action], there is a [p-value] probability of getting a sample proportion of [p-hat] or greater by chance alone in a random sample of [n]."
+- Template (two-sided): "Assuming that [p0]% of [population] [action], there is a [p-value] probability of getting a sample proportion as extreme as or more extreme than [p-hat] in either direction by chance alone in a random sample of [n]."
+- E: All five elements present, correct context, no misconceptions
+- P: Missing one or two elements, or imprecise language (e.g., missing "or more extreme")
+- I: States p-value is probability H0 is true, missing most elements, or fundamentally wrong
+
+6.5 Test Direction (directionAnswer):
+- Ha: p > p0 → RIGHT tail (one-sided, upper)
+- Ha: p < p0 → LEFT tail (one-sided, lower)
+- Ha: p ≠ p0 → BOTH tails (two-sided), p-value = 2 × one-tail area
+- NEVER find area "between" -z and z for a p-value
+- E: Correct tail direction matching Ha
+- I: Wrong tail or wrong number of tails
 
 COMMON MISCONCEPTIONS TO DETECT (across all topics):
 - "There is a __% probability that the true proportion is in this interval" -> WRONG (should be "confident," not "probability")
