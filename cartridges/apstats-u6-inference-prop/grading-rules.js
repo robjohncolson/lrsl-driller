@@ -1,4 +1,4 @@
-// grading-rules.js - AP Statistics Unit 6 Topics 6.1-6.6
+// grading-rules.js - AP Statistics Unit 6 Topics 6.1-6.7
 // Topics: Logic of significance testing, confidence intervals for a population proportion,
 // interpreting CIs, justifying claims, confidence level meaning, factors affecting ME,
 // null/alternative hypotheses, identify test procedure, test conditions,
@@ -10,7 +10,8 @@
 // check conditions, standard error, critical values, margin of error,
 // confidence intervals, minimum sample size, capstone, CI interpretation,
 // claim justification, confidence level interpretation, ME factors, capstone 6.3,
-// test statistic, p-value, p-value interpretation, test direction, capstone 6.5
+// test statistic, p-value, p-value interpretation, test direction, capstone 6.5,
+// potential errors when performing tests, power, and factors affecting power
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -63,7 +64,13 @@ export function gradeField(fieldId, answer, context) {
     "conclusionText",
     "fullTestConclusion",
     "cap66ParamDef",
-    "cap66Conclusion"
+    "cap66Conclusion",
+    "type1Interpretation",
+    "type2Interpretation",
+    "powerInterpretation",
+    "cap67Type1",
+    "cap67Type2",
+    "cap67Justify"
   ]);
 
   if (isBlank(answer)) {
@@ -77,6 +84,7 @@ export function gradeField(fieldId, answer, context) {
       "sampleSizeAnswer",
       "capstoneLower", "capstoneUpper",
       "zStatAnswer", "pvalueAnswer",
+      "type1ProbAnswer", "type2ProbAnswer", "alphaType1Prob",
       "cap65ZStat", "cap65PValue",
       "fullTestZStat", "fullTestPValue",
       "cap66ZStat", "cap66PValue"
@@ -1508,6 +1516,377 @@ export function gradeField(fieldId, answer, context) {
       return { score: "P", feedback: "Good! You mentioned the proportion and context, but add population language ('all', 'would') to distinguish from the sample." };
     }
     return { score: "I", feedback: "Define p in context: 'p = the proportion of ALL [population] who [would do something].' Must include 'proportion,' population language ('all'/'would'), and context." };
+  }
+
+  // ========== L35: Identify the Error Type (Dropdown) ==========
+  if (fieldId === "errorTypeAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! Type I means rejecting a true null hypothesis, and Type II means failing to reject a false null hypothesis."
+      };
+    }
+    if (containsAny(answer, ["type i"]) && containsAny(expected, ["type ii"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. This is a Type II error: the test failed to reject H\u2080 even though H\u2090 was true. Type I is rejecting a true H\u2080."
+      };
+    }
+    if (containsAny(answer, ["type ii"]) && containsAny(expected, ["type i"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. This is a Type I error: the test rejected H\u2080 even though H\u2080 was true. Type II is failing to reject a false H\u2080."
+      };
+    }
+    if (containsAny(answer, ["correct"]) && !containsAny(expected, ["correct"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. An error occurred here. The correct answer is: ${expected}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct answer is: ${expected}. Type I = reject a true H\u2080. Type II = fail to reject a false H\u2080.`
+    };
+  }
+
+  // ========== L36/L39: Type I Error in Context (Textarea) ==========
+  if (fieldId === "type1Interpretation" || fieldId === "cap67Type1") {
+    const mentionsEvidence = containsAny(answer, ["convincing evidence", "find evidence", "found evidence", "conclude", "concluded", "reject"]);
+    const mentionsAltContext = containsAny(answer, ["more than 50", "greater than 50", "green cup", "natural", "students"]);
+    const mentionsNullTruth = containsAny(answer, ["actual percentage is 50", "true percentage is 50", "actually 50", "really 50", "p = 0.50", "h0 is true", "null is true"]);
+    const genericType1 = containsAny(answer, ["reject"]) && containsAny(answer, ["h0 is true", "null is true", "true null", "type i"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if (mentionsEvidence && mentionsAltContext && mentionsNullTruth && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You described finding convincing evidence for the alternative when the null value of 50% was actually true."
+      };
+    }
+    if ((genericType1 || (mentionsAltContext && mentionsNullTruth)) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start. To earn full credit, explicitly say that the researchers found convincing evidence that more than 50% would choose the green cup even though the true percentage was actually 50%."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "A Type I error in this context is: the researchers find convincing evidence that more than 50% of students would choose the green cup, but in reality the true percentage is 50%."
+    };
+  }
+
+  // ========== L36/L39: Type II Error in Context (Textarea) ==========
+  if (fieldId === "type2Interpretation" || fieldId === "cap67Type2") {
+    const mentionsNoEvidence = containsAny(answer, ["do not find", "don't find", "not convincing", "no convincing evidence", "fail to reject"]);
+    const mentionsAltContext = containsAny(answer, ["more than 50", "greater than 50", "green cup", "natural", "students"]);
+    const mentionsAltTruth = containsAny(answer, ["actual percentage is more than 50", "true percentage is more than 50", "actually more than 50", "really more than 50", "true proportion is greater than 0.50", "h\u2090 is true", "ha is true", "alternative is true"]);
+    const genericType2 = containsAny(answer, ["fail to reject"]) && containsAny(answer, ["false null", "ha is true", "alternative is true", "type ii"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if (mentionsNoEvidence && mentionsAltContext && mentionsAltTruth && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You described missing real evidence for the alternative even though more than 50% really would choose the green cup."
+      };
+    }
+    if ((genericType2 || (mentionsAltContext && mentionsAltTruth)) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start. To earn full credit, explicitly say that the researchers did not find convincing evidence that more than 50% would choose the green cup even though that was actually true."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "A Type II error in this context is: the researchers do not find convincing evidence that more than 50% of students would choose the green cup, but in reality the true percentage is more than 50%."
+    };
+  }
+
+  // ========== L37: Power Interpretation (Textarea) ==========
+  if (fieldId === "powerInterpretation") {
+    const trueP = String(context?.trueP ?? "");
+    const power = parseFloat(context?.power ?? "");
+    const powerStr = String(context?.power ?? "");
+    const powerPct = Number.isNaN(power) ? "" : String(Math.round(power * 100));
+    const mentionsTrueP = trueP !== "" && containsAny(answer, [trueP, `${parseFloat(trueP) * 100}%`]);
+    const mentionsPower = containsAny(answer, [powerStr, `${powerPct}%`, "probability", "chance"]);
+    const mentionsRejectFalseNull = containsAny(answer, ["convincing evidence", "reject", "find evidence"]);
+    const mentionsContext = containsAny(answer, ["green cup", "students", "more than 50", "greater than 50"]);
+    const elementCount = [mentionsTrueP, mentionsPower, mentionsRejectFalseNull, mentionsContext].filter(Boolean).length;
+
+    if (mentionsTrueP && mentionsPower && mentionsRejectFalseNull && mentionsContext) {
+      return {
+        score: "E",
+        feedback: "Correct! You interpreted power as the probability of finding convincing evidence for the alternative when the true proportion is not the null value."
+      };
+    }
+    if (elementCount >= 2) {
+      return {
+        score: "P",
+        feedback: `Good start. Include all key pieces: if the true proportion is ${context?.trueP}, there is a power of ${context?.power} that the test finds convincing evidence that more than 50% of students would choose the green cup.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Power means: if the true proportion is ${context?.trueP}, there is a probability of ${context?.power} that the test will correctly find convincing evidence that more than 50% of students would choose the green cup.`
+    };
+  }
+
+  // ========== L37: P(Type I Error) (Number) ==========
+  if (fieldId === "type1ProbAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const complement = Math.round((1 - expectedVal) * 100) / 100;
+
+    if (Math.abs(studentVal - complement) <= 0.01 && diff > 0.01) {
+      return {
+        score: "I",
+        feedback: `It looks like you took the complement. The probability of a Type I error is exactly the significance level: P(Type I) = \u03b1 = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "E",
+        feedback: `Correct! P(Type I error) = \u03b1 = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.05) {
+      return {
+        score: "P",
+        feedback: `Close. Remember: the probability of a Type I error is the significance level, so P(Type I) = ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The probability of a Type I error is the significance level: P(Type I) = \u03b1 = ${expectedVal}.`
+    };
+  }
+
+  // ========== L37: P(Type II Error) (Number) ==========
+  if (fieldId === "type2ProbAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const powerVal = parseFloat(context?.power ?? "");
+
+    if (!Number.isNaN(powerVal) && Math.abs(studentVal - powerVal) <= 0.01 && diff > 0.01) {
+      return {
+        score: "I",
+        feedback: `It looks like you entered the power itself. The probability of a Type II error is 1 - power = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "E",
+        feedback: `Correct! P(Type II error) = 1 - power = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.05) {
+      return {
+        score: "P",
+        feedback: `Close. Remember: P(Type II error) = 1 - power = ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The probability of a Type II error is 1 - power = ${expectedVal}.`
+    };
+  }
+
+  // ========== L40: P(Type I Error) from Alpha (Number) ==========
+  if (fieldId === "alphaType1Prob") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const complement = Math.round((1 - expectedVal) * 100) / 100;
+
+    if (Math.abs(studentVal - complement) <= 0.01 && diff > 0.01) {
+      return {
+        score: "I",
+        feedback: `It looks like you used the complement. The probability of a Type I error is exactly the significance level: P(Type I) = alpha = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "E",
+        feedback: `Correct! P(Type I error) = alpha = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.05) {
+      return {
+        score: "P",
+        feedback: `Close. Remember that the probability of a Type I error is the significance level itself, so P(Type I) = ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The probability of a Type I error is the significance level: P(Type I) = alpha = ${expectedVal}.`
+    };
+  }
+
+  // ========== L41: Define Power (Dropdown) ==========
+  if (fieldId === "powerDefinitionAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! Power is the probability that a test correctly rejects a false null hypothesis."
+      };
+    }
+    if (containsAny(answer, ["type ii", "failing to reject", "false null hypothesis"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. Power is not the probability of making a Type II error. It is the probability of avoiding a Type II error, or correctly rejecting a false null hypothesis."
+      };
+    }
+    if (containsAny(answer, ["type i", "alpha"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. Type I error probability is alpha. Power is a different idea: it is the probability that the test correctly rejects a false H0."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct answer is: ${expected}.`
+    };
+  }
+
+  // ========== L42: Alpha Tradeoff (Dropdown) ==========
+  if (fieldId === "alphaTradeoffAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! Changing alpha creates a tradeoff between Type I error and Type II error, and it changes power as well."
+      };
+    }
+    if (containsAny(answer, ["both type i and type ii errors become less likely", "both types of errors become less likely", "both get smaller"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. Lowering alpha can reduce Type I error, but it does not automatically reduce Type II error. Instead, Type II error tends to increase and power tends to decrease."
+      };
+    }
+    if (containsAny(answer, ["alpha has no effect", "nothing changes"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. Alpha directly affects the probability of a Type I error and also changes power and the chance of a Type II error."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct answer is: ${expected}. Smaller alpha lowers Type I error but raises Type II error and lowers power; larger alpha does the opposite.`
+    };
+  }
+
+  // ========== L43: Choose a Significance Level (Dropdown) ==========
+  if (fieldId === "alphaChoiceAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! The choice of alpha should reflect which kind of error would be more serious in the context."
+      };
+    }
+    if (containsAny(expected, ["smaller alpha", "alpha = 0.01"]) && containsAny(answer, ["larger", "alpha = 0.10"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. If a Type I error would be more serious, the more appropriate choice is a smaller alpha so rejecting H0 requires stronger evidence."
+      };
+    }
+    if (containsAny(expected, ["larger alpha", "alpha = 0.10"]) && containsAny(answer, ["smaller", "alpha = 0.01"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. If the goal is to make Type II errors less likely or increase power, a larger alpha is the more reasonable choice."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct answer is: ${expected}. Match alpha to the consequences: smaller alpha protects against Type I error, while larger alpha gives more power and lowers Type II error.`
+    };
+  }
+
+  // ========== L38: Factors Affecting Power (Dropdown) ==========
+  if (fieldId === "powerFactorAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! Power increases when sample size or significance level increases, when standard error decreases, or when the true parameter is farther from the null."
+      };
+    }
+    if (containsAny(answer, ["decrease the significance level", "smaller \u03b1", "extremely small"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. A smaller \u03b1 makes rejecting H\u2080 harder, which lowers power and makes Type II errors more likely. The correct answer is: ${expected}.`
+      };
+    }
+    if (containsAny(answer, ["increase the standard error"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. More variability lowers power. The correct answer is: ${expected}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct answer is: ${expected}. Remember: larger n, larger \u03b1, smaller standard error, and a true value farther from the null all increase power.`
+    };
+  }
+
+  // ========== L39: More Consequential Error (Dropdown) ==========
+  if (fieldId === "cap67Consequential") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! In this context, a Type II error is more consequential because it misses a real marketing effect and can cost sales."
+      };
+    }
+    if (containsAny(answer, ["type i"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. In this context, Type I is lower risk. Type II is more consequential because the company could miss a real advantage of using green branding and lose sales."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. The more consequential error here is Type II error."
+    };
+  }
+
+  // ========== L39: Consequence Justification (Textarea) ==========
+  if (fieldId === "cap67Justify") {
+    const mentionsTypeII = containsAny(answer, ["type ii", "type 2", "false negative"]);
+    const mentionsGreen = containsAny(answer, ["green", "branding", "brand", "natural"]);
+    const mentionsLoss = containsAny(answer, ["sales", "income", "money", "loss", "lose", "revenue", "reduce"]);
+    const mentionsConsequence = answer.trim().split(/\s+/).length >= 8;
+
+    if (mentionsGreen && mentionsLoss && mentionsConsequence) {
+      return {
+        score: "E",
+        feedback: "Excellent! You explained that missing a real green-branding effect could reduce sales, which is why Type II is more consequential."
+      };
+    }
+    if ((mentionsTypeII || mentionsGreen || mentionsLoss) && mentionsConsequence) {
+      return {
+        score: "P",
+        feedback: "Good start. To earn full credit, explain that a Type II error would make them miss a real marketing effect of green branding, which could reduce sales or income."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Explain that a Type II error would lead them not to use green branding even though it really works, which could reduce potential sales. That is why Type II is more consequential here."
+    };
   }
 
   // ========== GENERIC FALLBACK ==========

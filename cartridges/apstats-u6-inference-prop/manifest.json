@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u6-inference-prop",
-    "name": "Inference for Proportions (6.1-6.6)",
+    "name": "Inference for Proportions and Testing Errors (6.1-6.7)",
     "subject": "AP Statistics",
-    "description": "Logic of significance testing, confidence intervals for a population proportion: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests"
+    "description": "Logic of significance testing, confidence intervals for a population proportion, and Topic 6.7 potential errors when performing tests: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, and choose an appropriate significance level based on consequences"
   },
   "config": {
     "contextsFile": null,
@@ -959,6 +959,251 @@
           }
         ]
       }
+    },
+    {
+      "id": "l35-identify-error-type",
+      "name": "6.7a: Identify the Error Type",
+      "animation": "assets/IdentifyErrorType.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "errorTypeAnswer",
+            "type": "dropdown",
+            "label": "{{questionText}}",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l36-interpret-errors",
+      "name": "6.7b: Interpret Type I and Type II Errors",
+      "animation": "assets/InterpretTypeErrors.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "type1Interpretation",
+            "type": "textarea",
+            "label": "Describe a Type I error in context:",
+            "rows": 3,
+            "placeholder": "The researchers conclude ... but in reality ..."
+          },
+          {
+            "id": "type2Interpretation",
+            "type": "textarea",
+            "label": "Describe a Type II error in context:",
+            "rows": 3,
+            "placeholder": "The researchers do not find evidence ... but in reality ..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l37-power-probabilities",
+      "name": "6.7c: Power and Error Probabilities",
+      "animation": "assets/PowerAndErrorProbabilities.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "powerInterpretation",
+            "type": "textarea",
+            "label": "Interpret the power in context:",
+            "rows": 3,
+            "placeholder": "If the true proportion is ___, there is a ___ probability that ..."
+          },
+          {
+            "id": "type1ProbAnswer",
+            "type": "number",
+            "label": "Find P(Type I error):",
+            "step": 0.01,
+            "min": 0,
+            "max": 1
+          },
+          {
+            "id": "type2ProbAnswer",
+            "type": "number",
+            "label": "Find P(Type II error):",
+            "step": 0.01,
+            "min": 0,
+            "max": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l38-power-factors",
+      "name": "6.7d: Factors Affecting Power",
+      "animation": "assets/FactorsAffectingPower.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "powerFactorAnswer",
+            "type": "dropdown",
+            "label": "{{questionText}}",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l39-capstone-67",
+      "name": "6.7 Capstone",
+      "animation": "assets/Capstone67.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "cap67Type1",
+            "type": "textarea",
+            "label": "Describe a Type I error in context:",
+            "rows": 3,
+            "placeholder": "The researchers conclude ... but in reality ..."
+          },
+          {
+            "id": "cap67Type2",
+            "type": "textarea",
+            "label": "Describe a Type II error in context:",
+            "rows": 3,
+            "placeholder": "The researchers do not find evidence ... but in reality ..."
+          },
+          {
+            "id": "cap67Consequential",
+            "type": "dropdown",
+            "label": "Which error is more consequential in this context?",
+            "options": [
+              "Type I error",
+              "Type II error",
+              "They are equally consequential"
+            ],
+            "placeholder": "Choose..."
+          },
+          {
+            "id": "cap67Justify",
+            "type": "textarea",
+            "label": "Explain why that error is more consequential:",
+            "rows": 3,
+            "placeholder": "A Type __ error would lead to ..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l40-alpha-type1",
+      "name": "6.7e: Type I Error and Alpha",
+      "animation": "assets/PowerAndErrorProbabilities.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "alphaType1Prob",
+            "type": "number",
+            "label": "If the significance level is \u03b1 = {{alpha}}, what is P(Type I error)?",
+            "step": 0.01,
+            "min": 0,
+            "max": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l41-power-definition",
+      "name": "6.7f: Define Power",
+      "animation": "assets/PowerAndErrorProbabilities.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "powerDefinitionAnswer",
+            "type": "dropdown",
+            "label": "{{questionText}}",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l42-alpha-tradeoff",
+      "name": "6.7g: Alpha Tradeoff",
+      "animation": "assets/FactorsAffectingPower.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "alphaTradeoffAnswer",
+            "type": "dropdown",
+            "label": "{{questionText}}",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l43-choose-alpha",
+      "name": "6.7h: Choose a Significance Level",
+      "animation": "assets/FactorsAffectingPower.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "alphaChoiceAnswer",
+            "type": "dropdown",
+            "label": "{{questionText}}",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -1038,7 +1283,22 @@
       "cap66ParamDef": "p = the proportion of ALL [population] who [would do something].",
       "cap66ZStat": "z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Use p\u2080 in the standard deviation.",
       "cap66PValue": "Match the tail direction to Ha. One-sided: single tail. Two-sided: double the one-tail area.",
-      "cap66Conclusion": "Include all four elements: (1) explicit p-value to \u03b1 comparison, (2) reject/fail to reject decision, (3) conclusion about Ha, (4) context."
+      "cap66Conclusion": "Include all four elements: (1) explicit p-value to \u03b1 comparison, (2) reject/fail to reject decision, (3) conclusion about Ha, (4) context.",
+      "errorTypeAnswer": "Type I = reject a true H\u2080 (false positive). Type II = fail to reject a false H\u2080 (false negative).",
+      "type1Interpretation": "Type I means finding convincing evidence for Ha when H\u2080 is actually true. Rewrite Ha in context, then say the true proportion is still the null value.",
+      "type2Interpretation": "Type II means not finding convincing evidence for Ha when Ha is actually true. Say the study misses a real effect.",
+      "powerInterpretation": "Power = probability of correctly rejecting a false H\u2080. Template: 'If the true proportion is ___, there is a ___ probability that we find convincing evidence that...'",
+      "type1ProbAnswer": "P(Type I error) = \u03b1.",
+      "type2ProbAnswer": "P(Type II error) = 1 \u2212 power.",
+      "powerFactorAnswer": "Power increases when n increases, \u03b1 increases, standard error decreases, or the true parameter is farther from the null value.",
+      "cap67Type1": "State the alternative in context, then say reality was actually the null value. This is a false positive.",
+      "cap67Type2": "State that the study did not find convincing evidence, then say the alternative was actually true. This is a false negative.",
+      "cap67Consequential": "Think about the consequence of each mistake. Which error would cause the bigger real-world loss or harm?",
+      "cap67Justify": "Describe what happens after each error, then explain why one leads to the more serious consequence.",
+      "alphaType1Prob": "The significance level is the probability of a Type I error, so P(Type I error) = \u03b1 exactly.",
+      "powerDefinitionAnswer": "Power is the probability that a test correctly rejects a false H\u2080. It is also 1 - P(Type II error).",
+      "alphaTradeoffAnswer": "Smaller \u03b1 lowers the chance of a Type I error, but it raises the chance of a Type II error and lowers power. Larger \u03b1 does the opposite.",
+      "alphaChoiceAnswer": "If a Type I error would be especially serious, use a smaller \u03b1. If missing a real effect is the bigger concern, a larger \u03b1 may be more reasonable."
     },
     "penalty": {
       "0": "gold",
@@ -1254,6 +1514,60 @@
         "name": "34",
         "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Topic 6.6 mastered! You can perform and conclude a complete significance test for a population proportion!"
+      },
+      {
+        "id": "l35-identify-error-type",
+        "name": "35",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can classify testing outcomes! Now describe Type I and Type II errors in context."
+      },
+      {
+        "id": "l36-interpret-errors",
+        "name": "36",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can explain both errors in context! Now connect power to error probabilities."
+      },
+      {
+        "id": "l37-power-probabilities",
+        "name": "37",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Power and error probabilities make sense! Next, analyze what changes power."
+      },
+      {
+        "id": "l38-power-factors",
+        "name": "38",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You know what affects power! Time for the 6.7 capstone."
+      },
+      {
+        "id": "l39-capstone-67",
+        "name": "39",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "6.7 capstone complete! Now connect significance level directly to the probability of a Type I error."
+      },
+      {
+        "id": "l40-alpha-type1",
+        "name": "40",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You linked \u03b1 to Type I error! Now define power precisely."
+      },
+      {
+        "id": "l41-power-definition",
+        "name": "41",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Power is locked in. Next, analyze the tradeoff created by changing \u03b1."
+      },
+      {
+        "id": "l42-alpha-tradeoff",
+        "name": "42",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You understand the \u03b1 tradeoff. Now choose a significance level based on consequences."
+      },
+      {
+        "id": "l43-choose-alpha",
+        "name": "43",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topic 6.7 mastered! You can identify testing errors, interpret power, and reason about alpha tradeoffs and significance-level choices!"
       }
     ]
   }

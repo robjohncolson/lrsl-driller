@@ -43,11 +43,16 @@ class ComparePValueAlpha(Scene):
         line = NumberLine(
             x_range=[0, 0.25, 0.05],
             length=10,
-            include_numbers=True,
-            decimal_number_config={"num_decimal_places": 2},
-            font_size=20,
+            include_numbers=False,
         )
         line.shift(DOWN * 0.5)
+
+        # Add tick labels as Text (no LaTeX)
+        for val in [0.0, 0.05, 0.10, 0.15, 0.20, 0.25]:
+            lbl = Text(f"{val:.2f}", font_size=16, color=GREY_B)
+            lbl.next_to(line.n2p(val), DOWN, buff=0.15)
+            line.add(lbl)
+
         self.play(Create(line), run_time=0.5)
 
         # Alpha marker

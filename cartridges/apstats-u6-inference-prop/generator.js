@@ -2162,6 +2162,264 @@ const fullTestBank = [
   }
 ];
 
+// ---- L35: Identify the error type (6.7a) ----
+const errorTypeBank = [
+  {
+    scenario: "In the green-cup lemonade study, the researchers reject H\u2080: p = 0.50 and conclude that more than 50% of students would choose the green cup, but the actual proportion is 0.50.",
+    correctAnswer: "Type I error",
+    wrongOptions: ["Type II error", "Correct decision", "Not enough information"]
+  },
+  {
+    scenario: "In the green-cup lemonade study, the researchers fail to reject H\u2080: p = 0.50 and say there is not convincing evidence that more than 50% of students would choose the green cup, but the actual proportion is greater than 0.50.",
+    correctAnswer: "Type II error",
+    wrongOptions: ["Type I error", "Correct decision", "Not enough information"]
+  },
+  {
+    scenario: "A significance test rejects H\u2080 when H\u2080 is actually true.",
+    correctAnswer: "Type I error",
+    wrongOptions: ["Type II error", "Correct decision", "Not enough information"]
+  },
+  {
+    scenario: "A significance test fails to reject H\u2080 when H\u2090 is actually true.",
+    correctAnswer: "Type II error",
+    wrongOptions: ["Type I error", "Correct decision", "Not enough information"]
+  },
+  {
+    scenario: "A significance test rejects H\u2080 and H\u2090 is actually true.",
+    correctAnswer: "Correct decision",
+    wrongOptions: ["Type I error", "Type II error", "Not enough information"]
+  },
+  {
+    scenario: "A significance test fails to reject H\u2080 and H\u2080 is actually true.",
+    correctAnswer: "Correct decision",
+    wrongOptions: ["Type I error", "Type II error", "Not enough information"]
+  }
+];
+
+// ---- L36/L39: Interpret Type I and Type II errors in context (6.7b / 6.7 capstone) ----
+const potentialErrorsContextBank = [
+  {
+    context: "To investigate whether students associate the color green with being more natural, two student researchers randomly selected 30 students from their school. Each student tasted a green cup and a white cup of the same lemonade in random order and chose which tasted more natural.",
+    altContext: "more than 50% of all students at this school would choose the green cup",
+    type1: "The researchers find convincing evidence that more than 50% of all students at this school would choose the green cup, but the actual percentage is 50%.",
+    type2: "The researchers do not find convincing evidence that more than 50% of all students at this school would choose the green cup, but the actual percentage is more than 50%.",
+    consequential: "Type II error",
+    justification: "A Type II error would lead the researchers not to use green in branding when people really do associate green with being more natural, which could reduce potential sales."
+  },
+  {
+    context: "Student researchers want to know whether high school students think a green cup of lemonade tastes more natural than a white cup. They randomly select 30 students, serve the same lemonade in both cups, and record which cup each student says tastes more natural.",
+    altContext: "more than 50% of all students at this school would choose the green cup",
+    type1: "The researchers conclude that more than 50% of all students at this school would choose the green cup, but in truth the actual percentage is 50%.",
+    type2: "The researchers conclude that there is not convincing evidence that more than 50% of all students at this school would choose the green cup, but in truth the actual percentage is more than 50%.",
+    consequential: "Type II error",
+    justification: "A Type II error would keep them from using green branding even though green really does make the product seem more natural, so they could lose sales."
+  },
+  {
+    context: "Researchers test whether students associate green with a more natural taste by randomly selecting 30 students and asking each to choose whether the green or white cup of identical lemonade tastes more natural.",
+    altContext: "more than 50% of all students at this school would choose the green cup",
+    type1: "The study finds convincing evidence that more than 50% of all students at this school would choose the green cup, but actually the true percentage is 50%.",
+    type2: "The study does not find convincing evidence that more than 50% of all students at this school would choose the green cup, but actually the true percentage is more than 50%.",
+    consequential: "Type II error",
+    justification: "A Type II error is more consequential because the researchers would miss a real marketing advantage and could reduce income by not using green."
+  }
+];
+
+// ---- L37: Power and error probabilities (6.7c) ----
+const powerProbabilityBank = [
+  {
+    alpha: 0.05,
+    power: 0.45,
+    trueP: 0.64
+  },
+  {
+    alpha: 0.10,
+    power: 0.61,
+    trueP: 0.68
+  },
+  {
+    alpha: 0.01,
+    power: 0.30,
+    trueP: 0.60
+  },
+  {
+    alpha: 0.05,
+    power: 0.78,
+    trueP: 0.72
+  }
+];
+
+// ---- L38: Factors affecting power (6.7d) ----
+const powerFactorBank = [
+  {
+    questionText: "Assuming everything else remains the same, which change would increase the power of the test?",
+    correctAnswer: "Increase the sample size n.",
+    wrongOptions: [
+      "Decrease the significance level \u03b1.",
+      "Increase the standard error.",
+      "Move the true proportion closer to 0.50."
+    ]
+  },
+  {
+    questionText: "Which change would make a Type II error less likely?",
+    correctAnswer: "Increase the significance level \u03b1.",
+    wrongOptions: [
+      "Decrease the sample size.",
+      "Increase the standard error.",
+      "Move the true proportion closer to the null value."
+    ]
+  },
+  {
+    questionText: "Which change would make it easier to detect that p is greater than 0.50?",
+    correctAnswer: "Have the true proportion be farther above 0.50.",
+    wrongOptions: [
+      "Move the true proportion closer to 0.50.",
+      "Decrease the sample size.",
+      "Decrease the significance level \u03b1."
+    ]
+  },
+  {
+    questionText: "Why not make \u03b1 extremely small to minimize Type I errors?",
+    correctAnswer: "Because decreasing \u03b1 increases the chance of a Type II error and lowers power.",
+    wrongOptions: [
+      "Because \u03b1 has no effect on error probabilities.",
+      "Because a smaller \u03b1 always increases power.",
+      "Because Type I and Type II errors both get smaller at the same time."
+    ]
+  },
+  {
+    questionText: "Which change would increase power by reducing variability in the test?",
+    correctAnswer: "Decrease the standard error.",
+    wrongOptions: [
+      "Increase the standard error.",
+      "Decrease the significance level \u03b1.",
+      "Move the true parameter closer to the null value."
+    ]
+  }
+];
+
+// ---- L40: Type I error and alpha (6.7e) ----
+const alphaType1Bank = [
+  { alpha: 0.01 },
+  { alpha: 0.05 },
+  { alpha: 0.08 },
+  { alpha: 0.10 }
+];
+
+// ---- L41: Define power (6.7f) ----
+const powerDefinitionBank = [
+  {
+    questionText: "Which statement best defines the power of a significance test?",
+    correctAnswer: "The probability that the test correctly rejects a false null hypothesis.",
+    wrongOptions: [
+      "The probability that the null hypothesis is true.",
+      "The probability of a Type I error.",
+      "The probability of failing to reject a false null hypothesis."
+    ]
+  },
+  {
+    questionText: "What does power measure in a significance test?",
+    correctAnswer: "How likely the test is to find convincing evidence for Ha when Ha is actually true.",
+    wrongOptions: [
+      "How likely the sample proportion is to equal p0 exactly.",
+      "How likely the test is to make a Type I error.",
+      "How likely the null hypothesis is to be accepted."
+    ]
+  },
+  {
+    questionText: "Which description is equivalent to the power of a test?",
+    correctAnswer: "The probability of avoiding a Type II error.",
+    wrongOptions: [
+      "The probability of making a Type II error.",
+      "The significance level alpha.",
+      "The probability that H0 is correct."
+    ]
+  },
+  {
+    questionText: "If a test has high power, what does that mean?",
+    correctAnswer: "When the null hypothesis is false, the test is likely to reject it.",
+    wrongOptions: [
+      "When the null hypothesis is true, the test is likely to reject it.",
+      "The probability of a Type I error is very large.",
+      "The sample size no longer matters."
+    ]
+  }
+];
+
+// ---- L42: Alpha tradeoffs (6.7g) ----
+const alphaTradeoffBank = [
+  {
+    questionText: "Assuming everything else stays the same, what happens when alpha decreases from 0.05 to 0.01?",
+    correctAnswer: "Type I errors become less likely, but Type II errors become more likely and power decreases.",
+    wrongOptions: [
+      "Both Type I and Type II errors become less likely.",
+      "Type I errors become more likely and power increases.",
+      "Nothing changes except the wording of the conclusion."
+    ]
+  },
+  {
+    questionText: "Assuming everything else stays the same, what happens when alpha increases?",
+    correctAnswer: "Type I errors become more likely, but Type II errors become less likely and power increases.",
+    wrongOptions: [
+      "Type I errors become less likely and power decreases.",
+      "Both Type I and Type II errors become less likely.",
+      "Alpha has no effect on either error probability."
+    ]
+  },
+  {
+    questionText: "Why not make alpha extremely small just to avoid Type I errors?",
+    correctAnswer: "Because rejecting H0 becomes much harder, so Type II errors increase and power drops.",
+    wrongOptions: [
+      "Because a smaller alpha always increases power.",
+      "Because both types of errors would go down together automatically.",
+      "Because alpha only matters for confidence intervals, not tests."
+    ]
+  }
+];
+
+// ---- L43: Choose alpha based on consequences (6.7h) ----
+const alphaChoiceBank = [
+  {
+    scenarioText: "A researcher says a Type I error would be very harmful, so rejecting H0 should require stronger evidence.",
+    questionText: "Which significance level is more appropriate?",
+    correctAnswer: "Use a smaller significance level, such as alpha = 0.01.",
+    wrongOptions: [
+      "Use a larger significance level, such as alpha = 0.10.",
+      "Use alpha = 0.50 so rejecting H0 is easier.",
+      "The choice of alpha does not affect error probabilities."
+    ]
+  },
+  {
+    scenarioText: "In the green-cup lemonade study, missing a real green-branding effect could cost sales, and a Type I error is lower risk.",
+    questionText: "Which significance level is more reasonable if the researchers want to make Type II errors less likely?",
+    correctAnswer: "Use a larger significance level, such as alpha = 0.10.",
+    wrongOptions: [
+      "Use a smaller significance level, such as alpha = 0.01.",
+      "Use alpha = 0 so no Type I errors can ever occur.",
+      "It does not matter which alpha they choose."
+    ]
+  },
+  {
+    scenarioText: "A researcher decides that avoiding Type I errors matters more than maximizing power.",
+    questionText: "Which choice best matches that goal?",
+    correctAnswer: "Choose a smaller alpha to reduce the probability of a Type I error.",
+    wrongOptions: [
+      "Choose a larger alpha to reduce the probability of a Type I error.",
+      "Choose a larger alpha because that reduces both types of errors.",
+      "Keep alpha unchanged because it only changes sample size."
+    ]
+  },
+  {
+    scenarioText: "A researcher is willing to accept a little more Type I risk in order to improve the chance of detecting a real effect.",
+    questionText: "Which choice is more reasonable?",
+    correctAnswer: "Choose a larger alpha to increase power and make Type II errors less likely.",
+    wrongOptions: [
+      "Choose a smaller alpha to increase power.",
+      "Choose alpha = 0 because that maximizes power.",
+      "Alpha cannot affect power."
+    ]
+  }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -3304,6 +3562,219 @@ export function generateProblem(modeId, context, mode) {
     };
 
     scenario = `${scen.context}\n\np\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}, \u03b1 = ${scen.alpha}\n\n(1) Write H\u2080 and H\u2090.\n(2) Define the parameter p.\n(3) Calculate the test statistic z.\n(4) Calculate the p-value.\n(5) Write your complete conclusion.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L35: Identify the Error Type (6.7a) ==========
+  if (modeId === "l35-identify-error-type") {
+    const scen = drawFromBag('errorType_l35', errorTypeBank);
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "6.7: Identify the Error Type",
+      scenarioText: scen.scenario,
+      givenText: "Classify the testing outcome.",
+      questionText: "What kind of outcome is described?",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      errorTypeAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = `${scen.scenario}\n\nWhat kind of outcome is described?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L36: Interpret Type I and Type II Errors (6.7b) ==========
+  if (modeId === "l36-interpret-errors") {
+    const scen = drawFromBag('potentialErrors_l36', potentialErrorsContextBank);
+
+    ctx = {
+      topicId: "6.7: Interpret Type I and Type II Errors",
+      scenarioText: `${scen.context}\n\nH\u2080: p = 0.50, H\u2090: p > 0.50`,
+      givenText: `p = the proportion of all students at this school who would choose the green cup`,
+      altContext: scen.altContext,
+      type1Expected: scen.type1,
+      type2Expected: scen.type2
+    };
+
+    answers = {
+      type1Interpretation: { value: scen.type1 },
+      type2Interpretation: { value: scen.type2 }
+    };
+
+    scenario = `${scen.context}\n\nH\u2080: p = 0.50, H\u2090: p > 0.50\n\nDescribe a Type I error and a Type II error in context.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L37: Power and Error Probabilities (6.7c) ==========
+  if (modeId === "l37-power-probabilities") {
+    const scen = drawFromBag('powerProbability_l37', powerProbabilityBank);
+    const type2Prob = Math.round((1 - scen.power) * 100) / 100;
+    const expectedInterpretation = `If the true proportion of students who would choose the green cup is ${scen.trueP}, there is a ${scen.power} probability that we find convincing evidence that more than 50% of students would choose the green cup.`;
+
+    ctx = {
+      topicId: "6.7: Power and Error Probabilities",
+      scenarioText: "Researchers are testing H\u2080: p = 0.50 versus H\u2090: p > 0.50 in the green-cup lemonade study.",
+      givenText: `\u03b1 = ${scen.alpha}, power = ${scen.power} against p = ${scen.trueP}`,
+      alpha: `${scen.alpha}`,
+      power: `${scen.power}`,
+      trueP: `${scen.trueP}`,
+      powerExpected: expectedInterpretation
+    };
+
+    answers = {
+      powerInterpretation: { value: expectedInterpretation },
+      type1ProbAnswer: { value: scen.alpha, tolerance: 0.01 },
+      type2ProbAnswer: { value: type2Prob, tolerance: 0.01 }
+    };
+
+    scenario = `Green-cup lemonade study: H\u2080: p = 0.50, H\u2090: p > 0.50.\nSuppose the researchers use \u03b1 = ${scen.alpha} and the power of the test against p = ${scen.trueP} is ${scen.power}.\n\n(1) Interpret the power in context.\n(2) Find P(Type I error).\n(3) Find P(Type II error).`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L38: Factors Affecting Power (6.7d) ==========
+  if (modeId === "l38-power-factors") {
+    const scen = drawFromBag('powerFactors_l38', powerFactorBank);
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "6.7: Factors Affecting Power",
+      scenarioText: "Consider the green-cup lemonade significance test with H\u2080: p = 0.50 and H\u2090: p > 0.50.",
+      givenText: "Assume everything else remains the same unless the question says otherwise.",
+      questionText: scen.questionText,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      powerFactorAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = `${scen.questionText}`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L39: Capstone 6.7 ==========
+  if (modeId === "l39-capstone-67") {
+    const scen = drawFromBag('potentialErrors_l39', potentialErrorsContextBank);
+
+    ctx = {
+      topicId: "6.7: Capstone — Potential Errors When Performing Tests",
+      scenarioText: `${scen.context}\n\nH\u2080: p = 0.50, H\u2090: p > 0.50`,
+      givenText: `p = the proportion of all students at this school who would choose the green cup`,
+      altContext: scen.altContext,
+      type1Expected: scen.type1,
+      type2Expected: scen.type2,
+      consequentialExpected: scen.consequential,
+      justificationExpected: scen.justification
+    };
+
+    answers = {
+      cap67Type1: { value: scen.type1 },
+      cap67Type2: { value: scen.type2 },
+      cap67Consequential: { value: scen.consequential },
+      cap67Justify: { value: scen.justification }
+    };
+
+    scenario = `${scen.context}\n\nH\u2080: p = 0.50, H\u2090: p > 0.50\n\n(1) Describe a Type I error in context.\n(2) Describe a Type II error in context.\n(3) Decide which error is more consequential.\n(4) Explain why.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L40: Type I Error and Alpha (6.7e) ==========
+  if (modeId === "l40-alpha-type1") {
+    const scen = drawFromBag('alphaType1_l40', alphaType1Bank);
+
+    ctx = {
+      topicId: "6.7: Type I Error and Alpha",
+      scenarioText: "In the green-cup lemonade study, the researchers choose a significance level before running the test.",
+      givenText: `alpha = ${scen.alpha}`,
+      alpha: `${scen.alpha}`
+    };
+
+    answers = {
+      alphaType1Prob: { value: scen.alpha, tolerance: 0.01 }
+    };
+
+    scenario = `Green-cup lemonade study: the researchers use a significance level of alpha = ${scen.alpha}.\n\nFind P(Type I error).`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L41: Define Power (6.7f) ==========
+  if (modeId === "l41-power-definition") {
+    const scen = drawFromBag('powerDefinition_l41', powerDefinitionBank);
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "6.7: Define Power",
+      scenarioText: "Power describes a correct decision in significance testing, not an error.",
+      givenText: "Power is connected to Type II error by: P(Type II error) = 1 - power.",
+      questionText: scen.questionText,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      powerDefinitionAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = `${scen.questionText}`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L42: Alpha Tradeoff (6.7g) ==========
+  if (modeId === "l42-alpha-tradeoff") {
+    const scen = drawFromBag('alphaTradeoff_l42', alphaTradeoffBank);
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "6.7: Alpha Tradeoff",
+      scenarioText: "Consider how changing alpha affects Type I error, Type II error, and the power of a significance test.",
+      givenText: "Assume everything else remains the same.",
+      questionText: scen.questionText,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      alphaTradeoffAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = `${scen.questionText}`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L43: Choose a Significance Level (6.7h) ==========
+  if (modeId === "l43-choose-alpha") {
+    const scen = drawFromBag('alphaChoice_l43', alphaChoiceBank);
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "6.7: Choose a Significance Level",
+      scenarioText: scen.scenarioText,
+      givenText: "Choose alpha by thinking about which error is more consequential.",
+      questionText: scen.questionText,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      alphaChoiceAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = `${scen.scenarioText}\n\n${scen.questionText}`;
     return { context: ctx, graphConfig, answers, scenario };
   }
 
