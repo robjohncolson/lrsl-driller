@@ -1,11 +1,13 @@
-// generator.js - AP Statistics Unit 6 (Topics 6.1–6.5): Inference for Proportions
+// generator.js - AP Statistics Unit 6 (Topics 6.1–6.6): Inference for Proportions
 // Significance testing logic, confidence intervals for a population proportion:
 // identify evidence, two explanations, convincing evidence, identify procedure,
 // check conditions, standard error, critical values, margin of error,
 // confidence intervals, minimum sample size, interpret CIs, justify claims,
 // confidence level meaning, factors affecting ME, hypotheses, test procedure,
 // test conditions, test statistic (z-score), p-value, p-value interpretation,
-// test direction (one-sided vs two-sided)
+// test direction (one-sided vs two-sided), compare p-value to alpha,
+// reject/fail-to-reject decisions, write conclusions, conclusion errors,
+// full significance test
 
 // ============ UTILITY FUNCTIONS ============
 
@@ -1724,6 +1726,442 @@ const testDirectionBank = [
   }
 ];
 
+// ---- L29: Compare p-value to alpha scenarios (6.6a) ----
+const comparePValueAlphaBank = [
+  {
+    context: "A consumer group tests whether fewer than 30% of cereal boxes contain a prize. They find a p-value of 0.0421.",
+    population: "all cereal boxes produced",
+    successDesc: "contain a prize",
+    p0: 0.30, direction: "<", pHat: 0.24, n: 150,
+    pValue: 0.0421, alpha: 0.05, reject: true
+  },
+  {
+    context: "A fitness company tests whether more than 50% of users exercise daily. They find a p-value of 0.1253.",
+    population: "all users of the fitness app",
+    successDesc: "exercise daily",
+    p0: 0.50, direction: ">", pHat: 0.54, n: 200,
+    pValue: 0.1253, alpha: 0.05, reject: false
+  },
+  {
+    context: "A university tests whether the proportion of students who prefer online classes differs from 60%. They find a p-value of 0.0032.",
+    population: "all students at the university",
+    successDesc: "prefer online classes",
+    p0: 0.60, direction: "!=", pHat: 0.52, n: 300,
+    pValue: 0.0032, alpha: 0.01, reject: false
+  },
+  {
+    context: "A hospital tests whether the readmission rate is lower than the national average of 18%. They find a p-value of 0.0087.",
+    population: "all patients at the hospital",
+    successDesc: "are readmitted within 30 days",
+    p0: 0.18, direction: "<", pHat: 0.12, n: 250,
+    pValue: 0.0087, alpha: 0.01, reject: true
+  },
+  {
+    context: "A school board tests whether the graduation rate differs from the claimed 90%. They find a p-value of 0.0744.",
+    population: "all seniors at the school",
+    successDesc: "graduate on time",
+    p0: 0.90, direction: "!=", pHat: 0.86, n: 180,
+    pValue: 0.0744, alpha: 0.10, reject: true
+  },
+  {
+    context: "A political analyst tests whether support for a new policy exceeds 55%. They find a p-value of 0.0523.",
+    population: "all voters in the district",
+    successDesc: "support the policy",
+    p0: 0.55, direction: ">", pHat: 0.59, n: 400,
+    pValue: 0.0523, alpha: 0.05, reject: false
+  },
+  {
+    context: "A wildlife biologist tests whether more than 15% of tagged fish have migrated. They find a p-value of 0.0198.",
+    population: "all tagged fish in the lake",
+    successDesc: "have migrated",
+    p0: 0.15, direction: ">", pHat: 0.22, n: 120,
+    pValue: 0.0198, alpha: 0.05, reject: true
+  },
+  {
+    context: "A restaurant chain tests whether customer satisfaction has changed from 75%. They find a p-value of 0.3401.",
+    population: "all customers of the chain",
+    successDesc: "are satisfied with their experience",
+    p0: 0.75, direction: "!=", pHat: 0.73, n: 500,
+    pValue: 0.3401, alpha: 0.10, reject: false
+  },
+  {
+    context: "A manufacturer tests whether the defect rate exceeds the claimed 5%. They find a p-value of 0.0011.",
+    population: "all products from the production line",
+    successDesc: "are defective",
+    p0: 0.05, direction: ">", pHat: 0.09, n: 350,
+    pValue: 0.0011, alpha: 0.01, reject: true
+  },
+  {
+    context: "A city tests whether the proportion of residents who recycle differs from the national average of 50%. They find a p-value of 0.1560.",
+    population: "all residents of the city",
+    successDesc: "recycle regularly",
+    p0: 0.50, direction: "!=", pHat: 0.46, n: 280,
+    pValue: 0.1560, alpha: 0.05, reject: false
+  },
+  {
+    context: "A library surveys whether fewer than 25% of patrons use e-books. They find a p-value of 0.0390.",
+    population: "all library patrons",
+    successDesc: "use e-books",
+    p0: 0.25, direction: "<", pHat: 0.20, n: 320,
+    pValue: 0.0390, alpha: 0.05, reject: true
+  },
+  {
+    context: "A tech company tests whether more than 80% of users find their platform helpful. They find a p-value of 0.2100.",
+    population: "all users of the platform",
+    successDesc: "find the platform helpful",
+    p0: 0.80, direction: ">", pHat: 0.82, n: 250,
+    pValue: 0.2100, alpha: 0.10, reject: false
+  }
+];
+
+// ---- L30: Reject/Fail-to-Reject decision scenarios (6.6b) ----
+const rejectDecisionBank = [
+  {
+    context: "A drug manufacturer claims their medication has a 10% side effect rate. A doctor suspects it may be higher.",
+    p0: 0.10, direction: ">", pValue: 0.0312, alpha: 0.05, reject: true,
+    population: "all patients who take this medication", successDesc: "experience side effects",
+    correctAnswer: "Reject H\u2080. There is convincing evidence that the side effect rate is higher than 10%.",
+    wrongOptions: [
+      "Accept H\u2080. The side effect rate is exactly 10%.",
+      "Fail to reject H\u2080. There is not convincing evidence that the side effect rate is higher than 10%.",
+      "Reject H\u2080. We have proven the side effect rate is higher than 10%."
+    ]
+  },
+  {
+    context: "A school board claims that 90% of seniors graduate on time. A parent group thinks the true rate is different.",
+    p0: 0.90, direction: "!=", pValue: 0.2105, alpha: 0.05, reject: false,
+    population: "all seniors at the school", successDesc: "graduate on time",
+    correctAnswer: "Fail to reject H\u2080. There is not convincing evidence that the graduation rate differs from 90%.",
+    wrongOptions: [
+      "Accept H\u2080. The graduation rate is exactly 90%.",
+      "Reject H\u2080. There is convincing evidence that the graduation rate differs from 90%.",
+      "Fail to reject H\u2080. We have proven the graduation rate is 90%."
+    ]
+  },
+  {
+    context: "A cereal company claims that 20% of boxes contain a prize. Students believe the proportion is less.",
+    p0: 0.20, direction: "<", pValue: 0.2676, alpha: 0.05, reject: false,
+    population: "all cereal boxes produced", successDesc: "contain a prize",
+    correctAnswer: "Fail to reject H\u2080. There is not convincing evidence that the proportion of boxes with prizes is less than 20%.",
+    wrongOptions: [
+      "Accept H\u2080. Exactly 20% of boxes contain a prize.",
+      "Reject H\u2080. There is convincing evidence that fewer than 20% of boxes contain prizes.",
+      "Fail to reject H\u2080. We have proven that the proportion is at least 20%."
+    ]
+  },
+  {
+    context: "A newspaper reports that 40% of adults say football is their favorite sport. The mayor tests if the town differs.",
+    p0: 0.40, direction: "!=", pValue: 0.0244, alpha: 0.10, reject: true,
+    population: "all adults in the town", successDesc: "would say football is their favorite sport",
+    correctAnswer: "Reject H\u2080. There is convincing evidence that the proportion in this town differs from 40%.",
+    wrongOptions: [
+      "Accept the alternative hypothesis. The proportion is definitely not 40%.",
+      "Fail to reject H\u2080. There is not convincing evidence that the proportion differs from 40%.",
+      "Reject H\u2080. We have proven the proportion is not 40%."
+    ]
+  },
+  {
+    context: "A company claims 75% of customers are satisfied. A consumer group suspects the true proportion is lower.",
+    p0: 0.75, direction: "<", pValue: 0.0035, alpha: 0.01, reject: true,
+    population: "all customers of the company", successDesc: "are satisfied",
+    correctAnswer: "Reject H\u2080. There is convincing evidence that the proportion of satisfied customers is less than 75%.",
+    wrongOptions: [
+      "Accept H\u2080. The satisfaction rate is exactly 75%.",
+      "Fail to reject H\u2080. There is not convincing evidence that satisfaction is less than 75%.",
+      "Reject H\u2080. We have proven that fewer than 75% of customers are satisfied."
+    ]
+  },
+  {
+    context: "A researcher tests whether more than 60% of college students prefer online classes.",
+    p0: 0.60, direction: ">", pValue: 0.0890, alpha: 0.05, reject: false,
+    population: "all college students", successDesc: "prefer online classes",
+    correctAnswer: "Fail to reject H\u2080. There is not convincing evidence that more than 60% of students prefer online classes.",
+    wrongOptions: [
+      "Accept H\u2080. Exactly 60% of students prefer online classes.",
+      "Reject H\u2080. There is convincing evidence that more than 60% prefer online classes.",
+      "Fail to reject H\u2080. We have proven that the proportion is exactly 60%."
+    ]
+  },
+  {
+    context: "An environmental group tests whether the proportion of homeowners who compost has changed from 25%.",
+    p0: 0.25, direction: "!=", pValue: 0.0015, alpha: 0.05, reject: true,
+    population: "all homeowners in the region", successDesc: "compost food waste",
+    correctAnswer: "Reject H\u2080. There is convincing evidence that the proportion of homeowners who compost differs from 25%.",
+    wrongOptions: [
+      "Accept H\u2090. The proportion has definitely changed from 25%.",
+      "Fail to reject H\u2080. There is not convincing evidence of a change from 25%.",
+      "Reject H\u2080. We have proven the proportion is not 25%."
+    ]
+  },
+  {
+    context: "A car dealership tests whether the proportion of customers who finance their purchase has changed from 60%.",
+    p0: 0.60, direction: "!=", pValue: 0.4210, alpha: 0.10, reject: false,
+    population: "all customers at the dealership", successDesc: "finance their purchase",
+    correctAnswer: "Fail to reject H\u2080. There is not convincing evidence that the financing rate has changed from 60%.",
+    wrongOptions: [
+      "Accept H\u2080. The financing rate is exactly 60%.",
+      "Reject H\u2080. There is convincing evidence that the financing rate differs from 60%.",
+      "Fail to reject H\u2080. We have proven the financing rate is still 60%."
+    ]
+  },
+  {
+    context: "A health department tests whether the vaccination rate in a county is below 75%.",
+    p0: 0.75, direction: "<", pValue: 0.0470, alpha: 0.05, reject: true,
+    population: "all residents in the county", successDesc: "have been vaccinated",
+    correctAnswer: "Reject H\u2080. There is convincing evidence that the vaccination rate is less than 75%.",
+    wrongOptions: [
+      "Accept H\u2080. The vaccination rate is exactly 75%.",
+      "Fail to reject H\u2080. There is not convincing evidence that the rate is below 75%.",
+      "Reject H\u2080. We have proven the vaccination rate is below 75%."
+    ]
+  },
+  {
+    context: "A streaming service tests whether more than 70% of subscribers watch content daily.",
+    p0: 0.70, direction: ">", pValue: 0.1502, alpha: 0.10, reject: false,
+    population: "all subscribers on the platform", successDesc: "watch content daily",
+    correctAnswer: "Fail to reject H\u2080. There is not convincing evidence that more than 70% of subscribers watch daily.",
+    wrongOptions: [
+      "Accept H\u2080. Exactly 70% of subscribers watch daily.",
+      "Reject H\u2080. There is convincing evidence that more than 70% watch daily.",
+      "Fail to reject H\u2080. We have proven that 70% is the correct proportion."
+    ]
+  },
+  {
+    context: "A nonprofit tests whether less than 20% of donors give monthly.",
+    p0: 0.20, direction: "<", pValue: 0.0082, alpha: 0.01, reject: true,
+    population: "all donors to the nonprofit", successDesc: "donate monthly",
+    correctAnswer: "Reject H\u2080. There is convincing evidence that less than 20% of donors give monthly.",
+    wrongOptions: [
+      "Accept H\u2080. The monthly donation rate is exactly 20%.",
+      "Fail to reject H\u2080. There is not convincing evidence that the rate is below 20%.",
+      "Reject H\u2080. We have proven fewer than 20% of donors give monthly."
+    ]
+  },
+  {
+    context: "A teacher tests whether more than 45% of students complete homework on time.",
+    p0: 0.45, direction: ">", pValue: 0.0620, alpha: 0.05, reject: false,
+    population: "all students in the school", successDesc: "complete homework on time",
+    correctAnswer: "Fail to reject H\u2080. There is not convincing evidence that more than 45% of students complete homework on time.",
+    wrongOptions: [
+      "Accept H\u2080. Exactly 45% of students complete homework on time.",
+      "Reject H\u2080. There is convincing evidence that more than 45% complete homework on time.",
+      "Fail to reject H\u2080. We have proven the proportion is 45%."
+    ]
+  }
+];
+
+// ---- L32: Conclusion Error scenarios (6.6d) ----
+const conclusionErrorBank = [
+  {
+    context: "p-value = 0.12, \u03b1 = 0.05, H\u2080: p = 0.30, H\u2090: p < 0.30 (proportion of defective items)",
+    wrongConclusion: "Because the p-value of 0.12 is greater than \u03b1 = 0.05, we accept the null hypothesis. The defect rate is exactly 30%.",
+    correctError: "The conclusion says 'accept the null hypothesis.' We never accept H\u2080 \u2014 we only 'fail to reject' it. A lack of evidence against H\u2080 does not prove H\u2080 is true.",
+    distractors: [
+      "The p-value was compared incorrectly to \u03b1.",
+      "The conclusion is about H\u2080 instead of H\u2090.",
+      "The conclusion is missing context."
+    ]
+  },
+  {
+    context: "p-value = 0.003, \u03b1 = 0.05, H\u2080: p = 0.50, H\u2090: p > 0.50 (proportion who prefer a product)",
+    wrongConclusion: "Because the p-value of 0.003 is less than \u03b1 = 0.05, we reject H\u2080. We have proven that more than 50% of all consumers prefer our product.",
+    correctError: "The conclusion says 'proven.' In statistics, we never prove anything. We say there is 'convincing statistical evidence,' not proof.",
+    distractors: [
+      "The p-value was compared incorrectly to \u03b1.",
+      "The decision to reject H\u2080 is wrong.",
+      "The conclusion should say 'accept H\u2090.'"
+    ]
+  },
+  {
+    context: "p-value = 0.041, \u03b1 = 0.05, H\u2080: p = 0.60, H\u2090: p \u2260 0.60 (proportion who support a policy)",
+    wrongConclusion: "We reject the null hypothesis. There is convincing evidence that the support rate differs from 60%.",
+    correctError: "The conclusion does not explicitly compare the p-value to \u03b1. It must say 'Because the p-value of 0.041 is less than \u03b1 = 0.05' to justify the decision.",
+    distractors: [
+      "The decision to reject H\u2080 is wrong.",
+      "The conclusion says 'proven.'",
+      "The conclusion accepts the null hypothesis."
+    ]
+  },
+  {
+    context: "p-value = 0.23, \u03b1 = 0.10, H\u2080: p = 0.40, H\u2090: p > 0.40 (proportion who exercise regularly)",
+    wrongConclusion: "Because the p-value of 0.23 is greater than \u03b1 = 0.10, we fail to reject the null hypothesis. The proportion of adults who exercise regularly is 40%.",
+    correctError: "The conclusion states that the null hypothesis value is true ('the proportion is 40%'). When we fail to reject H\u2080, we say 'there is not convincing evidence for H\u2090,' not that H\u2080 is true.",
+    distractors: [
+      "The p-value was compared incorrectly to \u03b1.",
+      "The conclusion should say 'reject H\u2080.'",
+      "The conclusion is missing an explicit comparison."
+    ]
+  },
+  {
+    context: "p-value = 0.015, \u03b1 = 0.05, H\u2080: p = 0.25, H\u2090: p < 0.25 (proportion with a medical condition)",
+    wrongConclusion: "Because the p-value of 0.015 is less than \u03b1 = 0.05, we reject the null hypothesis. The proportion with the condition is less than 25%.",
+    correctError: "The conclusion lacks context and states the result as fact. It should say 'There is convincing statistical evidence that the proportion of [population] with the condition is less than 0.25.'",
+    distractors: [
+      "The p-value was compared incorrectly to \u03b1.",
+      "The decision to reject H\u2080 is wrong.",
+      "The conclusion accepts the null hypothesis."
+    ]
+  },
+  {
+    context: "p-value = 0.08, \u03b1 = 0.05, H\u2080: p = 0.70, H\u2090: p < 0.70 (proportion satisfied with service)",
+    wrongConclusion: "Because the p-value of 0.08 is less than \u03b1 = 0.05, we reject the null hypothesis. There is convincing evidence that satisfaction is below 70%.",
+    correctError: "The comparison is wrong: 0.08 is GREATER than 0.05, not less. Since p-value > \u03b1, we should fail to reject H\u2080, not reject it.",
+    distractors: [
+      "The conclusion says 'accept H\u2080.'",
+      "The conclusion says 'proven.'",
+      "The conclusion lacks context."
+    ]
+  },
+  {
+    context: "p-value = 0.002, \u03b1 = 0.01, H\u2080: p = 0.50, H\u2090: p \u2260 0.50 (proportion who prefer brand A)",
+    wrongConclusion: "Because the p-value of 0.002 is less than \u03b1 = 0.01, we reject the null hypothesis. We accept the alternative hypothesis that the proportion differs from 50%.",
+    correctError: "The conclusion says 'accept the alternative hypothesis.' We say 'there is convincing statistical evidence for H\u2090,' never 'accept H\u2090.'",
+    distractors: [
+      "The p-value was compared incorrectly to \u03b1.",
+      "The decision to reject H\u2080 is wrong.",
+      "The conclusion is missing context."
+    ]
+  },
+  {
+    context: "p-value = 0.35, \u03b1 = 0.05, H\u2080: p = 0.20, H\u2090: p > 0.20 (proportion of repeat customers)",
+    wrongConclusion: "Because the p-value of 0.35 is greater than \u03b1 = 0.05, we reject the null hypothesis. There is convincing evidence that more than 20% are repeat customers.",
+    correctError: "The decision is backwards. Since p-value (0.35) > \u03b1 (0.05), we should FAIL to reject H\u2080, not reject it. A large p-value means the data are consistent with H\u2080.",
+    distractors: [
+      "The conclusion says 'accept H\u2080.'",
+      "The conclusion says 'proven.'",
+      "The comparison of p-value to \u03b1 is missing."
+    ]
+  },
+  {
+    context: "p-value = 0.045, \u03b1 = 0.05, H\u2080: p = 0.30, H\u2090: p > 0.30 (proportion who use public transit)",
+    wrongConclusion: "Because the p-value of 0.045 is less than \u03b1 = 0.05, we reject the null hypothesis. There is not convincing evidence that the proportion using transit exceeds 30%.",
+    correctError: "The conclusion contradicts the decision. After rejecting H\u2080, the conclusion should say 'there IS convincing statistical evidence for H\u2090,' not 'there is NOT convincing evidence.'",
+    distractors: [
+      "The p-value was compared incorrectly to \u03b1.",
+      "The conclusion accepts the null hypothesis.",
+      "The conclusion says 'proven.'"
+    ]
+  },
+  {
+    context: "p-value = 0.09, \u03b1 = 0.10, H\u2080: p = 0.15, H\u2090: p \u2260 0.15 (proportion of late deliveries)",
+    wrongConclusion: "Because the p-value of 0.09 is less than \u03b1 = 0.10, we reject the null hypothesis. There is convincing statistical evidence that the late delivery rate is higher than 15%.",
+    correctError: "The conclusion is about the wrong alternative. H\u2090 says p \u2260 0.15 (two-sided), but the conclusion says 'higher than 15%' (one-sided). The conclusion must match H\u2090: the rate 'differs from' 15%.",
+    distractors: [
+      "The p-value was compared incorrectly to \u03b1.",
+      "The decision to reject H\u2080 is wrong.",
+      "The conclusion says 'accept H\u2080.'"
+    ]
+  },
+  {
+    context: "p-value = 0.18, \u03b1 = 0.05, H\u2080: p = 0.65, H\u2090: p < 0.65 (proportion of alumni who donate)",
+    wrongConclusion: "The p-value is 0.18 which is not significant. We fail to reject. The proportion of alumni who donate is not less than 65%.",
+    correctError: "Multiple errors: (1) no explicit comparison of p-value to \u03b1, (2) the conclusion states H\u2080 is true ('is not less than 65%'). Should say: 'Because the p-value of 0.18 > \u03b1 = 0.05, we fail to reject H\u2080. There is not convincing evidence that the proportion is less than 65%.'",
+    distractors: [
+      "The decision to fail to reject is wrong.",
+      "The conclusion says 'proven.'",
+      "The conclusion accepts the alternative hypothesis."
+    ]
+  },
+  {
+    context: "p-value = 0.004, \u03b1 = 0.05, H\u2080: p = 0.85, H\u2090: p > 0.85 (proportion of teens using social media)",
+    wrongConclusion: "Because the p-value of 0.004 is less than \u03b1 = 0.05, we reject the null hypothesis. There is convincing statistical evidence for H\u2090.",
+    correctError: "The conclusion says 'convincing evidence for H\u2090' but does not state H\u2090 in context. Must say: 'There is convincing statistical evidence that the proportion of teens using social media daily is greater than 85%.'",
+    distractors: [
+      "The p-value was compared incorrectly to \u03b1.",
+      "The decision to reject H\u2080 is wrong.",
+      "The conclusion accepts the null hypothesis."
+    ]
+  }
+];
+
+// ---- L33/L34: Full significance test / Capstone 6.6 scenarios ----
+const fullTestBank = [
+  {
+    context: "To investigate if high school students associate the color green with being more natural, researchers randomly selected 30 students. Each tasted two cups of lemonade. 18 of 30 chose the green cup as tasting more natural.",
+    population: "all students at the school",
+    successDesc: "would choose the green cup",
+    p0: 0.50, direction: ">", pHat: 0.60, n: 30, keyword: "more than",
+    alpha: 0.05
+  },
+  {
+    context: "A newspaper reports that 40% of adults would say football is their favorite sport. A mayor surveys a random sample of 100 adults in her town and finds 29 say football.",
+    population: "all adults in the town",
+    successDesc: "would say football is their favorite sport",
+    p0: 0.40, direction: "!=", pHat: 0.29, n: 100, keyword: "differs",
+    alpha: 0.10
+  },
+  {
+    context: "A cereal company claims 20% of boxes contain a prize voucher. Skeptical students purchase 65 boxes and find 11 with vouchers.",
+    population: "all boxes of this cereal",
+    successDesc: "contain a prize voucher",
+    p0: 0.20, direction: "<", pHat: 0.169, n: 65, keyword: "less than",
+    alpha: 0.05
+  },
+  {
+    context: "A pharmaceutical company claims their medication has a 10% side effect rate. A researcher surveys 200 patients and finds 28 experienced side effects.",
+    population: "all patients who take this medication",
+    successDesc: "experience side effects",
+    p0: 0.10, direction: ">", pHat: 0.14, n: 200, keyword: "higher",
+    alpha: 0.05
+  },
+  {
+    context: "A city claims that 50% of households recycle. An environmental group randomly surveys 350 households and finds 196 that recycle.",
+    population: "all households in the city",
+    successDesc: "recycle regularly",
+    p0: 0.50, direction: "!=", pHat: 0.56, n: 350, keyword: "different",
+    alpha: 0.05
+  },
+  {
+    context: "A university reports that 65% of alumni donate within 5 years. An administrator randomly samples 300 alumni and finds 174 who donated.",
+    population: "all alumni of the university",
+    successDesc: "donate within 5 years of graduation",
+    p0: 0.65, direction: "!=", pHat: 0.58, n: 300, keyword: "changed",
+    alpha: 0.05
+  },
+  {
+    context: "A fitness app claims 30% of users exercise daily. A researcher randomly surveys 250 users and finds 90 who exercise daily.",
+    population: "all users of the fitness app",
+    successDesc: "exercise daily",
+    p0: 0.30, direction: ">", pHat: 0.36, n: 250, keyword: "higher",
+    alpha: 0.01
+  },
+  {
+    context: "A school board claims that 90% of seniors graduate on time. A parent group randomly surveys 120 seniors and finds 101 who graduated on time.",
+    population: "all seniors at the school",
+    successDesc: "graduate on time",
+    p0: 0.90, direction: "!=", pHat: 0.842, n: 120, keyword: "different",
+    alpha: 0.10
+  },
+  {
+    context: "A consumer group suspects fewer than 40% of shoppers read nutrition labels. They randomly survey 180 shoppers and find 63 who read labels.",
+    population: "all shoppers at the supermarket",
+    successDesc: "read nutrition labels",
+    p0: 0.40, direction: "<", pHat: 0.35, n: 180, keyword: "fewer",
+    alpha: 0.05
+  },
+  {
+    context: "A hospital administrator claims that 80% of patients are satisfied with care. A random sample of 200 patients reveals 148 who are satisfied.",
+    population: "all patients at the hospital",
+    successDesc: "are satisfied with their care",
+    p0: 0.80, direction: "<", pHat: 0.74, n: 200, keyword: "lower",
+    alpha: 0.05
+  },
+  {
+    context: "A political campaign claims that support for their candidate exceeds 55%. A random poll of 400 likely voters finds 236 who support the candidate.",
+    population: "all likely voters in the district",
+    successDesc: "support the candidate",
+    p0: 0.55, direction: ">", pHat: 0.59, n: 400, keyword: "more than",
+    alpha: 0.05
+  },
+  {
+    context: "A national survey claims that 25% of pet owners feed their pets organic food. A local vet surveys a random sample of 280 pet owners and finds 56 who do.",
+    population: "all pet owners in the area",
+    successDesc: "feed their pets organic food",
+    p0: 0.25, direction: "!=", pHat: 0.20, n: 280, keyword: "differs",
+    alpha: 0.05
+  }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -2620,6 +3058,252 @@ export function generateProblem(modeId, context, mode) {
     };
 
     scenario = `${scen.context}\n\np\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}\n\n(1) Write H\u2080 and H\u2090.\n(2) Calculate the test statistic z.\n(3) Calculate the p-value.\n(4) Interpret the p-value in context.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L29: Compare p-Value to Alpha (6.6a) ==========
+  if (modeId === "l29-compare-pvalue-alpha") {
+    const scen = drawFromBag('comparePValueAlpha', comparePValueAlphaBank);
+
+    const dirSymbol = scen.direction === ">" ? ">" : scen.direction === "<" ? "<" : "\u2260";
+
+    ctx = {
+      topicId: "6.6: Compare p-Value to Alpha",
+      scenarioText: `${scen.context}\n\nH\u2080: p = ${scen.p0}, H\u2090: p ${dirSymbol} ${scen.p0}\np-value = ${scen.pValue}, \u03b1 = ${scen.alpha}`,
+      givenText: `p-value = ${scen.pValue}, \u03b1 = ${scen.alpha}`,
+      questionText: `The p-value is ${scen.pValue} and the significance level is \u03b1 = ${scen.alpha}. Compare the p-value to \u03b1 and state the decision.`,
+      pValue: `${scen.pValue}`,
+      alpha: `${scen.alpha}`
+    };
+
+    const correctChoice = scen.reject
+      ? "p-value \u2264 \u03b1 (reject H\u2080)"
+      : "p-value > \u03b1 (fail to reject H\u2080)";
+
+    answers = {
+      compareAnswer: { value: correctChoice }
+    };
+
+    scenario = `${scen.context}\n\np-value = ${scen.pValue}, \u03b1 = ${scen.alpha}\n\nCompare the p-value to \u03b1 and state the decision.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L30: Make the Decision (6.6b) ==========
+  if (modeId === "l30-reject-decision") {
+    const scen = drawFromBag('rejectDecision', rejectDecisionBank);
+
+    const dirSymbol = scen.direction === ">" ? ">" : scen.direction === "<" ? "<" : "\u2260";
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "6.6: Make the Decision",
+      scenarioText: `${scen.context}\n\nH\u2080: p = ${scen.p0}, H\u2090: p ${dirSymbol} ${scen.p0}\np-value = ${scen.pValue}, \u03b1 = ${scen.alpha}`,
+      givenText: `p-value = ${scen.pValue}, \u03b1 = ${scen.alpha}`,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      decisionAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = `${scen.context}\n\nH\u2080: p = ${scen.p0}, H\u2090: p ${dirSymbol} ${scen.p0}\np-value = ${scen.pValue}, \u03b1 = ${scen.alpha}\n\nWhat is the correct decision and conclusion?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L31: Write Conclusion (6.6c) ==========
+  if (modeId === "l31-write-conclusion") {
+    const scen = drawFromBag('fullTest_l31', fullTestBank);
+
+    const dirSymbol = scen.direction === ">" ? ">" : scen.direction === "<" ? "<" : "\u2260";
+    const sd = Math.sqrt(scen.p0 * (1 - scen.p0) / scen.n);
+    const zStat = (scen.pHat - scen.p0) / sd;
+    const zRounded = Math.round(zStat * 100) / 100;
+
+    let pValue;
+    if (scen.direction === ">") {
+      pValue = 1 - normalCDF(zRounded);
+    } else if (scen.direction === "<") {
+      pValue = normalCDF(zRounded);
+    } else {
+      pValue = 2 * (1 - normalCDF(Math.abs(zRounded)));
+    }
+    const pValueRounded = Math.round(pValue * 10000) / 10000;
+    const reject = pValueRounded <= scen.alpha;
+
+    const haContext = scen.direction === ">"
+      ? `more than ${scen.p0 * 100}% of ${scen.population} ${scen.successDesc}`
+      : scen.direction === "<"
+        ? `less than ${scen.p0 * 100}% of ${scen.population} ${scen.successDesc}`
+        : `the proportion of ${scen.population} who ${scen.successDesc} differs from ${scen.p0}`;
+
+    const expectedConclusion = reject
+      ? `Because the p-value of ${pValueRounded} is less than \u03b1 = ${scen.alpha}, we reject H\u2080. There is convincing statistical evidence that ${haContext}.`
+      : `Because the p-value of ${pValueRounded} is greater than \u03b1 = ${scen.alpha}, we fail to reject H\u2080. There is not convincing statistical evidence that ${haContext}.`;
+
+    ctx = {
+      topicId: "6.6: Write the Conclusion",
+      scenarioText: `${scen.context}\n\nH\u2080: p = ${scen.p0}, H\u2090: p ${dirSymbol} ${scen.p0}\nz = ${zRounded}, p-value = ${pValueRounded}, \u03b1 = ${scen.alpha}`,
+      givenText: `p-value = ${pValueRounded}, \u03b1 = ${scen.alpha}, H\u2090: p ${dirSymbol} ${scen.p0}`,
+      pValue: `${pValueRounded}`,
+      alpha: `${scen.alpha}`,
+      direction: scen.direction,
+      p0: `${scen.p0}`,
+      population: scen.population,
+      successDesc: scen.successDesc,
+      reject: reject,
+      haContext: haContext
+    };
+
+    answers = {
+      conclusionText: { value: expectedConclusion }
+    };
+
+    scenario = `${scen.context}\n\nH\u2080: p = ${scen.p0}, H\u2090: p ${dirSymbol} ${scen.p0}\nz = ${zRounded}, p-value = ${pValueRounded}, \u03b1 = ${scen.alpha}\n\nWrite a complete conclusion for this significance test.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L32: Conclusion Errors (6.6d) ==========
+  if (modeId === "l32-conclusion-errors") {
+    const scen = drawFromBag('conclusionErrors', conclusionErrorBank);
+
+    const allOptions = shuffle([scen.correctError, ...scen.distractors]);
+
+    ctx = {
+      topicId: "6.6: Identify Conclusion Errors",
+      scenarioText: `${scen.context}\n\nGiven conclusion:\n"${scen.wrongConclusion}"`,
+      givenText: scen.context,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3],
+      wrongConclusion: scen.wrongConclusion
+    };
+
+    answers = {
+      conclusionErrorAnswer: { value: scen.correctError }
+    };
+
+    scenario = `${scen.context}\n\nA student wrote this conclusion:\n"${scen.wrongConclusion}"\n\nWhat error is in this conclusion?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L33: Full Significance Test (6.6e) ==========
+  if (modeId === "l33-full-test") {
+    const scen = drawFromBag('fullTest_l33', fullTestBank);
+
+    const dirSymbol = scen.direction === ">" ? ">" : scen.direction === "<" ? "<" : "\u2260";
+    const sd = Math.sqrt(scen.p0 * (1 - scen.p0) / scen.n);
+    const zStat = (scen.pHat - scen.p0) / sd;
+    const zRounded = Math.round(zStat * 100) / 100;
+
+    let pValue;
+    if (scen.direction === ">") {
+      pValue = 1 - normalCDF(zRounded);
+    } else if (scen.direction === "<") {
+      pValue = normalCDF(zRounded);
+    } else {
+      pValue = 2 * (1 - normalCDF(Math.abs(zRounded)));
+    }
+    const pValueRounded = Math.round(pValue * 10000) / 10000;
+    const reject = pValueRounded <= scen.alpha;
+
+    const haContext = scen.direction === ">"
+      ? `more than ${scen.p0 * 100}% of ${scen.population} ${scen.successDesc}`
+      : scen.direction === "<"
+        ? `less than ${scen.p0 * 100}% of ${scen.population} ${scen.successDesc}`
+        : `the proportion of ${scen.population} who ${scen.successDesc} differs from ${scen.p0}`;
+
+    const expectedConclusion = reject
+      ? `Because the p-value of ${pValueRounded} is less than \u03b1 = ${scen.alpha}, we reject H\u2080. There is convincing statistical evidence that ${haContext}.`
+      : `Because the p-value of ${pValueRounded} is greater than \u03b1 = ${scen.alpha}, we fail to reject H\u2080. There is not convincing statistical evidence that ${haContext}.`;
+
+    ctx = {
+      topicId: "6.6: Complete Significance Test",
+      scenarioText: `${scen.context}\n\np\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}, \u03b1 = ${scen.alpha}`,
+      givenText: `p\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}, \u03b1 = ${scen.alpha}`,
+      pHat: `${scen.pHat}`,
+      p0: `${scen.p0}`,
+      n: `${scen.n}`,
+      direction: scen.direction,
+      alpha: `${scen.alpha}`,
+      population: scen.population,
+      successDesc: scen.successDesc,
+      keyword: scen.keyword,
+      reject: reject,
+      haContext: haContext
+    };
+
+    answers = {
+      fullTestNull: { value: `H\u2080: p = ${scen.p0}` },
+      fullTestAlt: { value: `H\u2090: p ${dirSymbol} ${scen.p0}` },
+      fullTestZStat: { value: zRounded, tolerance: 0.02 },
+      fullTestPValue: { value: pValueRounded, tolerance: 0.002 },
+      fullTestConclusion: { value: expectedConclusion }
+    };
+
+    scenario = `${scen.context}\n\np\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}, \u03b1 = ${scen.alpha}\n\n(1) Write H\u2080 and H\u2090.\n(2) Calculate the test statistic z.\n(3) Calculate the p-value.\n(4) Write your conclusion.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L34: Capstone 6.6 ==========
+  if (modeId === "l34-capstone-66") {
+    const scen = drawFromBag('fullTest_l34', fullTestBank);
+
+    const dirSymbol = scen.direction === ">" ? ">" : scen.direction === "<" ? "<" : "\u2260";
+    const sd = Math.sqrt(scen.p0 * (1 - scen.p0) / scen.n);
+    const zStat = (scen.pHat - scen.p0) / sd;
+    const zRounded = Math.round(zStat * 100) / 100;
+
+    let pValue;
+    if (scen.direction === ">") {
+      pValue = 1 - normalCDF(zRounded);
+    } else if (scen.direction === "<") {
+      pValue = normalCDF(zRounded);
+    } else {
+      pValue = 2 * (1 - normalCDF(Math.abs(zRounded)));
+    }
+    const pValueRounded = Math.round(pValue * 10000) / 10000;
+    const reject = pValueRounded <= scen.alpha;
+
+    const haContext = scen.direction === ">"
+      ? `more than ${scen.p0 * 100}% of ${scen.population} ${scen.successDesc}`
+      : scen.direction === "<"
+        ? `less than ${scen.p0 * 100}% of ${scen.population} ${scen.successDesc}`
+        : `the proportion of ${scen.population} who ${scen.successDesc} differs from ${scen.p0}`;
+
+    const expectedConclusion = reject
+      ? `Because the p-value of ${pValueRounded} is less than \u03b1 = ${scen.alpha}, we reject H\u2080. There is convincing statistical evidence that ${haContext}.`
+      : `Because the p-value of ${pValueRounded} is greater than \u03b1 = ${scen.alpha}, we fail to reject H\u2080. There is not convincing statistical evidence that ${haContext}.`;
+
+    ctx = {
+      topicId: "6.6: Capstone \u2014 Full Test with Conclusion",
+      scenarioText: `${scen.context}\n\np\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}, \u03b1 = ${scen.alpha}`,
+      givenText: `p\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}, \u03b1 = ${scen.alpha}`,
+      pHat: `${scen.pHat}`,
+      p0: `${scen.p0}`,
+      n: `${scen.n}`,
+      direction: scen.direction,
+      alpha: `${scen.alpha}`,
+      population: scen.population,
+      successDesc: scen.successDesc,
+      keyword: scen.keyword,
+      reject: reject,
+      haContext: haContext
+    };
+
+    answers = {
+      cap66Null: { value: `H\u2080: p = ${scen.p0}` },
+      cap66Alt: { value: `H\u2090: p ${dirSymbol} ${scen.p0}` },
+      cap66ParamDef: { value: `p = the proportion of ${scen.population} who ${scen.successDesc}` },
+      cap66ZStat: { value: zRounded, tolerance: 0.02 },
+      cap66PValue: { value: pValueRounded, tolerance: 0.002 },
+      cap66Conclusion: { value: expectedConclusion }
+    };
+
+    scenario = `${scen.context}\n\np\u0302 = ${scen.pHat}, p\u2080 = ${scen.p0}, n = ${scen.n}, \u03b1 = ${scen.alpha}\n\n(1) Write H\u2080 and H\u2090.\n(2) Define the parameter p.\n(3) Calculate the test statistic z.\n(4) Calculate the p-value.\n(5) Write your complete conclusion.`;
     return { context: ctx, graphConfig, answers, scenario };
   }
 

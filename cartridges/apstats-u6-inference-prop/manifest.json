@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u6-inference-prop",
-    "name": "Inference for Proportions (6.1-6.5)",
+    "name": "Inference for Proportions (6.1-6.6)",
     "subject": "AP Statistics",
-    "description": "Logic of significance testing, confidence intervals for a population proportion: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided)"
+    "description": "Logic of significance testing, confidence intervals for a population proportion: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests"
   },
   "config": {
     "contextsFile": null,
@@ -21,7 +21,9 @@
       "VAR-6.E",
       "VAR-6.F",
       "VAR-6.G",
-      "VAR-6.H"
+      "VAR-6.H",
+      "VAR-6.I",
+      "DAT-3.A"
     ]
   },
   "display": {
@@ -772,6 +774,191 @@
           }
         ]
       }
+    },
+    {
+      "id": "l29-compare-pvalue-alpha",
+      "name": "6.6a: Compare p-Value to Alpha",
+      "animation": "assets/ComparePValueAlpha.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "compareAnswer",
+            "type": "choice",
+            "label": "{{questionText}}",
+            "options": [
+              "p-value \u2264 \u03b1 (reject H\u2080)",
+              "p-value > \u03b1 (fail to reject H\u2080)"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l30-reject-decision",
+      "name": "6.6b: Make the Decision",
+      "animation": "assets/RejectDecision.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "decisionAnswer",
+            "type": "dropdown",
+            "label": "Based on the p-value and significance level, what is the correct decision?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l31-write-conclusion",
+      "name": "6.6c: Write the Conclusion",
+      "animation": "assets/WriteConclusion.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "conclusionText",
+            "type": "textarea",
+            "label": "Write a complete conclusion for this significance test:",
+            "rows": 4,
+            "placeholder": "Because the p-value of ___ is [less than / greater than] \u03b1 = ___, we [reject / fail to reject] H\u2080. There [is / is not] convincing statistical evidence that..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l32-conclusion-errors",
+      "name": "6.6d: Identify Conclusion Errors",
+      "animation": "assets/ConclusionErrors.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "conclusionErrorAnswer",
+            "type": "dropdown",
+            "label": "What error is in this conclusion?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l33-full-test",
+      "name": "6.6e: Complete Significance Test",
+      "animation": "assets/FullSignificanceTest.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "fullTestNull",
+            "type": "text",
+            "label": "Write the null hypothesis:",
+            "placeholder": "H0: p = ..."
+          },
+          {
+            "id": "fullTestAlt",
+            "type": "text",
+            "label": "Write the alternative hypothesis:",
+            "placeholder": "Ha: p ..."
+          },
+          {
+            "id": "fullTestZStat",
+            "type": "number",
+            "label": "Calculate the test statistic z:",
+            "step": 0.01
+          },
+          {
+            "id": "fullTestPValue",
+            "type": "number",
+            "label": "Calculate the p-value:",
+            "step": 0.0001,
+            "min": 0,
+            "max": 1
+          },
+          {
+            "id": "fullTestConclusion",
+            "type": "textarea",
+            "label": "Write your conclusion:",
+            "rows": 4,
+            "placeholder": "Because the p-value of ___ is [less than / greater than] \u03b1 = ___, we [reject / fail to reject] H\u2080. There [is / is not] convincing statistical evidence that..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l34-capstone-66",
+      "name": "6.6 Capstone",
+      "animation": "assets/Capstone66.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "cap66Null",
+            "type": "text",
+            "label": "Write the null hypothesis:",
+            "placeholder": "H0: p = ..."
+          },
+          {
+            "id": "cap66Alt",
+            "type": "text",
+            "label": "Write the alternative hypothesis:",
+            "placeholder": "Ha: p ..."
+          },
+          {
+            "id": "cap66ParamDef",
+            "type": "textarea",
+            "label": "Define the parameter p in context:",
+            "rows": 2,
+            "placeholder": "p = the proportion of all ... who ..."
+          },
+          {
+            "id": "cap66ZStat",
+            "type": "number",
+            "label": "Calculate the test statistic z:",
+            "step": 0.01
+          },
+          {
+            "id": "cap66PValue",
+            "type": "number",
+            "label": "Calculate the p-value:",
+            "step": 0.0001,
+            "min": 0,
+            "max": 1
+          },
+          {
+            "id": "cap66Conclusion",
+            "type": "textarea",
+            "label": "Write your complete conclusion:",
+            "rows": 4,
+            "placeholder": "Because the p-value of ___ is [less than / greater than] \u03b1 = ___, we [reject / fail to reject] H\u2080. There [is / is not] convincing statistical evidence that..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -836,7 +1023,22 @@
       "cap65Alt": "H\u2090: p [direction] [value]. Direction from the research question.",
       "cap65ZStat": "z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Use p\u2080 in the standard deviation.",
       "cap65PValue": "Match the tail direction to Ha. One-sided: single tail. Two-sided: double the one-tail area.",
-      "cap65Interpret": "Include: (1) assume H\u2080 true, (2) the p-value probability, (3) sample proportion 'or more extreme', (4) 'by chance alone', (5) context."
+      "cap65Interpret": "Include: (1) assume H\u2080 true, (2) the p-value probability, (3) sample proportion 'or more extreme', (4) 'by chance alone', (5) context.",
+      "compareAnswer": "Compare the p-value to \u03b1. If p-value \u2264 \u03b1, reject H\u2080. If p-value > \u03b1, fail to reject H\u2080.",
+      "decisionAnswer": "If p-value \u2264 \u03b1 \u2192 reject H\u2080 (convincing evidence for Ha). If p-value > \u03b1 \u2192 fail to reject H\u2080 (not convincing evidence for Ha). Never 'accept H\u2080' or 'prove Ha'.",
+      "conclusionText": "Template: 'Because the p-value of ___ is [less than / greater than] \u03b1 = ___, we [reject / fail to reject] H\u2080. There [is / is not] convincing statistical evidence that [Ha in context].' Must explicitly compare p-value to \u03b1, state the decision, and state the conclusion about Ha in context.",
+      "conclusionErrorAnswer": "Common errors: (1) accepting H\u2080 instead of failing to reject, (2) saying 'proves' Ha is true, (3) not comparing p-value to \u03b1 explicitly, (4) concluding about H\u2080 instead of Ha, (5) no context.",
+      "fullTestNull": "H\u2080: p = [claimed value]. Always uses '=' sign.",
+      "fullTestAlt": "H\u2090: p [direction] [value]. Direction from the research question.",
+      "fullTestZStat": "z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Use p\u2080 in the denominator.",
+      "fullTestPValue": "Match the tail direction to Ha. One-sided: single tail. Two-sided: double the one-tail area.",
+      "fullTestConclusion": "Because the p-value of ___ is [comparison] \u03b1 = ___, we [decision]. There [is/is not] convincing statistical evidence that [Ha in context].",
+      "cap66Null": "H\u2080: p = [claimed value]. Always uses '=' sign.",
+      "cap66Alt": "H\u2090: p [direction] [value]. Direction from the research question.",
+      "cap66ParamDef": "p = the proportion of ALL [population] who [would do something].",
+      "cap66ZStat": "z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Use p\u2080 in the standard deviation.",
+      "cap66PValue": "Match the tail direction to Ha. One-sided: single tail. Two-sided: double the one-tail area.",
+      "cap66Conclusion": "Include all four elements: (1) explicit p-value to \u03b1 comparison, (2) reject/fail to reject decision, (3) conclusion about Ha, (4) context."
     },
     "penalty": {
       "0": "gold",
@@ -1016,6 +1218,42 @@
         "name": "28",
         "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Topic 6.5 mastered! You can calculate and interpret test statistics and p-values for a population proportion!"
+      },
+      {
+        "id": "l29-compare-pvalue-alpha",
+        "name": "29",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can compare p-values to significance levels! Now learn to make the full decision."
+      },
+      {
+        "id": "l30-reject-decision",
+        "name": "30",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Decision made! Now write the full conclusion in context."
+      },
+      {
+        "id": "l31-write-conclusion",
+        "name": "31",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Conclusion written! Now learn to spot conclusion errors."
+      },
+      {
+        "id": "l32-conclusion-errors",
+        "name": "32",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Error detective! Now put it all together in a complete test."
+      },
+      {
+        "id": "l33-full-test",
+        "name": "33",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Complete test mastered! Time for the 6.6 capstone."
+      },
+      {
+        "id": "l34-capstone-66",
+        "name": "34",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Topic 6.6 mastered! You can perform and conclude a complete significance test for a population proportion!"
       }
     ]
   }

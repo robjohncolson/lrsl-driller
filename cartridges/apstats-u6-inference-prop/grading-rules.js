@@ -1,9 +1,11 @@
-// grading-rules.js - AP Statistics Unit 6 Topics 6.1-6.5
+// grading-rules.js - AP Statistics Unit 6 Topics 6.1-6.6
 // Topics: Logic of significance testing, confidence intervals for a population proportion,
 // interpreting CIs, justifying claims, confidence level meaning, factors affecting ME,
 // null/alternative hypotheses, identify test procedure, test conditions,
 // calculate test statistic (z-score), calculate p-value, interpret p-value,
-// test direction (one-sided vs two-sided)
+// test direction (one-sided vs two-sided), compare p-value to alpha,
+// reject/fail-to-reject decisions, write conclusions, conclusion errors,
+// full significance test, capstone 6.6
 // Identify evidence, two explanations, convincing evidence, identify procedure,
 // check conditions, standard error, critical values, margin of error,
 // confidence intervals, minimum sample size, capstone, CI interpretation,
@@ -57,7 +59,11 @@ export function gradeField(fieldId, answer, context) {
     "cap64ParamDef",
     "cap64ConditionsWork",
     "pvalueInterpretation",
-    "cap65Interpret"
+    "cap65Interpret",
+    "conclusionText",
+    "fullTestConclusion",
+    "cap66ParamDef",
+    "cap66Conclusion"
   ]);
 
   if (isBlank(answer)) {
@@ -71,7 +77,9 @@ export function gradeField(fieldId, answer, context) {
       "sampleSizeAnswer",
       "capstoneLower", "capstoneUpper",
       "zStatAnswer", "pvalueAnswer",
-      "cap65ZStat", "cap65PValue"
+      "cap65ZStat", "cap65PValue",
+      "fullTestZStat", "fullTestPValue",
+      "cap66ZStat", "cap66PValue"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -1178,6 +1186,328 @@ export function gradeField(fieldId, answer, context) {
       return { score: "P", feedback: `Right direction, but the p\u2080 value should be ${p0}. Correct: ${expected}` };
     }
     return { score: "I", feedback: `Incorrect. The correct alternative is: ${expected}. Direction comes from the research question keywords.` };
+  }
+
+  // ========== L29: Compare p-Value to Alpha (Choice) ==========
+  if (fieldId === "compareAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You correctly compared the p-value to the significance level \u03b1."
+      };
+    }
+    // Check if student made the wrong comparison
+    if (containsAny(answer, ["reject"]) && containsAny(expected, ["fail to reject"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. The p-value is GREATER than \u03b1, so we fail to reject H\u2080. Remember: reject only when p-value \u2264 \u03b1.`
+      };
+    }
+    if (containsAny(answer, ["fail to reject"]) && containsAny(expected, ["reject"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. The p-value is LESS THAN or equal to \u03b1, so we reject H\u2080. Remember: reject when p-value \u2264 \u03b1.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${expected}. If p-value \u2264 \u03b1 \u2192 reject H\u2080. If p-value > \u03b1 \u2192 fail to reject H\u2080.`
+    };
+  }
+
+  // ========== L30: Reject Decision (Dropdown) ==========
+  if (fieldId === "decisionAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You made the right decision and stated it properly."
+      };
+    }
+    // Detect "accept H0" error
+    if (containsAny(answer, ["accept h", "accept the null"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. We never 'accept' the null hypothesis. When p-value > \u03b1, we 'fail to reject H\u2080' and say there is 'not convincing evidence' for H\u2090. The correct answer is: ${expected}`
+      };
+    }
+    // Detect "proven" error
+    if (containsAny(answer, ["proven", "prove"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. In statistics, we never 'prove' anything. We say there is 'convincing statistical evidence for H\u2090,' not that we've proven it. The correct answer is: ${expected}`
+      };
+    }
+    // Wrong decision direction
+    if (containsAny(answer, ["reject"]) && containsAny(expected, ["fail to reject"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. Since p-value > \u03b1, we should FAIL TO REJECT H\u2080. The correct answer is: ${expected}`
+      };
+    }
+    if (containsAny(answer, ["fail to reject"]) && !containsAny(expected, ["fail to reject"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. Since p-value \u2264 \u03b1, we should REJECT H\u2080. The correct answer is: ${expected}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct answer is: ${expected}`
+    };
+  }
+
+  // ========== L31/L33/L34: Write Conclusion (Textarea) ==========
+  if (fieldId === "conclusionText" || fieldId === "fullTestConclusion" || fieldId === "cap66Conclusion") {
+    const explicitCompare = containsAny(answer, ["less than", "greater than", "is less", "is greater", "\u2264", ">", "< \u03b1", "> \u03b1", "< alpha", "> alpha"]);
+    const mentionsPValue = containsAny(answer, ["p-value", "p value", "pvalue"]);
+    const mentionsAlpha = containsAny(answer, ["\u03b1", "alpha", "significance level", "0.05", "0.01", "0.10"]);
+    const mentionsDecision = containsAny(answer, ["reject", "fail to reject"]);
+    const mentionsEvidence = containsAny(answer, ["convincing", "evidence"]);
+    const hasContext = answer.trim().split(/\s+/).length >= 12;
+
+    // Check for fatal errors
+    const hasAcceptNull = containsAny(answer, ["accept the null", "accept h0", "accept h\u2080"]);
+    const hasProven = containsAny(answer, ["proven", "proves", "we have proved"]);
+    const hasAcceptAlt = containsAny(answer, ["accept the alternative", "accept ha", "accept h\u2090"]);
+
+    if (hasAcceptNull) {
+      return {
+        score: "I",
+        feedback: "Never 'accept the null hypothesis.' When p-value > \u03b1, say 'we fail to reject H\u2080' and 'there is not convincing statistical evidence for H\u2090 [in context].' A lack of evidence against H\u2080 does not mean H\u2080 is true."
+      };
+    }
+    if (hasProven) {
+      return {
+        score: "I",
+        feedback: "Never say 'proven' in statistics. We say 'there is convincing statistical evidence that...' Hypothesis tests are based on probabilities and always carry some chance of error."
+      };
+    }
+    if (hasAcceptAlt) {
+      return {
+        score: "P",
+        feedback: "Avoid saying 'accept H\u2090.' Instead say 'there is convincing statistical evidence that [H\u2090 in context].' We reject H\u2080, but we don't 'accept' any hypothesis."
+      };
+    }
+
+    // Check for contradictory conclusion (reject but says no evidence, or fail to reject but says evidence)
+    const saysReject = containsAny(answer, ["reject h"]) && !containsAny(answer, ["fail to reject"]);
+    const saysNoEvidence = containsAny(answer, ["not convincing", "no convincing", "is not convincing"]);
+    const saysEvidence = containsAny(answer, ["convincing statistical evidence", "convincing evidence"]) && !saysNoEvidence;
+
+    if (saysReject && saysNoEvidence) {
+      return {
+        score: "I",
+        feedback: "Contradiction: you rejected H\u2080 but then said there is NOT convincing evidence. If you reject H\u2080, there IS convincing evidence for H\u2090."
+      };
+    }
+
+    const elementCount = [explicitCompare, mentionsPValue, mentionsAlpha, mentionsDecision, mentionsEvidence, hasContext].filter(Boolean).length;
+
+    // E: explicit comparison + decision + evidence + context
+    if (explicitCompare && mentionsDecision && mentionsEvidence && hasContext) {
+      return {
+        score: "E",
+        feedback: "Excellent conclusion! You explicitly compared the p-value to \u03b1, stated the decision, and concluded about H\u2090 in context."
+      };
+    }
+    // P: missing one key element
+    if (elementCount >= 3) {
+      const missing = [];
+      if (!explicitCompare) missing.push("explicitly compare p-value to \u03b1 ('Because the p-value of ___ is [less/greater] than \u03b1 = ___')");
+      if (!mentionsDecision) missing.push("state the decision ('we reject H\u2080' or 'we fail to reject H\u2080')");
+      if (!mentionsEvidence) missing.push("state the conclusion about H\u2090 ('There [is/is not] convincing statistical evidence that...')");
+      if (!hasContext) missing.push("include context (what the proportion represents)");
+      return {
+        score: "P",
+        feedback: `Good start! To earn full credit, also: ${missing.join("; ")}. Template: 'Because the p-value of ___ is [less/greater] than \u03b1 = ___, we [reject/fail to reject] H\u2080. There [is/is not] convincing statistical evidence that [H\u2090 in context].'`
+      };
+    }
+    return {
+      score: "I",
+      feedback: "A complete conclusion must include FOUR elements: (1) explicit comparison of p-value to \u03b1 ('Because the p-value of ___ is [less/greater] than \u03b1 = ___'), (2) the decision ('we reject H\u2080' or 'we fail to reject H\u2080'), (3) conclusion about H\u2090 ('There [is/is not] convincing statistical evidence that...'), (4) context."
+    };
+  }
+
+  // ========== L32: Conclusion Error Detection (Dropdown) ==========
+  if (fieldId === "conclusionErrorAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You identified the error in the conclusion."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The error is: ${expected}. Common conclusion errors: (1) 'accepting H\u2080' instead of 'failing to reject,' (2) saying 'proven,' (3) no explicit p-value to \u03b1 comparison, (4) concluding about H\u2080 instead of H\u2090, (5) missing context, (6) contradicting the decision, (7) wrong comparison direction.`
+    };
+  }
+
+  // ========== L33/L34: Full Test Null Hypothesis (Text) ==========
+  if (fieldId === "fullTestNull" || fieldId === "cap66Null") {
+    const p0 = context?.p0 || "";
+    const hasPHat = containsAny(answer, ["\u0302", "p-hat", "phat", "p hat"]);
+    const hasEquality = studentNorm.includes("=") && !studentNorm.includes("!=") && !studentNorm.includes("\u2260");
+    const hasCorrectP0 = studentNorm.includes(String(p0));
+
+    if (hasPHat) {
+      return { score: "I", feedback: `Hypotheses use p (population parameter), NOT p\u0302 (sample statistic). Correct: H\u2080: p = ${p0}` };
+    }
+    if (hasEquality && hasCorrectP0) {
+      return { score: "E", feedback: `Correct! H\u2080: p = ${p0}. The null always contains '='.` };
+    }
+    if (hasEquality && !hasCorrectP0) {
+      return { score: "P", feedback: `The structure is right (uses '='), but check your p\u2080 value. The claimed proportion is ${p0}. Correct: H\u2080: p = ${p0}` };
+    }
+    if (!hasEquality && hasCorrectP0) {
+      return { score: "I", feedback: `The null hypothesis must contain '=' (equality). Correct: H\u2080: p = ${p0}` };
+    }
+    return { score: "I", feedback: `Incorrect. The null hypothesis is: H\u2080: p = ${p0}. Always uses '=' and the parameter p.` };
+  }
+
+  // ========== L33/L34: Full Test Alternative Hypothesis (Text) ==========
+  if (fieldId === "fullTestAlt" || fieldId === "cap66Alt") {
+    const p0 = context?.p0 || "";
+    const dir = context?.direction || "";
+    const hasPHat = containsAny(answer, ["\u0302", "p-hat", "phat", "p hat"]);
+    const hasCorrectP0 = studentNorm.includes(String(p0));
+
+    const dirMap = { ">": [">"], "<": ["<"], "!=": ["\u2260", "!=", "not equal", "=/="] };
+    const expectedDirSymbols = dirMap[dir] || [];
+    const hasCorrectDir = expectedDirSymbols.some(d => studentNorm.includes(d));
+
+    if (hasPHat) {
+      return { score: "I", feedback: `Hypotheses use p (population parameter), NOT p\u0302. Correct: ${expected}` };
+    }
+    if (hasCorrectDir && hasCorrectP0) {
+      return { score: "E", feedback: `Correct! ${expected}` };
+    }
+    if (hasCorrectP0 && !hasCorrectDir) {
+      return { score: "P", feedback: `Right p\u2080 value, but check the direction. The keyword "${context?.keyword || ""}" suggests the alternative should use "${dir}". Correct: ${expected}` };
+    }
+    if (hasCorrectDir && !hasCorrectP0) {
+      return { score: "P", feedback: `Right direction, but the p\u2080 value should be ${p0}. Correct: ${expected}` };
+    }
+    return { score: "I", feedback: `Incorrect. The correct alternative is: ${expected}. Direction comes from the research question keywords.` };
+  }
+
+  // ========== L33/L34: Full Test z-Statistic (Number) ==========
+  if (fieldId === "fullTestZStat" || fieldId === "cap66ZStat") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check if student used p-hat instead of p0 in the denominator
+    if (context.pHat !== undefined && context.p0 !== undefined && context.n !== undefined) {
+      const pHat = parseFloat(context.pHat);
+      const p0 = parseFloat(context.p0);
+      const n = parseFloat(context.n);
+      if (pHat !== p0) {
+        const wrongSD = Math.sqrt(pHat * (1 - pHat) / n);
+        const wrongZ = Math.round((pHat - p0) / wrongSD * 100) / 100;
+        if (Math.abs(studentVal - wrongZ) < 0.03 && diff > 0.03) {
+          return {
+            score: "I",
+            feedback: `It looks like you used p\u0302 = ${pHat} in the denominator instead of p\u2080 = ${p0}. For a significance test, use p\u2080 in the standard deviation because we ASSUME H\u2080 is true. z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n) = ${expectedVal}`
+          };
+        }
+      }
+    }
+
+    if (diff <= 0.02) {
+      return {
+        score: "E",
+        feedback: `Correct! z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n) = ${expectedVal}`
+      };
+    }
+    if (diff <= 0.10) {
+      return {
+        score: "P",
+        feedback: `Close! Check your arithmetic. z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n) = ${expectedVal}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). The correct test statistic is ${expectedVal}. Make sure you're using p\u2080 (the null value) in the denominator, not p\u0302.`
+    };
+  }
+
+  // ========== L33/L34: Full Test p-Value (Number) ==========
+  if (fieldId === "fullTestPValue" || fieldId === "cap66PValue") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    if (studentVal < 0 || studentVal > 1) {
+      return { score: "I", feedback: "A p-value must be between 0 and 1." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+
+    // Check if student did one-tail when they should have done two-tail (or vice versa)
+    if (context.direction === "!=" && expectedVal > 0) {
+      const halfPValue = Math.round(expectedVal / 2 * 10000) / 10000;
+      if (Math.abs(studentVal - halfPValue) < 0.002 && diff > 0.002) {
+        return {
+          score: "P",
+          feedback: `You found the one-tail area, but this is a TWO-sided test (H\u2090: p \u2260 p\u2080). You need to DOUBLE the tail area. p-value = 2 \u00d7 ${halfPValue} = ${expectedVal}`
+        };
+      }
+    }
+    if ((context.direction === ">" || context.direction === "<") && expectedVal > 0) {
+      const doublePValue = Math.round(expectedVal * 2 * 10000) / 10000;
+      if (Math.abs(studentVal - doublePValue) < 0.002 && diff > 0.002) {
+        return {
+          score: "P",
+          feedback: `You doubled the tail area, but this is a ONE-sided test. For H\u2090: p ${context.direction} p\u2080, use just the single tail area. p-value = ${expectedVal}`
+        };
+      }
+    }
+
+    if (diff <= 0.002) {
+      return {
+        score: "E",
+        feedback: `Correct! p-value = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "P",
+        feedback: `Close! Check your calculation. The p-value is ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The p-value is ${expectedVal}. For H\u2090 with ">", use the right tail. For "<", use the left tail. For "\u2260", double the one-tail area.`
+    };
+  }
+
+  // ========== L34: Capstone Parameter Definition (Textarea) ==========
+  if (fieldId === "cap66ParamDef") {
+    const mentionsProportion = containsAny(answer, ["proportion", "percent", "percentage", "fraction"]);
+    const mentionsPopulation = containsAny(answer, ["all", "every", "would", "population", "true"]);
+    const mentionsContext = answer.trim().split(/\s+/).length >= 5;
+
+    // Check for sample language (bad)
+    const hasSampleLang = containsAny(answer, ["surveyed", "sampled", "in the sample", "who said", "who were asked", "who responded"]) && !mentionsPopulation;
+
+    if (mentionsProportion && mentionsPopulation && mentionsContext) {
+      return { score: "E", feedback: "Excellent! You defined the parameter using population language ('all', 'would') and included context." };
+    }
+    if (hasSampleLang) {
+      return { score: "P", feedback: "You're using sample language. Define p using population language: 'the proportion of ALL [population] who WOULD [action].' Use 'all' or 'every' and 'would' to refer to the entire population." };
+    }
+    if (mentionsProportion && mentionsContext && !mentionsPopulation) {
+      return { score: "P", feedback: "Good! You mentioned the proportion and context, but add population language ('all', 'would') to distinguish from the sample." };
+    }
+    return { score: "I", feedback: "Define p in context: 'p = the proportion of ALL [population] who [would do something].' Must include 'proportion,' population language ('all'/'would'), and context." };
   }
 
   // ========== GENERIC FALLBACK ==========
