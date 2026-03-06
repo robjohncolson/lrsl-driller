@@ -3,16 +3,28 @@
 /**
  * upload-animations.mjs
  *
- * Uploads rendered Manim MP4 animation files to a Supabase storage bucket.
+ * Reads a cartridge manifest.json to discover expected animation assets,
+ * finds the corresponding rendered Manim MP4s, and uploads them to Supabase
+ * storage with the correct asset name.
  *
  * Usage:
- *   node scripts/upload-animations.mjs --unit 6 --lesson 4
- *   node scripts/upload-animations.mjs --unit 6 --lesson 4 --bucket my-bucket
+ *   node scripts/upload-animations.mjs --unit 6 --lesson 5
+ *   node scripts/upload-animations.mjs --unit 6 --lesson 5 --bucket videos
+ *   node scripts/upload-animations.mjs --unit 6 --lesson 5 --cartridge apstats-u6-inference-prop
  */
 
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { resolve, join, basename } from "node:path";
 import { parseArgs } from "node:util";
+
+// ---------------------------------------------------------------------------
+// Cartridge map: unit number → cartridge ID
+// ---------------------------------------------------------------------------
+
+const CARTRIDGE_MAP = {
+  "5": "apstats-u5-sampling-dist",
+  "6": "apstats-u6-inference-prop",
+};
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing
@@ -22,20 +34,31 @@ const { values: args } = parseArgs({
   options: {
     unit: { type: "string", short: "u" },
     lesson: { type: "string", short: "l" },
-    bucket: { type: "string", short: "b", default: "animations" },
+    bucket: { type: "string", short: "b", default: "videos" },
+    cartridge: { type: "string", short: "c" },
   },
   strict: true,
 });
 
 if (!args.unit || !args.lesson) {
-  console.error("Usage: node scripts/upload-animations.mjs --unit <N> --lesson <N> [--bucket <name>]");
+  console.error(
+    "Usage: node scripts/upload-animations.mjs --unit <N> --lesson <N> [--bucket <name>] [--cartridge <id>]"
+  );
   process.exit(1);
 }
 
 const unit = args.unit;
 const lesson = args.lesson;
 const bucket = args.bucket;
-const pattern = `apstat_${unit}${lesson}_`;
+const cartridgeId = args.cartridge || CARTRIDGE_MAP[unit];
+
+if (!cartridgeId) {
+  console.error(
+    `Error: No cartridge mapping for unit ${unit}.\n` +
+      `Either add it to CARTRIDGE_MAP or pass --cartridge <id>.`
+  );
+  process.exit(1);
+}
 
 // ---------------------------------------------------------------------------
 // .env loading (lightweight, no dependency)
@@ -81,78 +104,147 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 }
 
 // ---------------------------------------------------------------------------
-// MP4 discovery
+// Manifest-driven asset discovery
 // ---------------------------------------------------------------------------
 
 /**
- * Recursively collect all files under `dir` whose name matches the filter.
+ * Read the cartridge manifest and extract animation asset names for modes
+ * belonging to the requested lesson (e.g. lesson "5" matches modes with
+ * "6.5" in their name).
+ *
+ * Returns an array of asset basenames, e.g. ["TestStatistic.mp4", "CalculatePValue.mp4"]
  */
-function walk(dir, filter) {
-  const results = [];
-  if (!existsSync(dir)) return results;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...walk(full, filter));
-    } else if (filter(entry.name)) {
-      results.push(full);
+function getExpectedAssets() {
+  const manifestPath = join(
+    repoRoot,
+    "cartridges",
+    cartridgeId,
+    "manifest.json"
+  );
+  if (!existsSync(manifestPath)) {
+    console.error(`Error: Manifest not found at ${manifestPath}`);
+    process.exit(1);
+  }
+
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  const lessonPattern = `${unit}.${lesson}`;
+  const assets = [];
+
+  for (const mode of manifest.modes || []) {
+    // Match modes whose name contains the lesson pattern (e.g. "6.5")
+    if (mode.name && mode.name.includes(lessonPattern) && mode.animation) {
+      // mode.animation is like "assets/TestStatistic.mp4"
+      const assetFile = basename(mode.animation);
+      assets.push(assetFile);
     }
   }
-  return results;
+
+  return assets;
 }
 
-function findMp4s() {
-  const isMatch = (name) =>
-    name.endsWith(".mp4") && name.startsWith(pattern);
-
-  const found = new Map(); // filename -> absolute path (dedup by name)
-
-  // 1. media/videos/*/<quality>/ (Manim default output dirs)
+/**
+ * For a given asset name (e.g. "TestStatistic.mp4"), find the best matching
+ * rendered MP4 in Manim's output directories.
+ *
+ * Manim renders to: media/videos/{script_name}/{quality}/{SceneClass}.mp4
+ * We look in directories matching the unit+lesson pattern (e.g. apstat_65_*).
+ *
+ * Matching strategy:
+ *   1. Exact filename match (e.g. "CalculatePValue.mp4" === "CalculatePValue.mp4")
+ *   2. Rendered filename starts with the asset stem
+ *      (e.g. "TestStatistic" matches "TestStatisticZScore.mp4")
+ *   3. Rendered filename contains the asset stem
+ *      (e.g. "Capstone65" — look for "Capstone" in rendered names from 6.5 dirs)
+ *
+ * Returns { assetName, renderedPath } or null if not found.
+ */
+function findRenderedFile(assetName) {
+  const assetStem = assetName.replace(/\.mp4$/i, "");
   const mediaVideos = join(repoRoot, "media", "videos");
-  if (existsSync(mediaVideos)) {
-    for (const f of walk(mediaVideos, isMatch)) {
-      found.set(basename(f), f);
-    }
-  }
 
-  // 2. rendered/ directory
-  const rendered = join(repoRoot, "rendered");
-  if (existsSync(rendered)) {
-    for (const f of walk(rendered, isMatch)) {
-      found.set(basename(f), f);
-    }
-  }
+  if (!existsSync(mediaVideos)) return null;
 
-  // 3. animations/ directory - look for .py files matching pattern, then
-  //    check Manim default output dirs for their rendered MP4s
-  const animations = join(repoRoot, "animations");
-  if (existsSync(animations)) {
-    const pyPattern = `apstat_${unit}${lesson}_`;
-    for (const entry of readdirSync(animations)) {
-      if (entry.startsWith(pyPattern) && entry.endsWith(".py")) {
-        const stem = entry.replace(/\.py$/, "");
-        const qualities = ["480p15", "720p30", "1080p60"];
-        for (const q of qualities) {
-          const candidate = join(mediaVideos, stem, q);
-          if (existsSync(candidate)) {
-            for (const f of walk(candidate, (n) => n.endsWith(".mp4"))) {
-              found.set(basename(f), f);
-            }
-          }
+  // Only look in directories for this unit+lesson
+  const dirPrefix = `apstat_${unit}${lesson}_`;
+  const sceneDirs = readdirSync(mediaVideos).filter((d) =>
+    d.startsWith(dirPrefix)
+  );
+
+  const qualities = ["1080p60", "720p30", "480p15"];
+  let bestMatch = null;
+
+  for (const sceneDir of sceneDirs) {
+    for (const quality of qualities) {
+      const qualityDir = join(mediaVideos, sceneDir, quality);
+      if (!existsSync(qualityDir)) continue;
+
+      const mp4s = readdirSync(qualityDir).filter(
+        (f) =>
+          f.endsWith(".mp4") &&
+          !f.match(/^\d{5,}/) // Skip numbered Manim cache files
+      );
+
+      for (const mp4 of mp4s) {
+        const renderedStem = mp4.replace(/\.mp4$/i, "");
+
+        // Priority 1: exact match
+        if (renderedStem === assetStem) {
+          return { assetName, renderedPath: join(qualityDir, mp4) };
+        }
+
+        // Priority 2: rendered filename starts with asset stem
+        if (renderedStem.startsWith(assetStem) && !bestMatch) {
+          bestMatch = { assetName, renderedPath: join(qualityDir, mp4) };
+        }
+
+        // Priority 3: asset stem appears as substring in rendered filename
+        if (!bestMatch && renderedStem.includes(assetStem)) {
+          bestMatch = { assetName, renderedPath: join(qualityDir, mp4) };
+        }
+
+        // Priority 4: rendered stem appears as substring in asset stem
+        // (handles "Capstone65" matching "Capstone..." from the 6.5 dirs)
+        if (!bestMatch && assetStem.includes(renderedStem)) {
+          bestMatch = { assetName, renderedPath: join(qualityDir, mp4) };
         }
       }
     }
   }
 
-  return [...found.entries()]; // [[filename, absPath], ...]
+  // For capstone modes: the asset name is like "Capstone65.mp4" but the
+  // rendered file is something like "CapstonePValueInterpretation.mp4".
+  // Since we already scoped to the correct unit+lesson dirs, any MP4 with
+  // "Capstone" in its name from those dirs is the right one.
+  if (!bestMatch && assetStem.toLowerCase().startsWith("capstone")) {
+    for (const sceneDir of sceneDirs) {
+      if (!sceneDir.includes("capstone")) continue;
+      for (const quality of qualities) {
+        const qualityDir = join(mediaVideos, sceneDir, quality);
+        if (!existsSync(qualityDir)) continue;
+        const mp4s = readdirSync(qualityDir).filter(
+          (f) => f.endsWith(".mp4") && !f.match(/^\d{5,}/)
+        );
+        if (mp4s.length > 0) {
+          bestMatch = {
+            assetName,
+            renderedPath: join(qualityDir, mp4s[0]),
+          };
+          break;
+        }
+      }
+      if (bestMatch) break;
+    }
+  }
+
+  return bestMatch;
 }
 
 // ---------------------------------------------------------------------------
 // Supabase upload via REST API
 // ---------------------------------------------------------------------------
 
-async function uploadFile(filename, filePath) {
-  const objectPath = `apstats-u${unit}/${filename}`;
+async function uploadFile(assetName, filePath) {
+  const objectPath = `animations/${cartridgeId}/${assetName}`;
   const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${objectPath}`;
 
   const body = readFileSync(filePath);
@@ -170,7 +262,7 @@ async function uploadFile(filename, filePath) {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Upload failed for ${filename}: ${res.status} ${text}`);
+    throw new Error(`Upload failed for ${assetName}: ${res.status} ${text}`);
   }
 
   const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${objectPath}`;
@@ -182,30 +274,87 @@ async function uploadFile(filename, filePath) {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const files = findMp4s();
+  console.log(
+    `Cartridge: ${cartridgeId}\n` +
+      `Lesson:    ${unit}.${lesson}\n` +
+      `Bucket:    ${bucket}\n`
+  );
 
-  if (files.length === 0) {
+  // Step 1: Read manifest to find expected assets for this lesson
+  const expectedAssets = getExpectedAssets();
+
+  if (expectedAssets.length === 0) {
     console.error(
-      `No MP4 files found matching pattern "${pattern}*.mp4".\n` +
-        "Checked: media/videos/, rendered/, and animations/ (via Manim output dirs)."
+      `No animation assets found in manifest for lesson ${unit}.${lesson}.\n` +
+        `Check that modes with "${unit}.${lesson}" in their name have "animation" fields.`
     );
     process.exit(1);
   }
 
-  console.log(`Found ${files.length} MP4(s) for unit ${unit}, lesson ${lesson}:\n`);
+  console.log(
+    `Found ${expectedAssets.length} animation asset(s) in manifest:\n` +
+      expectedAssets.map((a) => `  - ${a}`).join("\n") +
+      "\n"
+  );
 
-  for (const [filename, filePath] of files) {
-    const sizeMB = (statSync(filePath).size / 1_048_576).toFixed(2);
-    console.log(`  Uploading ${filename} (${sizeMB} MB) ...`);
-    try {
-      const publicUrl = await uploadFile(filename, filePath);
-      console.log(`  -> ${publicUrl}\n`);
-    } catch (err) {
-      console.error(`  !! ${err.message}\n`);
+  // Step 2: Match each expected asset to a rendered MP4
+  const matches = [];
+  const missing = [];
+
+  for (const assetName of expectedAssets) {
+    const match = findRenderedFile(assetName);
+    if (match) {
+      matches.push(match);
+    } else {
+      missing.push(assetName);
     }
   }
 
-  console.log("Done.");
+  if (missing.length > 0) {
+    console.warn(
+      `Warning: Could not find rendered files for:\n` +
+        missing.map((a) => `  - ${a}`).join("\n") +
+        "\n"
+    );
+  }
+
+  if (matches.length === 0) {
+    console.error("No rendered MP4 files matched any manifest assets.");
+    process.exit(1);
+  }
+
+  // Step 3: Upload each matched file
+  console.log(`Uploading ${matches.length} file(s):\n`);
+
+  let uploaded = 0;
+  let failed = 0;
+
+  for (const { assetName, renderedPath } of matches) {
+    const sizeBytes = statSync(renderedPath).size;
+    const sizeKB = (sizeBytes / 1024).toFixed(0);
+    const objectPath = `animations/${cartridgeId}/${assetName}`;
+
+    console.log(
+      `Uploading ${assetName} (${sizeKB} KB) -> ${objectPath}`
+    );
+
+    try {
+      const publicUrl = await uploadFile(assetName, renderedPath);
+      console.log(`  -> ${publicUrl}\n`);
+      uploaded++;
+    } catch (err) {
+      console.error(`  !! ${err.message}\n`);
+      failed++;
+    }
+  }
+
+  console.log(
+    `Done. ${uploaded} uploaded, ${failed} failed, ${missing.length} not found.`
+  );
+
+  if (failed > 0 || missing.length > 0) {
+    process.exit(1);
+  }
 }
 
 main();
