@@ -31,6 +31,10 @@ function containsAll(answer, keywords) {
   return keywords.every(k => norm.includes(normalize(k)));
 }
 
+function getNumericTokens(answer) {
+  return String(answer).match(/-?\d*\.?\d+/g) || [];
+}
+
 function getExpectedObj(context, fieldId) {
   const v = context?.[fieldId];
   if (v && typeof v === "object" && "value" in v) return v;
@@ -70,7 +74,9 @@ export function gradeField(fieldId, answer, context) {
     "powerInterpretation",
     "cap67Type1",
     "cap67Type2",
-    "cap67Justify"
+    "cap67Justify",
+    "twoPropConditionsExplain",
+    "twoPropCIInterpretation"
   ]);
 
   if (isBlank(answer)) {
@@ -87,7 +93,8 @@ export function gradeField(fieldId, answer, context) {
       "type1ProbAnswer", "type2ProbAnswer", "alphaType1Prob",
       "cap65ZStat", "cap65PValue",
       "fullTestZStat", "fullTestPValue",
-      "cap66ZStat", "cap66PValue"
+      "cap66ZStat", "cap66PValue",
+      "twoPropMEAnswer", "twoPropCILower", "twoPropCIUpper"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -1886,6 +1893,249 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Explain that a Type II error would lead them not to use green branding even though it really works, which could reduce potential sales. That is why Type II is more consequential here."
+    };
+  }
+
+  // ========== L44: Identify the Procedure (Dropdown) ==========
+  if (fieldId === "twoPropProcedureAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! Two groups, categorical data, and a confidence interval for p1 - p2 means a two-sample z-interval for a difference in proportions."
+      };
+    }
+    if (containsAny(answer, ["z-test", "test"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. This problem asks for a confidence interval, not a significance test. For two proportions, the correct procedure is a two-sample z-interval for a difference in proportions."
+      };
+    }
+    if (containsAny(answer, ["one-sample", "one sample"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. There are two groups here, not one. That makes this a two-sample z-interval for a difference in proportions."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct procedure is: ${expected}.`
+    };
+  }
+
+  // ========== L45: Conditions Met (Choice) ==========
+  if (fieldId === "twoPropConditionsMet") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You correctly decided whether the independence and large-counts conditions are satisfied for the two-sample z-interval."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct answer is: ${expected}. Check for two independent random samples or random assignment, the 10% condition when sampling without replacement, and four counts that are all at least 10.`
+    };
+  }
+
+  // ========== L45: Conditions Explain (Textarea) ==========
+  if (fieldId === "twoPropConditionsExplain") {
+    const isExperiment = normalize(context?.designType) === "experiment";
+    const mentionsRandom = containsAny(answer, ["random", "randomly", "random assignment", "independent", "independence"]);
+    const mentionsTenPct = containsAny(answer, ["10%", "10 percent", "ten percent", "population", "n1", "n2", "90", "260", "300"]);
+    const mentionsNotApplicable = containsAny(answer, ["does not apply", "not apply", "experiment"]);
+    const mentionsLargeCounts = containsAny(answer, ["large counts", "successes", "failures", "at least 10", ">= 10", "36", "204", "25", "175", "8", "16", "52", "68", "41", "69", "64", "28"]);
+    const mentionsConclusion = containsAny(answer, ["all conditions are met", "not all conditions are met", "condition fails", "conditions fail", "met", "fail"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 8;
+
+    if (isExperiment) {
+      if (mentionsRandom && mentionsLargeCounts && hasSubstance) {
+        return {
+          score: "E",
+          feedback: "Excellent! You identified random assignment and checked the large counts condition correctly. For experiments, the 10% condition is not part of the check."
+        };
+      }
+      if ((mentionsRandom || mentionsLargeCounts || mentionsNotApplicable) && hasSubstance) {
+        return {
+          score: "P",
+          feedback: "Good start. For full credit, explain that random assignment supports independence and then check whether the successes and failures in both groups are all at least 10. You can also note that the 10% condition does not apply to an experiment."
+        };
+      }
+      return {
+        score: "I",
+        feedback: "For an experiment, explain that random assignment supports independence, note that the 10% condition does not apply, and then check whether the successes and failures in both groups are all at least 10."
+      };
+    }
+
+    if (mentionsRandom && mentionsTenPct && mentionsLargeCounts && mentionsConclusion && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You addressed the sample design, the 10% condition, and the four large-count checks."
+      };
+    }
+    if ((mentionsRandom || mentionsTenPct || mentionsLargeCounts) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start. For full credit, mention all three parts: independent random samples, the 10% condition for each sample, and whether x1, n1 - x1, x2, and n2 - x2 are all at least 10."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Explain all three parts: the data come from two independent random samples, each sample is no more than 10% of its population when sampling without replacement, and the observed successes and failures in both groups are all at least 10."
+    };
+  }
+
+  // ========== L46: Margin of Error (Number) ==========
+  if (fieldId === "twoPropMEAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const se = parseFloat(context?.se ?? "");
+
+    if (!Number.isNaN(se) && Math.abs(studentVal - se) <= 0.002 && diff > 0.002) {
+      return {
+        score: "I",
+        feedback: `It looks like you entered the standard error instead of the margin of error. Multiply the standard error by z*. The correct margin of error is ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.002) {
+      return {
+        score: "E",
+        feedback: `Correct! The margin of error is ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "P",
+        feedback: `Close! Check your arithmetic. The margin of error is ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Use ME = z* x sqrt[(p-hat1(1-p-hat1)/n1) + (p-hat2(1-p-hat2)/n2)]. The correct margin of error is ${expectedVal}.`
+    };
+  }
+
+  // ========== L47: CI Lower Bound (Number) ==========
+  if (fieldId === "twoPropCILower") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const upperObj = getExpectedObj(context, "twoPropCIUpper");
+
+    if (upperObj.value !== undefined && Math.abs(studentVal - upperObj.value) < 0.005 && diff > 0.005) {
+      return {
+        score: "I",
+        feedback: `Check the order of the interval bounds. The lower bound is ${expectedVal} and the upper bound is ${upperObj.value}.`
+      };
+    }
+    if (diff <= 0.005) {
+      return {
+        score: "E",
+        feedback: `Correct! The lower bound is ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.02) {
+      return {
+        score: "P",
+        feedback: `Close! The lower bound is ${expectedVal}. Check the point estimate minus the margin of error.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The lower bound is ${expectedVal}. Use (p-hat1 - p-hat2) - ME.`
+    };
+  }
+
+  // ========== L47: CI Upper Bound (Number) ==========
+  if (fieldId === "twoPropCIUpper") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = expected;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const lowerObj = getExpectedObj(context, "twoPropCILower");
+
+    if (lowerObj.value !== undefined && Math.abs(studentVal - lowerObj.value) < 0.005 && diff > 0.005) {
+      return {
+        score: "I",
+        feedback: `Check the order of the interval bounds. The lower bound is ${lowerObj.value} and the upper bound is ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.005) {
+      return {
+        score: "E",
+        feedback: `Correct! The upper bound is ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.02) {
+      return {
+        score: "P",
+        feedback: `Close! The upper bound is ${expectedVal}. Check the point estimate plus the margin of error.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The upper bound is ${expectedVal}. Use (p-hat1 - p-hat2) + ME.`
+    };
+  }
+
+  // ========== L48: CI Interpretation (Textarea) ==========
+  if (fieldId === "twoPropCIInterpretation") {
+    const lower = parseFloat(context?.ciLower ?? "");
+    const upper = parseFloat(context?.ciUpper ?? "");
+    const confLevel = String(context?.confLevel ?? "");
+    const numbers = getNumericTokens(answer);
+    const mentionsConfidence = containsAny(answer, ["confident", "confidence", confLevel]);
+    const mentionsDifference = containsAny(answer, ["difference", "proportion", "percentage point", "higher", "lower", "greater", "less"]);
+    const mentionsContext = containsAny(answer, [context?.group1 ?? "", context?.group2 ?? "", "trees", "dogs", "swimmers", "disease", "ticks", "average time"]);
+    const mentionsBounds = numbers.length >= 2 || containsAny(answer, ["between", "from", "to"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 10;
+    const hasProbMisconception = containsAny(answer, ["probability that", "chance that the true", "% probability"]);
+
+    let directionOk = false;
+    if (!Number.isNaN(lower) && !Number.isNaN(upper)) {
+      if (lower >= 0) {
+        directionOk = containsAny(answer, ["higher", "greater", "more"]);
+      } else if (upper <= 0) {
+        directionOk = containsAny(answer, ["lower", "less", "fewer"]);
+      } else {
+        directionOk = (containsAny(answer, ["lower", "less", "fewer"]) && containsAny(answer, ["higher", "greater", "more"])) || containsAny(answer, ["could be", "includes 0", "include 0"]);
+      }
+    }
+
+    if (hasProbMisconception) {
+      return {
+        score: "P",
+        feedback: "Careful. Interpret a confidence interval with 'We are __% confident ...' rather than saying there is a probability that the true difference is in the interval."
+      };
+    }
+    if (mentionsConfidence && mentionsDifference && mentionsContext && mentionsBounds && directionOk && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You interpreted the confidence interval as a difference in population proportions and described the direction in context."
+      };
+    }
+    if ((mentionsConfidence || mentionsDifference || mentionsContext) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start. For full credit, include the confidence level, describe the interval as a difference between the two population proportions, include the interval bounds or percentage-point range, and state whether group 1 is lower, higher, or could be either in context."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Interpret the interval like this: 'We are __% confident that the true difference (group 1 minus group 2) in proportions is between ___ and ___,' then translate that into higher/lower percentage points in context."
     };
   }
 

@@ -28,6 +28,16 @@ function choice(arr) {
   return arr[randInt(0, arr.length - 1)];
 }
 
+function roundTo(value, digits) {
+  const factor = Math.pow(10, digits);
+  return Math.round(value * factor) / factor;
+}
+
+function randStep(min, max, step = 1) {
+  const count = Math.floor((max - min) / step);
+  return min + randInt(0, count) * step;
+}
+
 // ============ SHUFFLE BAG SYSTEM ============
 // Prevents scenario repeats by cycling through all scenarios before any repeat
 
@@ -2420,6 +2430,209 @@ const alphaChoiceBank = [
   }
 ];
 
+// ---- L44: Identify procedure for two-proportion interval (6.8a) ----
+const twoPropProcedureBank = [
+  {
+    scenario: "Random samples of trees from two different large forests, one at high elevation and one at low elevation, are used to estimate the difference in the proportions of trees that have died from a disease.",
+    given: "Two independent random samples, one categorical outcome, goal is a confidence interval for high minus low.",
+    correctAnswer: "Two-sample z-interval for a difference in proportions",
+    wrongOptions: [
+      "One-sample z-interval for a population proportion",
+      "Two-sample z-test for a difference in proportions",
+      "One-sample z-test for a population proportion"
+    ]
+  },
+  {
+    scenario: "Dogs are randomly assigned to either a new tick-repellent formula or the old formula, and researchers want a confidence interval for the difference in the proportions that get ticks.",
+    given: "Randomized experiment, two treatment groups, categorical response, goal is a confidence interval for new minus old.",
+    correctAnswer: "Two-sample z-interval for a difference in proportions",
+    wrongOptions: [
+      "One-sample z-interval for a population proportion",
+      "Two-sample z-test for a difference in proportions",
+      "One-sample t-interval for a population mean"
+    ]
+  },
+  {
+    scenario: "Student researchers randomly assign swimmers to wear a drag suit or a regular suit and want to estimate the difference in the proportions who swim slower than their average time.",
+    given: "Randomized experiment, two groups, one categorical variable, goal is to estimate drag minus regular.",
+    correctAnswer: "Two-sample z-interval for a difference in proportions",
+    wrongOptions: [
+      "One-sample z-test for a population proportion",
+      "Two-sample z-test for a difference in proportions",
+      "Two-sample t-interval for a difference in means"
+    ]
+  },
+  {
+    scenario: "Two independent random samples of trees are taken from a ridge forest and a valley forest to estimate the difference in the proportions showing leaf damage.",
+    given: "Two independent random samples, categorical data, goal is a confidence interval for ridge minus valley.",
+    correctAnswer: "Two-sample z-interval for a difference in proportions",
+    wrongOptions: [
+      "One-sample z-interval for a population proportion",
+      "Two-sample z-test for a difference in proportions",
+      "Matched-pairs t-interval for a mean difference"
+    ]
+  }
+];
+
+// ---- L45: Check conditions for two-proportion interval (6.8b) ----
+const twoPropConditionBank = [
+  {
+    context: "Random samples of trees from two different large forests, one at high elevation and one at low elevation, reveal that 36 of 240 trees at high elevation and 25 of 200 trees at low elevation have died from a disease.",
+    designType: "samples",
+    group1: "high elevation",
+    group2: "low elevation",
+    x1: 36,
+    n1: 240,
+    x2: 25,
+    n2: 200,
+    N1: 3000,
+    N2: 2600,
+    allMet: true,
+    detail: "Independent random samples are stated. The 10% condition is met because 240 <= 300 and 200 <= 260. Large counts are met because 36, 204, 25, and 175 are all at least 10. All conditions are met."
+  },
+  {
+    context: "Two student researchers randomly assigned 23 swimmers to wear a drag suit and 24 swimmers to wear their regular suits. Of the 23 in drag suits, 13 swam slower than average. Of the 24 in regular suits, 8 swam slower than average.",
+    designType: "experiment",
+    group1: "drag suit",
+    group2: "regular suit",
+    x1: 13,
+    n1: 23,
+    x2: 8,
+    n2: 24,
+    allMet: false,
+    detail: "Random assignment is stated, so independence is reasonable. The 10% condition does not apply because this is an experiment, not sampling without replacement. Large counts fail because the regular-suit group has only 8 successes, which is less than 10. Not all conditions are met."
+  },
+  {
+    context: "Random samples of saplings from two restoration plots show 52 of 120 saplings in plot A and 41 of 110 saplings in plot B have leaf damage. Plot A has about 900 saplings and plot B has about 1300 saplings.",
+    designType: "samples",
+    group1: "plot A",
+    group2: "plot B",
+    x1: 52,
+    n1: 120,
+    x2: 41,
+    n2: 110,
+    N1: 900,
+    N2: 1300,
+    allMet: false,
+    detail: "Independent random samples are stated, and large counts are met because 52, 68, 41, and 69 are all at least 10. However, the 10% condition fails for plot A because 120 is greater than 10% of 900, which is 90. Not all conditions are met."
+  },
+  {
+    context: "In a randomized experiment on volunteer dogs, 16 of 80 dogs treated with a new formula got ticks, compared with 28 of 80 dogs treated with the old formula.",
+    designType: "experiment",
+    group1: "new formula",
+    group2: "old formula",
+    x1: 16,
+    n1: 80,
+    x2: 28,
+    n2: 80,
+    allMet: true,
+    detail: "Random assignment is stated, so independence is reasonable. The 10% condition does not apply to an experiment. Large counts are met because 16, 64, 28, and 52 are all at least 10. All conditions are met."
+  }
+];
+
+// ---- Shared study templates for L46-L48 (6.8c-6.8e) ----
+const twoPropStudyTemplateBank = [
+  {
+    context: "A plant disease study compares two elevations. Random samples of trees are taken from a high-elevation forest and a low-elevation forest.",
+    designType: "samples",
+    relation: "high minus low",
+    group1: "high elevation",
+    group2: "low elevation",
+    population1: "trees at high elevation in this forest system",
+    population2: "trees at low elevation in this forest system",
+    successDesc: "have died from the disease",
+    n1Range: [200, 280],
+    n2Range: [180, 240],
+    nStep: 20,
+    x1Range: [30, 54],
+    x2Range: [20, 40],
+    xStep: 2,
+    confLevels: [90, 95]
+  },
+  {
+    context: "A company compares a new tick-repellent formula with its old formula in a randomized experiment on volunteer dogs.",
+    designType: "experiment",
+    relation: "new minus old",
+    group1: "new formula",
+    group2: "old formula",
+    population1: "dogs like the ones in this study treated with the new formula",
+    population2: "dogs like the ones in this study treated with the old formula",
+    successDesc: "would get ticks after treatment",
+    n1Range: [80, 110],
+    n2Range: [80, 110],
+    nStep: 10,
+    x1Range: [10, 18],
+    x2Range: [22, 34],
+    xStep: 2,
+    confLevels: [90, 95]
+  },
+  {
+    context: "Two student researchers randomly assign swimmers to wear either a drag suit or a regular suit during practice and record whether each swimmer is slower than average.",
+    designType: "experiment",
+    relation: "drag minus regular",
+    group1: "drag suit",
+    group2: "regular suit",
+    population1: "swimmers like these wearing a drag suit in similar practice races",
+    population2: "swimmers like these wearing a regular suit in similar practice races",
+    successDesc: "would swim slower than their average time",
+    n1Range: [36, 52],
+    n2Range: [36, 52],
+    nStep: 4,
+    x1Range: [16, 24],
+    x2Range: [10, 18],
+    xStep: 2,
+    confLevels: [90, 95]
+  }
+];
+
+function buildTwoPropStudy(template) {
+  const n1 = randStep(template.n1Range[0], template.n1Range[1], template.nStep || 1);
+  const n2 = randStep(template.n2Range[0], template.n2Range[1], template.nStep || 1);
+  const x1 = Math.min(randStep(template.x1Range[0], template.x1Range[1], template.xStep || 1), n1 - 10);
+  const x2 = Math.min(randStep(template.x2Range[0], template.x2Range[1], template.xStep || 1), n2 - 10);
+  const confLevel = choice(template.confLevels);
+  const zStar = Z_STAR[confLevel];
+  const pHat1 = x1 / n1;
+  const pHat2 = x2 / n2;
+  const pointEstimate = pHat1 - pHat2;
+  const se = Math.sqrt((pHat1 * (1 - pHat1)) / n1 + (pHat2 * (1 - pHat2)) / n2);
+  const me = zStar * se;
+  const lower = roundTo(pointEstimate - me, 3);
+  const upper = roundTo(pointEstimate + me, 3);
+
+  return {
+    ...template,
+    n1,
+    n2,
+    x1,
+    x2,
+    failures1: n1 - x1,
+    failures2: n2 - x2,
+    confLevel,
+    zStar,
+    pHat1: roundTo(pHat1, 4),
+    pHat2: roundTo(pHat2, 4),
+    pointEstimate: roundTo(pointEstimate, 4),
+    se: roundTo(se, 4),
+    me: roundTo(me, 4),
+    lower,
+    upper
+  };
+}
+
+function buildTwoPropInterpretation(study) {
+  const lowerPct = roundTo(study.lower * 100, 1);
+  const upperPct = roundTo(study.upper * 100, 1);
+
+  if (study.lower >= 0) {
+    return `We are ${study.confLevel}% confident that the true proportion of ${study.population1} who ${study.successDesc} is between ${lowerPct} and ${upperPct} percentage points higher than the true proportion of ${study.population2} who ${study.successDesc}.`;
+  }
+  if (study.upper <= 0) {
+    return `We are ${study.confLevel}% confident that the true proportion of ${study.population1} who ${study.successDesc} is between ${Math.abs(upperPct)} and ${Math.abs(lowerPct)} percentage points lower than the true proportion of ${study.population2} who ${study.successDesc}.`;
+  }
+  return `We are ${study.confLevel}% confident that the true proportion of ${study.population1} who ${study.successDesc} is between ${Math.abs(lowerPct)} percentage points lower and ${upperPct} percentage points higher than the true proportion of ${study.population2} who ${study.successDesc}.`;
+}
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -3775,6 +3988,154 @@ export function generateProblem(modeId, context, mode) {
     };
 
     scenario = `${scen.scenarioText}\n\n${scen.questionText}`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L44: Identify the Procedure (6.8a) ==========
+  if (modeId === "l44-identify-two-prop-ci") {
+    const scen = drawFromBag('twoPropProcedure_l44', twoPropProcedureBank);
+    const allOptions = shuffle([scen.correctAnswer, ...scen.wrongOptions]);
+
+    ctx = {
+      topicId: "6.8: Identify the Procedure",
+      scenarioText: scen.scenario,
+      givenText: scen.given,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      twoPropProcedureAnswer: { value: scen.correctAnswer }
+    };
+
+    scenario = `${scen.scenario}\n\nWhat inference procedure should be used?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L45: Check Conditions (6.8b) ==========
+  if (modeId === "l45-check-two-prop-conditions") {
+    const scen = drawFromBag('twoPropConditions_l45', twoPropConditionBank);
+
+    ctx = {
+      topicId: "6.8: Check Conditions",
+      scenarioText: scen.context,
+      givenText: `Group 1: ${scen.x1}/${scen.n1}, Group 2: ${scen.x2}/${scen.n2}${scen.designType === "samples" ? `, N1 = ${scen.N1}, N2 = ${scen.N2}` : ""}`,
+      designType: scen.designType,
+      group1: scen.group1,
+      group2: scen.group2,
+      x1: `${scen.x1}`,
+      n1: `${scen.n1}`,
+      x2: `${scen.x2}`,
+      n2: `${scen.n2}`,
+      N1: scen.N1 ? `${scen.N1}` : "",
+      N2: scen.N2 ? `${scen.N2}` : "",
+      conditionsDetail: scen.detail
+    };
+
+    answers = {
+      twoPropConditionsMet: {
+        value: scen.allMet ? "Yes, all conditions are met" : "No, at least one condition fails"
+      },
+      twoPropConditionsExplain: {
+        value: scen.detail
+      }
+    };
+
+    scenario = `${scen.context}\n\nGroup 1: ${scen.x1}/${scen.n1}, Group 2: ${scen.x2}/${scen.n2}${scen.designType === "samples" ? `, N1 = ${scen.N1}, N2 = ${scen.N2}` : ""}\n\nAre all conditions for a two-sample z-interval for a difference in proportions met?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L46: Margin of Error (6.8c) ==========
+  if (modeId === "l46-two-prop-margin-error") {
+    const template = drawFromBag('twoPropStudy_l46', twoPropStudyTemplateBank);
+    const study = buildTwoPropStudy(template);
+
+    ctx = {
+      topicId: "6.8: Margin of Error for p1 - p2",
+      scenarioText: `${study.context}\n\nConditions for the interval are satisfied.`,
+      givenText: `${study.group1}: ${study.x1}/${study.n1}, ${study.group2}: ${study.x2}/${study.n2}, confidence level = ${study.confLevel}%, z* = ${study.zStar}`,
+      group1: study.group1,
+      group2: study.group2,
+      relation: study.relation,
+      x1: `${study.x1}`,
+      n1: `${study.n1}`,
+      x2: `${study.x2}`,
+      n2: `${study.n2}`,
+      pHat1: `${study.pHat1}`,
+      pHat2: `${study.pHat2}`,
+      confLevel: `${study.confLevel}`,
+      zStar: `${study.zStar}`,
+      se: `${study.se}`
+    };
+
+    answers = {
+      twoPropMEAnswer: { value: study.me, tolerance: 0.0005 }
+    };
+
+    scenario = `${study.context}\n\n${study.group1}: ${study.x1} of ${study.n1}\n${study.group2}: ${study.x2} of ${study.n2}\nUse a ${study.confLevel}% confidence level (z* = ${study.zStar}).\n\nCalculate the margin of error for the confidence interval for ${study.relation}.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L47: Confidence Interval (6.8d) ==========
+  if (modeId === "l47-two-prop-confidence-interval") {
+    const template = drawFromBag('twoPropStudy_l47', twoPropStudyTemplateBank);
+    const study = buildTwoPropStudy(template);
+
+    ctx = {
+      topicId: "6.8: Confidence Interval for p1 - p2",
+      scenarioText: `${study.context}\n\nConstruct a confidence interval for ${study.relation}.`,
+      givenText: `${study.group1}: ${study.x1}/${study.n1}, ${study.group2}: ${study.x2}/${study.n2}, confidence level = ${study.confLevel}%, z* = ${study.zStar}`,
+      group1: study.group1,
+      group2: study.group2,
+      relation: study.relation,
+      x1: `${study.x1}`,
+      n1: `${study.n1}`,
+      x2: `${study.x2}`,
+      n2: `${study.n2}`,
+      pHat1: `${study.pHat1}`,
+      pHat2: `${study.pHat2}`,
+      pointEstimate: `${study.pointEstimate}`,
+      confLevel: `${study.confLevel}`,
+      zStar: `${study.zStar}`,
+      me: `${study.me}`
+    };
+
+    answers = {
+      twoPropCILower: { value: study.lower, tolerance: 0.002 },
+      twoPropCIUpper: { value: study.upper, tolerance: 0.002 }
+    };
+
+    scenario = `${study.context}\n\n${study.group1}: ${study.x1} of ${study.n1}\n${study.group2}: ${study.x2} of ${study.n2}\nUse a ${study.confLevel}% confidence level (z* = ${study.zStar}).\n\nCalculate the confidence interval for ${study.relation}. Round each bound to 3 decimal places.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L48: Interpret the Interval Estimate (6.8e) ==========
+  if (modeId === "l48-interpret-two-prop-interval") {
+    const template = drawFromBag('twoPropStudy_l48', twoPropStudyTemplateBank);
+    const study = buildTwoPropStudy(template);
+    const expectedInterpretation = buildTwoPropInterpretation(study);
+
+    ctx = {
+      topicId: "6.8: Interval Estimate in Context",
+      scenarioText: study.context,
+      givenText: `${study.confLevel}% CI for ${study.relation}: (${study.lower}, ${study.upper})`,
+      confLevel: `${study.confLevel}`,
+      ciLower: `${study.lower}`,
+      ciUpper: `${study.upper}`,
+      group1: study.group1,
+      group2: study.group2,
+      population1: study.population1,
+      population2: study.population2,
+      successDesc: study.successDesc
+    };
+
+    answers = {
+      twoPropCIInterpretation: { value: expectedInterpretation }
+    };
+
+    scenario = `${study.context}\n\nA ${study.confLevel}% confidence interval for ${study.relation} is (${study.lower}, ${study.upper}).\n\nInterpret this interval in context.`;
     return { context: ctx, graphConfig, answers, scenario };
   }
 

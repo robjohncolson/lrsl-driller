@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u6-inference-prop",
-    "name": "Inference for Proportions and Testing Errors (6.1-6.7)",
+    "name": "Inference for Proportions, Testing Errors, and Two-Proportion Intervals (6.1-6.8)",
     "subject": "AP Statistics",
-    "description": "Logic of significance testing, confidence intervals for a population proportion, and Topic 6.7 potential errors when performing tests: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, and choose an appropriate significance level based on consequences"
+    "description": "Logic of significance testing, confidence intervals for a population proportion, Topic 6.7 potential errors when performing tests, and Topic 6.8 confidence intervals for the difference of two proportions: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, choose an appropriate significance level based on consequences, identify a two-sample z-interval for a difference in proportions, verify two-sample interval conditions, calculate margin of error and confidence intervals for p1 - p2, and interpret interval estimates in context as percentage-point differences"
   },
   "config": {
     "contextsFile": null,
@@ -17,6 +17,10 @@
       "UNC-4.F",
       "UNC-4.G",
       "UNC-4.H",
+      "UNC-4.I",
+      "UNC-4.J",
+      "UNC-4.K",
+      "UNC-4.L",
       "VAR-6.D",
       "VAR-6.E",
       "VAR-6.F",
@@ -1204,6 +1208,120 @@
           }
         ]
       }
+    },
+    {
+      "id": "l44-identify-two-prop-ci",
+      "name": "6.8a: Identify the Procedure",
+      "animation": "assets/TwoSampleZIntervalProcedure.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "twoPropProcedureAnswer",
+            "type": "dropdown",
+            "label": "What inference procedure should be used?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l45-check-two-prop-conditions",
+      "name": "6.8b: Check Conditions",
+      "animation": "assets/TwoPropCIConditions.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "twoPropConditionsMet",
+            "type": "choice",
+            "label": "Are ALL conditions for the two-sample z-interval met?",
+            "options": [
+              "Yes, all conditions are met",
+              "No, at least one condition fails"
+            ]
+          },
+          {
+            "id": "twoPropConditionsExplain",
+            "type": "textarea",
+            "label": "Explain which conditions are met or not met:",
+            "rows": 4,
+            "placeholder": "Check: independent random samples or random assignment, 10% condition if sampling, and four counts at least 10..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l46-two-prop-margin-error",
+      "name": "6.8c: Margin of Error",
+      "animation": "assets/TwoPropMarginOfError.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "twoPropMEAnswer",
+            "type": "number",
+            "label": "Calculate the margin of error for the confidence interval. Round to 4 decimal places:",
+            "step": 0.0001,
+            "min": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "l47-two-prop-confidence-interval",
+      "name": "6.8d: Calculate the CI",
+      "animation": "assets/TwoPropConfidenceInterval.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "twoPropCILower",
+            "type": "number",
+            "label": "Lower bound of the confidence interval:",
+            "step": 0.001
+          },
+          {
+            "id": "twoPropCIUpper",
+            "type": "number",
+            "label": "Upper bound of the confidence interval:",
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l48-interpret-two-prop-interval",
+      "name": "6.8e: Interval Estimate in Context",
+      "animation": "assets/TwoPropIntervalEstimate.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "twoPropCIInterpretation",
+            "type": "textarea",
+            "label": "Interpret the {{confLevel}}% confidence interval ({{ciLower}}, {{ciUpper}}) in context:",
+            "rows": 4,
+            "placeholder": "We are __% confident that the true difference (group 1 minus group 2) in proportions is between..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -1298,7 +1416,14 @@
       "alphaType1Prob": "The significance level is the probability of a Type I error, so P(Type I error) = \u03b1 exactly.",
       "powerDefinitionAnswer": "Power is the probability that a test correctly rejects a false H\u2080. It is also 1 - P(Type II error).",
       "alphaTradeoffAnswer": "Smaller \u03b1 lowers the chance of a Type I error, but it raises the chance of a Type II error and lowers power. Larger \u03b1 does the opposite.",
-      "alphaChoiceAnswer": "If a Type I error would be especially serious, use a smaller \u03b1. If missing a real effect is the bigger concern, a larger \u03b1 may be more reasonable."
+      "alphaChoiceAnswer": "If a Type I error would be especially serious, use a smaller \u03b1. If missing a real effect is the bigger concern, a larger \u03b1 may be more reasonable.",
+      "twoPropProcedureAnswer": "Two groups + categorical data + confidence interval = two-sample z-interval for a difference in proportions.",
+      "twoPropConditionsMet": "Check: two independent random samples or random assignment, the 10% condition for each sample when sampling without replacement, and four counts (x1, n1-x1, x2, n2-x2) all at least 10.",
+      "twoPropConditionsExplain": "State whether the data came from two random samples or a randomized experiment. If sampling, check n1 \u2264 10%N1 and n2 \u2264 10%N2. Then check successes and failures in both groups are each at least 10.",
+      "twoPropMEAnswer": "ME = z* \u00d7 \u221a[(p\u0302\u2081(1-p\u0302\u2081)/n\u2081) + (p\u0302\u2082(1-p\u0302\u2082)/n\u2082)]. Use the sample proportions from each group.",
+      "twoPropCILower": "Lower bound = (p\u0302\u2081 - p\u0302\u2082) - z* \u00d7 \u221a[(p\u0302\u2081(1-p\u0302\u2081)/n\u2081) + (p\u0302\u2082(1-p\u0302\u2082)/n\u2082)].",
+      "twoPropCIUpper": "Upper bound = (p\u0302\u2081 - p\u0302\u2082) + z* \u00d7 \u221a[(p\u0302\u2081(1-p\u0302\u2081)/n\u2081) + (p\u0302\u2082(1-p\u0302\u2082)/n\u2082)].",
+      "twoPropCIInterpretation": "Template: 'We are __% confident that the true difference (group 1 minus group 2) in proportions is between ___ and ___.' Translate the interval into percentage points and include the context."
     },
     "penalty": {
       "0": "gold",
@@ -1568,6 +1693,36 @@
         "name": "43",
         "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Topic 6.7 mastered! You can identify testing errors, interpret power, and reason about alpha tradeoffs and significance-level choices!"
+      },
+      {
+        "id": "l44-identify-two-prop-ci",
+        "name": "44",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can identify the right two-sample interval. Next, verify the conditions for comparing two proportions."
+      },
+      {
+        "id": "l45-check-two-prop-conditions",
+        "name": "45",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Conditions checked. Now calculate the margin of error for the difference in proportions."
+      },
+      {
+        "id": "l46-two-prop-margin-error",
+        "name": "46",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Margin of error found. Next, construct the full confidence interval."
+      },
+      {
+        "id": "l47-two-prop-confidence-interval",
+        "name": "47",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Interval constructed! Finish by interpreting the difference in context."
+      },
+      {
+        "id": "l48-interpret-two-prop-interval",
+        "name": "48",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topic 6.8 mastered! You can identify, check, calculate, and interpret confidence intervals for the difference of two proportions!"
       }
     ]
   }
