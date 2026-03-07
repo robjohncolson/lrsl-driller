@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u6-inference-prop",
-    "name": "Inference for Proportions, Testing Errors, and Two-Proportion Intervals (6.1-6.8)",
+    "name": "Inference for Proportions, Testing Errors, Two-Proportion Intervals, and CI-Based Claims (6.1-6.9)",
     "subject": "AP Statistics",
-    "description": "Logic of significance testing, confidence intervals for a population proportion, Topic 6.7 potential errors when performing tests, and Topic 6.8 confidence intervals for the difference of two proportions: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, choose an appropriate significance level based on consequences, identify a two-sample z-interval for a difference in proportions, verify two-sample interval conditions, calculate margin of error and confidence intervals for p1 - p2, and interpret interval estimates in context as percentage-point differences"
+    "description": "Logic of significance testing, confidence intervals for a population proportion, Topic 6.7 potential errors when performing tests, Topic 6.8 confidence intervals for the difference of two proportions, and Topic 6.9 justifying a claim with a confidence interval for a difference of population proportions: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, choose an appropriate significance level based on consequences, identify a two-sample z-interval for a difference in proportions, verify two-sample interval conditions, calculate margin of error and confidence intervals for p1 - p2, interpret interval estimates in context as percentage-point differences, justify claims based on whether 0 or other claim-consistent values are plausible in a two-proportion interval, and interpret the confidence level for a difference in population proportions using repeated sampling"
   },
   "config": {
     "contextsFile": null,
@@ -21,6 +21,8 @@
       "UNC-4.J",
       "UNC-4.K",
       "UNC-4.L",
+      "UNC-4.M",
+      "UNC-4.N",
       "VAR-6.D",
       "VAR-6.E",
       "VAR-6.F",
@@ -1322,6 +1324,89 @@
           }
         ]
       }
+    },
+    {
+      "id": "l49-interpret-two-prop-claim-interval",
+      "name": "6.9a: Interpret the Interval",
+      "animation": "assets/TwoPropClaimIntervalInterpretation.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "twoProp69Interpretation",
+            "type": "textarea",
+            "label": "Interpret the {{confLevel}}% confidence interval ({{ciLower}}, {{ciUpper}}) in context:",
+            "rows": 4,
+            "placeholder": "We are __% confident that the interval from ___ to ___ captures the true difference..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l50-justify-two-prop-claim",
+      "name": "6.9b: Decide Whether a Claim Is Supported",
+      "animation": "assets/TwoPropClaimDecision.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "twoPropClaimDecision",
+            "type": "choice",
+            "label": "Based on the confidence interval, is there convincing evidence for the claim: {{claimText}}?",
+            "options": [
+              "Yes, convincing evidence",
+              "No, not convincing evidence"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l51-explain-two-prop-claim",
+      "name": "6.9c: Justify the Claim",
+      "animation": "assets/TwoPropClaimReasoning.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "twoPropClaimExplain",
+            "type": "textarea",
+            "label": "Explain whether the interval supports the claim: {{claimText}}",
+            "rows": 4,
+            "placeholder": "Because 0 is/is not in the interval, ..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l52-two-prop-confidence-level-meaning",
+      "name": "6.9d: Confidence Level Meaning",
+      "animation": "assets/TwoPropConfidenceLevelMeaning.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "twoPropConfLevelMeaning",
+            "type": "dropdown",
+            "label": "Which is the correct interpretation of the {{confLevel}}% confidence level?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose the correct interpretation..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -1423,7 +1508,11 @@
       "twoPropMEAnswer": "ME = z* \u00d7 \u221a[(p\u0302\u2081(1-p\u0302\u2081)/n\u2081) + (p\u0302\u2082(1-p\u0302\u2082)/n\u2082)]. Use the sample proportions from each group.",
       "twoPropCILower": "Lower bound = (p\u0302\u2081 - p\u0302\u2082) - z* \u00d7 \u221a[(p\u0302\u2081(1-p\u0302\u2081)/n\u2081) + (p\u0302\u2082(1-p\u0302\u2082)/n\u2082)].",
       "twoPropCIUpper": "Upper bound = (p\u0302\u2081 - p\u0302\u2082) + z* \u00d7 \u221a[(p\u0302\u2081(1-p\u0302\u2081)/n\u2081) + (p\u0302\u2082(1-p\u0302\u2082)/n\u2082)].",
-      "twoPropCIInterpretation": "Template: 'We are __% confident that the true difference (group 1 minus group 2) in proportions is between ___ and ___.' Translate the interval into percentage points and include the context."
+      "twoPropCIInterpretation": "Template: 'We are __% confident that the true difference (group 1 minus group 2) in proportions is between ___ and ___.' Translate the interval into percentage points and include the context.",
+      "twoProp69Interpretation": "Use the template: 'We are __% confident that the interval from ___ to ___ captures the true difference (group 1 minus group 2) in the population proportions.' Include the context.",
+      "twoPropClaimDecision": "Check whether every value in the interval is consistent with the claim. For a 'difference' claim, ask whether 0 is in the interval. For 'greater' or 'less' claims, ask whether the whole interval stays above or below 0.",
+      "twoPropClaimExplain": "Mention the interval and the key value 0. If 0 is in the interval, the claim is not supported. If all values are above or below 0 in the direction of the claim, then there is convincing evidence.",
+      "twoPropConfLevelMeaning": "Confidence level describes the long-run success rate of the method: in repeated sampling, about C% of intervals built this way would capture the true difference in population proportions."
     },
     "penalty": {
       "0": "gold",
@@ -1723,6 +1812,30 @@
         "name": "48",
         "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Topic 6.8 mastered! You can identify, check, calculate, and interpret confidence intervals for the difference of two proportions!"
+      },
+      {
+        "id": "l49-interpret-two-prop-claim-interval",
+        "name": "49",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can interpret the interval in context. Next, decide whether it supports a claim."
+      },
+      {
+        "id": "l50-justify-two-prop-claim",
+        "name": "50",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Claim decision made. Now justify it using the interval itself."
+      },
+      {
+        "id": "l51-explain-two-prop-claim",
+        "name": "51",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can justify claims from a two-proportion interval. Finish by interpreting the confidence level."
+      },
+      {
+        "id": "l52-two-prop-confidence-level-meaning",
+        "name": "52",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topic 6.9 mastered! You can interpret a two-proportion confidence interval, justify a claim with it, and explain the confidence level meaning."
       }
     ]
   }

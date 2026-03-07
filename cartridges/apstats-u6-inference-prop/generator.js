@@ -2633,6 +2633,170 @@ function buildTwoPropInterpretation(study) {
   return `We are ${study.confLevel}% confident that the true proportion of ${study.population1} who ${study.successDesc} is between ${Math.abs(lowerPct)} percentage points lower and ${upperPct} percentage points higher than the true proportion of ${study.population2} who ${study.successDesc}.`;
 }
 
+// ---- Shared study templates for L49-L52 (6.9a-6.9d) ----
+const twoPropClaimTemplateBank = [
+  {
+    context: "A disease is killing many trees in your state. Random samples of trees from two different large forests, one at high elevation and one at low elevation, reveal how many trees died from the disease.",
+    designType: "samples",
+    relation: "high minus low",
+    parameterText: "the difference (high minus low) in the proportions of all trees in these forests that have died from the disease",
+    group1: "high elevation",
+    group2: "low elevation",
+    population1: "trees at high elevation in these forests",
+    population2: "trees at low elevation in these forests",
+    successDesc: "died from the disease",
+    n1Range: [220, 260],
+    n2Range: [180, 220],
+    nStep: 20,
+    x1Range: [32, 42],
+    x2Range: [22, 30],
+    xStep: 2,
+    confLevels: [90],
+    claimText: "the disease is more lethal at one of the elevations",
+    claimDirection: "different",
+    targetProfile: "includesZero"
+  },
+  {
+    context: "A company that manufactures tick repellent for dogs has developed a new formula that has less odor than the old formula. In a randomized experiment, dogs are assigned to the new or old formula and researchers record whether each dog gets ticks.",
+    designType: "experiment",
+    relation: "new minus old",
+    parameterText: "the difference (new minus old) in the true proportions of dogs like these that would get ticks when using the two repellents",
+    group1: "new formula",
+    group2: "old formula",
+    population1: "dogs like these treated with the new formula",
+    population2: "dogs like these treated with the old formula",
+    successDesc: "would get ticks after treatment",
+    n1Range: [80, 100],
+    n2Range: [80, 100],
+    nStep: 10,
+    x1Range: [10, 16],
+    x2Range: [22, 30],
+    xStep: 2,
+    confLevels: [95],
+    claimText: "the new formula is better than the old formula at preventing ticks on dogs like these",
+    claimDirection: "less",
+    targetProfile: "belowZero"
+  },
+  {
+    context: "A large company has two shifts, a day shift and a night shift. Random samples of parts produced by each shift are selected, and researchers record whether each part meets specifications.",
+    designType: "samples",
+    relation: "day minus night",
+    parameterText: "the difference (day minus night) in the proportions of all parts produced within specifications by the two shifts",
+    group1: "day shift",
+    group2: "night shift",
+    population1: "parts produced by the day shift",
+    population2: "parts produced by the night shift",
+    successDesc: "meet specifications",
+    n1Range: [200, 220],
+    n2Range: [200, 220],
+    nStep: 10,
+    x1Range: [184, 190],
+    x2Range: [176, 182],
+    xStep: 2,
+    confLevels: [95],
+    claimText: "there is a difference in the proportions of parts produced within specifications by the two shifts",
+    claimDirection: "different",
+    targetProfile: "includesZero"
+  },
+  {
+    context: "Two student researchers randomly assign swimmers to wear either a drag suit or a regular suit during practice and record whether each swimmer is slower than average.",
+    designType: "experiment",
+    relation: "drag minus regular",
+    parameterText: "the difference (drag minus regular) in the true proportions of swimmers like these who would swim slower than their average time",
+    group1: "drag suit",
+    group2: "regular suit",
+    population1: "swimmers like these wearing a drag suit",
+    population2: "swimmers like these wearing a regular suit",
+    successDesc: "would swim slower than their average time",
+    n1Range: [40, 52],
+    n2Range: [40, 52],
+    nStep: 4,
+    x1Range: [20, 28],
+    x2Range: [10, 18],
+    xStep: 2,
+    confLevels: [90, 95],
+    claimText: "swimmers wearing a drag suit are more likely to swim slower than their average time than swimmers wearing a regular suit",
+    claimDirection: "greater",
+    targetProfile: "aboveZero"
+  }
+];
+
+function buildTwoPropClaimInterpretation(study) {
+  return `We are ${study.confLevel}% confident that the interval from ${study.lower} to ${study.upper} captures ${study.parameterText}.`;
+}
+
+function intervalMatchesTarget(study, targetProfile) {
+  if (targetProfile === "aboveZero") {
+    return study.lower > 0;
+  }
+  if (targetProfile === "belowZero") {
+    return study.upper < 0;
+  }
+  return study.lower <= 0 && study.upper >= 0;
+}
+
+function evaluateTwoPropClaimSupport(study) {
+  if (study.claimDirection === "greater") {
+    return study.lower > 0;
+  }
+  if (study.claimDirection === "less") {
+    return study.upper < 0;
+  }
+  return study.lower > 0 || study.upper < 0;
+}
+
+function buildTwoPropClaimExplanation(study) {
+  const intervalText = `(${study.lower}, ${study.upper})`;
+
+  if (study.claimDirection === "different") {
+    if (study.claimSupported) {
+      return `Because 0 is not in the ${study.confLevel}% confidence interval ${intervalText}, 0 is not a plausible value for the true difference (${study.relation}) in the population proportions. There is convincing evidence that ${study.claimText}.`;
+    }
+    return `Because 0 is in the ${study.confLevel}% confidence interval ${intervalText}, 0 is a plausible value for the true difference (${study.relation}) in the population proportions. There is not convincing evidence that ${study.claimText}.`;
+  }
+
+  if (study.claimDirection === "greater") {
+    if (study.claimSupported) {
+      return `Because all the values in the ${study.confLevel}% confidence interval ${intervalText} are greater than 0, the interval is consistent with ${study.group1} having the higher true proportion. There is convincing evidence that ${study.claimText}.`;
+    }
+    return `Because the ${study.confLevel}% confidence interval ${intervalText} includes 0 or negative values, it includes values inconsistent with ${study.group1} having the higher true proportion. There is not convincing evidence that ${study.claimText}.`;
+  }
+
+  if (study.claimSupported) {
+    return `Because all the values in the ${study.confLevel}% confidence interval ${intervalText} are less than 0, the interval is consistent with ${study.group1} having the lower true proportion. There is convincing evidence that ${study.claimText}.`;
+  }
+  return `Because the ${study.confLevel}% confidence interval ${intervalText} includes 0 or positive values, it includes values inconsistent with ${study.group1} having the lower true proportion. There is not convincing evidence that ${study.claimText}.`;
+}
+
+function buildTwoPropConfidenceLevelMeaning(study) {
+  return `If many random samples or repetitions of this study were collected in the same way and a ${study.confLevel}% confidence interval for ${study.relation} were constructed each time, about ${study.confLevel}% of those intervals would capture the true difference in the population proportions.`;
+}
+
+function buildTwoPropConfidenceLevelDistractors(study) {
+  return [
+    `There is a ${study.confLevel}% probability that the true difference in the population proportions is in this one interval.`,
+    `${study.confLevel}% of all individuals in the two groups are represented by values inside the interval.`,
+    `About ${study.confLevel}% of future sample differences will fall between ${study.lower} and ${study.upper}.`
+  ];
+}
+
+function buildTwoPropClaimStudy(template) {
+  let study = buildTwoPropStudy(template);
+
+  for (let i = 0; i < 40 && !intervalMatchesTarget(study, template.targetProfile); i++) {
+    study = buildTwoPropStudy(template);
+  }
+
+  const claimSupported = evaluateTwoPropClaimSupport(study);
+
+  study.claimSupported = claimSupported;
+  study.claimDecision = claimSupported ? "Yes, convincing evidence" : "No, not convincing evidence";
+  study.claimExplanation = buildTwoPropClaimExplanation(study);
+  study.confLevelMeaning = buildTwoPropConfidenceLevelMeaning(study);
+  study.confLevelDistractors = buildTwoPropConfidenceLevelDistractors(study);
+  return study;
+}
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -4136,6 +4300,113 @@ export function generateProblem(modeId, context, mode) {
     };
 
     scenario = `${study.context}\n\nA ${study.confLevel}% confidence interval for ${study.relation} is (${study.lower}, ${study.upper}).\n\nInterpret this interval in context.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L49: Interpret the Interval (6.9a) ==========
+  if (modeId === "l49-interpret-two-prop-claim-interval") {
+    const template = drawFromBag('twoPropClaim_l49', twoPropClaimTemplateBank);
+    const study = buildTwoPropClaimStudy(template);
+    const expectedInterpretation = buildTwoPropClaimInterpretation(study);
+
+    ctx = {
+      topicId: "6.9: Interpret a Confidence Interval for p1 - p2",
+      scenarioText: study.context,
+      givenText: `${study.confLevel}% CI for ${study.relation}: (${study.lower}, ${study.upper})`,
+      confLevel: `${study.confLevel}`,
+      ciLower: `${study.lower}`,
+      ciUpper: `${study.upper}`,
+      relation: study.relation,
+      group1: study.group1,
+      group2: study.group2,
+      parameterText: study.parameterText
+    };
+
+    answers = {
+      twoProp69Interpretation: { value: expectedInterpretation }
+    };
+
+    scenario = `${study.context}\n\nA ${study.confLevel}% confidence interval for ${study.relation} is (${study.lower}, ${study.upper}).\n\nInterpret this interval in context.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L50: Decide Whether a Claim Is Supported (6.9b) ==========
+  if (modeId === "l50-justify-two-prop-claim") {
+    const template = drawFromBag('twoPropClaim_l50', twoPropClaimTemplateBank);
+    const study = buildTwoPropClaimStudy(template);
+
+    ctx = {
+      topicId: "6.9: Justify a Claim with a Confidence Interval",
+      scenarioText: study.context,
+      givenText: `${study.confLevel}% CI for ${study.relation}: (${study.lower}, ${study.upper})`,
+      confLevel: `${study.confLevel}`,
+      ciLower: `${study.lower}`,
+      ciUpper: `${study.upper}`,
+      relation: study.relation,
+      claimText: study.claimText,
+      claimDirection: study.claimDirection,
+      claimSupported: study.claimSupported
+    };
+
+    answers = {
+      twoPropClaimDecision: { value: study.claimDecision }
+    };
+
+    scenario = `${study.context}\n\nA ${study.confLevel}% confidence interval for ${study.relation} is (${study.lower}, ${study.upper}).\nClaim: ${study.claimText}.\n\nBased on the interval, is there convincing evidence for the claim?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L51: Explain the Claim Decision (6.9c) ==========
+  if (modeId === "l51-explain-two-prop-claim") {
+    const template = drawFromBag('twoPropClaim_l51', twoPropClaimTemplateBank);
+    const study = buildTwoPropClaimStudy(template);
+
+    ctx = {
+      topicId: "6.9: Explain the Claim Decision",
+      scenarioText: study.context,
+      givenText: `${study.confLevel}% CI for ${study.relation}: (${study.lower}, ${study.upper})`,
+      confLevel: `${study.confLevel}`,
+      ciLower: `${study.lower}`,
+      ciUpper: `${study.upper}`,
+      relation: study.relation,
+      claimText: study.claimText,
+      claimDirection: study.claimDirection,
+      claimSupported: study.claimSupported,
+      group1: study.group1,
+      group2: study.group2
+    };
+
+    answers = {
+      twoPropClaimExplain: { value: study.claimExplanation }
+    };
+
+    scenario = `${study.context}\n\nA ${study.confLevel}% confidence interval for ${study.relation} is (${study.lower}, ${study.upper}).\nClaim: ${study.claimText}.\n\nExplain whether the interval provides convincing evidence for the claim.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L52: Confidence Level Meaning (6.9d) ==========
+  if (modeId === "l52-two-prop-confidence-level-meaning") {
+    const template = drawFromBag('twoPropClaim_l52', twoPropClaimTemplateBank);
+    const study = buildTwoPropClaimStudy(template);
+    const allOptions = shuffle([study.confLevelMeaning, ...study.confLevelDistractors]);
+
+    ctx = {
+      topicId: "6.9: Confidence Level Meaning for p1 - p2",
+      scenarioText: study.context,
+      givenText: `${study.group1}: ${study.x1}/${study.n1}, ${study.group2}: ${study.x2}/${study.n2}, confidence level = ${study.confLevel}%`,
+      confLevel: `${study.confLevel}`,
+      relation: study.relation,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      twoPropConfLevelMeaning: { value: study.confLevelMeaning }
+    };
+
+    scenario = `${study.context}\n\nResearchers use samples of size ${study.n1} and ${study.n2} to build a ${study.confLevel}% confidence interval for ${study.relation}.\n\nWhich statement correctly interprets the ${study.confLevel}% confidence level?`;
     return { context: ctx, graphConfig, answers, scenario };
   }
 

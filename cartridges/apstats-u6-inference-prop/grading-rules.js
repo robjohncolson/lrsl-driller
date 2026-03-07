@@ -76,7 +76,9 @@ export function gradeField(fieldId, answer, context) {
     "cap67Type2",
     "cap67Justify",
     "twoPropConditionsExplain",
-    "twoPropCIInterpretation"
+    "twoPropCIInterpretation",
+    "twoProp69Interpretation",
+    "twoPropClaimExplain"
   ]);
 
   if (isBlank(answer)) {
@@ -2136,6 +2138,158 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Interpret the interval like this: 'We are __% confident that the true difference (group 1 minus group 2) in proportions is between ___ and ___,' then translate that into higher/lower percentage points in context."
+    };
+  }
+
+  // ========== L49: CI Interpretation for a Claim Context (Textarea) ==========
+  if (fieldId === "twoProp69Interpretation") {
+    const confLevel = String(context?.confLevel ?? "");
+    const numbers = getNumericTokens(answer);
+    const mentionsConfidence = containsAny(answer, ["confident", "confidence", confLevel]);
+    const mentionsDifference = containsAny(answer, ["difference", "proportion", "minus", "captures", "capture"]);
+    const mentionsContext = containsAny(answer, [context?.group1 ?? "", context?.group2 ?? "", "trees", "dogs", "ticks", "swimmers", "shift", "parts", "disease"]);
+    const mentionsBounds = numbers.length >= 2 || containsAny(answer, ["between", "from", "to"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 10;
+    const hasProbMisconception = containsAny(answer, ["probability that", "chance that the true", "% probability"]);
+
+    if (hasProbMisconception) {
+      return {
+        score: "P",
+        feedback: "Careful. A confidence interval should be interpreted with 'We are __% confident ...' rather than as a probability statement about the true difference."
+      };
+    }
+    if (mentionsConfidence && mentionsDifference && mentionsContext && mentionsBounds && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You described the interval as capturing the true difference in the population proportions and kept the interpretation in context."
+      };
+    }
+    if ((mentionsConfidence || mentionsDifference || mentionsContext) && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Good start. For full credit, include the confidence level, the interval bounds, and state that the interval captures the true difference (group 1 minus group 2) in the population proportions in context."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Use the template: 'We are __% confident that the interval from ___ to ___ captures the true difference (group 1 minus group 2) in the population proportions,' then finish with the context."
+    };
+  }
+
+  // ========== L50: Claim Decision from a CI (Choice) ==========
+  if (fieldId === "twoPropClaimDecision") {
+    const lower = parseFloat(context?.ciLower ?? "");
+    const upper = parseFloat(context?.ciUpper ?? "");
+    const claimDirection = String(context?.claimDirection ?? "");
+
+    let reason;
+    if (claimDirection === "different") {
+      reason = lower <= 0 && upper >= 0
+        ? `0 is in the interval (${lower}, ${upper}), so a difference of 0 is plausible.`
+        : `0 is not in the interval (${lower}, ${upper}), so a difference of 0 is not plausible.`;
+    } else if (claimDirection === "greater") {
+      reason = lower > 0
+        ? `all values in the interval (${lower}, ${upper}) are greater than 0.`
+        : `the interval (${lower}, ${upper}) includes 0 or negative values.`;
+    } else {
+      reason = upper < 0
+        ? `all values in the interval (${lower}, ${upper}) are less than 0.`
+        : `the interval (${lower}, ${upper}) includes 0 or positive values.`;
+    }
+
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct! ${reason}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${reason} That means the correct answer is: ${expected}.`
+    };
+  }
+
+  // ========== L51: Explain the Claim Decision (Textarea) ==========
+  if (fieldId === "twoPropClaimExplain") {
+    const claimDirection = String(context?.claimDirection ?? "");
+    const claimSupported = context?.claimSupported === true || String(context?.claimSupported ?? "").toLowerCase() === "true";
+    const numbers = getNumericTokens(answer);
+    const mentionsInterval = containsAny(answer, ["interval", "confidence interval", "all values", "entire interval", "includes", "contains"]);
+    const mentionsContext = containsAny(answer, [context?.group1 ?? "", context?.group2 ?? "", "trees", "dogs", "ticks", "swimmers", "shift", "parts", "disease"]);
+    const mentionsYes = containsAny(answer, ["convincing evidence", "supports the claim", "evidence for"]);
+    const mentionsNo = containsAny(answer, ["not convincing evidence", "no convincing evidence", "does not support", "not support"]);
+    const mentionsPositive = containsAny(answer, ["greater than 0", "above 0", "positive", "higher"]);
+    const mentionsNegative = containsAny(answer, ["less than 0", "below 0", "negative", "lower"]);
+    const mentionsZeroIn = containsAny(answer, ["0 is in", "zero is in", "includes 0", "include 0", "contains 0", "contains zero", "zero is plausible", "0 is plausible"]);
+    const mentionsZeroNotIn = containsAny(answer, ["0 is not in", "zero is not in", "does not include 0", "doesn't include 0", "0 is not plausible", "zero is not plausible"]);
+    const mentionsZero = mentionsZeroIn || mentionsZeroNotIn || numbers.some(n => Math.abs(parseFloat(n)) < 0.0001) || containsAny(answer, ["zero"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 10;
+
+    let logicOk = false;
+    if (claimDirection === "different") {
+      logicOk = claimSupported
+        ? mentionsZeroNotIn && mentionsYes
+        : mentionsZeroIn && mentionsNo;
+    } else if (claimDirection === "greater") {
+      logicOk = claimSupported
+        ? mentionsPositive && mentionsYes
+        : ((mentionsZeroIn || mentionsNegative || containsAny(answer, ["includes negative", "includes 0"])) && mentionsNo);
+    } else {
+      logicOk = claimSupported
+        ? mentionsNegative && mentionsYes
+        : ((mentionsZeroIn || mentionsPositive || containsAny(answer, ["includes positive", "includes 0"])) && mentionsNo);
+    }
+
+    if (logicOk && mentionsInterval && mentionsContext && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You used the interval correctly to justify whether the claim is supported."
+      };
+    }
+    if ((mentionsInterval || mentionsZero || mentionsPositive || mentionsNegative) && hasSubstance) {
+      const fullCreditHint = claimDirection === "different"
+        ? "state whether 0 is in the interval and connect that to whether the claim has convincing evidence"
+        : "state whether the whole interval stays above or below 0 in the direction of the claim and connect that to convincing evidence";
+      return {
+        score: "P",
+        feedback: `Good start. For full credit, ${fullCreditHint}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Explain the decision by referring to the confidence interval. If 0 is in the interval, there is not convincing evidence for a difference claim. If the whole interval is above or below 0 in the direction of the claim, there is convincing evidence."
+    };
+  }
+
+  // ========== L52: Confidence Level Meaning for p1 - p2 (Dropdown) ==========
+  if (fieldId === "twoPropConfLevelMeaning") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! Confidence level describes the long-run success rate of the interval method under repeated sampling."
+      };
+    }
+    if (containsAny(answer, ["probability that the true difference", "this one interval"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. The confidence level is not the probability that the true difference is in this one interval. It describes how often the method captures the true difference over many repetitions."
+      };
+    }
+    if (containsAny(answer, ["individuals in the two groups", "inside the interval"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. A confidence interval is about a population parameter, not about the percentage of individual observations inside the interval."
+      };
+    }
+    if (containsAny(answer, ["future sample differences"])) {
+      return {
+        score: "I",
+        feedback: "Incorrect. The confidence level does not describe where future sample statistics will fall. It describes the proportion of intervals that would capture the true population difference."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct interpretation is: ${expected}`
     };
   }
 
