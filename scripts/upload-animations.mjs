@@ -164,79 +164,67 @@ function findRenderedFile(assetName) {
 
   if (!existsSync(mediaVideos)) return null;
 
-  // Only look in directories for this unit+lesson
   const dirPrefix = `apstat_${unit}${lesson}_`;
   const sceneDirs = readdirSync(mediaVideos).filter((d) =>
     d.startsWith(dirPrefix)
   );
-
   const qualities = ["1080p60", "720p30", "480p15"];
-  let bestMatch = null;
 
+  // Collect all rendered MP4s from matching directories
+  const allRendered = [];
   for (const sceneDir of sceneDirs) {
     for (const quality of qualities) {
       const qualityDir = join(mediaVideos, sceneDir, quality);
       if (!existsSync(qualityDir)) continue;
 
       const mp4s = readdirSync(qualityDir).filter(
-        (f) =>
-          f.endsWith(".mp4") &&
-          !f.match(/^\d{5,}/) // Skip numbered Manim cache files
+        (f) => f.endsWith(".mp4") && !f.match(/^\d{5,}/)
       );
-
       for (const mp4 of mp4s) {
-        const renderedStem = mp4.replace(/\.mp4$/i, "");
+        allRendered.push({ name: mp4, stem: mp4.replace(/\.mp4$/i, ""), dir: qualityDir });
+      }
+    }
+  }
 
-        // Priority 1: exact match
-        if (renderedStem === assetStem) {
-          return { assetName, renderedPath: join(qualityDir, mp4) };
-        }
+  // Priority 1: exact match
+  const exact = allRendered.find((r) => r.stem === assetStem);
+  if (exact) {
+    return { assetName, renderedPath: join(exact.dir, exact.name) };
+  }
 
-        // Priority 2: rendered filename starts with asset stem
-        if (renderedStem.startsWith(assetStem) && !bestMatch) {
-          bestMatch = { assetName, renderedPath: join(qualityDir, mp4) };
-        }
+  // Priority 2: Scene-class-aware repair
+  const animationsDir = join(repoRoot, "animations");
+  if (existsSync(animationsDir)) {
+    const pyFiles = readdirSync(animationsDir).filter(
+      (f) => f.startsWith(dirPrefix) && f.endsWith(".py")
+    );
 
-        // Priority 3: asset stem appears as substring in rendered filename
-        if (!bestMatch && renderedStem.includes(assetStem)) {
-          bestMatch = { assetName, renderedPath: join(qualityDir, mp4) };
-        }
+    for (const pyFile of pyFiles) {
+      const content = readFileSync(join(animationsDir, pyFile), "utf-8");
+      const classMatches = [...content.matchAll(/class\s+(\w+)\s*\(\s*Scene\s*\)/g)];
 
-        // Priority 4: rendered stem appears as substring in asset stem
-        // (handles "Capstone65" matching "Capstone..." from the 6.5 dirs)
-        if (!bestMatch && assetStem.includes(renderedStem)) {
-          bestMatch = { assetName, renderedPath: join(qualityDir, mp4) };
+      for (const cm of classMatches) {
+        const actualClass = cm[1];
+        const rendered = allRendered.find((r) => r.stem === actualClass);
+        if (rendered) {
+          console.log(
+            `  Scene-class repair: manifest expects "${assetStem}" but .py defines "${actualClass}" — using ${rendered.name}`
+          );
+          return { assetName, renderedPath: join(rendered.dir, rendered.name) };
         }
       }
     }
   }
 
-  // For capstone modes: the asset name is like "Capstone65.mp4" but the
-  // rendered file is something like "CapstonePValueInterpretation.mp4".
-  // Since we already scoped to the correct unit+lesson dirs, any MP4 with
-  // "Capstone" in its name from those dirs is the right one.
-  if (!bestMatch && assetStem.toLowerCase().startsWith("capstone")) {
-    for (const sceneDir of sceneDirs) {
-      if (!sceneDir.includes("capstone")) continue;
-      for (const quality of qualities) {
-        const qualityDir = join(mediaVideos, sceneDir, quality);
-        if (!existsSync(qualityDir)) continue;
-        const mp4s = readdirSync(qualityDir).filter(
-          (f) => f.endsWith(".mp4") && !f.match(/^\d{5,}/)
-        );
-        if (mp4s.length > 0) {
-          bestMatch = {
-            assetName,
-            renderedPath: join(qualityDir, mp4s[0]),
-          };
-          break;
-        }
-      }
-      if (bestMatch) break;
-    }
+  // Priority 3: single-file fallback
+  if (allRendered.length === 1) {
+    console.log(
+      `  Single-file fallback: using "${allRendered[0].name}" for "${assetName}"`
+    );
+    return { assetName, renderedPath: join(allRendered[0].dir, allRendered[0].name) };
   }
 
-  return bestMatch;
+  return null;
 }
 
 // ---------------------------------------------------------------------------
