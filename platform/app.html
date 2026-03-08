@@ -1027,6 +1027,7 @@
     import { AssetCache } from './core/asset-cache.js';
     import { AssetResolver } from './core/asset-resolver.js';
     import { P2PAssetTransfer } from './core/p2p-asset-transfer.js';
+    import { buildShareURL, getModeNumber, parseQueryParams, restoreStateFromURL, updateURL } from './core/url-state.js';
     console.log('[APP] All imports successful');
 
     // ==================== CONFIGURATION ====================
@@ -1376,7 +1377,8 @@
     let pendingTeacherReview = null; // Store results for teacher review
     let aiFeedbackPanel = null; // v2.0.1: AI feedback panel instance
     let rosterModal = null; // Teacher roster management modal
-    let requestedStartLevel = null; // URL-requested level (e.g., ?level=l12-sample-space or ?start=12)
+    let pendingUrlState = null; // Parsed URL state, applied after the first cartridge load
+    let requestedStartLevel = null; // URL-requested direct level link (?level=... or ?start=...)
     let ghostPanel = null; // Ghost panel instance for ghost mode features
 
     /**
@@ -2719,6 +2721,7 @@
 
     // ==================== SHARE MODAL ====================
     document.getElementById('share-btn').addEventListener('click', () => {
+      updateShareModalContents();
       const modal = document.getElementById('share-modal');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
@@ -4077,6 +4080,73 @@
       return null; // 'server' or 'none' = auto or no preference
     }
 
+    function getCurrentModeNumber() {
+      const modes = platform?.currentCartridge?.manifest?.modes || [];
+      return getModeNumber(platform?.currentMode || null, modes);
+    }
+
+    function syncBrowserURL() {
+      const cartridgeId = platform?.currentCartridge?.manifest?.meta?.id || currentCartridgeId;
+      if (!cartridgeId) return null;
+      return updateURL(cartridgeId, getCurrentModeNumber());
+    }
+
+    function updateShareModalContents() {
+      const cartridgeId = platform?.currentCartridge?.manifest?.meta?.id || currentCartridgeId;
+      const shareUrl = buildShareURL(cartridgeId, getCurrentModeNumber());
+      const qrCode = document.getElementById('share-qr-code');
+      const urlLabel = document.querySelector('#share-modal .break-all');
+
+      if (qrCode) {
+        qrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`;
+        qrCode.alt = `QR Code to ${shareUrl}`;
+      }
+
+      if (urlLabel) {
+        urlLabel.textContent = shareUrl;
+      }
+    }
+
+    function applyPendingUrlState() {
+      if (!pendingUrlState || !platform?.currentCartridge?.manifest?.modes) {
+        return null;
+      }
+
+      const resolution = restoreStateFromURL(pendingUrlState, {
+        modes: platform.currentCartridge.manifest.modes,
+        state: platform.gameEngine.getState(),
+        currentMode: platform.currentMode,
+        isTeacher,
+        getRequiredGold: (modeId) => platform.gameEngine.getRequiredGold(modeId)
+      });
+
+      if (!resolution.isValidRequest) {
+        if (resolution.source === 'invalid-level' || resolution.source === 'invalid-start') {
+          console.warn(`[App] URL-requested level not found: ${JSON.stringify(pendingUrlState)}`);
+        } else if (resolution.source === 'invalid-mode') {
+          console.warn(`[App] URL-requested mode is invalid: ${JSON.stringify(pendingUrlState)}`);
+        }
+      }
+
+      if (resolution.wasRedirected && pendingUrlState.mode != null) {
+        console.log(`[App] URL-requested mode ${pendingUrlState.mode} redirected to ${resolution.modeId}`);
+      }
+
+      if (resolution.progressionFloorModeId) {
+        platform.gameEngine.setProgressionFloor(resolution.progressionFloorModeId);
+      }
+
+      if (resolution.modeId && resolution.modeId !== platform.currentMode) {
+        const didSet = platform.setMode(resolution.modeId, resolution.forceAccess);
+        if (!didSet) {
+          console.warn(`[App] Could not restore URL mode: ${resolution.modeId}`);
+        }
+      }
+
+      pendingUrlState = null;
+      return resolution;
+    }
+
     // Level modal helpers
     function openLevelModal() {
       document.getElementById('level-modal')?.classList.remove('hidden');
@@ -4112,6 +4182,7 @@
       await platform.loadProblem();
       updateScenarioDisplay();
       updateTeacherProgressionControls();
+      syncBrowserURL();
     }
 
     async function handleLockedLevelContinue() {
@@ -4127,6 +4198,7 @@
       await platform.loadProblem();
       updateScenarioDisplay();
       updateTeacherProgressionControls();
+      syncBrowserURL();
     }
 
     // Navigate to prev/next level
@@ -4152,6 +4224,7 @@
       await platform.loadProblem();
       updateScenarioDisplay();
       updateTeacherProgressionControls();
+      syncBrowserURL();
     }
 
     // Update level bar with current level info
@@ -4302,6 +4375,7 @@
             await platform.loadProblem();
             updateScenarioDisplay();
             updateTeacherProgressionControls(); // Update teacher controls when mode changes
+            syncBrowserURL();
           });
         } else {
           // Locked mode - show what's needed (gold stars on previous level)
@@ -4358,6 +4432,7 @@
           renderModeTabs(); // Update active tab
           await platform.loadProblem();
           updateScenarioDisplay();
+          syncBrowserURL();
         }
       };
 
@@ -4442,6 +4517,7 @@
                 renderModeTabs();
                 await platform.loadProblem();
                 updateScenarioDisplay();
+                syncBrowserURL();
               }
             }, 2000);
           }
@@ -4777,6 +4853,12 @@
         // Render mode tabs (call the reusable function)
         renderModeTabs();
 
+        const restoredUrlState = pendingUrlState ? applyPendingUrlState() : null;
+        if (restoredUrlState?.modeId) {
+          requestedStartLevel = null;
+          renderModeTabs();
+        }
+
         // Handle URL-requested level (?level=l12-sample-space or ?start=12)
         if (requestedStartLevel) {
           const modes = platform.currentCartridge.manifest.modes;
@@ -4809,6 +4891,8 @@
           requestedStartLevel = null;
         }
 
+        pendingUrlState = null;
+        syncBrowserURL();
         console.log('[App] Calling platform.loadProblem()...');
         await platform.loadProblem();
         console.log('[App] Problem loaded:', {
@@ -5507,10 +5591,8 @@
       // Check URL parameters for cartridge selection
       // Supports: ?cartridge=sampling or ?c=sampling or ?c=exp (aliases)
       // Also supports: ?level=l12-sample-space or ?start=12 (level index)
-      const urlParams = new URLSearchParams(window.location.search);
-      let urlCartridge = urlParams.get('cartridge') || urlParams.get('c');
-      const urlLevel = urlParams.get('level');
-      const urlStart = urlParams.get('start');
+      pendingUrlState = parseQueryParams();
+      let urlCartridge = pendingUrlState.cartridge;
 
       // Short aliases for easy URLs (e.g., ?c=exp instead of ?c=apstats-u3l5-experimental-design)
       const cartridgeAliases = {
@@ -5583,15 +5665,14 @@
 
       // Store requested level from URL (applied after cartridge loads)
       // Supports: ?level=l12-sample-space (mode ID) or ?start=12 (0-based index)
-      if (urlLevel) {
-        requestedStartLevel = { type: 'id', value: urlLevel };
-        console.log(`[App] Level from URL (by ID): ${urlLevel}`);
-      } else if (urlStart) {
-        const startIndex = parseInt(urlStart, 10);
-        if (!isNaN(startIndex) && startIndex >= 0) {
-          requestedStartLevel = { type: 'index', value: startIndex };
-          console.log(`[App] Level from URL (by index): ${startIndex}`);
-        }
+      if (pendingUrlState.hasLevel && pendingUrlState.level) {
+        requestedStartLevel = { type: 'id', value: pendingUrlState.level };
+        console.log(`[App] Level from URL (by ID): ${pendingUrlState.level}`);
+      } else if (pendingUrlState.hasStart && pendingUrlState.start != null) {
+        requestedStartLevel = { type: 'index', value: pendingUrlState.start };
+        console.log(`[App] Level from URL (by index): ${pendingUrlState.start}`);
+      } else if (pendingUrlState.hasMode && pendingUrlState.mode != null) {
+        console.log(`[App] Mode from URL: ${pendingUrlState.mode}`);
       }
 
       await userSystem.init();

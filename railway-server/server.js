@@ -15,6 +15,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 // Use service role key to bypass RLS for server-side writes
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || 'stats123';
+const GRADING_PROXY_URL = process.env.GRADING_PROXY_URL || 'https://shared-grading-proxy-production.up.railway.app';
+const GRADING_PROXY_TIMEOUT_MS = 35000;
 
 // AI API Keys (for server-side grading)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -30,9 +32,8 @@ console.log('Supabase configured:', {
   url: SUPABASE_URL ? 'set' : 'missing',
   key: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'service_role' : 'anon'
 });
-console.log('AI Providers configured:', {
-  gemini: !!GEMINI_API_KEY,
-  groq: !!GROQ_API_KEY
+console.log('Grading proxy configured:', {
+  url: GRADING_PROXY_URL ? 'set' : 'missing'
 });
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1525,20 +1526,314 @@ Respond with ONLY this JSON:
 }`;
 }
 
+function normalizeProxyText(value) {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+
+  if (typeof value === 'object') {
+    if ('value' in value && value.value != null) {
+      return String(value.value);
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch (err) {
+      return String(value);
+    }
+  }
+
+  return String(value);
+}
+
+function getProxyQuestionId(cartridgeId, scenario, fieldId) {
+  return [
+    cartridgeId || scenario.cartridgeId || scenario.topic || 'lrsl-driller',
+    scenario.mode || 'practice',
+    fieldId
+  ]
+    .filter(Boolean)
+    .join(':');
+}
+
+function getExpectedAnswerForField(fieldId, scenario) {
+  if (scenario.fieldId === fieldId && scenario.expectedAnswer != null) {
+    return normalizeProxyText(scenario.expectedAnswer);
+  }
+
+  const fieldData = scenario[fieldId];
+  if (fieldData && typeof fieldData === 'object') {
+    if (fieldData.value != null) {
+      return normalizeProxyText(fieldData.value);
+    }
+
+    if (fieldId === 'correlation') {
+      const strength = fieldData.strength || scenario.strength || 'moderate';
+      const direction = fieldData.direction || scenario.rDirection || 'positive';
+      return `There is a ${strength}, ${direction}, linear relationship between ${scenario.xVar || 'x'} and ${scenario.yVar || 'y'}.`;
+    }
+  }
+
+  const direction = Number(scenario.slope) >= 0 ? 'increases' : 'decreases';
+  const rDirection = Number(scenario.r) >= 0 ? 'positive' : 'negative';
+  const strength = scenario.strength || (Math.abs(Number(scenario.r)) < 0.4 ? 'weak' : Math.abs(Number(scenario.r)) < 0.7 ? 'moderate' : 'strong');
+  const interceptMeaningful = scenario.isInterceptMeaningful !== false && scenario.interceptMeaningful !== false;
+
+  if (fieldId === 'slope' && scenario.slope != null) {
+    const slopeValue = scenario.slopeAbs != null ? scenario.slopeAbs : Math.abs(Number(scenario.slope));
+    return `For every 1 ${scenario.xUnits || 'unit'} increase in ${scenario.xVar || 'x'}, the predicted ${scenario.yVar || 'y'} ${direction} by ${slopeValue} ${scenario.yUnits || 'units'}, on average.`;
+  }
+
+  if (fieldId === 'intercept' && scenario.intercept != null) {
+    if (!interceptMeaningful) {
+      return `There is no meaningful interpretation for the y-intercept because ${scenario.interceptReason || 'x = 0 is not meaningful in context'}.`;
+    }
+
+    return `When ${scenario.xVar || 'x'} is 0 ${scenario.xUnits || 'units'}, the predicted ${scenario.yVar || 'y'} is ${scenario.intercept} ${scenario.yUnits || 'units'}.`;
+  }
+
+  if (fieldId === 'correlation') {
+    return `There is a ${strength}, ${rDirection}, linear relationship between ${scenario.xVar || 'x'} and ${scenario.yVar || 'y'}.`;
+  }
+
+  if (fieldId === 'paragraph') {
+    return [
+      getExpectedAnswerForField('slope', scenario),
+      getExpectedAnswerForField('intercept', scenario),
+      getExpectedAnswerForField('correlation', scenario)
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  const gradingPair = String(scenario.gradingPairs || '')
+    .split('\n')
+    .find((line) => line.trim().toLowerCase().startsWith(`${String(fieldId).toLowerCase()}:`));
+
+  if (gradingPair) {
+    return gradingPair.trim();
+  }
+
+  return normalizeProxyText(scenario.correctAnswer || scenario.problemText || '');
+}
+
+function buildFieldScenario(scenario, fieldId, answer) {
+  return {
+    ...scenario,
+    fieldId,
+    studentAnswer: normalizeProxyText(answer),
+    expectedAnswer: getExpectedAnswerForField(fieldId, scenario)
+  };
+}
+
+function buildProxyRubric(aiPromptTemplate, fieldScenario, fieldAnswers) {
+  const expectedElements = [];
+
+  expectedElements.push(`Grade only the "${fieldScenario.fieldId}" field. Ignore unrelated or blank sections for any other fields.`);
+
+  if (fieldScenario.expectedAnswer) {
+    expectedElements.push(`Expected answer guidance: ${fieldScenario.expectedAnswer}`);
+  }
+
+  if (aiPromptTemplate) {
+    const promptText = buildCartridgePrompt(aiPromptTemplate, fieldScenario, fieldAnswers);
+    if (promptText) {
+      expectedElements.push(promptText);
+    }
+  }
+
+  return expectedElements.length > 0 ? { expectedElements } : null;
+}
+
+function buildProxyFrameworkContext(aiPromptTemplate, fieldScenario, fieldAnswers) {
+  const sections = [
+    `Current field: ${fieldScenario.fieldId}. Grade only this response.`
+  ];
+
+  if (fieldScenario.topic) {
+    sections.push(`Topic: ${fieldScenario.topic}`);
+  }
+
+  if (fieldScenario.mode) {
+    sections.push(`Mode: ${fieldScenario.mode}`);
+  }
+
+  if (fieldScenario.problemText) {
+    sections.push(`Problem:\n${fieldScenario.problemText}`);
+  } else if (fieldScenario.scenario) {
+    sections.push(`Scenario:\n${fieldScenario.scenario}`);
+  }
+
+  if (aiPromptTemplate) {
+    const promptText = buildCartridgePrompt(aiPromptTemplate, fieldScenario, fieldAnswers);
+    if (promptText) {
+      sections.push(`Original cartridge grading guidance:\n${promptText}`);
+    }
+  }
+
+  return sections.join('\n\n');
+}
+
+function buildProxyAppealContext(scenario, fieldId, answer, appealText, previousResult, aiPromptTemplate) {
+  const fieldScenario = buildFieldScenario(scenario, fieldId, answer);
+  const fieldAnswers = { [fieldId]: answer };
+  const previousFieldResults = previousResult ? { [fieldId]: previousResult } : null;
+  const sections = [
+    buildProxyFrameworkContext(aiPromptTemplate, fieldScenario, fieldAnswers),
+    buildAppealPrompt(fieldScenario, fieldAnswers, appealText, previousFieldResults)
+  ];
+
+  if (previousResult?.score) {
+    sections.splice(1, 0, `Previous score: ${previousResult.score}\nPrevious feedback: ${previousResult.feedback || 'No feedback provided.'}`);
+  }
+
+  return sections.filter(Boolean).join('\n\n');
+}
+
+async function postToGradingProxy(path, payload) {
+  const response = await fetch(`${GRADING_PROXY_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(GRADING_PROXY_TIMEOUT_MS)
+  });
+
+  const responseText = await response.text();
+  let data = {};
+
+  try {
+    data = responseText ? JSON.parse(responseText) : {};
+  } catch (err) {
+    throw new Error(responseText || `Invalid grading proxy response (${response.status})`);
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error || `Grading proxy request failed (${response.status})`);
+  }
+
+  return data;
+}
+
+function summarizeProxyMetadata(proxyResults) {
+  const preferredResult =
+    proxyResults.find((result) => result?.provider && !['keyword', 'fallback'].includes(result.provider)) ||
+    proxyResults.find((result) => result?.provider) ||
+    {};
+
+  return {
+    _provider: preferredResult.provider || null,
+    _model: preferredResult.model || null
+  };
+}
+
+async function proxyGradeAnswers({ scenario, answers, aiPromptTemplate, cartridgeId }) {
+  const fieldResults = {};
+  const proxyResults = [];
+  const errors = [];
+  const fieldEntries = Object.entries(answers || {});
+
+  await Promise.all(fieldEntries.map(async ([fieldId, answer]) => {
+    const fieldScenario = buildFieldScenario(scenario, fieldId, answer);
+    const fieldAnswers = { [fieldId]: answer };
+
+    try {
+      const proxyResult = await postToGradingProxy('/grade', {
+        questionId: getProxyQuestionId(cartridgeId, scenario, fieldId),
+        questionType: 'frq',
+        studentAnswer: normalizeProxyText(answer),
+        correctAnswer: fieldScenario.expectedAnswer || null,
+        rubric: buildProxyRubric(aiPromptTemplate, fieldScenario, fieldAnswers),
+        frameworkContext: buildProxyFrameworkContext(aiPromptTemplate, fieldScenario, fieldAnswers)
+      });
+
+      fieldResults[fieldId] = {
+        score: proxyResult.score || 'I',
+        feedback: proxyResult.feedback || '',
+        matched: Array.isArray(proxyResult.matched) ? proxyResult.matched : [],
+        missing: Array.isArray(proxyResult.missing) ? proxyResult.missing : []
+      };
+      proxyResults.push(proxyResult);
+    } catch (err) {
+      console.warn(`[AI Proxy] Grade failed for ${fieldId}:`, err.message);
+      errors.push(err);
+    }
+  }));
+
+  if (Object.keys(fieldResults).length === 0) {
+    throw errors[0] || new Error('Shared grading proxy unavailable');
+  }
+
+  return {
+    ...fieldResults,
+    ...summarizeProxyMetadata(proxyResults)
+  };
+}
+
+async function proxyAppealAnswers({ scenario, answers, appealText, previousResults, aiPromptTemplate, cartridgeId }) {
+  const fieldResults = {};
+  const proxyResults = [];
+  const appealSummaries = [];
+  const errors = [];
+  const fieldEntries = Object.entries(answers || {});
+
+  await Promise.all(fieldEntries.map(async ([fieldId, answer]) => {
+    const previousResult = previousResults?.[fieldId] || null;
+    const currentScore = previousResult?.score || 'I';
+
+    try {
+      const proxyResult = await postToGradingProxy('/appeal', {
+        questionId: getProxyQuestionId(cartridgeId, scenario, fieldId),
+        studentAnswer: normalizeProxyText(answer),
+        currentScore,
+        reasoning: appealText,
+        frameworkContext: buildProxyAppealContext(scenario, fieldId, answer, appealText, previousResult, aiPromptTemplate)
+      });
+
+      fieldResults[fieldId] = {
+        score: proxyResult.score || currentScore,
+        feedback: proxyResult.feedback || ''
+      };
+
+      if (proxyResult.appealResponse) {
+        appealSummaries.push(`${fieldId}: ${proxyResult.appealResponse}`);
+      }
+
+      proxyResults.push(proxyResult);
+    } catch (err) {
+      console.warn(`[AI Proxy] Appeal failed for ${fieldId}:`, err.message);
+      errors.push(err);
+    }
+  }));
+
+  if (Object.keys(fieldResults).length === 0) {
+    throw errors[0] || new Error('Shared grading proxy unavailable');
+  }
+
+  const feedbackSummary = appealSummaries.length > 0
+    ? appealSummaries.join(' ')
+    : Object.entries(fieldResults)
+      .map(([fieldId, result]) => `${fieldId}: ${result.feedback}`)
+      .join(' ');
+
+  return {
+    ...fieldResults,
+    ...summarizeProxyMetadata(proxyResults),
+    appealResponse: feedbackSummary,
+    feedback: feedbackSummary
+  };
+}
+
 // ============================================
 // AI GRADING ENDPOINTS
 // ============================================
 
 // Check AI availability and pool stats
 app.get('/api/ai/status', async (req, res) => {
-  await keyPool.refreshKeys();
-  const poolStats = keyPool.getStats();
-
   res.json({
-    available: poolStats.gemini.total > 0 || poolStats.groq.total > 0 ||
-               poolStats.hasEnvKeys.gemini || poolStats.hasEnvKeys.groq,
-    pool: poolStats,
-    queueLength: gradingQueue.getQueueLength()
+    available: !!GRADING_PROXY_URL,
+    mode: 'shared-grading-proxy',
+    proxyConfigured: !!GRADING_PROXY_URL,
+    queueLength: 0
   });
 });
 
@@ -1598,88 +1893,67 @@ app.post('/api/ai/contribute-key', async (req, res) => {
 // Grade 3-part answers
 app.post('/api/ai/grade', async (req, res) => {
   try {
-    const { scenario, answers, preferProvider, aiPromptTemplate, cartridgeId } = req.body;
+    const { scenario, answers, aiPromptTemplate, cartridgeId } = req.body;
 
     if (!scenario || !answers) {
       return res.status(400).json({ error: 'Missing scenario or answers' });
     }
 
-    // Check if we have any keys available (pool or env)
-    await keyPool.refreshKeys();
-    const stats = keyPool.getStats();
-    const hasKeys = stats.gemini.total > 0 || stats.groq.total > 0 ||
-                    stats.hasEnvKeys.gemini || stats.hasEnvKeys.groq;
+    console.log(`Proxying AI grade request: ${scenario.topic || 'unknown topic'}, cartridge: ${cartridgeId || 'unknown'}, fields: ${Object.keys(answers).join(', ')}`);
 
-    if (!hasKeys) {
-      return res.status(503).json({ error: 'No AI providers configured' });
-    }
-
-    // Use cartridge-specific prompt template if provided, otherwise use default LSRL prompt
-    let prompt;
-    if (aiPromptTemplate && cartridgeId && cartridgeId !== 'lsrl-interpretation') {
-      prompt = buildCartridgePrompt(aiPromptTemplate, scenario, answers);
-      console.log(`Using cartridge-specific prompt for ${cartridgeId}`);
-    } else {
-      prompt = buildGradingPrompt(scenario, answers);
-    }
-
-    const queuePos = gradingQueue.getQueueLength();
-    console.log(`Grading request queued (position ${queuePos}): ${scenario.topic}, cartridge: ${cartridgeId || 'lsrl'}, prefer: ${preferProvider || 'auto'}`);
-
-    const result = await gradingQueue.add(() => gradeWithAI(prompt, preferProvider));
-
-    // v2.1.1: Remap 'answer' field ID to actual field ID from request
-    // normalizeGradingResponse defaults to 'answer' but client expects the actual field ID
-    const actualFieldId = scenario.fieldId || Object.keys(answers)[0];
-    if (result.answer && actualFieldId && actualFieldId !== 'answer') {
-      console.log(`[AI] Remapping field ID: 'answer' -> '${actualFieldId}'`);
-      result[actualFieldId] = result.answer;
-      delete result.answer;
-    }
-
+    const result = await proxyGradeAnswers({ scenario, answers, aiPromptTemplate, cartridgeId });
     result._gradingMode = 'ai';
     result._serverGraded = true;
 
     res.json(result);
   } catch (err) {
-    console.error('AI grading error:', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('AI grading proxy error:', err.message);
+    res.status(503).json({ error: err.message });
   }
 });
 
 // Grade paragraph
 app.post('/api/ai/grade-paragraph', async (req, res) => {
   try {
-    const { scenario, paragraph, preferProvider } = req.body;
+    const { scenario, paragraph, cartridgeId } = req.body;
 
     if (!scenario || !paragraph) {
       return res.status(400).json({ error: 'Missing scenario or paragraph' });
     }
 
-    // Check if we have any keys available (pool or env)
-    await keyPool.refreshKeys();
-    const stats = keyPool.getStats();
-    const hasKeys = stats.gemini.total > 0 || stats.groq.total > 0 ||
-                    stats.hasEnvKeys.gemini || stats.hasEnvKeys.groq;
+    console.log(`Proxying paragraph AI grade request: ${scenario.topic || 'unknown topic'}`);
 
-    if (!hasKeys) {
-      return res.status(503).json({ error: 'No AI providers configured' });
-    }
+    const proxyResult = await postToGradingProxy('/grade', {
+      questionId: getProxyQuestionId(cartridgeId || scenario.cartridgeId || 'lsrl-interpretation', scenario, 'paragraph'),
+      questionType: 'frq',
+      studentAnswer: normalizeProxyText(paragraph),
+      correctAnswer: getExpectedAnswerForField('paragraph', scenario) || null,
+      rubric: {
+        expectedElements: [
+          'Grade the full paragraph response as a single field named "paragraph".',
+          buildParagraphPrompt(scenario, paragraph)
+        ]
+      },
+      frameworkContext: `Current field: paragraph. Grade the paragraph as a single response.\n\n${buildParagraphPrompt(scenario, paragraph)}`
+    });
 
-    const prompt = buildParagraphPrompt(scenario, paragraph);
-    const queuePos = gradingQueue.getQueueLength();
-
-    console.log(`Paragraph grading request queued (position ${queuePos}): ${scenario.topic}, prefer: ${preferProvider || 'auto'}`);
-
-    const result = await gradingQueue.add(() => gradeWithAI(prompt, preferProvider));
-
+    const result = {
+      paragraph: {
+        score: proxyResult.score || 'I',
+        feedback: proxyResult.feedback || '',
+        matched: Array.isArray(proxyResult.matched) ? proxyResult.matched : [],
+        missing: Array.isArray(proxyResult.missing) ? proxyResult.missing : []
+      },
+      _provider: proxyResult.provider || null,
+      _model: proxyResult.model || null
+    };
     result._gradingMode = 'ai';
     result._serverGraded = true;
 
     res.json(result);
   } catch (err) {
-    console.error('AI paragraph grading error:', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('AI paragraph grading proxy error:', err.message);
+    res.status(503).json({ error: err.message });
   }
 });
 
@@ -1689,46 +1963,30 @@ app.post('/api/ai/grade-paragraph', async (req, res) => {
 
 app.post('/api/ai/appeal', async (req, res) => {
   try {
-    const { scenario, answers, appealText, previousResults, preferProvider, aiPromptTemplate, cartridgeId } = req.body;
+    const { scenario, answers, appealText, previousResults, aiPromptTemplate, cartridgeId } = req.body;
 
     if (!scenario || !answers || !appealText) {
       return res.status(400).json({ error: 'Missing scenario, answers, or appeal text' });
     }
 
-    // Check if we have any keys available
-    await keyPool.refreshKeys();
-    const stats = keyPool.getStats();
-    const hasKeys = stats.gemini.total > 0 || stats.groq.total > 0 ||
-                    stats.hasEnvKeys.gemini || stats.hasEnvKeys.groq;
+    console.log(`Proxying AI appeal request: ${scenario.topic || 'unknown topic'}, cartridge: ${cartridgeId || 'unknown'}, fields: ${Object.keys(answers).join(', ')}`);
 
-    if (!hasKeys) {
-      return res.status(503).json({ error: 'No AI providers configured' });
-    }
-
-    // Build appeal prompt
-    const prompt = buildAppealPrompt(scenario, answers, appealText, previousResults);
-    const queuePos = gradingQueue.getQueueLength();
-
-    console.log(`Appeal request queued (position ${queuePos}): ${scenario.topic}, cartridge: ${cartridgeId || 'unknown'}`);
-
-    const result = await gradingQueue.add(() => gradeWithAI(prompt, preferProvider));
-
-    // v2.1.1: Remap 'answer' field ID to actual field ID from request (consistency with /api/ai/grade)
-    const actualFieldId = Object.keys(answers)[0];
-    if (result.answer && actualFieldId && actualFieldId !== 'answer') {
-      console.log(`[AI Appeal] Remapping field ID: 'answer' -> '${actualFieldId}'`);
-      result[actualFieldId] = result.answer;
-      delete result.answer;
-    }
-
+    const result = await proxyAppealAnswers({
+      scenario,
+      answers,
+      appealText,
+      previousResults,
+      aiPromptTemplate,
+      cartridgeId
+    });
     result._gradingMode = 'ai-appeal';
     result._serverGraded = true;
     result._appealProcessed = true;
 
     res.json(result);
   } catch (err) {
-    console.error('AI appeal error:', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('AI appeal proxy error:', err.message);
+    res.status(503).json({ error: err.message });
   }
 });
 

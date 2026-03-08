@@ -95,6 +95,30 @@ npx vitest run tests/grading/... # Cartridge grading
 npx vitest run tests/server/... # API tests
 ```
 
+## Driller Rules
+
+### Console-Cartridge Separation
+Platform code (`platform/core/`) must NEVER import from `cartridges/`.
+Cartridges expose only: `manifest.json`, `generator.js`, `grading-rules.js`, `ai-grader-prompt.txt`.
+
+### Deep-Link Testing (Two Paths)
+Deep-link URLs must be tested against BOTH:
+1. Direct navigation (user pastes URL) -> `loadCartridge()` path
+2. URL restoration after page refresh -> `history.replaceState` path
+The 5-7->5-2 regression happened because only path 1 was fixed.
+
+### Progression Gating
+Check `manifest.json` `unlockedBy` chains before modifying mode ordering.
+Modes gate on gold star counts; verify the chain is still valid after changes.
+
+### Answer Flow Dependency Chain
+User submits -> `gradeField()` [keywords] -> AI grading [Groq] -> `recordResult()`
+-> `awardStar()` -> `checkUnlocks()` -> `generateProblem()` [next]
+Each step DEPENDS on the previous. Do not reorder.
+
+### Tests
+1682+ tests - run `npm test` before committing.
+
 ## Key Docs
 
 - `docs/STATE_MACHINES.md` - All component state transitions (142 sections, v4.8.0)

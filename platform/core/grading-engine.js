@@ -233,7 +233,8 @@ export class GradingEngine {
         feedback: result.feedback || result[context.fieldId]?.feedback || '',
         correct: (result.score || result[context.fieldId]?.score) === 'E',
         _aiGraded: true,
-        _provider: result._provider
+        _provider: result._provider || result.provider,
+        _model: result._model || result.model
       };
     } catch (err) {
       console.error('AI grading error:', err);
