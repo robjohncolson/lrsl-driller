@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u6-inference-prop",
-    "name": "Inference for Proportions, Testing Errors, Two-Proportion Intervals, and CI-Based Claims (6.1-6.9)",
+    "name": "Inference for Proportions, Testing Errors, Two-Proportion Intervals, CI-Based Claims, and Two-Proportion Tests (6.1-6.10)",
     "subject": "AP Statistics",
-    "description": "Logic of significance testing, confidence intervals for a population proportion, Topic 6.7 potential errors when performing tests, Topic 6.8 confidence intervals for the difference of two proportions, and Topic 6.9 justifying a claim with a confidence interval for a difference of population proportions: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, choose an appropriate significance level based on consequences, identify a two-sample z-interval for a difference in proportions, verify two-sample interval conditions, calculate margin of error and confidence intervals for p1 - p2, interpret interval estimates in context as percentage-point differences, justify claims based on whether 0 or other claim-consistent values are plausible in a two-proportion interval, and interpret the confidence level for a difference in population proportions using repeated sampling"
+    "description": "Logic of significance testing, confidence intervals for a population proportion, Topic 6.7 potential errors when performing tests, Topic 6.8 confidence intervals for the difference of two proportions, and Topic 6.9 justifying a claim with a confidence interval for a difference of population proportions: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, choose an appropriate significance level based on consequences, identify a two-sample z-interval for a difference in proportions, verify two-sample interval conditions, calculate margin of error and confidence intervals for p1 - p2, interpret interval estimates in context as percentage-point differences, justify claims based on whether 0 or other claim-consistent values are plausible in a two-proportion interval, and interpret the confidence level for a difference in population proportions using repeated sampling, state hypotheses for p1-p2, compute pooled proportion, and verify two-sample z-test conditions"
   },
   "config": {
     "contextsFile": null,
@@ -29,6 +29,7 @@
       "VAR-6.G",
       "VAR-6.H",
       "VAR-6.I",
+      "VAR-6.J",
       "DAT-3.A"
     ]
   },
@@ -186,7 +187,7 @@
           {
             "id": "seAnswer",
             "type": "number",
-            "label": "Calculate SE(p\u0302) = \u221a(p\u0302(1\u2212p\u0302)/n). Round to 4 decimal places:",
+            "label": "Calculate SE(p̂) = √(p̂(1−p̂)/n). Round to 4 decimal places:",
             "step": 0.0001,
             "min": 0
           }
@@ -223,7 +224,7 @@
           {
             "id": "meAnswer",
             "type": "number",
-            "label": "Calculate the margin of error (z* \u00d7 SE). Round to 4 decimal places:",
+            "label": "Calculate the margin of error (z* × SE). Round to 4 decimal places:",
             "step": 0.0001,
             "min": 0
           }
@@ -591,7 +592,7 @@
             "type": "textarea",
             "label": "Show your work checking each condition:",
             "rows": 4,
-            "placeholder": "Random: ...\n10%: n = ___ \u2264 10% of N = ___?\nLarge counts: np\u2080 = ___ \u2265 10? n(1-p\u2080) = ___ \u2265 10?"
+            "placeholder": "Random: ...\n10%: n = ___ ≤ 10% of N = ___?\nLarge counts: np₀ = ___ ≥ 10? n(1-p₀) = ___ ≥ 10?"
           }
         ]
       }
@@ -650,7 +651,7 @@
             "type": "textarea",
             "label": "Show your work checking conditions:",
             "rows": 4,
-            "placeholder": "Random: ...\n10%: ...\nLarge counts: np\u2080 = ... n(1-p\u2080) = ..."
+            "placeholder": "Random: ...\n10%: ...\nLarge counts: np₀ = ... n(1-p₀) = ..."
           }
         ]
       }
@@ -667,7 +668,7 @@
           {
             "id": "zStatAnswer",
             "type": "number",
-            "label": "Calculate the test statistic: z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Round to 2 decimal places:",
+            "label": "Calculate the test statistic: z = (p̂ − p₀) / √(p₀(1−p₀)/n). Round to 2 decimal places:",
             "step": 0.01
           }
         ]
@@ -795,8 +796,8 @@
             "type": "choice",
             "label": "{{questionText}}",
             "options": [
-              "p-value \u2264 \u03b1 (reject H\u2080)",
-              "p-value > \u03b1 (fail to reject H\u2080)"
+              "p-value ≤ α (reject H₀)",
+              "p-value > α (fail to reject H₀)"
             ]
           }
         ]
@@ -840,7 +841,7 @@
             "type": "textarea",
             "label": "Write a complete conclusion for this significance test:",
             "rows": 4,
-            "placeholder": "Because the p-value of ___ is [less than / greater than] \u03b1 = ___, we [reject / fail to reject] H\u2080. There [is / is not] convincing statistical evidence that..."
+            "placeholder": "Because the p-value of ___ is [less than / greater than] α = ___, we [reject / fail to reject] H₀. There [is / is not] convincing statistical evidence that..."
           }
         ]
       }
@@ -909,7 +910,7 @@
             "type": "textarea",
             "label": "Write your conclusion:",
             "rows": 4,
-            "placeholder": "Because the p-value of ___ is [less than / greater than] \u03b1 = ___, we [reject / fail to reject] H\u2080. There [is / is not] convincing statistical evidence that..."
+            "placeholder": "Because the p-value of ___ is [less than / greater than] α = ___, we [reject / fail to reject] H₀. There [is / is not] convincing statistical evidence that..."
           }
         ]
       }
@@ -961,7 +962,7 @@
             "type": "textarea",
             "label": "Write your complete conclusion:",
             "rows": 4,
-            "placeholder": "Because the p-value of ___ is [less than / greater than] \u03b1 = ___, we [reject / fail to reject] H\u2080. There [is / is not] convincing statistical evidence that..."
+            "placeholder": "Because the p-value of ___ is [less than / greater than] α = ___, we [reject / fail to reject] H₀. There [is / is not] convincing statistical evidence that..."
           }
         ]
       }
@@ -1131,7 +1132,7 @@
           {
             "id": "alphaType1Prob",
             "type": "number",
-            "label": "If the significance level is \u03b1 = {{alpha}}, what is P(Type I error)?",
+            "label": "If the significance level is α = {{alpha}}, what is P(Type I error)?",
             "step": 0.01,
             "min": 0,
             "max": 1
@@ -1407,13 +1408,113 @@
           }
         ]
       }
+    },
+    {
+      "id": "l17-hypotheses-610",
+      "name": "6.10a: State Hypotheses",
+      "animation": "assets/Hypotheses610.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "hypothesis610Answer",
+            "type": "dropdown",
+            "label": "Which hypotheses are appropriate for this setting?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l18-procedure-610",
+      "name": "6.10b: Identify Procedure",
+      "animation": "assets/Procedure610.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "procedure610Answer",
+            "type": "dropdown",
+            "label": "What is the correct significance test procedure?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l19-pooled-610",
+      "name": "6.10c: Calculate Pooled Proportion",
+      "animation": "assets/Pooled610.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pooled610Answer",
+            "type": "number",
+            "label": "Compute the pooled proportion p-hat_c = (x1 + x2)/(n1 + n2). Round to 3 decimals:",
+            "step": 0.001,
+            "min": 0,
+            "max": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l20-conditions-610",
+      "name": "6.10d: Check Conditions",
+      "animation": "assets/CheckConditions610.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "cond610Met",
+            "type": "choice",
+            "label": "Are all conditions for a two-sample z test for p1 - p2 met?",
+            "options": [
+              "Yes, all conditions are met",
+              "No, at least one condition fails"
+            ]
+          },
+          {
+            "id": "cond610Explain",
+            "type": "textarea",
+            "label": "Explain your condition check (independence, 10% if needed, and pooled expected counts):",
+            "rows": 3,
+            "placeholder": "Check design, 10% condition for samples, and all four expected counts..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
     "rubricFile": "grading-rules.js",
     "aiPromptFile": "ai-grader-prompt.txt",
     "scoring": {
-      "scale": ["E", "P", "I"],
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
       "meanings": {
         "E": "Essentially Correct",
         "P": "Partially Correct",
@@ -1423,96 +1524,101 @@
   },
   "hints": {
     "perField": {
-      "evidenceAnswer": "Evidence = how the sample result (p\u0302) compares to the expected value. Is p\u0302 above or below what we'd expect if the claim were false?",
+      "evidenceAnswer": "Evidence = how the sample result (p̂) compares to the expected value. Is p̂ above or below what we'd expect if the claim were false?",
       "explanationAnswer": "There are always exactly two explanations: (1) the result happened by CHANCE alone, or (2) there is a REAL effect.",
       "convincingAnswer": "If the probability of getting the result by chance alone is small (roughly less than 5%), the evidence IS convincing.",
       "convincingExplain": "Reference the simulation: 'Because ___ out of ___ simulations produced results this extreme, it is [likely/unlikely] to happen by chance alone.'",
-      "procedureAnswer": "Ask: How many samples? (one) What data type? (proportion) What's the goal? (estimate with CI) \u2192 One-sample z-interval for p.",
-      "conditionsMet": "Three conditions: (1) Random sample, (2) n \u2264 10% of N, (3) np\u0302 \u2265 10 AND n(1\u2212p\u0302) \u2265 10. ALL must be met.",
-      "conditionsExplain": "Show the numbers for each: Random? \u2713/\u2717. 10%: n = ___ \u2264 10% of N = ___? Large counts: np\u0302 = ___ \u2265 10? n(1\u2212p\u0302) = ___ \u2265 10?",
-      "seAnswer": "SE(p\u0302) = \u221a(p\u0302(1\u2212p\u0302)/n). Plug in the sample proportion and sample size.",
-      "zStarAnswer": "Common z* values: 90% \u2192 1.645, 95% \u2192 1.960, 99% \u2192 2.576.",
-      "meAnswer": "Margin of error = z* \u00d7 SE(p\u0302). Multiply the critical value by the standard error.",
-      "ciLower": "Lower bound = p\u0302 \u2212 (margin of error) = p\u0302 \u2212 z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n)",
-      "ciUpper": "Upper bound = p\u0302 + (margin of error) = p\u0302 + z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n)",
-      "sampleSizeAnswer": "Solve: n \u2265 p\u0302(1\u2212p\u0302) \u00d7 (z*/ME)\u00b2. Use p\u0302 = 0.5 if no prior estimate. Always round UP!",
-      "capstoneConditions": "Check: (1) Random? (2) n \u2264 10% of N? (3) Both np\u0302 \u2265 10 and n(1\u2212p\u0302) \u2265 10?",
-      "capstoneLower": "Lower bound = p\u0302 \u2212 z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n)",
-      "capstoneUpper": "Upper bound = p\u0302 + z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n)",
+      "procedureAnswer": "Ask: How many samples? (one) What data type? (proportion) What's the goal? (estimate with CI) → One-sample z-interval for p.",
+      "conditionsMet": "Three conditions: (1) Random sample, (2) n ≤ 10% of N, (3) np̂ ≥ 10 AND n(1−p̂) ≥ 10. ALL must be met.",
+      "conditionsExplain": "Show the numbers for each: Random? ✓/✗. 10%: n = ___ ≤ 10% of N = ___? Large counts: np̂ = ___ ≥ 10? n(1−p̂) = ___ ≥ 10?",
+      "seAnswer": "SE(p̂) = √(p̂(1−p̂)/n). Plug in the sample proportion and sample size.",
+      "zStarAnswer": "Common z* values: 90% → 1.645, 95% → 1.960, 99% → 2.576.",
+      "meAnswer": "Margin of error = z* × SE(p̂). Multiply the critical value by the standard error.",
+      "ciLower": "Lower bound = p̂ − (margin of error) = p̂ − z* × √(p̂(1−p̂)/n)",
+      "ciUpper": "Upper bound = p̂ + (margin of error) = p̂ + z* × √(p̂(1−p̂)/n)",
+      "sampleSizeAnswer": "Solve: n ≥ p̂(1−p̂) × (z*/ME)². Use p̂ = 0.5 if no prior estimate. Always round UP!",
+      "capstoneConditions": "Check: (1) Random? (2) n ≤ 10% of N? (3) Both np̂ ≥ 10 and n(1−p̂) ≥ 10?",
+      "capstoneLower": "Lower bound = p̂ − z* × √(p̂(1−p̂)/n)",
+      "capstoneUpper": "Upper bound = p̂ + z* × √(p̂(1−p̂)/n)",
       "capstoneExplain": "Template: 'We are __% confident that the interval from ___ to ___ captures the true proportion of [context].'",
       "ciInterpretation": "Template: 'We are __% confident that the interval from ___ to ___ captures the true proportion of [context].' Include all three elements!",
-      "claimAnswer": "If ALL values in the CI are consistent with the claim \u2192 convincing evidence. If ANY value is inconsistent \u2192 not convincing evidence.",
+      "claimAnswer": "If ALL values in the CI are consistent with the claim → convincing evidence. If ANY value is inconsistent → not convincing evidence.",
       "claimExplain": "Reference whether the claim value falls inside or outside the interval. If the entire CI is above/below the threshold, that's convincing evidence.",
       "confLevelAnswer": "The confidence level describes the long-run success rate of the METHOD, not the probability for a single interval. Think: repeated sampling.",
-      "factorAnswer": "ME = z* \u00d7 \u221a(p\u0302(1\u2212p\u0302)/n). Larger n \u2192 smaller ME. Higher confidence \u2192 larger z* \u2192 larger ME. Width = 2 \u00d7 ME.",
+      "factorAnswer": "ME = z* × √(p̂(1−p̂)/n). Larger n → smaller ME. Higher confidence → larger z* → larger ME. Width = 2 × ME.",
       "cap63Interpret": "Template: 'We are __% confident that the interval from ___ to ___ captures the true proportion of [context].'",
       "cap63Justify": "Check if the claim value falls entirely inside or outside the CI range.",
       "cap63JustifyExplain": "State whether ALL values in the interval are consistent or inconsistent with the claim, and why.",
-      "nullAnswer": "The null hypothesis is always H\u2080: p = [claimed value]. It uses '=' and the parameter p (not p\u0302).",
-      "altAnswer": "Look for keywords: 'greater/more/higher' \u2192 p > p\u2080, 'less/fewer/lower' \u2192 p < p\u2080, 'different/differs/changed' \u2192 p \u2260 p\u2080.",
-      "nullHypothesis": "Format: H\u2080: p = [value]. The null always contains '=' and uses p (the population proportion), never p\u0302.",
-      "altHypothesis": "Format: H\u2090: p [< or > or \u2260] [value]. The direction comes from the research question. Use p, not p\u0302.",
+      "nullAnswer": "The null hypothesis is always H₀: p = [claimed value]. It uses '=' and the parameter p (not p̂).",
+      "altAnswer": "Look for keywords: 'greater/more/higher' → p > p₀, 'less/fewer/lower' → p < p₀, 'different/differs/changed' → p ≠ p₀.",
+      "nullHypothesis": "Format: H₀: p = [value]. The null always contains '=' and uses p (the population proportion), never p̂.",
+      "altHypothesis": "Format: Hₐ: p [< or > or ≠] [value]. The direction comes from the research question. Use p, not p̂.",
       "paramDef": "Define p as 'the proportion of ALL [population] who [would do something].' Use 'all' and 'would' to indicate population, not sample.",
-      "errorAnswer": "Common errors: using p\u0302 instead of p, putting inequality in H\u2080, wrong direction for H\u2090, defining parameter with sample language.",
-      "testAnswer": "Testing a claim about ONE proportion? \u2192 One-sample z-test. Estimating? \u2192 z-interval. Two groups? \u2192 Two-sample.",
-      "testConditionsMet": "Three conditions: (1) Random sample, (2) n \u2264 10% of N, (3) np\u2080 \u2265 10 AND n(1\u2212p\u2080) \u2265 10. Use p\u2080, NOT p\u0302!",
-      "testConditionsExplain": "Show: Random? 10%: n = ___ \u2264 10% of N? Large counts: np\u2080 = n\u00d7p\u2080 = ___ \u2265 10? n(1\u2212p\u2080) = ___ \u2265 10? Use the NULL value p\u2080!",
-      "cap64Null": "H\u2080: p = [claimed value]. Always uses '=' sign.",
-      "cap64Alt": "H\u2090: p [direction] [value]. Direction from the research question.",
+      "errorAnswer": "Common errors: using p̂ instead of p, putting inequality in H₀, wrong direction for Hₐ, defining parameter with sample language.",
+      "testAnswer": "Testing a claim about ONE proportion? → One-sample z-test. Estimating? → z-interval. Two groups? → Two-sample.",
+      "testConditionsMet": "Three conditions: (1) Random sample, (2) n ≤ 10% of N, (3) np₀ ≥ 10 AND n(1−p₀) ≥ 10. Use p₀, NOT p̂!",
+      "testConditionsExplain": "Show: Random? 10%: n = ___ ≤ 10% of N? Large counts: np₀ = n×p₀ = ___ ≥ 10? n(1−p₀) = ___ ≥ 10? Use the NULL value p₀!",
+      "cap64Null": "H₀: p = [claimed value]. Always uses '=' sign.",
+      "cap64Alt": "Hₐ: p [direction] [value]. Direction from the research question.",
       "cap64ParamDef": "p = the proportion of ALL [population] who [would do something].",
-      "cap64Procedure": "One categorical variable, one sample, testing a claim \u2192 One-sample z-test for a population proportion.",
-      "cap64ConditionsMet": "Check all three: Random, 10%, Large counts (using p\u2080).",
-      "cap64ConditionsWork": "Show calculations: np\u2080 = ___ and n(1\u2212p\u2080) = ___. Remember to use p\u2080 from the null hypothesis, not the sample proportion!",
-      "zStatAnswer": "z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Use p\u2080 in the denominator because we assume H\u2080 is true.",
-      "pvalueAnswer": "For Ha: p > p\u2080, find P(Z \u2265 z). For Ha: p < p\u2080, find P(Z \u2264 z). For Ha: p \u2260 p\u2080, find 2 \u00d7 P(Z \u2265 |z|).",
-      "pvalueInterpretation": "Template: 'Assuming [null is true], there is a [p-value] probability of getting a sample proportion of [p\u0302] or [more extreme] by chance alone in a random sample of [n] from [population].'",
-      "directionAnswer": "Ha: p > p\u2080 \u2192 right tail. Ha: p < p\u2080 \u2192 left tail. Ha: p \u2260 p\u2080 \u2192 both tails (double the one-tail area).",
-      "cap65Null": "H\u2080: p = [claimed value]. Always uses '=' sign.",
-      "cap65Alt": "H\u2090: p [direction] [value]. Direction from the research question.",
-      "cap65ZStat": "z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Use p\u2080 in the standard deviation.",
+      "cap64Procedure": "One categorical variable, one sample, testing a claim → One-sample z-test for a population proportion.",
+      "cap64ConditionsMet": "Check all three: Random, 10%, Large counts (using p₀).",
+      "cap64ConditionsWork": "Show calculations: np₀ = ___ and n(1−p₀) = ___. Remember to use p₀ from the null hypothesis, not the sample proportion!",
+      "zStatAnswer": "z = (p̂ − p₀) / √(p₀(1−p₀)/n). Use p₀ in the denominator because we assume H₀ is true.",
+      "pvalueAnswer": "For Ha: p > p₀, find P(Z ≥ z). For Ha: p < p₀, find P(Z ≤ z). For Ha: p ≠ p₀, find 2 × P(Z ≥ |z|).",
+      "pvalueInterpretation": "Template: 'Assuming [null is true], there is a [p-value] probability of getting a sample proportion of [p̂] or [more extreme] by chance alone in a random sample of [n] from [population].'",
+      "directionAnswer": "Ha: p > p₀ → right tail. Ha: p < p₀ → left tail. Ha: p ≠ p₀ → both tails (double the one-tail area).",
+      "cap65Null": "H₀: p = [claimed value]. Always uses '=' sign.",
+      "cap65Alt": "Hₐ: p [direction] [value]. Direction from the research question.",
+      "cap65ZStat": "z = (p̂ − p₀) / √(p₀(1−p₀)/n). Use p₀ in the standard deviation.",
       "cap65PValue": "Match the tail direction to Ha. One-sided: single tail. Two-sided: double the one-tail area.",
-      "cap65Interpret": "Include: (1) assume H\u2080 true, (2) the p-value probability, (3) sample proportion 'or more extreme', (4) 'by chance alone', (5) context.",
-      "compareAnswer": "Compare the p-value to \u03b1. If p-value \u2264 \u03b1, reject H\u2080. If p-value > \u03b1, fail to reject H\u2080.",
-      "decisionAnswer": "If p-value \u2264 \u03b1 \u2192 reject H\u2080 (convincing evidence for Ha). If p-value > \u03b1 \u2192 fail to reject H\u2080 (not convincing evidence for Ha). Never 'accept H\u2080' or 'prove Ha'.",
-      "conclusionText": "Template: 'Because the p-value of ___ is [less than / greater than] \u03b1 = ___, we [reject / fail to reject] H\u2080. There [is / is not] convincing statistical evidence that [Ha in context].' Must explicitly compare p-value to \u03b1, state the decision, and state the conclusion about Ha in context.",
-      "conclusionErrorAnswer": "Common errors: (1) accepting H\u2080 instead of failing to reject, (2) saying 'proves' Ha is true, (3) not comparing p-value to \u03b1 explicitly, (4) concluding about H\u2080 instead of Ha, (5) no context.",
-      "fullTestNull": "H\u2080: p = [claimed value]. Always uses '=' sign.",
-      "fullTestAlt": "H\u2090: p [direction] [value]. Direction from the research question.",
-      "fullTestZStat": "z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Use p\u2080 in the denominator.",
+      "cap65Interpret": "Include: (1) assume H₀ true, (2) the p-value probability, (3) sample proportion 'or more extreme', (4) 'by chance alone', (5) context.",
+      "compareAnswer": "Compare the p-value to α. If p-value ≤ α, reject H₀. If p-value > α, fail to reject H₀.",
+      "decisionAnswer": "If p-value ≤ α → reject H₀ (convincing evidence for Ha). If p-value > α → fail to reject H₀ (not convincing evidence for Ha). Never 'accept H₀' or 'prove Ha'.",
+      "conclusionText": "Template: 'Because the p-value of ___ is [less than / greater than] α = ___, we [reject / fail to reject] H₀. There [is / is not] convincing statistical evidence that [Ha in context].' Must explicitly compare p-value to α, state the decision, and state the conclusion about Ha in context.",
+      "conclusionErrorAnswer": "Common errors: (1) accepting H₀ instead of failing to reject, (2) saying 'proves' Ha is true, (3) not comparing p-value to α explicitly, (4) concluding about H₀ instead of Ha, (5) no context.",
+      "fullTestNull": "H₀: p = [claimed value]. Always uses '=' sign.",
+      "fullTestAlt": "Hₐ: p [direction] [value]. Direction from the research question.",
+      "fullTestZStat": "z = (p̂ − p₀) / √(p₀(1−p₀)/n). Use p₀ in the denominator.",
       "fullTestPValue": "Match the tail direction to Ha. One-sided: single tail. Two-sided: double the one-tail area.",
-      "fullTestConclusion": "Because the p-value of ___ is [comparison] \u03b1 = ___, we [decision]. There [is/is not] convincing statistical evidence that [Ha in context].",
-      "cap66Null": "H\u2080: p = [claimed value]. Always uses '=' sign.",
-      "cap66Alt": "H\u2090: p [direction] [value]. Direction from the research question.",
+      "fullTestConclusion": "Because the p-value of ___ is [comparison] α = ___, we [decision]. There [is/is not] convincing statistical evidence that [Ha in context].",
+      "cap66Null": "H₀: p = [claimed value]. Always uses '=' sign.",
+      "cap66Alt": "Hₐ: p [direction] [value]. Direction from the research question.",
       "cap66ParamDef": "p = the proportion of ALL [population] who [would do something].",
-      "cap66ZStat": "z = (p\u0302 \u2212 p\u2080) / \u221a(p\u2080(1\u2212p\u2080)/n). Use p\u2080 in the standard deviation.",
+      "cap66ZStat": "z = (p̂ − p₀) / √(p₀(1−p₀)/n). Use p₀ in the standard deviation.",
       "cap66PValue": "Match the tail direction to Ha. One-sided: single tail. Two-sided: double the one-tail area.",
-      "cap66Conclusion": "Include all four elements: (1) explicit p-value to \u03b1 comparison, (2) reject/fail to reject decision, (3) conclusion about Ha, (4) context.",
-      "errorTypeAnswer": "Type I = reject a true H\u2080 (false positive). Type II = fail to reject a false H\u2080 (false negative).",
-      "type1Interpretation": "Type I means finding convincing evidence for Ha when H\u2080 is actually true. Rewrite Ha in context, then say the true proportion is still the null value.",
+      "cap66Conclusion": "Include all four elements: (1) explicit p-value to α comparison, (2) reject/fail to reject decision, (3) conclusion about Ha, (4) context.",
+      "errorTypeAnswer": "Type I = reject a true H₀ (false positive). Type II = fail to reject a false H₀ (false negative).",
+      "type1Interpretation": "Type I means finding convincing evidence for Ha when H₀ is actually true. Rewrite Ha in context, then say the true proportion is still the null value.",
       "type2Interpretation": "Type II means not finding convincing evidence for Ha when Ha is actually true. Say the study misses a real effect.",
-      "powerInterpretation": "Power = probability of correctly rejecting a false H\u2080. Template: 'If the true proportion is ___, there is a ___ probability that we find convincing evidence that...'",
-      "type1ProbAnswer": "P(Type I error) = \u03b1.",
-      "type2ProbAnswer": "P(Type II error) = 1 \u2212 power.",
-      "powerFactorAnswer": "Power increases when n increases, \u03b1 increases, standard error decreases, or the true parameter is farther from the null value.",
+      "powerInterpretation": "Power = probability of correctly rejecting a false H₀. Template: 'If the true proportion is ___, there is a ___ probability that we find convincing evidence that...'",
+      "type1ProbAnswer": "P(Type I error) = α.",
+      "type2ProbAnswer": "P(Type II error) = 1 − power.",
+      "powerFactorAnswer": "Power increases when n increases, α increases, standard error decreases, or the true parameter is farther from the null value.",
       "cap67Type1": "State the alternative in context, then say reality was actually the null value. This is a false positive.",
       "cap67Type2": "State that the study did not find convincing evidence, then say the alternative was actually true. This is a false negative.",
       "cap67Consequential": "Think about the consequence of each mistake. Which error would cause the bigger real-world loss or harm?",
       "cap67Justify": "Describe what happens after each error, then explain why one leads to the more serious consequence.",
-      "alphaType1Prob": "The significance level is the probability of a Type I error, so P(Type I error) = \u03b1 exactly.",
-      "powerDefinitionAnswer": "Power is the probability that a test correctly rejects a false H\u2080. It is also 1 - P(Type II error).",
-      "alphaTradeoffAnswer": "Smaller \u03b1 lowers the chance of a Type I error, but it raises the chance of a Type II error and lowers power. Larger \u03b1 does the opposite.",
-      "alphaChoiceAnswer": "If a Type I error would be especially serious, use a smaller \u03b1. If missing a real effect is the bigger concern, a larger \u03b1 may be more reasonable.",
+      "alphaType1Prob": "The significance level is the probability of a Type I error, so P(Type I error) = α exactly.",
+      "powerDefinitionAnswer": "Power is the probability that a test correctly rejects a false H₀. It is also 1 - P(Type II error).",
+      "alphaTradeoffAnswer": "Smaller α lowers the chance of a Type I error, but it raises the chance of a Type II error and lowers power. Larger α does the opposite.",
+      "alphaChoiceAnswer": "If a Type I error would be especially serious, use a smaller α. If missing a real effect is the bigger concern, a larger α may be more reasonable.",
       "twoPropProcedureAnswer": "Two groups + categorical data + confidence interval = two-sample z-interval for a difference in proportions.",
       "twoPropConditionsMet": "Check: two independent random samples or random assignment, the 10% condition for each sample when sampling without replacement, and four counts (x1, n1-x1, x2, n2-x2) all at least 10.",
-      "twoPropConditionsExplain": "State whether the data came from two random samples or a randomized experiment. If sampling, check n1 \u2264 10%N1 and n2 \u2264 10%N2. Then check successes and failures in both groups are each at least 10.",
-      "twoPropMEAnswer": "ME = z* \u00d7 \u221a[(p\u0302\u2081(1-p\u0302\u2081)/n\u2081) + (p\u0302\u2082(1-p\u0302\u2082)/n\u2082)]. Use the sample proportions from each group.",
-      "twoPropCILower": "Lower bound = (p\u0302\u2081 - p\u0302\u2082) - z* \u00d7 \u221a[(p\u0302\u2081(1-p\u0302\u2081)/n\u2081) + (p\u0302\u2082(1-p\u0302\u2082)/n\u2082)].",
-      "twoPropCIUpper": "Upper bound = (p\u0302\u2081 - p\u0302\u2082) + z* \u00d7 \u221a[(p\u0302\u2081(1-p\u0302\u2081)/n\u2081) + (p\u0302\u2082(1-p\u0302\u2082)/n\u2082)].",
+      "twoPropConditionsExplain": "State whether the data came from two random samples or a randomized experiment. If sampling, check n1 ≤ 10%N1 and n2 ≤ 10%N2. Then check successes and failures in both groups are each at least 10.",
+      "twoPropMEAnswer": "ME = z* × √[(p̂₁(1-p̂₁)/n₁) + (p̂₂(1-p̂₂)/n₂)]. Use the sample proportions from each group.",
+      "twoPropCILower": "Lower bound = (p̂₁ - p̂₂) - z* × √[(p̂₁(1-p̂₁)/n₁) + (p̂₂(1-p̂₂)/n₂)].",
+      "twoPropCIUpper": "Upper bound = (p̂₁ - p̂₂) + z* × √[(p̂₁(1-p̂₁)/n₁) + (p̂₂(1-p̂₂)/n₂)].",
       "twoPropCIInterpretation": "Template: 'We are __% confident that the true difference (group 1 minus group 2) in proportions is between ___ and ___.' Translate the interval into percentage points and include the context.",
       "twoProp69Interpretation": "Use the template: 'We are __% confident that the interval from ___ to ___ captures the true difference (group 1 minus group 2) in the population proportions.' Include the context.",
       "twoPropClaimDecision": "Check whether every value in the interval is consistent with the claim. For a 'difference' claim, ask whether 0 is in the interval. For 'greater' or 'less' claims, ask whether the whole interval stays above or below 0.",
       "twoPropClaimExplain": "Mention the interval and the key value 0. If 0 is in the interval, the claim is not supported. If all values are above or below 0 in the direction of the claim, then there is convincing evidence.",
-      "twoPropConfLevelMeaning": "Confidence level describes the long-run success rate of the method: in repeated sampling, about C% of intervals built this way would capture the true difference in population proportions."
+      "twoPropConfLevelMeaning": "Confidence level describes the long-run success rate of the method: in repeated sampling, about C% of intervals built this way would capture the true difference in population proportions.",
+      "hypothesis610Answer": "For two proportions, null must be equality: H0: p1 = p2 (or p1 - p2 = 0). Choose Ha based on the question: >, <, or !=.",
+      "procedure610Answer": "With one categorical variable and two groups, use a two-sample z test for a difference in population proportions.",
+      "pooled610Answer": "Use p-hat_c = (x1 + x2)/(n1 + n2). Add both groups' successes, then divide by total sample size.",
+      "cond610Met": "Check: independent random samples or random assignment, 10% condition for samples, and pooled expected counts all >= 10.",
+      "cond610Explain": "Reference the design (samples vs experiment), check 10% only for random samples, then verify n1*p-hat_c, n1*(1-p-hat_c), n2*p-hat_c, n2*(1-p-hat_c) are all at least 10."
     },
     "penalty": {
       "0": "gold",
@@ -1523,7 +1629,9 @@
   },
   "progression": {
     "streaksPerField": false,
-    "streakFields": ["problem"],
+    "streakFields": [
+      "problem"
+    ],
     "tiers": [
       {
         "id": "l01-identify-evidence",
@@ -1534,308 +1642,442 @@
       {
         "id": "l02-two-explanations",
         "name": "02",
-        "unlockedBy": { "gold": 1 },
-        "celebrationMessage": "Chance or real effect \u2014 you've got it! Now determine which one is more plausible."
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Chance or real effect — you've got it! Now determine which one is more plausible."
       },
       {
         "id": "l03-convincing-evidence",
         "name": "03",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Strong reasoning! Time to learn about confidence intervals."
       },
       {
         "id": "l04-identify-procedure",
         "name": "04",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You know the procedure! Now let's check the conditions."
       },
       {
         "id": "l05-check-conditions",
         "name": "05",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Conditions checked! Time to calculate the standard error."
       },
       {
         "id": "l06-standard-error",
         "name": "06",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "SE mastered! Now find the critical value."
       },
       {
         "id": "l07-critical-value",
         "name": "07",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "z* nailed! On to margin of error."
       },
       {
         "id": "l08-margin-of-error",
         "name": "08",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Margin of error done! Now build the full confidence interval."
       },
       {
         "id": "l09-confidence-interval",
         "name": "09",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Full CI calculated! Now learn to find the right sample size."
       },
       {
         "id": "l10-min-sample-size",
         "name": "10",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Sample size planning done! Time for the capstone challenge."
       },
       {
         "id": "l11-capstone-62",
         "name": "11",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": {
+          "gold": 3
+        },
         "celebrationMessage": "Topic 6.2 mastered! You can construct and interpret confidence intervals for a population proportion!"
       },
       {
         "id": "l12-interpret-ci",
         "name": "12",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can interpret CIs! Now justify claims using intervals."
       },
       {
         "id": "l13-justify-claim",
         "name": "13",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Claim justified! Now learn what the confidence level really means."
       },
       {
         "id": "l14-confidence-level",
         "name": "14",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Confidence level mastered! Now explore factors affecting margin of error."
       },
       {
         "id": "l15-factors-me",
         "name": "15",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You understand what affects precision! Time for the 6.3 capstone."
       },
       {
         "id": "l16-capstone-63",
         "name": "16",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": {
+          "gold": 3
+        },
         "celebrationMessage": "Topic 6.3 mastered! You can interpret CIs, justify claims, and understand confidence levels!"
       },
       {
         "id": "l17-state-null",
         "name": "17",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can state null hypotheses! Now identify the alternative."
       },
       {
         "id": "l18-state-alt",
         "name": "18",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Alternative hypothesis nailed! Now write both together."
       },
       {
         "id": "l19-write-hypotheses",
         "name": "19",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Full hypothesis writing mastered! Now spot the errors."
       },
       {
         "id": "l20-hypothesis-errors",
         "name": "20",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Error detective! Now identify the right test procedure."
       },
       {
         "id": "l21-identify-test",
         "name": "21",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Correct test identified! Now check the conditions."
       },
       {
         "id": "l22-check-test-conditions",
         "name": "22",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Conditions verified! Time for the 6.4 capstone."
       },
       {
         "id": "l23-capstone-64",
         "name": "23",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": {
+          "gold": 3
+        },
         "celebrationMessage": "Topic 6.4 mastered! You can set up a complete significance test for a population proportion!"
       },
       {
         "id": "l24-test-statistic",
         "name": "24",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Test statistic calculated! Now learn to find the p-value."
       },
       {
         "id": "l25-calculate-pvalue",
         "name": "25",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "p-value calculated! Now learn to interpret what it means."
       },
       {
         "id": "l26-interpret-pvalue",
         "name": "26",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "p-value interpreted! Now identify the direction of the test."
       },
       {
         "id": "l27-test-direction",
         "name": "27",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Test direction mastered! Time for the 6.5 capstone."
       },
       {
         "id": "l28-capstone-65",
         "name": "28",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": {
+          "gold": 3
+        },
         "celebrationMessage": "Topic 6.5 mastered! You can calculate and interpret test statistics and p-values for a population proportion!"
       },
       {
         "id": "l29-compare-pvalue-alpha",
         "name": "29",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can compare p-values to significance levels! Now learn to make the full decision."
       },
       {
         "id": "l30-reject-decision",
         "name": "30",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Decision made! Now write the full conclusion in context."
       },
       {
         "id": "l31-write-conclusion",
         "name": "31",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Conclusion written! Now learn to spot conclusion errors."
       },
       {
         "id": "l32-conclusion-errors",
         "name": "32",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Error detective! Now put it all together in a complete test."
       },
       {
         "id": "l33-full-test",
         "name": "33",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Complete test mastered! Time for the 6.6 capstone."
       },
       {
         "id": "l34-capstone-66",
         "name": "34",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": {
+          "gold": 3
+        },
         "celebrationMessage": "Topic 6.6 mastered! You can perform and conclude a complete significance test for a population proportion!"
       },
       {
         "id": "l35-identify-error-type",
         "name": "35",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can classify testing outcomes! Now describe Type I and Type II errors in context."
       },
       {
         "id": "l36-interpret-errors",
         "name": "36",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can explain both errors in context! Now connect power to error probabilities."
       },
       {
         "id": "l37-power-probabilities",
         "name": "37",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Power and error probabilities make sense! Next, analyze what changes power."
       },
       {
         "id": "l38-power-factors",
         "name": "38",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You know what affects power! Time for the 6.7 capstone."
       },
       {
         "id": "l39-capstone-67",
         "name": "39",
-        "unlockedBy": { "gold": 3 },
+        "unlockedBy": {
+          "gold": 3
+        },
         "celebrationMessage": "6.7 capstone complete! Now connect significance level directly to the probability of a Type I error."
       },
       {
         "id": "l40-alpha-type1",
         "name": "40",
-        "unlockedBy": { "gold": 1 },
-        "celebrationMessage": "You linked \u03b1 to Type I error! Now define power precisely."
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You linked α to Type I error! Now define power precisely."
       },
       {
         "id": "l41-power-definition",
         "name": "41",
-        "unlockedBy": { "gold": 1 },
-        "celebrationMessage": "Power is locked in. Next, analyze the tradeoff created by changing \u03b1."
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Power is locked in. Next, analyze the tradeoff created by changing α."
       },
       {
         "id": "l42-alpha-tradeoff",
         "name": "42",
-        "unlockedBy": { "gold": 1 },
-        "celebrationMessage": "You understand the \u03b1 tradeoff. Now choose a significance level based on consequences."
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You understand the α tradeoff. Now choose a significance level based on consequences."
       },
       {
         "id": "l43-choose-alpha",
         "name": "43",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Topic 6.7 mastered! You can identify testing errors, interpret power, and reason about alpha tradeoffs and significance-level choices!"
       },
       {
         "id": "l44-identify-two-prop-ci",
         "name": "44",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can identify the right two-sample interval. Next, verify the conditions for comparing two proportions."
       },
       {
         "id": "l45-check-two-prop-conditions",
         "name": "45",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Conditions checked. Now calculate the margin of error for the difference in proportions."
       },
       {
         "id": "l46-two-prop-margin-error",
         "name": "46",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Margin of error found. Next, construct the full confidence interval."
       },
       {
         "id": "l47-two-prop-confidence-interval",
         "name": "47",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Interval constructed! Finish by interpreting the difference in context."
       },
       {
         "id": "l48-interpret-two-prop-interval",
         "name": "48",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Topic 6.8 mastered! You can identify, check, calculate, and interpret confidence intervals for the difference of two proportions!"
       },
       {
         "id": "l49-interpret-two-prop-claim-interval",
         "name": "49",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can interpret the interval in context. Next, decide whether it supports a claim."
       },
       {
         "id": "l50-justify-two-prop-claim",
         "name": "50",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Claim decision made. Now justify it using the interval itself."
       },
       {
         "id": "l51-explain-two-prop-claim",
         "name": "51",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "You can justify claims from a two-proportion interval. Finish by interpreting the confidence level."
       },
       {
         "id": "l52-two-prop-confidence-level-meaning",
         "name": "52",
-        "unlockedBy": { "gold": 1 },
+        "unlockedBy": {
+          "gold": 1
+        },
         "celebrationMessage": "Topic 6.9 mastered! You can interpret a two-proportion confidence interval, justify a claim with it, and explain the confidence level meaning."
+      },
+      {
+        "id": "l17-hypotheses-610",
+        "name": "53",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can state null and alternative hypotheses for p1 - p2. Next: choose the right test procedure."
+      },
+      {
+        "id": "l18-procedure-610",
+        "name": "54",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Procedure identified. Next: compute the pooled proportion used for condition checks."
+      },
+      {
+        "id": "l19-pooled-610",
+        "name": "55",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Pooled proportion mastered. Final step: verify all conditions for the two-sample z test."
+      },
+      {
+        "id": "l20-conditions-610",
+        "name": "56",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Topic 6.10 mastered! You can set up and validate a two-sample z test for a difference in population proportions."
       }
     ]
   }

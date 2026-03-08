@@ -66,6 +66,25 @@ const Z_STAR = {
 
 const CONF_LEVELS = [80, 90, 95, 99];
 
+function buildHypothesisForms(altSymbol) {
+  const correct = `H0: p1 = p2; Ha: p1 ${altSymbol} p2`;
+  const oppositeMap = {
+    ">": "<",
+    "<": ">",
+    "!=": ">"
+  };
+  const opposite = oppositeMap[altSymbol] || "<";
+
+  return {
+    correct,
+    wrongOptions: [
+      `H0: p1 = p2; Ha: p1 ${opposite} p2`,
+      `H0: p1 ${altSymbol} p2; Ha: p1 = p2`,
+      `H0: p-hat1 = p-hat2; Ha: p-hat1 ${altSymbol} p-hat2`
+    ]
+  };
+}
+
 // ============ SCENARIO BANKS ============
 
 // ---- Shared real-world proportion context bank (L06–L11) ----
@@ -2797,6 +2816,205 @@ function buildTwoPropClaimStudy(template) {
   return study;
 }
 
+
+// ---- L17: Hypotheses for Difference in Proportions (6.10a) ----
+const hypotheses610Bank = [
+  {
+    context: "In a randomized experiment, 130 patients receive azithromycin eye drops and 149 receive placebo drops. Researchers want to know whether azithromycin is more effective.",
+    questionText: "Do these data provide convincing evidence that azithromycin cures a greater proportion of patients than placebo?",
+    p1Def: "the true proportion of patients like those in the study who would be cured by azithromycin",
+    p2Def: "the true proportion of patients like those in the study who would be cured by placebo",
+    altSymbol: ">"
+  },
+  {
+    context: "A district compares two reading programs. Program A is used in one random sample of schools and Program B in another random sample of schools.",
+    questionText: "Is there convincing evidence of a difference in the pass rates between Program A and Program B?",
+    p1Def: "the true proportion of students in schools like those sampled who pass under Program A",
+    p2Def: "the true proportion of students in schools like those sampled who pass under Program B",
+    altSymbol: "!="
+  },
+  {
+    context: "A food company compares a standard recipe to a reduced-sugar recipe using random samples of customers from the same market.",
+    questionText: "Is there convincing evidence that the reduced-sugar recipe has a lower approval rate than the standard recipe?",
+    p1Def: "the true proportion of customers who approve of the reduced-sugar recipe",
+    p2Def: "the true proportion of customers who approve of the standard recipe",
+    altSymbol: "<"
+  },
+  {
+    context: "A university tests whether peer tutoring helps first-year calculus students by randomly assigning sections to tutoring support or no tutoring support.",
+    questionText: "Is there convincing evidence that peer tutoring increases the pass rate?",
+    p1Def: "the true proportion of first-year calculus students who pass with peer tutoring",
+    p2Def: "the true proportion of first-year calculus students who pass without peer tutoring",
+    altSymbol: ">"
+  },
+  {
+    context: "Two cities are compared using independent random samples to study the proportion of adults who bought sunglasses in the last 12 months.",
+    questionText: "Do the data give convincing evidence of a difference in the two city proportions?",
+    p1Def: "the true proportion of adults in City 1 who bought sunglasses in the last 12 months",
+    p2Def: "the true proportion of adults in City 2 who bought sunglasses in the last 12 months",
+    altSymbol: "!="
+  },
+  {
+    context: "A sleep lab randomly assigns volunteers to caffeinated tea or caffeine-free tea before bedtime.",
+    questionText: "Is there convincing evidence that caffeinated tea causes a higher proportion of sleep disruptions?",
+    p1Def: "the true proportion of similar volunteers who have sleep disruptions after caffeinated tea",
+    p2Def: "the true proportion of similar volunteers who have sleep disruptions after caffeine-free tea",
+    altSymbol: ">"
+  }
+];
+
+// ---- L18: Identify Procedure for Difference in Proportions (6.10b) ----
+const procedure610Bank = [
+  {
+    context: "Two independent random samples were selected from two cities to compare the proportion of residents who purchased sunglasses in the last year.",
+    givenText: "One categorical variable (purchased sunglasses: yes/no), two independent samples."
+  },
+  {
+    context: "In a randomized experiment, patients were randomly assigned to a treatment eye drop or a placebo eye drop, and cure status after one week was recorded.",
+    givenText: "One categorical outcome (cured: yes/no), two experimental groups."
+  },
+  {
+    context: "A company randomly sampled users from Version A and Version B of a website and recorded whether each user clicked a signup button.",
+    givenText: "One categorical outcome (click: yes/no), two independent groups."
+  },
+  {
+    context: "Researchers drew independent random samples from two populations and recorded whether each individual met a condition.",
+    givenText: "Two samples, one proportion in each sample, significance test requested."
+  },
+  {
+    context: "A school randomly assigned classrooms to two study apps and measured whether each student passed the final exam.",
+    givenText: "Random assignment to two groups, binary outcome."
+  },
+  {
+    context: "Analysts compared two independent ad campaigns and tracked whether each visitor converted.",
+    givenText: "Two groups, conversion as yes/no, goal is to test a claim about a difference."
+  }
+];
+
+// ---- L19: Pooled Proportion Calculation (6.10c) ----
+const pooled610Bank = [
+  {
+    context: "Clinical trial: azithromycin eye drops vs placebo.",
+    group1: "Azithromycin group",
+    group2: "Placebo group",
+    n1: 130, x1: 82,
+    n2: 149, x2: 74
+  },
+  {
+    context: "Sunglasses purchases in two cities from independent random samples.",
+    group1: "Soltown",
+    group2: "Brightville",
+    n1: 400, x1: 314,
+    n2: 550, x2: 452
+  },
+  {
+    context: "Email campaign A vs campaign B conversion test.",
+    group1: "Campaign A",
+    group2: "Campaign B",
+    n1: 180, x1: 64,
+    n2: 170, x2: 51
+  },
+  {
+    context: "Two manufacturing lines are compared on defect rates.",
+    group1: "Line 1",
+    group2: "Line 2",
+    n1: 240, x1: 18,
+    n2: 260, x2: 31
+  },
+  {
+    context: "Two districts are compared for on-time graduation rates.",
+    group1: "District A",
+    group2: "District B",
+    n1: 320, x1: 244,
+    n2: 300, x2: 213
+  },
+  {
+    context: "Two cafeteria menu layouts are compared for selecting a healthy lunch option.",
+    group1: "Layout A",
+    group2: "Layout B",
+    n1: 150, x1: 57,
+    n2: 160, x2: 71
+  },
+  {
+    context: "Two mobile app tutorials are compared for first-day completion.",
+    group1: "Tutorial A",
+    group2: "Tutorial B",
+    n1: 210, x1: 128,
+    n2: 190, x2: 97
+  },
+  {
+    context: "Two neighborhoods are sampled for households with rooftop solar panels.",
+    group1: "Neighborhood 1",
+    group2: "Neighborhood 2",
+    n1: 280, x1: 44,
+    n2: 260, x2: 39
+  }
+];
+
+// ---- L20: Check Conditions for Two-Sample z Test (6.10d) ----
+const conditions610Bank = [
+  {
+    context: "A marketing agent took independent random samples of residents from Soltown and Brightville to compare sunglasses purchase rates in the last 12 months.",
+    designType: "random-samples",
+    group1: "Soltown",
+    group2: "Brightville",
+    n1: 400, x1: 314, N1: 80000,
+    n2: 550, x2: 452, N2: 120000,
+    allMet: true,
+    explanation: "Two independent random samples are given, both sample sizes are less than 10% of their populations, and all pooled expected counts are at least 10, so conditions are met."
+  },
+  {
+    context: "In a randomized experiment, 279 pink-eye patients were randomly assigned to azithromycin drops or placebo drops, then cure status after one week was recorded.",
+    designType: "randomized-experiment",
+    group1: "Azithromycin",
+    group2: "Placebo",
+    n1: 130, x1: 82,
+    n2: 149, x2: 74,
+    allMet: true,
+    explanation: "Random assignment creates independent groups, and pooled expected successes and failures in both groups are all at least 10, so conditions are met."
+  },
+  {
+    context: "Two independent random samples were selected from nearby towns to compare support for a new park ordinance.",
+    designType: "random-samples",
+    group1: "Town A",
+    group2: "Town B",
+    n1: 220, x1: 138, N1: 1800,
+    n2: 240, x2: 150, N2: 5000,
+    allMet: false,
+    explanation: "Sample 1 violates the 10% condition because 220 is greater than 10% of 1,800 (180), so conditions are not fully met."
+  },
+  {
+    context: "Two independent random samples were used to compare rare side-effect rates for two over-the-counter medicines.",
+    designType: "random-samples",
+    group1: "Medicine A",
+    group2: "Medicine B",
+    n1: 45, x1: 2, N1: 10000,
+    n2: 50, x2: 1, N2: 12000,
+    allMet: false,
+    explanation: "Random sampling and the 10% condition are fine, but pooled expected successes are below 10, so the large-counts condition fails."
+  },
+  {
+    context: "A randomized experiment assigned volunteers to two exercise plans and recorded whether each participant completed the program.",
+    designType: "randomized-experiment",
+    group1: "Plan A",
+    group2: "Plan B",
+    n1: 35, x1: 31,
+    n2: 30, x2: 29,
+    allMet: false,
+    explanation: "Random assignment is satisfied, but pooled expected failures in each group are below 10, so conditions are not met."
+  },
+  {
+    context: "Independent random samples from two schools were used to compare the proportion of students who participate in after-school clubs.",
+    designType: "random-samples",
+    group1: "School 1",
+    group2: "School 2",
+    n1: 60, x1: 58, N1: 12000,
+    n2: 70, x2: 67, N2: 15000,
+    allMet: false,
+    explanation: "The samples are random and below 10% of each population, but pooled expected failures are less than 10, so the normal condition fails."
+  }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -4407,6 +4625,139 @@ export function generateProblem(modeId, context, mode) {
     };
 
     scenario = `${study.context}\n\nResearchers use samples of size ${study.n1} and ${study.n2} to build a ${study.confLevel}% confidence interval for ${study.relation}.\n\nWhich statement correctly interprets the ${study.confLevel}% confidence level?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L17: State Hypotheses (6.10a) ==========
+  if (modeId === "l17-hypotheses-610") {
+    const scen = drawFromBag('hypotheses610', hypotheses610Bank);
+    const forms = buildHypothesisForms(scen.altSymbol);
+    const allOptions = shuffle([forms.correct, ...forms.wrongOptions]);
+
+    ctx = {
+      topicId: "6.10: Stating Hypotheses for p1 - p2",
+      scenarioText: scen.context,
+      givenText: `Question: ${scen.questionText} Let p1 = ${scen.p1Def}; p2 = ${scen.p2Def}.`,
+      p1Def: scen.p1Def,
+      p2Def: scen.p2Def,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      hypothesis610Answer: { value: forms.correct }
+    };
+
+    scenario = `${scen.context}\n\n${scen.questionText}\n\nLet p1 = ${scen.p1Def}.\nLet p2 = ${scen.p2Def}.\n\nWhich hypotheses are appropriate?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L18: Identify Procedure (6.10b) ==========
+  if (modeId === "l18-procedure-610") {
+    const scen = drawFromBag('procedure610', procedure610Bank);
+    const correctAnswer = "Two-sample z test for a difference in population proportions";
+    const wrongOptions = [
+      "One-sample z test for a population proportion",
+      "Two-sample z interval for a difference in population proportions",
+      "Two-sample t test for a difference in population means"
+    ];
+    const allOptions = shuffle([correctAnswer, ...wrongOptions]);
+
+    ctx = {
+      topicId: "6.10: Identifying the Inference Procedure",
+      scenarioText: scen.context,
+      givenText: scen.givenText,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      procedure610Answer: { value: correctAnswer }
+    };
+
+    scenario = `${scen.context}\n\n${scen.givenText}\n\nWhat is the correct significance test procedure?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L19: Pooled Proportion (6.10c) ==========
+  if (modeId === "l19-pooled-610") {
+    const scen = drawFromBag('pooled610', pooled610Bank);
+    const pooled = (scen.x1 + scen.x2) / (scen.n1 + scen.n2);
+    const pooledRounded = Math.round(pooled * 1000) / 1000;
+
+    ctx = {
+      topicId: "6.10: Combined (Pooled) Proportion",
+      scenarioText: scen.context,
+      givenText: `${scen.group1}: x1 = ${scen.x1}, n1 = ${scen.n1}. ${scen.group2}: x2 = ${scen.x2}, n2 = ${scen.n2}.`,
+      group1: scen.group1,
+      group2: scen.group2,
+      x1: `${scen.x1}`,
+      n1: `${scen.n1}`,
+      x2: `${scen.x2}`,
+      n2: `${scen.n2}`
+    };
+
+    answers = {
+      pooled610Answer: { value: pooledRounded, tolerance: 0.002 }
+    };
+
+    scenario = `${scen.context}\n\n${scen.group1}: ${scen.x1} successes out of ${scen.n1}.\n${scen.group2}: ${scen.x2} successes out of ${scen.n2}.\n\nCompute the pooled proportion p-hat_c = (x1 + x2)/(n1 + n2). Round to 3 decimals.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L20: Check Conditions (6.10d) ==========
+  if (modeId === "l20-conditions-610") {
+    const scen = drawFromBag('conditions610', conditions610Bank);
+    const pooled = (scen.x1 + scen.x2) / (scen.n1 + scen.n2);
+    const exp1Succ = Math.round((scen.n1 * pooled) * 100) / 100;
+    const exp1Fail = Math.round((scen.n1 * (1 - pooled)) * 100) / 100;
+    const exp2Succ = Math.round((scen.n2 * pooled) * 100) / 100;
+    const exp2Fail = Math.round((scen.n2 * (1 - pooled)) * 100) / 100;
+
+    const tenPctText = scen.designType === "random-samples"
+      ? `10% checks: n1 <= 0.10N1 ? ${scen.n1} <= ${Math.round(0.10 * scen.N1)}; n2 <= 0.10N2 ? ${scen.n2} <= ${Math.round(0.10 * scen.N2)}.`
+      : "10% condition is not required for randomized experiments.";
+
+    const designText = scen.designType === "random-samples"
+      ? "Design: two independent random samples."
+      : "Design: randomized experiment with two groups.";
+
+    ctx = {
+      topicId: "6.10: Conditions for Two-Sample z Test",
+      scenarioText: scen.context,
+      givenText: `${designText} ${scen.group1}: x1 = ${scen.x1}, n1 = ${scen.n1}. ${scen.group2}: x2 = ${scen.x2}, n2 = ${scen.n2}. p-hat_c = ${pooled.toFixed(3)}. Expected counts: n1*p-hat_c = ${exp1Succ}, n1*(1-p-hat_c) = ${exp1Fail}, n2*p-hat_c = ${exp2Succ}, n2*(1-p-hat_c) = ${exp2Fail}. ${tenPctText}`,
+      designType: scen.designType,
+      group1: scen.group1,
+      group2: scen.group2,
+      x1: `${scen.x1}`,
+      n1: `${scen.n1}`,
+      x2: `${scen.x2}`,
+      n2: `${scen.n2}`,
+      pooled: `${pooled.toFixed(3)}`,
+      exp1Succ: `${exp1Succ}`,
+      exp1Fail: `${exp1Fail}`,
+      exp2Succ: `${exp2Succ}`,
+      exp2Fail: `${exp2Fail}`,
+      conditionsDetail: scen.explanation
+    };
+
+    if (scen.designType === "random-samples") {
+      ctx.N1 = `${scen.N1}`;
+      ctx.N2 = `${scen.N2}`;
+    }
+
+    answers = {
+      cond610Met: {
+        value: scen.allMet ? "Yes, all conditions are met" : "No, at least one condition fails"
+      },
+      cond610Explain: { value: scen.explanation }
+    };
+
+    scenario = `${scen.context}\n\n${designText}\n${scen.group1}: ${scen.x1}/${scen.n1}, ${scen.group2}: ${scen.x2}/${scen.n2}\nPooled proportion: p-hat_c = ${pooled.toFixed(3)}\nExpected counts: ${exp1Succ}, ${exp1Fail}, ${exp2Succ}, ${exp2Fail}\n${tenPctText}\n\nAre all conditions for a two-sample z test for p1 - p2 met? Explain.`;
     return { context: ctx, graphConfig, answers, scenario };
   }
 

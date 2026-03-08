@@ -78,7 +78,8 @@ export function gradeField(fieldId, answer, context) {
     "twoPropConditionsExplain",
     "twoPropCIInterpretation",
     "twoProp69Interpretation",
-    "twoPropClaimExplain"
+    "twoPropClaimExplain",
+    "cond610Explain"
   ]);
 
   if (isBlank(answer)) {
@@ -96,7 +97,8 @@ export function gradeField(fieldId, answer, context) {
       "cap65ZStat", "cap65PValue",
       "fullTestZStat", "fullTestPValue",
       "cap66ZStat", "cap66PValue",
-      "twoPropMEAnswer", "twoPropCILower", "twoPropCIUpper"
+      "twoPropMEAnswer", "twoPropCILower", "twoPropCIUpper",
+      "pooled610Answer"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -2290,6 +2292,126 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: `Incorrect. The correct interpretation is: ${expected}`
+    };
+  }
+
+  // ========== L17: Hypotheses Setup (6.10a) ==========
+  if (fieldId === "hypothesis610Answer") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! For a two-sample test of proportions, the null uses equality (p1 = p2), and the alternative matches the research question direction (> , < , or !=)." };
+    }
+    if (containsAny(answer, ["p-hat", "p̂"])) {
+      return { score: "I", feedback: `Incorrect. Hypotheses must use population parameters (p1, p2), not sample statistics (p-hat1, p-hat2). Correct choice: ${expected}.` };
+    }
+    return { score: "I", feedback: `Incorrect. ${expected}. Remember: H0 must be equality (p1 = p2 or p1 - p2 = 0), and Ha must be a strict inequality that matches the question.` };
+  }
+
+  // ========== L18: Procedure Identification (6.10b) ==========
+  if (fieldId === "procedure610Answer") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! The appropriate method is a two-sample z test for a difference in population proportions." };
+    }
+    return { score: "I", feedback: `Incorrect. ${expected}. This setting has one categorical variable, two groups, and a significance test about p1 - p2.` };
+  }
+
+  // ========== L19: Pooled Proportion (6.10c) ==========
+  if (fieldId === "pooled610Answer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = parseFloat(expected);
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const x1 = parseFloat(context.x1);
+    const n1 = parseFloat(context.n1);
+    const x2 = parseFloat(context.x2);
+    const n2 = parseFloat(context.n2);
+
+    if (!isNaN(x1) && !isNaN(n1) && !isNaN(x2) && !isNaN(n2)) {
+      const wrongAverage = ((x1 / n1) + (x2 / n2)) / 2;
+      const wrongDifference = (x1 / n1) - (x2 / n2);
+
+      if (Math.abs(studentVal - wrongAverage) <= 0.005 && diff > 0.005) {
+        return {
+          score: "I",
+          feedback: `It looks like you averaged the two sample proportions. For pooled proportion, combine counts first: p-hat_c = (x1 + x2)/(n1 + n2) = ${expectedVal.toFixed(3)}.`
+        };
+      }
+      if (Math.abs(studentVal - wrongDifference) <= 0.005 && diff > 0.005) {
+        return {
+          score: "I",
+          feedback: `It looks like you computed p-hat1 - p-hat2. Here you need pooled proportion: p-hat_c = (x1 + x2)/(n1 + n2) = ${expectedVal.toFixed(3)}.`
+        };
+      }
+    }
+
+    if (diff <= 0.003) {
+      return { score: "E", feedback: `Correct! p-hat_c = (x1 + x2)/(n1 + n2) = ${expectedVal.toFixed(3)}.` };
+    }
+    if (diff <= 0.01) {
+      return { score: "P", feedback: `Close. Recheck arithmetic in p-hat_c = (x1 + x2)/(n1 + n2). The pooled proportion is ${expectedVal.toFixed(3)}.` };
+    }
+    return { score: "I", feedback: `Incorrect. Use pooled proportion p-hat_c = (x1 + x2)/(n1 + n2). The correct value is ${expectedVal.toFixed(3)}.` };
+  }
+
+  // ========== L20: Conditions Met (6.10d) ==========
+  if (fieldId === "cond610Met") {
+    if (studentNorm === expectedNorm) {
+      return { score: "E", feedback: "Correct! You correctly determined whether all conditions for the two-sample z test are satisfied." };
+    }
+    return { score: "I", feedback: `Incorrect. ${expected}. Check design independence, the 10% condition for random samples, and all four pooled expected counts >= 10.` };
+  }
+
+  // ========== L20: Conditions Explain (6.10d) ==========
+  if (fieldId === "cond610Explain") {
+    const designType = context?.designType || "";
+    const needsTenPct = designType === "random-samples";
+
+    const independenceKeywords = [
+      "independent", "independence", "random sample", "random samples",
+      "random assignment", "randomized experiment", "randomly assigned"
+    ];
+    const tenPctKeywords = [
+      "10%", "10 percent", "n1", "n2", "population", "n <= 10%", "less than 10%"
+    ];
+    const countsKeywords = [
+      "pooled", "combined", "p-hat_c", "expected", "successes", "failures",
+      "at least 10", ">= 10", "n1p", "n2p"
+    ];
+    const conclusionKeywords = [
+      "conditions are met", "conditions are not met", "all conditions", "fails", "therefore", "so"
+    ];
+
+    const mentionsIndependence = containsAny(answer, independenceKeywords);
+    const mentionsTenPct = containsAny(answer, tenPctKeywords);
+    const mentionsCounts = containsAny(answer, countsKeywords);
+    const mentionsConclusion = containsAny(answer, conclusionKeywords);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 10;
+
+    const coreMet = mentionsIndependence && mentionsCounts && (!needsTenPct || mentionsTenPct);
+
+    if (coreMet && mentionsConclusion && hasSubstance) {
+      return { score: "E", feedback: "Excellent! You addressed independence, the appropriate 10% check, pooled expected counts, and a clear conclusion." };
+    }
+
+    const partialSignals = [mentionsIndependence, mentionsCounts, mentionsTenPct, mentionsConclusion].filter(Boolean).length;
+    if (partialSignals >= 2 && hasSubstance) {
+      const missing = [];
+      if (!mentionsIndependence) missing.push("independence/random design");
+      if (needsTenPct && !mentionsTenPct) missing.push("10% condition for both samples");
+      if (!mentionsCounts) missing.push("pooled expected counts >= 10");
+      if (!mentionsConclusion) missing.push("clear final conclusion");
+      return { score: "P", feedback: `Good start. Also include: ${missing.join(", ")}.` };
+    }
+
+    const tenPctReminder = needsTenPct
+      ? "Also check n1 <= 10% of N1 and n2 <= 10% of N2."
+      : "For experiments, the 10% condition is not required.";
+    return {
+      score: "I",
+      feedback: `Explain three pieces: (1) independence from random samples or random assignment, (2) pooled expected successes/failures in both groups are each >= 10, and (3) whether all conditions are met. ${tenPctReminder}`
     };
   }
 
