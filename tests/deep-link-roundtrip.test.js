@@ -229,7 +229,7 @@ describe('Deep-link: Path A - Direct Navigation', () => {
     expect(result.state.currentTier).toBe(getModeId(1));
   });
 
-  test('redirects to first locked prerequisite if mode is locked', async () => {
+  test('grants direct access to locked mode via URL (no redirect)', async () => {
     persistProgress({
       activeModeNumber: 2,
       completedModeNumbers: [1, 2]
@@ -237,11 +237,11 @@ describe('Deep-link: Path A - Direct Navigation', () => {
 
     const result = await initDeepLink(`?cartridge=${CARTRIDGE_ID}&mode=5`);
 
-    expect(result.platform.currentMode).toBe(getModeId(3));
+    expect(result.platform.currentMode).toBe(getModeId(5));
     expect(history.replaceState).toHaveBeenCalledWith(
       {},
       '',
-      expect.stringContaining('mode=3')
+      expect.stringContaining('mode=5')
     );
   });
 });
@@ -286,7 +286,7 @@ describe('Deep-link: Path B - URL Restoration After Refresh', () => {
     expect(refreshedLoad.state.unlockedTiers).toContain(getModeId(3));
   });
 
-  test('URL restoration respects progression gating', async () => {
+  test('URL restoration grants direct access (URL is authorization)', async () => {
     persistProgress({
       activeModeNumber: 2,
       completedModeNumbers: [1, 2]
@@ -294,8 +294,7 @@ describe('Deep-link: Path B - URL Restoration After Refresh', () => {
 
     const refreshedLoad = await initDeepLink(`?cartridge=${CARTRIDGE_ID}&mode=5`);
 
-    expect(refreshedLoad.platform.currentMode).toBe(getModeId(3));
-    expect(refreshedLoad.platform.currentMode).not.toBe(getModeId(5));
+    expect(refreshedLoad.platform.currentMode).toBe(getModeId(5));
   });
 });
 

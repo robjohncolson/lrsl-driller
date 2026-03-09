@@ -195,24 +195,22 @@ export function restoreStateFromURL(
       };
     }
 
-    const firstIncompletePrerequisite = findFirstIncompletePrerequisite(parsed.mode, {
-      modes,
-      state,
-      getRequiredGold
-    });
-    const resolvedModeId = firstIncompletePrerequisite ?? requestedModeId;
+    // Direct URL is the authorization — bypass progression gating
+    const requestedMode = modes.find((m) => m.id === requestedModeId);
+    const studentUnlocked =
+      requestedMode?.unlockedBy === 'default' ||
+      state?.unlockedTiers?.includes(requestedModeId);
 
     return {
-      modeId: resolvedModeId,
-      modeNumber: getModeNumber(resolvedModeId, modes),
-      forceAccess: false,
-      progressionFloorModeId: null,
-      showNotification: false,
+      modeId: requestedModeId,
+      modeNumber: parsed.mode,
+      forceAccess: true,
+      progressionFloorModeId: requestedModeId,
+      showNotification: !isTeacher && !studentUnlocked,
       source: 'mode',
       isValidRequest: true,
       shouldUpdateURL: true,
-      wasRedirected: resolvedModeId !== requestedModeId,
-      requestedModeId
+      wasRedirected: false
     };
   }
 

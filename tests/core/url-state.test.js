@@ -42,7 +42,7 @@ describe('url-state', () => {
     });
   });
 
-  it('resolves gated mode links to the requested unlocked mode', () => {
+  it('resolves mode links to the requested mode with forced access', () => {
     const parsed = parseQueryParams('?cartridge=cartridge-a&mode=3');
     const resolution = restoreStateFromURL(parsed, {
       modes,
@@ -53,11 +53,12 @@ describe('url-state', () => {
 
     expect(resolution.modeId).toBe('l03');
     expect(resolution.modeNumber).toBe(3);
-    expect(resolution.forceAccess).toBe(false);
+    expect(resolution.forceAccess).toBe(true);
+    expect(resolution.progressionFloorModeId).toBe('l03');
     expect(resolution.wasRedirected).toBe(false);
   });
 
-  it('redirects locked gated mode links to the first incomplete prerequisite', () => {
+  it('grants direct access to locked modes via URL (no redirect)', () => {
     const parsed = parseQueryParams('?cartridge=cartridge-a&mode=4');
     const resolution = restoreStateFromURL(parsed, {
       modes,
@@ -72,9 +73,26 @@ describe('url-state', () => {
       getRequiredGold: (modeId) => modes.find((mode) => mode.id === modeId)?.unlockedBy?.gold ?? 0
     });
 
-    expect(resolution.modeId).toBe('l03');
-    expect(resolution.modeNumber).toBe(3);
-    expect(resolution.wasRedirected).toBe(true);
+    expect(resolution.modeId).toBe('l04');
+    expect(resolution.modeNumber).toBe(4);
+    expect(resolution.forceAccess).toBe(true);
+    expect(resolution.progressionFloorModeId).toBe('l04');
+    expect(resolution.showNotification).toBe(true);
+    expect(resolution.wasRedirected).toBe(false);
+  });
+
+  it('mode links for already-unlocked modes do not show notification', () => {
+    const parsed = parseQueryParams('?cartridge=cartridge-a&mode=2');
+    const resolution = restoreStateFromURL(parsed, {
+      modes,
+      state: createState(['l01', 'l02']),
+      currentMode: 'l01',
+      isTeacher: false
+    });
+
+    expect(resolution.modeId).toBe('l02');
+    expect(resolution.forceAccess).toBe(true);
+    expect(resolution.showNotification).toBe(false);
   });
 
   it('returns direct level links as forced-access mode selections', () => {
