@@ -58,6 +58,20 @@ Response: {{studentAnswer}}
 - Be lenient on formatting while strict on mathematical content
 - Give specific, constructive feedback that helps the student improve
 
+## Synthetic Division (Mode: synthetic-division)
+
+Fields: coeff-x3, coeff-x2, coeff-x1, coeff-x0 (quotient coefficients), remainder
+
+- **E (Essentially Correct)**: All coefficients and remainder are exactly correct.
+- **P (Partially Correct)**: One coefficient has a sign error, OR the student correctly performed synthetic division but used the wrong sign for a (e.g., used a=2 when divisor was (x+2), should be a=-2).
+- **I (Incorrect)**: Multiple wrong coefficients, wrong method, or fundamentally incorrect.
+
+Common student errors:
+- Using wrong sign for a: divisor (x+2) means a = -2, not +2.
+- Forgetting to include 0 coefficients for missing terms in the dividend.
+- Adding instead of the multiply-then-add pattern (or vice versa).
+- Reading the remainder as part of the quotient.
+
 ## Response Format
 Respond with ONLY valid JSON:
 {

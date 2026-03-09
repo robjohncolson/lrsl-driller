@@ -1,6 +1,7 @@
 """
 Is It a Factor? — Using the graph and P(a) to determine if (x - a) is a factor.
 Visual proof: a root on the graph (P(a)=0) means (x-a) is a factor.
+Exercises the SIGN TRAP: when the divisor is (x + a) instead of (x - a).
 For Algebra 2 students learning the Factor Theorem.
 
 Run with: manim -qm --format=mp4 is_it_a_factor.py IsItAFactor
@@ -17,9 +18,9 @@ class IsItAFactor(Scene):
         ACCENT = ManimColor("#FFFF00")        # yellow
         SOFT_GREY = ManimColor("#AAAAAA")
 
-        # ── Helper: P(x) = x^3 - 6x^2 + 11x - 6 ─────────────────────
+        # ── Helper: P(x) = x^3 - 3x^2 - x + 3 = (x-1)(x+1)(x-3) ──
         def P(x):
-            return x ** 3 - 6 * x ** 2 + 11 * x - 6
+            return x ** 3 - 3 * x ** 2 - x + 3
 
         # ── 1. Title ──────────────────────────────────────────────────
         title = Text("Factor or Not? Check P(a)!", font_size=48)
@@ -29,8 +30,8 @@ class IsItAFactor(Scene):
 
         # ── 2. Axes and graph ─────────────────────────────────────────
         axes = Axes(
-            x_range=[-0.5, 5, 1],
-            y_range=[-5, 5, 1],
+            x_range=[-3, 5, 1],
+            y_range=[-16, 16, 4],
             x_length=8,
             y_length=5,
             axis_config={"include_numbers": True, "font_size": 22},
@@ -43,10 +44,10 @@ class IsItAFactor(Scene):
             MathTex("P(x)", font_size=28),
         )
 
-        graph = axes.plot(P, x_range=[-0.3, 4.6], color=CURVE_COLOR, stroke_width=3)
+        graph = axes.plot(P, x_range=[-2.8, 4.5], color=CURVE_COLOR, stroke_width=3)
 
         poly_label = MathTex(
-            "P(x) = x^3 - 6x^2 + 11x - 6",
+            "P(x) = x^3 - 3x^2 - x + 3",
             font_size=28,
             color=CURVE_COLOR,
         )
@@ -68,14 +69,54 @@ class IsItAFactor(Scene):
             bot = ax.c2p(xv, 0)
             return DashedLine(top, bot, color=color, dash_length=0.08, stroke_width=2)
 
+        # ── helper: sign-trap rewrite animation ───────────────────────
+        def sign_trap_rewrite(divisor_str, rewritten_str, a_value_str):
+            """
+            Show the (x + a) -> (x - (-a)) rewrite with a = value boxed.
+            Returns the group of created mobjects for later cleanup.
+            """
+            # Original divisor in yellow
+            original = MathTex(divisor_str, font_size=34, color=ACCENT)
+            original.to_edge(RIGHT, buff=0.5).shift(UP * 1.2)
+
+            self.play(Write(original), run_time=0.6)
+            self.wait(0.3)
+
+            # Transform to rewritten form
+            rewritten = MathTex(rewritten_str, font_size=34, color=ACCENT)
+            rewritten.move_to(original)
+            self.play(TransformMatchingTex(original, rewritten), run_time=0.8)
+            self.wait(0.3)
+
+            # Arrow pointing to "a = value" boxed
+            a_box_tex = MathTex(a_value_str, font_size=30, color=ACCENT)
+            a_box_tex.next_to(rewritten, DOWN, buff=0.35)
+            a_box = SurroundingRectangle(
+                a_box_tex, color=ACCENT, buff=0.12, corner_radius=0.08
+            )
+            arrow = Arrow(
+                rewritten.get_bottom(),
+                a_box.get_top(),
+                buff=0.08,
+                color=ACCENT,
+                stroke_width=2,
+                max_tip_length_to_length_ratio=0.2,
+            )
+            self.play(GrowArrow(arrow), run_time=0.4)
+            self.play(Write(a_box_tex), Create(a_box), run_time=0.6)
+            self.wait(0.6)
+
+            group = VGroup(rewritten, arrow, a_box_tex, a_box)
+            return group
+
         # ==============================================================
-        # ── 3. TEST 1:  (x - 1)  — IS a factor ───────────────────────
+        # ── 3. TEST 1:  (x - 3)  — Simple baseline (YES) ────────────
         # ==============================================================
-        q1 = Text("Is (x - 1) a factor?", font_size=30)
+        q1 = Text("Is (x \u2212 3) a factor?", font_size=30)
         q1.to_edge(RIGHT, buff=0.4).shift(UP * 2.5)
         self.play(Write(q1), run_time=0.7)
 
-        # Animate dot travelling along curve from x=0 to x=1
+        # Animate dot travelling along curve from x=0 to x=3
         x_tracker1 = ValueTracker(0)
         dot1 = always_redraw(lambda: Dot(
             axes.c2p(x_tracker1.get_value(), P(x_tracker1.get_value())),
@@ -83,18 +124,17 @@ class IsItAFactor(Scene):
             color=WHITE,
         ))
         self.add(dot1)
-        self.play(x_tracker1.animate.set_value(1), run_time=1.5, rate_func=smooth)
+        self.play(x_tracker1.animate.set_value(3), run_time=1.5, rate_func=smooth)
 
         # Dot lands on x-axis — turn green
-        dot1_final = Dot(axes.c2p(1, 0), radius=0.12, color=YES_COLOR)
-        vdash1 = make_vdash(axes, 1, P(0.5), YES_COLOR)  # cosmetic dash
+        dot1_final = Dot(axes.c2p(3, 0), radius=0.12, color=YES_COLOR)
 
         self.remove(dot1)
         self.play(FadeIn(dot1_final, scale=1.5), run_time=0.4)
 
         # Computation line
         calc1 = MathTex(
-            "P(1) = 1 - 6 + 11 - 6 = 0",
+            "P(3) = 27 - 27 - 3 + 3 = 0",
             font_size=26,
         )
         calc1.set_color(YES_COLOR)
@@ -106,7 +146,7 @@ class IsItAFactor(Scene):
         check1.next_to(dot1_final, UP, buff=0.2)
         self.play(FadeIn(check1, scale=0.5), run_time=0.4)
 
-        result1 = Text("YES, (x - 1) is a factor!", font_size=24, color=YES_COLOR)
+        result1 = Text("YES, (x \u2212 3) is a factor!", font_size=24, color=YES_COLOR)
         result1.next_to(calc1, DOWN, buff=0.25, aligned_edge=LEFT)
         self.play(Write(result1), run_time=0.7)
         self.wait(0.8)
@@ -115,103 +155,126 @@ class IsItAFactor(Scene):
         self.play(FadeOut(q1), FadeOut(calc1), FadeOut(result1), run_time=0.5)
 
         # ==============================================================
-        # ── 4. TEST 2:  (x - 3)  — IS a factor ───────────────────────
+        # ── 4. TEST 2:  (x + 2)  — SIGN TRAP, NOT a factor (NO) ─────
         # ==============================================================
-        q2 = Text("Is (x - 3) a factor?", font_size=30)
+        q2 = Text("Is (x + 2) a factor?", font_size=30)
         q2.to_edge(RIGHT, buff=0.4).shift(UP * 2.5)
         self.play(Write(q2), run_time=0.7)
 
-        # Animate dot along curve from x=1 to x=3
-        x_tracker2 = ValueTracker(1)
+        # Sign-trap rewrite animation
+        rewrite2 = sign_trap_rewrite(
+            "(x + 2)",
+            "(x - (-2))",
+            "a = -2",
+        )
+        self.wait(0.3)
+
+        # Animate dot along curve from x=0 to x=-2
+        x_tracker2 = ValueTracker(0)
         dot2 = always_redraw(lambda: Dot(
             axes.c2p(x_tracker2.get_value(), P(x_tracker2.get_value())),
             radius=0.1,
             color=WHITE,
         ))
         self.add(dot2)
-        self.play(x_tracker2.animate.set_value(3), run_time=1.5, rate_func=smooth)
+        self.play(x_tracker2.animate.set_value(-2), run_time=1.5, rate_func=smooth)
 
-        # Dot lands on x-axis — green
-        dot2_final = Dot(axes.c2p(3, 0), radius=0.12, color=YES_COLOR)
+        # Dot is BELOW x-axis (P(-2) = -15) — RED
+        dot2_final = Dot(axes.c2p(-2, -15), radius=0.12, color=NO_COLOR)
         self.remove(dot2)
         self.play(FadeIn(dot2_final, scale=1.5), run_time=0.4)
 
+        # Dashed line showing gap to x-axis
+        vdash2 = DashedLine(
+            axes.c2p(-2, -15), axes.c2p(-2, 0),
+            color=NO_COLOR,
+            dash_length=0.1,
+            stroke_width=2,
+        )
+        self.play(Create(vdash2), run_time=0.5)
+
+        # Label showing the gap = -15
+        gap_label2 = MathTex("-15", font_size=26, color=NO_COLOR)
+        gap_label2.next_to(vdash2, RIGHT, buff=0.15)
+        self.play(FadeIn(gap_label2), run_time=0.3)
+
         calc2 = MathTex(
-            "P(3) = 27 - 54 + 33 - 6 = 0",
+            "P(-2) = -8 - 12 + 2 + 3 = -15",
             font_size=26,
         )
-        calc2.set_color(YES_COLOR)
+        calc2.set_color(NO_COLOR)
         calc2.next_to(q2, DOWN, buff=0.3, aligned_edge=LEFT)
         self.play(Write(calc2), run_time=0.8)
 
-        check2 = MathTex("\\checkmark", font_size=48, color=YES_COLOR)
-        check2.next_to(dot2_final, UP, buff=0.2)
-        self.play(FadeIn(check2, scale=0.5), run_time=0.4)
+        neq2 = MathTex("\\neq 0", font_size=30, color=NO_COLOR)
+        neq2.next_to(calc2, RIGHT, buff=0.15)
+        self.play(Write(neq2), run_time=0.4)
 
-        result2 = Text("YES, (x - 3) is a factor!", font_size=24, color=YES_COLOR)
+        # Red X mark
+        cross2 = VGroup(
+            Line(UL * 0.15, DR * 0.15, color=NO_COLOR, stroke_width=4),
+            Line(UR * 0.15, DL * 0.15, color=NO_COLOR, stroke_width=4),
+        )
+        cross2.move_to(dot2_final.get_center() + UP * 0.35)
+        self.play(Create(cross2), run_time=0.4)
+
+        result2 = Text("NO, (x + 2) is NOT a factor!", font_size=24, color=NO_COLOR)
         result2.next_to(calc2, DOWN, buff=0.25, aligned_edge=LEFT)
         self.play(Write(result2), run_time=0.7)
-        self.wait(0.8)
+        self.wait(1)
 
-        self.play(FadeOut(q2), FadeOut(calc2), FadeOut(result2), run_time=0.5)
+        # Fade test 2 sidebar + rewrite (keep dot, cross, dashed line)
+        self.play(
+            FadeOut(q2), FadeOut(calc2), FadeOut(neq2),
+            FadeOut(result2), FadeOut(rewrite2),
+            run_time=0.5,
+        )
 
         # ==============================================================
-        # ── 5. TEST 3:  (x - 4)  — NOT a factor ──────────────────────
+        # ── 5. TEST 3:  (x + 1)  — SIGN TRAP CONTRAST, IS a factor ──
         # ==============================================================
-        q3 = Text("Is (x - 4) a factor?", font_size=30)
+        q3 = Text("Is (x + 1) a factor?", font_size=30)
         q3.to_edge(RIGHT, buff=0.4).shift(UP * 2.5)
         self.play(Write(q3), run_time=0.7)
 
-        # Animate dot along curve from x=3 to x=4
-        x_tracker3 = ValueTracker(3)
+        # Sign-trap rewrite animation
+        rewrite3 = sign_trap_rewrite(
+            "(x + 1)",
+            "(x - (-1))",
+            "a = -1",
+        )
+        self.wait(0.3)
+
+        # Animate dot along curve from x=0 to x=-1
+        x_tracker3 = ValueTracker(0)
         dot3 = always_redraw(lambda: Dot(
             axes.c2p(x_tracker3.get_value(), P(x_tracker3.get_value())),
             radius=0.1,
             color=WHITE,
         ))
         self.add(dot3)
-        self.play(x_tracker3.animate.set_value(4), run_time=1.5, rate_func=smooth)
+        self.play(x_tracker3.animate.set_value(-1), run_time=1.5, rate_func=smooth)
 
-        # Dot is ABOVE x-axis (P(4) = 6) — RED
-        dot3_final = Dot(axes.c2p(4, 6), radius=0.12, color=NO_COLOR)
+        # Dot lands on x-axis (P(-1) = 0) — GREEN
+        dot3_final = Dot(axes.c2p(-1, 0), radius=0.12, color=YES_COLOR)
         self.remove(dot3)
         self.play(FadeIn(dot3_final, scale=1.5), run_time=0.4)
 
-        # Dashed line showing gap to x-axis
-        vdash3 = DashedLine(
-            axes.c2p(4, 6), axes.c2p(4, 0),
-            color=NO_COLOR,
-            dash_length=0.1,
-            stroke_width=2,
-        )
-        self.play(Create(vdash3), run_time=0.5)
-
-        # Bracket / label showing the gap = 6
-        gap_label = MathTex("6", font_size=26, color=NO_COLOR)
-        gap_label.next_to(vdash3, RIGHT, buff=0.15)
-        self.play(FadeIn(gap_label), run_time=0.3)
-
+        # Computation line
         calc3 = MathTex(
-            "P(4) = 64 - 96 + 44 - 6 = 6",
+            "P(-1) = -1 - 3 + 1 + 3 = 0",
             font_size=26,
         )
-        calc3.set_color(NO_COLOR)
+        calc3.set_color(YES_COLOR)
         calc3.next_to(q3, DOWN, buff=0.3, aligned_edge=LEFT)
         self.play(Write(calc3), run_time=0.8)
 
-        neq = MathTex("\\neq 0", font_size=30, color=NO_COLOR)
-        neq.next_to(calc3, RIGHT, buff=0.15)
-        self.play(Write(neq), run_time=0.4)
+        # Checkmark
+        check3 = MathTex("\\checkmark", font_size=48, color=YES_COLOR)
+        check3.next_to(dot3_final, UP, buff=0.2)
+        self.play(FadeIn(check3, scale=0.5), run_time=0.4)
 
-        # Red X mark
-        cross = VGroup(
-            Line(UL * 0.15, DR * 0.15, color=NO_COLOR, stroke_width=4),
-            Line(UR * 0.15, DL * 0.15, color=NO_COLOR, stroke_width=4),
-        )
-        cross.move_to(dot3_final.get_center() + UP * 0.35)
-        self.play(Create(cross), run_time=0.4)
-
-        result3 = Text("NO, (x - 4) is NOT a factor!", font_size=24, color=NO_COLOR)
+        result3 = Text("YES, (x + 1) is a factor!", font_size=24, color=YES_COLOR)
         result3.next_to(calc3, DOWN, buff=0.25, aligned_edge=LEFT)
         self.play(Write(result3), run_time=0.7)
         self.wait(1)
@@ -222,9 +285,9 @@ class IsItAFactor(Scene):
         everything = VGroup(
             title, poly_label, axes, axis_labels, graph,
             dot1_final, check1,
-            dot2_final, check2,
-            dot3_final, cross, vdash3, gap_label,
-            q3, calc3, neq, result3,
+            dot2_final, cross2, vdash2, gap_label2,
+            dot3_final, check3,
+            q3, calc3, result3, rewrite3,
         )
         self.play(FadeOut(everything), run_time=0.8)
 

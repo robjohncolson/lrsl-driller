@@ -95,7 +95,7 @@ export function gradeField(fieldId, answer, context) {
 
   // ===== NUMERIC FIELDS =====
   // Mode 1: remainder, Mode 2: coeff-x2/x1/x0/remainder, Mode 3: division-remainder/pa-value, Mode 6: pa-value
-  if (fieldId === "remainder" || fieldId === "coeff-x2" || fieldId === "coeff-x1" ||
+  if (fieldId === "remainder" || fieldId === "coeff-x3" || fieldId === "coeff-x2" || fieldId === "coeff-x1" ||
       fieldId === "coeff-x0" || fieldId === "division-remainder" || fieldId === "pa-value") {
     return gradeNumeric(answer, expected, fieldId);
   }

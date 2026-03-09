@@ -7,6 +7,7 @@
 // remainder-theorem-verify: A-APR.B.2, MP.2, MP.7
 // factor-and-quotient:      A-APR.B.2, A-SSE.A.2, A-APR.A.1b, MP.7
 // quotient-expression:      A-APR.D.6, MP.6
+// synthetic-division:        A-APR.D.6, A-APR.A.1b, MP.6, MP.7
 // is-it-a-factor:           A-APR.B.2, MP.2
 
 // ============ UTILITY FUNCTIONS ============
@@ -216,6 +217,55 @@ function generateLongDivision(requireNonZeroRemainder = false) {
 }
 
 /**
+ * Mode: Synthetic Division
+ * Degree-4 polynomial divided by (x - a).
+ * Build from known quotient and remainder for clean integer answers.
+ * ~30% chance of remainder = 0 (factor case).
+ */
+function generateSyntheticDivision() {
+  const a = drawFromBag('synth-div-a', aValues);
+
+  // Quotient q(x) = c3*x^3 + c2*x^2 + c1*x + c0
+  const c3 = randInt(1, 2) * choice([-1, 1]);
+  const c2 = randInt(-4, 4);
+  const c1 = randInt(-4, 4);
+  const c0 = randInt(-4, 4);
+  const qCoeffs = [c3, c2, c1, c0];
+
+  // Remainder
+  let r;
+  if (Math.random() < 0.3) {
+    r = 0; // factor case
+  } else {
+    r = randInt(1, 8) * choice([-1, 1]);
+  }
+
+  // Compute P(x) = q(x)(x - a) + r
+  const product = multiplyByLinear(qCoeffs, a);
+  const pCoeffs = [...product];
+  pCoeffs[pCoeffs.length - 1] += r;
+
+  // Verify coefficients within bounds
+  if (pCoeffs.some(c => Math.abs(c) > 60)) {
+    return generateSyntheticDivision();
+  }
+
+  return {
+    polynomial: formatPolynomial(pCoeffs),
+    divisor: formatDivisor(a),
+    a,
+    dividendCoeffs: pCoeffs,
+    quotientCoeffs: qCoeffs,
+    quotientPoly: formatPolynomial(qCoeffs),
+    coeffX3: c3,
+    coeffX2: c2,
+    coeffX1: c1,
+    coeffX0: c0,
+    remainder: r
+  };
+}
+
+/**
  * Mode 4: Factor with Known Factor
  * P(x) = (x - a)(x - b)(x - c), give one factor, find the other two.
  * Always factors over the integers by construction.
@@ -316,6 +366,31 @@ export function generateProblem(modeId, contextFromFile, mode) {
       directions: "Polynomial long division works just like whole-number long division. Set up the dividend under the bar and the divisor outside. (1) Divide the leading term of the dividend by x to get the first quotient term. (2) Multiply the entire divisor by that term. (3) Subtract \u2014 use parentheses and distribute the negative carefully. (4) Bring down the next term and repeat. If any degree is missing in the dividend, insert a 0 placeholder (like + 0x\u00b2) to keep terms aligned. The final value after the last subtraction is the remainder.",
       problemText: "Perform polynomial long division.",
       givenText: `Divide ${data.polynomial} by ${data.divisor}. Enter the quotient coefficients and remainder.`,
+      polynomial: data.polynomial,
+      divisor: data.divisor,
+      a: data.a,
+      dividendCoeffs: data.dividendCoeffs,
+      quotientPoly: data.quotientPoly,
+      answers
+    };
+    return { context, graphConfig, answers, scenario: context.givenText };
+  }
+
+  // -------- Mode: Synthetic Division --------
+  if (modeId === 'synthetic-division') {
+    const data = generateSyntheticDivision();
+    const answers = {
+      'coeff-x3': { value: data.coeffX3 },
+      'coeff-x2': { value: data.coeffX2 },
+      'coeff-x1': { value: data.coeffX1 },
+      'coeff-x0': { value: data.coeffX0 },
+      remainder: { value: data.remainder }
+    };
+    const context = {
+      levelName: "Synthetic Division",
+      directions: "Synthetic division is a shortcut for dividing by (x − a). Write a to the left. Write the dividend's coefficients across the top — if any degree is missing, use 0. Bring down the first coefficient. Then repeat: multiply the bottom number by a, write the result under the next coefficient, and add. The last number is the remainder; the others are the quotient's coefficients.",
+      problemText: "Use synthetic division to find the quotient and remainder.",
+      givenText: `Use synthetic division to divide ${data.polynomial} by ${data.divisor}.`,
       polynomial: data.polynomial,
       divisor: data.divisor,
       a: data.a,

@@ -60,6 +60,21 @@
       }
     },
     {
+      "id": "synthetic-division",
+      "name": "Synthetic Division",
+      "unlockedBy": { "gold": 1 },
+      "animation": "assets/SyntheticDivision.mp4",
+      "layout": {
+        "inputs": [
+          { "id": "coeff-x3", "type": "number", "label": "x³ coefficient of quotient", "step": 1 },
+          { "id": "coeff-x2", "type": "number", "label": "x² coefficient of quotient", "step": 1 },
+          { "id": "coeff-x1", "type": "number", "label": "x coefficient of quotient", "step": 1 },
+          { "id": "coeff-x0", "type": "number", "label": "Constant term of quotient", "step": 1 },
+          { "id": "remainder", "type": "number", "label": "Remainder", "step": 1 }
+        ]
+      }
+    },
+    {
       "id": "remainder-theorem-verify",
       "name": "Verify Remainder Theorem",
       "unlockedBy": { "gold": 1 },
@@ -136,6 +151,7 @@
   "hints": {
     "perField": {
       "remainder": "Substitute x = {{a}} into P(x) and evaluate step by step. The remainder when dividing by the divisor equals P({{a}}).",
+      "coeff-x3": "The first coefficient of the quotient is always the same as the leading coefficient of the dividend — just bring it down.",
       "coeff-x2": "Divide the leading term of the dividend by x. That gives the first term of the quotient.",
       "coeff-x1": "After subtracting the first partial product, divide the new leading term by x.",
       "coeff-x0": "Continue long division for the final term of the quotient.",
@@ -170,6 +186,12 @@
         "name": "\u00f7 Poly",
         "unlockedBy": "default",
         "celebrationMessage": "Long division mastered! Keep building gold stars."
+      },
+      {
+        "id": "synthetic-division",
+        "name": "Synth",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Synthetic division mastered! A much faster method."
       },
       {
         "id": "remainder-theorem-verify",
