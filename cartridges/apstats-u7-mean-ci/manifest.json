@@ -1,0 +1,195 @@
+{
+  "meta": {
+    "id": "apstats-u7-mean-ci",
+    "name": "Constructing a Confidence Interval for a Population Mean (7.2)",
+    "subject": "AP Statistics",
+    "description": "One-sample t-intervals for a population mean: identify the procedure, check conditions, find t*, calculate margin of error, and construct the interval."
+  },
+
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "UNC-4.A",
+      "UNC-4.B",
+      "UNC-4.C",
+      "UNC-4.D",
+      "UNC-4.E"
+    ]
+  },
+
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      { "label": "Topic", "value": "{{levelName}}" },
+      { "label": "Task", "value": "{{problemText}}" },
+      { "label": "Given", "value": "{{givenText}}" }
+    ]
+  },
+
+  "modes": [
+    {
+      "id": "l01-identify-procedure",
+      "name": "7.2a: Identify the Procedure",
+      "animation": "assets/MeanCIProcedure.mp4",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "procedureAnswer",
+            "type": "dropdown",
+            "label": "What inference procedure should be used?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-check-conditions",
+      "name": "7.2b: Check Conditions",
+      "animation": "assets/MeanCIConditions.mp4",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "conditionsMet",
+            "type": "choice",
+            "label": "Are all conditions for a one-sample t-interval met?",
+            "options": ["Yes, all conditions are met", "No, at least one condition fails"]
+          },
+          {
+            "id": "conditionsExplain",
+            "type": "textarea",
+            "label": "Explain which conditions are met or not met:",
+            "rows": 3,
+            "placeholder": "Check random, 10%, and n ≥ 30 or shape/outliers..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-critical-value",
+      "name": "7.2c: Find t*",
+      "animation": "assets/MeanCITStar.mp4",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "tStarAnswer",
+            "type": "number",
+            "label": "Find the critical value t* for a {{confLevel}}% confidence interval. Round to 3 decimals:",
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-margin-of-error",
+      "name": "7.2d: Margin of Error",
+      "animation": "assets/MeanCIMarginOfError.mp4",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "meAnswer",
+            "type": "number",
+            "label": "Calculate the margin of error. Round to 2 decimals:",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-construct-interval",
+      "name": "7.2e: Construct the Interval",
+      "animation": "assets/MeanCIConstructInterval.mp4",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "ciLower",
+            "type": "number",
+            "label": "Lower bound of the confidence interval:",
+            "step": 0.01
+          },
+          {
+            "id": "ciUpper",
+            "type": "number",
+            "label": "Upper bound of the confidence interval:",
+            "step": 0.01
+          }
+        ]
+      }
+    }
+  ],
+
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+
+  "hints": {
+    "perField": {
+      "procedureAnswer": "Use this checklist: one sample, quantitative data, and estimating a mean μ. That points to a one-sample t-interval.",
+      "conditionsMet": "All three must work: random sample, 10% condition when sampling without replacement, and n ≥ 30 or no strong skewness/outliers if n < 30.",
+      "conditionsExplain": "Mention the random condition, the 10% check, and either n ≥ 30 or the sample-shape check for skewness and outliers.",
+      "tStarAnswer": "For a confidence interval for a mean, use a t critical value with df = n - 1, not a z critical value.",
+      "meAnswer": "Margin of error = t* × s / √n. Use the sample standard deviation s and divide by the square root of n.",
+      "ciLower": "First compute the margin of error, then subtract it from x̄ to get the lower bound.",
+      "ciUpper": "First compute the margin of error, then add it to x̄ to get the upper bound."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "l01-identify-procedure",
+        "name": "01",
+        "unlockedBy": "default",
+        "celebrationMessage": "You can identify the right procedure for estimating a population mean."
+      },
+      {
+        "id": "l02-check-conditions",
+        "name": "02",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Conditions checked. Next, find the correct t critical value."
+      },
+      {
+        "id": "l03-critical-value",
+        "name": "03",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "t* is locked in. Now calculate the margin of error."
+      },
+      {
+        "id": "l04-margin-of-error",
+        "name": "04",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Nice work. The last step is building the full confidence interval."
+      },
+      {
+        "id": "l05-construct-interval",
+        "name": "05",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topic 7.2 complete. You can construct a confidence interval for a population mean."
+      }
+    ]
+  }
+}
