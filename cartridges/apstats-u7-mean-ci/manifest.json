@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u7-mean-ci",
-    "name": "Constructing a Confidence Interval for a Population Mean (7.2)",
+    "name": "Introducing Statistics: Should I Worry About Error? (7.1) and Constructing a Confidence Interval for a Population Mean (7.2)",
     "subject": "AP Statistics",
-    "description": "One-sample t-intervals for a population mean: identify the procedure, check conditions, find t*, calculate margin of error, and construct the interval."
+    "description": "Significance-testing logic for a difference in means: identify evidence, expected differences, chance variation, simulation probabilities, and conclusions, plus one-sample t-intervals for a population mean."
   },
 
   "config": {
@@ -63,7 +63,7 @@
             "type": "textarea",
             "label": "Explain which conditions are met or not met:",
             "rows": 3,
-            "placeholder": "Check random, 10%, and n ≥ 30 or shape/outliers..."
+            "placeholder": "Check random, 10%, and n >= 30 or shape/outliers..."
           }
         ]
       }
@@ -122,6 +122,91 @@
           }
         ]
       }
+    },
+    {
+      "id": "l06-identify-evidence",
+      "name": "7.1a: Identify the Evidence",
+      "animation": "assets/MeanDiffIdentifyEvidence.mp4",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "evidenceAnswer",
+            "type": "dropdown",
+            "label": "Which quantity is the evidence for the claim?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l07-null-expectation",
+      "name": "7.1b: Expected Difference Under No Effect",
+      "animation": "assets/MeanDiffNullExpectation.mp4",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "nullDiffAnswer",
+            "type": "dropdown",
+            "label": "If there is no treatment effect, what value should {{comparisonLabel}} be centered at?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l08-chance-explanation",
+      "name": "7.1c: Chance Variation Explanation",
+      "animation": "assets/MeanDiffChanceExplanation.mp4",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "chanceExplainAnswer",
+            "type": "dropdown",
+            "label": "Which explanation says the observed difference happened because of chance variation?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l09-simulation-probability",
+      "name": "7.1d: Estimate the Simulation Probability",
+      "animation": "assets/MeanDiffSimulationProbability.mp4",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "simProbAnswer",
+            "type": "number",
+            "label": "Estimate the probability as a decimal. Round to 3 decimals:",
+            "min": 0,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l10-draw-conclusion",
+      "name": "7.1e: Draw the Conclusion",
+      "animation": "assets/MeanDiffDrawConclusion.mp4",
+      "unlockedBy": { "gold": 1 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "conclusionAnswer",
+            "type": "dropdown",
+            "label": "Based on the simulation, which conclusion is best?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
     }
   ],
 
@@ -140,13 +225,18 @@
 
   "hints": {
     "perField": {
-      "procedureAnswer": "Use this checklist: one sample, quantitative data, and estimating a mean μ. That points to a one-sample t-interval.",
-      "conditionsMet": "All three must work: random sample, 10% condition when sampling without replacement, and n ≥ 30 or no strong skewness/outliers if n < 30.",
-      "conditionsExplain": "Mention the random condition, the 10% check, and either n ≥ 30 or the sample-shape check for skewness and outliers.",
+      "procedureAnswer": "Use this checklist: one sample, quantitative data, and estimating a mean mu. That points to a one-sample t-interval.",
+      "conditionsMet": "All three must work: random sample, 10% condition when sampling without replacement, and n >= 30 or no strong skewness/outliers if n < 30.",
+      "conditionsExplain": "Mention the random condition, the 10% check, and either n >= 30 or the sample-shape check for skewness and outliers.",
       "tStarAnswer": "For a confidence interval for a mean, use a t critical value with df = n - 1, not a z critical value.",
-      "meAnswer": "Margin of error = t* × s / √n. Use the sample standard deviation s and divide by the square root of n.",
-      "ciLower": "First compute the margin of error, then subtract it from x̄ to get the lower bound.",
-      "ciUpper": "First compute the margin of error, then add it to x̄ to get the upper bound."
+      "meAnswer": "Margin of error = t* x s / sqrt(n). Use the sample standard deviation s and divide by the square root of n.",
+      "ciLower": "First compute the margin of error, then subtract it from x-bar to get the lower bound.",
+      "ciUpper": "First compute the margin of error, then add it to x-bar to get the upper bound.",
+      "evidenceAnswer": "The evidence is the observed difference in the sample means, not the null value of 0 and not one sample mean by itself.",
+      "nullDiffAnswer": "If the treatment makes no difference, the difference in sample means should be centered at 0.",
+      "chanceExplainAnswer": "Chance-variation explanation = no real treatment effect, and the observed difference came from random assignment alone.",
+      "simProbAnswer": "Estimate the probability with tail count divided by total simulations, then write the answer as a decimal.",
+      "conclusionAnswer": "If the simulated probability is small, rule out chance variation as a likely explanation. If it is not small, chance variation is still plausible."
     },
     "penalty": {
       "0": "gold",
@@ -188,7 +278,37 @@
         "id": "l05-construct-interval",
         "name": "05",
         "unlockedBy": { "gold": 1 },
-        "celebrationMessage": "Topic 7.2 complete. You can construct a confidence interval for a population mean."
+        "celebrationMessage": "The interval is built. Now switch to Topic 7.1 and analyze evidence from randomized experiments."
+      },
+      {
+        "id": "l06-identify-evidence",
+        "name": "06",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You identified the evidence. Next decide what difference to expect if there is no treatment effect."
+      },
+      {
+        "id": "l07-null-expectation",
+        "name": "07",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Null expectation set. Next identify the explanation based on chance variation alone."
+      },
+      {
+        "id": "l08-chance-explanation",
+        "name": "08",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can separate chance variation from a real effect. Next estimate the simulation probability."
+      },
+      {
+        "id": "l09-simulation-probability",
+        "name": "09",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Probability estimated. Now decide whether the evidence is convincing."
+      },
+      {
+        "id": "l10-draw-conclusion",
+        "name": "10",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topics 7.1 and 7.2 complete. You can connect simulation-based evidence with confidence intervals for a mean."
       }
     ]
   }
