@@ -156,6 +156,7 @@ function generateRemainderEval() {
   return {
     context: {
       levelName: "Remainder by Evaluation",
+      directions: "By the Remainder Theorem, when you divide P(x) by (x \u2212 a), the remainder equals P(a). That means you can find the remainder without doing long division \u2014 just substitute a into P(x). Careful: if the divisor is (x + 2), then a = \u22122, not 2. Plug in, evaluate each term, and combine.",
       problemText: "Find the remainder using the Remainder Theorem.",
       givenText: `Find the remainder when P(x) = ${polynomial} is divided by ${divisor}.`,
       polynomial, divisor, a,
@@ -312,6 +313,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
     const context = {
       levelName: "Polynomial Long Division",
+      directions: "Polynomial long division works just like whole-number long division. Set up the dividend under the bar and the divisor outside. (1) Divide the leading term of the dividend by x to get the first quotient term. (2) Multiply the entire divisor by that term. (3) Subtract \u2014 use parentheses and distribute the negative carefully. (4) Bring down the next term and repeat. If any degree is missing in the dividend, insert a 0 placeholder (like + 0x\u00b2) to keep terms aligned. The final value after the last subtraction is the remainder.",
       problemText: "Perform polynomial long division.",
       givenText: `Divide ${data.polynomial} by ${data.divisor}. Enter the quotient coefficients and remainder.`,
       polynomial: data.polynomial,
@@ -335,6 +337,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
     const context = {
       levelName: "Verify Remainder Theorem",
+      directions: "Here you\u2019ll verify the Remainder Theorem by checking it from both sides. First, divide P(x) by the divisor (using long division or synthetic division) and write down the remainder. Then, evaluate P(a) by substituting a into the polynomial. The Remainder Theorem guarantees these two values are always equal \u2014 because if you plug x = a into P(x) = (x \u2212 a)\u00b7q(x) + r, the (x \u2212 a) part vanishes, leaving just r.",
       problemText: "Verify the Remainder Theorem: division remainder should equal P(a).",
       givenText: `Divide P(x) = ${data.polynomial} by ${data.divisor}, then evaluate P(${data.a}).`,
       polynomial: data.polynomial,
@@ -355,6 +358,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
     const context = {
       levelName: "Factor with Known Factor",
+      directions: "The Factor Theorem tells us: if (x \u2212 a) is a factor, then dividing P(x) by it leaves remainder 0, and the quotient is a simpler polynomial. Divide P(x) by the known factor to get a quadratic. Then factor that quadratic \u2014 find two values whose product is the constant term and whose sum is the middle coefficient. Write each factor in (x \u2212 root) form. Remember: a root of \u22123 gives the factor (x + 3).",
       problemText: "Find the remaining factors of P(x).",
       givenText: `Given that ${data.knownFactor} is a factor of P(x) = ${data.polynomial}, find the remaining factors.`,
       polynomial: data.polynomial,
@@ -387,6 +391,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
     const context = {
       levelName: "Write q(x) + r/(x \u2212 a)",
+      directions: "When a polynomial doesn\u2019t divide evenly, we write the full result as q(x) + r/(x \u2212 a). Perform long division to find the quotient q(x) and the remainder r. The quotient is the polynomial you build on top of the division bar. The remainder goes over the divisor as a fraction. This form \u2014 quotient plus remainder fraction \u2014 is how we rewrite any rational expression with a linear denominator.",
       problemText: "Express the division result as q(x) + r/(x \u2212 a).",
       givenText: `Divide ${data.polynomial} by ${data.divisor} and write the result as q(x) + r/(x \u2212 a).`,
       polynomial: data.polynomial,
@@ -410,6 +415,7 @@ export function generateProblem(modeId, contextFromFile, mode) {
     };
     const context = {
       levelName: "Factor or Not?",
+      directions: "The Factor Theorem gives a quick test: (x \u2212 a) is a factor of P(x) if and only if P(a) = 0. First, identify a from the divisor \u2014 if the divisor is (x + 3), then a = \u22123. Then evaluate P(a). If the result is 0, the divisor is a factor and divides evenly. If it\u2019s anything else, it doesn\u2019t.",
       problemText: "Determine if the divisor is a factor of P(x).",
       givenText: `Is ${data.divisor} a factor of P(x) = ${data.polynomial}?`,
       polynomial: data.polynomial,

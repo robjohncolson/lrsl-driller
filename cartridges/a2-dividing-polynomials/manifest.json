@@ -24,6 +24,7 @@
     "infoPanel": [
       { "label": "Level", "value": "{{levelName}}" },
       { "label": "Task", "value": "{{problemText}}" },
+      { "label": "Directions", "value": "{{directions}}" },
       { "label": "Given", "value": "{{givenText}}" }
     ]
   },
