@@ -3015,6 +3015,124 @@ const conditions610Bank = [
   }
 ];
 
+function buildTwoPropTest611Study(scen) {
+  const pHat1Raw = scen.x1 / scen.n1;
+  const pHat2Raw = scen.x2 / scen.n2;
+  const diffRaw = pHat1Raw - pHat2Raw;
+  const pooledRaw = (scen.x1 + scen.x2) / (scen.n1 + scen.n2);
+  const sePooledRaw = Math.sqrt(pooledRaw * (1 - pooledRaw) * ((1 / scen.n1) + (1 / scen.n2)));
+  const zRounded = roundTo(diffRaw / sePooledRaw, 2);
+
+  let pValueRaw;
+  if (scen.direction === ">") {
+    pValueRaw = 1 - normalCDF(zRounded);
+  } else if (scen.direction === "<") {
+    pValueRaw = normalCDF(zRounded);
+  } else {
+    pValueRaw = 2 * (1 - normalCDF(Math.abs(zRounded)));
+  }
+
+  const pValueRounded = roundTo(pValueRaw, 4);
+
+  return {
+    ...scen,
+    pHat1: pHat1Raw.toFixed(3),
+    pHat2: pHat2Raw.toFixed(3),
+    diffText: diffRaw.toFixed(3),
+    pooled: pooledRaw.toFixed(3),
+    zStat: zRounded,
+    zText: zRounded.toFixed(2),
+    pValue: pValueRounded,
+    pValueText: pValueRounded.toFixed(4)
+  };
+}
+
+function buildTwoProp611ExtremePhrase(study) {
+  if (study.direction === ">") return `${study.diffText} or greater`;
+  if (study.direction === "<") return `${study.diffText} or less`;
+  return `${study.diffText} or one more different in either direction`;
+}
+
+function buildTwoProp611HaContext(study) {
+  if (study.direction === ">") return `${study.parameterText} is greater than 0`;
+  if (study.direction === "<") return `${study.parameterText} is less than 0`;
+  return `${study.parameterText} is not equal to 0`;
+}
+
+// ---- Topic 6.11: Carrying Out a Test for p1 - p2 ----
+const twoPropTest611Bank = [
+  {
+    context: "Bacterial conjunctivitis (pink eye) patients were randomly assigned to azithromycin drops or placebo drops, and researchers recorded whether each patient was cured within a week.",
+    questionText: "Do these data provide convincing evidence that azithromycin cures a greater proportion of patients than placebo?",
+    group1: "Azithromycin",
+    group2: "Placebo",
+    x1: 82,
+    n1: 130,
+    x2: 74,
+    n2: 149,
+    direction: ">",
+    alpha: 0.05,
+    parameterText: "the difference (azithromycin minus placebo) in the true proportions of patients like those in this study who would be cured within a week",
+    chancePhrase: "random assignment"
+  },
+  {
+    context: "Independent random samples of residents from Soltown and Brightville were asked whether they purchased sunglasses during the last 12 months.",
+    questionText: "Do these data provide convincing evidence of a difference in the population proportions for the two cities?",
+    group1: "Soltown",
+    group2: "Brightville",
+    x1: 314,
+    n1: 400,
+    x2: 452,
+    n2: 550,
+    direction: "!=",
+    alpha: 0.10,
+    parameterText: "the difference (Soltown minus Brightville) in the true proportions of residents who purchased sunglasses in the last 12 months",
+    chancePhrase: "random samples"
+  },
+  {
+    context: "A survey organization interviewed independent random samples of U.S. adults in December 2008 and December 2007 and recorded whether each adult answered yes to the same product-advertising question.",
+    questionText: "Do these data provide convincing evidence that the proportion of U.S. adults who would answer yes changed from December 2007 to December 2008?",
+    group1: "December 2008",
+    group2: "December 2007",
+    x1: 676,
+    n1: 1009,
+    x2: 622,
+    n2: 1020,
+    direction: "!=",
+    alpha: 0.05,
+    parameterText: "the difference (December 2008 minus December 2007) in the proportions of all U.S. adults who would answer yes to the question",
+    chancePhrase: "random samples"
+  },
+  {
+    context: "A food company used independent random samples of customers to compare approval of a reduced-sugar recipe with approval of the standard recipe.",
+    questionText: "Do these data provide convincing evidence that the reduced-sugar recipe has a lower approval rate than the standard recipe?",
+    group1: "Reduced-sugar recipe",
+    group2: "Standard recipe",
+    x1: 117,
+    n1: 180,
+    x2: 129,
+    n2: 170,
+    direction: "<",
+    alpha: 0.01,
+    parameterText: "the difference (reduced-sugar minus standard) in the true proportions of customers who would approve of the recipe",
+    chancePhrase: "random samples"
+  },
+  {
+    context: "In an online experiment, users were randomly assigned to Tutorial A or Tutorial B, and completion of onboarding on the first day was recorded.",
+    questionText: "Do these data provide convincing evidence that Tutorial A leads to a greater first-day completion rate than Tutorial B?",
+    group1: "Tutorial A",
+    group2: "Tutorial B",
+    x1: 144,
+    n1: 220,
+    x2: 118,
+    n2: 210,
+    direction: ">",
+    alpha: 0.05,
+    parameterText: "the difference (Tutorial A minus Tutorial B) in the true proportions of users who complete onboarding on the first day",
+    chancePhrase: "random assignment"
+  }
+];
+
 // ============ MAIN GENERATOR FUNCTION ============
 
 export function generateProblem(modeId, context, mode) {
@@ -4758,6 +4876,163 @@ export function generateProblem(modeId, context, mode) {
     };
 
     scenario = `${scen.context}\n\n${designText}\n${scen.group1}: ${scen.x1}/${scen.n1}, ${scen.group2}: ${scen.x2}/${scen.n2}\nPooled proportion: p-hat_c = ${pooled.toFixed(3)}\nExpected counts: ${exp1Succ}, ${exp1Fail}, ${exp2Succ}, ${exp2Fail}\n${tenPctText}\n\nAre all conditions for a two-sample z test for p1 - p2 met? Explain.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L21: Calculate Test Statistic (6.11a) ==========
+  if (modeId === "l21-test-statistic-611") {
+    const study = buildTwoPropTest611Study(drawFromBag('twoProp611_l21', twoPropTest611Bank));
+
+    ctx = {
+      topicId: "6.11: Calculate Two-Proportion Test Statistic",
+      scenarioText: `${study.context}\n\nConditions for the two-sample z test are satisfied.`,
+      givenText: `${study.group1}: x1 = ${study.x1}, n1 = ${study.n1}. ${study.group2}: x2 = ${study.x2}, n2 = ${study.n2}. p-hat1 = ${study.pHat1}, p-hat2 = ${study.pHat2}, p-hat_c = ${study.pooled}.`,
+      group1: study.group1,
+      group2: study.group2,
+      x1: `${study.x1}`,
+      n1: `${study.n1}`,
+      x2: `${study.x2}`,
+      n2: `${study.n2}`,
+      pHat1: `${study.pHat1}`,
+      pHat2: `${study.pHat2}`,
+      pooled: `${study.pooled}`
+    };
+
+    answers = {
+      z611Answer: { value: study.zStat, tolerance: 0.02 }
+    };
+
+    scenario = `${study.context}\n\n${study.group1}: ${study.x1} of ${study.n1}\n${study.group2}: ${study.x2} of ${study.n2}\np-hat1 = ${study.pHat1}, p-hat2 = ${study.pHat2}, p-hat_c = ${study.pooled}\n\nCalculate the two-sample z test statistic for p1 - p2. Round to 2 decimals.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L22: Calculate p-Value (6.11b) ==========
+  if (modeId === "l22-calculate-pvalue-611") {
+    const study = buildTwoPropTest611Study(drawFromBag('twoProp611_l22', twoPropTest611Bank));
+    const dirSymbol = study.direction === ">" ? ">" : study.direction === "<" ? "<" : "\u2260";
+    const dirDesc = study.direction === ">"
+      ? "right tail: P(Z >= z)"
+      : study.direction === "<"
+        ? "left tail: P(Z <= z)"
+        : "two-sided: 2 x P(Z >= |z|)";
+
+    ctx = {
+      topicId: "6.11: Calculate p-Value for p1 - p2",
+      scenarioText: `${study.context}\n\nH0: p1 - p2 = 0, Ha: p1 - p2 ${dirSymbol} 0. Test statistic: z = ${study.zText}.`,
+      givenText: `z = ${study.zText}, Ha: p1 - p2 ${dirSymbol} 0 (${dirDesc})`,
+      zStat: `${study.zText}`,
+      direction: study.direction,
+      group1: study.group1,
+      group2: study.group2
+    };
+
+    answers = {
+      pvalue611Answer: { value: study.pValue, tolerance: 0.002 }
+    };
+
+    scenario = `${study.context}\n\nH0: p1 - p2 = 0, Ha: p1 - p2 ${dirSymbol} 0\nTest statistic: z = ${study.zText}\n\nCalculate the p-value. (${dirDesc}) Round to 4 decimals.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L23: Interpret p-Value (6.11c) ==========
+  if (modeId === "l23-interpret-pvalue-611") {
+    const study = buildTwoPropTest611Study(drawFromBag('twoProp611_l23', twoPropTest611Bank));
+    const dirSymbol = study.direction === ">" ? ">" : study.direction === "<" ? "<" : "\u2260";
+    const extremePhrase = buildTwoProp611ExtremePhrase(study);
+    const expectedInterpretation = `Assuming that ${study.parameterText} is 0, there is a ${study.pValueText} probability of getting a difference in sample proportions of ${extremePhrase} by chance alone in the ${study.chancePhrase}.`;
+
+    ctx = {
+      topicId: "6.11: Interpret p-Value for p1 - p2",
+      scenarioText: `${study.context}\n\nH0: p1 - p2 = 0, Ha: p1 - p2 ${dirSymbol} 0.`,
+      givenText: `p-hat1 - p-hat2 = ${study.diffText}, z = ${study.zText}, p-value = ${study.pValueText}`,
+      direction: study.direction,
+      pValue: `${study.pValueText}`,
+      diff: `${study.diffText}`,
+      parameterText: study.parameterText,
+      chancePhrase: study.chancePhrase,
+      group1: study.group1,
+      group2: study.group2
+    };
+
+    answers = {
+      pvalue611Interpretation: { value: expectedInterpretation }
+    };
+
+    scenario = `${study.context}\n\nH0: p1 - p2 = 0, Ha: p1 - p2 ${dirSymbol} 0\np-hat1 - p-hat2 = ${study.diffText}, p-value = ${study.pValueText}\n\nInterpret the p-value in context.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L24: Make Decision (6.11d) ==========
+  if (modeId === "l24-decision-611") {
+    const study = buildTwoPropTest611Study(drawFromBag('twoProp611_l24', twoPropTest611Bank));
+    const dirSymbol = study.direction === ">" ? ">" : study.direction === "<" ? "<" : "\u2260";
+    const haContext = buildTwoProp611HaContext(study);
+    const reject = study.pValue <= study.alpha;
+    const correctAnswer = reject
+      ? `Reject H0; there is convincing statistical evidence that ${haContext}.`
+      : `Fail to reject H0; there is not convincing statistical evidence that ${haContext}.`;
+    const wrongOptions = reject
+      ? [
+          `Fail to reject H0; there is not convincing statistical evidence that ${haContext}.`,
+          `Reject H0; there is not convincing statistical evidence that ${haContext}.`,
+          `Accept H0; ${study.parameterText} is 0.`
+        ]
+      : [
+          `Reject H0; there is convincing statistical evidence that ${haContext}.`,
+          `Fail to reject H0; there is convincing statistical evidence that ${haContext}.`,
+          `Accept H0; ${study.parameterText} is 0.`
+        ];
+    const allOptions = shuffle([correctAnswer, ...wrongOptions]);
+
+    ctx = {
+      topicId: "6.11: Make the Testing Decision",
+      scenarioText: `${study.context}\n\nH0: p1 - p2 = 0, Ha: p1 - p2 ${dirSymbol} 0.`,
+      givenText: `p-value = ${study.pValueText}, alpha = ${study.alpha}`,
+      pValue: `${study.pValueText}`,
+      alpha: `${study.alpha}`,
+      reject: `${reject}`,
+      haContext: haContext,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      decision611Answer: { value: correctAnswer }
+    };
+
+    scenario = `${study.context}\n\nH0: p1 - p2 = 0, Ha: p1 - p2 ${dirSymbol} 0\np-value = ${study.pValueText}, alpha = ${study.alpha}\n\nBased on the p-value and significance level, what is the correct decision?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L25: State Conclusion (6.11e) ==========
+  if (modeId === "l25-conclusion-611") {
+    const study = buildTwoPropTest611Study(drawFromBag('twoProp611_l25', twoPropTest611Bank));
+    const dirSymbol = study.direction === ">" ? ">" : study.direction === "<" ? "<" : "\u2260";
+    const haContext = buildTwoProp611HaContext(study);
+    const reject = study.pValue <= study.alpha;
+    const expectedConclusion = reject
+      ? `Because the p-value of ${study.pValueText} is less than alpha = ${study.alpha}, we reject H0. There is convincing statistical evidence that ${haContext}.`
+      : `Because the p-value of ${study.pValueText} is greater than alpha = ${study.alpha}, we fail to reject H0. There is not convincing statistical evidence that ${haContext}.`;
+
+    ctx = {
+      topicId: "6.11: Write the Conclusion",
+      scenarioText: `${study.context}\n\nH0: p1 - p2 = 0, Ha: p1 - p2 ${dirSymbol} 0.`,
+      givenText: `z = ${study.zText}, p-value = ${study.pValueText}, alpha = ${study.alpha}`,
+      pValue: `${study.pValueText}`,
+      alpha: `${study.alpha}`,
+      reject: `${reject}`,
+      haContext: haContext,
+      group1: study.group1,
+      group2: study.group2
+    };
+
+    answers = {
+      conclusion611Text: { value: expectedConclusion }
+    };
+
+    scenario = `${study.context}\n\nH0: p1 - p2 = 0, Ha: p1 - p2 ${dirSymbol} 0\nz = ${study.zText}, p-value = ${study.pValueText}, alpha = ${study.alpha}\n\nWrite a complete conclusion for this two-sample z test.`;
     return { context: ctx, graphConfig, answers, scenario };
   }
 

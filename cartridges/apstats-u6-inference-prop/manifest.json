@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u6-inference-prop",
-    "name": "Inference for Proportions, Testing Errors, Two-Proportion Intervals, CI-Based Claims, and Two-Proportion Tests (6.1-6.10)",
+    "name": "Inference for Proportions, Testing Errors, Two-Proportion Intervals, CI-Based Claims, Two-Proportion Tests, and Carrying Out Two-Proportion Tests (6.1-6.11)",
     "subject": "AP Statistics",
-    "description": "Logic of significance testing, confidence intervals for a population proportion, Topic 6.7 potential errors when performing tests, Topic 6.8 confidence intervals for the difference of two proportions, and Topic 6.9 justifying a claim with a confidence interval for a difference of population proportions: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, choose an appropriate significance level based on consequences, identify a two-sample z-interval for a difference in proportions, verify two-sample interval conditions, calculate margin of error and confidence intervals for p1 - p2, interpret interval estimates in context as percentage-point differences, justify claims based on whether 0 or other claim-consistent values are plausible in a two-proportion interval, and interpret the confidence level for a difference in population proportions using repeated sampling, state hypotheses for p1-p2, compute pooled proportion, and verify two-sample z-test conditions"
+    "description": "Logic of significance testing, confidence intervals for a population proportion, Topic 6.7 potential errors when performing tests, Topic 6.8 confidence intervals for the difference of two proportions, Topic 6.9 justifying a claim with a confidence interval for a difference of population proportions, Topic 6.10 setting up a two-sample z test for p1 - p2, and Topic 6.11 carrying out a two-sample z test for a difference in population proportions: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, choose an appropriate significance level based on consequences, identify a two-sample z-interval for a difference in proportions, verify two-sample interval conditions, calculate margin of error and confidence intervals for p1 - p2, interpret interval estimates in context as percentage-point differences, justify claims based on whether 0 or other claim-consistent values are plausible in a two-proportion interval, interpret the confidence level for a difference in population proportions using repeated sampling, state hypotheses for p1-p2, compute pooled proportion, verify two-sample z-test conditions, calculate the two-sample z test statistic using the pooled proportion, calculate one-sided and two-sided p-values for p1 - p2, interpret a p-value for a difference in proportions, and make and justify conclusions for claims about p1 - p2"
   },
   "config": {
     "contextsFile": null,
@@ -30,7 +30,10 @@
       "VAR-6.H",
       "VAR-6.I",
       "VAR-6.J",
-      "DAT-3.A"
+      "DAT-3.A",
+      "VAR-6.K",
+      "DAT-3.C",
+      "DAT-3.D"
     ]
   },
   "display": {
@@ -1504,6 +1507,106 @@
           }
         ]
       }
+    },
+    {
+      "id": "l21-test-statistic-611",
+      "name": "6.11a: Calculate Test Statistic",
+      "animation": "assets/TestStatistic611.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "z611Answer",
+            "type": "number",
+            "label": "Calculate the two-sample z test statistic for p1 - p2. Round to 2 decimals:",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l22-calculate-pvalue-611",
+      "name": "6.11b: Calculate p-Value",
+      "animation": "assets/CalculatePValue611.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pvalue611Answer",
+            "type": "number",
+            "label": "Calculate the p-value using the standard normal distribution. Round to 4 decimals:",
+            "step": 0.0001,
+            "min": 0,
+            "max": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "l23-interpret-pvalue-611",
+      "name": "6.11c: Interpret p-Value",
+      "animation": "assets/InterpretPValue611.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pvalue611Interpretation",
+            "type": "textarea",
+            "label": "Interpret the p-value in context:",
+            "rows": 4,
+            "placeholder": "Assuming the null is true, there is a ... probability of getting a difference in sample proportions..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l24-decision-611",
+      "name": "6.11d: Make Decision",
+      "animation": "assets/Decision611.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "decision611Answer",
+            "type": "dropdown",
+            "label": "Based on the p-value and significance level, what is the correct decision?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l25-conclusion-611",
+      "name": "6.11e: State Conclusion",
+      "animation": "assets/Conclusion611.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "conclusion611Text",
+            "type": "textarea",
+            "label": "Write a complete conclusion for the two-sample z test:",
+            "rows": 4,
+            "placeholder": "Because the p-value of ... is [less than / greater than] alpha = ..., we ..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -1618,7 +1721,12 @@
       "procedure610Answer": "With one categorical variable and two groups, use a two-sample z test for a difference in population proportions.",
       "pooled610Answer": "Use p-hat_c = (x1 + x2)/(n1 + n2). Add both groups' successes, then divide by total sample size.",
       "cond610Met": "Check: independent random samples or random assignment, 10% condition for samples, and pooled expected counts all >= 10.",
-      "cond610Explain": "Reference the design (samples vs experiment), check 10% only for random samples, then verify n1*p-hat_c, n1*(1-p-hat_c), n2*p-hat_c, n2*(1-p-hat_c) are all at least 10."
+      "cond610Explain": "Reference the design (samples vs experiment), check 10% only for random samples, then verify n1*p-hat_c, n1*(1-p-hat_c), n2*p-hat_c, n2*(1-p-hat_c) are all at least 10.",
+      "z611Answer": "Use z = ((p-hat1 - p-hat2) - 0) / sqrt[p-hat_c(1-p-hat_c)(1/n1 + 1/n2)]. For a test, the denominator uses the pooled proportion.",
+      "pvalue611Answer": "Match the tail direction to Ha. Ha: p1 - p2 > 0 uses the right tail, Ha: p1 - p2 < 0 uses the left tail, and Ha: p1 - p2 != 0 doubles the one-tail area.",
+      "pvalue611Interpretation": "Template: 'Assuming the difference in the population proportions is 0, there is a [p-value] probability of getting a difference in sample proportions of [observed value] or [more extreme] by chance alone in the random samples/random assignment.'",
+      "decision611Answer": "Compare p-value to alpha. If p-value <= alpha, reject H0. If p-value > alpha, fail to reject H0.",
+      "conclusion611Text": "Include all four parts: (1) compare p-value to alpha, (2) reject or fail to reject H0, (3) say whether there is convincing statistical evidence, and (4) state the alternative in context for p1 - p2."
     },
     "penalty": {
       "0": "gold",
@@ -2078,6 +2186,46 @@
           "gold": 3
         },
         "celebrationMessage": "Topic 6.10 mastered! You can set up and validate a two-sample z test for a difference in population proportions."
+      },
+      {
+        "id": "l21-test-statistic-611",
+        "name": "57",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can compute the two-proportion test statistic. Next: turn z into a p-value."
+      },
+      {
+        "id": "l22-calculate-pvalue-611",
+        "name": "58",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p-value found. Next: interpret what that probability means in context."
+      },
+      {
+        "id": "l23-interpret-pvalue-611",
+        "name": "59",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can interpret the p-value. Next: use it to make the testing decision."
+      },
+      {
+        "id": "l24-decision-611",
+        "name": "60",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Decision made. Finish by writing the full two-proportion conclusion."
+      },
+      {
+        "id": "l25-conclusion-611",
+        "name": "61",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Topic 6.11 mastered! You can carry out, interpret, and conclude a two-sample z test for a difference in population proportions."
       }
     ]
   }

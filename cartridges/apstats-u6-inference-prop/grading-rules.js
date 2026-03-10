@@ -79,7 +79,9 @@ export function gradeField(fieldId, answer, context) {
     "twoPropCIInterpretation",
     "twoProp69Interpretation",
     "twoPropClaimExplain",
-    "cond610Explain"
+    "cond610Explain",
+    "pvalue611Interpretation",
+    "conclusion611Text"
   ]);
 
   if (isBlank(answer)) {
@@ -98,7 +100,8 @@ export function gradeField(fieldId, answer, context) {
       "fullTestZStat", "fullTestPValue",
       "cap66ZStat", "cap66PValue",
       "twoPropMEAnswer", "twoPropCILower", "twoPropCIUpper",
-      "pooled610Answer"
+      "pooled610Answer",
+      "z611Answer", "pvalue611Answer"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -2412,6 +2415,283 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: `Explain three pieces: (1) independence from random samples or random assignment, (2) pooled expected successes/failures in both groups are each >= 10, and (3) whether all conditions are met. ${tenPctReminder}`
+    };
+  }
+
+  // ========== L21: Two-Proportion Test Statistic (6.11a) ==========
+  if (fieldId === "z611Answer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = parseFloat(expected);
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const pHat1 = parseFloat(context?.pHat1);
+    const pHat2 = parseFloat(context?.pHat2);
+    const n1 = parseFloat(context?.n1);
+    const n2 = parseFloat(context?.n2);
+    const pooled = parseFloat(context?.pooled);
+
+    if (!isNaN(pHat1) && !isNaN(pHat2) && !isNaN(n1) && !isNaN(n2) && !isNaN(pooled)) {
+      const pooledSE = Math.sqrt(pooled * (1 - pooled) * ((1 / n1) + (1 / n2)));
+      const reversedZ = Math.round(((pHat2 - pHat1) / pooledSE) * 100) / 100;
+      const unpooledSE = Math.sqrt((pHat1 * (1 - pHat1) / n1) + (pHat2 * (1 - pHat2) / n2));
+      const unpooledZ = Math.round(((pHat1 - pHat2) / unpooledSE) * 100) / 100;
+
+      if (Math.abs(studentVal - reversedZ) <= 0.03 && diff > 0.03) {
+        return {
+          score: "I",
+          feedback: `It looks like you reversed the subtraction order. This test uses p-hat1 - p-hat2 in the numerator, not p-hat2 - p-hat1. The correct z statistic is ${expectedVal.toFixed(2)}.`
+        };
+      }
+
+      if (Math.abs(studentVal - unpooledZ) <= 0.03 && diff > 0.03) {
+        return {
+          score: "I",
+          feedback: `It looks like you used the unpooled interval standard error. For a significance test of p1 - p2, use the pooled proportion in the denominator. The correct z statistic is ${expectedVal.toFixed(2)}.`
+        };
+      }
+    }
+
+    if (diff <= 0.02) {
+      return {
+        score: "E",
+        feedback: `Correct! For a two-sample z test, z = ((p-hat1 - p-hat2) - 0) / sqrt(p-hat_c(1-p-hat_c)(1/n1 + 1/n2)) = ${expectedVal.toFixed(2)}.`
+      };
+    }
+    if (diff <= 0.10) {
+      return {
+        score: "P",
+        feedback: `Close. Recheck the pooled standard error and the subtraction order p-hat1 - p-hat2. The correct z statistic is ${expectedVal.toFixed(2)}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Use the pooled-proportion test formula for p1 - p2. The correct z statistic is ${expectedVal.toFixed(2)}.`
+    };
+  }
+
+  // ========== L22: Two-Proportion p-Value (6.11b) ==========
+  if (fieldId === "pvalue611Answer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = parseFloat(expected);
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+    if (studentVal < 0 || studentVal > 1) {
+      return { score: "I", feedback: "A p-value must be between 0 and 1." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const direction = context?.direction || "";
+
+    if (direction === "!=" && expectedVal > 0) {
+      const halfPValue = Math.round((expectedVal / 2) * 10000) / 10000;
+      if (Math.abs(studentVal - halfPValue) < 0.002 && diff > 0.002) {
+        return {
+          score: "P",
+          feedback: `You found one tail area, but this is a two-sided test. Double the one-tail probability. The correct p-value is ${expectedVal.toFixed(4)}.`
+        };
+      }
+    }
+
+    if ((direction === ">" || direction === "<") && expectedVal > 0) {
+      const doublePValue = Math.round((expectedVal * 2) * 10000) / 10000;
+      if (Math.abs(studentVal - doublePValue) < 0.002 && diff > 0.002) {
+        return {
+          score: "P",
+          feedback: `You doubled the tail area, but this is a one-sided test. Use only the tail in the direction of Ha. The correct p-value is ${expectedVal.toFixed(4)}.`
+        };
+      }
+    }
+
+    if ((direction === ">" || direction === "<") && expectedVal < 0.5) {
+      const wrongTail = Math.round((1 - expectedVal) * 10000) / 10000;
+      if (Math.abs(studentVal - wrongTail) < 0.002 && diff > 0.002) {
+        return {
+          score: "I",
+          feedback: `You used the wrong tail of the standard normal curve. Match the tail to the direction of Ha. The correct p-value is ${expectedVal.toFixed(4)}.`
+        };
+      }
+    }
+
+    if (diff <= 0.002) {
+      return {
+        score: "E",
+        feedback: `Correct! The p-value is ${expectedVal.toFixed(4)}.`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "P",
+        feedback: `Close. Recheck the tail direction for Ha and whether the test is one-sided or two-sided. The correct p-value is ${expectedVal.toFixed(4)}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The p-value is ${expectedVal.toFixed(4)}. For Ha with '>', use the right tail; with '<', use the left tail; with '!=', double the tail area.`
+    };
+  }
+
+  // ========== L23: Interpret Two-Proportion p-Value (6.11c) ==========
+  if (fieldId === "pvalue611Interpretation") {
+    const assumeKeywords = ["assuming", "null is true", "h0 is true", "h0", "difference", "is 0", "equal"];
+    const probKeywords = ["probability", "chance", "likely"];
+    const extremeKeywords = ["or greater", "or less", "more extreme", "more different", "as extreme", "either direction"];
+    const chanceKeywords = ["by chance", "chance alone", "random samples", "random assignment"];
+    const contextKeywords = ["sample proportion", "sample proportions", "difference in sample proportions", context?.group1 ?? "", context?.group2 ?? ""];
+
+    const mentionsAssume = containsAny(answer, assumeKeywords);
+    const mentionsProb = containsAny(answer, probKeywords);
+    const mentionsExtreme = containsAny(answer, extremeKeywords);
+    const mentionsChance = containsAny(answer, chanceKeywords);
+    const mentionsContext = containsAny(answer, contextKeywords);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 10;
+
+    const nullMisconception = containsAny(answer, [
+      "probability that the null is true",
+      "probability h0 is true",
+      "chance that h0 is true",
+      "probability the null is false"
+    ]);
+
+    if (nullMisconception) {
+      return {
+        score: "I",
+        feedback: "The p-value is not the probability that H0 is true. It is the probability of getting data this extreme or more extreme, assuming H0 is true."
+      };
+    }
+
+    const elementCount = [mentionsAssume, mentionsProb, mentionsExtreme, mentionsChance, mentionsContext].filter(Boolean).length;
+
+    if (elementCount >= 4 && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You interpreted the p-value as a probability under H0 and described evidence this extreme or more extreme in context."
+      };
+    }
+    if (elementCount >= 2 && hasSubstance) {
+      const missing = [];
+      if (!mentionsAssume) missing.push("state that the null is assumed true");
+      if (!mentionsProb) missing.push("include the probability");
+      if (!mentionsExtreme) missing.push("say 'or more extreme' in the direction of Ha");
+      if (!mentionsChance) missing.push("include 'by chance alone' and the random process");
+      if (!mentionsContext) missing.push("refer to the difference in sample proportions in context");
+      return {
+        score: "P",
+        feedback: `Good start. For full credit, also ${missing.join(", ")}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Interpret it like this: assume H0 is true, give the p-value probability, describe getting a difference in sample proportions this extreme or more extreme, say 'by chance alone,' and include the context."
+    };
+  }
+
+  // ========== L24: Two-Proportion Decision (6.11d) ==========
+  if (fieldId === "decision611Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You matched the p-value to alpha and stated the correct decision and evidence claim."
+      };
+    }
+    if (containsAny(answer, ["accept h", "accept the null"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. We do not 'accept' H0. The correct answer is: ${expected}`
+      };
+    }
+    if (containsAny(answer, ["prove", "proven"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. Hypothesis tests do not prove claims. The correct answer is: ${expected}`
+      };
+    }
+    if (containsAny(answer, ["reject"]) && containsAny(expected, ["fail to reject"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. Here p-value > alpha, so the correct decision is to fail to reject H0.`
+      };
+    }
+    if (containsAny(answer, ["fail to reject"]) && containsAny(expected, ["reject"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. Here p-value <= alpha, so the correct decision is to reject H0.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct answer is: ${expected}`
+    };
+  }
+
+  // ========== L25: Two-Proportion Conclusion (6.11e) ==========
+  if (fieldId === "conclusion611Text") {
+    const explicitCompare = containsAny(answer, ["less than", "greater than", "<", ">", "alpha", "\u03b1"]);
+    const mentionsPValue = containsAny(answer, ["p-value", "p value", "pvalue"]);
+    const mentionsDecision = containsAny(answer, ["reject", "fail to reject"]);
+    const mentionsEvidence = containsAny(answer, ["convincing statistical evidence", "convincing evidence", "not convincing"]);
+    const mentionsContext = containsAny(answer, ["difference", "proportions", context?.group1 ?? "", context?.group2 ?? "", "changed"]);
+    const hasSubstance = answer.trim().split(/\s+/).length >= 12;
+
+    const hasAcceptNull = containsAny(answer, ["accept the null", "accept h0", "accept h\u2080"]);
+    const hasProven = containsAny(answer, ["prove", "proven"]);
+    const saysReject = containsAny(answer, ["reject h"]) && !containsAny(answer, ["fail to reject"]);
+    const saysNoEvidence = containsAny(answer, ["not convincing", "no convincing"]);
+    const saysEvidence = containsAny(answer, ["convincing statistical evidence", "convincing evidence"]) && !saysNoEvidence;
+
+    if (hasAcceptNull) {
+      return {
+        score: "I",
+        feedback: "Never say 'accept H0.' State either 'reject H0' or 'fail to reject H0,' then conclude about whether there is convincing evidence for Ha."
+      };
+    }
+    if (hasProven) {
+      return {
+        score: "I",
+        feedback: "Do not say the test 'proves' a claim. Say there is or is not convincing statistical evidence."
+      };
+    }
+    if (saysReject && saysNoEvidence) {
+      return {
+        score: "I",
+        feedback: "Your conclusion contradicts itself: rejecting H0 should go with convincing evidence for Ha."
+      };
+    }
+    if (!saysReject && mentionsDecision && saysEvidence && containsAny(answer, ["fail to reject"])) {
+      return {
+        score: "I",
+        feedback: "Your conclusion contradicts itself: failing to reject H0 should go with not convincing evidence for Ha."
+      };
+    }
+
+    if (explicitCompare && mentionsPValue && mentionsDecision && mentionsEvidence && mentionsContext && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Excellent! You compared p-value to alpha, stated the correct decision, and concluded about the two-proportion claim in context."
+      };
+    }
+
+    const elementCount = [explicitCompare, mentionsPValue, mentionsDecision, mentionsEvidence, mentionsContext, hasSubstance].filter(Boolean).length;
+    if (elementCount >= 3) {
+      const missing = [];
+      if (!mentionsPValue) missing.push("mention the p-value");
+      if (!explicitCompare) missing.push("explicitly compare p-value to alpha");
+      if (!mentionsDecision) missing.push("state reject or fail to reject H0");
+      if (!mentionsEvidence) missing.push("state whether there is convincing evidence");
+      if (!mentionsContext) missing.push("state the alternative in context for the two proportions");
+      return {
+        score: "P",
+        feedback: `Good start. To earn full credit, also ${missing.join(", ")}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: "A complete conclusion should say: because the p-value is [less than / greater than] alpha, we [reject / fail to reject] H0, and there [is / is not] convincing statistical evidence for the alternative in context."
     };
   }
 
