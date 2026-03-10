@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u6-inference-prop",
-    "name": "Inference for Proportions, Testing Errors, Two-Proportion Intervals, CI-Based Claims, Two-Proportion Tests, and Carrying Out Two-Proportion Tests (6.1-6.11)",
+    "name": "Inference for Proportions, Setting Up Tests for a Population Proportion, Testing Errors, Two-Proportion Intervals, CI-Based Claims, Two-Proportion Tests, and Carrying Out Two-Proportion Tests (6.1-6.11)",
     "subject": "AP Statistics",
-    "description": "Logic of significance testing, confidence intervals for a population proportion, Topic 6.7 potential errors when performing tests, Topic 6.8 confidence intervals for the difference of two proportions, Topic 6.9 justifying a claim with a confidence interval for a difference of population proportions, Topic 6.10 setting up a two-sample z test for p1 - p2, and Topic 6.11 carrying out a two-sample z test for a difference in population proportions: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, choose an appropriate significance level based on consequences, identify a two-sample z-interval for a difference in proportions, verify two-sample interval conditions, calculate margin of error and confidence intervals for p1 - p2, interpret interval estimates in context as percentage-point differences, justify claims based on whether 0 or other claim-consistent values are plausible in a two-proportion interval, interpret the confidence level for a difference in population proportions using repeated sampling, state hypotheses for p1-p2, compute pooled proportion, verify two-sample z-test conditions, calculate the two-sample z test statistic using the pooled proportion, calculate one-sided and two-sided p-values for p1 - p2, interpret a p-value for a difference in proportions, and make and justify conclusions for claims about p1 - p2"
+    "description": "Logic of significance testing, confidence intervals for a population proportion, and Topic 6.4 setting up a test for a population proportion: state null and alternative hypotheses, classify one-sided versus two-sided alternatives, define the parameter in context, identify the one-sample z-test procedure, verify test conditions using p0, calculate np0 and n(1-p0), and diagnose which condition fails; Topic 6.7 potential errors when performing tests, Topic 6.8 confidence intervals for the difference of two proportions, Topic 6.9 justifying a claim with a confidence interval for a difference of population proportions, Topic 6.10 setting up a two-sample z test for p1 - p2, and Topic 6.11 carrying out a two-sample z test for a difference in population proportions: identify procedures, check conditions, calculate standard error, critical values, margin of error, confidence intervals, minimum sample size, interpret CIs, justify claims using intervals, confidence level meaning, factors affecting margin of error, state null and alternative hypotheses, identify one-sample z-test procedure, verify test conditions using p0, calculate test statistic (z-score), calculate p-value, interpret p-value in context, identify test direction (one-sided vs two-sided), compare p-value to significance level, make reject/fail-to-reject decisions, write conclusions in context, identify conclusion errors, perform complete significance tests, identify Type I and Type II errors, interpret errors in context, interpret power, calculate probabilities of Type I and Type II errors, determine which error is more consequential, identify factors that affect power, connect significance level to the probability of a Type I error, define power as correctly rejecting a false null hypothesis, explain alpha tradeoffs with Type II error and power, choose an appropriate significance level based on consequences, identify a two-sample z-interval for a difference in proportions, verify two-sample interval conditions, calculate margin of error and confidence intervals for p1 - p2, interpret interval estimates in context as percentage-point differences, justify claims based on whether 0 or other claim-consistent values are plausible in a two-proportion interval, interpret the confidence level for a difference in population proportions using repeated sampling, state hypotheses for p1-p2, compute pooled proportion, verify two-sample z-test conditions, calculate the two-sample z test statistic using the pooled proportion, calculate one-sided and two-sided p-values for p1 - p2, interpret a p-value for a difference in proportions, and make and justify conclusions for claims about p1 - p2"
   },
   "config": {
     "contextsFile": null,
@@ -448,7 +448,7 @@
     {
       "id": "l17-state-null",
       "name": "6.4a: State the Null Hypothesis",
-      "animation": "assets/StateNull.mp4",
+      "animation": "assets/WriteBothHypotheses.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -472,7 +472,7 @@
     {
       "id": "l18-state-alt",
       "name": "6.4b: State the Alternative Hypothesis",
-      "animation": "assets/StateAlt.mp4",
+      "animation": "assets/WriteBothHypotheses.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -527,7 +527,7 @@
     {
       "id": "l20-hypothesis-errors",
       "name": "6.4d: Find the Error",
-      "animation": "assets/HypothesisErrors.mp4",
+      "animation": "assets/WriteBothHypotheses.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -551,7 +551,7 @@
     {
       "id": "l21-identify-test",
       "name": "6.4e: Identify the Test",
-      "animation": "assets/IdentifyTest.mp4",
+      "animation": "assets/WriteBothHypotheses.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -575,7 +575,7 @@
     {
       "id": "l22-check-test-conditions",
       "name": "6.4f: Check Test Conditions",
-      "animation": "assets/TestConditions.mp4",
+      "animation": "assets/WriteBothHypotheses.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -603,7 +603,7 @@
     {
       "id": "l23-capstone-64",
       "name": "6.4 Capstone",
-      "animation": "assets/Capstone64.mp4",
+      "animation": "assets/WriteBothHypotheses.mp4",
       "unlockedBy": {
         "gold": 3
       },
@@ -1607,6 +1607,104 @@
           }
         ]
       }
+    },
+    {
+      "id": "l26-direction-64",
+      "name": "6.4g: One-Sided or Two-Sided?",
+      "animation": "assets/TestDirection64.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "direction64Answer",
+            "type": "dropdown",
+            "label": "Which description matches the alternative hypothesis for this question?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l27-parameter-definition-64",
+      "name": "6.4h: Define the Parameter",
+      "animation": "assets/ParameterDefinition64.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "parameter64Answer",
+            "type": "dropdown",
+            "label": "Which definition correctly describes the parameter p?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l28-large-counts-64",
+      "name": "6.4i: Calculate Large Counts",
+      "animation": "assets/LargeCounts64.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "np0Answer64",
+            "type": "number",
+            "label": "Calculate np0 using the null value p0:",
+            "step": 0.01,
+            "min": 0
+          },
+          {
+            "id": "nq0Answer64",
+            "type": "number",
+            "label": "Calculate n(1-p0) using the null value p0:",
+            "step": 0.01,
+            "min": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "l29-condition-diagnosis-64",
+      "name": "6.4j: Diagnose the Condition Check",
+      "animation": "assets/ConditionFailure64.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "conditionFailure64Answer",
+            "type": "dropdown",
+            "label": "Which statement correctly identifies the condition issue?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
     }
   ],
   "grading": {
@@ -1726,7 +1824,12 @@
       "pvalue611Answer": "Match the tail direction to Ha. Ha: p1 - p2 > 0 uses the right tail, Ha: p1 - p2 < 0 uses the left tail, and Ha: p1 - p2 != 0 doubles the one-tail area.",
       "pvalue611Interpretation": "Template: 'Assuming the difference in the population proportions is 0, there is a [p-value] probability of getting a difference in sample proportions of [observed value] or [more extreme] by chance alone in the random samples/random assignment.'",
       "decision611Answer": "Compare p-value to alpha. If p-value <= alpha, reject H0. If p-value > alpha, fail to reject H0.",
-      "conclusion611Text": "Include all four parts: (1) compare p-value to alpha, (2) reject or fail to reject H0, (3) say whether there is convincing statistical evidence, and (4) state the alternative in context for p1 - p2."
+      "conclusion611Text": "Include all four parts: (1) compare p-value to alpha, (2) reject or fail to reject H0, (3) say whether there is convincing statistical evidence, and (4) state the alternative in context for p1 - p2.",
+      "direction64Answer": "Use the research question: 'more' or 'higher' means right-tailed, 'less' or 'lower' means left-tailed, and 'differs' or 'changed' means two-sided.",
+      "parameter64Answer": "Choose the definition that uses p as a proportion for the whole population, not p-hat or the sample.",
+      "np0Answer64": "For a significance test, compute np0 = n x p0. Use the null value p0, not the observed p-hat.",
+      "nq0Answer64": "Compute n(1 - p0). The large-counts check for a test uses p0, not p-hat.",
+      "conditionFailure64Answer": "Check random sample or random assignment first, then the 10% condition only for random samples, then both np0 and n(1 - p0) at least 10."
     },
     "penalty": {
       "0": "gold",
@@ -2226,6 +2329,38 @@
           "gold": 3
         },
         "celebrationMessage": "Topic 6.11 mastered! You can carry out, interpret, and conclude a two-sample z test for a difference in population proportions."
+      },
+      {
+        "id": "l26-direction-64",
+        "name": "62",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can match question wording to a one-sided or two-sided alternative. Next: define the parameter precisely."
+      },
+      {
+        "id": "l27-parameter-definition-64",
+        "name": "63",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Parameter language is locked in. Next: compute the large-counts check with p0."
+      },
+      {
+        "id": "l28-large-counts-64",
+        "name": "64",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can compute np0 and n(1-p0). Final step: diagnose which setup condition fails."
+      },
+      {
+        "id": "l29-condition-diagnosis-64",
+        "name": "65",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Topic 6.4 extension complete! You can classify alternatives, define parameters, and diagnose one-sample z-test setup conditions."
       }
     ]
   }

@@ -1543,6 +1543,74 @@ const testConditionsBank = [
     pHatDistractor: 0.55 }
 ];
 
+// ---- L29: Diagnose the condition issue (6.4j) ----
+const conditionDiagnosis64Bank = [
+  {
+    desc: "A random sample of 120 customers from a company with 4,000 customers is surveyed about whether they would renew a subscription.",
+    designText: "random sample",
+    n: 120,
+    p0: 0.42,
+    popSize: 4000,
+    pHatDistractor: 0.46,
+    np0: 50.4,
+    nq0: 69.6,
+    failureType: "none"
+  },
+  {
+    desc: "The first 75 customers leaving a store are asked whether they plan to renew a membership. The claimed renewal proportion is 0.60.",
+    designText: "convenience sample",
+    n: 75,
+    p0: 0.60,
+    popSize: 5000,
+    pHatDistractor: 0.52,
+    np0: 45,
+    nq0: 30,
+    failureType: "random"
+  },
+  {
+    desc: "A random sample of 90 students from a school of 700 is surveyed about whether they eat breakfast daily. The claimed proportion is 0.55.",
+    designText: "random sample",
+    n: 90,
+    p0: 0.55,
+    popSize: 700,
+    pHatDistractor: 0.61,
+    np0: 49.5,
+    nq0: 40.5,
+    failureType: "tenPercent"
+  },
+  {
+    desc: "In a clinical study, 80 volunteers are randomly assigned to receive a supplement. Researchers test whether more than 20% experience mild nausea.",
+    designText: "randomized experiment",
+    n: 80,
+    p0: 0.20,
+    pHatDistractor: 0.24,
+    np0: 16,
+    nq0: 64,
+    failureType: "none"
+  },
+  {
+    desc: "In a product test, 40 volunteers are randomly assigned to try a new skin patch. Researchers test whether the irritation rate differs from 0.05.",
+    designText: "randomized experiment",
+    n: 40,
+    p0: 0.05,
+    pHatDistractor: 0.10,
+    np0: 2,
+    nq0: 38,
+    failureType: "largeCounts"
+  },
+  {
+    desc: "A random sample of 150 employees from a company with 12,000 employees is surveyed about whether they prefer remote work at least three days each week.",
+    designText: "random sample",
+    n: 150,
+    p0: 0.50,
+    popSize: 12000,
+    pHatDistractor: 0.47,
+    np0: 75,
+    nq0: 75,
+    failureType: "none"
+  }
+];
+
 // ---- L24-L28: Test statistic and p-value scenarios (6.5) ----
 // Normal CDF approximation for p-value calculations
 function normalCDF(z) {
@@ -5033,6 +5101,137 @@ export function generateProblem(modeId, context, mode) {
     };
 
     scenario = `${study.context}\n\nH0: p1 - p2 = 0, Ha: p1 - p2 ${dirSymbol} 0\nz = ${study.zText}, p-value = ${study.pValueText}, alpha = ${study.alpha}\n\nWrite a complete conclusion for this two-sample z test.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L26: One-Sided or Two-Sided? (6.4g) ==========
+  if (modeId === "l26-direction-64") {
+    const scen = drawFromBag('hypothesisScen_l26', hypothesisScenarioBank);
+    const correctAnswer = scen.direction === ">"
+      ? `One-sided right-tailed: H\u2090: p > ${scen.p0}`
+      : scen.direction === "<"
+        ? `One-sided left-tailed: H\u2090: p < ${scen.p0}`
+        : `Two-sided: H\u2090: p \u2260 ${scen.p0}`;
+    const allOptions = shuffle([
+      correctAnswer,
+      `One-sided right-tailed: H\u2090: p > ${scen.p0}`,
+      `One-sided left-tailed: H\u2090: p < ${scen.p0}`,
+      `Two-sided: H\u2090: p \u2260 ${scen.p0}`,
+      "Cannot tell until after seeing the sample data."
+    ].filter((option, index, arr) => arr.indexOf(option) === index));
+
+    ctx = {
+      topicId: "6.4: One-Sided or Two-Sided Alternative",
+      scenarioText: scen.context,
+      givenText: `Claimed proportion: ${scen.p0}. Keyword: "${scen.keyword}".`,
+      keyword: scen.keyword,
+      direction64Type: scen.direction === ">" ? "right" : scen.direction === "<" ? "left" : "two-sided",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      direction64Answer: { value: correctAnswer }
+    };
+
+    scenario = `${scen.context}\n\nClaimed proportion: ${scen.p0}\n\nIs the alternative hypothesis left-tailed, right-tailed, or two-sided?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L27: Define the Parameter (6.4h) ==========
+  if (modeId === "l27-parameter-definition-64") {
+    const scen = drawFromBag('hypothesisScen_l27', hypothesisScenarioBank);
+    const correctAnswer = `p = the proportion of ${scen.population} who ${scen.successDesc}`;
+    const allOptions = shuffle([
+      correctAnswer,
+      `p = the proportion of the sample who ${scen.successDesc}`,
+      `p\u0302 = the proportion of ${scen.population} who ${scen.successDesc}`,
+      `p = the number of ${scen.population} who ${scen.successDesc}`
+    ]);
+
+    ctx = {
+      topicId: "6.4: Define the Parameter in Context",
+      scenarioText: scen.context,
+      givenText: "Choose the population parameter, not a sample statistic.",
+      population: scen.population,
+      successDesc: scen.successDesc,
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      parameter64Answer: { value: correctAnswer }
+    };
+
+    scenario = `${scen.context}\n\nWhich definition correctly describes the parameter p for this study?`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L28: Calculate Large Counts (6.4i) ==========
+  if (modeId === "l28-large-counts-64") {
+    const scen = drawFromBag('testConditions_l28', testConditionsBank);
+
+    ctx = {
+      topicId: "6.4: Calculate Large Counts with p0",
+      scenarioText: scen.desc,
+      givenText: `n = ${scen.n}, p0 = ${scen.p0}, observed p-hat = ${scen.pHatDistractor}`,
+      n: `${scen.n}`,
+      p0: `${scen.p0}`,
+      pHat: `${scen.pHatDistractor}`,
+      np0: `${scen.np0}`,
+      nq0: `${scen.nq0}`
+    };
+
+    answers = {
+      np0Answer64: { value: scen.np0, tolerance: 0.01 },
+      nq0Answer64: { value: scen.nq0, tolerance: 0.01 }
+    };
+
+    scenario = `${scen.desc}\n\nn = ${scen.n}, p0 = ${scen.p0}, observed p-hat = ${scen.pHatDistractor}\n\nCalculate np0 and n(1-p0) for the large-counts check. Use p0, not p-hat.`;
+    return { context: ctx, graphConfig, answers, scenario };
+  }
+
+  // ========== L29: Diagnose the Condition Check (6.4j) ==========
+  if (modeId === "l29-condition-diagnosis-64") {
+    const scen = drawFromBag('conditionDiagnosis64_l29', conditionDiagnosis64Bank);
+    const correctAnswerMap = {
+      random: "The random/independence condition fails.",
+      tenPercent: "The 10% condition fails.",
+      largeCounts: "The large counts condition fails.",
+      none: "No condition fails; the one-sample z-test conditions are satisfied."
+    };
+    const correctAnswer = correctAnswerMap[scen.failureType];
+    const allOptions = shuffle(Object.values(correctAnswerMap));
+    const designLine = scen.designText === "randomized experiment"
+      ? "Design: randomized experiment."
+      : scen.designText === "random sample"
+        ? "Design: random sample."
+        : "Design: convenience sample.";
+    const tenPctLine = scen.designText === "randomized experiment"
+      ? "10% condition is not required for random assignment."
+      : `10% check: ${scen.n} <= ${Math.round((scen.popSize || 0) * 0.10)}?`;
+
+    ctx = {
+      topicId: "6.4: Diagnose the Condition Check",
+      scenarioText: scen.desc,
+      givenText: `${designLine} n = ${scen.n}, p0 = ${scen.p0}, p-hat = ${scen.pHatDistractor}, np0 = ${scen.np0}, n(1-p0) = ${scen.nq0}. ${tenPctLine}`,
+      failureType64: scen.failureType,
+      usesTenPct64: scen.designText !== "randomized experiment",
+      optA: allOptions[0],
+      optB: allOptions[1],
+      optC: allOptions[2],
+      optD: allOptions[3]
+    };
+
+    answers = {
+      conditionFailure64Answer: { value: correctAnswer }
+    };
+
+    scenario = `${scen.desc}\n\n${designLine}\nn = ${scen.n}, p0 = ${scen.p0}, p-hat = ${scen.pHatDistractor}\nnp0 = ${scen.np0}, n(1-p0) = ${scen.nq0}\n${tenPctLine}\n\nWhich statement correctly identifies the condition issue?`;
     return { context: ctx, graphConfig, answers, scenario };
   }
 

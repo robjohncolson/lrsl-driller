@@ -101,7 +101,8 @@ export function gradeField(fieldId, answer, context) {
       "cap66ZStat", "cap66PValue",
       "twoPropMEAnswer", "twoPropCILower", "twoPropCIUpper",
       "pooled610Answer",
-      "z611Answer", "pvalue611Answer"
+      "z611Answer", "pvalue611Answer",
+      "np0Answer64", "nq0Answer64"
     ]);
     if (numberFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter a number." };
@@ -953,6 +954,202 @@ export function gradeField(fieldId, answer, context) {
       return { score: "E", feedback: "Correct! One-sample z-test for a population proportion." };
     }
     return { score: "I", feedback: `Incorrect. The correct procedure is: ${expected}. One sample + categorical data + testing a claim = one-sample z-test for p.` };
+  }
+
+  // ========== L26: One-Sided or Two-Sided? (6.4g) ==========
+  if (fieldId === "direction64Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! The wording of the research question determines whether the alternative is right-tailed, left-tailed, or two-sided."
+      };
+    }
+    if (containsAny(answer, ["after seeing", "sample data"])) {
+      return {
+        score: "I",
+        feedback: "Do not wait for sample data to choose the direction. The alternative must be based on the research question before data are collected."
+      };
+    }
+    if (context?.direction64Type === "right") {
+      return {
+        score: "I",
+        feedback: `Incorrect. The keyword "${context?.keyword || "higher"}" points to a right-tailed alternative. The correct choice is: ${expected}`
+      };
+    }
+    if (context?.direction64Type === "left") {
+      return {
+        score: "I",
+        feedback: `Incorrect. The keyword "${context?.keyword || "lower"}" points to a left-tailed alternative. The correct choice is: ${expected}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Words like "${context?.keyword || "differs"}" call for a two-sided alternative. The correct choice is: ${expected}`
+    };
+  }
+
+  // ========== L27: Define the Parameter (6.4h) ==========
+  if (fieldId === "parameter64Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! A parameter definition should use p, refer to a proportion, and describe the whole population."
+      };
+    }
+    if (containsAny(answer, ["p\u0302", "p-hat", "phat"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. p\u0302 is a sample statistic, not the population parameter. The correct definition is: ${expected}`
+      };
+    }
+    if (containsAny(answer, ["sample", "surveyed", "respondents"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. The parameter must describe the POPULATION, not the sample. The correct definition is: ${expected}`
+      };
+    }
+    if (containsAny(answer, ["number of"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. p is a proportion, not a count. The correct definition is: ${expected}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct definition is: ${expected}`
+    };
+  }
+
+  // ========== L28: Calculate np0 (6.4i) ==========
+  if (fieldId === "np0Answer64") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = parseFloat(expected);
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const n = parseFloat(context?.n);
+    const p0 = parseFloat(context?.p0);
+    const pHat = parseFloat(context?.pHat);
+    const wrongWithPHat = !isNaN(n) && !isNaN(pHat) ? n * pHat : NaN;
+    const swappedVal = parseFloat(context?.nq0);
+
+    if (!isNaN(wrongWithPHat) && Math.abs(studentVal - wrongWithPHat) <= 0.02 && diff > 0.02) {
+      return {
+        score: "I",
+        feedback: `It looks like you used p\u0302 = ${pHat} instead of p0 = ${p0}. For a significance test, compute np0 = n x p0 = ${expectedVal}.`
+      };
+    }
+    if (!isNaN(swappedVal) && Math.abs(studentVal - swappedVal) <= 0.02 && diff > 0.02) {
+      return {
+        score: "I",
+        feedback: `That value is n(1-p0), not np0. Multiply n by p0: ${n} x ${p0} = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "E",
+        feedback: `Correct! np0 = n x p0 = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.10) {
+      return {
+        score: "P",
+        feedback: `Close. Recheck np0 = n x p0. The correct value is ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. For the large-counts check, use the null value p0: np0 = n x p0 = ${expectedVal}.`
+    };
+  }
+
+  // ========== L28: Calculate n(1-p0) (6.4i) ==========
+  if (fieldId === "nq0Answer64") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = parseFloat(expected);
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a number." };
+    }
+
+    const diff = Math.abs(studentVal - expectedVal);
+    const n = parseFloat(context?.n);
+    const p0 = parseFloat(context?.p0);
+    const pHat = parseFloat(context?.pHat);
+    const wrongWithPHat = !isNaN(n) && !isNaN(pHat) ? n * (1 - pHat) : NaN;
+    const swappedVal = parseFloat(context?.np0);
+
+    if (!isNaN(wrongWithPHat) && Math.abs(studentVal - wrongWithPHat) <= 0.02 && diff > 0.02) {
+      return {
+        score: "I",
+        feedback: `It looks like you used p\u0302 = ${pHat} instead of p0 = ${p0}. For a significance test, compute n(1-p0) = ${n} x (1 - ${p0}) = ${expectedVal}.`
+      };
+    }
+    if (!isNaN(swappedVal) && Math.abs(studentVal - swappedVal) <= 0.02 && diff > 0.02) {
+      return {
+        score: "I",
+        feedback: `That value is np0, not n(1-p0). Multiply n by (1-p0): ${n} x (1 - ${p0}) = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.01) {
+      return {
+        score: "E",
+        feedback: `Correct! n(1-p0) = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.10) {
+      return {
+        score: "P",
+        feedback: `Close. Recheck n(1-p0) = n x (1-p0). The correct value is ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. For the large-counts check, use the null value p0: n(1-p0) = ${expectedVal}.`
+    };
+  }
+
+  // ========== L29: Diagnose the Condition Check (6.4j) ==========
+  if (fieldId === "conditionFailure64Answer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct! You identified the specific setup issue for the one-sample z-test."
+      };
+    }
+
+    if (!context?.usesTenPct64 && containsAny(answer, ["10%"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. For a randomized experiment, the 10% condition is not required. The correct answer is: ${expected}`
+      };
+    }
+
+    if (context?.failureType64 === "none") {
+      return {
+        score: "I",
+        feedback: `Incorrect. No condition fails here: the design is acceptable and both large-counts values are at least 10. The correct answer is: ${expected}`
+      };
+    }
+    if (context?.failureType64 === "random") {
+      return {
+        score: "I",
+        feedback: `Incorrect. The issue is the random/independence condition, not the 10% or large-counts check. The correct answer is: ${expected}`
+      };
+    }
+    if (context?.failureType64 === "tenPercent") {
+      return {
+        score: "I",
+        feedback: `Incorrect. The sample is larger than 10% of the population, so the 10% condition is the problem. The correct answer is: ${expected}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. At least one of np0 or n(1-p0) is below 10, so the large-counts condition fails. The correct answer is: ${expected}`
+    };
   }
 
   // ========== L24/L28: Test Statistic z (Number) ==========
