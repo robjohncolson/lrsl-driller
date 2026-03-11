@@ -4,9 +4,10 @@
  * Topic-agnostic: cartridge provides the schema
  */
 
-import { RadicalGame } from './radical-game.js';
-import { RadicalPrimeGame } from './radical-prime-game.js';
-import { RadicalComplexGame } from './radical-complex-game.js';
+// Lazy-loaded on demand - only when visual-radical problem types are encountered
+let RadicalGame = null;
+let RadicalPrimeGame = null;
+let RadicalComplexGame = null;
 
 export class InputRenderer {
   constructor(container, config = {}) {
@@ -322,7 +323,10 @@ export class InputRenderer {
     const totalSquares = context.radicand || 12;
 
     // Create the game after a brief delay to ensure DOM is ready
-    setTimeout(() => {
+    setTimeout(async () => {
+      if (!RadicalGame) {
+        ({ RadicalGame } = await import('./radical-game.js'));
+      }
       const game = new RadicalGame(wrapper, {
         squareSize: 28,
         onAnswerChange: (answer) => {
@@ -354,7 +358,10 @@ export class InputRenderer {
     const radicand = context.radicand || 72;
 
     // Create the prime factorization game after a brief delay
-    setTimeout(() => {
+    setTimeout(async () => {
+      if (!RadicalPrimeGame) {
+        ({ RadicalPrimeGame } = await import('./radical-prime-game.js'));
+      }
       const game = new RadicalPrimeGame(wrapper, {
         onAnswerChange: (answer) => {
           // Store the answer for grading
@@ -385,7 +392,10 @@ export class InputRenderer {
     const radicand = context.radicand || -72;
 
     // Create the complex radical game after a brief delay
-    setTimeout(() => {
+    setTimeout(async () => {
+      if (!RadicalComplexGame) {
+        ({ RadicalComplexGame } = await import('./radical-complex-game.js'));
+      }
       const game = new RadicalComplexGame(wrapper, {
         onAnswerChange: (answer) => {
           // Store the answer for grading

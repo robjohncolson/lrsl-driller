@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preload" href="/cartridges/registry.json" as="fetch" crossorigin>
   <title>Driller - Math Practice</title>
   <link rel="stylesheet" href="./styles.css">
   <!-- KaTeX for math rendering -->
@@ -1020,7 +1021,9 @@
     import { createAIFeedbackPanel, updateAIFeedbackPanel, showAIFeedbackError, hideAIFeedbackPanel } from './core/ai-feedback-panel.js';
     import { RosterModal } from './core/roster-modal.js';
     import * as GhostEngine from './core/ghost-engine.js';
-    import { GhostPanel, createGhostButton } from './game/ghost-panel.js';
+    // LAZY: GhostPanel imports Three.js (466KB) - only load if ghost button ever clicked
+    // import { GhostPanel, createGhostButton } from './game/ghost-panel.js';
+    let GhostPanel = null;
     // DISABLED: Game modes cause WebGL context conflicts
     // import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';
     const OrbitsGameState = { IDLE: 'idle', CONNECTING: 'connecting', COUNTDOWN: 'countdown', PLAYING: 'playing', ELIMINATED: 'eliminated', SPECTATING: 'spectating', ROUND_END: 'round_end', INTERMISSION: 'intermission' };
@@ -1043,7 +1046,7 @@
       // Try Railway with 2-second timeout
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 2000);
+        const timeout = setTimeout(() => controller.abort(), 1000);
         const resp = await fetch(SERVER_URL, { signal: controller.signal, method: 'HEAD' });
         clearTimeout(timeout);
         if (resp.ok || resp.status === 404) {
@@ -1423,44 +1426,8 @@
      * Initialize Ghost Panel for the current user
      */
     function initGhostPanel() {
-      if (ghostPanel) {
-        // Dispose existing panel before creating new one
-        ghostPanel.dispose();
-        ghostPanel = null;
-      }
-
-      // Create container for ghost panel
-      let ghostPanelContainer = document.getElementById('ghost-panel-container');
-      if (!ghostPanelContainer) {
-        ghostPanelContainer = document.createElement('div');
-        ghostPanelContainer.id = 'ghost-panel-container';
-        document.body.appendChild(ghostPanelContainer);
-      }
-
-      const manifest = platform?.currentCartridge?.manifest;
-      const playerProgress = platform?.gameEngine?.getState()?.starsPerMode || {};
-
-      ghostPanel = new GhostPanel({
-        container: ghostPanelContainer,
-        serverUrl: SERVER_URL,
-        username: userSystem.currentUser?.username,
-        isTeacher: isTeacher,
-        manifest: manifest,
-        playerProgress: playerProgress,
-        classPeriod: userSystem.currentUser?.class_period,
-        onClose: () => {
-          const btn = document.getElementById('ghost-btn');
-          if (btn) btn.classList.remove('bg-purple-200');
-        }
-      });
-
-      // Update with current ghost profile if available
-      const profile = GhostEngine.getGhostProfile();
-      if (profile) {
-        ghostPanel.updateGhostProfile(profile);
-      }
-
-      console.log('[GhostPanel] Initialized for user:', userSystem.currentUser?.username);
+      // Ghost system disabled - no-op
+      return;
     }
 
     /**
@@ -1468,42 +1435,16 @@
      * Loads TensorFlow.js lazily when panel opens
      */
     async function toggleGhostPanel() {
-      if (!ghostPanel) {
-        initGhostPanel();
-      }
-
-      const btn = document.getElementById('ghost-btn');
-      if (ghostPanel.isVisible) {
-        ghostPanel.hide();
-        if (btn) btn.classList.remove('bg-purple-200');
-      } else {
-        // Ensure TensorFlow is loaded when opening panel
-        // This processes any buffered interactions and enables real-time training
-        const tfReady = await GhostEngine.ensureTensorFlowLoaded();
-        if (tfReady) {
-          // Update panel with latest profile after TF training
-          const profile = GhostEngine.getGhostProfile();
-          if (profile && ghostPanel) {
-            ghostPanel.updateGhostProfile(profile);
-          }
-        }
-        ghostPanel.show();
-        if (btn) btn.classList.add('bg-purple-200');
-      }
+      // Ghost system disabled - no-op
+      return;
     }
 
     /**
      * Update Ghost Panel when cartridge changes
      */
     function updateGhostPanelForCartridge() {
-      if (!ghostPanel) return;
-
-      const manifest = platform?.currentCartridge?.manifest;
-      const playerProgress = platform?.gameEngine?.getState()?.starsPerMode || {};
-
-      // Recreate panel with new manifest (simplest approach for now)
-      ghostPanel.dispose();
-      initGhostPanel();
+      // Ghost system disabled - no-op
+      return;
     }
 
     // Ghost panel toggle event listener
@@ -3574,6 +3515,9 @@
       listEl.innerHTML = '';
       selectEl.innerHTML = '';
 
+      const listFragment = document.createDocumentFragment();
+      const selectFragment = document.createDocumentFragment();
+
       // Build HTML for each subject group
       for (const [subject, cartridges] of Object.entries(grouped)) {
         const colors = subjectColors[subject] || subjectColors.default;
@@ -3582,7 +3526,7 @@
         const header = document.createElement('div');
         header.className = `text-xs font-bold ${colors.header} uppercase tracking-wide px-2 pt-1`;
         header.textContent = subject;
-        listEl.appendChild(header);
+        listFragment.appendChild(header);
 
         // Cartridge buttons
         for (const cart of cartridges) {
@@ -3598,15 +3542,18 @@
               <div class="text-xs text-gray-500">${cart.description || ''}</div>
             </div>
           `;
-          listEl.appendChild(btn);
+          listFragment.appendChild(btn);
 
           // Also add to hidden select
           const option = document.createElement('option');
           option.value = cart.id;
           option.textContent = cart.name;
-          selectEl.appendChild(option);
+          selectFragment.appendChild(option);
         }
       }
+
+      listEl.appendChild(listFragment);
+      selectEl.appendChild(selectFragment);
 
       // Set up click handlers for the newly created buttons
       setupCartridgeOptionListeners();

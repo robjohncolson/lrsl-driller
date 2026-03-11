@@ -72,61 +72,83 @@ export class CartridgeLoader {
       const manifest = await this.loadJSON(`${cartridgePath}/manifest.json`);
       progress('manifest', 'manifest.json', 'done');
 
-      // Load contexts - prefer local contextsFile, fall back to shared (deprecated)
-      if (manifest.config?.contextsFile) {
-        // New way: contexts inside cartridge folder (portable)
-        const contextFile = manifest.config.contextsFile;
-        progress('contexts', contextFile, 'loading');
-        this.contexts = await this.loadJSON(`${cartridgePath}/${contextFile}`);
-        progress('contexts', contextFile, 'done');
-      } else if (manifest.config?.sharedContexts) {
-        // Legacy: shared contexts folder (deprecated, kept for backwards compatibility)
-        const contextFile = `${manifest.config.sharedContexts}.json`;
-        progress('contexts', contextFile, 'loading');
-        this.contexts = await this.loadJSON(
-          `${this.sharedPath}/contexts/${contextFile}`
-        );
-        progress('contexts', contextFile, 'done');
-      } else {
-        progress('contexts', 'none', 'skipped');
-      }
-
-      // Load generator module
-      progress('generator', 'generator.js', 'loading');
       const generatorPath = `${cartridgePath}/generator.js`;
       console.log(`[CartridgeLoader] Loading generator from: ${generatorPath}`);
-      const generator = await this.loadModule(generatorPath);
-      console.log(`[CartridgeLoader] Generator loaded:`, generator ? 'success' : 'null', 'Has generateProblem:', !!generator?.generateProblem);
-      progress('generator', 'generator.js', 'done');
-
-      // Load grading rules
-      let gradingRules = null;
-      if (manifest.grading?.rubricFile) {
-        progress('grading', manifest.grading.rubricFile, 'loading');
-        if (manifest.grading.rubricFile.endsWith('.js')) {
-          gradingRules = await this.loadModule(`${cartridgePath}/${manifest.grading.rubricFile}`);
-        } else {
-          gradingRules = await this.loadJSON(`${cartridgePath}/${manifest.grading.rubricFile}`);
+      const contextPromise = (() => {
+        if (manifest.config?.contextsFile) {
+          // New way: contexts inside cartridge folder (portable)
+          const contextFile = manifest.config.contextsFile;
+          progress('contexts', contextFile, 'loading');
+          return this.loadJSON(`${cartridgePath}/${contextFile}`).then((contexts) => {
+            progress('contexts', contextFile, 'done');
+            return contexts;
+          });
         }
-        progress('grading', manifest.grading.rubricFile, 'done');
-      } else {
-        progress('grading', 'none', 'skipped');
-      }
 
-      // Load AI prompt template
-      let aiPrompt = null;
-      if (manifest.grading?.aiPromptFile) {
-        progress('ai', manifest.grading.aiPromptFile, 'loading');
-        aiPrompt = await this.loadText(`${cartridgePath}/${manifest.grading.aiPromptFile}`);
-        progress('ai', manifest.grading.aiPromptFile, 'done');
-      } else {
+        if (manifest.config?.sharedContexts) {
+          // Legacy: shared contexts folder (deprecated, kept for backwards compatibility)
+          const contextFile = `${manifest.config.sharedContexts}.json`;
+          progress('contexts', contextFile, 'loading');
+          return this.loadJSON(`${this.sharedPath}/contexts/${contextFile}`).then((contexts) => {
+            progress('contexts', contextFile, 'done');
+            return contexts;
+          });
+        }
+
+        progress('contexts', 'none', 'skipped');
+        return Promise.resolve(null);
+      })();
+
+      progress('generator', 'generator.js', 'loading');
+      const generatorPromise = this.loadModule(generatorPath).then((generator) => {
+        console.log(`[CartridgeLoader] Generator loaded:`, generator ? 'success' : 'null', 'Has generateProblem:', !!generator?.generateProblem);
+        progress('generator', 'generator.js', 'done');
+        return generator;
+      });
+
+      const gradingPromise = (() => {
+        if (manifest.grading?.rubricFile) {
+          progress('grading', manifest.grading.rubricFile, 'loading');
+          const gradingLoader = manifest.grading.rubricFile.endsWith('.js')
+            ? this.loadModule(`${cartridgePath}/${manifest.grading.rubricFile}`)
+            : this.loadJSON(`${cartridgePath}/${manifest.grading.rubricFile}`);
+
+          return gradingLoader.then((gradingRules) => {
+            progress('grading', manifest.grading.rubricFile, 'done');
+            return gradingRules;
+          });
+        }
+
+        progress('grading', 'none', 'skipped');
+        return Promise.resolve(null);
+      })();
+
+      const aiPromptPromise = (() => {
+        if (manifest.grading?.aiPromptFile) {
+          progress('ai', manifest.grading.aiPromptFile, 'loading');
+          return this.loadText(`${cartridgePath}/${manifest.grading.aiPromptFile}`).then((aiPrompt) => {
+            progress('ai', manifest.grading.aiPromptFile, 'done');
+            return aiPrompt;
+          });
+        }
+
         progress('ai', 'none', 'skipped');
-      }
+        return Promise.resolve(null);
+      })();
+
+      const [contexts, generator, gradingRules, aiPrompt] = await Promise.all([
+        contextPromise,
+        generatorPromise,
+        gradingPromise,
+        aiPromptPromise
+      ]);
+
+      this.contexts = contexts;
 
       this.loadedCartridge = {
         id: cartridgeId,
         manifest,
-        contexts: this.contexts,
+        contexts,
         generator,
         gradingRules,
         aiPrompt
