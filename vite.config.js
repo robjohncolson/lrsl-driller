@@ -239,6 +239,13 @@ export default defineConfig({
         main: 'index.html',
         app: 'platform/app.html',
         mathViz: 'standalone/math-viz/index.html'
+      },
+      output: {
+        manualChunks(id) {
+          if (id.includes('graph-engine')) {
+            return 'graph'
+          }
+        }
       }
     }
   },

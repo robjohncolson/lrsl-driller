@@ -1019,7 +1019,9 @@
     import { CartridgeLoader } from './core/cartridge-loader.js';
     import { calculateWeightedPoints, getPointsBreakdown } from '../shared/scoring.config.js';
     import { createAIFeedbackPanel, updateAIFeedbackPanel, showAIFeedbackError, hideAIFeedbackPanel } from './core/ai-feedback-panel.js';
-    import { RosterModal } from './core/roster-modal.js';
+    // Lazy-loaded: only used by teachers
+    // import { RosterModal } from './core/roster-modal.js';
+    let RosterModal = null;
     import * as GhostEngine from './core/ghost-engine.js';
     // LAZY: GhostPanel imports Three.js (466KB) - only load if ghost button ever clicked
     // import { GhostPanel, createGhostButton } from './game/ghost-panel.js';
@@ -1028,10 +1030,14 @@
     // import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';
     const OrbitsGameState = { IDLE: 'idle', CONNECTING: 'connecting', COUNTDOWN: 'countdown', PLAYING: 'playing', ELIMINATED: 'eliminated', SPECTATING: 'spectating', ROUND_END: 'round_end', INTERMISSION: 'intermission' };
     import { SyncQueue } from './core/sync-queue.js';
-    import { WebRTCManager } from './core/webrtc-manager.js';
+    // Lazy-loaded: only used for multiplayer
+    // import { WebRTCManager } from './core/webrtc-manager.js';
+    let WebRTCManager = null;
     import { AssetCache } from './core/asset-cache.js';
     import { AssetResolver } from './core/asset-resolver.js';
-    import { P2PAssetTransfer } from './core/p2p-asset-transfer.js';
+    // Lazy-loaded: only used for multiplayer P2P
+    // import { P2PAssetTransfer } from './core/p2p-asset-transfer.js';
+    let P2PAssetTransfer = null;
     import { buildShareURL, getModeNumber, parseQueryParams, restoreStateFromURL, updateURL } from './core/url-state.js';
     console.log('[APP] All imports successful');
 
@@ -1239,9 +1245,12 @@
     const wsClient = new WebSocketClient({
       serverUrl: SERVER_URL,
       onPresenceChange: updateOnlineDisplay,
-      onConnectionChange: (connected) => {
+      onConnectionChange: async (connected) => {
         updateConnectionStatus(connected);
         if (connected && wsClient.currentUsername && !p2pAssetTransfer) {
+          if (!P2PAssetTransfer) {
+            ({ P2PAssetTransfer } = await import('./core/p2p-asset-transfer.js'));
+          }
           p2pAssetTransfer = new P2PAssetTransfer(wsClient, assetCache, wsClient.currentUsername);
           assetResolver.setPeerManager(p2pAssetTransfer);
         }
@@ -1326,11 +1335,11 @@
           ghostPanel.updateMultiplayerLobbyStatus(status);
         }
       },
-      onWebRTCActivate: (msg) => {
+      onWebRTCActivate: async (msg) => {
         if (webrtcManager) return; // Already active
         // Student: connect to teacher when activation is broadcast
         if (!isTeacher && userSystem.currentUser) {
-          initWebRTCManager('student');
+          await initWebRTCManager('student');
           webrtcManager.connectToTeacher(msg.teacherUsername);
         }
       },
@@ -3033,6 +3042,9 @@
 
       // Initialize roster modal with teacher password
       if (!rosterModal) {
+        if (!RosterModal) {
+          ({ RosterModal } = await import('./core/roster-modal.js'));
+        }
         rosterModal = new RosterModal({ serverUrl: SERVER_URL });
       }
       rosterModal.setTeacherPassword(password);
@@ -5263,9 +5275,12 @@
 
     // ==================== WEBRTC FUNCTIONS ====================
 
-    function initWebRTCManager(role) {
+    async function initWebRTCManager(role) {
       if (webrtcManager) {
         webrtcManager.destroy();
+      }
+      if (!WebRTCManager) {
+        ({ WebRTCManager } = await import('./core/webrtc-manager.js'));
       }
       webrtcManager = new WebRTCManager({
         wsClient,
@@ -5666,7 +5681,7 @@
     };
 
     // ==================== WEBRTC EVENT LISTENERS ====================
-    document.getElementById('webrtc-toggle-btn')?.addEventListener('click', () => {
+    document.getElementById('webrtc-toggle-btn')?.addEventListener('click', async () => {
       if (!isTeacher) return;
 
       if (webrtcManager && webrtcManager.isActive) {
@@ -5678,7 +5693,7 @@
         celebration.showToast('WebRTC direct connect disabled', 'info');
       } else {
         // Activate
-        initWebRTCManager('teacher');
+        await initWebRTCManager('teacher');
         webrtcManager.activate();
         updateWebRTCStatusUI();
         celebration.showToast('WebRTC direct connect enabled', 'success');
