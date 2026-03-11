@@ -352,13 +352,10 @@ export class GhostPanel {
 
             <!-- Ghost Orbits Arena Entry -->
             <div class="ghost-orbits-entry">
-              <div class="ghost-orbits-mode-selector">
-                <label for="ghost-orbits-mode-select">Game Mode:</label>
-                <select id="ghost-orbits-mode-select">
-                  <option value="arena" selected>Arena (Dot Territory)</option>
-                  <option value="trails">Trails (Snake Survival)</option>
-                  <option value="blizzard">Blizzard (Team Defense)</option>
-                </select>
+              <div class="ghost-orbits-mode-selector" style="opacity: 0.5; pointer-events: none;">
+                <p style="text-align: center; color: #888; font-size: 12px; padding: 8px;">
+                  ⚠ Game modes temporarily disabled
+                </p>
               </div>
               <div class="ghost-orbits-buttons">
                 <button class="ghost-orbits-btn locked" id="ghost-orbits-enter-btn" disabled>
@@ -823,8 +820,7 @@ export class GhostPanel {
    * @returns {string} Mode type: 'arena', 'trails', or 'blizzard'
    */
   getSelectedMode() {
-    const select = this.container.querySelector('#ghost-orbits-mode-select');
-    return select?.value || 'arena';
+    return 'arena'; // Game modes disabled
   }
 
   /**
@@ -1170,39 +1166,12 @@ export class GhostPanel {
     }
 
     try {
-      // Show loading state
-      container.innerHTML = `
-        <div class="ghost-terrain-loading">
-          <div class="ghost-loading-spinner"></div>
-          <p>Generating class landscape...</p>
-        </div>
-      `;
-
-      // Create terrain renderer
-      this.terrainRenderer = new TerrainRenderer(container, { quality: 'medium' });
-
-      // Listen for terrain events
-      container.addEventListener('terrain-ready', () => {
-        console.log('[GhostPanel] Terrain renderer ready');
-
-        // Remove loading indicators
-        this._clearTerrainOverlays(container);
-
-        // Update terrain with class data if available
-        if (this.classGhosts.length > 0) {
-          this.terrainRenderer.updateFromClassData(this.classGhosts);
-        }
-      });
-
-      container.addEventListener('terrain-error', (event) => {
-        console.error('[GhostPanel] Terrain error:', event.detail.error);
-        this._showTerrainError('3D visualization unavailable', event.detail.error.message);
-        this.terrainError = event.detail.error;
-      });
-
-      // Initialize the renderer
-      await this.terrainRenderer.init();
-      this.terrainInitialized = true;
+      // DISABLED: Three.js WebGL terrain renderer causes context conflicts
+      // this.terrainRenderer = new TerrainRenderer(container, { quality: 'medium' });
+      this.terrainRenderer = null;
+      this.terrainError = 'Game modes disabled - terrain visualization unavailable';
+      console.log('[GhostPanel] Terrain renderer disabled to prevent WebGL conflicts');
+      this._showTerrainError('3D visualization unavailable', this.terrainError);
 
     } catch (error) {
       console.error('[GhostPanel] Failed to initialize terrain renderer:', error);
@@ -2238,44 +2207,12 @@ export class GhostPanel {
     }
 
     try {
-      // Show loading state
-      container.innerHTML = `
-        <div class="ghost-maze-loading">
-          <div class="ghost-loading-spinner"></div>
-          <p>Initializing 3D maze...</p>
-        </div>
-      `;
-
-      // Create maze renderer
-      this.mazeRenderer = new MazeRenderer(container, this.manifest, this.playerProgress);
-
-      // Listen for maze events
-      container.addEventListener('maze-ready', () => {
-        console.log('[GhostPanel] Maze renderer ready');
-
-        // Remove loading indicators now that maze is ready
-        this._clearMazeOverlays(container);
-
-        // Update ghost position if we have a profile
-        if (this.ghostProfile) {
-          this.mazeRenderer.updateGhost(this.ghostProfile);
-        }
-      });
-
-      container.addEventListener('maze-error', (event) => {
-        console.error('[GhostPanel] Maze error:', event.detail.error);
-        this._showMazeError('3D visualization unavailable', event.detail.error.message);
-        this.mazeError = event.detail.error;
-      });
-
-      container.addEventListener('maze-node-selected', (event) => {
-        console.log('[GhostPanel] Node selected:', event.detail.nodeId);
-        // Could be used to navigate to that level
-      });
-
-      // Initialize the renderer
-      await this.mazeRenderer.init();
-      this.mazeInitialized = true;
+      // DISABLED: Three.js WebGL maze renderer causes context conflicts
+      // this.mazeRenderer = new MazeRenderer(container, this.manifest, this.playerProgress);
+      this.mazeRenderer = null;
+      this.mazeError = 'Game modes disabled - maze visualization unavailable';
+      console.log('[GhostPanel] Maze renderer disabled to prevent WebGL conflicts');
+      this._showMazeError('3D visualization unavailable', this.mazeError);
 
     } catch (error) {
       console.error('[GhostPanel] Failed to initialize maze renderer:', error);

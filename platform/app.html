@@ -1021,7 +1021,9 @@
     import { RosterModal } from './core/roster-modal.js';
     import * as GhostEngine from './core/ghost-engine.js';
     import { GhostPanel, createGhostButton } from './game/ghost-panel.js';
-    import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';
+    // DISABLED: Game modes cause WebGL context conflicts
+    // import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';
+    const OrbitsGameState = { IDLE: 'idle', CONNECTING: 'connecting', COUNTDOWN: 'countdown', PLAYING: 'playing', ELIMINATED: 'eliminated', SPECTATING: 'spectating', ROUND_END: 'round_end', INTERMISSION: 'intermission' };
     import { SyncQueue } from './core/sync-queue.js';
     import { WebRTCManager } from './core/webrtc-manager.js';
     import { AssetCache } from './core/asset-cache.js';
@@ -1534,95 +1536,22 @@
      * @param {string} [modeType='arena'] - Game mode: 'arena', 'trails', or 'blizzard'
      */
     function initGhostOrbits(modeType = 'arena') {
-      if (ghostOrbitsController) {
-        ghostOrbitsController.dispose();
-        ghostOrbitsController = null;
-      }
-
-      const profile = GhostEngine.getGhostProfile();
-      if (!profile) {
-        console.warn('[GhostOrbits] No ghost profile available');
-        return null;
-      }
-
-      ghostOrbitsController = new GhostOrbitsController({
-        container: document.body,
-        username: userSystem.currentUser?.username,
-        cartridgeId: currentCartridgeId,
-        periodId: userSystem.currentUser?.class_period,
-        ghostProfile: profile,
-        serverUrl: SERVER_URL,
-        modeType: modeType,
-        onExit: () => {
-          console.log('[GhostOrbits] Exited arena');
-        },
-        onStateChange: (state) => {
-          console.log('[GhostOrbits] State:', state);
-        }
-      });
-
-      return ghostOrbitsController;
+      console.log('[GhostOrbits] Game modes disabled to prevent WebGL context conflicts');
+      return null;
     }
 
     /**
      * Check if player can enter Ghost Orbits arena
      */
     function canEnterGhostOrbits() {
-      const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-      const economy = getStarEconomy();
-      const nextMatchCost = economy.matchesPlayed + 1;
-      const availableStars = currentGolds - economy.starsSpent;
-      return availableStars >= nextMatchCost;
+      return false; // Game modes disabled
     }
 
     /**
      * Launch Ghost Orbits arena
      */
     async function launchGhostOrbits() {
-      console.log('[GhostOrbits] launchGhostOrbits called');
-      if (!canEnterGhostOrbits()) {
-        console.log('[GhostOrbits] Not unlocked - need more gold stars');
-        return false;
-      }
-
-      console.log('[GhostOrbits] Unlock check passed');
-
-      // Get selected game mode from ghost panel
-      const selectedMode = ghostPanel?.getSelectedMode() || 'arena';
-      console.log('[GhostOrbits] Selected mode:', selectedMode);
-
-      // Only create new controller if one doesn't exist OR if existing one is in IDLE state
-      // This prevents creating duplicate panels when called during active game
-      const needsNewController = !ghostOrbitsController ||
-                                  ghostOrbitsController.state === OrbitsGameState.IDLE;
-
-      if (needsNewController) {
-        console.log('[GhostOrbits] Creating new controller (state:', ghostOrbitsController?.state || 'none', ')');
-        initGhostOrbits(selectedMode); // This disposes old controller first
-      } else {
-        console.log('[GhostOrbits] Controller already active, state:', ghostOrbitsController.state);
-        return false; // Don't launch again if already in game
-      }
-
-      if (ghostOrbitsController) {
-        try {
-          console.log('[GhostOrbits] Calling init()...');
-          await ghostOrbitsController.init();
-
-          // Update controller's gold count from DOM (so isUnlocked() works)
-          const currentGolds = parseInt(document.getElementById('gold-count')?.textContent || '0');
-          ghostOrbitsController.updateGoldCount(currentGolds);
-          console.log('[GhostOrbits] Updated gold count:', currentGolds, 'spent:', ghostOrbitsController.starsSpent, 'matches:', ghostOrbitsController.matchesPlayed);
-
-          console.log('[GhostOrbits] init() complete, calling enterArena()...');
-          await ghostOrbitsController.enterArena();
-          console.log('[GhostOrbits] enterArena() complete');
-          return true;
-        } catch (error) {
-          console.error('[GhostOrbits] Launch failed:', error);
-          return false;
-        }
-      }
+      console.log('[GhostOrbits] Game modes disabled to prevent WebGL context conflicts');
       return false;
     }
 

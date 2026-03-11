@@ -37,6 +37,11 @@ export function init(tfInstance, baseUrl = '') {
   if (tfInstance) {
     GhostNetwork.initTensorFlow(tfInstance);
     tfLoaded = true;
+    // Force CPU backend to avoid WebGL context conflicts
+    if (tfInstance.setBackend) {
+      tfInstance.setBackend('cpu');
+      console.log('[Ghost] TensorFlow.js backend forced to CPU');
+    }
     console.log('[Ghost] TensorFlow.js initialized immediately');
   } else {
     console.log('[Ghost] Running in buffered mode - TensorFlow will load lazily');
@@ -328,6 +333,15 @@ export async function ensureTensorFlowLoaded() {
 
     GhostNetwork.initTensorFlow(window.tf);
     tfLoaded = true;
+    // Force CPU backend to avoid WebGL context conflicts
+    // Ghost network is only 516 params - CPU is more than adequate
+    try {
+      await window.tf.setBackend('cpu');
+      await window.tf.ready();
+      console.log('[Ghost] TensorFlow.js backend set to CPU (WebGL disabled)');
+    } catch (backendErr) {
+      console.warn('[Ghost] Could not set CPU backend:', backendErr.message);
+    }
 
     // Create model if we have a profile
     if (profile) {
