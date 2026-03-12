@@ -126,7 +126,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/RandomSelectionVsAssignment.mp4",
+      "animation": "assets/RandomAssignmentCausation.mp4",
       "layout": {
         "inputs": [
           {
@@ -153,7 +153,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/RandomSelectionVsAssignment.mp4",
+      "animation": "assets/ScopeOfInferenceTable.mp4",
       "layout": {
         "inputs": [
           {
@@ -230,7 +230,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/StratifiedVsCluster.mp4",
+      "animation": "assets/ClusterSampleDefinition.mp4",
       "layout": {
         "inputs": [
           {
@@ -253,7 +253,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/StratifiedVsCluster.mp4",
+      "animation": "assets/StratifiedVsClusterTradeoffs.mp4",
       "layout": {
         "inputs": [
           {
@@ -306,7 +306,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/StratifiedVsCluster.mp4",
+      "animation": "assets/IdentifySamplingMethod.mp4",
       "layout": {
         "inputs": [
           {
@@ -330,7 +330,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/StratifiedVsCluster.mp4",
+      "animation": "assets/WhyThisMethod.mp4",
       "layout": {
         "inputs": [
           {
@@ -478,7 +478,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/StratifiedVsCluster.mp4",
+      "animation": "assets/ChoosingSamplingMethod.mp4",
       "layout": {
         "inputs": [
           {

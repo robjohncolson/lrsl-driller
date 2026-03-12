@@ -515,7 +515,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/ConditionalProbabilityRestriction.mp4",
+      "animation": "assets/ConditionalFromTables.mp4",
       "layout": {
         "inputs": [
           {
@@ -535,7 +535,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/ConditionalProbabilityRestriction.mp4",
+      "animation": "assets/GeneralMultiplicationRule.mp4",
       "layout": {
         "inputs": [
           {
@@ -555,7 +555,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/ConditionalProbabilityRestriction.mp4",
+      "animation": "assets/OrderMattersConditional.mp4",
       "layout": {
         "inputs": [
           {
@@ -658,7 +658,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/IndependentVsMutuallyExclusive.mp4",
+      "animation": "assets/CheckIndependenceMultiplication.mp4",
       "layout": {
         "inputs": [
           {
@@ -750,7 +750,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/IndependentVsMutuallyExclusive.mp4",
+      "animation": "assets/IndepVsMutExclCompare.mp4",
       "layout": {
         "inputs": [
           {
@@ -914,7 +914,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/ProbabilityDistributionMetrics.mp4",
+      "animation": "assets/MeanExpectedValue.mp4",
       "layout": {
         "inputs": [
           {
@@ -932,7 +932,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/ProbabilityDistributionMetrics.mp4",
+      "animation": "assets/StandardDeviationFormula.mp4",
       "layout": {
         "inputs": [
           {
@@ -1157,7 +1157,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/BINSConditionsBreakdown.mp4",
+      "animation": "assets/IdentifyBinomialSetting.mp4",
       "layout": {
         "inputs": [
           {
@@ -1219,7 +1219,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/BinomialFormulaComponents.mp4",
+      "animation": "assets/CalculateBinomialProbability.mp4",
       "layout": {
         "inputs": [
           {
@@ -1259,7 +1259,7 @@
       "unlockedBy": {
         "gold": 3
       },
-      "animation": "assets/CumulativeProbabilitySumming.mp4",
+      "animation": "assets/BinomialCapstoneReview.mp4",
       "layout": {
         "inputs": [
           {
@@ -1309,7 +1309,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/BinomialMeanSDFormulas.mp4",
+      "animation": "assets/BinomialStandardDeviation.mp4",
       "layout": {
         "inputs": [
           {
@@ -1328,7 +1328,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/BinomialMeanSDFormulas.mp4",
+      "animation": "assets/InterpretBinomialParams.mp4",
       "layout": {
         "inputs": [
           {
@@ -1421,7 +1421,7 @@
       "unlockedBy": {
         "gold": 1
       },
-      "animation": "assets/GeometricFormulaParameters.mp4",
+      "animation": "assets/GeometricMeanSD.mp4",
       "layout": {
         "inputs": [
           {
