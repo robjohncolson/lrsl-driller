@@ -275,12 +275,36 @@ function checkModeIdUniqueness(cartridgeId, modes) {
 }
 
 /**
- * Check that git tracks all required files (warns about untracked).
+ * Check that every mode has a unique animation file.
+ * Each level should have its own dedicated animation — sharing
+ * animations across modes degrades the learning experience.
  */
-function checkGitTracking(cartridgeId, manifest, cartridgePath) {
-  // This is a lightweight check — just verify files exist.
-  // A full git-status check would require spawning a process.
-  // The file existence check already covers the critical case.
+function checkAnimationUniqueness(cartridgeId, modes) {
+  const animModes = modes.filter(m => m.animation);
+  if (animModes.length === 0) return;
+
+  const byAnim = new Map();
+  for (const m of animModes) {
+    const list = byAnim.get(m.animation) || [];
+    list.push(m);
+    byAnim.set(m.animation, list);
+  }
+
+  const dupes = [...byAnim.entries()].filter(([, v]) => v.length > 1);
+  if (dupes.length === 0) {
+    ok(cartridgeId, `Animations: ${animModes.length} modes, all unique`);
+    return;
+  }
+
+  const totalShared = dupes.reduce((sum, [, v]) => sum + v.length, 0);
+  const needed = dupes.reduce((sum, [, v]) => sum + v.length - 1, 0);
+  error(cartridgeId,
+    `Animation reuse: ${needed} modes share animations (${animModes.length - needed}/${animModes.length} unique)`
+  );
+  for (const [anim, users] of dupes) {
+    const names = users.map(m => m.name).join(', ');
+    warn(cartridgeId, `  ${anim} shared by ${users.length} modes: ${names}`);
+  }
 }
 
 // ─── Main ───
@@ -330,6 +354,7 @@ for (const folder of folders) {
 
   checkFileExistence(cartridgeId, manifest, cartridgePath);
   checkModeIdUniqueness(cartridgeId, modes);
+  checkAnimationUniqueness(cartridgeId, modes);
   checkTopicOrdering(cartridgeId, modes);
   checkProgressionAlignment(cartridgeId, manifest);
 

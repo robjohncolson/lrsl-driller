@@ -448,7 +448,7 @@
     {
       "id": "l17-state-null",
       "name": "6.4a: State the Null Hypothesis",
-      "animation": "assets/WriteBothHypotheses.mp4",
+      "animation": "assets/StateNullHypothesis.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -472,7 +472,7 @@
     {
       "id": "l18-state-alt",
       "name": "6.4b: State the Alternative Hypothesis",
-      "animation": "assets/WriteBothHypotheses.mp4",
+      "animation": "assets/StateAltHypothesis.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -527,7 +527,7 @@
     {
       "id": "l20-hypothesis-errors",
       "name": "6.4d: Find the Error",
-      "animation": "assets/WriteBothHypotheses.mp4",
+      "animation": "assets/HypothesisErrors.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -551,7 +551,7 @@
     {
       "id": "l21-identify-test",
       "name": "6.4e: Identify the Test",
-      "animation": "assets/WriteBothHypotheses.mp4",
+      "animation": "assets/IdentifyTestProcedure.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -575,7 +575,7 @@
     {
       "id": "l22-check-test-conditions",
       "name": "6.4f: Check Test Conditions",
-      "animation": "assets/WriteBothHypotheses.mp4",
+      "animation": "assets/TestConditionsCheck.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -701,7 +701,7 @@
     {
       "id": "l23-capstone-64",
       "name": "6.4 Capstone",
-      "animation": "assets/WriteBothHypotheses.mp4",
+      "animation": "assets/CapstoneFullSetup.mp4",
       "unlockedBy": {
         "gold": 3
       },
@@ -1224,7 +1224,7 @@
     {
       "id": "l40-alpha-type1",
       "name": "6.7e: Type I Error and Alpha",
-      "animation": "assets/PowerAndErrorProbabilities.mp4",
+      "animation": "assets/AlphaType1Error.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -1244,7 +1244,7 @@
     {
       "id": "l41-power-definition",
       "name": "6.7f: Define Power",
-      "animation": "assets/PowerAndErrorProbabilities.mp4",
+      "animation": "assets/PowerDefinition.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -1268,7 +1268,7 @@
     {
       "id": "l42-alpha-tradeoff",
       "name": "6.7g: Alpha Tradeoff",
-      "animation": "assets/FactorsAffectingPower.mp4",
+      "animation": "assets/AlphaTradeoff.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -1292,7 +1292,7 @@
     {
       "id": "l43-choose-alpha",
       "name": "6.7h: Choose a Significance Level",
-      "animation": "assets/FactorsAffectingPower.mp4",
+      "animation": "assets/ChooseSignificanceLevel.mp4",
       "unlockedBy": {
         "gold": 1
       },
