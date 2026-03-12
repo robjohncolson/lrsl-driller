@@ -1,4 +1,4 @@
-// grading-rules.js - AP Statistics Unit 7 Topics 7.1 and 7.2
+// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, and 7.3
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -387,6 +387,167 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: `Incorrect. The best conclusion is: ${expected}`
+    };
+  }
+
+  if (fieldId === "intervalInterpretAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. A confidence interval is interpreted as capturing the population mean in context, not as a probability statement about one fixed interval."
+      };
+    }
+    if (containsAny(answer, ["probability"])) {
+      return {
+        score: "I",
+        feedback: "Do not attach the confidence level as a probability to one specific interval. Interpret the interval as capturing the population mean in context."
+      };
+    }
+    if (containsAny(answer, ["have values between", "% of"])) {
+      return {
+        score: "I",
+        feedback: "That treats the interval as describing individual observations. The interval is about the population mean, not the percent of individuals in the population."
+      };
+    }
+    if (containsAny(answer, ["sample mean", "chance of falling"])) {
+      return {
+        score: "I",
+        feedback: "The interval is estimating the population mean. It is not a probability statement about the sample mean."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. A correct interpretation is: ${expected}`
+    };
+  }
+
+  if (fieldId === "claimJustifyAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. You used the location of the claim value relative to the interval to decide whether the claim is supported."
+      };
+    }
+    if (containsAny(answer, ["proves with certainty", "prove with certainty"])) {
+      return {
+        score: "I",
+        feedback: "A confidence interval can support or fail to support a claim, but it does not prove a claim with certainty."
+      };
+    }
+    if (containsAny(answer, ["cannot be used"])) {
+      return {
+        score: "I",
+        feedback: "A confidence interval can be used to judge whether a claimed population mean is plausible."
+      };
+    }
+    if (containsAny(answer, ["sample mean is not exactly", "sample mean"])) {
+      return {
+        score: "I",
+        feedback: "Do not base the decision only on the sample mean. Compare the claimed benchmark to the entire confidence interval."
+      };
+    }
+    if (context?.relation === "inside") {
+      return {
+        score: "I",
+        feedback: `Incorrect. Because ${context?.benchmark} ${context?.units} is inside the interval, it is a plausible value for the population mean, so the claim is not supported.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Because the entire interval is on one side of ${context?.benchmark} ${context?.units}, the interval supports the claim. The best conclusion is: ${expected}`
+    };
+  }
+
+  if (fieldId === "confidenceLevelAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. Confidence level describes the long-run capture rate of intervals from repeated random sampling."
+      };
+    }
+    if (containsAny(answer, ["probability", "this one interval"])) {
+      return {
+        score: "I",
+        feedback: "Confidence level is not the probability that one specific interval captures the population mean. It describes what happens over many random samples."
+      };
+    }
+    if (containsAny(answer, ["individual", "have values inside"])) {
+      return {
+        score: "I",
+        feedback: "That describes individual observations. Confidence level is about the proportion of intervals that capture the population mean."
+      };
+    }
+    if (containsAny(answer, ["sample means", "will equal"])) {
+      return {
+        score: "I",
+        feedback: "Confidence level is not about sample means equaling the population mean. It is about the proportion of intervals that capture the population mean."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. A correct interpretation is: ${expected}`
+    };
+  }
+
+  if (fieldId === "sampleSizeEffectAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. For a mean interval, margin of error is proportional to 1 / sqrt(n), so quadrupling n cuts the margin of error about in half."
+      };
+    }
+    if (containsAny(answer, ["doubles"])) {
+      return {
+        score: "I",
+        feedback: "Increasing sample size makes the margin of error smaller, not larger."
+      };
+    }
+    if (containsAny(answer, ["one-fourth"])) {
+      return {
+        score: "I",
+        feedback: "Margin of error is tied to 1 / sqrt(n), not 1 / n. Quadrupling the sample size cuts the margin of error about in half, not to one-fourth."
+      };
+    }
+    if (containsAny(answer, ["stays the same"])) {
+      return {
+        score: "I",
+        feedback: "Changing the sample size changes the standard error. A larger sample size makes the margin of error smaller."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct effect is: ${expected}`
+    };
+  }
+
+  if (fieldId === "confidenceLevelEffectAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. Lower confidence uses a smaller critical value, so the margin of error gets smaller."
+      };
+    }
+    if (containsAny(answer, ["gets larger"])) {
+      return {
+        score: "I",
+        feedback: "When the confidence level decreases, the critical value decreases too, so the margin of error gets smaller, not larger."
+      };
+    }
+    if (containsAny(answer, ["stays the same"])) {
+      return {
+        score: "I",
+        feedback: "Even with the same sample size, changing the confidence level changes the critical value and therefore changes the margin of error."
+      };
+    }
+    if (containsAny(answer, ["becomes 0"])) {
+      return {
+        score: "I",
+        feedback: "Lowering the confidence level makes the interval narrower, but the margin of error does not become 0."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct effect is: ${expected}`
     };
   }
 

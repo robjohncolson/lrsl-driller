@@ -121,9 +121,9 @@
     },
     {
       "id": "apstats-u7-mean-ci",
-      "name": "Intro to Inference for Means (7.1) & Constructing CI for mu (7.2)",
+      "name": "Inference for Means (7.1-7.3)",
       "subject": "AP Statistics",
-      "description": "Significance-testing logic for mean differences plus one-sample t-intervals: procedures, conditions, t*, margin of error, interval construction",
+      "description": "Significance-testing logic for mean differences, one-sample t-intervals, interpreting CIs, justifying claims, confidence level, and margin of error factors",
       "shortCode": "MCI"
     }
   ]

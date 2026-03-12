@@ -1,4 +1,4 @@
-// generator.js - AP Statistics Unit 7 Topics 7.1 and 7.2
+// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, and 7.3
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -250,6 +250,146 @@ const simulationScenarios = [
   { desc: "In a bonus-label versus refund-label study, the observed difference in sample means was 4.20 dollars.", observedDiff: 4.2, tailCount: 164, trials: 1000, claim: "the bonus label causes people like these to spend more on average than the refund label" }
 ];
 
+const intervalInterpretationScenarios = [
+  {
+    desc: "A bakery owner calculated a 95% confidence interval for the mean weight of all bags filled by a new wholesaler.",
+    confLevel: 95,
+    lowerText: "900.92",
+    upperText: "912.68",
+    units: "grams",
+    parameter: "mean weight of all bags filled by this wholesaler",
+    individuals: "bags filled by this wholesaler"
+  },
+  {
+    desc: "Wildlife biologists built a 90% confidence interval for the mean feeding rate of all fiddler crabs of this species.",
+    confLevel: 90,
+    lowerText: "65.89",
+    upperText: "69.41",
+    units: "scoops per 30 seconds",
+    parameter: "mean feeding rate of all fiddler crabs of this species",
+    individuals: "fiddler crabs of this species"
+  },
+  {
+    desc: "An environmental group built a 95% confidence interval for the mean lead level of all crows in a region.",
+    confLevel: 95,
+    lowerText: "4.416",
+    upperText: "5.384",
+    units: "parts per million",
+    parameter: "mean lead level of all crows in the region",
+    individuals: "crows in the region"
+  }
+];
+
+const claimJustificationScenarios = [
+  {
+    desc: "A bakery owner wants to know if powdered sugar bags from a new wholesaler are underfilled on average.",
+    givenText: "A 95% confidence interval for the mean weight of all bags filled by the wholesaler is 900.92 to 912.68 grams. The manufacturer claims the bags average 907 grams, and the bakery owner is worried the true mean is less than 907 grams.",
+    relation: "inside",
+    claimSupport: "no",
+    benchmarkText: "907",
+    units: "grams",
+    claim: "the bags are underfilled on average",
+    correct: "No. Because 907 grams is inside the interval, 907 grams is a plausible value for the population mean."
+  },
+  {
+    desc: "Biologists want to know whether this fiddler crab species feeds faster than 2 scoops per second on average.",
+    givenText: "A 90% confidence interval for the mean feeding rate is 65.89 to 69.41 scoops per 30 seconds. Since 2 scoops per second is 60 scoops per 30 seconds, compare the interval to 60 scoops per 30 seconds.",
+    relation: "above",
+    claimSupport: "yes",
+    benchmarkText: "60",
+    units: "scoops per 30 seconds",
+    claim: "the mean feeding rate is greater than 60 scoops per 30 seconds",
+    correct: "Yes. Because every value in the interval is greater than 60 scoops per 30 seconds, the data provide convincing evidence that the mean feeding rate is greater than 60 scoops per 30 seconds."
+  },
+  {
+    desc: "A biologist classified lead levels above 6.0 parts per million as unhealthy and wants to judge the regional mean.",
+    givenText: "A 95% confidence interval for the mean lead level of crows in the region is 4.416 to 5.384 parts per million. The question is whether there is convincing evidence that the population mean lead level is less than 6.0 parts per million.",
+    relation: "below",
+    claimSupport: "yes",
+    benchmarkText: "6.0",
+    units: "parts per million",
+    claim: "the population mean lead level is less than 6.0 parts per million",
+    correct: "Yes. Because every value in the interval is less than 6.0 parts per million, the data provide convincing evidence that the population mean lead level is less than 6.0 parts per million."
+  }
+];
+
+const confidenceLevelScenarios = [
+  {
+    desc: "Human body temperatures are approximately normally distributed with mean 98.6 degrees Fahrenheit and standard deviation 0.8 degrees Fahrenheit.",
+    sampleText: "many random samples of 10 people from the population of all humans",
+    parameter: "mean human body temperature of all people",
+    individuals: "people",
+    confLevel: 95,
+    n: 10
+  },
+  {
+    desc: "An environmental group takes a random sample of 23 crows from a region and builds a confidence interval for the regional mean lead level.",
+    sampleText: "many random samples of 23 crows from the region",
+    parameter: "mean lead level of all crows in the region",
+    individuals: "crows in the region",
+    confLevel: 95,
+    n: 23
+  },
+  {
+    desc: "Wildlife biologists study a random sample of 40 fiddler crabs and build a confidence interval for the species mean feeding rate.",
+    sampleText: "many random samples of 40 fiddler crabs of this species",
+    parameter: "mean feeding rate of all fiddler crabs of this species",
+    individuals: "fiddler crabs of this species",
+    confLevel: 90,
+    n: 40
+  },
+  {
+    desc: "A bakery owner samples 10 powdered sugar bags and builds a confidence interval for the wholesaler's mean fill weight.",
+    sampleText: "many random samples of 10 bags from this wholesaler",
+    parameter: "mean weight of all bags filled by this wholesaler",
+    individuals: "bags filled by this wholesaler",
+    confLevel: 95,
+    n: 10
+  }
+];
+
+const sampleSizeEffectScenarios = [
+  {
+    desc: "A researcher keeps the confidence level and sample standard deviation the same but increases the sample size for a mean interval.",
+    givenText: "The sample size increases from n = 10 to n = 40 while the confidence level and sample standard deviation stay the same.",
+    nFrom: 10,
+    nTo: 40
+  },
+  {
+    desc: "A biologist wants a more precise confidence interval for a population mean and increases the sample size.",
+    givenText: "The sample size increases from n = 16 to n = 64 while the confidence level and sample standard deviation stay the same.",
+    nFrom: 16,
+    nTo: 64
+  },
+  {
+    desc: "An environmental study uses a larger sample to reduce uncertainty in a confidence interval for a mean.",
+    givenText: "The sample size increases from n = 25 to n = 100 while the confidence level and sample standard deviation stay the same.",
+    nFrom: 25,
+    nTo: 100
+  }
+];
+
+const confidenceLevelEffectScenarios = [
+  {
+    desc: "A researcher lowers the confidence level while keeping the same sample data for a confidence interval for a mean.",
+    givenText: "The confidence level decreases from 95% to 90% while n and s stay the same.",
+    confFrom: 95,
+    confTo: 90
+  },
+  {
+    desc: "A confidence interval for a mean is rebuilt with a smaller confidence level.",
+    givenText: "The confidence level decreases from 99% to 95% while n and s stay the same.",
+    confFrom: 99,
+    confTo: 95
+  },
+  {
+    desc: "An analyst wants a narrower interval and is willing to use less confidence.",
+    givenText: "The confidence level decreases from 90% to 80% while n and s stay the same.",
+    confFrom: 90,
+    confTo: 80
+  }
+];
+
 function buildMarginScenario(template) {
   const pair = chooseSupportedPair(template.nChoices, template.confChoices);
   const n = pair.n;
@@ -357,6 +497,70 @@ function buildConclusionOptions(scen) {
       `Yes. Any positive observed difference gives convincing evidence that ${scen.claim}.`,
       `Yes. The simulation proves with certainty that ${scen.claim}.`,
       "No. Random assignment means the groups cannot be compared."
+    ])
+  };
+}
+
+function buildIntervalInterpretationOptions(scen) {
+  const correct = `We are ${scen.confLevel}% confident that the interval from ${scen.lowerText} to ${scen.upperText} ${scen.units} captures the ${scen.parameter}.`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `There is a ${scen.confLevel}% probability that the ${scen.parameter} is between ${scen.lowerText} and ${scen.upperText} ${scen.units}.`,
+      `${scen.confLevel}% of ${scen.individuals} have values between ${scen.lowerText} and ${scen.upperText} ${scen.units}.`,
+      `The sample mean has a ${scen.confLevel}% chance of falling between ${scen.lowerText} and ${scen.upperText} ${scen.units}.`
+    ])
+  };
+}
+
+function buildClaimJustifyOptions(scen) {
+  return {
+    correct: scen.correct,
+    options: shuffle([
+      scen.correct,
+      `Yes. The confidence interval proves with certainty that ${scen.claim}.`,
+      "No. A confidence interval cannot be used to judge a claim about a population mean.",
+      `Yes. Because the sample mean is not exactly ${scen.benchmarkText} ${scen.units}, that alone gives convincing evidence for the claim.`
+    ])
+  };
+}
+
+function buildConfidenceLevelOptions(scen) {
+  const correct = `If we took ${scen.sampleText} and built a ${scen.confLevel}% confidence interval for the ${scen.parameter} from each sample, then about ${scen.confLevel}% of those intervals would capture the population mean.`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `There is a ${scen.confLevel}% probability that this one interval captures the ${scen.parameter}.`,
+      `About ${scen.confLevel}% of the individual ${scen.individuals} have values inside the interval.`,
+      `About ${scen.confLevel}% of the sample means from those samples will equal the ${scen.parameter}.`
+    ])
+  };
+}
+
+function buildSampleSizeEffectOptions() {
+  const correct = "The margin of error is cut about in half.";
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      "The margin of error doubles.",
+      "The margin of error is cut to one-fourth of its original size.",
+      "The margin of error stays the same."
+    ])
+  };
+}
+
+function buildConfidenceLevelEffectOptions() {
+  const correct = "The margin of error gets smaller because the critical value gets smaller.";
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      "The margin of error gets larger because the critical value gets larger.",
+      "The margin of error stays the same because the sample size did not change.",
+      "The margin of error becomes 0 because the interval is more precise."
     ])
   };
 }
@@ -613,6 +817,133 @@ export function generateProblem(modeId, contextFromFile, mode) {
     );
 
     scenario = `${scen.desc}\n\nEstimated probability = ${scen.probText}. Decide whether that is convincing evidence.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l11-interpret-interval") {
+    const scen = drawFromBag("u73-interpret-interval", intervalInterpretationScenarios);
+    const interpretation = buildIntervalInterpretationOptions(scen);
+
+    answers = { intervalInterpretAnswer: { value: interpretation.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.3a: Interpret the Confidence Interval",
+        problemText: "Choose the correct interpretation in context.",
+        givenText: `${scen.desc} The interval is ${scen.lowerText} to ${scen.upperText} ${scen.units}.`,
+        optA: interpretation.options[0],
+        optB: interpretation.options[1],
+        optC: interpretation.options[2],
+        optD: interpretation.options[3],
+        confLevel: `${scen.confLevel}`,
+        lower: scen.lowerText,
+        upper: scen.upperText,
+        units: scen.units,
+        parameter: scen.parameter
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nInterpret the interval from ${scen.lowerText} to ${scen.upperText} ${scen.units}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l12-justify-claim") {
+    const scen = drawFromBag("u73-justify-claim", claimJustificationScenarios);
+    const conclusion = buildClaimJustifyOptions(scen);
+
+    answers = { claimJustifyAnswer: { value: conclusion.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.3b: Justify a Claim with the Interval",
+        problemText: "Use the interval to decide whether the claim is supported.",
+        givenText: scen.givenText,
+        optA: conclusion.options[0],
+        optB: conclusion.options[1],
+        optC: conclusion.options[2],
+        optD: conclusion.options[3],
+        claimSupport: scen.claimSupport,
+        relation: scen.relation,
+        benchmark: scen.benchmarkText,
+        units: scen.units,
+        claim: scen.claim
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.givenText}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l13-interpret-confidence-level") {
+    const scen = drawFromBag("u73-confidence-level", confidenceLevelScenarios);
+    const interpretation = buildConfidenceLevelOptions(scen);
+
+    answers = { confidenceLevelAnswer: { value: interpretation.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.3c: Interpret the Confidence Level",
+        problemText: "Interpret the confidence level using repeated random sampling.",
+        givenText: `${scen.desc} A ${scen.confLevel}% confidence interval is built for the ${scen.parameter}.`,
+        optA: interpretation.options[0],
+        optB: interpretation.options[1],
+        optC: interpretation.options[2],
+        optD: interpretation.options[3],
+        confLevel: `${scen.confLevel}`,
+        n: `${scen.n}`,
+        parameter: scen.parameter
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nInterpret what ${scen.confLevel}% confidence means.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l14-sample-size-margin-error") {
+    const scen = drawFromBag("u73-sample-size", sampleSizeEffectScenarios);
+    const effect = buildSampleSizeEffectOptions();
+
+    answers = { sampleSizeEffectAnswer: { value: effect.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.3d: Sample Size and Margin of Error",
+        problemText: "Reason about how changing n affects margin of error.",
+        givenText: scen.givenText,
+        optA: effect.options[0],
+        optB: effect.options[1],
+        optC: effect.options[2],
+        optD: effect.options[3],
+        nFrom: `${scen.nFrom}`,
+        nTo: `${scen.nTo}`
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.givenText}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l15-confidence-level-margin-error") {
+    const scen = drawFromBag("u73-conf-me", confidenceLevelEffectScenarios);
+    const effect = buildConfidenceLevelEffectOptions();
+
+    answers = { confidenceLevelEffectAnswer: { value: effect.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.3e: Confidence Level and Margin of Error",
+        problemText: "Reason about how changing the confidence level affects margin of error.",
+        givenText: scen.givenText,
+        optA: effect.options[0],
+        optB: effect.options[1],
+        optC: effect.options[2],
+        optD: effect.options[3],
+        confFrom: `${scen.confFrom}`,
+        confTo: `${scen.confTo}`
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.givenText}`;
     return { context, graphConfig, answers, scenario };
   }
 
