@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u7-mean-ci",
-    "name": "Introducing Statistics: Should I Worry About Error? (7.1) and Constructing a Confidence Interval for a Population Mean (7.2)",
+    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), and Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3)",
     "subject": "AP Statistics",
-    "description": "Significance-testing logic for a difference in means: identify evidence, expected differences, chance variation, simulation probabilities, and conclusions, plus one-sample t-intervals for a population mean."
+    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, and Topic 7.3 skills: interpreting confidence intervals, justifying claims about a population mean, interpreting confidence level, and reasoning about margin of error."
   },
 
   "config": {
@@ -207,6 +207,126 @@
           }
         ]
       }
+    },
+    {
+      "id": "l11-interpret-interval",
+      "name": "7.3a: Interpret the Confidence Interval",
+      "animation": "assets/MeanCIInterpretInterval.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "intervalInterpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation of the confidence interval is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l12-justify-claim",
+      "name": "7.3b: Justify a Claim with the Interval",
+      "animation": "assets/MeanCIJustifyClaim.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "claimJustifyAnswer",
+            "type": "dropdown",
+            "label": "Based on the interval, which conclusion is best?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l13-interpret-confidence-level",
+      "name": "7.3c: Interpret the Confidence Level",
+      "animation": "assets/MeanCIInterpretConfidenceLevel.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "confidenceLevelAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation of the confidence level is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l14-sample-size-margin-error",
+      "name": "7.3d: Sample Size and Margin of Error",
+      "animation": "assets/MeanCISampleSizeMarginOfError.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "sampleSizeEffectAnswer",
+            "type": "dropdown",
+            "label": "If the sample size changes as described, what happens to the margin of error?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l15-confidence-level-margin-error",
+      "name": "7.3e: Confidence Level and Margin of Error",
+      "animation": "assets/MeanCIConfidenceLevelMarginOfError.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "confidenceLevelEffectAnswer",
+            "type": "dropdown",
+            "label": "If the confidence level changes as described, what happens to the margin of error?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
     }
   ],
 
@@ -236,7 +356,12 @@
       "nullDiffAnswer": "If the treatment makes no difference, the difference in sample means should be centered at 0.",
       "chanceExplainAnswer": "Chance-variation explanation = no real treatment effect, and the observed difference came from random assignment alone.",
       "simProbAnswer": "Estimate the probability with tail count divided by total simulations, then write the answer as a decimal.",
-      "conclusionAnswer": "If the simulated probability is small, rule out chance variation as a likely explanation. If it is not small, chance variation is still plausible."
+      "conclusionAnswer": "If the simulated probability is small, rule out chance variation as a likely explanation. If it is not small, chance variation is still plausible.",
+      "intervalInterpretAnswer": "Use the template: We are C% confident that the interval from lower to upper captures the population mean in context.",
+      "claimJustifyAnswer": "If the claimed value is inside the interval, it is plausible. If every value in the interval is above or below the benchmark, that supports a one-sided claim.",
+      "confidenceLevelAnswer": "Interpret confidence level with repeated random sampling: about C% of intervals from many samples would capture the population mean.",
+      "sampleSizeEffectAnswer": "For a mean interval, margin of error is proportional to 1 / sqrt(n). Quadrupling n cuts the margin of error about in half.",
+      "confidenceLevelEffectAnswer": "Keeping everything else the same, a lower confidence level uses a smaller critical value and gives a smaller margin of error."
     },
     "penalty": {
       "0": "gold",
@@ -308,7 +433,37 @@
         "id": "l10-draw-conclusion",
         "name": "10",
         "unlockedBy": { "gold": 1 },
-        "celebrationMessage": "Topics 7.1 and 7.2 complete. You can connect simulation-based evidence with confidence intervals for a mean."
+        "celebrationMessage": "Simulation-based evidence complete. Next, interpret confidence intervals and use them to justify claims about a population mean."
+      },
+      {
+        "id": "l11-interpret-interval",
+        "name": "11",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can interpret a confidence interval in context. Next, use an interval to justify a claim."
+      },
+      {
+        "id": "l12-justify-claim",
+        "name": "12",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Claim logic is in place. Next, interpret what the confidence level itself means."
+      },
+      {
+        "id": "l13-interpret-confidence-level",
+        "name": "13",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can interpret the confidence level. Next, connect sample size to margin of error."
+      },
+      {
+        "id": "l14-sample-size-margin-error",
+        "name": "14",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can reason about how sample size changes precision. One last step: connect confidence level to margin of error."
+      },
+      {
+        "id": "l15-confidence-level-margin-error",
+        "name": "15",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topics 7.1, 7.2, and 7.3 complete. You can interpret and use confidence intervals for a population mean."
       }
     ]
   }
