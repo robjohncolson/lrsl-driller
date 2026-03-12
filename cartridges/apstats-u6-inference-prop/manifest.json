@@ -601,6 +601,104 @@
       }
     },
     {
+      "id": "l26-direction-64",
+      "name": "6.4g: One-Sided or Two-Sided?",
+      "animation": "assets/TestDirection64.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "direction64Answer",
+            "type": "dropdown",
+            "label": "Which description matches the alternative hypothesis for this question?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l27-parameter-definition-64",
+      "name": "6.4h: Define the Parameter",
+      "animation": "assets/ParameterDefinition64.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "parameter64Answer",
+            "type": "dropdown",
+            "label": "Which definition correctly describes the parameter p?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l28-large-counts-64",
+      "name": "6.4i: Calculate Large Counts",
+      "animation": "assets/LargeCounts64.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "np0Answer64",
+            "type": "number",
+            "label": "Calculate np0 using the null value p0:",
+            "step": 0.01,
+            "min": 0
+          },
+          {
+            "id": "nq0Answer64",
+            "type": "number",
+            "label": "Calculate n(1-p0) using the null value p0:",
+            "step": 0.01,
+            "min": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "l29-condition-diagnosis-64",
+      "name": "6.4j: Diagnose the Condition Check",
+      "animation": "assets/ConditionFailure64.mp4",
+      "unlockedBy": {
+        "gold": 3
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "conditionFailure64Answer",
+            "type": "dropdown",
+            "label": "Which statement correctly identifies the condition issue?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
       "id": "l23-capstone-64",
       "name": "6.4 Capstone",
       "animation": "assets/WriteBothHypotheses.mp4",
@@ -1607,104 +1705,6 @@
           }
         ]
       }
-    },
-    {
-      "id": "l26-direction-64",
-      "name": "6.4g: One-Sided or Two-Sided?",
-      "animation": "assets/TestDirection64.mp4",
-      "unlockedBy": {
-        "gold": 1
-      },
-      "layout": {
-        "inputs": [
-          {
-            "id": "direction64Answer",
-            "type": "dropdown",
-            "label": "Which description matches the alternative hypothesis for this question?",
-            "options": [
-              "{{optA}}",
-              "{{optB}}",
-              "{{optC}}",
-              "{{optD}}"
-            ],
-            "placeholder": "Choose..."
-          }
-        ]
-      }
-    },
-    {
-      "id": "l27-parameter-definition-64",
-      "name": "6.4h: Define the Parameter",
-      "animation": "assets/ParameterDefinition64.mp4",
-      "unlockedBy": {
-        "gold": 1
-      },
-      "layout": {
-        "inputs": [
-          {
-            "id": "parameter64Answer",
-            "type": "dropdown",
-            "label": "Which definition correctly describes the parameter p?",
-            "options": [
-              "{{optA}}",
-              "{{optB}}",
-              "{{optC}}",
-              "{{optD}}"
-            ],
-            "placeholder": "Choose..."
-          }
-        ]
-      }
-    },
-    {
-      "id": "l28-large-counts-64",
-      "name": "6.4i: Calculate Large Counts",
-      "animation": "assets/LargeCounts64.mp4",
-      "unlockedBy": {
-        "gold": 1
-      },
-      "layout": {
-        "inputs": [
-          {
-            "id": "np0Answer64",
-            "type": "number",
-            "label": "Calculate np0 using the null value p0:",
-            "step": 0.01,
-            "min": 0
-          },
-          {
-            "id": "nq0Answer64",
-            "type": "number",
-            "label": "Calculate n(1-p0) using the null value p0:",
-            "step": 0.01,
-            "min": 0
-          }
-        ]
-      }
-    },
-    {
-      "id": "l29-condition-diagnosis-64",
-      "name": "6.4j: Diagnose the Condition Check",
-      "animation": "assets/ConditionFailure64.mp4",
-      "unlockedBy": {
-        "gold": 3
-      },
-      "layout": {
-        "inputs": [
-          {
-            "id": "conditionFailure64Answer",
-            "type": "dropdown",
-            "label": "Which statement correctly identifies the condition issue?",
-            "options": [
-              "{{optA}}",
-              "{{optB}}",
-              "{{optC}}",
-              "{{optD}}"
-            ],
-            "placeholder": "Choose..."
-          }
-        ]
-      }
     }
   ],
   "grading": {
@@ -2019,320 +2019,8 @@
         "celebrationMessage": "Conditions verified! Time for the 6.4 capstone."
       },
       {
-        "id": "l23-capstone-64",
-        "name": "23",
-        "unlockedBy": {
-          "gold": 3
-        },
-        "celebrationMessage": "Topic 6.4 mastered! You can set up a complete significance test for a population proportion!"
-      },
-      {
-        "id": "l24-test-statistic",
-        "name": "24",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Test statistic calculated! Now learn to find the p-value."
-      },
-      {
-        "id": "l25-calculate-pvalue",
-        "name": "25",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "p-value calculated! Now learn to interpret what it means."
-      },
-      {
-        "id": "l26-interpret-pvalue",
-        "name": "26",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "p-value interpreted! Now identify the direction of the test."
-      },
-      {
-        "id": "l27-test-direction",
-        "name": "27",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Test direction mastered! Time for the 6.5 capstone."
-      },
-      {
-        "id": "l28-capstone-65",
-        "name": "28",
-        "unlockedBy": {
-          "gold": 3
-        },
-        "celebrationMessage": "Topic 6.5 mastered! You can calculate and interpret test statistics and p-values for a population proportion!"
-      },
-      {
-        "id": "l29-compare-pvalue-alpha",
-        "name": "29",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You can compare p-values to significance levels! Now learn to make the full decision."
-      },
-      {
-        "id": "l30-reject-decision",
-        "name": "30",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Decision made! Now write the full conclusion in context."
-      },
-      {
-        "id": "l31-write-conclusion",
-        "name": "31",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Conclusion written! Now learn to spot conclusion errors."
-      },
-      {
-        "id": "l32-conclusion-errors",
-        "name": "32",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Error detective! Now put it all together in a complete test."
-      },
-      {
-        "id": "l33-full-test",
-        "name": "33",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Complete test mastered! Time for the 6.6 capstone."
-      },
-      {
-        "id": "l34-capstone-66",
-        "name": "34",
-        "unlockedBy": {
-          "gold": 3
-        },
-        "celebrationMessage": "Topic 6.6 mastered! You can perform and conclude a complete significance test for a population proportion!"
-      },
-      {
-        "id": "l35-identify-error-type",
-        "name": "35",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You can classify testing outcomes! Now describe Type I and Type II errors in context."
-      },
-      {
-        "id": "l36-interpret-errors",
-        "name": "36",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You can explain both errors in context! Now connect power to error probabilities."
-      },
-      {
-        "id": "l37-power-probabilities",
-        "name": "37",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Power and error probabilities make sense! Next, analyze what changes power."
-      },
-      {
-        "id": "l38-power-factors",
-        "name": "38",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You know what affects power! Time for the 6.7 capstone."
-      },
-      {
-        "id": "l39-capstone-67",
-        "name": "39",
-        "unlockedBy": {
-          "gold": 3
-        },
-        "celebrationMessage": "6.7 capstone complete! Now connect significance level directly to the probability of a Type I error."
-      },
-      {
-        "id": "l40-alpha-type1",
-        "name": "40",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You linked α to Type I error! Now define power precisely."
-      },
-      {
-        "id": "l41-power-definition",
-        "name": "41",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Power is locked in. Next, analyze the tradeoff created by changing α."
-      },
-      {
-        "id": "l42-alpha-tradeoff",
-        "name": "42",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You understand the α tradeoff. Now choose a significance level based on consequences."
-      },
-      {
-        "id": "l43-choose-alpha",
-        "name": "43",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Topic 6.7 mastered! You can identify testing errors, interpret power, and reason about alpha tradeoffs and significance-level choices!"
-      },
-      {
-        "id": "l44-identify-two-prop-ci",
-        "name": "44",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You can identify the right two-sample interval. Next, verify the conditions for comparing two proportions."
-      },
-      {
-        "id": "l45-check-two-prop-conditions",
-        "name": "45",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Conditions checked. Now calculate the margin of error for the difference in proportions."
-      },
-      {
-        "id": "l46-two-prop-margin-error",
-        "name": "46",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Margin of error found. Next, construct the full confidence interval."
-      },
-      {
-        "id": "l47-two-prop-confidence-interval",
-        "name": "47",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Interval constructed! Finish by interpreting the difference in context."
-      },
-      {
-        "id": "l48-interpret-two-prop-interval",
-        "name": "48",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Topic 6.8 mastered! You can identify, check, calculate, and interpret confidence intervals for the difference of two proportions!"
-      },
-      {
-        "id": "l49-interpret-two-prop-claim-interval",
-        "name": "49",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You can interpret the interval in context. Next, decide whether it supports a claim."
-      },
-      {
-        "id": "l50-justify-two-prop-claim",
-        "name": "50",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Claim decision made. Now justify it using the interval itself."
-      },
-      {
-        "id": "l51-explain-two-prop-claim",
-        "name": "51",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You can justify claims from a two-proportion interval. Finish by interpreting the confidence level."
-      },
-      {
-        "id": "l52-two-prop-confidence-level-meaning",
-        "name": "52",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Topic 6.9 mastered! You can interpret a two-proportion confidence interval, justify a claim with it, and explain the confidence level meaning."
-      },
-      {
-        "id": "l17-hypotheses-610",
-        "name": "53",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You can state null and alternative hypotheses for p1 - p2. Next: choose the right test procedure."
-      },
-      {
-        "id": "l18-procedure-610",
-        "name": "54",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Procedure identified. Next: compute the pooled proportion used for condition checks."
-      },
-      {
-        "id": "l19-pooled-610",
-        "name": "55",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Pooled proportion mastered. Final step: verify all conditions for the two-sample z test."
-      },
-      {
-        "id": "l20-conditions-610",
-        "name": "56",
-        "unlockedBy": {
-          "gold": 3
-        },
-        "celebrationMessage": "Topic 6.10 mastered! You can set up and validate a two-sample z test for a difference in population proportions."
-      },
-      {
-        "id": "l21-test-statistic-611",
-        "name": "57",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You can compute the two-proportion test statistic. Next: turn z into a p-value."
-      },
-      {
-        "id": "l22-calculate-pvalue-611",
-        "name": "58",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "p-value found. Next: interpret what that probability means in context."
-      },
-      {
-        "id": "l23-interpret-pvalue-611",
-        "name": "59",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "You can interpret the p-value. Next: use it to make the testing decision."
-      },
-      {
-        "id": "l24-decision-611",
-        "name": "60",
-        "unlockedBy": {
-          "gold": 1
-        },
-        "celebrationMessage": "Decision made. Finish by writing the full two-proportion conclusion."
-      },
-      {
-        "id": "l25-conclusion-611",
-        "name": "61",
-        "unlockedBy": {
-          "gold": 3
-        },
-        "celebrationMessage": "Topic 6.11 mastered! You can carry out, interpret, and conclude a two-sample z test for a difference in population proportions."
-      },
-      {
         "id": "l26-direction-64",
-        "name": "62",
+        "name": "23",
         "unlockedBy": {
           "gold": 1
         },
@@ -2340,7 +2028,7 @@
       },
       {
         "id": "l27-parameter-definition-64",
-        "name": "63",
+        "name": "24",
         "unlockedBy": {
           "gold": 1
         },
@@ -2348,7 +2036,7 @@
       },
       {
         "id": "l28-large-counts-64",
-        "name": "64",
+        "name": "25",
         "unlockedBy": {
           "gold": 1
         },
@@ -2356,11 +2044,323 @@
       },
       {
         "id": "l29-condition-diagnosis-64",
-        "name": "65",
+        "name": "26",
         "unlockedBy": {
           "gold": 3
         },
         "celebrationMessage": "Topic 6.4 extension complete! You can classify alternatives, define parameters, and diagnose one-sample z-test setup conditions."
+      },
+      {
+        "id": "l23-capstone-64",
+        "name": "27",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Topic 6.4 mastered! You can set up a complete significance test for a population proportion!"
+      },
+      {
+        "id": "l24-test-statistic",
+        "name": "28",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Test statistic calculated! Now learn to find the p-value."
+      },
+      {
+        "id": "l25-calculate-pvalue",
+        "name": "29",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p-value calculated! Now learn to interpret what it means."
+      },
+      {
+        "id": "l26-interpret-pvalue",
+        "name": "30",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p-value interpreted! Now identify the direction of the test."
+      },
+      {
+        "id": "l27-test-direction",
+        "name": "31",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Test direction mastered! Time for the 6.5 capstone."
+      },
+      {
+        "id": "l28-capstone-65",
+        "name": "32",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Topic 6.5 mastered! You can calculate and interpret test statistics and p-values for a population proportion!"
+      },
+      {
+        "id": "l29-compare-pvalue-alpha",
+        "name": "33",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can compare p-values to significance levels! Now learn to make the full decision."
+      },
+      {
+        "id": "l30-reject-decision",
+        "name": "34",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Decision made! Now write the full conclusion in context."
+      },
+      {
+        "id": "l31-write-conclusion",
+        "name": "35",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Conclusion written! Now learn to spot conclusion errors."
+      },
+      {
+        "id": "l32-conclusion-errors",
+        "name": "36",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Error detective! Now put it all together in a complete test."
+      },
+      {
+        "id": "l33-full-test",
+        "name": "37",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Complete test mastered! Time for the 6.6 capstone."
+      },
+      {
+        "id": "l34-capstone-66",
+        "name": "38",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Topic 6.6 mastered! You can perform and conclude a complete significance test for a population proportion!"
+      },
+      {
+        "id": "l35-identify-error-type",
+        "name": "39",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can classify testing outcomes! Now describe Type I and Type II errors in context."
+      },
+      {
+        "id": "l36-interpret-errors",
+        "name": "40",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can explain both errors in context! Now connect power to error probabilities."
+      },
+      {
+        "id": "l37-power-probabilities",
+        "name": "41",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Power and error probabilities make sense! Next, analyze what changes power."
+      },
+      {
+        "id": "l38-power-factors",
+        "name": "42",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You know what affects power! Time for the 6.7 capstone."
+      },
+      {
+        "id": "l39-capstone-67",
+        "name": "43",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "6.7 capstone complete! Now connect significance level directly to the probability of a Type I error."
+      },
+      {
+        "id": "l40-alpha-type1",
+        "name": "44",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You linked α to Type I error! Now define power precisely."
+      },
+      {
+        "id": "l41-power-definition",
+        "name": "45",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Power is locked in. Next, analyze the tradeoff created by changing α."
+      },
+      {
+        "id": "l42-alpha-tradeoff",
+        "name": "46",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You understand the α tradeoff. Now choose a significance level based on consequences."
+      },
+      {
+        "id": "l43-choose-alpha",
+        "name": "47",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Topic 6.7 mastered! You can identify testing errors, interpret power, and reason about alpha tradeoffs and significance-level choices!"
+      },
+      {
+        "id": "l44-identify-two-prop-ci",
+        "name": "48",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can identify the right two-sample interval. Next, verify the conditions for comparing two proportions."
+      },
+      {
+        "id": "l45-check-two-prop-conditions",
+        "name": "49",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Conditions checked. Now calculate the margin of error for the difference in proportions."
+      },
+      {
+        "id": "l46-two-prop-margin-error",
+        "name": "50",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Margin of error found. Next, construct the full confidence interval."
+      },
+      {
+        "id": "l47-two-prop-confidence-interval",
+        "name": "51",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Interval constructed! Finish by interpreting the difference in context."
+      },
+      {
+        "id": "l48-interpret-two-prop-interval",
+        "name": "52",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Topic 6.8 mastered! You can identify, check, calculate, and interpret confidence intervals for the difference of two proportions!"
+      },
+      {
+        "id": "l49-interpret-two-prop-claim-interval",
+        "name": "53",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can interpret the interval in context. Next, decide whether it supports a claim."
+      },
+      {
+        "id": "l50-justify-two-prop-claim",
+        "name": "54",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Claim decision made. Now justify it using the interval itself."
+      },
+      {
+        "id": "l51-explain-two-prop-claim",
+        "name": "55",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can justify claims from a two-proportion interval. Finish by interpreting the confidence level."
+      },
+      {
+        "id": "l52-two-prop-confidence-level-meaning",
+        "name": "56",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Topic 6.9 mastered! You can interpret a two-proportion confidence interval, justify a claim with it, and explain the confidence level meaning."
+      },
+      {
+        "id": "l17-hypotheses-610",
+        "name": "57",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can state null and alternative hypotheses for p1 - p2. Next: choose the right test procedure."
+      },
+      {
+        "id": "l18-procedure-610",
+        "name": "58",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Procedure identified. Next: compute the pooled proportion used for condition checks."
+      },
+      {
+        "id": "l19-pooled-610",
+        "name": "59",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Pooled proportion mastered. Final step: verify all conditions for the two-sample z test."
+      },
+      {
+        "id": "l20-conditions-610",
+        "name": "60",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Topic 6.10 mastered! You can set up and validate a two-sample z test for a difference in population proportions."
+      },
+      {
+        "id": "l21-test-statistic-611",
+        "name": "61",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can compute the two-proportion test statistic. Next: turn z into a p-value."
+      },
+      {
+        "id": "l22-calculate-pvalue-611",
+        "name": "62",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "p-value found. Next: interpret what that probability means in context."
+      },
+      {
+        "id": "l23-interpret-pvalue-611",
+        "name": "63",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can interpret the p-value. Next: use it to make the testing decision."
+      },
+      {
+        "id": "l24-decision-611",
+        "name": "64",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Decision made. Finish by writing the full two-proportion conclusion."
+      },
+      {
+        "id": "l25-conclusion-611",
+        "name": "65",
+        "unlockedBy": {
+          "gold": 3
+        },
+        "celebrationMessage": "Topic 6.11 mastered! You can carry out, interpret, and conclude a two-sample z test for a difference in population proportions."
       }
     ]
   }
