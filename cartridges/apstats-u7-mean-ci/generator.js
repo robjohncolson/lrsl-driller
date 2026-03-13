@@ -54,6 +54,16 @@ const PROCEDURE_WRONG = [
   "One-sample t-test for a population mean",
   "Two-sample t-interval for a difference in population means"
 ];
+const TEST_PROCEDURE_CORRECT = "One-sample t-test for a population mean";
+const TEST_PROCEDURE_WRONG = [
+  "One-sample t-interval for a population mean",
+  "One-sample z-test for a population proportion",
+  "Two-sample t-test for a difference in population means"
+];
+const H0 = "H\u2080";
+const HA = "H\u2090";
+const MU = "\u03bc";
+const NEQ = "\u2260";
 
 const T_CRITICALS = {
   "10-90": 1.833,
@@ -390,6 +400,81 @@ const confidenceLevelEffectScenarios = [
   }
 ];
 
+const meanTestSetupTemplates = [
+  {
+    statementPrefix: "Got Hops? An article claims that the average vertical jump for students at this high school is",
+    questionText: "AP Statistics students want to know whether the average vertical jump for all students at this school differs from the claim.",
+    sampleDescription: "A random sample of 20 students is selected and their vertical jumps are recorded.",
+    parameter: "mean vertical jump for all students at this high school",
+    sampleStatisticLabel: "sample mean vertical jump of the 20 students in the sample",
+    individualLabel: "vertical jump of one student at this high school",
+    populationTotalLabel: "total vertical jump of all students at this high school",
+    units: "inches",
+    benchmarkChoices: [15, 16, 17],
+    relation: "!="
+  },
+  {
+    statementPrefix: "A tire manufacturer must test whether its Tread40 tires last more than",
+    questionText: "A quality-control engineer wants to know whether the true mean mileage exceeds the benchmark.",
+    sampleDescription: "A random sample of 35 tires is tested under simulated driving conditions.",
+    parameter: "mean mileage for all Tread40 tires",
+    sampleStatisticLabel: "sample mean mileage of the 35 tires in the test",
+    individualLabel: "mileage of one Tread40 tire",
+    populationTotalLabel: "total mileage of all Tread40 tires",
+    units: "miles",
+    benchmarkChoices: [40000, 42000, 44000],
+    relation: ">"
+  },
+  {
+    statementPrefix: "CB Tablets claims that its tablet computers have an average battery life of",
+    questionText: "A consumer advocacy group wonders whether the true mean battery life is less than the claim.",
+    sampleDescription: "Battery-life data are collected for 10 tablets from this brand.",
+    parameter: "mean battery life of all CB Tablets under normal usage",
+    sampleStatisticLabel: "sample mean battery life of the 10 tablets in the sample",
+    individualLabel: "battery life of one CB Tablet",
+    populationTotalLabel: "total battery life of all CB Tablets",
+    units: "hours",
+    benchmarkChoices: [14, 15, 16],
+    relation: "<"
+  }
+];
+
+const testConditionScenarios = [
+  {
+    desc: "AP Statistics students selected a random sample of 20 students from a large high school and measured vertical jump height. A boxplot of the sample shows no strong skewness or outliers.",
+    given: "n = 20, random sample, and 20 students is less than 10% of all students at the school.",
+    allMet: true,
+    detail: "Random: met because the students were randomly selected. 10%: met because 20 is less than 10% of the students at a large high school. Shape: met because n is less than 30 but the sample shows no strong skewness or outliers.",
+    explanationGroups: [
+      ["random", "randomly", "random sample"],
+      ["10%", "10 percent", "less than 10%", "population"],
+      ["skew", "outlier", "no strong skewness", "no outliers"]
+    ]
+  },
+  {
+    desc: "A consumer advocacy group records battery life for 10 CB Tablets, but there is no indication that the tablets were randomly selected. A dotplot shows strong skewness and a potential outlier.",
+    given: "n = 10, not random, and 10 tablets is less than 10% of all tablets made by CB Tablets.",
+    allMet: false,
+    detail: "Random: not met because there is no indication of a random sample. 10%: met because 10 is less than 10% of all tablets made by CB Tablets. Shape: not met because n is less than 30 and the data show strong skewness and a potential outlier.",
+    explanationGroups: [
+      ["random", "not random", "no indication", "random sample"],
+      ["10%", "10 percent", "less than 10%", "population"],
+      ["skew", "strong skewness", "outlier", "potential outlier"]
+    ]
+  },
+  {
+    desc: "A quality-control engineer randomly selects 35 Tread40 tires and tests them on a driving simulator.",
+    given: "n = 35, random sample, and 35 tires is less than 10% of all Tread40 tires.",
+    allMet: true,
+    detail: "Random: met because the tires were randomly selected. 10%: met because 35 is less than 10% of all Tread40 tires. Shape: met because n is at least 30.",
+    explanationGroups: [
+      ["random", "randomly", "random sample"],
+      ["10%", "10 percent", "less than 10%", "population"],
+      ["30", "n >= 30", "at least 30", "large sample"]
+    ]
+  }
+];
+
 function buildMarginScenario(template) {
   const pair = chooseSupportedPair(template.nChoices, template.confChoices);
   const n = pair.n;
@@ -561,6 +646,79 @@ function buildConfidenceLevelEffectOptions() {
       "The margin of error gets larger because the critical value gets larger.",
       "The margin of error stays the same because the sample size did not change.",
       "The margin of error becomes 0 because the interval is more precise."
+    ])
+  };
+}
+
+function formatBenchmarkNumber(value) {
+  return Number.isInteger(value) ? value.toLocaleString("en-US") : String(value);
+}
+
+function pickDifferentValue(values, current) {
+  return choice(values.filter(value => value !== current));
+}
+
+function getRelationSymbol(relation) {
+  if (relation === "!=") return NEQ;
+  return relation;
+}
+
+function getOppositeRelation(relation) {
+  if (relation === ">") return "<";
+  if (relation === "<") return ">";
+  return choice([">", "<"]);
+}
+
+function buildMeanTestSetupScenario(template) {
+  const benchmark = choice(template.benchmarkChoices);
+  const benchmarkCore = formatBenchmarkNumber(benchmark);
+  const wrongBenchmark = pickDifferentValue(template.benchmarkChoices, benchmark);
+  const wrongBenchmarkCore = formatBenchmarkNumber(wrongBenchmark);
+
+  return {
+    ...template,
+    benchmark,
+    benchmarkText: `${benchmarkCore} ${template.units}`,
+    wrongBenchmarkText: `${wrongBenchmarkCore} ${template.units}`,
+    desc: `${template.statementPrefix} ${benchmarkCore} ${template.units}.`,
+    givenText: `${template.statementPrefix} ${benchmarkCore} ${template.units}. ${template.questionText}`
+  };
+}
+
+function buildNullHypothesisOptions(scen) {
+  const correct = `${H0}: ${MU} = ${scen.benchmarkText}`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `${H0}: x-bar = ${scen.benchmarkText}`,
+      `${H0}: ${MU} ${getRelationSymbol(scen.relation)} ${scen.benchmarkText}`,
+      `${H0}: ${MU} = ${scen.wrongBenchmarkText}`
+    ])
+  };
+}
+
+function buildAlternativeHypothesisOptions(scen) {
+  const correct = `${HA}: ${MU} ${getRelationSymbol(scen.relation)} ${scen.benchmarkText}`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `${HA}: ${MU} = ${scen.benchmarkText}`,
+      `${HA}: ${MU} ${getOppositeRelation(scen.relation)} ${scen.benchmarkText}`,
+      `${HA}: x-bar ${getRelationSymbol(scen.relation)} ${scen.benchmarkText}`
+    ])
+  };
+}
+
+function buildParameterDefinitionOptions(scen) {
+  return {
+    correct: scen.parameter,
+    options: shuffle([
+      scen.parameter,
+      scen.sampleStatisticLabel,
+      scen.individualLabel,
+      scen.populationTotalLabel
     ])
   };
 }
@@ -944,6 +1102,128 @@ export function generateProblem(modeId, contextFromFile, mode) {
     );
 
     scenario = `${scen.desc}\n\n${scen.givenText}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l16-state-null-hypothesis") {
+    const template = drawFromBag("u74-null", meanTestSetupTemplates);
+    const scen = buildMeanTestSetupScenario(template);
+    const hypothesis = buildNullHypothesisOptions(scen);
+
+    answers = { nullHypothesisAnswer: { value: hypothesis.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.4a: State the Null Hypothesis",
+        problemText: "Choose the null hypothesis for the test.",
+        givenText: scen.givenText,
+        optA: hypothesis.options[0],
+        optB: hypothesis.options[1],
+        optC: hypothesis.options[2],
+        optD: hypothesis.options[3],
+        benchmark: scen.benchmarkText,
+        parameter: scen.parameter
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.questionText}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l17-state-alternative-hypothesis") {
+    const template = drawFromBag("u74-alt", meanTestSetupTemplates);
+    const scen = buildMeanTestSetupScenario(template);
+    const hypothesis = buildAlternativeHypothesisOptions(scen);
+
+    answers = { alternativeHypothesisAnswer: { value: hypothesis.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.4b: State the Alternative Hypothesis",
+        problemText: "Choose the alternative hypothesis that matches the question of interest.",
+        givenText: scen.givenText,
+        optA: hypothesis.options[0],
+        optB: hypothesis.options[1],
+        optC: hypothesis.options[2],
+        optD: hypothesis.options[3],
+        benchmark: scen.benchmarkText,
+        relation: scen.relation,
+        parameter: scen.parameter
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.questionText}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l18-define-parameter") {
+    const template = drawFromBag("u74-parameter", meanTestSetupTemplates);
+    const scen = buildMeanTestSetupScenario(template);
+    const definition = buildParameterDefinitionOptions(scen);
+
+    answers = { parameterDefinitionAnswer: { value: definition.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.4c: Define the Parameter",
+        problemText: "Identify what mu represents in context.",
+        givenText: `${scen.givenText} ${scen.sampleDescription}`,
+        optA: definition.options[0],
+        optB: definition.options[1],
+        optC: definition.options[2],
+        optD: definition.options[3],
+        parameter: scen.parameter
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.sampleDescription} ${scen.questionText}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l19-identify-test-procedure") {
+    const template = drawFromBag("u74-procedure", meanTestSetupTemplates);
+    const scen = buildMeanTestSetupScenario(template);
+    const options = shuffle([TEST_PROCEDURE_CORRECT, ...TEST_PROCEDURE_WRONG]);
+
+    answers = { testProcedureAnswer: { value: TEST_PROCEDURE_CORRECT } };
+    context = attachAnswers(
+      {
+        levelName: "7.4d: Identify the Test Procedure",
+        problemText: "Choose the correct significance-test procedure.",
+        givenText: `${scen.givenText} ${scen.sampleDescription}`,
+        optA: options[0],
+        optB: options[1],
+        optC: options[2],
+        optD: options[3],
+        parameter: scen.parameter
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.sampleDescription} ${scen.questionText}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l20-check-test-conditions") {
+    const scen = drawFromBag("u74-conditions", testConditionScenarios);
+
+    answers = {
+      testConditionsMet: { value: scen.allMet ? "Yes, all conditions are met" : "No, at least one condition fails" },
+      testConditionsExplain: { value: scen.detail }
+    };
+
+    context = attachAnswers(
+      {
+        levelName: "7.4e: Check Test Conditions",
+        problemText: "Decide whether the conditions for a one-sample t-test are met.",
+        givenText: `${scen.given} ${scen.desc}`,
+        explanationGroups: scen.explanationGroups,
+        conditionDetail: scen.detail
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.given}`;
     return { context, graphConfig, answers, scenario };
   }
 

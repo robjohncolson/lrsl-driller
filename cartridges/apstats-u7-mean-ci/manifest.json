@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u7-mean-ci",
-    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), and Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3)",
+    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), and Setting Up a Test for a Population Mean (7.4)",
     "subject": "AP Statistics",
-    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, and Topic 7.3 skills: interpreting confidence intervals, justifying claims about a population mean, interpreting confidence level, and reasoning about margin of error."
+    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, and Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions."
   },
 
   "config": {
@@ -327,6 +327,130 @@
           }
         ]
       }
+    },
+    {
+      "id": "l16-state-null-hypothesis",
+      "name": "7.4a: State the Null Hypothesis",
+      "animation": "assets/MeanTestNullHypothesis.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "nullHypothesisAnswer",
+            "type": "dropdown",
+            "label": "Which null hypothesis is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l17-state-alternative-hypothesis",
+      "name": "7.4b: State the Alternative Hypothesis",
+      "animation": "assets/MeanTestAlternativeHypothesis.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "alternativeHypothesisAnswer",
+            "type": "dropdown",
+            "label": "Which alternative hypothesis matches the question of interest?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l18-define-parameter",
+      "name": "7.4c: Define the Parameter",
+      "animation": "assets/MeanTestDefineParameter.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "parameterDefinitionAnswer",
+            "type": "dropdown",
+            "label": "What does mu represent in this test?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l19-identify-test-procedure",
+      "name": "7.4d: Identify the Test Procedure",
+      "animation": "assets/MeanTestProcedure.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "testProcedureAnswer",
+            "type": "dropdown",
+            "label": "What significance-test procedure should be used?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l20-check-test-conditions",
+      "name": "7.4e: Check Test Conditions",
+      "animation": "assets/MeanTestConditions.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "testConditionsMet",
+            "type": "choice",
+            "label": "Are all conditions for a one-sample t-test for a population mean met?",
+            "options": [
+              "Yes, all conditions are met",
+              "No, at least one condition fails"
+            ]
+          },
+          {
+            "id": "testConditionsExplain",
+            "type": "textarea",
+            "label": "Explain which test conditions are met or not met:",
+            "rows": 3,
+            "placeholder": "Check random, 10%, and n >= 30 or shape/outliers..."
+          }
+        ]
+      }
     }
   ],
 
@@ -361,7 +485,13 @@
       "claimJustifyAnswer": "If the claimed value is inside the interval, it is plausible. If every value in the interval is above or below the benchmark, that supports a one-sided claim.",
       "confidenceLevelAnswer": "Interpret confidence level with repeated random sampling: about C% of intervals from many samples would capture the population mean.",
       "sampleSizeEffectAnswer": "For a mean interval, margin of error is proportional to 1 / sqrt(n). Quadrupling n cuts the margin of error about in half.",
-      "confidenceLevelEffectAnswer": "Keeping everything else the same, a lower confidence level uses a smaller critical value and gives a smaller margin of error."
+      "confidenceLevelEffectAnswer": "Keeping everything else the same, a lower confidence level uses a smaller critical value and gives a smaller margin of error.",
+      "nullHypothesisAnswer": "The null hypothesis uses an equality and the population parameter mu. Do not use x-bar in the null hypothesis.",
+      "alternativeHypothesisAnswer": "The alternative hypothesis uses a strict inequality. Choose <, >, or not equal based on the question of interest.",
+      "parameterDefinitionAnswer": "Define mu as the population mean in context, not the sample mean and not one individual value.",
+      "testProcedureAnswer": "This is a significance test about one population mean, so the procedure is a one-sample t-test for a population mean.",
+      "testConditionsMet": "Check for a random sample or randomized experiment, the 10% condition when sampling without replacement, and n >= 30 or no strong skewness/outliers if n < 30.",
+      "testConditionsExplain": "Mention the random condition, the 10% check, and either n >= 30 or the sample-shape check for skewness and outliers."
     },
     "penalty": {
       "0": "gold",
@@ -463,7 +593,37 @@
         "id": "l15-confidence-level-margin-error",
         "name": "15",
         "unlockedBy": { "gold": 1 },
-        "celebrationMessage": "Topics 7.1, 7.2, and 7.3 complete. You can interpret and use confidence intervals for a population mean."
+        "celebrationMessage": "Topic 7.3 complete. Next, set up a significance test for a population mean."
+      },
+      {
+        "id": "l16-state-null-hypothesis",
+        "name": "16",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Null hypothesis set. Next, choose the correct alternative hypothesis."
+      },
+      {
+        "id": "l17-state-alternative-hypothesis",
+        "name": "17",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Alternative selected. Next, define the parameter mu in context."
+      },
+      {
+        "id": "l18-define-parameter",
+        "name": "18",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Parameter defined. Next, identify the correct significance-test procedure."
+      },
+      {
+        "id": "l19-identify-test-procedure",
+        "name": "19",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Procedure identified. Last step: verify the conditions for the test."
+      },
+      {
+        "id": "l20-check-test-conditions",
+        "name": "20",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topic 7.4 complete. You can set up a significance test for a population mean by stating hypotheses, defining mu, identifying the procedure, and checking conditions."
       }
     ]
   }
