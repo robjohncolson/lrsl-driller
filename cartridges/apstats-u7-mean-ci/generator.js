@@ -1,4 +1,4 @@
-// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, and 7.3
+// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, and 7.5
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -475,6 +475,69 @@ const testConditionScenarios = [
   }
 ];
 
+const meanTestCarryOutTemplates = [
+  {
+    desc: "Got Hops? An article claims that the average vertical jump for students at this high school is 15 inches.",
+    sampleText: "A random sample of 20 students had a sample mean vertical jump of 15.8 inches with a standard deviation of 2.33 inches.",
+    sampleStatisticLabel: "sample mean vertical jump",
+    sampleStatisticValue: 15.8,
+    sampleStatisticText: "15.8 inches",
+    nullValue: 15,
+    nullValueText: "15 inches",
+    s: 2.33,
+    n: 20,
+    relation: "!=",
+    parameter: "mean vertical jump for all students at this high school",
+    nullContext: "the mean vertical jump for all students at this high school is 15 inches",
+    alternativeClaimText: "the mean vertical jump for all students at this school is different from 15 inches",
+    observedOutcomeText: "a sample mean vertical jump as extreme as or more extreme than 15.8 inches in either direction",
+    chanceText: "by chance alone in a random sample of 20 students",
+    alpha: 0.05,
+    alphaText: "0.05",
+    pValue: 0.1412
+  },
+  {
+    desc: "A tire manufacturer tests whether Tread40 tires last more than 40,000 miles on average.",
+    sampleText: "A random sample of 35 tires had a sample mean mileage of 42,348 miles with a standard deviation of 2,140 miles.",
+    sampleStatisticLabel: "sample mean mileage",
+    sampleStatisticValue: 42348,
+    sampleStatisticText: "42,348 miles",
+    nullValue: 40000,
+    nullValueText: "40,000 miles",
+    s: 2140,
+    n: 35,
+    relation: ">",
+    parameter: "mean mileage for all Tread40 tires",
+    nullContext: "the mean mileage for all Tread40 tires is 40,000 miles",
+    alternativeClaimText: "the mean mileage for all Tread40 tires is greater than 40,000 miles",
+    observedOutcomeText: "a sample mean mileage of 42,348 miles or greater",
+    chanceText: "by chance alone in a random sample of 35 tires",
+    alpha: 0.01,
+    alphaText: "0.01",
+    pValue: 9.99e-8
+  },
+  {
+    desc: "Bakin' Bacon! Doug compared seasoned and unseasoned bacon using 10 matched pairs of half-packages.",
+    sampleText: "For the differences (with seasoning - without seasoning), the sample mean difference was 9.5 grams with a standard deviation of 12.51 grams.",
+    sampleStatisticLabel: "sample mean difference",
+    sampleStatisticValue: 9.5,
+    sampleStatisticText: "9.5 grams",
+    nullValue: 0,
+    nullValueText: "0 grams",
+    s: 12.51,
+    n: 10,
+    relation: ">",
+    parameter: "true mean difference in cooked bacon weight (with seasoning minus without seasoning) for packages of bacon like those in the study",
+    nullContext: "the true mean difference in cooked bacon weight for packages of bacon like those in the study is 0 grams",
+    alternativeClaimText: "the seasoning causes cooked bacon to retain more weight on average for packages of bacon like the ones in the study",
+    observedOutcomeText: "a sample mean difference of 9.5 grams or greater",
+    chanceText: "by chance alone in this random assignment of 10 bacon packages",
+    alpha: 0.05,
+    alphaText: "0.05",
+    pValue: 0.0199
+  }
+];
+
 function buildMarginScenario(template) {
   const pair = chooseSupportedPair(template.nChoices, template.confChoices);
   const n = pair.n;
@@ -719,6 +782,141 @@ function buildParameterDefinitionOptions(scen) {
       scen.sampleStatisticLabel,
       scen.individualLabel,
       scen.populationTotalLabel
+    ])
+  };
+}
+
+function formatProbabilityDisplay(value) {
+  if (value < 0.001) {
+    const exponent = Math.floor(Math.log10(value));
+    const mantissa = roundTo(value / Math.pow(10, exponent), 3);
+    return `${mantissa} x 10^${exponent}`;
+  }
+  if (value > 0.9999) {
+    return Number(value.toFixed(7)).toString();
+  }
+  return toFixedString(value, 4);
+}
+
+function buildMeanTestCarryOutScenario(template) {
+  const se = template.s / Math.sqrt(template.n);
+  const t = roundTo((template.sampleStatisticValue - template.nullValue) / se, 3);
+
+  return {
+    ...template,
+    se: roundTo(se, 4),
+    t,
+    tText: toFixedString(t, 3),
+    absTText: toFixedString(Math.abs(t), 3),
+    df: template.n - 1,
+    pValueText: formatProbabilityDisplay(template.pValue),
+    rejectNull: template.pValue <= template.alpha,
+    hypothesisText: `${H0}: ${MU} = ${template.nullValueText}; ${HA}: ${MU} ${getRelationSymbol(template.relation)} ${template.nullValueText}.`
+  };
+}
+
+function buildPValueRegionOptions(scen) {
+  if (scen.relation === "!=") {
+    const correct = `P(T <= -${scen.absTText} or T >= ${scen.absTText}) with df = ${scen.df}`;
+    return {
+      correct,
+      options: shuffle([
+        correct,
+        `P(T >= ${scen.tText}) with df = ${scen.df}`,
+        `P(T <= ${scen.tText}) with df = ${scen.df}`,
+        `P(-${scen.absTText} <= T <= ${scen.absTText}) with df = ${scen.df}`
+      ])
+    };
+  }
+
+  if (scen.relation === ">") {
+    const correct = `P(T >= ${scen.tText}) with df = ${scen.df}`;
+    return {
+      correct,
+      options: shuffle([
+        correct,
+        `P(T <= -${scen.absTText}) with df = ${scen.df}`,
+        `P(T <= ${scen.tText}) with df = ${scen.df}`,
+        `P(-${scen.absTText} <= T <= ${scen.absTText}) with df = ${scen.df}`
+      ])
+    };
+  }
+
+  const correct = `P(T <= ${scen.tText}) with df = ${scen.df}`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `P(T >= ${scen.absTText}) with df = ${scen.df}`,
+      `P(T >= -${scen.absTText}) with df = ${scen.df}`,
+      `P(-${scen.absTText} <= T <= ${scen.absTText}) with df = ${scen.df}`
+    ])
+  };
+}
+
+function buildPValueOptions(scen) {
+  const correct = scen.pValueText;
+
+  if (scen.relation === "!=") {
+    const oneTailText = formatProbabilityDisplay(scen.pValue / 2);
+    const complementText = formatProbabilityDisplay(1 - scen.pValue);
+    const oneMinusTailText = formatProbabilityDisplay(1 - scen.pValue / 2);
+    return {
+      correct,
+      options: shuffle([correct, oneTailText, complementText, oneMinusTailText]),
+      oneTailText,
+      complementText,
+      oneMinusTailText
+    };
+  }
+
+  const doubledText = formatProbabilityDisplay(Math.min(1, scen.pValue * 2));
+  const complementText = formatProbabilityDisplay(1 - scen.pValue);
+  const halvedText = formatProbabilityDisplay(scen.pValue / 2);
+  return {
+    correct,
+    options: shuffle([correct, doubledText, complementText, halvedText]),
+    doubledText,
+    complementText,
+    halvedText
+  };
+}
+
+function buildPValueInterpretOptions(scen) {
+  const correct = `Assuming ${scen.nullContext}, there is a ${scen.pValueText} probability of getting ${scen.observedOutcomeText} ${scen.chanceText}.`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `There is a ${scen.pValueText} probability that ${scen.nullContext}.`,
+      `There is a ${scen.pValueText} probability that ${scen.alternativeClaimText}.`,
+      `There is a ${scen.pValueText} probability that the ${scen.parameter} equals ${scen.sampleStatisticText}.`
+    ])
+  };
+}
+
+function buildTestConclusionOptions(scen) {
+  if (scen.rejectNull) {
+    const correct = `Because the p-value of ${scen.pValueText} is less than alpha = ${scen.alphaText}, we reject ${H0}. There is convincing statistical evidence that ${scen.alternativeClaimText}.`;
+    return {
+      correct,
+      options: shuffle([
+        correct,
+        `Because the p-value of ${scen.pValueText} is greater than alpha = ${scen.alphaText}, we fail to reject ${H0}. There is not convincing statistical evidence that ${scen.alternativeClaimText}.`,
+        `Because the p-value of ${scen.pValueText} is less than alpha = ${scen.alphaText}, we fail to reject ${H0}. There is not convincing statistical evidence that ${scen.alternativeClaimText}.`,
+        `Because the p-value of ${scen.pValueText} is less than alpha = ${scen.alphaText}, we reject ${H0}. This proves with certainty that ${scen.alternativeClaimText}.`
+      ])
+    };
+  }
+
+  const correct = `Because the p-value of ${scen.pValueText} is greater than alpha = ${scen.alphaText}, we fail to reject ${H0}. There is not convincing statistical evidence that ${scen.alternativeClaimText}.`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `Because the p-value of ${scen.pValueText} is less than alpha = ${scen.alphaText}, we reject ${H0}. There is convincing statistical evidence that ${scen.alternativeClaimText}.`,
+      `Because the p-value of ${scen.pValueText} is greater than alpha = ${scen.alphaText}, we reject ${H0}. There is convincing statistical evidence that ${scen.alternativeClaimText}.`,
+      `Because the p-value of ${scen.pValueText} is greater than alpha = ${scen.alphaText}, we fail to reject ${H0}. This proves that ${H0} is true.`
     ])
   };
 }
@@ -1224,6 +1422,139 @@ export function generateProblem(modeId, contextFromFile, mode) {
     );
 
     scenario = `${scen.desc}\n\n${scen.given}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l21-calculate-test-statistic") {
+    const template = drawFromBag("u75-test-stat", meanTestCarryOutTemplates);
+    const scen = buildMeanTestCarryOutScenario(template);
+
+    answers = { testStatisticAnswer: { value: scen.t, tolerance: 0.02 } };
+    context = attachAnswers(
+      {
+        levelName: "7.5a: Calculate the Test Statistic",
+        problemText: "Calculate the standardized test statistic t.",
+        givenText: `${scen.hypothesisText} ${scen.sampleText}`,
+        sampleStatisticValue: `${scen.sampleStatisticValue}`,
+        nullValue: `${scen.nullValue}`,
+        s: `${scen.s}`,
+        n: `${scen.n}`,
+        se: `${scen.se}`,
+        df: `${scen.df}`
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.sampleText}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l22-identify-p-value-region") {
+    const template = drawFromBag("u75-region", meanTestCarryOutTemplates);
+    const scen = buildMeanTestCarryOutScenario(template);
+    const region = buildPValueRegionOptions(scen);
+
+    answers = { pValueRegionAnswer: { value: region.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.5b: Identify the P-value Region",
+        problemText: "Choose the probability statement that matches the p-value.",
+        givenText: `${scen.hypothesisText} Test statistic: t = ${scen.tText} with df = ${scen.df}.`,
+        optA: region.options[0],
+        optB: region.options[1],
+        optC: region.options[2],
+        optD: region.options[3],
+        relation: scen.relation,
+        tText: scen.tText,
+        absTText: scen.absTText,
+        df: `${scen.df}`
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nTest statistic: t = ${scen.tText} with df = ${scen.df}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l23-find-p-value") {
+    const template = drawFromBag("u75-pvalue", meanTestCarryOutTemplates);
+    const scen = buildMeanTestCarryOutScenario(template);
+    const pValue = buildPValueOptions(scen);
+
+    answers = { pValueAnswer: { value: pValue.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.5c: Find the P-value",
+        problemText: "Use the test statistic and the alternative hypothesis to find the p-value.",
+        givenText: `${scen.hypothesisText} Test statistic: t = ${scen.tText} with df = ${scen.df}.`,
+        optA: pValue.options[0],
+        optB: pValue.options[1],
+        optC: pValue.options[2],
+        optD: pValue.options[3],
+        relation: scen.relation,
+        oneTailText: pValue.oneTailText,
+        doubledText: pValue.doubledText,
+        halvedText: pValue.halvedText,
+        complementText: pValue.complementText,
+        oneMinusTailText: pValue.oneMinusTailText,
+        pValueText: scen.pValueText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nTest statistic: t = ${scen.tText} with df = ${scen.df}. Find the p-value.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l24-interpret-p-value") {
+    const template = drawFromBag("u75-interpret", meanTestCarryOutTemplates);
+    const scen = buildMeanTestCarryOutScenario(template);
+    const interpretation = buildPValueInterpretOptions(scen);
+
+    answers = { pValueInterpretAnswer: { value: interpretation.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.5d: Interpret the P-value",
+        problemText: "Choose the correct interpretation of the p-value in context.",
+        givenText: `${scen.hypothesisText} ${scen.sampleText} The p-value is ${scen.pValueText}.`,
+        optA: interpretation.options[0],
+        optB: interpretation.options[1],
+        optC: interpretation.options[2],
+        optD: interpretation.options[3],
+        pValueText: scen.pValueText,
+        nullContext: scen.nullContext,
+        alternativeClaimText: scen.alternativeClaimText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.sampleText} The p-value is ${scen.pValueText}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l25-state-test-conclusion") {
+    const template = drawFromBag("u75-conclusion", meanTestCarryOutTemplates);
+    const scen = buildMeanTestCarryOutScenario(template);
+    const conclusion = buildTestConclusionOptions(scen);
+
+    answers = { testConclusionAnswer: { value: conclusion.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.5e: State the Conclusion",
+        problemText: "Compare the p-value to alpha and state the conclusion.",
+        givenText: `${scen.hypothesisText} The p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}.`,
+        optA: conclusion.options[0],
+        optB: conclusion.options[1],
+        optC: conclusion.options[2],
+        optD: conclusion.options[3],
+        rejectNull: scen.rejectNull ? "yes" : "no",
+        alphaText: scen.alphaText,
+        pValueText: scen.pValueText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nThe p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}.`;
     return { context, graphConfig, answers, scenario };
   }
 

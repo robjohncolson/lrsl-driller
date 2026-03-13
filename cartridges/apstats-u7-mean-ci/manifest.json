@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u7-mean-ci",
-    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), and Setting Up a Test for a Population Mean (7.4)",
+    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), Setting Up a Test for a Population Mean (7.4), and Carrying Out a Test for a Population Mean (7.5)",
     "subject": "AP Statistics",
-    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, and Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions."
+    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions, and Topic 7.5 skills for calculating a test statistic, matching the correct p-value region, finding a p-value, interpreting it, and stating a conclusion."
   },
 
   "config": {
@@ -451,6 +451,120 @@
           }
         ]
       }
+    },
+    {
+      "id": "l21-calculate-test-statistic",
+      "name": "7.5a: Calculate the Test Statistic",
+      "animation": "assets/MeanTestStatistic.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "testStatisticAnswer",
+            "type": "number",
+            "label": "Calculate the test statistic t. Round to 3 decimals:",
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l22-identify-p-value-region",
+      "name": "7.5b: Identify the P-value Region",
+      "animation": "assets/MeanTestPValueRegion.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pValueRegionAnswer",
+            "type": "dropdown",
+            "label": "Which probability matches the p-value for this test?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l23-find-p-value",
+      "name": "7.5c: Find the P-value",
+      "animation": "assets/MeanTestPValue.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pValueAnswer",
+            "type": "dropdown",
+            "label": "Which p-value is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l24-interpret-p-value",
+      "name": "7.5d: Interpret the P-value",
+      "animation": "assets/MeanTestInterpretPValue.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "pValueInterpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation of the p-value is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l25-state-test-conclusion",
+      "name": "7.5e: State the Conclusion",
+      "animation": "assets/MeanTestConclusion.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "testConclusionAnswer",
+            "type": "dropdown",
+            "label": "Which conclusion is best?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
     }
   ],
 
@@ -491,7 +605,12 @@
       "parameterDefinitionAnswer": "Define mu as the population mean in context, not the sample mean and not one individual value.",
       "testProcedureAnswer": "This is a significance test about one population mean, so the procedure is a one-sample t-test for a population mean.",
       "testConditionsMet": "Check for a random sample or randomized experiment, the 10% condition when sampling without replacement, and n >= 30 or no strong skewness/outliers if n < 30.",
-      "testConditionsExplain": "Mention the random condition, the 10% check, and either n >= 30 or the sample-shape check for skewness and outliers."
+      "testConditionsExplain": "Mention the random condition, the 10% check, and either n >= 30 or the sample-shape check for skewness and outliers.",
+      "testStatisticAnswer": "Use t = (sample statistic - null value) / (s / sqrt(n)). For paired data, use the sample mean of the differences and the standard deviation of the differences.",
+      "pValueRegionAnswer": "Match the tail area to the alternative hypothesis: > means right tail, < means left tail, and not equal means both tails.",
+      "pValueAnswer": "Use the test statistic and the alternative together. A two-sided test doubles the one-tail probability.",
+      "pValueInterpretAnswer": "Start with 'Assuming the null hypothesis is true...' Then describe the chance of getting a sample result this extreme or more extreme by random chance alone.",
+      "testConclusionAnswer": "Compare the p-value to alpha. If p <= alpha, reject H0 and support the alternative. If p > alpha, fail to reject H0."
     },
     "penalty": {
       "0": "gold",
@@ -623,7 +742,37 @@
         "id": "l20-check-test-conditions",
         "name": "20",
         "unlockedBy": { "gold": 1 },
-        "celebrationMessage": "Topic 7.4 complete. You can set up a significance test for a population mean by stating hypotheses, defining mu, identifying the procedure, and checking conditions."
+        "celebrationMessage": "Topic 7.4 complete. Next, carry out the test by calculating the test statistic."
+      },
+      {
+        "id": "l21-calculate-test-statistic",
+        "name": "21",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Test statistic computed. Next, match the alternative hypothesis to the correct p-value region."
+      },
+      {
+        "id": "l22-identify-p-value-region",
+        "name": "22",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "The p-value region is set. Next, identify the p-value for the test."
+      },
+      {
+        "id": "l23-find-p-value",
+        "name": "23",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "p-value found. Next, interpret what the p-value means in context."
+      },
+      {
+        "id": "l24-interpret-p-value",
+        "name": "24",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can interpret the p-value. Last step: state the formal conclusion for the test."
+      },
+      {
+        "id": "l25-state-test-conclusion",
+        "name": "25",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topic 7.5 complete. You can carry out a one-sample t-test for a population mean by calculating the test statistic, finding and interpreting the p-value, and stating a conclusion."
       }
     ]
   }
