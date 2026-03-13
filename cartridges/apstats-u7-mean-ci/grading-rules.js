@@ -1,4 +1,4 @@
-// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, and 7.3
+// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, and 7.4
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -28,7 +28,7 @@ export function gradeField(fieldId, answer, context) {
   const expObj = getExpectedObj(context, fieldId);
   const expected = expObj.value;
 
-  const openResponseFields = new Set(["conditionsExplain"]);
+  const openResponseFields = new Set(["conditionsExplain", "testConditionsExplain"]);
 
   if (isBlank(answer)) {
     if (openResponseFields.has(fieldId)) {
@@ -548,6 +548,166 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: `Incorrect. The correct effect is: ${expected}`
+    };
+  }
+
+  if (fieldId === "nullHypothesisAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. The null hypothesis is a statement of equality about the population mean mu."
+      };
+    }
+    if (containsAny(answer, ["x-bar", "sample mean"])) {
+      return {
+        score: "I",
+        feedback: "Do not use a sample statistic in the null hypothesis. State the null using the population mean mu."
+      };
+    }
+    if (containsAny(answer, [">", "<", "≠"])) {
+      return {
+        score: "I",
+        feedback: "The null hypothesis should use an equals sign. Inequalities belong in the alternative hypothesis."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct null hypothesis is ${expected}.`
+    };
+  }
+
+  if (fieldId === "alternativeHypothesisAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. The alternative hypothesis uses a strict inequality that matches the research question."
+      };
+    }
+    if (containsAny(answer, ["x-bar", "sample mean"])) {
+      return {
+        score: "I",
+        feedback: "Do not use a sample statistic in the alternative hypothesis. State the claim using the population mean mu."
+      };
+    }
+    if (containsAny(answer, [" = "])) {
+      return {
+        score: "I",
+        feedback: "The alternative hypothesis should not use an equals sign. Use <, >, or not equal to."
+      };
+    }
+    if (context?.relation === "!=") {
+      return {
+        score: "I",
+        feedback: `Incorrect. The question asks whether the mean differs from ${context?.benchmark}, so the alternative should be two-sided: ${expected}`
+      };
+    }
+    if (context?.relation === ">") {
+      return {
+        score: "I",
+        feedback: `Incorrect. The question asks whether the mean is greater than ${context?.benchmark}, so the alternative should be right-sided: ${expected}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The question asks whether the mean is less than ${context?.benchmark}, so the alternative should be left-sided: ${expected}`
+    };
+  }
+
+  if (fieldId === "parameterDefinitionAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. Mu represents the population mean in context."
+      };
+    }
+    if (containsAny(answer, ["sample mean", "x-bar", "sample"])) {
+      return {
+        score: "I",
+        feedback: "That describes a sample statistic, not the population parameter mu."
+      };
+    }
+    if (containsAny(answer, ["one student", "one tread40 tire", "one cb tablet", "one "])) {
+      return {
+        score: "I",
+        feedback: "Mu is not one individual value. It represents the mean for the whole population in context."
+      };
+    }
+    if (containsAny(answer, ["total"])) {
+      return {
+        score: "I",
+        feedback: "Mu is a mean, not a total."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The parameter is ${expected}.`
+    };
+  }
+
+  if (fieldId === "testProcedureAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. This is one sample of quantitative data, and the goal is to test a claim about a population mean."
+      };
+    }
+    if (containsAny(answer, ["t-interval", "interval"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. ${expected} is a test procedure. An interval would be used to estimate, not test, the population mean.`
+      };
+    }
+    if (containsAny(answer, ["z-test", "proportion"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. ${expected} is used here because the parameter is a mean, not a proportion.`
+      };
+    }
+    if (containsAny(answer, ["two-sample"])) {
+      return {
+        score: "I",
+        feedback: "Only one sample is being used here, so a two-sample procedure is not appropriate."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct procedure is ${expected}.`
+    };
+  }
+
+  if (fieldId === "testConditionsMet") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. You correctly decided whether all conditions for a one-sample t-test are satisfied."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct decision is: ${expected}. Recheck random selection, the 10% condition, and n >= 30 or the sample-shape requirement.`
+    };
+  }
+
+  if (fieldId === "testConditionsExplain") {
+    const groups = context?.explanationGroups || [];
+    const hasSubstance = String(answer).trim().split(/\s+/).length >= 8;
+    const matchedGroups = groups.filter(group => containsAny(answer, group)).length;
+
+    if (matchedGroups >= 3 && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Strong explanation. You addressed the random condition, the 10% condition, and the normality or sample-shape condition for the test."
+      };
+    }
+    if (matchedGroups >= 2 && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Partially correct. Include all three checks: random, 10%, and either n >= 30 or no strong skewness or outliers when n < 30."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should mention all three conditions: random sample, 10% condition, and either n >= 30 or no strong skewness or outliers when n < 30."
     };
   }
 
