@@ -19,8 +19,19 @@ MEDIA_DIR = os.path.join(REPO, "media", "videos")
 QUALITY = "-qm"
 QUALITY_LABEL = "720p30"
 
-# All lessons with animation source files
-LESSONS = ["61", "611", "62", "63", "64", "65", "66", "67", "68", "69", "71", "72"]
+# Auto-discover lessons from animation filenames (apstat_<lesson>_*.py)
+def _discover_lessons():
+    import re
+    if not os.path.isdir(ANIM_DIR):
+        return []
+    lessons = set()
+    for f in os.listdir(ANIM_DIR):
+        m = re.match(r"^apstat_(\d+)_.*\.py$", f)
+        if m:
+            lessons.add(m.group(1))
+    return sorted(lessons, key=lambda x: int(x))
+
+LESSONS = _discover_lessons()
 
 
 def find_sources(lesson):
