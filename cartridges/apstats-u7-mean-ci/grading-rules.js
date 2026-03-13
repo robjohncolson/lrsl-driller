@@ -1,4 +1,4 @@
-// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, and 7.4
+// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, and 7.5
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -12,6 +12,8 @@ function containsAny(answer, keywords) {
   const norm = normalize(answer);
   return keywords.some(k => norm.includes(normalize(k)));
 }
+
+const H0 = "H\u2080";
 
 function getExpectedObj(context, fieldId) {
   const v = context?.[fieldId];
@@ -34,7 +36,7 @@ export function gradeField(fieldId, answer, context) {
     if (openResponseFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter your explanation." };
     }
-    if (fieldId === "tStarAnswer" || fieldId === "meAnswer" || fieldId === "ciLower" || fieldId === "ciUpper" || fieldId === "simProbAnswer") {
+    if (fieldId === "tStarAnswer" || fieldId === "meAnswer" || fieldId === "ciLower" || fieldId === "ciUpper" || fieldId === "simProbAnswer" || fieldId === "testStatisticAnswer") {
       return { score: "I", feedback: "Please enter a number." };
     }
     return { score: "I", feedback: "Please select an answer." };
@@ -708,6 +710,215 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should mention all three conditions: random sample, 10% condition, and either n >= 30 or no strong skewness or outliers when n < 30."
+    };
+  }
+
+  if (fieldId === "testStatisticAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = parseFloat(expected);
+    const diff = Math.abs(studentVal - expectedVal);
+    const tolerance = expObj.tolerance || 0.02;
+    const sampleStatisticValue = parseFloat(context?.sampleStatisticValue ?? "");
+    const nullValue = parseFloat(context?.nullValue ?? "");
+    const se = parseFloat(context?.se ?? "");
+    const rawDiff = sampleStatisticValue - nullValue;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a valid number for the test statistic." };
+    }
+    if (!isNaN(rawDiff) && Math.abs(studentVal - rawDiff) <= 0.03 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `It looks like you used the raw difference instead of standardizing. Divide by the standard error. The correct test statistic is ${expectedVal}.`
+      };
+    }
+    if (!isNaN(se) && Math.abs(studentVal - se) <= 0.03 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `It looks like you entered the standard error instead of the test statistic. The correct t-value is ${expectedVal}.`
+      };
+    }
+    if (Math.abs(studentVal + expectedVal) <= 0.04 && Math.abs(expectedVal) > 0.05) {
+      return {
+        score: "I",
+        feedback: `Your sign is flipped. Recheck statistic minus parameter in the numerator. The correct t-value is ${expectedVal}.`
+      };
+    }
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct. The standardized test statistic is t = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.08) {
+      return {
+        score: "P",
+        feedback: `Close. Recheck the arithmetic in (sample statistic - null value) / (s / sqrt(n)). The test statistic is ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Use t = (sample statistic - null value) / (s / sqrt(n)). The test statistic is ${expectedVal}.`
+    };
+  }
+
+  if (fieldId === "pValueRegionAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. The p-value uses the tail area that matches the alternative hypothesis."
+      };
+    }
+    if (context?.relation === "!=") {
+      return {
+        score: "I",
+        feedback: "Incorrect. Because the alternative hypothesis is two-sided, the p-value must include both tails beyond the observed test statistic."
+      };
+    }
+    if (context?.relation === ">") {
+      return {
+        score: "I",
+        feedback: "Incorrect. Because the alternative hypothesis says greater than, use the right-tail probability beyond the observed t-value."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. Because the alternative hypothesis says less than, use the left-tail probability beyond the observed t-value."
+    };
+  }
+
+  if (fieldId === "pValueAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. You matched the test statistic and alternative hypothesis to the right p-value."
+      };
+    }
+    if (context?.relation === "!=" && studentNorm === normalize(context?.oneTailText)) {
+      return {
+        score: "I",
+        feedback: `You used only one tail. For a two-sided test, double the one-tail probability. The correct p-value is ${expected}.`
+      };
+    }
+    if (context?.relation === "!=" && studentNorm === normalize(context?.complementText)) {
+      return {
+        score: "I",
+        feedback: `You used the middle area instead of the tail areas. The correct p-value is ${expected}.`
+      };
+    }
+    if (context?.relation === "!=" && studentNorm === normalize(context?.oneMinusTailText)) {
+      return {
+        score: "I",
+        feedback: `You subtracted one tail from 1 instead of adding both tails. The correct p-value is ${expected}.`
+      };
+    }
+    if (context?.relation !== "!=" && studentNorm === normalize(context?.doubledText)) {
+      return {
+        score: "I",
+        feedback: `You doubled the tail probability, but this is a one-sided test. The correct p-value is ${expected}.`
+      };
+    }
+    if (context?.relation !== "!=" && studentNorm === normalize(context?.halvedText)) {
+      return {
+        score: "I",
+        feedback: `You used only part of the tail area. For a one-sided test, use the full tail probability in the direction of the alternative. The correct p-value is ${expected}.`
+      };
+    }
+    if (context?.relation !== "!=" && studentNorm === normalize(context?.complementText)) {
+      return {
+        score: "I",
+        feedback: `You used the wrong side of the distribution. The correct p-value is ${expected}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct p-value is ${expected}.`
+    };
+  }
+
+  if (fieldId === "pValueInterpretAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. A p-value is interpreted as the chance of getting a sample result this extreme or more extreme when the null hypothesis is true."
+      };
+    }
+    if (normalize(answer).startsWith("there is a") && containsAny(answer, [context?.nullContext])) {
+      return {
+        score: "I",
+        feedback: "The p-value is not the probability that the null hypothesis is true. Start by assuming the null is true, then describe the chance of a result this extreme."
+      };
+    }
+    if (containsAny(answer, [context?.alternativeClaimText])) {
+      return {
+        score: "I",
+        feedback: "The p-value is not the probability that the alternative claim is true."
+      };
+    }
+    if (containsAny(answer, ["equals"])) {
+      return {
+        score: "I",
+        feedback: "The p-value is about a sample result this extreme or more extreme, not the probability that the population parameter equals the sample statistic."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. A correct interpretation is: ${expected}`
+    };
+  }
+
+  if (fieldId === "testConclusionAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. You compared the p-value to alpha and stated the conclusion in context."
+      };
+    }
+    if (containsAny(answer, ["certainty", "prove"])) {
+      return {
+        score: "I",
+        feedback: "A significance test can provide convincing statistical evidence, but it does not prove a claim with certainty."
+      };
+    }
+    if (context?.rejectNull === "yes" && containsAny(answer, ["fail to reject"])) {
+      return {
+        score: "I",
+        feedback: `Because the p-value is smaller than alpha, you should reject ${H0}, not fail to reject it.`
+      };
+    }
+    if (context?.rejectNull === "yes" && containsAny(answer, ["greater than alpha"])) {
+      return {
+        score: "I",
+        feedback: `The p-value is not greater than alpha here. Since p-value = ${context?.pValueText} and alpha = ${context?.alphaText}, reject ${H0}.`
+      };
+    }
+    if (context?.rejectNull === "no" && containsAny(answer, ["reject"])) {
+      return {
+        score: "I",
+        feedback: `Because the p-value is larger than alpha, you should fail to reject ${H0}.`
+      };
+    }
+    if (context?.rejectNull === "no" && containsAny(answer, ["less than alpha"])) {
+      return {
+        score: "I",
+        feedback: `The p-value is not less than alpha here. Since p-value = ${context?.pValueText} and alpha = ${context?.alphaText}, fail to reject ${H0}.`
+      };
+    }
+    if (context?.rejectNull === "no" && containsAny(answer, ["h₀ is true", "h0 is true"])) {
+      return {
+        score: "I",
+        feedback: `Failing to reject ${H0} does not prove that the null hypothesis is true.`
+      };
+    }
+    if (context?.rejectNull === "yes") {
+      return {
+        score: "I",
+        feedback: `Incorrect. Since p-value = ${context?.pValueText} is less than alpha = ${context?.alphaText}, reject ${H0} and support the alternative.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Since p-value = ${context?.pValueText} is greater than alpha = ${context?.alphaText}, fail to reject ${H0}.`
     };
   }
 
