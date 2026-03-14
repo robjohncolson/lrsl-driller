@@ -1,4 +1,4 @@
-// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, and 7.6
+// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, and 7.7
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -631,6 +631,197 @@ export function gradeField(fieldId, answer, context) {
       return {
         score: "I",
         feedback: "Be careful with the subtraction order. Interpret the interval using the same order as the problem, not the reversed difference."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. A correct interpretation is: ${expected}`
+    };
+  }
+
+  if (fieldId === "diffMeansZeroValueAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. If the two population means are equal, their difference is 0."
+      };
+    }
+    if (studentNorm === normalize(context?.pointEstimate)) {
+      return {
+        score: "I",
+        feedback: "That is the center of the interval, not the no-difference benchmark. Equal population means correspond to a difference of 0."
+      };
+    }
+    if (studentNorm === normalize(context?.lower) || studentNorm === normalize(context?.upper)) {
+      return {
+        score: "I",
+        feedback: "Those are interval bounds, not the null value for no difference. If the two population means are equal, the difference equals 0."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. If the two population means are equal, ${context?.differenceLabel} = 0.`
+    };
+  }
+
+  if (fieldId === "diffMeansZeroPlausibleAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. Whether 0 is plausible depends on whether 0 falls inside the confidence interval."
+      };
+    }
+    if (containsAny(answer, ["always", "never"])) {
+      return {
+        score: "I",
+        feedback: "Do not use an always-or-never rule. Check whether 0 is actually inside the interval."
+      };
+    }
+    if (context?.containsZero === "yes" && containsAny(answer, ["outside", "not plausible", "not inside"])) {
+      return {
+        score: "I",
+        feedback: "0 is inside this interval, so no difference is still a plausible value."
+      };
+    }
+    if (context?.containsZero === "no" && containsAny(answer, ["inside", "plausible"])) {
+      return {
+        score: "I",
+        feedback: "0 is not inside this interval, so no difference is not a plausible value here."
+      };
+    }
+    if (context?.containsZero === "yes") {
+      return {
+        score: "I",
+        feedback: "Incorrect. Because 0 is inside the interval, no difference is a plausible value."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Incorrect. Because 0 is not inside the interval, no difference is not a plausible value."
+    };
+  }
+
+  if (fieldId === "diffMeansClaimJustifyAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. You used whether 0 is a plausible value for the population difference to judge the claim."
+      };
+    }
+    if (containsAny(answer, ["certainty", "prove"])) {
+      return {
+        score: "I",
+        feedback: "A confidence interval can support or fail to support a claim, but it does not prove the claim with certainty."
+      };
+    }
+    if (containsAny(answer, ["sample means were different", "sample mean"])) {
+      return {
+        score: "I",
+        feedback: "Do not justify the claim using only the sample means. Use the entire confidence interval and whether 0 is plausible."
+      };
+    }
+    if (context?.supportClaim === "yes" && containsAny(answer, ["0 is in the interval", "0 is a plausible value"])) {
+      return {
+        score: "I",
+        feedback: `0 is not in the interval here, so the interval does support the claim that ${context?.claim}.`
+      };
+    }
+    if (context?.supportClaim === "no" && containsAny(answer, ["0 is not in the interval", "0 is not a plausible value"])) {
+      return {
+        score: "I",
+        feedback: `0 is in the interval here, so the interval does not support the claim that ${context?.claim}.`
+      };
+    }
+    if (context?.supportClaim === "no" && containsAny(answer, ["exactly equal"])) {
+      return {
+        score: "I",
+        feedback: "If 0 is in the interval, no difference is plausible, but the interval does not prove the two population means are exactly equal."
+      };
+    }
+    if (context?.supportClaim === "yes") {
+      return {
+        score: "I",
+        feedback: `Incorrect. Because 0 is not in the interval, the interval supports the claim that ${context?.claim}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Because 0 is in the interval, the interval does not support the claim that ${context?.claim}.`
+    };
+  }
+
+  if (fieldId === "diffMeansClaimConclusionAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. The conclusion is stated carefully in context without overclaiming."
+      };
+    }
+    if (containsAny(answer, ["certainty", "prove"])) {
+      return {
+        score: "I",
+        feedback: "A confidence interval can provide convincing statistical evidence, but it does not prove a claim with certainty."
+      };
+    }
+    if (containsAny(answer, ["is wrong"])) {
+      return {
+        score: "I",
+        feedback: "Do not say the person making the claim is wrong. State only whether the interval supports the claim."
+      };
+    }
+    if (context?.supportClaim === "yes" && containsAny(answer, ["cannot be used", "cannot use"])) {
+      return {
+        score: "I",
+        feedback: "A confidence interval can be used to make a conclusion about a difference in population means."
+      };
+    }
+    if (context?.supportClaim === "yes" && containsAny(answer, ["every individual"])) {
+      return {
+        score: "I",
+        feedback: "The interval is about the population difference in means, not every individual observation."
+      };
+    }
+    if (context?.supportClaim === "no" && containsAny(answer, ["opposite claim is true"])) {
+      return {
+        score: "I",
+        feedback: "If the interval does not support the claim, that does not prove the opposite claim is true."
+      };
+    }
+    if (context?.supportClaim === "yes") {
+      return {
+        score: "I",
+        feedback: `Incorrect. The interval provides convincing evidence that ${context?.claim}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The interval does not support the claim that ${context?.claim}.`
+    };
+  }
+
+  if (fieldId === "diffMeansConfidenceLevelAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. Confidence level describes the long-run capture rate of intervals for the population difference in means."
+      };
+    }
+    if (containsAny(answer, ["probability", "this one interval"])) {
+      return {
+        score: "I",
+        feedback: "Confidence level is not the probability that one fixed interval captures the population difference. It describes repeated random sampling."
+      };
+    }
+    if (containsAny(answer, ["individual observations", "fall inside"])) {
+      return {
+        score: "I",
+        feedback: "That describes individual observations, not the long-run behavior of confidence intervals for the population difference in means."
+      };
+    }
+    if (containsAny(answer, ["sample differences", "will equal"])) {
+      return {
+        score: "I",
+        feedback: "Confidence level is not about sample differences equaling the population difference. It is about the proportion of intervals that capture it."
       };
     }
     return {

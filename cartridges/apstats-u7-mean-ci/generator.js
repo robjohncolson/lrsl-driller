@@ -1,4 +1,4 @@
-// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, and 7.6
+// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, and 7.7
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -531,6 +531,61 @@ const twoSampleCITemplates = [
   }
 ];
 
+const twoSampleClaimTemplates = [
+  {
+    desc: "Researchers compared the body lengths of adult female and adult male Argiope spiders.",
+    sampleText: "many random samples of female and male Argiope spiders using the same sample sizes as the study",
+    differenceLabel: "female minus male",
+    units: "millimeters",
+    digits: 3,
+    confLevel: 95,
+    lower: 7.956,
+    upper: 12.129,
+    parameter: "difference in the true mean body lengths of all female and male Argiope spiders (female minus male)",
+    reversedParameter: "difference in the true mean body lengths of all female and male Argiope spiders (male minus female)",
+    claim: "female Argiope spiders have larger mean body lengths than male Argiope spiders"
+  },
+  {
+    desc: "Researchers summarized the same Argiope spider study using the difference in mean body lengths (male minus female).",
+    sampleText: "many random samples of female and male Argiope spiders using the same sample sizes as the study",
+    differenceLabel: "male minus female",
+    units: "millimeters",
+    digits: 3,
+    confLevel: 95,
+    lower: -12.129,
+    upper: -7.956,
+    parameter: "difference in the true mean body lengths of all male and female Argiope spiders (male minus female)",
+    reversedParameter: "difference in the true mean body lengths of all male and female Argiope spiders (female minus male)",
+    claim: "male Argiope spiders have smaller mean body lengths than female Argiope spiders"
+  },
+  {
+    desc: "A restaurant manager compared food temperatures in foam and plastic containers after 30 minutes.",
+    sampleText: "many random samples of foam and plastic containers using the same sample sizes as the study",
+    differenceLabel: "foam minus plastic",
+    units: "degrees Fahrenheit",
+    digits: 1,
+    confLevel: 95,
+    lower: -9.3,
+    upper: 3.2,
+    parameter: "true difference in mean internal food temperatures for foam and plastic containers (foam minus plastic)",
+    reversedParameter: "true difference in mean internal food temperatures for foam and plastic containers (plastic minus foam)",
+    claim: "foam containers maintain higher mean food temperatures than plastic containers"
+  },
+  {
+    desc: "A council member compared response times for fire stations in the northern and southern halves of a city.",
+    sampleText: "many random samples of 50 calls from the northern fire station and 50 calls from the southern fire station",
+    differenceLabel: "northern minus southern",
+    units: "minutes",
+    digits: 2,
+    confLevel: 95,
+    lower: -2.37,
+    upper: 0.37,
+    parameter: "difference in the population mean response times for the two fire stations (northern minus southern)",
+    reversedParameter: "difference in the population mean response times for the two fire stations (southern minus northern)",
+    claim: "the two fire stations have different mean response times"
+  }
+];
+
 const meanTestSetupTemplates = [
   {
     statementPrefix: "Got Hops? An article claims that the average vertical jump for students at this high school is",
@@ -895,6 +950,121 @@ function buildTwoSampleCIInterpretOptions(scen) {
       `There is a ${scen.confLevel}% probability that the ${scen.parameter} is between ${scen.lowerText} and ${scen.upperText} ${scen.units}.`,
       `About ${scen.confLevel}% of ${scen.individualText} are between ${scen.lowerText} and ${scen.upperText} ${scen.units}.`,
       `We are ${scen.confLevel}% confident that the ${scen.reversedParameter} is between ${scen.lowerText} and ${scen.upperText} ${scen.units}.`
+    ])
+  };
+}
+
+function buildTwoSampleClaimScenario(template) {
+  const pointEstimate = (template.lower + template.upper) / 2;
+  return {
+    ...template,
+    lowerText: toFixedString(template.lower, template.digits),
+    upperText: toFixedString(template.upper, template.digits),
+    pointEstimateText: toFixedString(pointEstimate, template.digits),
+    containsZero: template.lower <= 0 && template.upper >= 0,
+    supportClaim: !(template.lower <= 0 && template.upper >= 0)
+  };
+}
+
+function getTwoSampleClaimIntervalText(scen) {
+  return `${scen.desc} A ${scen.confLevel}% confidence interval for ${scen.differenceLabel} is ${scen.lowerText} to ${scen.upperText} ${scen.units}.`;
+}
+
+function buildDiffMeansZeroValueOptions(scen) {
+  const correct = "0";
+  return {
+    correct,
+    options: shuffle([correct, scen.pointEstimateText, scen.lowerText, scen.upperText])
+  };
+}
+
+function buildDiffMeansZeroPlausibleOptions(scen) {
+  if (scen.containsZero) {
+    const correct = "Yes. Because 0 is inside the interval, no difference is a plausible value.";
+    return {
+      correct,
+      options: shuffle([
+        correct,
+        "No. Because 0 is outside the interval, no difference is not plausible.",
+        "Yes. Because 0 is always a plausible value for a difference in means.",
+        "No. Because confidence intervals for a difference in means can never include 0."
+      ])
+    };
+  }
+
+  const correct = "No. Because 0 is not inside the interval, no difference is not a plausible value.";
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      "Yes. Because 0 is inside the interval, no difference is a plausible value.",
+      "Yes. Because the interval only estimates sample differences, 0 is still plausible for the population difference.",
+      "No. Because confidence intervals for a difference in means can never include 0."
+    ])
+  };
+}
+
+function buildDiffMeansClaimJustifyOptions(scen) {
+  if (scen.supportClaim) {
+    const correct = `Yes. Because 0 is not in the interval, 0 is not a plausible value for ${scen.differenceLabel}, so the interval supports the claim that ${scen.claim}.`;
+    return {
+      correct,
+      options: shuffle([
+        correct,
+        `No. Because 0 is not in the interval, there is no evidence that ${scen.claim}.`,
+        `Yes. The interval proves with certainty that ${scen.claim}.`,
+        `Yes. Because the sample means were different, the claim must be true that ${scen.claim}.`
+      ])
+    };
+  }
+
+  const correct = `No. Because 0 is in the interval, 0 is a plausible value for ${scen.differenceLabel}, so the interval does not support the claim that ${scen.claim}.`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `Yes. Because the sample means were not identical, the interval still supports the claim that ${scen.claim}.`,
+      "No. The interval proves that the two population means are exactly equal.",
+      `Yes. The interval proves with certainty that ${scen.claim}.`
+    ])
+  };
+}
+
+function buildDiffMeansClaimConclusionOptions(scen) {
+  if (scen.supportClaim) {
+    const correct = `There is convincing evidence that ${scen.claim}.`;
+    return {
+      correct,
+      options: shuffle([
+        correct,
+        `This proves with certainty that ${scen.claim}.`,
+        "A confidence interval cannot be used to make a conclusion about population means.",
+        "Because 0 is not in the interval, every individual observation in group 1 must exceed every individual observation in group 2."
+      ])
+    };
+  }
+
+  const correct = `The interval does not support the claim that ${scen.claim}.`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      "This proves the opposite claim is true.",
+      "Therefore, the person making the claim is wrong.",
+      `Because the sample means were different, the interval still proves that ${scen.claim}.`
+    ])
+  };
+}
+
+function buildDiffMeansConfidenceLevelOptions(scen) {
+  const correct = `If we took ${scen.sampleText} and built a ${scen.confLevel}% confidence interval for the ${scen.parameter} from each pair of samples, then about ${scen.confLevel}% of those intervals would capture the population difference in means.`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `There is a ${scen.confLevel}% probability that this one interval captures the ${scen.parameter}.`,
+      `About ${scen.confLevel}% of the individual observations from both groups fall inside the interval.`,
+      `About ${scen.confLevel}% of the sample differences from those samples will equal the ${scen.parameter}.`
     ])
   };
 }
@@ -1878,6 +2048,135 @@ export function generateProblem(modeId, contextFromFile, mode) {
     );
 
     scenario = `${scen.desc}\n\nA ${scen.confLevel}% confidence interval for ${scen.differenceLabel} is ${scen.lowerText} to ${scen.upperText} ${scen.units}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l31-equal-means-zero") {
+    const template = drawFromBag("u77-zero-value", twoSampleClaimTemplates);
+    const scen = buildTwoSampleClaimScenario(template);
+    const options = buildDiffMeansZeroValueOptions(scen);
+
+    answers = { diffMeansZeroValueAnswer: { value: options.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.7a: Equal Means Means 0",
+        problemText: "Identify the no-difference benchmark for a difference in means.",
+        givenText: `${scen.desc} The parameter of interest is ${scen.differenceLabel}.`,
+        optA: options.options[0],
+        optB: options.options[1],
+        optC: options.options[2],
+        optD: options.options[3],
+        differenceLabel: scen.differenceLabel,
+        pointEstimate: scen.pointEstimateText,
+        lower: scen.lowerText,
+        upper: scen.upperText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nIf the two population means are equal, ${scen.differenceLabel} should equal 0.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l32-zero-plausible-diffmeans") {
+    const template = drawFromBag("u77-zero-plausible", twoSampleClaimTemplates);
+    const scen = buildTwoSampleClaimScenario(template);
+    const plausible = buildDiffMeansZeroPlausibleOptions(scen);
+
+    answers = { diffMeansZeroPlausibleAnswer: { value: plausible.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.7b: Decide Whether 0 Is Plausible",
+        problemText: "Use the interval to judge whether no difference is plausible.",
+        givenText: getTwoSampleClaimIntervalText(scen),
+        optA: plausible.options[0],
+        optB: plausible.options[1],
+        optC: plausible.options[2],
+        optD: plausible.options[3],
+        containsZero: scen.containsZero ? "yes" : "no",
+        differenceLabel: scen.differenceLabel
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nA ${scen.confLevel}% confidence interval for ${scen.differenceLabel} is ${scen.lowerText} to ${scen.upperText} ${scen.units}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l33-justify-diffmeans-claim") {
+    const template = drawFromBag("u77-justify", twoSampleClaimTemplates);
+    const scen = buildTwoSampleClaimScenario(template);
+    const justification = buildDiffMeansClaimJustifyOptions(scen);
+
+    answers = { diffMeansClaimJustifyAnswer: { value: justification.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.7c: Justify the Claim",
+        problemText: "Use the interval to decide whether the claim is supported.",
+        givenText: `${getTwoSampleClaimIntervalText(scen)} Does this support the claim that ${scen.claim}?`,
+        optA: justification.options[0],
+        optB: justification.options[1],
+        optC: justification.options[2],
+        optD: justification.options[3],
+        supportClaim: scen.supportClaim ? "yes" : "no",
+        containsZero: scen.containsZero ? "yes" : "no",
+        claim: scen.claim,
+        differenceLabel: scen.differenceLabel
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nDoes the interval support the claim that ${scen.claim}?`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l34-state-diffmeans-conclusion") {
+    const template = drawFromBag("u77-conclusion", twoSampleClaimTemplates);
+    const scen = buildTwoSampleClaimScenario(template);
+    const conclusion = buildDiffMeansClaimConclusionOptions(scen);
+
+    answers = { diffMeansClaimConclusionAnswer: { value: conclusion.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.7d: State the Conclusion Carefully",
+        problemText: "Choose the best conclusion statement.",
+        givenText: `${getTwoSampleClaimIntervalText(scen)} State the conclusion about the claim that ${scen.claim}.`,
+        optA: conclusion.options[0],
+        optB: conclusion.options[1],
+        optC: conclusion.options[2],
+        optD: conclusion.options[3],
+        supportClaim: scen.supportClaim ? "yes" : "no",
+        claim: scen.claim
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nState the conclusion about the claim that ${scen.claim}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l35-interpret-diffmeans-confidence-level") {
+    const template = drawFromBag("u77-confidence-level", twoSampleClaimTemplates);
+    const scen = buildTwoSampleClaimScenario(template);
+    const interpretation = buildDiffMeansConfidenceLevelOptions(scen);
+
+    answers = { diffMeansConfidenceLevelAnswer: { value: interpretation.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.7e: Interpret the Confidence Level",
+        problemText: "Interpret the confidence level using repeated random sampling.",
+        givenText: `${scen.desc} A ${scen.confLevel}% confidence interval is built for the ${scen.parameter}.`,
+        optA: interpretation.options[0],
+        optB: interpretation.options[1],
+        optC: interpretation.options[2],
+        optD: interpretation.options[3],
+        confLevel: `${scen.confLevel}`,
+        parameter: scen.parameter
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nInterpret what ${scen.confLevel}% confidence means for the difference in means.`;
     return { context, graphConfig, answers, scenario };
   }
 
