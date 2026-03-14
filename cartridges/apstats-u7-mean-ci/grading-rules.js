@@ -1,4 +1,4 @@
-// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, and 7.5
+// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, and 7.6
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -30,13 +30,13 @@ export function gradeField(fieldId, answer, context) {
   const expObj = getExpectedObj(context, fieldId);
   const expected = expObj.value;
 
-  const openResponseFields = new Set(["conditionsExplain", "testConditionsExplain"]);
+  const openResponseFields = new Set(["conditionsExplain", "testConditionsExplain", "diffMeansConditionsExplain"]);
 
   if (isBlank(answer)) {
     if (openResponseFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter your explanation." };
     }
-    if (fieldId === "tStarAnswer" || fieldId === "meAnswer" || fieldId === "ciLower" || fieldId === "ciUpper" || fieldId === "simProbAnswer" || fieldId === "testStatisticAnswer") {
+    if (fieldId === "tStarAnswer" || fieldId === "meAnswer" || fieldId === "ciLower" || fieldId === "ciUpper" || fieldId === "simProbAnswer" || fieldId === "testStatisticAnswer" || fieldId === "diffMeansMeAnswer" || fieldId === "diffMeansCiLower" || fieldId === "diffMeansCiUpper") {
       return { score: "I", feedback: "Please enter a number." };
     }
     return { score: "I", feedback: "Please select an answer." };
@@ -67,6 +67,37 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: `Incorrect. The correct procedure is ${expected}. Look for one sample, quantitative data, and estimating mu.`
+    };
+  }
+
+  if (fieldId === "diffMeansProcedureAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. There are two groups of quantitative data, and the goal is to estimate a difference in population means with an interval."
+      };
+    }
+    if (containsAny(answer, ["z-interval", "proportion"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. ${expected} is used here because the parameter is a difference in means, not a proportion.`
+      };
+    }
+    if (containsAny(answer, ["t-test", "significance test"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. ${expected} is an interval procedure, not a test procedure.`
+      };
+    }
+    if (containsAny(answer, ["one-sample"])) {
+      return {
+        score: "I",
+        feedback: `Incorrect. This problem compares two groups, so a one-sample procedure is not appropriate. The correct procedure is ${expected}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct procedure is ${expected}. Look for two groups, quantitative data, and estimating mu1 - mu2.`
     };
   }
 
@@ -103,6 +134,42 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should mention all three conditions: random sample, 10% condition, and either n >= 30 or no strong skewness or outliers when n < 30."
+    };
+  }
+
+  if (fieldId === "diffMeansConditionsMet") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. You correctly decided whether all conditions for a two-sample t-interval are satisfied."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct decision is: ${expected}. Recheck independence, the 10% condition when sampling applies, and whether both samples are large enough or roughly normal.`
+    };
+  }
+
+  if (fieldId === "diffMeansConditionsExplain") {
+    const groups = context?.explanationGroups || [];
+    const hasSubstance = String(answer).trim().split(/\s+/).length >= 8;
+    const matchedGroups = groups.filter(group => containsAny(answer, group)).length;
+
+    if (matchedGroups >= 3 && hasSubstance) {
+      return {
+        score: "E",
+        feedback: "Strong explanation. You addressed independence, the 10% condition when relevant, and the normality or sample-shape condition for both groups."
+      };
+    }
+    if (matchedGroups >= 2 && hasSubstance) {
+      return {
+        score: "P",
+        feedback: "Partially correct. Include independence, the 10% condition when it applies, and either both sample sizes at least 30 or both sample distributions with no strong skewness or outliers."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your explanation should mention independence, the 10% condition when it applies, and either both sample sizes at least 30 or both sample distributions with no strong skewness or outliers."
     };
   }
 
@@ -173,6 +240,40 @@ export function gradeField(fieldId, answer, context) {
     };
   }
 
+  if (fieldId === "diffMeansMeAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = parseFloat(expected);
+    const diff = Math.abs(studentVal - expectedVal);
+    const tolerance = expObj.tolerance || 0.03;
+    const se = parseFloat(context?.se ?? "");
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a valid number." };
+    }
+    if (!isNaN(se) && Math.abs(studentVal - se) <= 0.03 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `It looks like you entered the standard error instead of the margin of error. Multiply the standard error by t*. The correct margin of error is ${expectedVal}.`
+      };
+    }
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct. Margin of error = t* x sqrt((s1^2 / n1) + (s2^2 / n2)) = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.12) {
+      return {
+        score: "P",
+        feedback: `Close. Recheck the arithmetic in t* x sqrt((s1^2 / n1) + (s2^2 / n2)). The margin of error is ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Use ME = t* x sqrt((s1^2 / n1) + (s2^2 / n2)). The correct margin of error is ${expectedVal}.`
+    };
+  }
+
   if (fieldId === "ciLower") {
     const studentVal = parseFloat(answer);
     const expectedVal = parseFloat(expected);
@@ -240,6 +341,90 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: `Incorrect. Add the margin of error to x-bar. The upper bound is ${expectedVal}.`
+    };
+  }
+
+  if (fieldId === "diffMeansCiLower") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = parseFloat(expected);
+    const upperObj = getExpectedObj(context, "diffMeansCiUpper");
+    const upperVal = parseFloat(upperObj.value);
+    const reverseLower = parseFloat(context?.reverseLower ?? "");
+    const diff = Math.abs(studentVal - expectedVal);
+    const tolerance = expObj.tolerance || 0.03;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a valid number." };
+    }
+    if (!isNaN(upperVal) && Math.abs(studentVal - upperVal) <= tolerance && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `You swapped the interval bounds. The lower bound is ${expectedVal} and the upper bound is ${upperVal}.`
+      };
+    }
+    if (!isNaN(reverseLower) && Math.abs(studentVal - reverseLower) <= tolerance && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: "It looks like you reversed the subtraction order and found group 2 minus group 1 instead of group 1 minus group 2."
+      };
+    }
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct. The lower bound is (x-bar1 - x-bar2) - ME = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.12) {
+      return {
+        score: "P",
+        feedback: `Close. Recheck the point estimate minus the margin of error. The lower bound is ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Subtract the margin of error from x-bar1 - x-bar2. The lower bound is ${expectedVal}.`
+    };
+  }
+
+  if (fieldId === "diffMeansCiUpper") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = parseFloat(expected);
+    const lowerObj = getExpectedObj(context, "diffMeansCiLower");
+    const lowerVal = parseFloat(lowerObj.value);
+    const reverseUpper = parseFloat(context?.reverseUpper ?? "");
+    const diff = Math.abs(studentVal - expectedVal);
+    const tolerance = expObj.tolerance || 0.03;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a valid number." };
+    }
+    if (!isNaN(lowerVal) && Math.abs(studentVal - lowerVal) <= tolerance && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `You swapped the interval bounds. The lower bound is ${lowerVal} and the upper bound is ${expectedVal}.`
+      };
+    }
+    if (!isNaN(reverseUpper) && Math.abs(studentVal - reverseUpper) <= tolerance && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: "It looks like you reversed the subtraction order and found group 2 minus group 1 instead of group 1 minus group 2."
+      };
+    }
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct. The upper bound is (x-bar1 - x-bar2) + ME = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.12) {
+      return {
+        score: "P",
+        feedback: `Close. Recheck the point estimate plus the margin of error. The upper bound is ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Add the margin of error to x-bar1 - x-bar2. The upper bound is ${expectedVal}.`
     };
   }
 
@@ -415,6 +600,37 @@ export function gradeField(fieldId, answer, context) {
       return {
         score: "I",
         feedback: "The interval is estimating the population mean. It is not a probability statement about the sample mean."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. A correct interpretation is: ${expected}`
+    };
+  }
+
+  if (fieldId === "diffMeansIntervalInterpretAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. A confidence interval for two means is interpreted as a plausible range for the population difference in means in the stated order."
+      };
+    }
+    if (containsAny(answer, ["probability"])) {
+      return {
+        score: "I",
+        feedback: "Do not attach the confidence level as a probability to one fixed interval. Interpret the interval as capturing the population difference in means."
+      };
+    }
+    if (containsAny(answer, ["about", "% of", "individual"])) {
+      return {
+        score: "I",
+        feedback: "That treats the interval as describing individual observations. The interval is about the population difference in means."
+      };
+    }
+    if (containsAny(answer, [context?.reversedParameter])) {
+      return {
+        score: "I",
+        feedback: "Be careful with the subtraction order. Interpret the interval using the same order as the problem, not the reversed difference."
       };
     }
     return {

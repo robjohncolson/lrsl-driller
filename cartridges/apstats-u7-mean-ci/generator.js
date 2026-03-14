@@ -1,4 +1,4 @@
-// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, and 7.5
+// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, and 7.6
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -59,6 +59,12 @@ const TEST_PROCEDURE_WRONG = [
   "One-sample t-interval for a population mean",
   "One-sample z-test for a population proportion",
   "Two-sample t-test for a difference in population means"
+];
+const TWO_SAMPLE_CI_PROCEDURE_CORRECT = "Two-sample t-interval for the difference in population means";
+const TWO_SAMPLE_CI_PROCEDURE_WRONG = [
+  "One-sample t-interval for a population mean",
+  "Two-sample t-test for a difference in population means",
+  "One-sample z-interval for a population proportion"
 ];
 const H0 = "H\u2080";
 const HA = "H\u2090";
@@ -400,6 +406,131 @@ const confidenceLevelEffectScenarios = [
   }
 ];
 
+const twoSampleCIProcedureScenarios = [
+  {
+    desc: "Researchers collected a random sample of 14 adult female Argiope spiders and a random sample of 14 adult male Argiope spiders. They want a 95% confidence interval for the difference in the population mean body lengths (female minus male)."
+  },
+  {
+    desc: "Researchers collected a random sample of 35 adult female Argiope spiders and a random sample of 35 adult male Argiope spiders. They want to estimate the difference in population mean body lengths with a 95% confidence interval."
+  },
+  {
+    desc: "A teacher randomly assigned 18 students to work with a slow internet connection and 18 students to work with a fast internet connection. She wants a confidence interval for the difference in mean diastolic blood pressure after the task."
+  },
+  {
+    desc: "A follow-up study randomly assigned students like these to slow or fast internet conditions and recorded quantitative stress responses. The goal is to estimate the difference in the two population means with an interval."
+  }
+];
+
+const twoSampleCIConditionScenarios = [
+  {
+    desc: "Researchers took two independent random samples of Argiope spiders: 14 females and 14 males.",
+    given: "Both samples are less than 10% of their respective spider populations, and histograms for both samples are roughly unimodal and symmetric with no obvious outliers.",
+    allMet: true,
+    detail: "Independence is met because the data came from two independent random samples. The 10% condition is met because 14 is less than 10% of each population. Both sample sizes are less than 30, but the sample distributions are roughly unimodal and symmetric with no obvious outliers, so the normal condition is reasonable for both groups.",
+    explanationGroups: [
+      ["independent", "two independent random samples", "random sample", "randomly selected"],
+      ["10%", "10 percent", "less than 10%", "respective populations"],
+      ["both sample sizes are less than 30", "roughly unimodal", "symmetric", "no obvious outliers", "normal condition"]
+    ]
+  },
+  {
+    desc: "Researchers took two independent random samples of Argiope spiders: 35 females and 35 males.",
+    given: "Both samples are less than 10% of their respective spider populations.",
+    allMet: true,
+    detail: "Independence is met because the data came from two independent random samples. The 10% condition is met because both samples are less than 10% of their respective populations. The normal condition is met because both sample sizes are greater than 30.",
+    explanationGroups: [
+      ["independent", "two independent random samples", "random sample", "randomly selected"],
+      ["10%", "10 percent", "less than 10%", "respective populations"],
+      ["both sample sizes are greater than 30", "more than 30", "n1", "n2", "normal condition"]
+    ]
+  },
+  {
+    desc: "A teacher randomly assigned 18 students to a slow internet room and 18 students to a fast internet room, then measured diastolic blood pressure after the task.",
+    given: "This was a randomized experiment, but the boxplots for the two groups show clear skewness and an outlier.",
+    allMet: false,
+    detail: "Independence is met because this was a randomized experiment with two groups. A separate 10% sampling check is not needed here because the students were assigned to treatments rather than sampled without replacement from a large population. The normal condition is not met because both sample sizes are less than 30 and the sample distributions show clear skewness and an outlier.",
+    explanationGroups: [
+      ["randomized experiment", "random assignment", "randomly assigned", "independent"],
+      ["10%", "not needed", "sampling without replacement", "assigned to treatments"],
+      ["less than 30", "skewness", "outlier", "normal condition"]
+    ]
+  },
+  {
+    desc: "Researchers took a random sample of 14 female spiders and a random sample of 14 male spiders.",
+    given: "Both samples are less than 10% of their respective populations, but the male spider sample shows strong right skew and an outlier.",
+    allMet: false,
+    detail: "Independence is met because the data came from two random samples. The 10% condition is met because both samples are less than 10% of their populations. The normal condition is not met because both sample sizes are less than 30 and one of the sample distributions has strong skewness and an outlier.",
+    explanationGroups: [
+      ["independent", "two random samples", "random sample", "randomly selected"],
+      ["10%", "10 percent", "less than 10%", "respective populations"],
+      ["less than 30", "strong right skew", "skewness", "outlier", "normal condition"]
+    ]
+  }
+];
+
+const twoSampleCITemplates = [
+  {
+    desc: "Researchers compared the body lengths of adult female and adult male Argiope spiders.",
+    givenPrefix: "Construct a confidence interval for the difference in mean body lengths (female minus male).",
+    group1Label: "Female spiders",
+    group2Label: "Male spiders",
+    differenceLabel: "female minus male",
+    units: "millimeters",
+    parameter: "difference in the population mean body lengths of female and male Argiope spiders (female minus male)",
+    reversedParameter: "difference in the population mean body lengths of female and male Argiope spiders (male minus female)",
+    individualText: "individual spider body lengths",
+    meanDigits: 2,
+    sdDigits: 2,
+    xBar1Min: 13.8,
+    xBar1Max: 15.6,
+    xBar1Step: 0.01,
+    xBar2Min: 3.9,
+    xBar2Max: 5.4,
+    xBar2Step: 0.001,
+    s1Min: 3.1,
+    s1Max: 3.9,
+    s1Step: 0.01,
+    s2Min: 0.8,
+    s2Max: 1.2,
+    s2Step: 0.01,
+    settings: [
+      { n1: 14, n2: 14, confLevel: 95, tStar: 2.13 },
+      { n1: 14, n2: 14, confLevel: 90, tStar: 1.76 },
+      { n1: 35, n2: 35, confLevel: 95, tStar: 2.03 }
+    ]
+  },
+  {
+    desc: "A teacher compared students' diastolic blood pressure after completing the same online task with slow or fast internet.",
+    givenPrefix: "Construct a confidence interval for the difference in mean diastolic blood pressure (slow internet minus fast internet).",
+    group1Label: "Slow internet group",
+    group2Label: "Fast internet group",
+    differenceLabel: "slow internet minus fast internet",
+    units: "mm Hg",
+    parameter: "difference in the population mean diastolic blood pressure after the task for students like these (slow internet minus fast internet)",
+    reversedParameter: "difference in the population mean diastolic blood pressure after the task for students like these (fast internet minus slow internet)",
+    individualText: "individual student blood pressure readings",
+    meanDigits: 1,
+    sdDigits: 1,
+    xBar1Min: 83.0,
+    xBar1Max: 89.0,
+    xBar1Step: 0.1,
+    xBar2Min: 75.0,
+    xBar2Max: 81.0,
+    xBar2Step: 0.1,
+    s1Min: 7.0,
+    s1Max: 11.0,
+    s1Step: 0.1,
+    s2Min: 6.0,
+    s2Max: 9.5,
+    s2Step: 0.1,
+    settings: [
+      { n1: 18, n2: 18, confLevel: 90, tStar: 1.74 },
+      { n1: 24, n2: 24, confLevel: 95, tStar: 2.07 },
+      { n1: 32, n2: 32, confLevel: 95, tStar: 2.04 }
+    ]
+  }
+];
+
 const meanTestSetupTemplates = [
   {
     statementPrefix: "Got Hops? An article claims that the average vertical jump for students at this high school is",
@@ -709,6 +840,61 @@ function buildConfidenceLevelEffectOptions() {
       "The margin of error gets larger because the critical value gets larger.",
       "The margin of error stays the same because the sample size did not change.",
       "The margin of error becomes 0 because the interval is more precise."
+    ])
+  };
+}
+
+function buildTwoSampleCIIntervalScenario(template) {
+  const setting = choice(template.settings);
+  const xBar1 = randStep(template.xBar1Min, template.xBar1Max, template.xBar1Step);
+  const xBar2 = randStep(template.xBar2Min, template.xBar2Max, template.xBar2Step);
+  const s1 = randStep(template.s1Min, template.s1Max, template.s1Step);
+  const s2 = randStep(template.s2Min, template.s2Max, template.s2Step);
+  const seRaw = Math.sqrt((s1 * s1) / setting.n1 + (s2 * s2) / setting.n2);
+  const pointEstimateRaw = xBar1 - xBar2;
+  const meRaw = setting.tStar * seRaw;
+  const lowerRaw = pointEstimateRaw - meRaw;
+  const upperRaw = pointEstimateRaw + meRaw;
+
+  return {
+    ...template,
+    ...setting,
+    xBar1: roundTo(xBar1, 3),
+    xBar2: roundTo(xBar2, 3),
+    s1: roundTo(s1, 3),
+    s2: roundTo(s2, 3),
+    xBar1Text: toFixedString(xBar1, template.meanDigits),
+    xBar2Text: toFixedString(xBar2, template.meanDigits),
+    s1Text: toFixedString(s1, template.sdDigits),
+    s2Text: toFixedString(s2, template.sdDigits),
+    tStarText: toFixedString(setting.tStar, 2),
+    se: roundTo(seRaw, 4),
+    pointEstimate: roundTo(pointEstimateRaw, 4),
+    pointEstimateText: toFixedString(pointEstimateRaw, 2),
+    me: roundTo(meRaw, 2),
+    meText: toFixedString(meRaw, 2),
+    lower: roundTo(lowerRaw, 2),
+    lowerText: toFixedString(lowerRaw, 2),
+    upper: roundTo(upperRaw, 2),
+    upperText: toFixedString(upperRaw, 2),
+    reverseLower: roundTo(-upperRaw, 2),
+    reverseUpper: roundTo(-lowerRaw, 2)
+  };
+}
+
+function getTwoSampleCISummaryText(scen) {
+  return `${scen.givenPrefix} ${scen.group1Label}: x-bar = ${scen.xBar1Text}, s = ${scen.s1Text}, n = ${scen.n1}. ${scen.group2Label}: x-bar = ${scen.xBar2Text}, s = ${scen.s2Text}, n = ${scen.n2}.`;
+}
+
+function buildTwoSampleCIInterpretOptions(scen) {
+  const correct = `We are ${scen.confLevel}% confident that the ${scen.parameter} is between ${scen.lowerText} and ${scen.upperText} ${scen.units}.`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `There is a ${scen.confLevel}% probability that the ${scen.parameter} is between ${scen.lowerText} and ${scen.upperText} ${scen.units}.`,
+      `About ${scen.confLevel}% of ${scen.individualText} are between ${scen.lowerText} and ${scen.upperText} ${scen.units}.`,
+      `We are ${scen.confLevel}% confident that the ${scen.reversedParameter} is between ${scen.lowerText} and ${scen.upperText} ${scen.units}.`
     ])
   };
 }
@@ -1555,6 +1741,143 @@ export function generateProblem(modeId, contextFromFile, mode) {
     );
 
     scenario = `${scen.desc}\n\nThe p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l26-identify-diffmeans-procedure") {
+    const scen = drawFromBag("u76-procedure", twoSampleCIProcedureScenarios);
+    const options = shuffle([TWO_SAMPLE_CI_PROCEDURE_CORRECT, ...TWO_SAMPLE_CI_PROCEDURE_WRONG]);
+
+    answers = { diffMeansProcedureAnswer: { value: TWO_SAMPLE_CI_PROCEDURE_CORRECT } };
+    context = attachAnswers(
+      {
+        levelName: "7.6a: Identify the Procedure",
+        problemText: "Choose the correct inference procedure.",
+        givenText: scen.desc,
+        optA: options[0],
+        optB: options[1],
+        optC: options[2],
+        optD: options[3]
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l27-check-diffmeans-conditions") {
+    const scen = drawFromBag("u76-conditions", twoSampleCIConditionScenarios);
+
+    answers = {
+      diffMeansConditionsMet: { value: scen.allMet ? "Yes, all conditions are met" : "No, at least one condition fails" },
+      diffMeansConditionsExplain: { value: scen.detail }
+    };
+
+    context = attachAnswers(
+      {
+        levelName: "7.6b: Check Conditions",
+        problemText: "Decide whether the conditions for a two-sample t-interval are met.",
+        givenText: `${scen.given} ${scen.desc}`,
+        explanationGroups: scen.explanationGroups,
+        conditionDetail: scen.detail
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.given}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l28-diffmeans-margin-of-error") {
+    const template = drawFromBag("u76-me", twoSampleCITemplates);
+    const scen = buildTwoSampleCIIntervalScenario(template);
+
+    answers = { diffMeansMeAnswer: { value: scen.me, tolerance: 0.03 } };
+    context = attachAnswers(
+      {
+        levelName: "7.6c: Margin of Error",
+        problemText: "Compute t* x sqrt((s1^2 / n1) + (s2^2 / n2)).",
+        givenText: `${getTwoSampleCISummaryText(scen)} Use t* = ${scen.tStarText}.`,
+        confLevel: `${scen.confLevel}`,
+        xBar1: scen.xBar1Text,
+        xBar2: scen.xBar2Text,
+        s1: scen.s1Text,
+        s2: scen.s2Text,
+        n1: `${scen.n1}`,
+        n2: `${scen.n2}`,
+        tStar: scen.tStarText,
+        se: `${scen.se}`,
+        units: scen.units
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${getTwoSampleCISummaryText(scen)} Use t* = ${scen.tStarText}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l29-construct-diffmeans-interval") {
+    const template = drawFromBag("u76-ci", twoSampleCITemplates);
+    const scen = buildTwoSampleCIIntervalScenario(template);
+
+    answers = {
+      diffMeansCiLower: { value: scen.lower, tolerance: 0.03 },
+      diffMeansCiUpper: { value: scen.upper, tolerance: 0.03 }
+    };
+
+    context = attachAnswers(
+      {
+        levelName: "7.6d: Construct the Interval",
+        problemText: "Build (x-bar1 - x-bar2) +/- t* x sqrt((s1^2 / n1) + (s2^2 / n2)).",
+        givenText: `${getTwoSampleCISummaryText(scen)} Use t* = ${scen.tStarText}.`,
+        confLevel: `${scen.confLevel}`,
+        xBar1: scen.xBar1Text,
+        xBar2: scen.xBar2Text,
+        s1: scen.s1Text,
+        s2: scen.s2Text,
+        n1: `${scen.n1}`,
+        n2: `${scen.n2}`,
+        tStar: scen.tStarText,
+        pointEstimate: scen.pointEstimateText,
+        me: scen.meText,
+        reverseLower: `${scen.reverseLower}`,
+        reverseUpper: `${scen.reverseUpper}`,
+        units: scen.units
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${getTwoSampleCISummaryText(scen)} Use t* = ${scen.tStarText}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l30-interpret-diffmeans-interval") {
+    const template = drawFromBag("u76-interpret", twoSampleCITemplates);
+    const scen = buildTwoSampleCIIntervalScenario(template);
+    const interpretation = buildTwoSampleCIInterpretOptions(scen);
+
+    answers = { diffMeansIntervalInterpretAnswer: { value: interpretation.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.6e: Interpret the Interval",
+        problemText: "Choose the correct interpretation in context.",
+        givenText: `${scen.desc} A ${scen.confLevel}% confidence interval for ${scen.differenceLabel} is ${scen.lowerText} to ${scen.upperText} ${scen.units}.`,
+        optA: interpretation.options[0],
+        optB: interpretation.options[1],
+        optC: interpretation.options[2],
+        optD: interpretation.options[3],
+        confLevel: `${scen.confLevel}`,
+        lower: scen.lowerText,
+        upper: scen.upperText,
+        units: scen.units,
+        parameter: scen.parameter,
+        reversedParameter: scen.reversedParameter
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nA ${scen.confLevel}% confidence interval for ${scen.differenceLabel} is ${scen.lowerText} to ${scen.upperText} ${scen.units}.`;
     return { context, graphConfig, answers, scenario };
   }
 

@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u7-mean-ci",
-    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), Setting Up a Test for a Population Mean (7.4), and Carrying Out a Test for a Population Mean (7.5)",
+    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), Setting Up a Test for a Population Mean (7.4), Carrying Out a Test for a Population Mean (7.5), and Confidence Intervals for the Difference of Two Means (7.6)",
     "subject": "AP Statistics",
-    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions, and Topic 7.5 skills for calculating a test statistic, matching the correct p-value region, finding a p-value, interpreting it, and stating a conclusion."
+    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions, Topic 7.5 skills for calculating a test statistic, matching the correct p-value region, finding a p-value, interpreting it, and stating a conclusion, and Topic 7.6 skills for identifying a two-sample t-interval for the difference in population means, checking conditions, finding the margin of error, constructing the interval, and interpreting it in context."
   },
 
   "config": {
@@ -565,6 +565,125 @@
           }
         ]
       }
+    },
+    {
+      "id": "l26-identify-diffmeans-procedure",
+      "name": "7.6a: Identify the Procedure",
+      "animation": "assets/MeanDiffCIProcedure.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansProcedureAnswer",
+            "type": "dropdown",
+            "label": "What inference procedure should be used?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l27-check-diffmeans-conditions",
+      "name": "7.6b: Check Conditions",
+      "animation": "assets/MeanDiffCIConditions.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansConditionsMet",
+            "type": "choice",
+            "label": "Are all conditions for a two-sample t-interval met?",
+            "options": [
+              "Yes, all conditions are met",
+              "No, at least one condition fails"
+            ]
+          },
+          {
+            "id": "diffMeansConditionsExplain",
+            "type": "textarea",
+            "label": "Explain which conditions are met or not met:",
+            "rows": 3,
+            "placeholder": "Check independence, 10% when sampling, and whether both samples are large enough or roughly normal..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l28-diffmeans-margin-of-error",
+      "name": "7.6c: Margin of Error",
+      "animation": "assets/MeanDiffCIMarginOfError.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansMeAnswer",
+            "type": "number",
+            "label": "Calculate the margin of error. Round to 2 decimals:",
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l29-construct-diffmeans-interval",
+      "name": "7.6d: Construct the Interval",
+      "animation": "assets/MeanDiffCIConstructInterval.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansCiLower",
+            "type": "number",
+            "label": "Lower bound of the confidence interval:",
+            "step": 0.01
+          },
+          {
+            "id": "diffMeansCiUpper",
+            "type": "number",
+            "label": "Upper bound of the confidence interval:",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l30-interpret-diffmeans-interval",
+      "name": "7.6e: Interpret the Interval",
+      "animation": "assets/MeanDiffCIInterpretInterval.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansIntervalInterpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation of the confidence interval is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
     }
   ],
 
@@ -610,7 +729,14 @@
       "pValueRegionAnswer": "Match the tail area to the alternative hypothesis: > means right tail, < means left tail, and not equal means both tails.",
       "pValueAnswer": "Use the test statistic and the alternative together. A two-sided test doubles the one-tail probability.",
       "pValueInterpretAnswer": "Start with 'Assuming the null hypothesis is true...' Then describe the chance of getting a sample result this extreme or more extreme by random chance alone.",
-      "testConclusionAnswer": "Compare the p-value to alpha. If p <= alpha, reject H0 and support the alternative. If p > alpha, fail to reject H0."
+      "testConclusionAnswer": "Compare the p-value to alpha. If p <= alpha, reject H0 and support the alternative. If p > alpha, fail to reject H0.",
+      "diffMeansProcedureAnswer": "Two groups, quantitative data, and estimating mu1 - mu2 with an interval point to a two-sample t-interval.",
+      "diffMeansConditionsMet": "Check for two independent random samples or random assignment, the 10% condition when sampling without replacement, and whether both sample sizes are at least 30 or both sample distributions show no strong skewness or outliers.",
+      "diffMeansConditionsExplain": "Mention independence, the 10% condition when it applies, and that both samples must be large enough or both sample distributions must be roughly normal with no extreme skewness or outliers.",
+      "diffMeansMeAnswer": "For a two-sample t-interval, margin of error = t* x sqrt((s1^2 / n1) + (s2^2 / n2)).",
+      "diffMeansCiLower": "First find x-bar1 - x-bar2 and the margin of error, then subtract the margin of error for the lower bound.",
+      "diffMeansCiUpper": "First find x-bar1 - x-bar2 and the margin of error, then add the margin of error for the upper bound.",
+      "diffMeansIntervalInterpretAnswer": "Interpret the interval for the population difference in means in the stated order, such as female minus male, not for individual observations."
     },
     "penalty": {
       "0": "gold",
@@ -772,7 +898,37 @@
         "id": "l25-state-test-conclusion",
         "name": "25",
         "unlockedBy": { "gold": 1 },
-        "celebrationMessage": "Topic 7.5 complete. You can carry out a one-sample t-test for a population mean by calculating the test statistic, finding and interpreting the p-value, and stating a conclusion."
+        "celebrationMessage": "Topic 7.5 complete. Next, build confidence intervals for the difference of two population means."
+      },
+      {
+        "id": "l26-identify-diffmeans-procedure",
+        "name": "26",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can identify when a two-sample t-interval is appropriate. Next, verify the conditions."
+      },
+      {
+        "id": "l27-check-diffmeans-conditions",
+        "name": "27",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Conditions checked. Next, calculate the margin of error for the interval."
+      },
+      {
+        "id": "l28-diffmeans-margin-of-error",
+        "name": "28",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Margin of error found. Now construct the full confidence interval."
+      },
+      {
+        "id": "l29-construct-diffmeans-interval",
+        "name": "29",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "The interval is built. Last step: interpret the difference in means in context."
+      },
+      {
+        "id": "l30-interpret-diffmeans-interval",
+        "name": "30",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topic 7.6 complete. You can identify, build, and interpret a confidence interval for the difference of two population means."
       }
     ]
   }
