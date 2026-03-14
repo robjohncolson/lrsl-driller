@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u7-mean-ci",
-    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), Setting Up a Test for a Population Mean (7.4), Carrying Out a Test for a Population Mean (7.5), and Confidence Intervals for the Difference of Two Means (7.6)",
+    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), Setting Up a Test for a Population Mean (7.4), Carrying Out a Test for a Population Mean (7.5), Confidence Intervals for the Difference of Two Means (7.6), and Justifying a Claim About the Difference of Two Means Based on a Confidence Interval (7.7)",
     "subject": "AP Statistics",
-    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions, Topic 7.5 skills for calculating a test statistic, matching the correct p-value region, finding a p-value, interpreting it, and stating a conclusion, and Topic 7.6 skills for identifying a two-sample t-interval for the difference in population means, checking conditions, finding the margin of error, constructing the interval, and interpreting it in context."
+    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions, Topic 7.5 skills for calculating a test statistic, matching the correct p-value region, finding a p-value, interpreting it, and stating a conclusion, Topic 7.6 skills for identifying a two-sample t-interval for the difference in population means, checking conditions, finding the margin of error, constructing the interval, and interpreting it in context, and Topic 7.7 skills for using 0 as the no-difference benchmark, deciding whether 0 is plausible from a confidence interval, justifying a claim about two population means, stating a careful conclusion, and interpreting the confidence level for a difference in means."
   },
 
   "config": {
@@ -684,6 +684,126 @@
           }
         ]
       }
+    },
+    {
+      "id": "l31-equal-means-zero",
+      "name": "7.7a: Equal Means Means 0",
+      "animation": "assets/MeanDiffCIEqualMeansZero.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansZeroValueAnswer",
+            "type": "dropdown",
+            "label": "If the two population means are equal, what value should {{differenceLabel}} equal?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l32-zero-plausible-diffmeans",
+      "name": "7.7b: Decide Whether 0 Is Plausible",
+      "animation": "assets/MeanDiffCIZeroPlausible.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansZeroPlausibleAnswer",
+            "type": "dropdown",
+            "label": "Based on the interval, is 0 a plausible value for the population difference in means?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l33-justify-diffmeans-claim",
+      "name": "7.7c: Justify the Claim",
+      "animation": "assets/MeanDiffCIJustifyClaim.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansClaimJustifyAnswer",
+            "type": "dropdown",
+            "label": "Which justification correctly uses the interval?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l34-state-diffmeans-conclusion",
+      "name": "7.7d: State the Conclusion Carefully",
+      "animation": "assets/MeanDiffCIStateConclusion.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansClaimConclusionAnswer",
+            "type": "dropdown",
+            "label": "Which conclusion is stated correctly?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l35-interpret-diffmeans-confidence-level",
+      "name": "7.7e: Interpret the Confidence Level",
+      "animation": "assets/MeanDiffCIInterpretConfidenceLevel.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansConfidenceLevelAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation of the confidence level is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
     }
   ],
 
@@ -736,7 +856,12 @@
       "diffMeansMeAnswer": "For a two-sample t-interval, margin of error = t* x sqrt((s1^2 / n1) + (s2^2 / n2)).",
       "diffMeansCiLower": "First find x-bar1 - x-bar2 and the margin of error, then subtract the margin of error for the lower bound.",
       "diffMeansCiUpper": "First find x-bar1 - x-bar2 and the margin of error, then add the margin of error for the upper bound.",
-      "diffMeansIntervalInterpretAnswer": "Interpret the interval for the population difference in means in the stated order, such as female minus male, not for individual observations."
+      "diffMeansIntervalInterpretAnswer": "Interpret the interval for the population difference in means in the stated order, such as female minus male, not for individual observations.",
+      "diffMeansZeroValueAnswer": "If the two population means are equal, then group 1 minus group 2 is 0. That is the no-difference benchmark.",
+      "diffMeansZeroPlausibleAnswer": "Check whether 0 is inside the confidence interval. Inside means no difference is plausible; outside means 0 is not plausible.",
+      "diffMeansClaimJustifyAnswer": "Use 0 as the benchmark for no difference. If 0 is outside the interval, that supports a directional claim; if 0 is inside, the claim is not supported.",
+      "diffMeansClaimConclusionAnswer": "State the conclusion cautiously in context. Do not say the claim is proved, and do not say someone is wrong just because 0 is in the interval.",
+      "diffMeansConfidenceLevelAnswer": "Interpret confidence level with repeated random sampling: about C% of intervals from many sample pairs would capture the population difference in means."
     },
     "penalty": {
       "0": "gold",
@@ -929,6 +1054,36 @@
         "name": "30",
         "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Topic 7.6 complete. You can identify, build, and interpret a confidence interval for the difference of two population means."
+      },
+      {
+        "id": "l31-equal-means-zero",
+        "name": "31",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You have the benchmark. Next, decide whether 0 is a plausible value for the population difference."
+      },
+      {
+        "id": "l32-zero-plausible-diffmeans",
+        "name": "32",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Now use the interval to decide whether a no-difference claim is plausible."
+      },
+      {
+        "id": "l33-justify-diffmeans-claim",
+        "name": "33",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Claim logic is in place. Next, choose the most careful conclusion statement."
+      },
+      {
+        "id": "l34-state-diffmeans-conclusion",
+        "name": "34",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can state the conclusion carefully. One last step: interpret the confidence level for a difference in means."
+      },
+      {
+        "id": "l35-interpret-diffmeans-confidence-level",
+        "name": "35",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topic 7.7 complete. You can use a confidence interval for two means to judge whether a claim is supported and explain the confidence level."
       }
     ]
   }
