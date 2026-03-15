@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u7-mean-ci",
-    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), Setting Up a Test for a Population Mean (7.4), Carrying Out a Test for a Population Mean (7.5), Confidence Intervals for the Difference of Two Means (7.6), Justifying a Claim About the Difference of Two Means Based on a Confidence Interval (7.7), and Setting Up a Test for the Difference of Two Population Means (7.8)",
+    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), Setting Up a Test for a Population Mean (7.4), Carrying Out a Test for a Population Mean (7.5), Confidence Intervals for the Difference of Two Means (7.6), Justifying a Claim About the Difference of Two Means Based on a Confidence Interval (7.7), Setting Up a Test for the Difference of Two Population Means (7.8), and Carrying Out and Interpreting a Test for the Difference of Two Population Means (7.9)",
     "subject": "AP Statistics",
-    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions, Topic 7.5 skills for calculating a test statistic, matching the correct p-value region, finding a p-value, interpreting it, and stating a conclusion, Topic 7.6 skills for identifying a two-sample t-interval for the difference in population means, checking conditions, finding the margin of error, constructing the interval, and interpreting it in context, Topic 7.7 skills for using 0 as the no-difference benchmark, deciding whether 0 is plausible from a confidence interval, justifying a claim about two population means, stating a careful conclusion, and interpreting the confidence level for a difference in means, and Topic 7.8 skills for stating null and alternative hypotheses for a difference in means, choosing one-sided versus two-sided alternatives, reversing the inequality when the subtraction order changes, and defining the population means in context."
+    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions, Topic 7.5 skills for calculating a test statistic, matching the correct p-value region, finding a p-value, interpreting it, and stating a conclusion, Topic 7.6 skills for identifying a two-sample t-interval for the difference in population means, checking conditions, finding the margin of error, constructing the interval, and interpreting it in context, Topic 7.7 skills for using 0 as the no-difference benchmark, deciding whether 0 is plausible from a confidence interval, justifying a claim about two population means, stating a careful conclusion, and interpreting the confidence level for a difference in means, Topic 7.8 skills for stating null and alternative hypotheses for a difference in means, choosing one-sided versus two-sided alternatives, reversing the inequality when the subtraction order changes, and defining the population means in context, and Topic 7.9 skills for calculating a two-sample t-test statistic, matching the correct p-value region, finding a p-value, interpreting it, stating a conclusion about a difference in population means, comparing the p-value to alpha, making the formal reject-or-fail-to-reject decision, determining statistical significance, and stating the evidence without claiming proof."
   },
 
   "config": {
@@ -924,6 +924,216 @@
           }
         ]
       }
+    },
+    {
+      "id": "l41-calculate-diffmeans-test-statistic",
+      "name": "7.9a: Calculate the Test Statistic",
+      "animation": "assets/MeanDiffTestStatistic.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansTestStatisticAnswer",
+            "type": "number",
+            "label": "Calculate the test statistic t. Round to 3 decimals:",
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    {
+      "id": "l42-identify-diffmeans-p-value-region",
+      "name": "7.9b: Identify the P-value Region",
+      "animation": "assets/MeanDiffTestPValueRegion.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansPValueRegionAnswer",
+            "type": "dropdown",
+            "label": "Which probability matches the p-value for this two-sample test?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l43-find-diffmeans-p-value",
+      "name": "7.9c: Find the P-value",
+      "animation": "assets/MeanDiffTestPValue.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansPValueAnswer",
+            "type": "dropdown",
+            "label": "Which p-value is correct for this two-sample test?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l44-interpret-diffmeans-p-value",
+      "name": "7.9d: Interpret the P-value",
+      "animation": "assets/MeanDiffTestInterpretPValue.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansPValueInterpretAnswer",
+            "type": "dropdown",
+            "label": "Which interpretation of the p-value is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l45-state-diffmeans-test-conclusion",
+      "name": "7.9e: State the Conclusion",
+      "animation": "assets/MeanDiffTestConclusion.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansTestConclusionAnswer",
+            "type": "dropdown",
+            "label": "Which conclusion is best for this two-sample test?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l46-compare-diffmeans-p-value-alpha",
+      "name": "7.9f: Compare the P-value to Alpha",
+      "animation": "assets/MeanDiffTestComparePValueAlpha.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansComparePValueAlphaAnswer",
+            "type": "dropdown",
+            "label": "Which comparison between the p-value and alpha is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l47-decide-diffmeans-test-decision",
+      "name": "7.9g: Make the Decision",
+      "animation": "assets/MeanDiffTestDecision.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansTestDecisionAnswer",
+            "type": "dropdown",
+            "label": "What is the correct decision about H₀?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l48-judge-diffmeans-statistical-significance",
+      "name": "7.9h: Judge Statistical Significance",
+      "animation": "assets/MeanDiffTestSignificance.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansStatSigAnswer",
+            "type": "dropdown",
+            "label": "Is the result statistically significant at the stated alpha?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l49-state-diffmeans-evidence",
+      "name": "7.9i: State the Evidence",
+      "animation": "assets/MeanDiffTestEvidence.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansEvidenceAnswer",
+            "type": "dropdown",
+            "label": "Which evidence statement is best for this two-sample test?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
     }
   ],
 
@@ -986,7 +1196,16 @@
       "diffMeansAlternativeHypothesisAnswer": "The alternative uses a strict inequality and the population means. Match the direction to the claim in context.",
       "diffMeansAlternativeTypeAnswer": "Directional claims use a one-sided alternative. Claims that say the means are different use a two-sided alternative.",
       "diffMeansReverseOrderAnswer": "If you reverse the subtraction order in a one-sided hypothesis, you must reverse the inequality too.",
-      "diffMeansParameterDefinitionAnswer": "Define each parameter as a population mean for its group, not a sample mean, not one individual value, and not a total."
+      "diffMeansParameterDefinitionAnswer": "Define each parameter as a population mean for its group, not a sample mean, not one individual value, and not a total.",
+      "diffMeansTestStatisticAnswer": "Use t = ((x-bar1 - x-bar2) - 0) / sqrt((s1^2 / n1) + (s2^2 / n2)). Under H0, the null value for the difference is 0.",
+      "diffMeansPValueRegionAnswer": "Match the tail area to the alternative hypothesis for the difference in means: > means right tail, < means left tail, and not equal means both tails.",
+      "diffMeansPValueAnswer": "Use the test statistic and the alternative together. For a two-sample test, a two-sided alternative doubles the one-tail probability.",
+      "diffMeansPValueInterpretAnswer": "Start with 'Assuming the null hypothesis is true...' Then describe the chance of getting a difference in sample means this extreme or more extreme by random chance alone.",
+      "diffMeansTestConclusionAnswer": "Compare the p-value to alpha. If p <= alpha, reject H0 and support the alternative. If p > alpha, fail to reject H0.",
+      "diffMeansComparePValueAlphaAnswer": "Compare the two numbers directly. If the p-value is at or below alpha, it goes in the reject-H0 branch; if it is larger, it goes in the fail-to-reject branch.",
+      "diffMeansTestDecisionAnswer": "The formal decision is about H0: reject H0 when p <= alpha; otherwise fail to reject H0. Do not say accept H0.",
+      "diffMeansStatSigAnswer": "Statistically significant means the p-value is at or below alpha. If p > alpha, the result is not statistically significant at that level.",
+      "diffMeansEvidenceAnswer": "Translate the decision into evidence language: reject H0 means convincing statistical evidence for the alternative; fail to reject H0 means not convincing statistical evidence. Do not say prove."
     },
     "penalty": {
       "0": "gold",
@@ -1239,6 +1458,60 @@
         "name": "40",
         "unlockedBy": { "gold": 1 },
         "celebrationMessage": "Topic 7.8 complete. You can set up hypotheses for a significance test about the difference of two population means."
+      },
+      {
+        "id": "l41-calculate-diffmeans-test-statistic",
+        "name": "41",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Two-sample test statistic computed. Next, match the alternative hypothesis to the correct p-value region."
+      },
+      {
+        "id": "l42-identify-diffmeans-p-value-region",
+        "name": "42",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "The p-value region is set for the two-sample test. Next, identify the p-value."
+      },
+      {
+        "id": "l43-find-diffmeans-p-value",
+        "name": "43",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "p-value found for the two-sample test. Next, interpret what it means in context."
+      },
+      {
+        "id": "l44-interpret-diffmeans-p-value",
+        "name": "44",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can interpret the p-value for a difference in means. Next, state the formal conclusion."
+      },
+      {
+        "id": "l45-state-diffmeans-test-conclusion",
+        "name": "45",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can state the full conclusion. Next, compare the p-value directly to alpha."
+      },
+      {
+        "id": "l46-compare-diffmeans-p-value-alpha",
+        "name": "46",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can compare the p-value to alpha. Next, make the formal decision about H₀."
+      },
+      {
+        "id": "l47-decide-diffmeans-test-decision",
+        "name": "47",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Decision made. Next, decide whether the result is statistically significant."
+      },
+      {
+        "id": "l48-judge-diffmeans-statistical-significance",
+        "name": "48",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can identify statistical significance. Last step: state the evidence carefully without claiming proof."
+      },
+      {
+        "id": "l49-state-diffmeans-evidence",
+        "name": "49",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topic 7.9 complete. You can carry out a significance test for the difference of two population means and interpret the result carefully."
       }
     ]
   }

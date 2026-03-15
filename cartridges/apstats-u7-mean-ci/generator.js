@@ -1,4 +1,4 @@
-// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, and 7.8
+// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, and 7.9
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -793,6 +793,124 @@ const meanTestCarryOutTemplates = [
   }
 ];
 
+const diffMeansTestCarryOutTemplates = [
+  {
+    desc: "Three students randomly assigned 14 volunteers to hear a story while the storyteller yawned occasionally and 13 volunteers to hear the same story without any yawning.",
+    group1Label: "Exposed to yawning",
+    group2Label: "No yawning exposure",
+    xBar1: 4.8,
+    xBar2: 2.9,
+    s1: 1.8,
+    s2: 1.7,
+    n1: 14,
+    n2: 13,
+    relation: ">",
+    units: "yawns",
+    mu1Symbol: "\u03bc_Y",
+    mu2Symbol: "\u03bc_N",
+    parameter: "difference in the true mean number of yawns for all people like these (exposed minus not exposed)",
+    nullContext: "the true difference in mean yawns for all people like these (exposed minus not exposed) is 0 yawns",
+    alternativeClaimText: "people yawn more, on average, when watching someone yawn than when no one yawns",
+    observedOutcomeText: "a sample difference in mean yawns of 1.9 yawns or greater",
+    chanceText: "by random assignment alone in this experiment",
+    alpha: 0.01,
+    alphaText: "0.01",
+    pValue: 0.0046248
+  },
+  {
+    desc: "A statistics student randomly sampled words from a chemistry textbook and from a physics textbook to compare mean word lengths.",
+    group1Label: "Physics textbook words",
+    group2Label: "Chemistry textbook words",
+    xBar1: 5.42,
+    xBar2: 5.11,
+    s1: 0.62,
+    s2: 0.58,
+    n1: 18,
+    n2: 20,
+    relation: "!=",
+    units: "letters",
+    mu1Symbol: "\u03bc_P",
+    mu2Symbol: "\u03bc_C",
+    parameter: "difference in the true mean word length (physics minus chemistry)",
+    nullContext: "the true difference in mean word length (physics minus chemistry) is 0 letters",
+    alternativeClaimText: "the physics and chemistry textbooks have different mean word lengths",
+    observedOutcomeText: "a sample difference in mean word length as far from 0 as 0.31 letters in either direction",
+    chanceText: "by chance alone in these random samples",
+    alpha: 0.05,
+    alphaText: "0.05",
+    pValue: 0.1215966
+  },
+  {
+    desc: "A restaurant manager compared food temperatures in foam and plastic containers after 30 minutes.",
+    group1Label: "Foam containers",
+    group2Label: "Plastic containers",
+    xBar1: 146.3,
+    xBar2: 139.8,
+    s1: 6.2,
+    s2: 7.1,
+    n1: 12,
+    n2: 11,
+    relation: ">",
+    units: "degrees Fahrenheit",
+    mu1Symbol: "\u03bc_F",
+    mu2Symbol: "\u03bc_P",
+    parameter: "difference in the true mean food temperature after 30 minutes (foam minus plastic)",
+    nullContext: "the true difference in mean food temperature after 30 minutes (foam minus plastic) is 0 degrees Fahrenheit",
+    alternativeClaimText: "foam containers maintain higher mean food temperatures than plastic containers",
+    observedOutcomeText: "a sample difference in mean temperature of 6.5 degrees Fahrenheit or greater",
+    chanceText: "by chance alone in these random samples of containers",
+    alpha: 0.05,
+    alphaText: "0.05",
+    pValue: 0.0152136
+  },
+  {
+    desc: "A council member compared response times for fire stations in the northern and southern halves of a city.",
+    group1Label: "Northern fire station",
+    group2Label: "Southern fire station",
+    xBar1: 6.42,
+    xBar2: 7.11,
+    s1: 1.24,
+    s2: 1.08,
+    n1: 16,
+    n2: 15,
+    relation: "!=",
+    units: "minutes",
+    mu1Symbol: "\u03bc_N",
+    mu2Symbol: "\u03bc_S",
+    parameter: "difference in the true mean response time (north minus south)",
+    nullContext: "the true difference in mean response time (north minus south) is 0 minutes",
+    alternativeClaimText: "the northern and southern fire stations have different mean response times",
+    observedOutcomeText: "a sample difference in mean response time as far from 0 as 0.69 minutes in either direction",
+    chanceText: "by chance alone in these random samples of calls",
+    alpha: 0.1,
+    alphaText: "0.10",
+    pValue: 0.1087467
+  },
+  {
+    desc: "A physical therapist randomly assigned 10 athletes to use a cold-water bath after a workout and 11 athletes to use standard stretching.",
+    group1Label: "Cold-water bath",
+    group2Label: "Standard stretching",
+    xBar1: 27.2,
+    xBar2: 31.1,
+    s1: 4.9,
+    s2: 5.3,
+    n1: 10,
+    n2: 11,
+    relation: "<",
+    units: "minutes",
+    mu1Symbol: "\u03bc_C",
+    mu2Symbol: "\u03bc_S",
+    parameter: "difference in the true mean recovery time (cold-water bath minus standard stretching)",
+    nullContext: "the true difference in mean recovery time (cold-water bath minus standard stretching) is 0 minutes",
+    alternativeClaimText: "athletes using a cold-water bath recover in less time, on average, than athletes using standard stretching",
+    observedOutcomeText: "a sample difference in mean recovery time of -3.9 minutes or less",
+    chanceText: "by random assignment alone in this experiment",
+    alpha: 0.05,
+    alphaText: "0.05",
+    pValue: 0.0479405
+  }
+];
+
 function buildMarginScenario(template) {
   const pair = chooseSupportedPair(template.nChoices, template.confChoices);
   const n = pair.n;
@@ -1342,41 +1460,87 @@ function buildMeanTestCarryOutScenario(template) {
   };
 }
 
+function buildTwoSampleTestCarryOutScenario(template) {
+  const se = Math.sqrt((template.s1 * template.s1) / template.n1 + (template.s2 * template.s2) / template.n2);
+  const pointEstimate = template.xBar1 - template.xBar2;
+  const t = roundTo(pointEstimate / se, 3);
+  const df = Math.round(
+    Math.pow((template.s1 * template.s1) / template.n1 + (template.s2 * template.s2) / template.n2, 2) /
+      ((Math.pow((template.s1 * template.s1) / template.n1, 2) / (template.n1 - 1)) +
+        (Math.pow((template.s2 * template.s2) / template.n2, 2) / (template.n2 - 1)))
+  );
+  const differenceSymbol = `${template.mu1Symbol} - ${template.mu2Symbol}`;
+  const pointEstimateDigits = Math.max(
+    (String(template.xBar1).split(".")[1] || "").length,
+    (String(template.xBar2).split(".")[1] || "").length
+  );
+
+  return {
+    ...template,
+    se: roundTo(se, 4),
+    t,
+    tText: toFixedString(t, 3),
+    absTText: toFixedString(Math.abs(t), 3),
+    df,
+    dfText: `${df}`,
+    pointEstimate: roundTo(pointEstimate, 4),
+    pointEstimateText: toFixedString(pointEstimate, pointEstimateDigits),
+    sampleStatisticValue: roundTo(pointEstimate, 4),
+    sampleStatisticText: `${toFixedString(pointEstimate, pointEstimateDigits)} ${template.units}`,
+    pValueText: formatProbabilityDisplay(template.pValue),
+    rejectNull: template.pValue <= template.alpha,
+    differenceSymbol,
+    nullValue: 0,
+    nullValueText: "0",
+    xBar1Text: toFixedString(template.xBar1, (String(template.xBar1).split(".")[1] || "").length),
+    xBar2Text: toFixedString(template.xBar2, (String(template.xBar2).split(".")[1] || "").length),
+    s1Text: toFixedString(template.s1, (String(template.s1).split(".")[1] || "").length),
+    s2Text: toFixedString(template.s2, (String(template.s2).split(".")[1] || "").length),
+    hypothesisText: `${H0}: ${differenceSymbol} = 0; ${HA}: ${differenceSymbol} ${getRelationSymbol(template.relation)} 0.`
+  };
+}
+
+function getTwoSampleTestSummaryText(scen) {
+  return `${scen.group1Label}: x-bar = ${scen.xBar1Text}, s = ${scen.s1Text}, n = ${scen.n1}. ${scen.group2Label}: x-bar = ${scen.xBar2Text}, s = ${scen.s2Text}, n = ${scen.n2}.`;
+}
+
 function buildPValueRegionOptions(scen) {
+  const dfText = scen.dfText || `${scen.df}`;
+
   if (scen.relation === "!=") {
-    const correct = `P(T <= -${scen.absTText} or T >= ${scen.absTText}) with df = ${scen.df}`;
+    const correct = `P(T <= -${scen.absTText} or T >= ${scen.absTText}) with df = ${dfText}`;
     return {
       correct,
       options: shuffle([
         correct,
-        `P(T >= ${scen.tText}) with df = ${scen.df}`,
-        `P(T <= ${scen.tText}) with df = ${scen.df}`,
-        `P(-${scen.absTText} <= T <= ${scen.absTText}) with df = ${scen.df}`
+        `P(T >= ${scen.tText}) with df = ${dfText}`,
+        `P(T <= ${scen.tText}) with df = ${dfText}`,
+        `P(-${scen.absTText} <= T <= ${scen.absTText}) with df = ${dfText}`
       ])
     };
   }
 
   if (scen.relation === ">") {
-    const correct = `P(T >= ${scen.tText}) with df = ${scen.df}`;
+    const correct = `P(T >= ${scen.tText}) with df = ${dfText}`;
     return {
       correct,
       options: shuffle([
         correct,
-        `P(T <= -${scen.absTText}) with df = ${scen.df}`,
-        `P(T <= ${scen.tText}) with df = ${scen.df}`,
-        `P(-${scen.absTText} <= T <= ${scen.absTText}) with df = ${scen.df}`
+        `P(T <= -${scen.absTText}) with df = ${dfText}`,
+        `P(T <= ${scen.tText}) with df = ${dfText}`,
+        `P(-${scen.absTText} <= T <= ${scen.absTText}) with df = ${dfText}`
       ])
     };
   }
 
-  const correct = `P(T <= ${scen.tText}) with df = ${scen.df}`;
+  const correct = `P(T <= ${scen.tText}) with df = ${dfText}`;
   return {
     correct,
     options: shuffle([
       correct,
-      `P(T >= ${scen.absTText}) with df = ${scen.df}`,
-      `P(T >= -${scen.absTText}) with df = ${scen.df}`,
-      `P(-${scen.absTText} <= T <= ${scen.absTText}) with df = ${scen.df}`
+      `P(T >= ${scen.absTText}) with df = ${dfText}`,
+      `P(T >= -${scen.absTText}) with df = ${dfText}`,
+      `P(-${scen.absTText} <= T <= ${scen.absTText}) with df = ${dfText}`
     ])
   };
 }
@@ -1445,6 +1609,91 @@ function buildTestConclusionOptions(scen) {
       `Because the p-value of ${scen.pValueText} is greater than alpha = ${scen.alphaText}, we reject ${H0}. There is convincing statistical evidence that ${scen.alternativeClaimText}.`,
       `Because the p-value of ${scen.pValueText} is greater than alpha = ${scen.alphaText}, we fail to reject ${H0}. This proves that ${H0} is true.`
     ])
+  };
+}
+
+function buildComparePValueAlphaOptions(scen) {
+  const lessOrEqualText = `${scen.pValueText} <= ${scen.alphaText}`;
+  const greaterText = `${scen.pValueText} > ${scen.alphaText}`;
+  const equalText = `${scen.pValueText} = ${scen.alphaText}`;
+  const notComparableText = "The p-value and alpha should not be compared.";
+  const correct = scen.rejectNull ? lessOrEqualText : greaterText;
+  const oppositeCompareText = scen.rejectNull ? greaterText : lessOrEqualText;
+
+  return {
+    correct,
+    oppositeCompareText,
+    equalCompareText: equalText,
+    notComparableText,
+    options: shuffle([correct, oppositeCompareText, equalText, notComparableText])
+  };
+}
+
+function buildTestDecisionOnlyOptions(scen) {
+  const rejectText = `Reject ${H0}`;
+  const failText = `Fail to reject ${H0}`;
+  const acceptText = `Accept ${H0}`;
+  const proveText = scen.rejectNull ? `Prove ${HA}` : `Prove ${H0}`;
+  const correct = scen.rejectNull ? rejectText : failText;
+  const wrongDecisionText = scen.rejectNull ? failText : rejectText;
+
+  return {
+    correct,
+    rejectText,
+    failText,
+    wrongDecisionText,
+    acceptText,
+    proveText,
+    options: shuffle([correct, wrongDecisionText, acceptText, proveText])
+  };
+}
+
+function buildStatisticalSignificanceOptions(scen) {
+  const significantText = `Yes. The result is statistically significant at alpha = ${scen.alphaText}.`;
+  const notSignificantText = `No. The result is not statistically significant at alpha = ${scen.alphaText}.`;
+  const correct = scen.rejectNull ? significantText : notSignificantText;
+  const oppositeSignificanceText = scen.rejectNull ? notSignificantText : significantText;
+  const nullFalseText = "Yes. Statistical significance means the null hypothesis is false.";
+  const zeroRequirementText = "No. A test is significant only if the p-value equals 0.";
+
+  return {
+    correct,
+    significantText,
+    notSignificantText,
+    oppositeSignificanceText,
+    nullFalseText,
+    zeroRequirementText,
+    options: shuffle([correct, oppositeSignificanceText, nullFalseText, zeroRequirementText])
+  };
+}
+
+function buildEvidenceStatementOptions(scen) {
+  if (scen.rejectNull) {
+    const correct = `There is convincing statistical evidence that ${scen.alternativeClaimText}.`;
+    const oppositeEvidenceText = `There is not convincing statistical evidence that ${scen.alternativeClaimText}.`;
+    const proofText = `This proves with certainty that ${scen.alternativeClaimText}.`;
+    const sampleMeansText = "Because the sample means were different, the claim must be true.";
+
+    return {
+      correct,
+      oppositeEvidenceText,
+      proofText,
+      sampleMeansText,
+      options: shuffle([correct, oppositeEvidenceText, proofText, sampleMeansText])
+    };
+  }
+
+  const correct = `There is not convincing statistical evidence that ${scen.alternativeClaimText}.`;
+  const oppositeEvidenceText = `There is convincing statistical evidence that ${scen.alternativeClaimText}.`;
+  const proofText = `This proves that ${H0} is true.`;
+  const sampleMeansText = "Because the sample means were different, the claim must still be true.";
+
+  return {
+    correct,
+    oppositeEvidenceText,
+    proofText,
+    sampleMeansText,
+    options: shuffle([correct, oppositeEvidenceText, proofText, sampleMeansText])
   };
 }
 
@@ -2473,6 +2722,257 @@ export function generateProblem(modeId, contextFromFile, mode) {
     );
 
     scenario = `${scen.desc}\n\nDefine the parameters used in the two-sample test.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l41-calculate-diffmeans-test-statistic") {
+    const template = drawFromBag("u79-test-stat", diffMeansTestCarryOutTemplates);
+    const scen = buildTwoSampleTestCarryOutScenario(template);
+
+    answers = { diffMeansTestStatisticAnswer: { value: scen.t, tolerance: 0.02 } };
+    context = attachAnswers(
+      {
+        levelName: "7.9a: Calculate the Test Statistic",
+        problemText: "Compute the two-sample t statistic for the difference in means.",
+        givenText: `${scen.hypothesisText} ${getTwoSampleTestSummaryText(scen)}`,
+        sampleStatisticValue: scen.sampleStatisticValue,
+        nullValue: scen.nullValue,
+        se: `${scen.se}`,
+        relation: scen.relation,
+        differenceSymbol: scen.differenceSymbol,
+        pointEstimateText: scen.pointEstimateText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${getTwoSampleTestSummaryText(scen)}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l42-identify-diffmeans-p-value-region") {
+    const template = drawFromBag("u79-region", diffMeansTestCarryOutTemplates);
+    const scen = buildTwoSampleTestCarryOutScenario(template);
+    const region = buildPValueRegionOptions(scen);
+
+    answers = { diffMeansPValueRegionAnswer: { value: region.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.9b: Identify the P-value Region",
+        problemText: "Match the alternative hypothesis to the correct tail area.",
+        givenText: `${scen.hypothesisText} Test statistic: t = ${scen.tText} with df = ${scen.dfText}.`,
+        optA: region.options[0],
+        optB: region.options[1],
+        optC: region.options[2],
+        optD: region.options[3],
+        relation: scen.relation,
+        tText: scen.tText,
+        absTText: scen.absTText,
+        df: scen.dfText,
+        dfText: scen.dfText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nTest statistic: t = ${scen.tText} with df = ${scen.dfText}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l43-find-diffmeans-p-value") {
+    const template = drawFromBag("u79-pvalue", diffMeansTestCarryOutTemplates);
+    const scen = buildTwoSampleTestCarryOutScenario(template);
+    const pValue = buildPValueOptions(scen);
+
+    answers = { diffMeansPValueAnswer: { value: pValue.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.9c: Find the P-value",
+        problemText: "Use the test statistic and the alternative hypothesis to find the p-value.",
+        givenText: `${scen.hypothesisText} Test statistic: t = ${scen.tText} with df = ${scen.dfText}.`,
+        optA: pValue.options[0],
+        optB: pValue.options[1],
+        optC: pValue.options[2],
+        optD: pValue.options[3],
+        relation: scen.relation,
+        oneTailText: pValue.oneTailText,
+        doubledText: pValue.doubledText,
+        halvedText: pValue.halvedText,
+        complementText: pValue.complementText,
+        oneMinusTailText: pValue.oneMinusTailText,
+        pValueText: scen.pValueText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nTest statistic: t = ${scen.tText} with df = ${scen.dfText}. Find the p-value.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l44-interpret-diffmeans-p-value") {
+    const template = drawFromBag("u79-interpret", diffMeansTestCarryOutTemplates);
+    const scen = buildTwoSampleTestCarryOutScenario(template);
+    const interpretation = buildPValueInterpretOptions(scen);
+
+    answers = { diffMeansPValueInterpretAnswer: { value: interpretation.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.9d: Interpret the P-value",
+        problemText: "Choose the correct interpretation of the p-value in context.",
+        givenText: `${scen.hypothesisText} ${getTwoSampleTestSummaryText(scen)} The p-value is ${scen.pValueText}.`,
+        optA: interpretation.options[0],
+        optB: interpretation.options[1],
+        optC: interpretation.options[2],
+        optD: interpretation.options[3],
+        pValueText: scen.pValueText,
+        nullContext: scen.nullContext,
+        alternativeClaimText: scen.alternativeClaimText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${getTwoSampleTestSummaryText(scen)} The p-value is ${scen.pValueText}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l45-state-diffmeans-test-conclusion") {
+    const template = drawFromBag("u79-conclusion", diffMeansTestCarryOutTemplates);
+    const scen = buildTwoSampleTestCarryOutScenario(template);
+    const conclusion = buildTestConclusionOptions(scen);
+
+    answers = { diffMeansTestConclusionAnswer: { value: conclusion.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.9e: State the Conclusion",
+        problemText: "Compare the p-value to alpha and state the conclusion in context.",
+        givenText: `${scen.hypothesisText} The p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}.`,
+        optA: conclusion.options[0],
+        optB: conclusion.options[1],
+        optC: conclusion.options[2],
+        optD: conclusion.options[3],
+        rejectNull: scen.rejectNull ? "yes" : "no",
+        alphaText: scen.alphaText,
+        pValueText: scen.pValueText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nThe p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l46-compare-diffmeans-p-value-alpha") {
+    const template = drawFromBag("u79-compare-alpha", diffMeansTestCarryOutTemplates);
+    const scen = buildTwoSampleTestCarryOutScenario(template);
+    const comparison = buildComparePValueAlphaOptions(scen);
+
+    answers = { diffMeansComparePValueAlphaAnswer: { value: comparison.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.9f: Compare the P-value to Alpha",
+        problemText: "Compare the p-value to alpha before deciding what to do with H0.",
+        givenText: `${scen.hypothesisText} The p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}.`,
+        optA: comparison.options[0],
+        optB: comparison.options[1],
+        optC: comparison.options[2],
+        optD: comparison.options[3],
+        rejectNull: scen.rejectNull ? "yes" : "no",
+        pValueText: scen.pValueText,
+        alphaText: scen.alphaText,
+        oppositeCompareText: comparison.oppositeCompareText,
+        equalCompareText: comparison.equalCompareText,
+        notComparableText: comparison.notComparableText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nThe p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l47-decide-diffmeans-test-decision") {
+    const template = drawFromBag("u79-decision", diffMeansTestCarryOutTemplates);
+    const scen = buildTwoSampleTestCarryOutScenario(template);
+    const decision = buildTestDecisionOnlyOptions(scen);
+
+    answers = { diffMeansTestDecisionAnswer: { value: decision.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.9g: Make the Decision",
+        problemText: "Use the p-value and alpha to make the formal decision about H0.",
+        givenText: `${scen.hypothesisText} The p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}.`,
+        optA: decision.options[0],
+        optB: decision.options[1],
+        optC: decision.options[2],
+        optD: decision.options[3],
+        rejectNull: scen.rejectNull ? "yes" : "no",
+        pValueText: scen.pValueText,
+        alphaText: scen.alphaText,
+        wrongDecisionText: decision.wrongDecisionText,
+        acceptText: decision.acceptText,
+        proveText: decision.proveText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nThe p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}. Make the decision about ${H0}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l48-judge-diffmeans-statistical-significance") {
+    const template = drawFromBag("u79-significance", diffMeansTestCarryOutTemplates);
+    const scen = buildTwoSampleTestCarryOutScenario(template);
+    const significance = buildStatisticalSignificanceOptions(scen);
+
+    answers = { diffMeansStatSigAnswer: { value: significance.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.9h: Judge Statistical Significance",
+        problemText: "Decide whether the result is statistically significant at the stated alpha.",
+        givenText: `${scen.hypothesisText} The p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}.`,
+        optA: significance.options[0],
+        optB: significance.options[1],
+        optC: significance.options[2],
+        optD: significance.options[3],
+        rejectNull: scen.rejectNull ? "yes" : "no",
+        pValueText: scen.pValueText,
+        alphaText: scen.alphaText,
+        oppositeSignificanceText: significance.oppositeSignificanceText,
+        nullFalseText: significance.nullFalseText,
+        zeroRequirementText: significance.zeroRequirementText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nThe p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}. Decide whether the result is statistically significant.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l49-state-diffmeans-evidence") {
+    const template = drawFromBag("u79-evidence", diffMeansTestCarryOutTemplates);
+    const scen = buildTwoSampleTestCarryOutScenario(template);
+    const evidence = buildEvidenceStatementOptions(scen);
+
+    answers = { diffMeansEvidenceAnswer: { value: evidence.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.9i: State the Evidence",
+        problemText: "Translate the decision into an evidence statement in context.",
+        givenText: `${scen.hypothesisText} The p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}.`,
+        optA: evidence.options[0],
+        optB: evidence.options[1],
+        optC: evidence.options[2],
+        optD: evidence.options[3],
+        rejectNull: scen.rejectNull ? "yes" : "no",
+        pValueText: scen.pValueText,
+        alphaText: scen.alphaText,
+        alternativeClaimText: scen.alternativeClaimText,
+        oppositeEvidenceText: evidence.oppositeEvidenceText,
+        proofText: evidence.proofText,
+        sampleMeansText: evidence.sampleMeansText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nThe p-value is ${scen.pValueText}, and use alpha = ${scen.alphaText}. State the evidence in context.`;
     return { context, graphConfig, answers, scenario };
   }
 
