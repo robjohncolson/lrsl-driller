@@ -1,0 +1,193 @@
+{
+  "meta": {
+    "id": "apstats-u8-unexpected-results",
+    "name": "Introducing Statistics: Are My Results Unexpected? (8.1)",
+    "subject": "AP Statistics",
+    "description": "Practice observed vs expected counts, chi-square contributions, and simulation-based interpretation for Topic 8.1."
+  },
+
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "APSTAT-8.1-OBSERVED-EXPECTED",
+      "APSTAT-8.1-EXPECTED-COUNTS",
+      "APSTAT-8.1-CHI-SQUARE",
+      "APSTAT-8.1-SIMULATION-INTERPRETATION"
+    ]
+  },
+
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      { "label": "Level", "value": "{{levelName}}" },
+      { "label": "Task", "value": "{{problemText}}" },
+      { "label": "Given", "value": "{{givenText}}" }
+    ]
+  },
+
+  "modes": [
+    {
+      "id": "l01-topic-8-1-observed-vs-expected",
+      "name": "Level 1: Topic 8.1 Observed vs Expected",
+      "unlockedBy": "default",
+      "animation": "assets/Topic81ObservedExpected.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "choiceAnswer",
+            "type": "choice",
+            "label": "Select the correct statistical term:",
+            "options": [
+              "Observed count",
+              "Expected count",
+              "Chi-square statistic",
+              "P-value"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-expected-counts",
+      "name": "Level 2: Expected Counts",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/ExpectedCountsFairDie.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "dropdownAnswer",
+            "type": "dropdown",
+            "label": "Choose the expected count for each category:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-chi-square-contribution",
+      "name": "Level 3: Chi-Square Contribution",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/ChiSquareContribution.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "numericAnswer",
+            "type": "number",
+            "label": "Calculate the contribution:",
+            "min": 0,
+            "max": 100,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-interpret-unexpectedness",
+      "name": "Level 4: Interpreting Unexpectedness",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/ChiSquareUnexpectedness.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "textAnswer",
+            "type": "text",
+            "label": "Enter your answer:",
+            "placeholder": "Give a short statistical explanation..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-simulation-based-p-value",
+      "name": "Level 5: Simulation-Based P-Value Decision",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/SimulationPValueInterpretation.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "conceptChoice",
+            "type": "choice",
+            "label": "Are these results unexpected if the chance model is correct?",
+            "options": ["Yes", "No"]
+          },
+          {
+            "id": "explanation",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 3,
+            "placeholder": "Explain using the simulation result..."
+          }
+        ]
+      }
+    }
+  ],
+
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+
+  "hints": {
+    "perField": {
+      "choiceAnswer": "Hint for Level 1: Observed counts are the actual sample counts. Expected counts come from the chance model before comparing to the sample.",
+      "dropdownAnswer": "Hint for Level 2: For equally likely categories, expected count = total observations divided by number of categories.",
+      "numericAnswer": "Hint for Level 3: Use (Observed - Expected)^2 / Expected. Square the difference before dividing.",
+      "textAnswer": "Hint for Level 4: Mention why raw differences can cancel or why dividing by expected makes the discrepancy relative to the model.",
+      "conceptChoice": "Hint for Level 5a: Ask whether the simulated result this large happens often or only rarely under random variation.",
+      "explanation": "Hint for Level 5b: A complete explanation mentions the simulation proportion and whether that makes the result common or rare under the chance model."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "l01-topic-8-1-observed-vs-expected",
+        "name": "01",
+        "unlockedBy": "default",
+        "celebrationMessage": "Great start! You can separate observed and expected ideas."
+      },
+      {
+        "id": "l02-expected-counts",
+        "name": "02",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Nice work! Expected counts are under control."
+      },
+      {
+        "id": "l03-chi-square-contribution",
+        "name": "03",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Strong calculation. You are building the chi-square statistic."
+      },
+      {
+        "id": "l04-interpret-unexpectedness",
+        "name": "04",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Good interpretation. You can explain what the statistic is doing."
+      },
+      {
+        "id": "l05-simulation-based-p-value",
+        "name": "05",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Excellent! You can decide whether results are unexpected from the simulation output."
+      }
+    ]
+  }
+}
