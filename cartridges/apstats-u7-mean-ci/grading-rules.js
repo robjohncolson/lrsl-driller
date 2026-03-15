@@ -1,4 +1,4 @@
-// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, and 7.7
+// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, and 7.8
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -14,6 +14,8 @@ function containsAny(answer, keywords) {
 }
 
 const H0 = "H\u2080";
+const HA = "H\u2090";
+const NEQ = "\u2260";
 
 function getExpectedObj(context, fieldId) {
   const v = context?.[fieldId];
@@ -827,6 +829,185 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: `Incorrect. A correct interpretation is: ${expected}`
+    };
+  }
+
+  if (fieldId === "diffMeansNullHypothesisAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. The null hypothesis states no difference, so the population mean difference is 0."
+      };
+    }
+    if (containsAny(answer, ["x-bar", "sample mean"])) {
+      return {
+        score: "I",
+        feedback: "Do not use sample statistics in the null hypothesis. State the null using the population means."
+      };
+    }
+    if (containsAny(answer, [">", "<", NEQ, "!="])) {
+      return {
+        score: "I",
+        feedback: "The null hypothesis should use an equals sign and set the difference in population means equal to 0."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The null hypothesis should state no difference: ${expected}.`
+    };
+  }
+
+  if (fieldId === "diffMeansAlternativeHypothesisAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. The alternative hypothesis uses a strict inequality that matches the claim about the two population means."
+      };
+    }
+    if (containsAny(answer, ["x-bar", "sample mean"])) {
+      return {
+        score: "I",
+        feedback: "Do not use sample statistics in the alternative hypothesis. Use the population means."
+      };
+    }
+    if (containsAny(answer, [" = 0", " = "])) {
+      return {
+        score: "I",
+        feedback: `The alternative hypothesis should not use an equals sign. Use a strict inequality instead: ${expected}`
+      };
+    }
+    if (context?.relation === "!=" && containsAny(answer, [">", "<"])) {
+      return {
+        score: "I",
+        feedback: `This claim is about whether the two means differ, so the alternative should be two-sided: ${expected}`
+      };
+    }
+    if (context?.relation !== "!=" && containsAny(answer, [NEQ, "!="])) {
+      return {
+        score: "I",
+        feedback: `This claim is directional, so use a one-sided alternative instead of a two-sided one: ${expected}`
+      };
+    }
+    if (context?.relation === ">" && containsAny(answer, ["<"])) {
+      return {
+        score: "I",
+        feedback: `The claim says the first population mean is larger, so the inequality should point right: ${expected}`
+      };
+    }
+    if (context?.relation === "<" && containsAny(answer, [">"])) {
+      return {
+        score: "I",
+        feedback: `The claim says the first population mean is smaller, so the inequality should point left: ${expected}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct alternative hypothesis is ${expected}.`
+    };
+  }
+
+  if (fieldId === "diffMeansAlternativeTypeAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. The wording of the claim tells you whether the alternative should be one-sided or two-sided."
+      };
+    }
+    if (containsAny(answer, ["null hypothesis"])) {
+      return {
+        score: "I",
+        feedback: `You still need an alternative hypothesis. The best choice here is: ${expected}`
+      };
+    }
+    if (context?.relation === "!=" && containsAny(answer, ["one-sided", ">", "<"])) {
+      return {
+        score: "I",
+        feedback: "Because the claim only asks whether the means are different, the alternative should be two-sided."
+      };
+    }
+    if (context?.relation !== "!=" && containsAny(answer, ["two-sided"])) {
+      return {
+        score: "I",
+        feedback: "Because the claim gives a direction, the alternative should be one-sided."
+      };
+    }
+    if (context?.relation === ">" && containsAny(answer, ["<", "opposite direction"])) {
+      return {
+        score: "I",
+        feedback: "The claim says the first group's mean is larger, not smaller."
+      };
+    }
+    if (context?.relation === "<" && containsAny(answer, [">", "opposite direction"])) {
+      return {
+        score: "I",
+        feedback: "The claim says the first group's mean is smaller, not larger."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The best description is: ${expected}`
+    };
+  }
+
+  if (fieldId === "diffMeansReverseOrderAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. When you reverse the subtraction order in a one-sided hypothesis, you must also reverse the inequality."
+      };
+    }
+    if (studentNorm === normalize(context?.reverseSameSignText)) {
+      return {
+        score: "I",
+        feedback: `You reversed the subtraction order but kept the same inequality. Reverse the inequality too. The equivalent hypothesis is ${expected}.`
+      };
+    }
+    if (studentNorm === normalize(context?.originalAlternativeText)) {
+      return {
+        score: "I",
+        feedback: "That is the original hypothesis, not the version with the subtraction order reversed."
+      };
+    }
+    if (containsAny(answer, ["x-bar", "sample mean"])) {
+      return {
+        score: "I",
+        feedback: "Use population means in the hypothesis, not sample means."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Reversing the order requires reversing the inequality. The correct hypothesis is ${expected}.`
+    };
+  }
+
+  if (fieldId === "diffMeansParameterDefinitionAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. The parameters are the two population means in context."
+      };
+    }
+    if (containsAny(answer, ["x-bar", "sample mean"])) {
+      return {
+        score: "I",
+        feedback: "That defines sample statistics, not the population parameters used in the hypotheses."
+      };
+    }
+    if (containsAny(answer, ["one person", "one word", "one container", "one call"])) {
+      return {
+        score: "I",
+        feedback: "A parameter is not one individual value. It is a population mean for a group."
+      };
+    }
+    if (studentNorm === normalize(context?.swappedDefinitionText)) {
+      return {
+        score: "I",
+        feedback: "The subscripts are reversed. Make sure each symbol is matched to the correct group."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct parameter definition is: ${expected}`
     };
   }
 
