@@ -1,4 +1,4 @@
-// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, and 7.8
+// grading-rules.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, and 7.9
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -38,7 +38,7 @@ export function gradeField(fieldId, answer, context) {
     if (openResponseFields.has(fieldId)) {
       return { score: "I", feedback: "Please enter your explanation." };
     }
-    if (fieldId === "tStarAnswer" || fieldId === "meAnswer" || fieldId === "ciLower" || fieldId === "ciUpper" || fieldId === "simProbAnswer" || fieldId === "testStatisticAnswer" || fieldId === "diffMeansMeAnswer" || fieldId === "diffMeansCiLower" || fieldId === "diffMeansCiUpper") {
+    if (fieldId === "tStarAnswer" || fieldId === "meAnswer" || fieldId === "ciLower" || fieldId === "ciUpper" || fieldId === "simProbAnswer" || fieldId === "testStatisticAnswer" || fieldId === "diffMeansMeAnswer" || fieldId === "diffMeansCiLower" || fieldId === "diffMeansCiUpper" || fieldId === "diffMeansTestStatisticAnswer") {
       return { score: "I", feedback: "Please enter a number." };
     }
     return { score: "I", feedback: "Please select an answer." };
@@ -1350,7 +1350,56 @@ export function gradeField(fieldId, answer, context) {
     };
   }
 
-  if (fieldId === "pValueRegionAnswer") {
+  if (fieldId === "diffMeansTestStatisticAnswer") {
+    const studentVal = parseFloat(answer);
+    const expectedVal = parseFloat(expected);
+    const diff = Math.abs(studentVal - expectedVal);
+    const tolerance = expObj.tolerance || 0.02;
+    const sampleStatisticValue = parseFloat(context?.sampleStatisticValue ?? "");
+    const nullValue = parseFloat(context?.nullValue ?? "");
+    const se = parseFloat(context?.se ?? "");
+    const rawDiff = sampleStatisticValue - nullValue;
+
+    if (isNaN(studentVal)) {
+      return { score: "I", feedback: "Please enter a valid number for the test statistic." };
+    }
+    if (!isNaN(rawDiff) && Math.abs(studentVal - rawDiff) <= 0.03 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `It looks like you used the raw difference in sample means instead of standardizing. Divide by the standard error. The correct test statistic is ${expectedVal}.`
+      };
+    }
+    if (!isNaN(se) && Math.abs(studentVal - se) <= 0.03 && diff > tolerance) {
+      return {
+        score: "I",
+        feedback: `It looks like you entered the standard error instead of the test statistic. The correct t-value is ${expectedVal}.`
+      };
+    }
+    if (Math.abs(studentVal + expectedVal) <= 0.04 && Math.abs(expectedVal) > 0.05) {
+      return {
+        score: "I",
+        feedback: `Your sign is flipped. Recheck the subtraction order in the numerator. The correct t-value is ${expectedVal}.`
+      };
+    }
+    if (diff <= tolerance) {
+      return {
+        score: "E",
+        feedback: `Correct. The standardized two-sample test statistic is t = ${expectedVal}.`
+      };
+    }
+    if (diff <= 0.08) {
+      return {
+        score: "P",
+        feedback: `Close. Recheck the arithmetic in ((x-bar1 - x-bar2) - 0) / sqrt((s1^2 / n1) + (s2^2 / n2)). The test statistic is ${expectedVal}.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Use t = ((x-bar1 - x-bar2) - 0) / sqrt((s1^2 / n1) + (s2^2 / n2)). The test statistic is ${expectedVal}.`
+    };
+  }
+
+  if (fieldId === "pValueRegionAnswer" || fieldId === "diffMeansPValueRegionAnswer") {
     if (studentNorm === expectedNorm) {
       return {
         score: "E",
@@ -1375,7 +1424,7 @@ export function gradeField(fieldId, answer, context) {
     };
   }
 
-  if (fieldId === "pValueAnswer") {
+  if (fieldId === "pValueAnswer" || fieldId === "diffMeansPValueAnswer") {
     if (studentNorm === expectedNorm) {
       return {
         score: "E",
@@ -1424,7 +1473,7 @@ export function gradeField(fieldId, answer, context) {
     };
   }
 
-  if (fieldId === "pValueInterpretAnswer") {
+  if (fieldId === "pValueInterpretAnswer" || fieldId === "diffMeansPValueInterpretAnswer") {
     if (studentNorm === expectedNorm) {
       return {
         score: "E",
@@ -1455,7 +1504,7 @@ export function gradeField(fieldId, answer, context) {
     };
   }
 
-  if (fieldId === "testConclusionAnswer") {
+  if (fieldId === "testConclusionAnswer" || fieldId === "diffMeansTestConclusionAnswer") {
     if (studentNorm === expectedNorm) {
       return {
         score: "E",
@@ -1507,6 +1556,160 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: `Incorrect. Since p-value = ${context?.pValueText} is greater than alpha = ${context?.alphaText}, fail to reject ${H0}.`
+    };
+  }
+
+  if (fieldId === "diffMeansComparePValueAlphaAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct. Since p-value = ${context?.pValueText} and alpha = ${context?.alphaText}, that is the right comparison to use.`
+      };
+    }
+    if (context?.oppositeCompareText && studentNorm === normalize(context.oppositeCompareText)) {
+      if (context?.rejectNull === "yes") {
+        return {
+          score: "I",
+          feedback: `Incorrect. Since p-value = ${context?.pValueText} is less than or equal to alpha = ${context?.alphaText}, the correct comparison is ${expected}.`
+        };
+      }
+      return {
+        score: "I",
+        feedback: `Incorrect. Since p-value = ${context?.pValueText} is greater than alpha = ${context?.alphaText}, the correct comparison is ${expected}.`
+      };
+    }
+    if (context?.equalCompareText && studentNorm === normalize(context.equalCompareText)) {
+      return {
+        score: "I",
+        feedback: `The two values are not equal here. Since p-value = ${context?.pValueText} and alpha = ${context?.alphaText}, the correct comparison is ${expected}.`
+      };
+    }
+    if (context?.notComparableText && studentNorm === normalize(context.notComparableText)) {
+      return {
+        score: "I",
+        feedback: "You should compare the p-value to alpha to decide whether to reject the null hypothesis."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Compare p-value = ${context?.pValueText} to alpha = ${context?.alphaText}. The correct comparison is ${expected}.`
+    };
+  }
+
+  if (fieldId === "diffMeansTestDecisionAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct. Using p-value = ${context?.pValueText} and alpha = ${context?.alphaText}, that is the correct formal decision about ${H0}.`
+      };
+    }
+    if (context?.wrongDecisionText && studentNorm === normalize(context.wrongDecisionText)) {
+      if (context?.rejectNull === "yes") {
+        return {
+          score: "I",
+          feedback: `Because p-value = ${context?.pValueText} is less than or equal to alpha = ${context?.alphaText}, reject ${H0}, not fail to reject it.`
+        };
+      }
+      return {
+        score: "I",
+        feedback: `Because p-value = ${context?.pValueText} is greater than alpha = ${context?.alphaText}, fail to reject ${H0}, not reject it.`
+      };
+    }
+    if (context?.acceptText && studentNorm === normalize(context.acceptText)) {
+      return {
+        score: "I",
+        feedback: `Do not say accept ${H0}. The correct decision is to reject ${H0} or fail to reject ${H0}.`
+      };
+    }
+    if ((context?.proveText && studentNorm === normalize(context.proveText)) || containsAny(answer, ["prove"])) {
+      return {
+        score: "I",
+        feedback: "A hypothesis test does not prove a hypothesis. It only leads to reject or fail to reject the null."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Using p-value = ${context?.pValueText} and alpha = ${context?.alphaText}, the correct decision is ${expected}.`
+    };
+  }
+
+  if (fieldId === "diffMeansStatSigAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: `Correct. Statistical significance is determined by whether the p-value is at or below alpha.`
+      };
+    }
+    if (context?.oppositeSignificanceText && studentNorm === normalize(context.oppositeSignificanceText)) {
+      if (context?.rejectNull === "yes") {
+        return {
+          score: "I",
+          feedback: `Because p-value = ${context?.pValueText} is less than or equal to alpha = ${context?.alphaText}, the result is statistically significant.`
+        };
+      }
+      return {
+        score: "I",
+        feedback: `Because p-value = ${context?.pValueText} is greater than alpha = ${context?.alphaText}, the result is not statistically significant at that alpha level.`
+      };
+    }
+    if ((context?.nullFalseText && studentNorm === normalize(context.nullFalseText)) || containsAny(answer, ["null hypothesis is false", "h0 is false", "h₀ is false"])) {
+      return {
+        score: "I",
+        feedback: "Statistical significance does not prove that the null hypothesis is false. It means the sample result would be unlikely if the null were true."
+      };
+    }
+    if ((context?.zeroRequirementText && studentNorm === normalize(context.zeroRequirementText)) || containsAny(answer, ["equals 0", "value equals 0", "p-value equals 0"])) {
+      return {
+        score: "I",
+        feedback: "A result does not need a p-value of 0 to be statistically significant. It only needs p-value <= alpha."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. Compare p-value = ${context?.pValueText} to alpha = ${context?.alphaText}. The correct statement is ${expected}.`
+    };
+  }
+
+  if (fieldId === "diffMeansEvidenceAnswer") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. You turned the test decision into the right evidence statement without overstating what the test shows."
+      };
+    }
+    if (context?.oppositeEvidenceText && studentNorm === normalize(context.oppositeEvidenceText)) {
+      if (context?.rejectNull === "yes") {
+        return {
+          score: "I",
+          feedback: `Because p-value = ${context?.pValueText} is less than or equal to alpha = ${context?.alphaText}, there is convincing statistical evidence for the alternative claim.`
+        };
+      }
+      return {
+        score: "I",
+        feedback: `Because p-value = ${context?.pValueText} is greater than alpha = ${context?.alphaText}, there is not convincing statistical evidence for the alternative claim.`
+      };
+    }
+    if ((context?.proofText && studentNorm === normalize(context.proofText)) || containsAny(answer, ["certainty", "prove"])) {
+      return {
+        score: "I",
+        feedback: "A significance test can support a claim with statistical evidence, but it does not prove a population claim with certainty."
+      };
+    }
+    if ((context?.sampleMeansText && studentNorm === normalize(context.sampleMeansText)) || containsAny(answer, ["sample means were different", "must be true"])) {
+      return {
+        score: "I",
+        feedback: "A difference in the sample means alone does not prove the population claim. The conclusion depends on the p-value compared with alpha."
+      };
+    }
+    if (context?.rejectNull === "no" && containsAny(answer, ["h₀ is true", "h0 is true"])) {
+      return {
+        score: "I",
+        feedback: `Failing to reject ${H0} does not prove that ${H0} is true.`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The best evidence statement is: ${expected}`
     };
   }
 
