@@ -1,4 +1,4 @@
-// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, and 7.7
+// generator.js - AP Statistics Unit 7 Topics 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, and 7.8
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -586,6 +586,75 @@ const twoSampleClaimTemplates = [
   }
 ];
 
+const twoSampleTestSetupTemplates = [
+  {
+    desc: "Three students randomly assigned 14 volunteers to hear a story while the storyteller yawned occasionally and 13 volunteers to hear the same story without any yawning.",
+    questionText: "Do the data provide convincing statistical evidence that people yawn more, on average, when watching someone yawn?",
+    relation: ">",
+    mu1Symbol: "\u03bc_Y",
+    mu2Symbol: "\u03bc_N",
+    xBar1Symbol: "x-bar_Y",
+    xBar2Symbol: "x-bar_N",
+    mu1Definition: "the true mean number of yawns for all people exposed to someone yawning",
+    mu2Definition: "the true mean number of yawns for all people not exposed to someone yawning",
+    sample1Definition: "the sample mean number of yawns for the people exposed to someone yawning",
+    sample2Definition: "the sample mean number of yawns for the people not exposed to someone yawning",
+    individual1Definition: "the number of yawns for one person exposed to someone yawning",
+    individual2Definition: "the number of yawns for one person not exposed to someone yawning",
+    claimSummary: "people exposed to someone yawning yawn more, on average, than people not exposed to someone yawning"
+  },
+  {
+    desc: "A statistics student randomly sampled 200 words from a chemistry textbook and 200 words from a physics textbook to compare mean word lengths.",
+    questionText: "Do the data provide convincing statistical evidence that the two textbooks have different mean word lengths?",
+    relation: "!=",
+    mu1Symbol: "\u03bc_P",
+    mu2Symbol: "\u03bc_C",
+    xBar1Symbol: "x-bar_P",
+    xBar2Symbol: "x-bar_C",
+    mu1Definition: "the true mean word length for words in the physics textbook",
+    mu2Definition: "the true mean word length for words in the chemistry textbook",
+    sample1Definition: "the sample mean word length for the 200 words from the physics textbook",
+    sample2Definition: "the sample mean word length for the 200 words from the chemistry textbook",
+    individual1Definition: "the length of one word from the physics textbook",
+    individual2Definition: "the length of one word from the chemistry textbook",
+    claimSummary: "the two textbooks have different mean word lengths"
+  },
+  {
+    desc: "A restaurant manager compared food temperatures in foam and plastic containers after 30 minutes.",
+    questionText: "Do the data provide convincing statistical evidence that foam containers maintain higher mean food temperatures than plastic containers?",
+    relation: ">",
+    mu1Symbol: "\u03bc_F",
+    mu2Symbol: "\u03bc_P",
+    xBar1Symbol: "x-bar_F",
+    xBar2Symbol: "x-bar_P",
+    mu1Definition: "the true mean internal food temperature after 30 minutes for all foam containers like those in the study",
+    mu2Definition: "the true mean internal food temperature after 30 minutes for all plastic containers like those in the study",
+    sample1Definition: "the sample mean internal food temperature after 30 minutes for the foam containers in the study",
+    sample2Definition: "the sample mean internal food temperature after 30 minutes for the plastic containers in the study",
+    individual1Definition: "the temperature for one foam container after 30 minutes",
+    individual2Definition: "the temperature for one plastic container after 30 minutes",
+    claimSummary: "foam containers maintain higher mean food temperatures than plastic containers"
+  },
+  {
+    desc: "A council member compared response times for fire stations in the northern and southern halves of a city.",
+    questionText: "Do the data provide convincing statistical evidence that the two stations have different mean response times?",
+    relation: "!=",
+    mu1Symbol: "\u03bc_N",
+    mu2Symbol: "\u03bc_S",
+    xBar1Symbol: "x-bar_N",
+    xBar2Symbol: "x-bar_S",
+    mu1Definition: "the true mean response time for calls handled by the northern fire station",
+    mu2Definition: "the true mean response time for calls handled by the southern fire station",
+    sample1Definition: "the sample mean response time for the calls sampled from the northern fire station",
+    sample2Definition: "the sample mean response time for the calls sampled from the southern fire station",
+    individual1Definition: "the response time for one call handled by the northern fire station",
+    individual2Definition: "the response time for one call handled by the southern fire station",
+    claimSummary: "the two stations have different mean response times"
+  }
+];
+
+const oneSidedTwoSampleTestSetupTemplates = twoSampleTestSetupTemplates.filter(template => template.relation !== "!=");
+
 const meanTestSetupTemplates = [
   {
     statementPrefix: "Got Hops? An article claims that the average vertical jump for students at this high school is",
@@ -1065,6 +1134,108 @@ function buildDiffMeansConfidenceLevelOptions(scen) {
       `There is a ${scen.confLevel}% probability that this one interval captures the ${scen.parameter}.`,
       `About ${scen.confLevel}% of the individual observations from both groups fall inside the interval.`,
       `About ${scen.confLevel}% of the sample differences from those samples will equal the ${scen.parameter}.`
+    ])
+  };
+}
+
+function buildTwoSampleTestSetupScenario(template) {
+  const relationSymbol = getRelationSymbol(template.relation);
+  const wrongOneSidedRelation = template.relation === "!=" ? choice([">", "<"]) : getOppositeRelation(template.relation);
+  return {
+    ...template,
+    relationSymbol,
+    wrongOneSidedRelation,
+    reverseRelation: template.relation === "!=" ? NEQ : getOppositeRelation(template.relation),
+    differenceSymbol: `${template.mu1Symbol} - ${template.mu2Symbol}`,
+    reversedDifferenceSymbol: `${template.mu2Symbol} - ${template.mu1Symbol}`,
+    symbolGuideText: `Let ${template.mu1Symbol} be ${template.mu1Definition}, and let ${template.mu2Symbol} be ${template.mu2Definition}.`,
+    parameterDefinition: `${template.mu1Symbol} is ${template.mu1Definition}, and ${template.mu2Symbol} is ${template.mu2Definition}.`,
+    sampleDefinitionText: `${template.xBar1Symbol} is ${template.sample1Definition}, and ${template.xBar2Symbol} is ${template.sample2Definition}.`,
+    individualDefinitionText: `${template.mu1Symbol} is ${template.individual1Definition}, and ${template.mu2Symbol} is ${template.individual2Definition}.`,
+    swappedDefinitionText: `${template.mu1Symbol} is ${template.mu2Definition}, and ${template.mu2Symbol} is ${template.mu1Definition}.`
+  };
+}
+
+function buildDiffMeansNullHypothesisOptions(scen) {
+  const correct = `${H0}: ${scen.differenceSymbol} = 0`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `${H0}: ${scen.xBar1Symbol} - ${scen.xBar2Symbol} = 0`,
+      `${H0}: ${scen.differenceSymbol} ${scen.wrongOneSidedRelation} 0`,
+      `${H0}: ${scen.differenceSymbol} ${NEQ} 0`
+    ])
+  };
+}
+
+function buildDiffMeansAlternativeHypothesisOptions(scen) {
+  const correct = `${HA}: ${scen.differenceSymbol} ${scen.relationSymbol} 0`;
+  const wrongDirection = scen.relation === "!=" ? scen.wrongOneSidedRelation : scen.reverseRelation;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      `${HA}: ${scen.differenceSymbol} = 0`,
+      `${HA}: ${scen.differenceSymbol} ${wrongDirection} 0`,
+      `${HA}: ${scen.xBar1Symbol} - ${scen.xBar2Symbol} ${scen.relationSymbol} 0`
+    ])
+  };
+}
+
+function buildDiffMeansAlternativeTypeOptions(scen) {
+  if (scen.relation === "!=") {
+    const correct = "Use a two-sided alternative because the question asks whether the two population means are different, not which one is larger.";
+    return {
+      correct,
+      options: shuffle([
+        correct,
+        "Use a one-sided alternative with > because the first group might have the larger mean.",
+        "Use a one-sided alternative with < because the second group might have the larger mean.",
+        "Use only the null hypothesis because no direction is stated."
+      ])
+    };
+  }
+
+  const oppositeRelation = scen.reverseRelation;
+  const correct = `Use a one-sided alternative with ${scen.relation} because the claim is that ${scen.claimSummary}.`;
+  return {
+    correct,
+    options: shuffle([
+      correct,
+      "Use a two-sided alternative because any difference would support the claim.",
+      `Use a one-sided alternative with ${oppositeRelation} because the claim goes in the opposite direction.`,
+      "Use only the null hypothesis because no direction is stated."
+    ])
+  };
+}
+
+function buildDiffMeansReverseOrderOptions(scen) {
+  const correct = `${HA}: ${scen.reversedDifferenceSymbol} ${scen.reverseRelation} 0`;
+  const sameSignText = `${HA}: ${scen.reversedDifferenceSymbol} ${scen.relationSymbol} 0`;
+  const originalOrderText = `${HA}: ${scen.differenceSymbol} ${scen.relationSymbol} 0`;
+  const statisticsText = `${HA}: ${scen.xBar2Symbol} - ${scen.xBar1Symbol} ${scen.reverseRelation} 0`;
+  return {
+    correct,
+    sameSignText,
+    originalOrderText,
+    statisticsText,
+    options: shuffle([correct, sameSignText, originalOrderText, statisticsText])
+  };
+}
+
+function buildDiffMeansParameterDefinitionOptions(scen) {
+  const correct = scen.parameterDefinition;
+  return {
+    correct,
+    sampleDefinitionText: scen.sampleDefinitionText,
+    individualDefinitionText: scen.individualDefinitionText,
+    swappedDefinitionText: scen.swappedDefinitionText,
+    options: shuffle([
+      correct,
+      scen.sampleDefinitionText,
+      scen.individualDefinitionText,
+      scen.swappedDefinitionText
     ])
   };
 }
@@ -2177,6 +2348,131 @@ export function generateProblem(modeId, contextFromFile, mode) {
     );
 
     scenario = `${scen.desc}\n\nInterpret what ${scen.confLevel}% confidence means for the difference in means.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l36-state-diffmeans-null-hypothesis") {
+    const template = drawFromBag("u78-null", twoSampleTestSetupTemplates);
+    const scen = buildTwoSampleTestSetupScenario(template);
+    const hypothesis = buildDiffMeansNullHypothesisOptions(scen);
+
+    answers = { diffMeansNullHypothesisAnswer: { value: hypothesis.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.8a: State the Null Hypothesis",
+        problemText: "Choose the null hypothesis for a test about two population means.",
+        givenText: `${scen.desc} ${scen.symbolGuideText} ${scen.questionText}`,
+        optA: hypothesis.options[0],
+        optB: hypothesis.options[1],
+        optC: hypothesis.options[2],
+        optD: hypothesis.options[3],
+        relation: scen.relation,
+        differenceSymbol: scen.differenceSymbol
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.questionText}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l37-state-diffmeans-alternative-hypothesis") {
+    const template = drawFromBag("u78-alt", twoSampleTestSetupTemplates);
+    const scen = buildTwoSampleTestSetupScenario(template);
+    const hypothesis = buildDiffMeansAlternativeHypothesisOptions(scen);
+
+    answers = { diffMeansAlternativeHypothesisAnswer: { value: hypothesis.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.8b: State the Alternative Hypothesis",
+        problemText: "Choose the alternative hypothesis that matches the question of interest.",
+        givenText: `${scen.desc} ${scen.symbolGuideText} ${scen.questionText}`,
+        optA: hypothesis.options[0],
+        optB: hypothesis.options[1],
+        optC: hypothesis.options[2],
+        optD: hypothesis.options[3],
+        relation: scen.relation,
+        differenceSymbol: scen.differenceSymbol
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\n${scen.questionText}`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l38-choose-diffmeans-alternative-type") {
+    const template = drawFromBag("u78-type", twoSampleTestSetupTemplates);
+    const scen = buildTwoSampleTestSetupScenario(template);
+    const alternativeType = buildDiffMeansAlternativeTypeOptions(scen);
+
+    answers = { diffMeansAlternativeTypeAnswer: { value: alternativeType.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.8c: Choose One-Sided or Two-Sided",
+        problemText: "Decide whether the alternative should be one-sided or two-sided.",
+        givenText: `${scen.desc} ${scen.questionText}`,
+        optA: alternativeType.options[0],
+        optB: alternativeType.options[1],
+        optC: alternativeType.options[2],
+        optD: alternativeType.options[3],
+        relation: scen.relation,
+        claimSummary: scen.claimSummary
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nDecide whether the claim requires a one-sided or two-sided alternative.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l39-reverse-diffmeans-order") {
+    const template = drawFromBag("u78-order", oneSidedTwoSampleTestSetupTemplates);
+    const scen = buildTwoSampleTestSetupScenario(template);
+    const reverse = buildDiffMeansReverseOrderOptions(scen);
+
+    answers = { diffMeansReverseOrderAnswer: { value: reverse.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.8d: Reverse the Order Carefully",
+        problemText: "Keep the claim the same while reversing the subtraction order.",
+        givenText: `${scen.desc} ${scen.symbolGuideText} The original alternative is ${HA}: ${scen.differenceSymbol} ${scen.relationSymbol} 0. Now rewrite it using ${scen.reversedDifferenceSymbol}.`,
+        optA: reverse.options[0],
+        optB: reverse.options[1],
+        optC: reverse.options[2],
+        optD: reverse.options[3],
+        relation: scen.relation,
+        originalAlternativeText: reverse.originalOrderText,
+        reverseSameSignText: reverse.sameSignText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nRewrite the one-sided alternative using ${scen.reversedDifferenceSymbol} instead of ${scen.differenceSymbol}.`;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l40-define-diffmeans-parameters") {
+    const template = drawFromBag("u78-parameters", twoSampleTestSetupTemplates);
+    const scen = buildTwoSampleTestSetupScenario(template);
+    const definition = buildDiffMeansParameterDefinitionOptions(scen);
+
+    answers = { diffMeansParameterDefinitionAnswer: { value: definition.correct } };
+    context = attachAnswers(
+      {
+        levelName: "7.8e: Define the Parameters",
+        problemText: "Define the population means used in the hypotheses.",
+        givenText: `${scen.desc} The hypotheses will use ${scen.mu1Symbol} and ${scen.mu2Symbol}.`,
+        optA: definition.options[0],
+        optB: definition.options[1],
+        optC: definition.options[2],
+        optD: definition.options[3],
+        swappedDefinitionText: definition.swappedDefinitionText
+      },
+      answers
+    );
+
+    scenario = `${scen.desc}\n\nDefine the parameters used in the two-sample test.`;
     return { context, graphConfig, answers, scenario };
   }
 

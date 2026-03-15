@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u7-mean-ci",
-    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), Setting Up a Test for a Population Mean (7.4), Carrying Out a Test for a Population Mean (7.5), Confidence Intervals for the Difference of Two Means (7.6), and Justifying a Claim About the Difference of Two Means Based on a Confidence Interval (7.7)",
+    "name": "Introducing Statistics: Should I Worry About Error? (7.1), Constructing a Confidence Interval for a Population Mean (7.2), Justifying a Claim About a Population Mean Based on a Confidence Interval (7.3), Setting Up a Test for a Population Mean (7.4), Carrying Out a Test for a Population Mean (7.5), Confidence Intervals for the Difference of Two Means (7.6), Justifying a Claim About the Difference of Two Means Based on a Confidence Interval (7.7), and Setting Up a Test for the Difference of Two Population Means (7.8)",
     "subject": "AP Statistics",
-    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions, Topic 7.5 skills for calculating a test statistic, matching the correct p-value region, finding a p-value, interpreting it, and stating a conclusion, Topic 7.6 skills for identifying a two-sample t-interval for the difference in population means, checking conditions, finding the margin of error, constructing the interval, and interpreting it in context, and Topic 7.7 skills for using 0 as the no-difference benchmark, deciding whether 0 is plausible from a confidence interval, justifying a claim about two population means, stating a careful conclusion, and interpreting the confidence level for a difference in means."
+    "description": "Significance-testing logic for a difference in means, one-sample t-intervals for a population mean, Topic 7.3 skills for interpreting and using confidence intervals, Topic 7.4 skills for stating hypotheses, defining mu, identifying a one-sample t-test, and checking conditions, Topic 7.5 skills for calculating a test statistic, matching the correct p-value region, finding a p-value, interpreting it, and stating a conclusion, Topic 7.6 skills for identifying a two-sample t-interval for the difference in population means, checking conditions, finding the margin of error, constructing the interval, and interpreting it in context, Topic 7.7 skills for using 0 as the no-difference benchmark, deciding whether 0 is plausible from a confidence interval, justifying a claim about two population means, stating a careful conclusion, and interpreting the confidence level for a difference in means, and Topic 7.8 skills for stating null and alternative hypotheses for a difference in means, choosing one-sided versus two-sided alternatives, reversing the inequality when the subtraction order changes, and defining the population means in context."
   },
 
   "config": {
@@ -804,6 +804,126 @@
           }
         ]
       }
+    },
+    {
+      "id": "l36-state-diffmeans-null-hypothesis",
+      "name": "7.8a: State the Null Hypothesis",
+      "animation": "assets/MeanDiffTestNullHypothesis.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansNullHypothesisAnswer",
+            "type": "dropdown",
+            "label": "Which null hypothesis is correct for this test?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l37-state-diffmeans-alternative-hypothesis",
+      "name": "7.8b: State the Alternative Hypothesis",
+      "animation": "assets/MeanDiffTestAlternativeHypothesis.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansAlternativeHypothesisAnswer",
+            "type": "dropdown",
+            "label": "Which alternative hypothesis matches the question of interest?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l38-choose-diffmeans-alternative-type",
+      "name": "7.8c: Choose One-Sided or Two-Sided",
+      "animation": "assets/MeanDiffTestAlternativeType.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansAlternativeTypeAnswer",
+            "type": "dropdown",
+            "label": "What kind of alternative hypothesis should be used?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l39-reverse-diffmeans-order",
+      "name": "7.8d: Reverse the Order Carefully",
+      "animation": "assets/MeanDiffTestReverseOrder.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansReverseOrderAnswer",
+            "type": "dropdown",
+            "label": "If the subtraction order is reversed, which alternative hypothesis is equivalent?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l40-define-diffmeans-parameters",
+      "name": "7.8e: Define the Parameters",
+      "animation": "assets/MeanDiffTestDefineParameters.mp4",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "diffMeansParameterDefinitionAnswer",
+            "type": "dropdown",
+            "label": "Which definition of the parameters is correct?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Choose..."
+          }
+        ]
+      }
     }
   ],
 
@@ -861,7 +981,12 @@
       "diffMeansZeroPlausibleAnswer": "Check whether 0 is inside the confidence interval. Inside means no difference is plausible; outside means 0 is not plausible.",
       "diffMeansClaimJustifyAnswer": "Use 0 as the benchmark for no difference. If 0 is outside the interval, that supports a directional claim; if 0 is inside, the claim is not supported.",
       "diffMeansClaimConclusionAnswer": "State the conclusion cautiously in context. Do not say the claim is proved, and do not say someone is wrong just because 0 is in the interval.",
-      "diffMeansConfidenceLevelAnswer": "Interpret confidence level with repeated random sampling: about C% of intervals from many sample pairs would capture the population difference in means."
+      "diffMeansConfidenceLevelAnswer": "Interpret confidence level with repeated random sampling: about C% of intervals from many sample pairs would capture the population difference in means.",
+      "diffMeansNullHypothesisAnswer": "For a test about two means, the null says no difference: use the population means and set group 1 minus group 2 equal to 0.",
+      "diffMeansAlternativeHypothesisAnswer": "The alternative uses a strict inequality and the population means. Match the direction to the claim in context.",
+      "diffMeansAlternativeTypeAnswer": "Directional claims use a one-sided alternative. Claims that say the means are different use a two-sided alternative.",
+      "diffMeansReverseOrderAnswer": "If you reverse the subtraction order in a one-sided hypothesis, you must reverse the inequality too.",
+      "diffMeansParameterDefinitionAnswer": "Define each parameter as a population mean for its group, not a sample mean, not one individual value, and not a total."
     },
     "penalty": {
       "0": "gold",
@@ -1083,7 +1208,37 @@
         "id": "l35-interpret-diffmeans-confidence-level",
         "name": "35",
         "unlockedBy": { "gold": 1 },
-        "celebrationMessage": "Topic 7.7 complete. You can use a confidence interval for two means to judge whether a claim is supported and explain the confidence level."
+        "celebrationMessage": "Topic 7.7 complete. Next, set up a significance test for the difference of two population means."
+      },
+      {
+        "id": "l36-state-diffmeans-null-hypothesis",
+        "name": "36",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Null hypothesis set for two means. Next, choose the correct alternative hypothesis."
+      },
+      {
+        "id": "l37-state-diffmeans-alternative-hypothesis",
+        "name": "37",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Alternative selected. Now decide whether the claim calls for a one-sided or two-sided test."
+      },
+      {
+        "id": "l38-choose-diffmeans-alternative-type",
+        "name": "38",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "You can match the claim to the right type of alternative. Next, handle the subtraction order carefully."
+      },
+      {
+        "id": "l39-reverse-diffmeans-order",
+        "name": "39",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Order logic is in place. Last step: define the population means clearly in context."
+      },
+      {
+        "id": "l40-define-diffmeans-parameters",
+        "name": "40",
+        "unlockedBy": { "gold": 1 },
+        "celebrationMessage": "Topic 7.8 complete. You can set up hypotheses for a significance test about the difference of two population means."
       }
     ]
   }
