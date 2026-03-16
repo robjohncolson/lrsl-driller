@@ -1035,6 +1035,7 @@
     let WebRTCManager = null;
     import { AssetCache } from './core/asset-cache.js';
     import { AssetResolver } from './core/asset-resolver.js';
+    import { DEFAULT_SERVER_URL, detectNetworkConfig } from './core/network-config.js';
     // Lazy-loaded: only used for multiplayer P2P
     // import { P2PAssetTransfer } from './core/p2p-asset-transfer.js';
     let P2PAssetTransfer = null;
@@ -1042,36 +1043,27 @@
     console.log('[APP] All imports successful');
 
     // ==================== CONFIGURATION ====================
-    let SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
-    let SIGNALING_URL = null; // Set after server detection
+    let SERVER_URL = DEFAULT_SERVER_URL;
+    let SIGNALING_URL = SERVER_URL.replace('https://', 'wss://').replace('http://', 'ws://');
     const CLIENT_VERSION = '0.0.1';
 
-    // Server detection: try Railway first, fall back to local dev signaling
-    let _serverDetected = false;
-    async function detectServer() {
-      // Try Railway with 2-second timeout
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 1000);
-        const resp = await fetch(SERVER_URL, { signal: controller.signal, method: 'HEAD' });
-        clearTimeout(timeout);
-        if (resp.ok || resp.status === 404) {
-          SIGNALING_URL = SERVER_URL.replace('https://', 'wss://').replace('http://', 'ws://');
-          console.log('[Server] Using Railway:', SERVER_URL);
-          _serverDetected = true;
-          return;
-        }
-      } catch {
-        console.log('[Server] Railway unreachable, checking local signaling...');
+    // Keep Railway as the API authority.
+    // Local fallback is signaling-only and only applies on private/dev hosts.
+    const serverDetectionPromise = detectNetworkConfig({
+      defaultServerUrl: SERVER_URL,
+      locationLike: window.location
+    }).then((config) => {
+      SERVER_URL = config.serverUrl;
+      SIGNALING_URL = config.signalingUrl;
+
+      if (config.usedLocalSignaling) {
+        console.log('[Server] Using Railway API with local signaling:', SIGNALING_URL);
+      } else {
+        console.log('[Server] Using Railway:', SERVER_URL);
       }
 
-      // Fall back to local dev server WebSocket signaling
-      SIGNALING_URL = `ws://${window.location.host}/ws-signaling`;
-      SERVER_URL = `http://${window.location.host}`;
-      console.log('[Server] Using local signaling:', SIGNALING_URL);
-      _serverDetected = true;
-    }
-    const serverDetectionPromise = detectServer();
+      return config;
+    });
 
     // ==================== GHOST SYSTEM ====================
     // Initialize Ghost Engine in buffered mode (TensorFlow.js loads lazily when panel opens)
@@ -1367,10 +1359,12 @@
     // Wrap wsClient.connect to wait for server detection and use correct URL
     const _originalConnect = wsClient.connect.bind(wsClient);
     wsClient.connect = async function(username) {
-      await serverDetectionPromise;
-      if (SIGNALING_URL && SIGNALING_URL.includes('/ws-signaling')) {
+      const networkConfig = await serverDetectionPromise;
+      this.serverUrl = networkConfig.serverUrl;
+      if (networkConfig.usedLocalSignaling) {
         this._wsUrlOverride = SIGNALING_URL;
-        this.serverUrl = SERVER_URL;
+      } else {
+        this._wsUrlOverride = null;
       }
       _originalConnect(username);
     };
@@ -3060,6 +3054,42 @@
       loadPendingReviews();
     }
 
+    async function deactivateTeacherMode(clearPersistence = true) {
+      isTeacher = false;
+      teacherPassword = null;
+
+      if (clearPersistence) {
+        await userSystem.setMeta('teacherMode', { enabled: false, password: null });
+      }
+
+      document.getElementById('teacher-badge')?.classList.add('hidden');
+      document.getElementById('teacher-review-btn')?.style.setProperty('display', 'none');
+      document.getElementById('time-analytics-btn')?.style.setProperty('display', 'none');
+      document.getElementById('roster-btn')?.style.setProperty('display', 'none');
+      document.getElementById('webrtc-toggle-btn')?.style.setProperty('display', 'none');
+      document.getElementById('video-source-setting')?.classList.add('hidden');
+      document.getElementById('preload-animations-setting')?.classList.add('hidden');
+      document.getElementById('cartridge-shortcuts')?.classList.add('hidden');
+      document.getElementById('teacher-progression-panel')?.classList.add('hidden');
+      document.getElementById('teacher-review-panel')?.classList.add('hidden');
+      document.getElementById('teacher-review-backdrop')?.classList.add('hidden');
+      document.getElementById('time-analytics-panel')?.classList.add('hidden');
+      document.getElementById('time-analytics-backdrop')?.classList.add('hidden');
+
+      pendingReviewsCache = [];
+      updateReviewBadge(0);
+      hideTeacherAlert();
+    }
+
+    async function validateTeacherPassword(password) {
+      const response = await fetch(`${SERVER_URL}/api/auth/teacher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      return response.json();
+    }
+
     // Populate and show cartridge URL shortcuts for teachers
     function showCartridgeShortcuts() {
       const shortcutsSection = document.getElementById('cartridge-shortcuts');
@@ -3098,17 +3128,20 @@
       try {
         const savedTeacher = await userSystem.getMeta('teacherMode');
         if (savedTeacher?.enabled && savedTeacher?.password) {
-          // Verify password is still valid with server
-          const response = await fetch(`${SERVER_URL}/api/auth/teacher`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: savedTeacher.password })
-          });
-          const result = await response.json();
-          if (result.valid) {
-            await activateTeacherMode(savedTeacher.password, false);
-            return true;
-          }
+          await activateTeacherMode(savedTeacher.password, false);
+
+          validateTeacherPassword(savedTeacher.password)
+            .then(async (result) => {
+              if (!result.valid) {
+                console.warn('Teacher password no longer valid; disabling cached teacher mode.');
+                await deactivateTeacherMode(true);
+              }
+            })
+            .catch((err) => {
+              console.warn('Teacher mode revalidation deferred:', err);
+            });
+
+          return true;
         }
       } catch (err) {
         console.warn('Could not check teacher persistence:', err);
@@ -3124,13 +3157,7 @@
       const password = document.getElementById('teacher-password-input').value;
 
       try {
-        // Verify teacher password with server
-        const response = await fetch(`${SERVER_URL}/api/auth/teacher`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password })
-        });
-        const result = await response.json();
+        const result = await validateTeacherPassword(password);
 
         if (result.valid) {
           console.log('Teacher login successful');
