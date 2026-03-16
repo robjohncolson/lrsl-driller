@@ -1,4 +1,4 @@
-// grading-rules.js - AP Statistics Topic 8.1 cartridge
+// grading-rules.js - AP Statistics Topics 8.1-8.2 cartridge
 
 function normalize(str) {
   return String(str).trim().toLowerCase();
@@ -32,7 +32,7 @@ export function gradeField(fieldId, answer, context) {
   const expObj = getExpectedObj(context, fieldId);
   const expected = expObj.value;
 
-  const openResponseFields = new Set(["textAnswer", "explanation"]);
+  const openResponseFields = new Set(["textAnswer", "explanation", "alternativeText"]);
 
   if (isBlank(answer)) {
     if (openResponseFields.has(fieldId)) {
@@ -200,6 +200,171 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "Your explanation should use the simulation result to say whether the outcome is common or rare under the chance model."
+    };
+  }
+
+  if (fieldId === "procedureChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. One random sample of one categorical variable compared to specified proportions calls for a chi-square goodness-of-fit test."
+      };
+    }
+    if (studentNorm.includes("chi-square")) {
+      return {
+        score: "P",
+        feedback: "Close. This is in the chi-square family, but with one sample and one categorical variable the correct procedure is goodness of fit."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct procedure is ${expected}.`
+    };
+  }
+
+  if (fieldId === "nullChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. The null hypothesis states that the population proportions equal the specified values."
+      };
+    }
+    if (containsAny(answer, ["sample proportion", "sample proportions"])) {
+      return {
+        score: "I",
+        feedback: "Hypotheses should refer to population proportions, not sample proportions."
+      };
+    }
+    if (containsAny(answer, ["ha:", "at least one", "not as specified", "not all"])) {
+      return {
+        score: "I",
+        feedback: "That is an alternative hypothesis idea. The null hypothesis must state equality to the specified proportions."
+      };
+    }
+    if (containsAny(answer, ["greater", "less"])) {
+      return {
+        score: "I",
+        feedback: "A chi-square goodness-of-fit null hypothesis is not directional. It states equality to the hypothesized proportions."
+      };
+    }
+    return {
+      score: "I",
+      feedback: context.nullExplanation || `Incorrect. The correct null hypothesis is ${expected}.`
+    };
+  }
+
+  if (fieldId === "alternativeText") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. That is an appropriate alternative hypothesis stated in words."
+      };
+    }
+
+    const keywords = context.expectedKeywords || [];
+    const matchCount = keywordMatchCount(answer, keywords);
+    const mentionsAltIdea = containsAny(answer, [
+      "at least one",
+      "not as specified",
+      "not the same",
+      "differs",
+      "different from",
+      "distribution is not",
+      "distribution differs"
+    ]);
+    const mentionsDirection = containsAny(answer, [
+      "greater than",
+      "less than",
+      "higher than",
+      "lower than",
+      ">",
+      "<"
+    ]);
+    const mentionsAllDifferent = containsAny(answer, [
+      "all different",
+      "each proportion is different",
+      "all of the proportions are different",
+      "every proportion is different"
+    ]);
+    const mentionsSample = containsAny(answer, [
+      "sample proportion",
+      "sample proportions",
+      "p-hat",
+      "phat"
+    ]);
+
+    if (mentionsDirection) {
+      return {
+        score: "I",
+        feedback: "Do not use directional inequalities for a chi-square goodness-of-fit alternative hypothesis."
+      };
+    }
+    if (mentionsAllDifferent) {
+      return {
+        score: "I",
+        feedback: "The alternative should say that at least one proportion differs, not that all of them must differ."
+      };
+    }
+    if (mentionsSample && !mentionsAltIdea) {
+      return {
+        score: "I",
+        feedback: "Hypotheses should be about population proportions, not sample proportions."
+      };
+    }
+    if (
+      (matchCount >= 2 && mentionsAltIdea) ||
+      containsAny(answer, [
+        "distribution is not the same",
+        "distribution differs from the null",
+        "at least one proportion is not",
+        "not as specified by the null"
+      ])
+    ) {
+      return {
+        score: "E",
+        feedback: "Good. You stated the alternative in words and captured the correct idea."
+      };
+    }
+    if (mentionsAltIdea || matchCount >= 1) {
+      return {
+        score: "P",
+        feedback: "Partially correct. Make it clearer that at least one population proportion is not as specified in the null hypothesis."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "State the alternative in words: the distribution is not as specified, or at least one proportion differs."
+    };
+  }
+
+  if (fieldId === "conditionsChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. You identified the chi-square goodness-of-fit conditions accurately."
+      };
+    }
+
+    const studentDecision = studentNorm.startsWith("yes")
+      ? "yes"
+      : studentNorm.startsWith("no")
+        ? "no"
+        : "";
+    const expectedDecision = expectedNorm.startsWith("yes")
+      ? "yes"
+      : expectedNorm.startsWith("no")
+        ? "no"
+        : "";
+
+    if (studentDecision && studentDecision === expectedDecision) {
+      return {
+        score: "P",
+        feedback: `You chose the right overall decision but not the key condition. ${context.conditionExplanation}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.conditionExplanation}`
     };
   }
 

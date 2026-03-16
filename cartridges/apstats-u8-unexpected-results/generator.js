@@ -1,4 +1,4 @@
-// generator.js - AP Statistics Topic 8.1 cartridge
+// generator.js - AP Statistics Topics 8.1-8.2 cartridge
 
 // ============ UTILITY FUNCTIONS ============
 
@@ -314,6 +314,147 @@ const level5Scenarios = [
   }
 ];
 
+const level6Scenarios = [
+  {
+    desc: "A random sample of 40 predatory lending businesses is classified into three income-bracket categories. The counts are compared with hypothesized proportions 0.452, 0.292, and 0.256. Which inference procedure should be used?"
+  },
+  {
+    desc: "A random sample of 100 Battleship players identifies which of four quadrants contains the most ship spaces. The counts are compared with the no-preference model of 0.25 for each quadrant. Which inference procedure should be used?"
+  },
+  {
+    desc: "A cereal company records the prize type in 80 randomly selected boxes and compares the four category counts to the claimed proportions 0.30, 0.25, 0.25, and 0.20. Which inference procedure should be used?"
+  },
+  {
+    desc: "A school surveys 120 randomly selected students and records which of five lunch options they buy most often. The counts are compared with a district model of 0.18, 0.22, 0.20, 0.25, and 0.15. Which inference procedure should be used?"
+  },
+  {
+    desc: "A wildlife study records the habitat zone for 60 randomly observed turtles in one lake. The observed counts in four zones are compared with a specified distribution from past years. Which inference procedure should be used?"
+  }
+];
+
+const level7Scenarios = [
+  {
+    desc: "Predatory lending businesses in Dallas are classified into three income brackets. The hypothesized proportions are 0.452, 0.292, and 0.256. Choose the best null hypothesis.",
+    correct: "H0: The category proportions are 0.452, 0.292, and 0.256.",
+    wrong: [
+      "Ha: At least one category proportion is not 0.452, 0.292, or 0.256.",
+      "H0: The sample proportions are 0.452, 0.292, and 0.256.",
+      "H0: The three category proportions are all 1/3."
+    ],
+    explanation: "The null hypothesis uses population proportions and states equality to the specified values."
+  },
+  {
+    desc: "Battleship quadrant choices are tested against a no-preference model with four equal proportions of 0.25. Choose the best null hypothesis.",
+    correct: "H0: The four quadrant proportions are each 0.25.",
+    wrong: [
+      "Ha: The quadrant proportions are not all 0.25.",
+      "H0: The sample quadrant proportions are each 0.25.",
+      "H0: Quadrant 1 has a greater proportion than quadrant 4."
+    ],
+    explanation: "The null hypothesis says all four population proportions equal the specified value of 0.25."
+  },
+  {
+    desc: "Snack flavor counts are compared with a company claim of proportions 0.10, 0.20, 0.30, and 0.40. Choose the best null hypothesis.",
+    correct: "H0: The flavor proportions are 0.10, 0.20, 0.30, and 0.40.",
+    wrong: [
+      "Ha: All four flavor proportions are different from 0.10, 0.20, 0.30, and 0.40.",
+      "H0: The sample flavor proportions are 0.10, 0.20, 0.30, and 0.40.",
+      "H0: The four flavor proportions are all 0.25."
+    ],
+    explanation: "The null hypothesis lists the claimed population proportions, not sample values or an alternative statement."
+  },
+  {
+    desc: "An app design team compares icon colors across five categories to a planned distribution of 0.18, 0.24, 0.21, 0.17, and 0.20. Choose the best null hypothesis.",
+    correct: "H0: The five app-icon color proportions are 0.18, 0.24, 0.21, 0.17, and 0.20.",
+    wrong: [
+      "Ha: At least one app-icon color proportion is not 0.18, 0.24, 0.21, 0.17, or 0.20.",
+      "H0: The sample app-icon color proportions are 0.18, 0.24, 0.21, 0.17, and 0.20.",
+      "H0: The five app-icon color proportions are all 0.20."
+    ],
+    explanation: "A null hypothesis for goodness of fit states that the population distribution matches the specified values."
+  }
+];
+
+const level8Scenarios = [
+  {
+    desc: "Predatory lending businesses are tested against hypothesized income-bracket proportions of 0.452, 0.292, and 0.256. State the alternative hypothesis in words.",
+    answer: "At least one of the proportions is not as specified in the null hypothesis.",
+    keywords: ["at least one", "proportion", "not as specified", "null hypothesis"]
+  },
+  {
+    desc: "Battleship quadrant choices are tested against the no-preference model of 0.25 in each quadrant. State the alternative hypothesis in words.",
+    answer: "The distribution of preferred quadrants is not the same across all four quadrants.",
+    keywords: ["distribution", "not the same", "quadrants", "proportion"]
+  },
+  {
+    desc: "Snack flavor counts are tested against claimed proportions of 0.10, 0.20, 0.30, and 0.40. State the alternative hypothesis in words.",
+    answer: "At least one flavor proportion differs from the claimed distribution.",
+    keywords: ["at least one", "differs", "distribution", "proportion"]
+  },
+  {
+    desc: "School lunch choices are tested against a district model for five categories. State the alternative hypothesis in words.",
+    answer: "The distribution of lunch choices is not as specified by the null model.",
+    keywords: ["distribution", "not as specified", "null model", "categories"]
+  }
+];
+
+const level9Scenarios = [
+  {
+    desc: "A random sample of 40 predatory lending businesses is compared to null proportions 0.452, 0.292, and 0.256. There are far more than 400 such businesses in Dallas. Which statement about the conditions is correct?",
+    correct:
+      "Yes. The sample is random, 40 is no more than 10 percent of the population, and the expected counts 18.08, 11.68, and 10.24 are all above 5.",
+    wrong: [
+      "No. At least one expected count is below 5.",
+      "No. The sample is more than 10 percent of the population.",
+      "No. A chi-square goodness-of-fit test can only be used with two categories."
+    ],
+    explanation:
+      "Conditions are met because the sample is random, 40 is within the 10 percent rule, and all expected counts exceed 5."
+  },
+  {
+    desc: "A random sample of 30 pet adoptions is classified into three coat colors. The null proportions are 0.60, 0.25, and 0.15, and the shelter has more than 300 adoptions in the full population. Which statement about the conditions is correct?",
+    correct: "No. The expected counts are 18, 7.5, and 4.5, so at least one expected count is below 5.",
+    wrong: [
+      "Yes. The sample is random and 30 is within 10 percent, so the test is fine.",
+      "No. The sample is more than 10 percent of the population.",
+      "No. Chi-square tests require the category proportions to all be equal."
+    ],
+    explanation: "Conditions fail because one expected count is 4.5, which is below 5."
+  },
+  {
+    desc: "A teacher records the lunch-period preference of the first 60 students who walk into class and compares the four counts to an equal 0.25 model. The school has over 1000 students, so 60 is less than 10 percent of the population. Which statement about the conditions is correct?",
+    correct: "No. The data did not come from a random sample or randomized experiment.",
+    wrong: [
+      "Yes. The expected counts are all 15, so the test conditions are met.",
+      "No. The sample is more than 10 percent of the population.",
+      "No. Chi-square goodness-of-fit tests cannot be used with four categories."
+    ],
+    explanation: "Conditions fail because the data were taken from the first students to arrive, not from a random sample."
+  },
+  {
+    desc: "A random sample of 80 cereal boxes is taken from a shipment of 600 boxes. Prize types are compared across four categories with null proportions 0.25 each. Which statement about the conditions is correct?",
+    correct: "No. The sample is more than 10 percent of the population because 80 is greater than 60.",
+    wrong: [
+      "Yes. The sample is random and the expected counts are all 20, so the test is fine.",
+      "No. At least one expected count is below 5.",
+      "No. The observed counts have to match the expected counts exactly before the test can be used."
+    ],
+    explanation: "Conditions fail because 80 exceeds 10 percent of 600, so the independence condition is not satisfied."
+  },
+  {
+    desc: "A random sample of 100 Battleship players is surveyed. The null model says each quadrant has probability 0.25, and the population is at least 5000 players. Which statement about the conditions is correct?",
+    correct:
+      "Yes. The sample is random, 100 is no more than 10 percent of the population, and each expected count is 25, which is above 5.",
+    wrong: [
+      "No. The expected counts are too small because 25 is less than 5.",
+      "No. The null proportions must be unequal for chi-square to work.",
+      "No. A chi-square goodness-of-fit test cannot be used with four categories."
+    ],
+    explanation:
+      "Conditions are met because the sample is random, 100 is within the 10 percent rule, and each expected count is 25."
+  }
+];
+
 function generateContributionScenario(template) {
   const expected = template.total / template.categories;
   const delta = choice(template.deltas);
@@ -445,6 +586,112 @@ export function generateProblem(modeId, contextFromFile, mode) {
         expectedReasoning: scen.expectedReasoning,
         keywords: scen.keywords,
         theme: scen.theme
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l06-chi-square-gof-procedure") {
+    const scen = drawFromBag("level6", level6Scenarios);
+    const correct = "Chi-square goodness-of-fit test";
+    const options = shuffle([
+      correct,
+      "One-proportion z test",
+      "Two-proportion z test",
+      "Chi-square test of homogeneity"
+    ]);
+
+    answers = {
+      procedureChoice: { value: correct }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 6: Topic 8.2 Procedure",
+        problemText: "Identify the correct inference procedure",
+        givenText: scen.desc,
+        optA: options[0],
+        optB: options[1],
+        optC: options[2],
+        optD: options[3],
+        procedureReasoning:
+          "Use a chi-square goodness-of-fit test when one random sample of one categorical variable is compared with specified proportions."
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l07-state-null-hypothesis") {
+    const scen = drawFromBag("level7", level7Scenarios);
+    const options = shuffle([scen.correct, ...scen.wrong]);
+
+    answers = {
+      nullChoice: { value: scen.correct }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 7: Null Hypothesis",
+        problemText: "Choose the best null hypothesis",
+        givenText: scen.desc,
+        optA: options[0],
+        optB: options[1],
+        optC: options[2],
+        optD: options[3],
+        nullExplanation: scen.explanation
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l08-state-alternative-hypothesis") {
+    const scen = drawFromBag("level8", level8Scenarios);
+
+    answers = {
+      alternativeText: { value: scen.answer }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 8: Alternative Hypothesis",
+        problemText: "State the alternative hypothesis in words",
+        givenText: scen.desc,
+        expectedKeywords: scen.keywords
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l09-check-conditions") {
+    const scen = drawFromBag("level9", level9Scenarios);
+    const options = shuffle([scen.correct, ...scen.wrong]);
+
+    answers = {
+      conditionsChoice: { value: scen.correct }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 9: Check Conditions",
+        problemText: "Decide whether the chi-square GOF conditions are met",
+        givenText: scen.desc,
+        optA: options[0],
+        optB: options[1],
+        optC: options[2],
+        optD: options[3],
+        conditionExplanation: scen.explanation
       },
       answers
     );
