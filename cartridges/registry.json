@@ -125,6 +125,13 @@
       "subject": "AP Statistics",
       "description": "Significance-testing logic for mean differences, one-sample t-intervals, interpreting CIs, justifying claims, confidence level, and margin of error factors",
       "shortCode": "MCI"
+    },
+    {
+      "id": "apstats-u8-unexpected-results",
+      "name": "Introducing Statistics: Are My Results Unexpected? (8.1)",
+      "subject": "AP Statistics",
+      "description": "Observed vs expected counts, chi-square contributions, and simulation-based interpretation for one-way categorical data",
+      "shortCode": "U81"
     }
   ]
 }
