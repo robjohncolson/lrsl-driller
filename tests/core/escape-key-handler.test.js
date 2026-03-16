@@ -12,6 +12,11 @@ import { join } from 'path';
 // Read app.html content for static analysis
 const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
+const teacherReviewPanelPath = join(process.cwd(), 'platform', 'core', 'teacher-review.js');
+const teacherReviewPanelContent = readFileSync(teacherReviewPanelPath, 'utf-8');
+const timeAnalyticsPanelPath = join(process.cwd(), 'platform', 'core', 'time-analytics.js');
+const timeAnalyticsPanelContent = readFileSync(timeAnalyticsPanelPath, 'utf-8');
+const panelModuleContent = [appHtmlContent, teacherReviewPanelContent, timeAnalyticsPanelContent].join('\n');
 
 describe('Escape Key Handler - Element ID Consistency', () => {
   describe('Teacher Review Panel', () => {
@@ -95,16 +100,16 @@ describe('Escape Key Handler - Pattern Verification', () => {
   });
 
   it('should use translate-x-full class for slide-out panels', () => {
-    // Panels use translate-x-full to slide in/out
+    // Close logic still lives in app.html, but open/close helpers now span extracted panel modules.
     expect(appHtmlContent).toContain("classList.contains('translate-x-full')");
-    expect(appHtmlContent).toContain("classList.add('translate-x-full')");
-    expect(appHtmlContent).toContain("classList.remove('translate-x-full')");
+    expect(panelModuleContent).toContain("classList.add('translate-x-full')");
+    expect(panelModuleContent).toContain("classList.remove('translate-x-full')");
   });
 
   it('should use hidden class for backdrops', () => {
-    // Backdrops use hidden class to show/hide
-    expect(appHtmlContent).toMatch(/backdrop.*classList\.add\('hidden'\)/s);
-    expect(appHtmlContent).toMatch(/backdrop.*classList\.remove\('hidden'\)/s);
+    // Backdrop hide/show logic also spans app.html and extracted panel modules.
+    expect(panelModuleContent).toMatch(/teacher-review-backdrop[\s\S]*classList\.add\('hidden'\)|time-analytics-backdrop[\s\S]*classList\.add\('hidden'\)/);
+    expect(panelModuleContent).toMatch(/teacher-review-backdrop[\s\S]*classList\.remove\('hidden'\)|time-analytics-backdrop[\s\S]*classList\.remove\('hidden'\)/);
   });
 
   it('should return early after closing each component to prevent multiple closes', () => {

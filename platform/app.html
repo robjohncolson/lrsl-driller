@@ -1038,6 +1038,7 @@
     import { DEFAULT_SERVER_URL, detectNetworkConfig } from './core/network-config.js';
     import { TeacherModeController } from './core/teacher-mode.js';
     import { TeacherReviewPanel } from './core/teacher-review.js';
+    import { TimeAnalyticsPanel } from './core/time-analytics.js';
     // Lazy-loaded: only used for multiplayer P2P
     // import { P2PAssetTransfer } from './core/p2p-asset-transfer.js';
     let P2PAssetTransfer = null;
@@ -1389,6 +1390,7 @@
     let rosterModal = null; // Teacher roster management modal
     let teacherMode = null; // Teacher-only state and UI controller
     let teacherReviewPanel = null; // Teacher review panel controller
+    let timeAnalyticsPanel = null; // Teacher time analytics controller
     let pendingUrlState = null; // Parsed URL state, applied after the first cartridge load
     let requestedStartLevel = null; // URL-requested direct level link (?level=... or ?start=...)
     let ghostPanel = null; // Ghost panel instance for ghost mode features
@@ -3155,106 +3157,22 @@
     });
 
     // ==================== TIME ANALYTICS PANEL ====================
-    let currentTimePeriod = 'today';
+    timeAnalyticsPanel = new TimeAnalyticsPanel({
+      getServerUrl: () => SERVER_URL,
+      getTeacherPassword,
+      getAvatarForUsername
+    });
 
     function openTimeAnalyticsPanel() {
-      document.getElementById('time-analytics-panel').classList.remove('translate-x-full');
-      document.getElementById('time-analytics-backdrop').classList.remove('hidden');
-      loadTimeAnalytics();
+      return timeAnalyticsPanel.openPanel();
     }
 
     function closeTimeAnalyticsPanel() {
-      document.getElementById('time-analytics-panel').classList.add('translate-x-full');
-      document.getElementById('time-analytics-backdrop').classList.add('hidden');
+      timeAnalyticsPanel.closePanel();
     }
 
-    async function loadTimeAnalytics() {
-      const loading = document.getElementById('time-analytics-loading');
-      const list = document.getElementById('time-analytics-list');
-      const empty = document.getElementById('time-analytics-empty');
-
-      loading.classList.remove('hidden');
-      list.classList.add('hidden');
-      empty.classList.add('hidden');
-
-      try {
-        const response = await fetch(`${SERVER_URL}/api/time-tracking/class-summary?period=${currentTimePeriod}`, {
-          headers: { 'x-teacher-password': getTeacherPassword() || 'stats123' }
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch time data');
-
-        const data = await response.json();
-        loading.classList.add('hidden');
-
-        // Update summary stats
-        document.getElementById('total-class-time').textContent = formatTimeDisplay(data.totalClassTime);
-        document.getElementById('total-students-active').textContent = data.students?.length || 0;
-        const avgTime = data.students?.length > 0 ? data.totalClassTime / data.students.length : 0;
-        document.getElementById('avg-time-per-student').textContent = formatTimeDisplay(avgTime);
-
-        if (!data.students || data.students.length === 0) {
-          empty.classList.remove('hidden');
-        } else {
-          list.classList.remove('hidden');
-          renderTimeAnalyticsList(data.students);
-        }
-      } catch (err) {
-        console.error('Failed to load time analytics:', err);
-        loading.classList.add('hidden');
-        empty.classList.remove('hidden');
-        empty.querySelector('p').textContent = 'Failed to load time data.';
-      }
-    }
-
-    function renderTimeAnalyticsList(students) {
-      const list = document.getElementById('time-analytics-list');
-      const maxTime = Math.max(...students.map(s => s.totalActiveMs), 1);
-
-      list.innerHTML = students.map((student, index) => {
-        const timePercent = (student.totalActiveMs / maxTime) * 100;
-        const avatar = getAvatarForUsername(student.username);
-        const lastActive = student.lastActive ? new Date(student.lastActive).toLocaleString() : 'N/A';
-
-        return `
-          <div class="bg-white border rounded-lg p-3 hover:shadow-md transition-shadow">
-            <div class="flex items-center gap-3">
-              <div class="flex items-center justify-center w-8 h-8 rounded-full ${index < 3 ? 'bg-green-100' : 'bg-gray-100'} text-lg">
-                ${index < 3 ? ['🥇', '🥈', '🥉'][index] : avatar}
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between">
-                  <span class="font-medium text-gray-800 truncate">${student.username}</span>
-                  <span class="font-bold text-green-700">${formatTimeDisplay(student.totalActiveMs)}</span>
-                </div>
-                <div class="mt-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-green-400 to-teal-500 rounded-full transition-all duration-500" style="width: ${timePercent}%"></div>
-                </div>
-                <div class="flex justify-between mt-1 text-xs text-gray-500">
-                  <span>${student.sessionCount || 0} sessions</span>
-                  <span>${student.problemsCompleted || 0}/${student.problemsAttempted || 0} problems</span>
-                  <span>Last: ${lastActive}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function formatTimeDisplay(ms) {
-      if (!ms || ms < 1000) return '0m';
-      const seconds = Math.floor(ms / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const hours = Math.floor(minutes / 60);
-
-      if (hours > 0) {
-        return `${hours}h ${minutes % 60}m`;
-      } else if (minutes > 0) {
-        return `${minutes}m`;
-      } else {
-        return `${seconds}s`;
-      }
+    function loadTimeAnalytics() {
+      return timeAnalyticsPanel.loadTimeAnalytics();
     }
 
     // Time analytics panel event listeners
@@ -3265,12 +3183,7 @@
 
     document.querySelectorAll('.time-period-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.time-period-btn').forEach(b => {
-          b.className = 'time-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-green-400';
-        });
-        btn.className = 'time-period-btn px-3 py-1 text-sm rounded-full bg-green-600 text-white';
-        currentTimePeriod = btn.dataset.period;
-        loadTimeAnalytics();
+        timeAnalyticsPanel.setPeriod(btn.dataset.period);
       });
     });
 
@@ -5320,4 +5233,5 @@
   </script>
 </body>
 </html>
+
 
