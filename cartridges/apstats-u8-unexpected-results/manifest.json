@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u8-unexpected-results",
-    "name": "Introducing Statistics: Are My Results Unexpected? (8.1)",
+    "name": "Introducing Statistics and Setting Up a Chi-Square Goodness of Fit Test (8.1-8.2)",
     "subject": "AP Statistics",
-    "description": "Practice observed vs expected counts, chi-square contributions, and simulation-based interpretation for Topic 8.1."
+    "description": "Practice observed vs expected counts, chi-square contributions, simulation-based interpretation, hypotheses, procedure identification, and condition checks for Topics 8.1-8.2."
   },
 
   "config": {
@@ -121,6 +121,74 @@
           }
         ]
       }
+    },
+    {
+      "id": "l06-chi-square-gof-procedure",
+      "name": "8.2a: Identify the Chi-Square GOF Procedure",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/ChiSquareGoodnessOfFitProcedure.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "procedureChoice",
+            "type": "dropdown",
+            "label": "Choose the correct inference procedure:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l07-state-null-hypothesis",
+      "name": "8.2b: State the Null Hypothesis",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/NullHypothesisEquality.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "nullChoice",
+            "type": "dropdown",
+            "label": "Choose the best null hypothesis:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l08-state-alternative-hypothesis",
+      "name": "8.2c: State the Alternative Hypothesis",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/AlternativeHypothesisWords.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "alternativeText",
+            "type": "textarea",
+            "label": "State Ha in words:",
+            "rows": 3,
+            "placeholder": "Write the alternative hypothesis in words..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l09-check-conditions",
+      "name": "8.2d: Check Conditions for GOF",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/CheckGOFConditions.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "conditionsChoice",
+            "type": "dropdown",
+            "label": "Which statement about the conditions is correct?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
     }
   ],
 
@@ -144,7 +212,11 @@
       "numericAnswer": "Hint for Level 3: Use (Observed - Expected)^2 / Expected. Square the difference before dividing.",
       "textAnswer": "Hint for Level 4: Mention why raw differences can cancel or why dividing by expected makes the discrepancy relative to the model.",
       "conceptChoice": "Hint for Level 5a: Ask whether the simulated result this large happens often or only rarely under random variation.",
-      "explanation": "Hint for Level 5b: A complete explanation mentions the simulation proportion and whether that makes the result common or rare under the chance model."
+      "explanation": "Hint for Level 5b: A complete explanation mentions the simulation proportion and whether that makes the result common or rare under the chance model.",
+      "procedureChoice": "Hint for Level 6: Use a chi-square goodness-of-fit test when one random sample and one categorical variable are compared to specified proportions.",
+      "nullChoice": "Hint for Level 7: The null hypothesis states equality using population proportions, not sample proportions.",
+      "alternativeText": "Hint for Level 8: State the alternative in words. Say the distribution is not as specified, or that at least one proportion differs.",
+      "conditionsChoice": "Hint for Level 9: Check randomness, the 10 percent condition, and whether every expected count is greater than 5."
     },
     "penalty": {
       "0": "gold",
@@ -187,6 +259,30 @@
         "name": "05",
         "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Excellent! You can decide whether results are unexpected from the simulation output."
+      },
+      {
+        "id": "l06-chi-square-gof-procedure",
+        "name": "06",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Nice work! You can identify when a chi-square goodness-of-fit test is appropriate."
+      },
+      {
+        "id": "l07-state-null-hypothesis",
+        "name": "07",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Good. You can state the null hypothesis as equality to specified proportions."
+      },
+      {
+        "id": "l08-state-alternative-hypothesis",
+        "name": "08",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Strong work! You can state the alternative hypothesis in words."
+      },
+      {
+        "id": "l09-check-conditions",
+        "name": "09",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Excellent. You can verify the conditions for a chi-square goodness-of-fit test."
       }
     ]
   }
