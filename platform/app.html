@@ -1039,6 +1039,7 @@
     import { TeacherModeController } from './core/teacher-mode.js';
     import { TeacherReviewPanel } from './core/teacher-review.js';
     import { TimeAnalyticsPanel } from './core/time-analytics.js';
+    import { SettingsMediaController } from './core/settings-media.js';
     // Lazy-loaded: only used for multiplayer P2P
     // import { P2PAssetTransfer } from './core/p2p-asset-transfer.js';
     let P2PAssetTransfer = null;
@@ -1391,6 +1392,7 @@
     let teacherMode = null; // Teacher-only state and UI controller
     let teacherReviewPanel = null; // Teacher review panel controller
     let timeAnalyticsPanel = null; // Teacher time analytics controller
+    let settingsMediaController = null; // Settings and media modal controller
     let pendingUrlState = null; // Parsed URL state, applied after the first cartridge load
     let requestedStartLevel = null; // URL-requested direct level link (?level=... or ?start=...)
     let ghostPanel = null; // Ghost panel instance for ghost mode features
@@ -2664,306 +2666,30 @@
     });
 
     // ==================== SETTINGS MODAL ====================
-    document.getElementById('settings-btn').addEventListener('click', () => {
-      document.getElementById('settings-modal').classList.remove('hidden');
-    });
-
-    document.getElementById('close-settings').addEventListener('click', () => {
-      document.getElementById('settings-modal').classList.add('hidden');
-    });
-
-    document.getElementById('sound-toggle').addEventListener('click', () => {
-      soundEngine.setEnabled(!soundEngine.enabled);
-      const dot = document.getElementById('sound-toggle-dot');
-      const label = document.getElementById('sound-toggle-label');
-      dot.classList.toggle('translate-x-6', soundEngine.enabled);
-      dot.classList.toggle('translate-x-1', !soundEngine.enabled);
-      label.textContent = soundEngine.enabled ? 'Sound effects enabled' : 'Sound effects disabled';
-    });
-
-    // ==================== BACKGROUND MUSIC SETTINGS ====================
-    // Global music player (accessible to Ghost Orbits and main app)
-    let globalMusicPlayer = null;
-
-    function initMusicSettings() {
-      // Use singleton audio instance - check all possible global references
-      // Priority: ghostOrbitsAudio (set by Ghost Orbits) > globalMusicPlayer (set by settings)
-      if (window.ghostOrbitsAudio) {
-        // Ghost Orbits has an audio instance - use it
-        // If we had our own instance playing, stop it first
-        if (globalMusicPlayer && globalMusicPlayer !== window.ghostOrbitsAudio) {
-          globalMusicPlayer.stopMusic();
+    settingsMediaController = new SettingsMediaController({
+      soundEngine,
+      celebration,
+      getAssetResolver: () => assetResolver,
+      getPlatform: () => platform,
+      onProviderPreferenceChange: (preferProvider) => {
+        if (platform) {
+          platform.setPreferProvider(preferProvider);
         }
-        globalMusicPlayer = window.ghostOrbitsAudio;
-        window.globalMusicPlayer = globalMusicPlayer; // Sync references
-      } else if (globalMusicPlayer) {
-        // We already have an instance from previous settings open
-        // Keep using it, just ensure global refs are synced
-        window.ghostOrbitsAudio = globalMusicPlayer;
-        window.globalMusicPlayer = globalMusicPlayer;
-      } else if (window.globalMusicPlayer) {
-        // Someone else created an instance - use it
-        globalMusicPlayer = window.globalMusicPlayer;
-        window.ghostOrbitsAudio = globalMusicPlayer;
-      } else {
-        // No instance exists - create one and set both global refs
-        import('./core/ghost-orbits-audio.js').then(module => {
-          globalMusicPlayer = new module.GhostOrbitsAudio();
-          globalMusicPlayer.init();
-          window.ghostOrbitsAudio = globalMusicPlayer;
-          window.globalMusicPlayer = globalMusicPlayer;
-          updateMusicUI();
-        }).catch(() => {
-          console.warn('[Music] Could not load audio module');
-        });
-        return; // Wait for async load
       }
-      updateMusicUI();
-    }
-
-    function updateMusicUI() {
-      if (!globalMusicPlayer) return;
-
-      const settings = globalMusicPlayer.getMusicSettings();
-      const musicDot = document.getElementById('music-toggle-dot');
-      const musicLabel = document.getElementById('music-toggle-label');
-      const musicToggle = document.getElementById('music-toggle');
-      const trackSection = document.getElementById('music-track-section');
-      const trackSelect = document.getElementById('music-track');
-      const volumeSlider = document.getElementById('music-volume');
-      const volumeLabel = document.getElementById('music-volume-label');
-
-      // Update toggle state
-      musicDot.classList.toggle('translate-x-6', settings.enabled);
-      musicDot.classList.toggle('translate-x-1', !settings.enabled);
-      musicLabel.textContent = settings.enabled ? 'Music enabled' : 'Music disabled';
-      musicToggle.classList.toggle('bg-purple-600', settings.enabled);
-      musicToggle.classList.toggle('bg-gray-300', !settings.enabled);
-
-      // Update track section state
-      trackSection.classList.toggle('opacity-50', !settings.enabled);
-      trackSelect.disabled = !settings.enabled;
-      volumeSlider.disabled = !settings.enabled;
-
-      // Update track selection
-      trackSelect.value = settings.track;
-
-      // Update volume
-      const volumePercent = Math.round(settings.volume * 100);
-      volumeSlider.value = volumePercent;
-      volumeLabel.textContent = volumePercent + '%';
-    }
-
-    document.getElementById('music-toggle').addEventListener('click', () => {
-      if (!globalMusicPlayer) return;
-      const settings = globalMusicPlayer.getMusicSettings();
-      globalMusicPlayer.setMusicEnabled(!settings.enabled);
-      updateMusicUI();
     });
-
-    document.getElementById('music-track').addEventListener('change', (e) => {
-      if (!globalMusicPlayer) return;
-      globalMusicPlayer.setMusicTrack(e.target.value);
-    });
-
-    document.getElementById('music-volume').addEventListener('input', (e) => {
-      if (!globalMusicPlayer) return;
-      const volume = parseInt(e.target.value) / 100;
-      globalMusicPlayer.setMusicVolume(volume);
-      document.getElementById('music-volume-label').textContent = e.target.value + '%';
-    });
-
-    // Initialize music settings when settings modal opens
-    document.getElementById('settings-btn').addEventListener('click', () => {
-      document.getElementById('settings-modal').classList.remove('hidden');
-      initMusicSettings();
-    });
-
-    // Initialize notifications toggle state from saved preference
-    const notifDot = document.getElementById('notifications-toggle-dot');
-    const notifLabel = document.getElementById('notifications-toggle-label');
-    const notifEnabled = !celebration.notificationsMuted;
-    notifDot.classList.toggle('translate-x-6', notifEnabled);
-    notifDot.classList.toggle('translate-x-1', !notifEnabled);
-    notifLabel.textContent = notifEnabled ? 'Show when classmates earn stars' : 'Classmate notifications muted';
-    document.getElementById('notifications-toggle').classList.toggle('bg-purple-600', notifEnabled);
-    document.getElementById('notifications-toggle').classList.toggle('bg-gray-300', !notifEnabled);
-
-    document.getElementById('notifications-toggle').addEventListener('click', () => {
-      const newMuted = !celebration.notificationsMuted;
-      celebration.setNotificationsMuted(newMuted);
-      const dot = document.getElementById('notifications-toggle-dot');
-      const label = document.getElementById('notifications-toggle-label');
-      const enabled = !newMuted;
-      dot.classList.toggle('translate-x-6', enabled);
-      dot.classList.toggle('translate-x-1', !enabled);
-      label.textContent = enabled ? 'Show when classmates earn stars' : 'Classmate notifications muted';
-      document.getElementById('notifications-toggle').classList.toggle('bg-purple-600', enabled);
-      document.getElementById('notifications-toggle').classList.toggle('bg-gray-300', !enabled);
-    });
-
-    // Video source toggle (teacher only) - initialize state from localStorage
-    const SUPABASE_VIDEO_BASE = 'https://hgvnytaqmuybzbotosyj.supabase.co/storage/v1/object/public/videos/animations';
+    settingsMediaController.installEventListeners();
 
     function initVideoSourceToggle() {
-      const useSupabase = localStorage.getItem('driller_useSupabaseVideos') === 'true';
-      const videoSourceDot = document.getElementById('video-source-toggle-dot');
-      const videoSourceLabel = document.getElementById('video-source-toggle-label');
-      const videoSourceToggle = document.getElementById('video-source-toggle');
-
-      if (videoSourceDot && videoSourceLabel && videoSourceToggle) {
-        videoSourceDot.classList.toggle('translate-x-6', useSupabase);
-        videoSourceDot.classList.toggle('translate-x-1', !useSupabase);
-        videoSourceLabel.textContent = useSupabase ? 'Use Supabase cloud videos' : 'Use local videos';
-        videoSourceToggle.classList.toggle('bg-purple-600', useSupabase);
-        videoSourceToggle.classList.toggle('bg-gray-300', !useSupabase);
-      }
+      settingsMediaController.initVideoSourceToggle();
     }
 
-    document.getElementById('video-source-toggle')?.addEventListener('click', () => {
-      const useSupabase = localStorage.getItem('driller_useSupabaseVideos') !== 'true';
-      localStorage.setItem('driller_useSupabaseVideos', useSupabase);
-
-      const dot = document.getElementById('video-source-toggle-dot');
-      const label = document.getElementById('video-source-toggle-label');
-      const toggle = document.getElementById('video-source-toggle');
-
-      dot.classList.toggle('translate-x-6', useSupabase);
-      dot.classList.toggle('translate-x-1', !useSupabase);
-      label.textContent = useSupabase ? 'Use Supabase cloud videos' : 'Use local videos';
-      toggle.classList.toggle('bg-purple-600', useSupabase);
-      toggle.classList.toggle('bg-gray-300', !useSupabase);
-
-      celebration.showToast(useSupabase ? 'Using Supabase cloud videos' : 'Using local videos', 'info');
-      assetResolver.setUseSupabase(useSupabase);
-    });
-
-    // Pre-load animations button handler
-    document.getElementById('preload-animations-btn')?.addEventListener('click', async () => {
-      const manifest = platform?.currentCartridge?.manifest;
-      const cartridgeId = manifest?.meta?.id;
-      if (!manifest || !cartridgeId) {
-        celebration.showToast('Load a cartridge first', 'warning');
-        return;
-      }
-
-      const btn = document.getElementById('preload-animations-btn');
-      const progressDiv = document.getElementById('preload-progress');
-      const progressBar = document.getElementById('preload-progress-bar');
-      const progressText = document.getElementById('preload-progress-text');
-
-      btn.disabled = true;
-      btn.textContent = 'Loading...';
-      progressDiv.classList.remove('hidden');
-
-      await assetResolver.preloadCartridge(manifest, cartridgeId, (loaded, total) => {
-        const pct = Math.round((loaded / total) * 100);
-        progressBar.style.width = `${pct}%`;
-        progressText.textContent = `${loaded} / ${total}`;
-      });
-
-      btn.textContent = 'Done!';
-      btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
-      btn.classList.add('bg-green-600');
-      celebration.showToast('All animations pre-loaded! Students can now get them via P2P.', 'success');
-
-      setTimeout(() => {
-        btn.disabled = false;
-        btn.textContent = 'Pre-Load Animations';
-        btn.classList.remove('bg-green-600');
-        btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
-      }, 3000);
-    });
-
-    // Video URL resolver - returns appropriate URL based on setting (legacy fallback)
+    // Legacy fallback for animation URLs while asset resolution stays in app.html.
     function resolveVideoUrl(manifestPath, cartridgeId, forceLocal = false) {
-      if (!manifestPath || !cartridgeId) return null;
-
-      const useSupabase = !forceLocal && localStorage.getItem('driller_useSupabaseVideos') === 'true';
-
-      if (useSupabase) {
-        // Convert "assets/filename.mp4" to Supabase URL
-        const filename = manifestPath.replace('assets/', '');
-        return `${SUPABASE_VIDEO_BASE}/${cartridgeId}/${filename}`;
-      }
-
-      // Use local path (relative to cartridge folder)
-      return `/cartridges/${cartridgeId}/${manifestPath}`;
+      return settingsMediaController.resolveVideoUrl(manifestPath, cartridgeId, forceLocal);
     }
 
-    // AI Provider dropdown - show/hide API keys section
-    document.getElementById('ai-provider').addEventListener('change', (e) => {
-      const keysSection = document.getElementById('api-keys-section');
-      const serverNote = document.getElementById('server-mode-note');
-      const isOwnKey = e.target.value === 'gemini' || e.target.value === 'groq';
-      const isServer = e.target.value.startsWith('server');
-
-      if (isOwnKey) {
-        keysSection.classList.remove('hidden');
-        serverNote.classList.add('hidden');
-      } else {
-        keysSection.classList.add('hidden');
-        if (isServer) {
-          serverNote.classList.remove('hidden');
-          serverNote.textContent = e.target.value === 'server-gemini'
-            ? 'Using Gemini 2.5 Pro on server - no API key needed.'
-            : e.target.value === 'server-groq'
-            ? 'Using Groq/Llama on server - no API key needed.'
-            : 'No API key needed - grading handled by server.';
-        } else {
-          serverNote.classList.add('hidden');
-        }
-      }
-    });
-
-    // Save settings
-    document.getElementById('save-settings').addEventListener('click', () => {
-      const provider = document.getElementById('ai-provider').value;
-      const geminiKey = document.getElementById('gemini-key-input').value;
-      const groqKey = document.getElementById('groq-key-input').value;
-
-      // Save to localStorage
-      localStorage.setItem('aiProvider', provider);
-      if (geminiKey) localStorage.setItem('geminiApiKey', geminiKey);
-      if (groqKey) localStorage.setItem('groqApiKey', groqKey);
-
-      // Update platform's provider preference if loaded
-      if (platform) {
-        let preferProvider = null;
-        if (provider === 'server-gemini') preferProvider = 'gemini';
-        else if (provider === 'server-groq') preferProvider = 'groq';
-        platform.setPreferProvider(preferProvider);
-      }
-
-      document.getElementById('settings-modal').classList.add('hidden');
-      celebration.showToast('Settings saved!', 'success');
-    });
-
-    // Load settings on page load
     function loadSettings() {
-      const provider = localStorage.getItem('aiProvider') || 'server';
-      const geminiKey = localStorage.getItem('geminiApiKey') || '';
-      const groqKey = localStorage.getItem('groqApiKey') || '';
-
-      document.getElementById('ai-provider').value = provider;
-      document.getElementById('gemini-key-input').value = geminiKey;
-      document.getElementById('groq-key-input').value = groqKey;
-
-      const serverNote = document.getElementById('server-mode-note');
-      const isServer = provider.startsWith('server');
-
-      // Show API keys section if using own key
-      if (provider === 'gemini' || provider === 'groq') {
-        document.getElementById('api-keys-section').classList.remove('hidden');
-        serverNote.classList.add('hidden');
-      } else if (isServer) {
-        serverNote.classList.remove('hidden');
-        serverNote.textContent = provider === 'server-gemini'
-          ? 'Using Gemini 2.5 Pro on server - no API key needed.'
-          : provider === 'server-groq'
-          ? 'Using Groq/Llama on server - no API key needed.'
-          : 'No API key needed - grading handled by server.';
-      }
+      return settingsMediaController.loadSettings();
     }
 
     // ==================== GRADING ESCALATION SYSTEM ====================
