@@ -29,7 +29,7 @@
   "modes": [
     {
       "id": "l01-topic-8-1-observed-vs-expected",
-      "name": "Level 1: Topic 8.1 Observed vs Expected",
+      "name": "8.1a: Observed vs Expected",
       "unlockedBy": "default",
       "animation": "assets/Topic81ObservedExpected.mp4",
       "layout": {
@@ -50,7 +50,7 @@
     },
     {
       "id": "l02-expected-counts",
-      "name": "Level 2: Expected Counts",
+      "name": "8.1b: Expected Counts",
       "unlockedBy": { "gold": 3 },
       "animation": "assets/ExpectedCountsFairDie.mp4",
       "layout": {
@@ -67,7 +67,7 @@
     },
     {
       "id": "l03-chi-square-contribution",
-      "name": "Level 3: Chi-Square Contribution",
+      "name": "8.1c: Chi-Square Contribution",
       "unlockedBy": { "gold": 3 },
       "animation": "assets/ChiSquareContribution.mp4",
       "layout": {
@@ -85,7 +85,7 @@
     },
     {
       "id": "l04-interpret-unexpectedness",
-      "name": "Level 4: Interpreting Unexpectedness",
+      "name": "8.1d: Interpreting Unexpectedness",
       "unlockedBy": { "gold": 3 },
       "animation": "assets/ChiSquareUnexpectedness.mp4",
       "layout": {
@@ -101,7 +101,7 @@
     },
     {
       "id": "l05-simulation-based-p-value",
-      "name": "Level 5: Simulation-Based P-Value Decision",
+      "name": "8.1e: Simulation-Based P-Value Decision",
       "unlockedBy": { "gold": 3 },
       "animation": "assets/SimulationPValueInterpretation.mp4",
       "layout": {
