@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { initShareModal } from '../../platform/core/share-modal.js';
+import { initShareModal } from '../../platform/core/share-modal.ts';
 
 function createClassList(initialClasses = []) {
   const classes = new Set(initialClasses);

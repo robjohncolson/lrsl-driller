@@ -4,21 +4,57 @@
  */
 
 import Dexie from 'dexie';
+import type { StarCounts, UserInfo, VerifyResult, CreateUserResult } from './types.js';
+
+// ==================== Local Interfaces ====================
+
+export interface UserIdentity {
+  username: string;
+  realName?: string | null;
+  password?: string;
+}
+
+export interface Rank {
+  name: string;
+  minPoints: number;
+  color: string;
+  icon: string;
+}
+
+interface UserSystemConfig {
+  serverUrl?: string | null;
+  teacherPassword?: string;
+  onUserChange?: (user: UserIdentity | null) => void;
+}
+
+interface UserStats {
+  totalStars: StarCounts;
+  totalAttempts: number;
+  perfectRuns: number;
+}
+
+interface ProgressRecord {
+  username?: string;
+  completed_at: string;
+  star_type?: keyof StarCounts;
+  all_correct?: boolean;
+  [key: string]: unknown;
+}
 
 // ==================== USERNAME GENERATOR ====================
-const FRUITS = [
+const FRUITS: readonly string[] = [
   'Apple', 'Mango', 'Kiwi', 'Strawberry', 'Banana',
   'Orange', 'Grape', 'Peach', 'Cherry', 'Lemon',
   'Lime', 'Melon', 'Papaya', 'Coconut', 'Pineapple'
 ];
 
-const ANIMALS = [
+const ANIMALS: readonly string[] = [
   'Tiger', 'Bear', 'Wolf', 'Dolphin', 'Eagle',
   'Panda', 'Koala', 'Fox', 'Owl', 'Hawk',
   'Lion', 'Shark', 'Whale', 'Otter', 'Falcon'
 ];
 
-export function generateUsername() {
+export function generateUsername(): string {
   const fruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
   const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
   return `${fruit}_${animal}`;
@@ -27,13 +63,13 @@ export function generateUsername() {
 /**
  * Get emoji avatar from username
  */
-export function getAvatarForUsername(username) {
-  const fruitEmojis = {
+export function getAvatarForUsername(username: string): string {
+  const fruitEmojis: Record<string, string> = {
     'Apple': '🍎', 'Mango': '🥭', 'Kiwi': '🥝', 'Strawberry': '🍓', 'Banana': '🍌',
     'Orange': '🍊', 'Grape': '🍇', 'Peach': '🍑', 'Cherry': '🍒', 'Lemon': '🍋',
     'Lime': '🍋', 'Melon': '🍈', 'Papaya': '🥭', 'Coconut': '🥥', 'Pineapple': '🍍'
   };
-  const animalEmojis = {
+  const animalEmojis: Record<string, string> = {
     'Tiger': '🐯', 'Bear': '🐻', 'Wolf': '🐺', 'Dolphin': '🐬', 'Eagle': '🦅',
     'Panda': '🐼', 'Koala': '🐨', 'Fox': '🦊', 'Owl': '🦉', 'Hawk': '🦅',
     'Lion': '🦁', 'Shark': '🦈', 'Whale': '🐋', 'Otter': '🦦', 'Falcon': '🦅'
@@ -59,7 +95,7 @@ export function getAvatarForUsername(username) {
 }
 
 // ==================== RANK SYSTEM ====================
-export const RANKS = [
+export const RANKS: readonly Rank[] = [
   { name: 'Novice', minPoints: 0, color: 'gray', icon: '📊' },
   { name: 'Apprentice', minPoints: 10, color: 'green', icon: '📈' },
   { name: 'Analyst', minPoints: 30, color: 'blue', icon: '🔍' },
@@ -69,13 +105,13 @@ export const RANKS = [
   { name: 'Legend', minPoints: 250, color: 'red', icon: '🏆' }
 ];
 
-export function getWeightedScore(stars) {
+export function getWeightedScore(stars: StarCounts): number {
   return (stars.gold * 4) + (stars.silver * 3) + (stars.bronze * 2) + (stars.tin * 1);
 }
 
-export function getCurrentRank(stars) {
+export function getCurrentRank(stars: StarCounts): Rank {
   const score = getWeightedScore(stars);
-  let currentRank = RANKS[0];
+  let currentRank: Rank = RANKS[0];
   for (const rank of RANKS) {
     if (score >= rank.minPoints) {
       currentRank = rank;
@@ -84,7 +120,7 @@ export function getCurrentRank(stars) {
   return currentRank;
 }
 
-export function getNextRank(stars) {
+export function getNextRank(stars: StarCounts): Rank | null {
   const score = getWeightedScore(stars);
   for (const rank of RANKS) {
     if (score < rank.minPoints) {
@@ -94,7 +130,7 @@ export function getNextRank(stars) {
   return null; // Already at max rank
 }
 
-export function getRankProgress(stars) {
+export function getRankProgress(stars: StarCounts): number {
   const score = getWeightedScore(stars);
   const current = getCurrentRank(stars);
   const next = getNextRank(stars);
@@ -106,7 +142,14 @@ export function getRankProgress(stars) {
 
 // ==================== USER SYSTEM CLASS ====================
 export class UserSystem {
-  constructor(config = {}) {
+  serverUrl: string | null;
+  teacherPassword: string;
+  currentUser: UserIdentity | null;
+  isTeacherMode: boolean;
+  db: unknown;
+  onUserChange: (user: UserIdentity | null) => void;
+
+  constructor(config: UserSystemConfig = {}) {
     this.serverUrl = config.serverUrl || null;
     this.teacherPassword = config.teacherPassword || 'stats123';
     this.currentUser = null;
@@ -118,12 +161,12 @@ export class UserSystem {
   /**
    * Initialize IndexedDB
    */
-  async init() {
+  async init(): Promise<this> {
     // Dynamic import Dexie if available, otherwise use localStorage fallback
     if (typeof Dexie !== 'undefined') {
       try {
         this.db = new Dexie('DrillerPlatform');
-        this.db.version(1).stores({
+        (this.db as any).version(1).stores({
           meta: 'key',
           progress: '++id, username, completed_at',
           settings: 'username',
@@ -131,11 +174,11 @@ export class UserSystem {
         });
 
         // Test that Dexie actually works (can fail if blocked by tracking prevention)
-        await this.db.meta.count();
+        await (this.db as any).meta.count();
 
         await this.migrateFromLocalStorage();
       } catch (err) {
-        console.warn('IndexedDB not available (may be blocked by tracking prevention), using localStorage fallback:', err.message);
+        console.warn('IndexedDB not available (may be blocked by tracking prevention), using localStorage fallback:', (err as Error).message);
         this.db = null;
       }
     } else {
@@ -155,7 +198,7 @@ export class UserSystem {
   /**
    * Migrate data from localStorage (one-time)
    */
-  async migrateFromLocalStorage() {
+  async migrateFromLocalStorage(): Promise<void> {
     if (!this.db) return;
     const migrated = localStorage.getItem('dexie_migrated');
     if (migrated) return;
@@ -168,7 +211,7 @@ export class UserSystem {
       intercept: parseInt(localStorage.getItem('interceptStreak') || '0'),
       correlation: parseInt(localStorage.getItem('correlationStreak') || '0')
     };
-    await this.db.meta.put({ key: 'streaks', value: streaks });
+    await (this.db as any).meta.put({ key: 'streaks', value: streaks });
 
     // Migrate stars
     const stars = {
@@ -177,7 +220,7 @@ export class UserSystem {
       bronze: parseInt(localStorage.getItem('bronzeStars') || '0'),
       tin: parseInt(localStorage.getItem('tinStars') || '0')
     };
-    await this.db.meta.put({ key: 'stars', value: stars });
+    await (this.db as any).meta.put({ key: 'stars', value: stars });
 
     // Migrate API settings
     const apiSettings = {
@@ -185,7 +228,7 @@ export class UserSystem {
       geminiKey: localStorage.getItem('geminiApiKey') || '',
       groqKey: localStorage.getItem('groqApiKey') || ''
     };
-    await this.db.meta.put({ key: 'apiSettings', value: apiSettings });
+    await (this.db as any).meta.put({ key: 'apiSettings', value: apiSettings });
 
     localStorage.setItem('dexie_migrated', 'true');
     console.log('Migration complete!');
@@ -194,9 +237,9 @@ export class UserSystem {
   /**
    * Get stored identity
    */
-  async getIdentity() {
+  async getIdentity(): Promise<UserIdentity | null> {
     if (this.db) {
-      const record = await this.db.meta.get('identity');
+      const record = await (this.db as any).meta.get('identity');
       return record?.value || null;
     }
     // Fallback to localStorage
@@ -207,10 +250,10 @@ export class UserSystem {
   /**
    * Set user identity
    */
-  async setIdentity(identity) {
+  async setIdentity(identity: UserIdentity): Promise<void> {
     this.currentUser = identity;
     if (this.db) {
-      await this.db.meta.put({ key: 'identity', value: identity });
+      await (this.db as any).meta.put({ key: 'identity', value: identity });
     } else {
       localStorage.setItem('userIdentity', JSON.stringify(identity));
     }
@@ -220,7 +263,7 @@ export class UserSystem {
   /**
    * Create new user
    */
-  async createUser(username, realName, password) {
+  async createUser(username: string, realName: string, password: string): Promise<CreateUserResult> {
     // If server is configured, create user there
     if (this.serverUrl) {
       try {
@@ -229,7 +272,7 @@ export class UserSystem {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, real_name: realName, password })
         });
-        const result = await response.json();
+        const result: CreateUserResult = await response.json();
         if (result.error) {
           return { error: result.error };
         }
@@ -246,8 +289,8 @@ export class UserSystem {
   /**
    * Verify existing user credentials
    */
-  async verifyUser(username, password) {
-    let serverResult = null;
+  async verifyUser(username: string, password: string): Promise<VerifyResult> {
+    let serverResult: { valid?: boolean; error?: string; real_name?: string; isTeacher?: boolean } | null = null;
 
     if (this.serverUrl) {
       try {
@@ -257,8 +300,8 @@ export class UserSystem {
           body: JSON.stringify({ username, password })
         });
         serverResult = await response.json();
-        if (!serverResult.valid) {
-          return { error: serverResult.error || 'Invalid credentials' };
+        if (!serverResult!.valid) {
+          return { error: serverResult!.error || 'Invalid credentials' };
         }
       } catch (err) {
         console.warn('Server verification failed:', err);
@@ -271,7 +314,7 @@ export class UserSystem {
 
     return {
       valid: true,
-      realName,
+      realName: realName ?? undefined,
       isTeacher: serverResult?.isTeacher || false
     };
   }
@@ -279,7 +322,7 @@ export class UserSystem {
   /**
    * Get list of users from server
    */
-  async getUsers() {
+  async getUsers(): Promise<UserInfo[]> {
     if (!this.serverUrl) return [];
     try {
       const response = await fetch(`${this.serverUrl}/api/users`);
@@ -293,7 +336,7 @@ export class UserSystem {
   /**
    * Enter teacher mode
    */
-  enterTeacherMode(password) {
+  enterTeacherMode(password: string): boolean {
     if (password === this.teacherPassword) {
       this.isTeacherMode = true;
       return true;
@@ -304,22 +347,22 @@ export class UserSystem {
   /**
    * Exit teacher mode
    */
-  exitTeacherMode() {
+  exitTeacherMode(): void {
     this.isTeacherMode = false;
   }
 
   /**
    * Save progress locally
    */
-  async saveProgress(progressData) {
-    const record = {
+  async saveProgress(progressData: Record<string, unknown>): Promise<number | string> {
+    const record: ProgressRecord = {
       ...progressData,
       username: this.currentUser?.username,
       completed_at: new Date().toISOString()
     };
 
     if (this.db) {
-      return await this.db.progress.add(record);
+      return await (this.db as any).progress.add(record);
     }
 
     // Fallback to localStorage
@@ -331,18 +374,18 @@ export class UserSystem {
   /**
    * Get user stats
    */
-  async getStats() {
+  async getStats(): Promise<UserStats | null> {
     const username = this.currentUser?.username;
     if (!username) return null;
 
-    const stats = {
+    const stats: UserStats = {
       totalStars: { gold: 0, silver: 0, bronze: 0, tin: 0 },
       totalAttempts: 0,
       perfectRuns: 0
     };
 
     if (this.db) {
-      const progress = await this.db.progress.where('username').equals(username).toArray();
+      const progress: ProgressRecord[] = await (this.db as any).progress.where('username').equals(username).toArray();
       stats.totalAttempts = progress.length;
 
       for (const p of progress) {
@@ -359,18 +402,18 @@ export class UserSystem {
   /**
    * Get/set metadata
    */
-  async getMeta(key) {
+  async getMeta(key: string): Promise<unknown> {
     if (this.db) {
-      const record = await this.db.meta.get(key);
+      const record = await (this.db as any).meta.get(key);
       return record?.value;
     }
     const stored = localStorage.getItem(`meta_${key}`);
     return stored ? JSON.parse(stored) : null;
   }
 
-  async setMeta(key, value) {
+  async setMeta(key: string, value: unknown): Promise<void> {
     if (this.db) {
-      await this.db.meta.put({ key, value });
+      await (this.db as any).meta.put({ key, value });
     } else {
       localStorage.setItem(`meta_${key}`, JSON.stringify(value));
     }

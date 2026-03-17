@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { GradingEscalation } from '../../platform/core/grading-escalation.js';
+import { GradingEscalation } from '../../platform/core/grading-escalation.ts';
 
 function createClassList(initialClasses = []) {
   const classes = new Set(initialClasses);

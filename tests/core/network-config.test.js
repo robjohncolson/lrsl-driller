@@ -6,7 +6,7 @@ import {
   detectNetworkConfig,
   getLocalSignalingUrl,
   toWebSocketUrl
-} from '../../platform/core/network-config.js';
+} from '../../platform/core/network-config.ts';
 
 describe('network-config', () => {
   it('converts HTTP(S) URLs to WebSocket URLs', () => {

@@ -1,13 +1,20 @@
+import type { DocumentLike } from './types';
+
 /**
- * Share Modal — open/close event wiring for the share URL/QR modal.
+ * Share Modal - open/close event wiring for the share URL/QR modal.
  *
  * Extracted from app.html (opportunistic extraction pass).
  */
-export function initShareModal(config = {}) {
+interface ShareModalConfig {
+  documentLike?: DocumentLike | Document | null;
+  updateShareModalContents?: () => void;
+}
+
+export function initShareModal(config: ShareModalConfig = {}): void {
   const doc = config.documentLike || globalThis.document || null;
   const updateContents = config.updateShareModalContents || (() => {});
 
-  const getEl = (id) => doc?.getElementById?.(id) || null;
+  const getEl = (id: string): HTMLElement | null => doc?.getElementById?.(id) || null;
 
   getEl('share-btn')?.addEventListener('click', () => {
     updateContents();
@@ -23,8 +30,9 @@ export function initShareModal(config = {}) {
   });
 
   // Close on backdrop click
-  getEl('share-modal')?.addEventListener('click', (e) => {
-    if (e.target.id === 'share-modal') {
+  getEl('share-modal')?.addEventListener('click', (e: Event) => {
+    const target = e.target as { id?: string } | null;
+    if (target?.id === 'share-modal') {
       const modal = getEl('share-modal');
       modal?.classList.add('hidden');
       modal?.classList.remove('flex');

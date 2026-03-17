@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { AnimationControls } from '../../platform/core/animation-controls.js';
+import { AnimationControls } from '../../platform/core/animation-controls.ts';
 
 function createClassList(initialClasses = []) {
   const classes = new Set(initialClasses);

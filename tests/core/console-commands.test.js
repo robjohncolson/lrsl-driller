@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { ConsoleCommands } from '../../platform/core/console-commands.js';
+import { ConsoleCommands } from '../../platform/core/console-commands.ts';
 
 describe('ConsoleCommands', () => {
   let windowLike;

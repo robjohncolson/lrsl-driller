@@ -2,7 +2,7 @@
  * Leaderboard Module - Rankings and display
  */
 
-import { getAvatarForUsername } from './user-system.js';
+import { getAvatarForUsername } from './user-system.ts';
 
 export class Leaderboard {
   constructor(config = {}) {

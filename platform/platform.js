@@ -5,7 +5,7 @@
  */
 
 import { GameEngine } from './core/game-engine.js';
-import { GradingEngine } from './core/grading-engine.js';
+import { GradingEngine } from './core/grading-engine.ts';
 import { GraphEngine } from './core/graph-engine.js';
 import { InputRenderer } from './core/input-renderer.js';
 import { CartridgeLoader } from './core/cartridge-loader.js';

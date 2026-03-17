@@ -4,8 +4,76 @@
  * Topic-agnostic: cartridge provides the rules
  */
 
+import type { EPI } from './types.js';
+
+// ==================== Local Interfaces ====================
+
+type RuleType = 'numeric' | 'regex' | 'rubric' | 'exact' | 'ai' | 'dual';
+
+interface ScoringThresholds {
+  all?: EPI;
+  most?: EPI;
+  few?: EPI;
+}
+
+interface RequiredPattern {
+  id?: string;
+  description?: string;
+  patterns: string | string[] | Record<string, string>;
+}
+
+export interface GradingRule {
+  type: RuleType;
+  expected?: number | string;
+  tolerance?: number;
+  required?: RequiredPattern[];
+  forbidden?: string[];
+  scoring?: ScoringThresholds;
+  promptTemplate?: string;
+}
+
+export interface GradingContext extends Record<string, unknown> {
+  fieldId?: string;
+  cartridgeId?: string;
+  scenario?: unknown;
+  sign?: number;
+}
+
+export interface GradeResult {
+  score: EPI | null;
+  correct: boolean | null;
+  feedback?: string;
+  expected?: number | string;
+  userValue?: number;
+  diff?: number;
+  required?: Record<string, boolean>;
+  forbidden?: string[];
+  _aiGraded?: boolean;
+  _provider?: string;
+  _model?: string;
+  _error?: string;
+  _aiScore?: EPI | null;
+  _aiFeedback?: string;
+  _regexScore?: EPI;
+  _bestOf?: 'ai' | 'regex';
+}
+
+interface GradeAllResult {
+  fields: Record<string, GradeResult>;
+  allCorrect: boolean;
+  scores: (EPI | null)[];
+}
+
+interface GradingEngineConfig {
+  serverUrl?: string;
+  defaultTolerance?: number;
+}
+
 export class GradingEngine {
-  constructor(config = {}) {
+  serverUrl: string;
+  defaultTolerance: number;
+
+  constructor(config: GradingEngineConfig = {}) {
     this.serverUrl = config.serverUrl || 'https://lrsl-driller-production.up.railway.app';
     this.defaultTolerance = config.defaultTolerance || 0.1;
   }
@@ -13,7 +81,7 @@ export class GradingEngine {
   /**
    * Grade a single answer using the appropriate strategy
    */
-  async gradeAnswer(answer, rule, context = {}) {
+  async gradeAnswer(answer: string, rule: GradingRule, context: GradingContext = {}): Promise<GradeResult> {
     switch (rule.type) {
       case 'numeric':
         return this.gradeNumeric(answer, rule, context);
@@ -27,16 +95,20 @@ export class GradingEngine {
       case 'dual':
         return this.gradeDual(answer, rule, context);
       default:
-        throw new Error(`Unknown grading type: ${rule.type}`);
+        throw new Error(`Unknown grading type: ${(rule as GradingRule).type}`);
     }
   }
 
   /**
    * Grade multiple answers (for multi-field inputs)
    */
-  async gradeAll(answers, rules, context = {}) {
-    const results = {};
-    const promises = [];
+  async gradeAll(
+    answers: Record<string, string>,
+    rules: Record<string, GradingRule>,
+    context: GradingContext = {}
+  ): Promise<GradeAllResult> {
+    const results: Record<string, GradeResult> = {};
+    const promises: Promise<{ fieldId: string; result: GradeResult }>[] = [];
 
     for (const [fieldId, answer] of Object.entries(answers)) {
       const rule = rules[fieldId];
@@ -55,7 +127,7 @@ export class GradingEngine {
 
     // Calculate composite score if needed
     const scores = Object.values(results).map(r => r.score);
-    const allCorrect = scores.every(s => s === 'E' || s === true);
+    const allCorrect = scores.every(s => s === 'E' || s === true as unknown);
 
     return {
       fields: results,
@@ -69,7 +141,7 @@ export class GradingEngine {
   /**
    * Numeric grading with tolerance
    */
-  gradeNumeric(answer, rule, context) {
+  gradeNumeric(answer: string, rule: GradingRule, context: GradingContext): GradeResult {
     const userValue = parseFloat(answer);
 
     if (isNaN(userValue)) {
@@ -81,38 +153,38 @@ export class GradingEngine {
     }
 
     // Calculate expected value (may be a formula with context)
-    let expected = rule.expected;
+    let expected: number | string | undefined = rule.expected;
     if (typeof expected === 'string') {
       expected = this.evaluateFormula(expected, context);
     }
 
     const tolerance = rule.tolerance ?? this.defaultTolerance;
-    const diff = Math.abs(userValue - expected);
+    const diff = Math.abs(userValue - (expected as number));
     const correct = diff <= tolerance;
 
     return {
       score: correct ? 'E' : 'I',
       correct,
-      expected,
+      expected: expected as number,
       userValue,
       diff,
       feedback: correct
         ? 'Correct!'
-        : `Expected ${expected.toFixed(2)}, you entered ${userValue.toFixed(2)}.`
+        : `Expected ${(expected as number).toFixed(2)}, you entered ${userValue.toFixed(2)}.`
     };
   }
 
   /**
    * Exact match grading
    */
-  gradeExact(answer, rule, context) {
-    let expected = rule.expected;
+  gradeExact(answer: string, rule: GradingRule, context: GradingContext): GradeResult {
+    let expected: string | number | undefined = rule.expected;
     if (typeof expected === 'string' && expected.startsWith('{{')) {
       expected = this.interpolate(expected, context);
     }
 
     const correct = answer.toString().toLowerCase().trim() ===
-                    expected.toString().toLowerCase().trim();
+                    String(expected).toLowerCase().trim();
 
     return {
       score: correct ? 'E' : 'I',
@@ -125,9 +197,15 @@ export class GradingEngine {
    * Regex/rubric grading
    * Checks for required patterns and forbidden words
    */
-  gradeRegex(answer, rule, context) {
+  gradeRegex(answer: string, rule: GradingRule, context: GradingContext): GradeResult {
     const text = answer.toString().toLowerCase();
-    const results = {
+    const results: {
+      required: Record<string, boolean>;
+      forbidden: string[];
+      score: EPI;
+      feedback?: string;
+      correct?: boolean;
+    } = {
       required: {},
       forbidden: [],
       score: 'E'
@@ -138,27 +216,31 @@ export class GradingEngine {
     const required = rule.required || [];
 
     for (const req of required) {
-      const patterns = Array.isArray(req.patterns) ? req.patterns : [req.patterns];
+      const patterns: (string | Record<string, string>)[] =
+        Array.isArray(req.patterns) ? req.patterns : [req.patterns];
       let matched = false;
 
-      for (let pattern of patterns) {
+      for (const rawPattern of patterns) {
         // Interpolate context variables
-        pattern = this.interpolate(pattern, context);
+        let pattern: string | Record<string, string> =
+          typeof rawPattern === 'string'
+            ? this.interpolate(rawPattern, context)
+            : rawPattern;
 
         // Handle conditional patterns based on context
         if (typeof pattern === 'object') {
-          const key = context.sign > 0 ? 'positive' : 'negative';
-          pattern = pattern[key] || Object.values(pattern)[0];
+          const key = (context.sign as number) > 0 ? 'positive' : 'negative';
+          pattern = (pattern as Record<string, string>)[key] || Object.values(pattern)[0];
         }
 
-        const regex = new RegExp(pattern, 'i');
+        const regex = new RegExp(pattern as string, 'i');
         if (regex.test(text)) {
           matched = true;
           break;
         }
       }
 
-      results.required[req.id || req.description] = matched;
+      results.required[req.id || req.description || ''] = matched;
       if (matched) matchedCount++;
     }
 
@@ -179,7 +261,7 @@ export class GradingEngine {
       results.score = 'E';
       results.feedback = 'Correct!';
     } else {
-      const scoring = rule.scoring || { all: 'E', most: 'P', few: 'I' };
+      const scoring = rule.scoring || { all: 'E' as EPI, most: 'P' as EPI, few: 'I' as EPI };
       const ratio = matchedCount / required.length;
 
       if (ratio === 1) {
@@ -188,7 +270,7 @@ export class GradingEngine {
       } else if (ratio >= 0.5) {
         results.score = 'P';
         const missing = Object.entries(results.required)
-          .filter(([k, v]) => !v)
+          .filter(([_k, v]) => !v)
           .map(([k]) => k);
         results.feedback = `Good, but missing: ${missing.join(', ')}.`;
       } else {
@@ -198,23 +280,23 @@ export class GradingEngine {
     }
 
     results.correct = results.score === 'E';
-    return results;
+    return results as GradeResult;
   }
 
   /**
    * AI grading via server
    */
-  async gradeWithAI(answer, rule, context) {
+  async gradeWithAI(answer: string, rule: GradingRule, context: GradingContext): Promise<GradeResult> {
     try {
       // Build prompt from template (for logging/debugging)
-      const prompt = this.buildAIPrompt(rule.promptTemplate, answer, context);
+      const prompt = this.buildAIPrompt(rule.promptTemplate || '', answer, context);
 
       const response = await fetch(`${this.serverUrl}/api/ai/grade`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           scenario: context.scenario,
-          answers: { [context.fieldId]: answer },
+          answers: { [context.fieldId as string]: answer },
           // v4.8.1: Send both prompt and template/cartridge info for server compatibility
           prompt,
           aiPromptTemplate: rule.promptTemplate,
@@ -228,10 +310,13 @@ export class GradingEngine {
         throw new Error(result.error || 'AI grading failed');
       }
 
+      const fieldId = context.fieldId as string;
+      const fieldResult = result[fieldId] as { score?: EPI; feedback?: string } | undefined;
+
       return {
-        score: result.score || result[context.fieldId]?.score || 'I',
-        feedback: result.feedback || result[context.fieldId]?.feedback || '',
-        correct: (result.score || result[context.fieldId]?.score) === 'E',
+        score: result.score || fieldResult?.score || 'I',
+        feedback: result.feedback || fieldResult?.feedback || '',
+        correct: (result.score || fieldResult?.score) === 'E',
         _aiGraded: true,
         _provider: result._provider || result.provider,
         _model: result._model || result.model
@@ -242,7 +327,7 @@ export class GradingEngine {
         score: null,
         feedback: 'AI grading unavailable.',
         correct: null,
-        _error: err.message
+        _error: (err as Error).message
       };
     }
   }
@@ -250,12 +335,12 @@ export class GradingEngine {
   /**
    * Dual grading: regex + AI, take best score
    */
-  async gradeDual(answer, rule, context) {
+  async gradeDual(answer: string, rule: GradingRule, context: GradingContext): Promise<GradeResult> {
     // Run regex grading
     const regexResult = this.gradeRegex(answer, rule, context);
 
     // Run AI grading in parallel
-    let aiResult = null;
+    let aiResult: GradeResult | null = null;
     try {
       aiResult = await this.gradeWithAI(answer, rule, context);
     } catch (err) {
@@ -263,10 +348,10 @@ export class GradingEngine {
     }
 
     // Take the better score
-    const scoreOrder = { 'E': 3, 'P': 2, 'I': 1 };
+    const scoreOrder: Record<string, number> = { 'E': 3, 'P': 2, 'I': 1 };
 
     if (aiResult && aiResult.score && !aiResult._error) {
-      const regexScore = scoreOrder[regexResult.score] || 0;
+      const regexScore = scoreOrder[regexResult.score as string] || 0;
       const aiScore = scoreOrder[aiResult.score] || 0;
 
       if (aiScore > regexScore) {
@@ -274,7 +359,7 @@ export class GradingEngine {
           ...aiResult,
           _aiScore: aiResult.score,
           _aiFeedback: aiResult.feedback || '',
-          _regexScore: regexResult.score,
+          _regexScore: regexResult.score as EPI,
           _bestOf: 'ai'
         };
       }
@@ -292,11 +377,11 @@ export class GradingEngine {
   /**
    * Evaluate a formula string with context values
    */
-  evaluateFormula(formula, context) {
+  evaluateFormula(formula: string, context: GradingContext): number {
     // Replace context variables
     let expr = formula;
     for (const [key, value] of Object.entries(context)) {
-      expr = expr.replace(new RegExp(`{{${key}}}`, 'g'), value);
+      expr = expr.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
     }
 
     // Safely evaluate (basic math only)
@@ -305,7 +390,7 @@ export class GradingEngine {
       if (!/^[\d\s+\-*/().]+$/.test(expr)) {
         throw new Error('Invalid formula');
       }
-      return Function(`"use strict"; return (${expr})`)();
+      return Function(`"use strict"; return (${expr})`)() as number;
     } catch (e) {
       console.error('Formula evaluation failed:', formula, e);
       return NaN;
@@ -315,18 +400,20 @@ export class GradingEngine {
   /**
    * Interpolate {{variables}} in a string
    */
-  interpolate(template, context) {
+  interpolate(template: string, context: GradingContext): string;
+  interpolate(template: unknown, context: GradingContext): unknown;
+  interpolate(template: unknown, context: GradingContext): unknown {
     if (typeof template !== 'string') return template;
 
-    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-      return context[key] !== undefined ? context[key] : match;
+    return template.replace(/\{\{(\w+)\}\}/g, (match: string, key: string) => {
+      return context[key] !== undefined ? String(context[key]) : match;
     });
   }
 
   /**
    * Build AI prompt from template
    */
-  buildAIPrompt(template, answer, context) {
+  buildAIPrompt(template: string, answer: string, context: GradingContext): string {
     let prompt = template || '';
     prompt = this.interpolate(prompt, context);
     prompt = prompt.replace('{{answer}}', answer);

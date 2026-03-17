@@ -1,21 +1,30 @@
+import type { DocumentLike } from './types';
+
 /**
- * Animation Controls — video play/pause, restart, progress bar, and hide/show toggle
+ * Animation Controls - video play/pause, restart, progress bar, and hide/show toggle
  * for the per-mode Manim animation player.
  *
  * Extracted from app.html Phase 2, seam 7.
  */
+interface AnimationControlsConfig {
+  documentLike?: DocumentLike | Document | null;
+}
+
 export class AnimationControls {
-  constructor(config = {}) {
+  documentLike: DocumentLike | Document | null;
+  animationHidden: boolean;
+
+  constructor(config: AnimationControlsConfig = {}) {
     this.documentLike = config.documentLike || globalThis.document || null;
     this.animationHidden = false;
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  init() {
-    const video = this.getElement('animation-video');
+  init(): void {
+    const video = this.getElement('animation-video') as HTMLVideoElement | null;
     const playBtn = this.getElement('animation-play-btn');
     const restartBtn = this.getElement('animation-restart-btn');
     const toggleBtn = this.getElement('animation-toggle-btn');
@@ -29,7 +38,7 @@ export class AnimationControls {
     // Play/Pause toggle
     playBtn.addEventListener('click', () => {
       if (video.paused) {
-        video.play();
+        void video.play();
       } else {
         video.pause();
       }
@@ -49,7 +58,7 @@ export class AnimationControls {
     // Restart button
     restartBtn?.addEventListener('click', () => {
       video.currentTime = 0;
-      video.play();
+      void video.play();
     });
 
     // Progress bar update
@@ -70,14 +79,14 @@ export class AnimationControls {
       } else {
         animationContainer?.classList.remove('hidden');
         toggleBtn.textContent = 'Hide';
-        video.play().catch(() => {});
+        void video.play().catch(() => {});
       }
     });
 
     // Click on video to toggle play/pause
     video.addEventListener('click', () => {
       if (video.paused) {
-        video.play();
+        void video.play();
       } else {
         video.pause();
       }

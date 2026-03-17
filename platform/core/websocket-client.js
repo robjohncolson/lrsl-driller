@@ -2,7 +2,7 @@
  * WebSocket Client - Real-time presence and notifications
  */
 
-import { getAvatarForUsername } from './user-system.js';
+import { getAvatarForUsername } from './user-system.ts';
 import { celebration } from './celebration.js';
 import { soundEngine } from './sound-engine.js';
 

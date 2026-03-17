@@ -1,11 +1,30 @@
 export const DEFAULT_SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
 export const DEFAULT_SERVER_DETECT_TIMEOUT_MS = 2500;
 
-export function toWebSocketUrl(url) {
+export interface NetworkConfig {
+  serverUrl: string;
+  signalingUrl: string;
+  usedLocalSignaling: boolean;
+}
+
+export interface LocationLike {
+  hostname?: string;
+  host?: string;
+  protocol?: string;
+}
+
+export interface DetectNetworkConfigOptions {
+  defaultServerUrl?: string;
+  fetchFn?: typeof fetch;
+  locationLike?: LocationLike;
+  timeoutMs?: number;
+}
+
+export function toWebSocketUrl(url: string): string {
   return url.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:');
 }
 
-export function isPrivateHostname(hostname = '') {
+export function isPrivateHostname(hostname = ''): boolean {
   if (!hostname) return false;
   if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
     return true;
@@ -18,11 +37,11 @@ export function isPrivateHostname(hostname = '') {
   return !!private172 && Number(private172[1]) >= 16 && Number(private172[1]) <= 31;
 }
 
-export function canUseLocalSignaling(locationLike) {
+export function canUseLocalSignaling(locationLike: LocationLike | undefined): boolean {
   return isPrivateHostname(locationLike?.hostname || '');
 }
 
-export function getLocalSignalingUrl(locationLike) {
+export function getLocalSignalingUrl(locationLike: LocationLike): string {
   const wsProtocol = locationLike?.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${wsProtocol}//${locationLike.host}/ws-signaling`;
 }
@@ -32,8 +51,8 @@ export async function detectNetworkConfig({
   fetchFn = fetch,
   locationLike = window.location,
   timeoutMs = DEFAULT_SERVER_DETECT_TIMEOUT_MS
-} = {}) {
-  const remoteConfig = {
+}: DetectNetworkConfigOptions = {}): Promise<NetworkConfig> {
+  const remoteConfig: NetworkConfig = {
     serverUrl: defaultServerUrl,
     signalingUrl: toWebSocketUrl(defaultServerUrl),
     usedLocalSignaling: false
