@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { RealtimeController } from '../../platform/core/realtime-controller.js';
+import { RealtimeController } from '../../platform/core/realtime-controller.ts';
 
 const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
@@ -102,7 +102,7 @@ function createController(overrides = {}) {
 
 describe('Realtime controller extraction', () => {
   it('imports and wires the shared realtime controller module', () => {
-    expect(appHtmlContent).toContain("import { RealtimeController } from './core/realtime-controller.js';");
+    expect(appHtmlContent).toContain("import { RealtimeController } from './core/realtime-controller.ts';");
     expect(appHtmlContent).toContain('realtimeController = new RealtimeController({');
     expect(appHtmlContent).toContain('realtimeController.installEventListeners();');
   });
@@ -117,7 +117,7 @@ describe('Realtime controller extraction', () => {
 
     controller.updateOnlineDisplay(['alice', 'teacher1']);
 
-    expect(documentLike.getElementById('online-count').textContent).toBe(2);
+    expect(documentLike.getElementById('online-count').textContent).toBe('2');
     expect(documentLike.getElementById('online-list').innerHTML).toContain("openStudentDetail('alice')");
     expect(documentLike.getElementById('online-list').innerHTML).toContain('cursor-pointer');
     expect(documentLike.getElementById('online-list').innerHTML).toContain('👁️');

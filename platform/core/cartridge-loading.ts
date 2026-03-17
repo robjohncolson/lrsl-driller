@@ -1,6 +1,30 @@
+import type { DocumentLike, StorageLike } from './types.ts';
 import { CartridgeLoader } from './cartridge-loader.js';
 
-const SUBJECT_COLORS = {
+interface SoundEngineWithBoot {
+  init?(): void;
+  bootChime?(): void;
+}
+
+interface CartridgeLoadingConfig {
+  soundEngine?: SoundEngineWithBoot | null;
+  getCurrentCartridgeId?: () => string | null;
+  setCurrentCartridgeId?: (id: string) => void;
+  onLoadCartridge?: (cartridgeId: string) => Promise<void>;
+  createLoader?: () => CartridgeLoader;
+  documentLike?: DocumentLike | null;
+  localStorageLike?: StorageLike | null;
+  setTimeoutFn?: (callback: () => void, ms: number) => unknown;
+}
+
+interface CartridgeInfo {
+  id: string;
+  name: string;
+  shortCode?: string;
+  description?: string;
+}
+
+const SUBJECT_COLORS: Record<string, { header: string; btnHover: string; cartridge: string }> = {
   'AP Statistics': {
     header: 'text-purple-600',
     btnHover: 'hover:bg-purple-50 hover:border-purple-300',
@@ -21,7 +45,19 @@ const SUBJECT_COLORS = {
 const LOADING_STEPS = ['manifest', 'contexts', 'generator', 'grading', 'ai'];
 
 export class CartridgeLoadingController {
-  constructor(config = {}) {
+  soundEngine: SoundEngineWithBoot | null;
+  getCurrentCartridgeId: () => string | null;
+  setCurrentCartridgeId: (id: string) => void;
+  onLoadCartridge: (cartridgeId: string) => Promise<void>;
+  createLoader: () => CartridgeLoader;
+  documentLike: DocumentLike | null;
+  localStorageLike: StorageLike | null;
+  setTimeoutFn: ((callback: () => void, ms: number) => unknown) | undefined;
+  state: {
+    displayNames: Map<string, string>;
+  };
+
+  constructor(config: CartridgeLoadingConfig = {}) {
     this.soundEngine = config.soundEngine || null;
     this.getCurrentCartridgeId = config.getCurrentCartridgeId || (() => null);
     this.setCurrentCartridgeId = config.setCurrentCartridgeId || (() => {});
@@ -35,35 +71,35 @@ export class CartridgeLoadingController {
     };
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  querySelectorAll(selector) {
+  querySelectorAll(selector: string): NodeListOf<HTMLElement> | HTMLElement[] {
     return this.documentLike?.querySelectorAll?.(selector) || [];
   }
 
-  setStorageItem(key, value) {
+  setStorageItem(key: string, value: unknown): void {
     this.localStorageLike?.setItem?.(key, String(value));
   }
 
-  wait(ms) {
+  wait(ms: number): Promise<void> {
     return new Promise((resolve) => {
       this.setTimeoutFn?.(resolve, ms);
     });
   }
 
-  openDropdown() {
+  openDropdown(): void {
     this.getElement('cartridge-dropdown')?.classList.remove('hidden');
     this.getElement('cartridge-dropdown-backdrop')?.classList.remove('hidden');
   }
 
-  closeDropdown() {
+  closeDropdown(): void {
     this.getElement('cartridge-dropdown')?.classList.add('hidden');
     this.getElement('cartridge-dropdown-backdrop')?.classList.add('hidden');
   }
 
-  toggleDropdown() {
+  toggleDropdown(): void {
     const dropdown = this.getElement('cartridge-dropdown');
     if (!dropdown) return;
 
@@ -74,7 +110,7 @@ export class CartridgeLoadingController {
     }
   }
 
-  showLoading(cartridgeName) {
+  showLoading(cartridgeName: string): void {
     const overlay = this.getElement('cartridge-loading-overlay');
     const nameLabel = this.getElement('cartridge-loading-name');
     if (nameLabel) {
@@ -98,11 +134,11 @@ export class CartridgeLoadingController {
     this.soundEngine?.bootChime?.();
   }
 
-  hideLoading() {
+  hideLoading(): void {
     this.getElement('cartridge-loading-overlay')?.classList.add('hidden');
   }
 
-  updateLoadingProgress(step, _filename, status) {
+  updateLoadingProgress(step: string, _filename: string, status: string): void {
     const statusElement = this.getElement(`status-${step}`);
     if (!statusElement) return;
 
@@ -139,18 +175,18 @@ export class CartridgeLoadingController {
     }
   }
 
-  getDisplayName(cartridgeId) {
+  getDisplayName(cartridgeId: string): string {
     return this.state.displayNames.get(cartridgeId) || cartridgeId;
   }
 
-  hasCartridge(cartridgeId) {
+  hasCartridge(cartridgeId: string): boolean {
     return this.state.displayNames.has(cartridgeId);
   }
 
-  syncDisplayedCartridge(cartridgeId, displayName = null) {
+  syncDisplayedCartridge(cartridgeId: string, displayName: string | null = null): void {
     const resolvedName = displayName || this.getDisplayName(cartridgeId);
     const label = this.getElement('current-cartridge-name');
-    const select = this.getElement('cartridge-select');
+    const select = this.getElement('cartridge-select') as HTMLSelectElement | null;
 
     if (label) {
       label.textContent = resolvedName;
@@ -160,17 +196,17 @@ export class CartridgeLoadingController {
     }
   }
 
-  async populateCartridgeList() {
+  async populateCartridgeList(): Promise<Record<string, CartridgeInfo[]>> {
     const loader = this.createLoader();
-    const grouped = await loader.getCartridgesBySubject();
+    const grouped = await loader.getCartridgesBySubject() as Record<string, CartridgeInfo[]>;
     const listElement = this.getElement('cartridge-list');
     const selectElement = this.getElement('cartridge-select');
     if (!listElement || !selectElement) return grouped;
 
     this.state.displayNames.clear();
 
-    const listMarkup = [];
-    const selectMarkup = [];
+    const listMarkup: string[] = [];
+    const selectMarkup: string[] = [];
 
     for (const [subject, cartridges] of Object.entries(grouped)) {
       const colors = SUBJECT_COLORS[subject] || SUBJECT_COLORS.default;
@@ -202,15 +238,15 @@ export class CartridgeLoadingController {
     return grouped;
   }
 
-  installOptionListeners() {
+  installOptionListeners(): void {
     this.querySelectorAll('.cartridge-option').forEach((button) => {
       button.addEventListener('click', () => {
-        void this.handleCartridgeOptionClick(button.dataset.cartridge);
+        void this.handleCartridgeOptionClick((button as HTMLElement).dataset.cartridge);
       });
     });
   }
 
-  async handleCartridgeOptionClick(cartridgeId) {
+  async handleCartridgeOptionClick(cartridgeId: string | undefined): Promise<boolean> {
     if (!cartridgeId || cartridgeId === this.getCurrentCartridgeId()) {
       this.closeDropdown();
       return false;
@@ -224,7 +260,7 @@ export class CartridgeLoadingController {
     return true;
   }
 
-  async loadCartridgeWithAnimation(cartridgeId) {
+  async loadCartridgeWithAnimation(cartridgeId: string): Promise<string> {
     const displayName = this.getDisplayName(cartridgeId);
     this.showLoading(displayName.substring(0, 8));
     await this.wait(200);
@@ -235,7 +271,7 @@ export class CartridgeLoadingController {
     return displayName;
   }
 
-  installEventListeners() {
+  installEventListeners(): void {
     this.getElement('cartridge-slot-btn')?.addEventListener?.('click', () => this.toggleDropdown());
     this.getElement('cartridge-dropdown-backdrop')?.addEventListener?.('click', () => this.closeDropdown());
   }

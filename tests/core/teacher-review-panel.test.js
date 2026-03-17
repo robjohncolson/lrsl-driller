@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { TeacherReviewPanel } from '../../platform/core/teacher-review.js';
+import { TeacherReviewPanel } from '../../platform/core/teacher-review.ts';
 
 const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
@@ -98,7 +98,7 @@ function createController(overrides = {}) {
 
 describe('Teacher review panel extraction', () => {
   it('imports the shared teacher review panel module', () => {
-    expect(appHtmlContent).toContain("import { TeacherReviewPanel } from './core/teacher-review.js';");
+    expect(appHtmlContent).toContain("import { TeacherReviewPanel } from './core/teacher-review.ts';");
   });
 
   it('loads pending reviews, caches them, and updates badge state', async () => {
@@ -131,7 +131,7 @@ describe('Teacher review panel extraction', () => {
     });
     expect(controller.state.pendingReviewsCache).toHaveLength(1);
     expect(documentLike.getElementById('teacher-review-list').innerHTML).toContain('alice');
-    expect(documentLike.getElementById('header-review-count').textContent).toBe(1);
+    expect(documentLike.getElementById('header-review-count').textContent).toBe('1');
     expect(documentLike.getElementById('header-review-count').style.display).toBe('inline');
     expect(documentLike.getElementById('teacher-alert-overlay').classList.contains('hidden')).toBe(false);
   });

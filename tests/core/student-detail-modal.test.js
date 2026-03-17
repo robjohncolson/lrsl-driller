@@ -14,7 +14,7 @@ import { join } from 'path';
 // Read app.html content for static analysis
 const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
-const realtimeControllerPath = join(process.cwd(), 'platform', 'core', 'realtime-controller.js');
+const realtimeControllerPath = join(process.cwd(), 'platform', 'core', 'realtime-controller.ts');
 const realtimeControllerContent = readFileSync(realtimeControllerPath, 'utf-8');
 const realtimeSurfaceContent = [appHtmlContent, realtimeControllerContent].join('\n');
 

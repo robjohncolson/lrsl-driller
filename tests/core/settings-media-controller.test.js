@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { SettingsMediaController } from '../../platform/core/settings-media.js';
+import { SettingsMediaController } from '../../platform/core/settings-media.ts';
 
 const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
@@ -135,7 +135,7 @@ function createController(overrides = {}) {
 
 describe('Settings media extraction', () => {
   it('imports and wires the shared settings media controller', () => {
-    expect(appHtmlContent).toContain("import { SettingsMediaController } from './core/settings-media.js';");
+    expect(appHtmlContent).toContain("import { SettingsMediaController } from './core/settings-media.ts';");
     expect(appHtmlContent).toContain('settingsMediaController = new SettingsMediaController({');
     expect(appHtmlContent).toContain('settingsMediaController.installEventListeners();');
   });

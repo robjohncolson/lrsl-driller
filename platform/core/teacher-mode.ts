@@ -1,3 +1,29 @@
+import type { DocumentLike, CelebrationLike } from './types.ts';
+
+interface TeacherModeState {
+  isTeacher: boolean;
+  teacherPassword: string | null;
+}
+
+interface RosterModalLike {
+  setTeacherPassword?(password: string): void;
+}
+
+interface TeacherModeConfig {
+  userSystem?: unknown;
+  celebration?: CelebrationLike | null;
+  getServerUrl?: () => string | null;
+  ensureRosterModal?: () => Promise<RosterModalLike | null>;
+  loadPendingReviews?: () => void | Promise<void>;
+  clearPendingReviews?: () => void;
+  updateReviewBadge?: (count: number) => void;
+  hideTeacherAlert?: () => void;
+  initVideoSourceToggle?: () => void;
+  fetchFn?: typeof globalThis.fetch;
+  documentLike?: DocumentLike | null;
+  rtcPeerConnectionCtor?: unknown;
+}
+
 const TEACHER_CARTRIDGE_SHORTCUTS = [
   { alias: 'exp', name: 'Experimental Design' },
   { alias: 'inf', name: 'Design Choices + Inference' },
@@ -18,7 +44,21 @@ const TEACHER_CARTRIDGE_SHORTCUTS = [
 ];
 
 export class TeacherModeController {
-  constructor(config = {}) {
+  userSystem: unknown;
+  celebration: CelebrationLike | null;
+  getServerUrl: () => string | null;
+  ensureRosterModal: () => Promise<RosterModalLike | null>;
+  loadPendingReviews: () => void | Promise<void>;
+  clearPendingReviews: () => void;
+  updateReviewBadge: (count: number) => void;
+  hideTeacherAlert: () => void;
+  initVideoSourceToggle: () => void;
+  fetchFn: typeof globalThis.fetch;
+  documentLike: DocumentLike | null;
+  rtcPeerConnectionCtor: unknown;
+  state: TeacherModeState;
+
+  constructor(config: TeacherModeConfig = {}) {
     this.userSystem = config.userSystem || null;
     this.celebration = config.celebration || null;
     this.getServerUrl = config.getServerUrl || (() => null);
@@ -37,11 +77,11 @@ export class TeacherModeController {
     };
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  showCartridgeShortcuts() {
+  showCartridgeShortcuts(): void {
     const shortcutsSection = this.getElement('cartridge-shortcuts');
     const shortcutList = this.getElement('shortcut-list');
     if (!shortcutsSection || !shortcutList) return;
@@ -53,11 +93,11 @@ export class TeacherModeController {
     shortcutsSection.classList.remove('hidden');
   }
 
-  async activate(password, showToast = true) {
+  async activate(password: string, showToast: boolean = true): Promise<void> {
     this.state.isTeacher = true;
     this.state.teacherPassword = password;
 
-    await this.userSystem?.setMeta?.('teacherMode', { enabled: true, password });
+    await (this.userSystem as { setMeta?(key: string, value: unknown): Promise<void> })?.setMeta?.('teacherMode', { enabled: true, password });
 
     this.getElement('teacher-badge')?.classList.remove('hidden');
     this.getElement('teacher-review-btn')?.style?.setProperty('display', 'flex');
@@ -99,15 +139,15 @@ export class TeacherModeController {
     this.showCartridgeShortcuts();
 
     Promise.resolve(this.loadPendingReviews())
-      .catch((err) => console.warn('Failed to load pending reviews during teacher activation:', err));
+      .catch((err: unknown) => console.warn('Failed to load pending reviews during teacher activation:', err));
   }
 
-  async deactivate(clearPersistence = true) {
+  async deactivate(clearPersistence: boolean = true): Promise<void> {
     this.state.isTeacher = false;
     this.state.teacherPassword = null;
 
     if (clearPersistence) {
-      await this.userSystem?.setMeta?.('teacherMode', { enabled: false, password: null });
+      await (this.userSystem as { setMeta?(key: string, value: unknown): Promise<void> })?.setMeta?.('teacherMode', { enabled: false, password: null });
     }
 
     this.getElement('teacher-badge')?.classList.add('hidden');
@@ -141,7 +181,7 @@ export class TeacherModeController {
     this.hideTeacherAlert();
   }
 
-  async validatePassword(password) {
+  async validatePassword(password: string): Promise<{ valid: boolean }> {
     if (!this.fetchFn) {
       throw new Error('fetch is not available');
     }
@@ -154,9 +194,9 @@ export class TeacherModeController {
     return response.json();
   }
 
-  async checkPersistence() {
+  async checkPersistence(): Promise<boolean> {
     try {
-      const savedTeacher = await this.userSystem?.getMeta?.('teacherMode');
+      const savedTeacher = await (this.userSystem as { getMeta?(key: string): Promise<{ enabled?: boolean; password?: string } | null> })?.getMeta?.('teacherMode');
       if (savedTeacher?.enabled && savedTeacher?.password) {
         await this.activate(savedTeacher.password, false);
 
@@ -167,13 +207,13 @@ export class TeacherModeController {
               await this.deactivate(true);
             }
           })
-          .catch((err) => {
+          .catch((err: unknown) => {
             console.warn('Teacher mode revalidation deferred:', err);
           });
 
         return true;
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn('Could not check teacher persistence:', err);
     }
 

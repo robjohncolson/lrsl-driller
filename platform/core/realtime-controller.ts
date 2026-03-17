@@ -1,5 +1,59 @@
+import type { DocumentLike, CelebrationLike, UserSystemLike } from './types.ts';
+
+interface RealtimeControllerConfig {
+  wsClient?: unknown;
+  assetCache?: unknown;
+  assetResolver?: unknown;
+  userSystem?: UserSystemLike | null;
+  celebration?: CelebrationLike | null;
+  getAvatarForUsername?: (username: string) => string;
+  isTeacherModeActive?: () => boolean;
+  getCurrentUsername?: () => string | null;
+  showTeacherAlert?: (message: unknown) => void;
+  applyTeacherGrades?: (message: unknown) => Promise<void>;
+  loadWebRTCManager?: () => Promise<{ WebRTCManager: new (config: unknown) => WebRTCManagerLike }>;
+  loadP2PAssetTransfer?: () => Promise<{ P2PAssetTransfer: new (...args: unknown[]) => unknown }>;
+  documentLike?: DocumentLike | null;
+  windowLike?: (Window & Record<string, unknown>) | null;
+}
+
+interface RealtimeState {
+  webrtcManager: unknown;
+  p2pAssetTransfer: unknown;
+  processedReviewIds: Set<string>;
+}
+
+interface WebRTCManagerLike {
+  isActive?: boolean;
+  destroy(): void;
+  activate?(): void;
+  deactivate?(): void;
+  connectToTeacher?(teacherUsername: string): void;
+  disconnectFromTeacher?(): void;
+  handleSignalingMessage?(message: unknown): void;
+  getConnectedPeers(): string[];
+  getLatency?(peerUsername: string): number | null;
+  sendTo?(peerUsername: string, type: string, payload: unknown): boolean;
+}
+
 export class RealtimeController {
-  constructor(config = {}) {
+  wsClient: unknown;
+  assetCache: unknown;
+  assetResolver: unknown;
+  userSystem: UserSystemLike | null;
+  celebration: CelebrationLike | null;
+  getAvatarForUsername: (username: string) => string;
+  isTeacherModeActive: () => boolean;
+  getCurrentUsername: () => string | null;
+  showTeacherAlert: (message: unknown) => void;
+  applyTeacherGrades: (message: unknown) => Promise<void>;
+  loadWebRTCManager: () => Promise<{ WebRTCManager: new (config: unknown) => WebRTCManagerLike }>;
+  loadP2PAssetTransfer: () => Promise<{ P2PAssetTransfer: new (...args: unknown[]) => unknown }>;
+  documentLike: DocumentLike | null;
+  windowLike: (Window & Record<string, unknown>) | null;
+  state: RealtimeState;
+
+  constructor(config: RealtimeControllerConfig = {}) {
     this.wsClient = config.wsClient || null;
     this.assetCache = config.assetCache || null;
     this.assetResolver = config.assetResolver || null;
@@ -10,10 +64,10 @@ export class RealtimeController {
     this.getCurrentUsername = config.getCurrentUsername || (() => this.userSystem?.currentUser?.username || null);
     this.showTeacherAlert = config.showTeacherAlert || (() => {});
     this.applyTeacherGrades = config.applyTeacherGrades || (async () => {});
-    this.loadWebRTCManager = config.loadWebRTCManager || (() => import('./webrtc-manager.js'));
+    this.loadWebRTCManager = config.loadWebRTCManager || (() => import('./webrtc-manager.js') as Promise<{ WebRTCManager: new (config: unknown) => WebRTCManagerLike }>);
     this.loadP2PAssetTransfer = config.loadP2PAssetTransfer || (() => import('./p2p-asset-transfer.js'));
     this.documentLike = config.documentLike || globalThis.document || null;
-    this.windowLike = config.windowLike || globalThis.window || globalThis;
+    this.windowLike = config.windowLike || (globalThis.window as unknown as Window & Record<string, unknown>) || globalThis;
     this.state = {
       webrtcManager: null,
       p2pAssetTransfer: null,
@@ -21,28 +75,28 @@ export class RealtimeController {
     };
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  getWebRTCManager() {
+  getWebRTCManager(): unknown {
     return this.state.webrtcManager;
   }
 
-  hasProcessedReview(reviewId) {
+  hasProcessedReview(reviewId: string): boolean {
     return this.state.processedReviewIds.has(reviewId);
   }
 
-  markProcessedReview(reviewId) {
+  markProcessedReview(reviewId: string): void {
     if (reviewId) {
       this.state.processedReviewIds.add(reviewId);
     }
   }
 
-  updateOnlineDisplay(users) {
+  updateOnlineDisplay(users: string[]): void {
     const count = this.getElement('online-count');
     const list = this.getElement('online-list');
-    if (count) count.textContent = users.length;
+    if (count) count.textContent = String(users.length);
     if (!list) return;
 
     if (users.length === 0) {
@@ -70,7 +124,7 @@ export class RealtimeController {
     }).join('');
   }
 
-  updateConnectionStatus(connected) {
+  updateConnectionStatus(connected: boolean): void {
     const dot = this.getElement('connection-dot');
     if (!dot) return;
     dot.className = connected
@@ -78,37 +132,37 @@ export class RealtimeController {
       : 'w-2 h-2 bg-gray-400 rounded-full';
   }
 
-  async handleSocketConnectionChange(connected) {
+  async handleSocketConnectionChange(connected: boolean): Promise<void> {
     this.updateConnectionStatus(connected);
 
-    if (!connected || !this.wsClient?.currentUsername || this.state.p2pAssetTransfer) {
+    if (!connected || !(this.wsClient as { currentUsername?: string })?.currentUsername || this.state.p2pAssetTransfer) {
       return;
     }
 
     const { P2PAssetTransfer } = await this.loadP2PAssetTransfer();
-    this.state.p2pAssetTransfer = new P2PAssetTransfer(this.wsClient, this.assetCache, this.wsClient.currentUsername);
-    this.assetResolver?.setPeerManager?.(this.state.p2pAssetTransfer);
+    this.state.p2pAssetTransfer = new P2PAssetTransfer(this.wsClient, this.assetCache, (this.wsClient as { currentUsername: string }).currentUsername);
+    (this.assetResolver as { setPeerManager?(manager: unknown): void })?.setPeerManager?.(this.state.p2pAssetTransfer);
   }
 
-  handleTeacherReviewSubmitted(message) {
+  handleTeacherReviewSubmitted(message: unknown): void {
     if (this.isTeacherModeActive()) {
       this.showTeacherAlert(message);
     }
   }
 
-  async handleTeacherReviewCompleted(message) {
+  async handleTeacherReviewCompleted(message: { reviewId?: string }): Promise<boolean> {
     if (message.reviewId && this.hasProcessedReview(message.reviewId)) {
       return false;
     }
 
-    this.markProcessedReview(message.reviewId);
+    this.markProcessedReview(message.reviewId!);
     await this.applyTeacherGrades(message);
     return true;
   }
 
-  async initWebRTCManager(role) {
+  async initWebRTCManager(role: string): Promise<WebRTCManagerLike> {
     if (this.state.webrtcManager) {
-      this.state.webrtcManager.destroy();
+      (this.state.webrtcManager as WebRTCManagerLike).destroy();
     }
 
     const { WebRTCManager } = await this.loadWebRTCManager();
@@ -116,8 +170,8 @@ export class RealtimeController {
       wsClient: this.wsClient,
       role,
       username: this.getCurrentUsername(),
-      onMessage: (fromUsername, type, payload, msgId) => this.handleWebRTCMessage(fromUsername, type, payload, msgId),
-      onConnectionChange: (peerUsername, state) => {
+      onMessage: (fromUsername: string, type: string, payload: Record<string, unknown>, msgId: unknown) => this.handleWebRTCMessage(fromUsername, type, payload, msgId),
+      onConnectionChange: (peerUsername: string, state: string) => {
         console.log(`[WebRTC] ${peerUsername}: ${state}`);
         this.updateWebRTCStatusUI();
       },
@@ -126,38 +180,38 @@ export class RealtimeController {
       }
     });
 
-    return this.state.webrtcManager;
+    return this.state.webrtcManager as WebRTCManagerLike;
   }
 
-  async handleWebRTCActivate(message) {
+  async handleWebRTCActivate(message: { teacherUsername: string }): Promise<void> {
     if (this.state.webrtcManager) return;
     if (!this.isTeacherModeActive() && this.getCurrentUsername()) {
       const manager = await this.initWebRTCManager('student');
-      manager.connectToTeacher(message.teacherUsername);
+      manager.connectToTeacher?.(message.teacherUsername);
     }
   }
 
-  handleWebRTCDeactivate() {
-    const manager = this.state.webrtcManager;
+  handleWebRTCDeactivate(): void {
+    const manager = this.state.webrtcManager as WebRTCManagerLike | null;
     if (!manager || this.isTeacherModeActive()) {
       return;
     }
 
-    manager.disconnectFromTeacher();
+    manager.disconnectFromTeacher?.();
     manager.destroy();
     this.state.webrtcManager = null;
     this.updateWebRTCStatusUI();
   }
 
-  handleWebRTCSignal(message) {
-    this.state.webrtcManager?.handleSignalingMessage(message);
+  handleWebRTCSignal(message: unknown): void {
+    (this.state.webrtcManager as WebRTCManagerLike | null)?.handleSignalingMessage?.(message);
   }
 
-  handleP2PAssetSignal(message) {
-    this.state.p2pAssetTransfer?.handleSignalingMessage?.(message);
+  handleP2PAssetSignal(message: unknown): void {
+    (this.state.p2pAssetTransfer as { handleSignalingMessage?(message: unknown): void } | null)?.handleSignalingMessage?.(message);
   }
 
-  async handleWebRTCMessage(fromUsername, type, payload) {
+  async handleWebRTCMessage(fromUsername: string, type: string, payload: Record<string, unknown>, _msgId?: unknown): Promise<boolean> {
     switch (type) {
       case 'review_submit':
         if (this.isTeacherModeActive()) {
@@ -169,10 +223,10 @@ export class RealtimeController {
         break;
 
       case 'review_grade':
-        if (payload.reviewId && this.hasProcessedReview(payload.reviewId)) {
+        if (payload.reviewId && this.hasProcessedReview(payload.reviewId as string)) {
           return false;
         }
-        this.markProcessedReview(payload.reviewId);
+        this.markProcessedReview(payload.reviewId as string);
         await this.applyTeacherGrades({
           username: this.getCurrentUsername(),
           reviewId: payload.reviewId,
@@ -189,10 +243,10 @@ export class RealtimeController {
     return false;
   }
 
-  updateWebRTCStatusUI() {
+  updateWebRTCStatusUI(): void {
     const dot = this.getElement('webrtc-status-dot');
     const panel = this.getElement('webrtc-peer-list');
-    const manager = this.state.webrtcManager;
+    const manager = this.state.webrtcManager as WebRTCManagerLike | null;
     if (!dot) return;
 
     if (!manager || !manager.isActive) {
@@ -216,7 +270,7 @@ export class RealtimeController {
     }
 
     panel.innerHTML = peers.map((peerUsername) => {
-      const latency = manager.getLatency(peerUsername);
+      const latency = manager.getLatency?.(peerUsername) ?? null;
       const latencyText = latency !== null ? `${latency}ms` : '...';
       const latencyColor = latency !== null && latency < 50 ? 'text-green-600' : 'text-yellow-600';
       return `<div class="flex items-center justify-between py-1 text-sm">
@@ -229,14 +283,14 @@ export class RealtimeController {
     }).join('');
   }
 
-  async toggleTeacherWebRTC() {
+  async toggleTeacherWebRTC(): Promise<boolean> {
     if (!this.isTeacherModeActive()) {
       return false;
     }
 
-    const manager = this.state.webrtcManager;
+    const manager = this.state.webrtcManager as WebRTCManagerLike | null;
     if (manager && manager.isActive) {
-      manager.deactivate();
+      manager.deactivate?.();
       manager.destroy();
       this.state.webrtcManager = null;
       this.updateWebRTCStatusUI();
@@ -245,14 +299,14 @@ export class RealtimeController {
     }
 
     const nextManager = await this.initWebRTCManager('teacher');
-    nextManager.activate();
+    nextManager.activate?.();
     this.updateWebRTCStatusUI();
     this.celebration?.showToast?.('WebRTC direct connect enabled', 'success');
     return true;
   }
 
-  sendTeacherReviewSubmission(payload) {
-    const manager = this.state.webrtcManager;
+  sendTeacherReviewSubmission(payload: unknown): boolean {
+    const manager = this.state.webrtcManager as WebRTCManagerLike | null;
     if (!manager || !manager.isActive) {
       return false;
     }
@@ -262,46 +316,46 @@ export class RealtimeController {
       return false;
     }
 
-    return manager.sendTo(peers[0], 'review_submit', payload);
+    return manager.sendTo?.(peers[0], 'review_submit', payload) ?? false;
   }
 
-  toggleOnlineDropdown() {
+  toggleOnlineDropdown(): void {
     this.getElement('online-dropdown')?.classList.toggle('hidden');
   }
 
-  hideOnlineDropdown() {
+  hideOnlineDropdown(): void {
     this.getElement('online-dropdown')?.classList.add('hidden');
   }
 
-  toggleStatusPanel() {
+  toggleStatusPanel(): void {
     this.getElement('webrtc-status-panel')?.classList.toggle('hidden');
   }
 
-  closeStatusPanel() {
+  closeStatusPanel(): void {
     this.getElement('webrtc-status-panel')?.classList.add('hidden');
   }
 
-  destroyP2PAssetTransfer() {
+  destroyP2PAssetTransfer(): void {
     if (!this.state.p2pAssetTransfer) return;
-    this.state.p2pAssetTransfer.destroy?.();
+    (this.state.p2pAssetTransfer as { destroy?(): void }).destroy?.();
     this.state.p2pAssetTransfer = null;
-    this.assetResolver?.setPeerManager?.(null);
+    (this.assetResolver as { setPeerManager?(manager: unknown): void })?.setPeerManager?.(null);
   }
 
-  cleanup() {
+  cleanup(): void {
     if (this.state.webrtcManager) {
-      this.state.webrtcManager.destroy();
+      (this.state.webrtcManager as WebRTCManagerLike).destroy();
       this.state.webrtcManager = null;
     }
     this.destroyP2PAssetTransfer();
-    this.assetCache?.revokeBlobUrls?.();
+    (this.assetCache as { revokeBlobUrls?(): void })?.revokeBlobUrls?.();
   }
 
-  installEventListeners() {
+  installEventListeners(): void {
     this.getElement('online-btn')?.addEventListener?.('click', () => this.toggleOnlineDropdown());
 
-    this.documentLike?.addEventListener?.('click', (event) => {
-      if (!event.target?.closest?.('#online-indicator')) {
+    this.documentLike?.addEventListener?.('click', (event: Event) => {
+      if (!(event.target as HTMLElement)?.closest?.('#online-indicator')) {
         this.hideOnlineDropdown();
       }
     });
@@ -310,7 +364,7 @@ export class RealtimeController {
       await this.toggleTeacherWebRTC();
     });
 
-    this.getElement('webrtc-toggle-btn')?.addEventListener?.('contextmenu', (event) => {
+    this.getElement('webrtc-toggle-btn')?.addEventListener?.('contextmenu', (event: Event) => {
       event.preventDefault();
       this.toggleStatusPanel();
     });

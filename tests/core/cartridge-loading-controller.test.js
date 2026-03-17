@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { CartridgeLoadingController } from '../../platform/core/cartridge-loading.js';
+import { CartridgeLoadingController } from '../../platform/core/cartridge-loading.ts';
 
 const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
@@ -137,7 +137,7 @@ function createController(overrides = {}) {
 
 describe('Cartridge loading extraction', () => {
   it('imports and wires the shared cartridge loading controller', () => {
-    expect(appHtmlContent).toContain("import { CartridgeLoadingController } from './core/cartridge-loading.js';");
+    expect(appHtmlContent).toContain("import { CartridgeLoadingController } from './core/cartridge-loading.ts';");
     expect(appHtmlContent).toContain('cartridgeLoadingController = new CartridgeLoadingController({');
     expect(appHtmlContent).toContain('cartridgeLoadingController.installEventListeners();');
   });

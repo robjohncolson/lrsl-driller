@@ -1,6 +1,54 @@
+import type { DocumentLike, StorageLike, CelebrationLike } from './types.ts';
+
+interface SoundEngineWithToggle {
+  enabled: boolean;
+  setEnabled(enabled: boolean): void;
+  init?(): void;
+}
+
+interface CelebrationWithNotifications extends CelebrationLike {
+  notificationsMuted: boolean;
+  setNotificationsMuted(muted: boolean): void;
+}
+
+interface AssetResolverLike {
+  setUseSupabase?(useSupabase: boolean): void;
+  preloadCartridge?(manifest: unknown, cartridgeId: string, onProgress: (loaded: number, total: number) => void): Promise<void>;
+}
+
+interface PlatformForSettings {
+  currentCartridge?: {
+    manifest?: {
+      meta?: { id?: string };
+    };
+  } | null;
+}
+
+interface ToggleUIOptions {
+  dot: HTMLElement | null;
+  label: HTMLElement | null;
+  toggle: HTMLElement | null;
+  enabled: boolean;
+  enabledText: string;
+  disabledText: string;
+}
+
+interface SettingsMediaConfig {
+  soundEngine?: SoundEngineWithToggle | null;
+  celebration?: CelebrationWithNotifications | null;
+  getAssetResolver?: () => AssetResolverLike | null;
+  getPlatform?: () => PlatformForSettings | null;
+  onProviderPreferenceChange?: (provider: string | null) => void;
+  importGhostOrbitsAudio?: () => Promise<{ GhostOrbitsAudio: new () => unknown }>;
+  documentLike?: DocumentLike | null;
+  windowLike?: (Window & Record<string, unknown>) | null;
+  localStorageLike?: StorageLike | null;
+  setTimeoutFn?: (callback: () => void, ms: number) => unknown;
+}
+
 const SUPABASE_VIDEO_BASE = 'https://hgvnytaqmuybzbotosyj.supabase.co/storage/v1/object/public/videos/animations';
 
-function setClassPresence(element, className, present) {
+function setClassPresence(element: HTMLElement | null, className: string, present: boolean): void {
   if (!element?.classList) return;
   if (present) {
     element.classList.add(className);
@@ -9,7 +57,7 @@ function setClassPresence(element, className, present) {
   }
 }
 
-function updateToggleUI({ dot, label, toggle, enabled, enabledText, disabledText }) {
+function updateToggleUI({ dot, label, toggle, enabled, enabledText, disabledText }: ToggleUIOptions): void {
   if (!dot || !label || !toggle) return;
 
   setClassPresence(dot, 'translate-x-6', enabled);
@@ -19,7 +67,7 @@ function updateToggleUI({ dot, label, toggle, enabled, enabledText, disabledText
   setClassPresence(toggle, 'bg-gray-300', !enabled);
 }
 
-function getServerModeNote(provider) {
+function getServerModeNote(provider: string): string {
   if (provider === 'server-gemini') {
     return 'Using Gemini 2.5 Pro on server - no API key needed.';
   }
@@ -29,14 +77,28 @@ function getServerModeNote(provider) {
   return 'No API key needed - grading handled by server.';
 }
 
-function getPreferredProvider(provider) {
+function getPreferredProvider(provider: string): string | null {
   if (provider === 'server-gemini') return 'gemini';
   if (provider === 'server-groq') return 'groq';
   return null;
 }
 
 export class SettingsMediaController {
-  constructor(config = {}) {
+  soundEngine: SoundEngineWithToggle | null;
+  celebration: CelebrationWithNotifications | null;
+  getAssetResolver: () => AssetResolverLike | null;
+  getPlatform: () => PlatformForSettings | null;
+  onProviderPreferenceChange: (provider: string | null) => void;
+  importGhostOrbitsAudio: () => Promise<{ GhostOrbitsAudio: new () => unknown }>;
+  documentLike: DocumentLike | null;
+  windowLike: (Window & Record<string, unknown>) | null;
+  localStorageLike: StorageLike | null;
+  setTimeoutFn: ((callback: () => void, ms: number) => unknown) | undefined;
+  state: {
+    globalMusicPlayer: unknown;
+  };
+
+  constructor(config: SettingsMediaConfig = {}) {
     this.soundEngine = config.soundEngine || null;
     this.celebration = config.celebration || null;
     this.getAssetResolver = config.getAssetResolver || (() => null);
@@ -44,7 +106,7 @@ export class SettingsMediaController {
     this.onProviderPreferenceChange = config.onProviderPreferenceChange || (() => {});
     this.importGhostOrbitsAudio = config.importGhostOrbitsAudio || (() => import('./ghost-orbits-audio.js'));
     this.documentLike = config.documentLike || globalThis.document || null;
-    this.windowLike = config.windowLike || globalThis.window || globalThis;
+    this.windowLike = config.windowLike || (globalThis.window as unknown as Window & Record<string, unknown>) || globalThis;
     this.localStorageLike = config.localStorageLike || globalThis.localStorage || null;
     this.setTimeoutFn = config.setTimeoutFn || globalThis.setTimeout?.bind(globalThis);
     this.state = {
@@ -52,19 +114,19 @@ export class SettingsMediaController {
     };
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  getStorageItem(key) {
+  getStorageItem(key: string): string | null {
     return this.localStorageLike?.getItem?.(key) ?? null;
   }
 
-  setStorageItem(key, value) {
+  setStorageItem(key: string, value: unknown): void {
     this.localStorageLike?.setItem?.(key, String(value));
   }
 
-  setSharedMusicPlayer(player) {
+  setSharedMusicPlayer(player: unknown): void {
     this.state.globalMusicPlayer = player;
 
     if (this.windowLike) {
@@ -73,16 +135,16 @@ export class SettingsMediaController {
     }
   }
 
-  openModal() {
+  openModal(): void {
     this.getElement('settings-modal')?.classList.remove('hidden');
     void this.initMusicSettings();
   }
 
-  closeModal() {
+  closeModal(): void {
     this.getElement('settings-modal')?.classList.add('hidden');
   }
 
-  updateSoundUI() {
+  updateSoundUI(): void {
     if (!this.soundEngine) return;
 
     updateToggleUI({
@@ -95,19 +157,19 @@ export class SettingsMediaController {
     });
   }
 
-  toggleSound() {
+  toggleSound(): void {
     if (!this.soundEngine) return;
     this.soundEngine.setEnabled(!this.soundEngine.enabled);
     this.updateSoundUI();
   }
 
-  async initMusicSettings() {
-    const sharedGhostAudio = this.windowLike?.ghostOrbitsAudio;
-    const sharedMusicPlayer = this.windowLike?.globalMusicPlayer;
+  async initMusicSettings(): Promise<unknown> {
+    const sharedGhostAudio = (this.windowLike as Record<string, unknown> | null)?.ghostOrbitsAudio;
+    const sharedMusicPlayer = (this.windowLike as Record<string, unknown> | null)?.globalMusicPlayer;
 
     if (sharedGhostAudio) {
       if (this.state.globalMusicPlayer && this.state.globalMusicPlayer !== sharedGhostAudio) {
-        this.state.globalMusicPlayer.stopMusic?.();
+        (this.state.globalMusicPlayer as { stopMusic?(): void }).stopMusic?.();
       }
       this.setSharedMusicPlayer(sharedGhostAudio);
     } else if (this.state.globalMusicPlayer) {
@@ -118,9 +180,9 @@ export class SettingsMediaController {
       try {
         const module = await this.importGhostOrbitsAudio();
         const player = new module.GhostOrbitsAudio();
-        player.init();
+        (player as { init?(): void }).init?.();
         this.setSharedMusicPlayer(player);
-      } catch (err) {
+      } catch (err: unknown) {
         console.warn('[Music] Could not load audio module', err);
         return null;
       }
@@ -130,14 +192,16 @@ export class SettingsMediaController {
     return this.state.globalMusicPlayer;
   }
 
-  updateMusicUI() {
-    const musicPlayer = this.state.globalMusicPlayer;
+  updateMusicUI(): void {
+    const musicPlayer = this.state.globalMusicPlayer as {
+      getMusicSettings(): { enabled: boolean; track: string; volume: number };
+    } | null;
     if (!musicPlayer) return;
 
     const settings = musicPlayer.getMusicSettings();
     const trackSection = this.getElement('music-track-section');
-    const trackSelect = this.getElement('music-track');
-    const volumeSlider = this.getElement('music-volume');
+    const trackSelect = this.getElement('music-track') as HTMLSelectElement | null;
+    const volumeSlider = this.getElement('music-volume') as HTMLInputElement | null;
     const volumeLabel = this.getElement('music-volume-label');
 
     updateToggleUI({
@@ -158,7 +222,7 @@ export class SettingsMediaController {
 
     if (volumeSlider) {
       volumeSlider.disabled = !settings.enabled;
-      volumeSlider.value = Math.round(settings.volume * 100);
+      volumeSlider.value = String(Math.round(settings.volume * 100));
     }
 
     if (volumeLabel) {
@@ -166,8 +230,11 @@ export class SettingsMediaController {
     }
   }
 
-  toggleMusic() {
-    const musicPlayer = this.state.globalMusicPlayer;
+  toggleMusic(): void {
+    const musicPlayer = this.state.globalMusicPlayer as {
+      getMusicSettings(): { enabled: boolean };
+      setMusicEnabled(enabled: boolean): void;
+    } | null;
     if (!musicPlayer) return;
 
     const settings = musicPlayer.getMusicSettings();
@@ -175,12 +242,14 @@ export class SettingsMediaController {
     this.updateMusicUI();
   }
 
-  setMusicTrack(track) {
-    this.state.globalMusicPlayer?.setMusicTrack?.(track);
+  setMusicTrack(track: string): void {
+    (this.state.globalMusicPlayer as { setMusicTrack?(track: string): void })?.setMusicTrack?.(track);
   }
 
-  setMusicVolume(rawValue) {
-    const musicPlayer = this.state.globalMusicPlayer;
+  setMusicVolume(rawValue: string): void {
+    const musicPlayer = this.state.globalMusicPlayer as {
+      setMusicVolume(volume: number): void;
+    } | null;
     if (!musicPlayer) return;
 
     const volumePercent = Number.parseInt(rawValue, 10);
@@ -193,7 +262,7 @@ export class SettingsMediaController {
     }
   }
 
-  updateNotificationsUI() {
+  updateNotificationsUI(): void {
     if (!this.celebration) return;
 
     const enabled = !this.celebration.notificationsMuted;
@@ -207,18 +276,18 @@ export class SettingsMediaController {
     });
   }
 
-  toggleNotifications() {
+  toggleNotifications(): void {
     if (!this.celebration) return;
     const newMuted = !this.celebration.notificationsMuted;
     this.celebration.setNotificationsMuted(newMuted);
     this.updateNotificationsUI();
   }
 
-  isUsingSupabaseVideos() {
+  isUsingSupabaseVideos(): boolean {
     return this.getStorageItem('driller_useSupabaseVideos') === 'true';
   }
 
-  initVideoSourceToggle() {
+  initVideoSourceToggle(): void {
     const useSupabase = this.isUsingSupabaseVideos();
 
     updateToggleUI({
@@ -231,7 +300,7 @@ export class SettingsMediaController {
     });
   }
 
-  toggleVideoSource() {
+  toggleVideoSource(): void {
     const useSupabase = !this.isUsingSupabaseVideos();
     this.setStorageItem('driller_useSupabaseVideos', useSupabase);
     this.initVideoSourceToggle();
@@ -242,7 +311,7 @@ export class SettingsMediaController {
     );
   }
 
-  async preloadAnimations() {
+  async preloadAnimations(): Promise<boolean> {
     const platform = this.getPlatform();
     const manifest = platform?.currentCartridge?.manifest;
     const cartridgeId = manifest?.meta?.id;
@@ -253,7 +322,7 @@ export class SettingsMediaController {
     }
 
     const assetResolver = this.getAssetResolver();
-    const button = this.getElement('preload-animations-btn');
+    const button = this.getElement('preload-animations-btn') as HTMLButtonElement | null;
     const progressContainer = this.getElement('preload-progress');
     const progressBar = this.getElement('preload-progress-bar');
     const progressText = this.getElement('preload-progress-text');
@@ -267,7 +336,7 @@ export class SettingsMediaController {
     progressContainer.classList.remove('hidden');
 
     try {
-      await assetResolver.preloadCartridge(manifest, cartridgeId, (loaded, total) => {
+      await assetResolver.preloadCartridge?.(manifest, cartridgeId, (loaded: number, total: number) => {
         const pct = total > 0 ? Math.round((loaded / total) * 100) : 0;
         progressBar.style.width = `${pct}%`;
         progressText.textContent = `${loaded} / ${total}`;
@@ -286,7 +355,7 @@ export class SettingsMediaController {
       }, 3000);
 
       return true;
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to pre-load animations:', err);
       button.disabled = false;
       button.textContent = 'Pre-Load Animations';
@@ -296,7 +365,7 @@ export class SettingsMediaController {
     }
   }
 
-  resolveVideoUrl(manifestPath, cartridgeId, forceLocal = false) {
+  resolveVideoUrl(manifestPath: string | null | undefined, cartridgeId: string | null | undefined, forceLocal: boolean = false): string | null {
     if (!manifestPath || !cartridgeId) return null;
 
     if (!forceLocal && this.isUsingSupabaseVideos()) {
@@ -307,7 +376,7 @@ export class SettingsMediaController {
     return `/cartridges/${cartridgeId}/${manifestPath}`;
   }
 
-  updateAiProviderUI(provider) {
+  updateAiProviderUI(provider: string): void {
     const keysSection = this.getElement('api-keys-section');
     const serverNote = this.getElement('server-mode-note');
     const isOwnKey = provider === 'gemini' || provider === 'groq';
@@ -331,14 +400,14 @@ export class SettingsMediaController {
     serverNote?.classList.add('hidden');
   }
 
-  handleAiProviderChange(provider) {
+  handleAiProviderChange(provider: string): void {
     this.updateAiProviderUI(provider);
   }
 
-  saveSettings() {
-    const provider = this.getElement('ai-provider')?.value || 'server';
-    const geminiKey = this.getElement('gemini-key-input')?.value || '';
-    const groqKey = this.getElement('groq-key-input')?.value || '';
+  saveSettings(): { provider: string; geminiKey: string; groqKey: string } {
+    const provider = (this.getElement('ai-provider') as HTMLSelectElement | null)?.value || 'server';
+    const geminiKey = (this.getElement('gemini-key-input') as HTMLInputElement | null)?.value || '';
+    const groqKey = (this.getElement('groq-key-input') as HTMLInputElement | null)?.value || '';
 
     this.setStorageItem('aiProvider', provider);
     if (geminiKey) this.setStorageItem('geminiApiKey', geminiKey);
@@ -351,14 +420,14 @@ export class SettingsMediaController {
     return { provider, geminiKey, groqKey };
   }
 
-  loadSettings() {
+  loadSettings(): { provider: string; geminiKey: string; groqKey: string } {
     const provider = this.getStorageItem('aiProvider') || 'server';
     const geminiKey = this.getStorageItem('geminiApiKey') || '';
     const groqKey = this.getStorageItem('groqApiKey') || '';
 
-    const providerSelect = this.getElement('ai-provider');
-    const geminiInput = this.getElement('gemini-key-input');
-    const groqInput = this.getElement('groq-key-input');
+    const providerSelect = this.getElement('ai-provider') as HTMLSelectElement | null;
+    const geminiInput = this.getElement('gemini-key-input') as HTMLInputElement | null;
+    const groqInput = this.getElement('groq-key-input') as HTMLInputElement | null;
 
     if (providerSelect) providerSelect.value = provider;
     if (geminiInput) geminiInput.value = geminiKey;
@@ -372,17 +441,17 @@ export class SettingsMediaController {
     return { provider, geminiKey, groqKey };
   }
 
-  installEventListeners() {
+  installEventListeners(): void {
     this.getElement('settings-btn')?.addEventListener?.('click', () => this.openModal());
     this.getElement('close-settings')?.addEventListener?.('click', () => this.closeModal());
     this.getElement('sound-toggle')?.addEventListener?.('click', () => this.toggleSound());
     this.getElement('music-toggle')?.addEventListener?.('click', () => this.toggleMusic());
-    this.getElement('music-track')?.addEventListener?.('change', (event) => this.setMusicTrack(event.target.value));
-    this.getElement('music-volume')?.addEventListener?.('input', (event) => this.setMusicVolume(event.target.value));
+    this.getElement('music-track')?.addEventListener?.('change', (event: Event) => this.setMusicTrack((event.target as HTMLSelectElement).value));
+    this.getElement('music-volume')?.addEventListener?.('input', (event: Event) => this.setMusicVolume((event.target as HTMLInputElement).value));
     this.getElement('notifications-toggle')?.addEventListener?.('click', () => this.toggleNotifications());
     this.getElement('video-source-toggle')?.addEventListener?.('click', () => this.toggleVideoSource());
     this.getElement('preload-animations-btn')?.addEventListener?.('click', () => this.preloadAnimations());
-    this.getElement('ai-provider')?.addEventListener?.('change', (event) => this.handleAiProviderChange(event.target.value));
+    this.getElement('ai-provider')?.addEventListener?.('change', (event: Event) => this.handleAiProviderChange((event.target as HTMLSelectElement).value));
     this.getElement('save-settings')?.addEventListener?.('click', () => this.saveSettings());
   }
 }

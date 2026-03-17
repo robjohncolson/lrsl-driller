@@ -12,7 +12,7 @@ import { join } from 'path';
 // Read app.html content for static analysis
 const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
-const teacherReviewPanelPath = join(process.cwd(), 'platform', 'core', 'teacher-review.js');
+const teacherReviewPanelPath = join(process.cwd(), 'platform', 'core', 'teacher-review.ts');
 const teacherReviewPanelContent = readFileSync(teacherReviewPanelPath, 'utf-8');
 const timeAnalyticsPanelPath = join(process.cwd(), 'platform', 'core', 'time-analytics.ts');
 const timeAnalyticsPanelContent = readFileSync(timeAnalyticsPanelPath, 'utf-8');

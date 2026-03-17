@@ -1,8 +1,65 @@
+import type { CelebrationLike, DocumentLike, EPI } from './types.ts';
+
+interface ReviewRecord {
+  id: string | number;
+  username: string;
+  real_name?: string | null;
+  student_answers?: Record<string, unknown>;
+  scenario_context?: Record<string, unknown>;
+  keyword_results?: Record<string, { score?: EPI; feedback?: string }>;
+  teacher_grades?: Record<string, EPI>;
+  expected_answers?: Record<string, unknown>;
+  status?: string;
+  field_ids?: string[];
+  cartridge_name?: string;
+  scenario_topic?: string;
+  submitted_at?: string;
+  reviewed_at?: string;
+}
+
+interface TeacherReviewState {
+  currentReviewFilter: string;
+  pendingReviewsCache: ReviewRecord[];
+  teacherAlertActive: boolean;
+  pendingGrades: Record<string, Record<string, EPI>>;
+  activeReviewId: string | number | null;
+}
+
+interface WebRTCManagerLike {
+  isActive?: boolean;
+  sendTo?(peerUsername: string, type: string, payload: unknown): boolean;
+}
+
+interface TeacherReviewConfig {
+  getServerUrl?: () => string | null;
+  getTeacherPassword?: () => string | null;
+  isTeacherModeActive?: () => boolean;
+  getWebRTCManager?: () => WebRTCManagerLike | null;
+  celebration?: CelebrationLike | null;
+  playTeacherAlert?: () => void;
+  onLoadReviewProblem?: (review: ReviewRecord) => Promise<void>;
+  fetchFn?: typeof globalThis.fetch;
+  documentLike?: DocumentLike | null;
+  windowLike?: (Window & Record<string, unknown>) | null;
+}
+
 const REVIEW_FILTER_ACTIVE_CLASS = 'review-filter-btn px-3 py-1 text-sm rounded-full bg-purple-600 text-white';
 const REVIEW_FILTER_INACTIVE_CLASS = 'review-filter-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600';
 
 export class TeacherReviewPanel {
-  constructor(config = {}) {
+  getServerUrl: () => string | null;
+  getTeacherPassword: () => string | null;
+  isTeacherModeActive: () => boolean;
+  getWebRTCManager: () => WebRTCManagerLike | null;
+  celebration: CelebrationLike | null;
+  playTeacherAlert: () => void;
+  onLoadReviewProblem: (review: ReviewRecord) => Promise<void>;
+  fetchFn: typeof globalThis.fetch;
+  documentLike: DocumentLike | null;
+  windowLike: (Window & Record<string, unknown>) | null;
+  state: TeacherReviewState;
+
+  constructor(config: TeacherReviewConfig = {}) {
     this.getServerUrl = config.getServerUrl || (() => null);
     this.getTeacherPassword = config.getTeacherPassword || (() => null);
     this.isTeacherModeActive = config.isTeacherModeActive || (() => false);
@@ -12,7 +69,7 @@ export class TeacherReviewPanel {
     this.onLoadReviewProblem = config.onLoadReviewProblem || (async () => {});
     this.fetchFn = config.fetchFn || globalThis.fetch?.bind(globalThis);
     this.documentLike = config.documentLike || globalThis.document || null;
-    this.windowLike = config.windowLike || globalThis.window || globalThis;
+    this.windowLike = config.windowLike || (globalThis.window as unknown as Window & Record<string, unknown>) || globalThis;
     this.state = {
       currentReviewFilter: 'pending',
       pendingReviewsCache: [],
@@ -22,15 +79,15 @@ export class TeacherReviewPanel {
     };
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  querySelector(selector) {
+  querySelector(selector: string): HTMLElement | null {
     return this.documentLike?.querySelector?.(selector) || null;
   }
 
-  updateFilterButtons() {
+  updateFilterButtons(): void {
     const pendingButton = this.getElement('review-filter-pending');
     const reviewedButton = this.getElement('review-filter-reviewed');
 
@@ -41,31 +98,31 @@ export class TeacherReviewPanel {
     reviewedButton.className = pendingActive ? REVIEW_FILTER_INACTIVE_CLASS : REVIEW_FILTER_ACTIVE_CLASS;
   }
 
-  setFilter(filter) {
+  setFilter(filter: string): Promise<void> {
     this.state.currentReviewFilter = filter;
     this.updateFilterButtons();
     return this.loadPendingReviews();
   }
 
-  openPanel() {
+  openPanel(): Promise<void> {
     this.getElement('teacher-review-panel')?.classList.remove('translate-x-full');
     this.getElement('teacher-review-backdrop')?.classList.remove('hidden');
     return this.loadPendingReviews();
   }
 
-  closePanel() {
+  closePanel(): void {
     this.getElement('teacher-review-panel')?.classList.add('translate-x-full');
     this.getElement('teacher-review-backdrop')?.classList.add('hidden');
   }
 
-  clearReviewState() {
+  clearReviewState(): void {
     this.state.pendingReviewsCache = [];
     this.state.teacherAlertActive = false;
     this.state.pendingGrades = {};
     this.state.activeReviewId = null;
   }
 
-  updateReviewBadge(count) {
+  updateReviewBadge(count: number): void {
     const headerBadge = this.getElement('header-review-count');
     const panelBadge = this.getElement('review-count-badge');
     const alertCount = this.getElement('alert-review-count');
@@ -73,12 +130,12 @@ export class TeacherReviewPanel {
     if (!headerBadge || !panelBadge) return;
 
     if (count > 0) {
-      headerBadge.textContent = count;
+      headerBadge.textContent = String(count);
       headerBadge.style.display = 'inline';
-      panelBadge.textContent = count;
+      panelBadge.textContent = String(count);
       panelBadge.classList.remove('hidden');
       if (alertCount) {
-        alertCount.textContent = count;
+        alertCount.textContent = String(count);
       }
     } else {
       headerBadge.style.display = 'none';
@@ -87,7 +144,7 @@ export class TeacherReviewPanel {
     }
   }
 
-  async loadPendingReviews() {
+  async loadPendingReviews(): Promise<void> {
     console.log('loadPendingReviews called, filter:', this.state.currentReviewFilter);
 
     const loading = this.getElement('teacher-review-loading');
@@ -109,7 +166,7 @@ export class TeacherReviewPanel {
       console.log('Response status:', response.status);
       if (!response.ok) throw new Error('Failed to fetch reviews: ' + response.status);
 
-      const reviews = await response.json();
+      const reviews: ReviewRecord[] = await response.json();
       console.log('Reviews fetched:', reviews);
       this.state.pendingReviewsCache = reviews;
 
@@ -139,12 +196,12 @@ export class TeacherReviewPanel {
             this.state.teacherAlertActive = true;
             const alertCount = this.getElement('alert-review-count');
             if (alertCount) {
-              alertCount.textContent = reviews.length;
+              alertCount.textContent = String(reviews.length);
             }
           }
         }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to load reviews:', err);
       loading?.classList.add('hidden');
       empty?.classList.remove('hidden');
@@ -155,7 +212,7 @@ export class TeacherReviewPanel {
     }
   }
 
-  showTeacherAlert(message) {
+  showTeacherAlert(message: { username?: string; topic?: string } | undefined): void {
     const overlay = this.getElement('teacher-alert-overlay');
     if (!overlay) return;
 
@@ -164,24 +221,24 @@ export class TeacherReviewPanel {
 
     const alertCount = this.getElement('alert-review-count');
     if (alertCount) {
-      const currentCount = parseInt(alertCount.textContent, 10) || 0;
-      alertCount.textContent = currentCount + 1;
+      const currentCount = parseInt(alertCount.textContent || '0', 10) || 0;
+      alertCount.textContent = String(currentCount + 1);
     }
 
     this.playTeacherAlert();
 
     Promise.resolve(this.loadPendingReviews())
-      .catch((err) => console.warn('Failed to refresh pending reviews after alert:', err));
+      .catch((err: unknown) => console.warn('Failed to refresh pending reviews after alert:', err));
 
     console.log('Teacher alert shown for:', message?.username, message?.topic);
   }
 
-  hideTeacherAlert() {
+  hideTeacherAlert(): void {
     this.getElement('teacher-alert-overlay')?.classList.add('hidden');
     this.state.teacherAlertActive = false;
   }
 
-  getGradeBorderColor(grade) {
+  getGradeBorderColor(grade: EPI | undefined): string {
     switch (grade) {
       case 'E': return 'border-green-500';
       case 'P': return 'border-yellow-500';
@@ -190,7 +247,7 @@ export class TeacherReviewPanel {
     }
   }
 
-  getGradeTextColor(grade) {
+  getGradeTextColor(grade: EPI | undefined): string {
     switch (grade) {
       case 'E': return 'text-green-600';
       case 'P': return 'text-yellow-600';
@@ -199,13 +256,13 @@ export class TeacherReviewPanel {
     }
   }
 
-  renderReviewList(reviews) {
+  renderReviewList(reviews: ReviewRecord[]): void {
     const list = this.getElement('teacher-review-list');
     if (!list) return;
 
     list.innerHTML = reviews.map((review) => {
       const answers = review.student_answers || {};
-      const context = review.scenario_context || {};
+      const context = review.scenario_context || {} as Record<string, unknown>;
       const keywordResults = review.keyword_results || {};
       const teacherGrades = review.teacher_grades || {};
       const expectedAnswers = review.expected_answers || {};
@@ -214,14 +271,15 @@ export class TeacherReviewPanel {
       const fields = review.field_ids || Object.keys(answers) || ['slope', 'intercept', 'correlation'];
       const cartridgeName = review.cartridge_name || 'LSRL Interpretation';
 
-      const formatAnswer = (fieldId) => {
+      const formatAnswer = (fieldId: string): string => {
         const answer = answers[fieldId];
         if (answer === null || answer === undefined) return '(empty)';
         if (typeof answer === 'object') {
-          if ('coefficient' in answer && 'radicand' in answer) {
-            const coefficient = answer.coefficient || 1;
-            const radicand = answer.radicand || 1;
-            const hasI = answer.hasI || false;
+          const answerObj = answer as Record<string, unknown>;
+          if ('coefficient' in answerObj && 'radicand' in answerObj) {
+            const coefficient = answerObj.coefficient || 1;
+            const radicand = answerObj.radicand || 1;
+            const hasI = answerObj.hasI || false;
             if (radicand === 1) {
               return hasI ? `${coefficient}i` : `${coefficient}`;
             }
@@ -229,16 +287,17 @@ export class TeacherReviewPanel {
           }
           return JSON.stringify(answer);
         }
-        return answer;
+        return String(answer);
       };
 
-      const formatExpected = (fieldId) => {
+      const formatExpected = (fieldId: string): string | null => {
         const expected = expectedAnswers[fieldId];
         if (!expected) return null;
-        if (typeof expected === 'object' && expected.value !== undefined) {
-          return typeof expected.value === 'number' ? expected.value.toFixed(2) : expected.value;
+        if (typeof expected === 'object' && (expected as Record<string, unknown>).value !== undefined) {
+          const val = (expected as Record<string, unknown>).value;
+          return typeof val === 'number' ? val.toFixed(2) : String(val);
         }
-        return typeof expected === 'number' ? expected.toFixed(2) : expected;
+        return typeof expected === 'number' ? expected.toFixed(2) : String(expected);
       };
 
       return `
@@ -249,16 +308,16 @@ export class TeacherReviewPanel {
               ${realName ? `<span class="text-gray-500 text-xs ml-1">(${review.username})</span>` : ''}
               <span class="text-purple-600 text-xs ml-2 px-2 py-0.5 bg-purple-50 rounded">${cartridgeName}</span>
             </div>
-            <span class="text-xs text-gray-400">${new Date(review.submitted_at).toLocaleString()}</span>
+            <span class="text-xs text-gray-400">${new Date(review.submitted_at!).toLocaleString()}</span>
           </div>
 
           <div class="text-sm text-gray-600 mb-3 bg-gray-50 rounded p-2">
             <div class="font-medium text-gray-700 mb-1">${review.scenario_topic || 'Practice Problem'}</div>
             <div class="grid grid-cols-2 gap-1 text-xs">
-              <div><strong>x:</strong> ${context.xVar || '?'} (${context.xUnits || '?'})</div>
-              <div><strong>y:</strong> ${context.yVar || '?'} (${context.yUnits || '?'})</div>
-              <div><strong>Equation:</strong> y = ${context.intercept || '?'} + ${context.slope || '?'}x</div>
-              <div><strong>r:</strong> ${context.r || '?'}</div>
+              <div><strong>x:</strong> ${(context as Record<string, unknown>).xVar || '?'} (${(context as Record<string, unknown>).xUnits || '?'})</div>
+              <div><strong>y:</strong> ${(context as Record<string, unknown>).yVar || '?'} (${(context as Record<string, unknown>).yUnits || '?'})</div>
+              <div><strong>Equation:</strong> y = ${(context as Record<string, unknown>).intercept || '?'} + ${(context as Record<string, unknown>).slope || '?'}x</div>
+              <div><strong>r:</strong> ${(context as Record<string, unknown>).r || '?'}</div>
             </div>
           </div>
 
@@ -309,7 +368,7 @@ export class TeacherReviewPanel {
     }).join('');
   }
 
-  setReviewGrade(reviewId, field, grade) {
+  setReviewGrade(reviewId: string | number, field: string, grade: EPI): void {
     if (!this.state.pendingGrades[reviewId]) {
       this.state.pendingGrades[reviewId] = {};
     }
@@ -332,10 +391,10 @@ export class TeacherReviewPanel {
     });
   }
 
-  async submitTeacherGrades(reviewId) {
+  async submitTeacherGrades(reviewId: string | number): Promise<void> {
     const grades = this.state.pendingGrades[reviewId];
     const reviewElement = this.querySelector(`[data-review-id="${reviewId}"]`);
-    const fields = reviewElement?.dataset.fields?.split(',') || ['slope', 'intercept', 'correlation'];
+    const fields = (reviewElement as HTMLElement | null)?.dataset.fields?.split(',') || ['slope', 'intercept', 'correlation'];
     const missingFields = fields.filter((field) => !grades || !grades[field]);
 
     if (missingFields.length > 0) {
@@ -347,7 +406,7 @@ export class TeacherReviewPanel {
       const review = this.state.pendingReviewsCache.find((item) => item.id === reviewId);
       const webrtcManager = this.getWebRTCManager();
       if (webrtcManager?.isActive && review?.username) {
-        webrtcManager.sendTo(review.username, 'review_grade', {
+        webrtcManager.sendTo?.(review.username, 'review_grade', {
           reviewId,
           grades,
           feedback: 'Teacher reviewed your work'
@@ -368,13 +427,13 @@ export class TeacherReviewPanel {
       this.celebration?.showToast?.('Grades submitted!', 'success');
       delete this.state.pendingGrades[reviewId];
       await this.loadPendingReviews();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to submit grades:', err);
       this.celebration?.showToast?.('Failed to submit grades', 'error');
     }
   }
 
-  async openReviewProblem(reviewId) {
+  async openReviewProblem(reviewId: string | number): Promise<void> {
     const review = this.state.pendingReviewsCache.find((item) => item.id === reviewId);
     if (!review) {
       this.celebration?.showToast?.('Review not found', 'error');
@@ -387,7 +446,7 @@ export class TeacherReviewPanel {
     this.state.activeReviewId = reviewId;
   }
 
-  async submitActiveReviewGrades(grades) {
+  async submitActiveReviewGrades(grades: Record<string, EPI>): Promise<boolean> {
     if (!this.state.activeReviewId) {
       return false;
     }
@@ -410,17 +469,17 @@ export class TeacherReviewPanel {
       this.state.activeReviewId = null;
       await this.loadPendingReviews();
       return true;
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to submit review:', err);
       return false;
     }
   }
 
-  installGlobalHandlers() {
+  installGlobalHandlers(): void {
     if (!this.windowLike) return;
 
-    this.windowLike.setReviewGrade = (reviewId, field, grade) => this.setReviewGrade(reviewId, field, grade);
-    this.windowLike.submitTeacherGrades = (reviewId) => this.submitTeacherGrades(reviewId);
-    this.windowLike.loadReviewProblem = (reviewId) => this.openReviewProblem(reviewId);
+    this.windowLike.setReviewGrade = (reviewId: string | number, field: string, grade: EPI) => this.setReviewGrade(reviewId, field, grade);
+    this.windowLike.submitTeacherGrades = (reviewId: string | number) => this.submitTeacherGrades(reviewId);
+    this.windowLike.loadReviewProblem = (reviewId: string | number) => this.openReviewProblem(reviewId);
   }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { TeacherModeController } from '../../platform/core/teacher-mode.js';
+import { TeacherModeController } from '../../platform/core/teacher-mode.ts';
 
 const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
@@ -61,7 +61,7 @@ function createDocumentLike() {
 
 describe('Teacher mode persistence regression', () => {
   it('imports the shared teacher mode controller module', () => {
-    expect(appHtmlContent).toContain("import { TeacherModeController } from './core/teacher-mode.js';");
+    expect(appHtmlContent).toContain("import { TeacherModeController } from './core/teacher-mode.ts';");
   });
 
   it('restores teacher mode from cache before background revalidation', async () => {
