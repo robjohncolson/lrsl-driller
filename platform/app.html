@@ -1016,7 +1016,6 @@
     import { Leaderboard } from './core/leaderboard.js';
     import { ClassTime } from './core/class-time.js';
     import { TimeTracker } from './core/time-tracker.js';
-    import { CartridgeLoader } from './core/cartridge-loader.js';
     import { calculateWeightedPoints, getPointsBreakdown } from '../shared/scoring.config.js';
     import { createAIFeedbackPanel, updateAIFeedbackPanel, showAIFeedbackError, hideAIFeedbackPanel } from './core/ai-feedback-panel.js';
     // Lazy-loaded: only used by teachers
@@ -1038,6 +1037,7 @@
     import { TimeAnalyticsPanel } from './core/time-analytics.js';
     import { SettingsMediaController } from './core/settings-media.js';
     import { RealtimeController } from './core/realtime-controller.js';
+    import { CartridgeLoadingController } from './core/cartridge-loading.js';
     import { buildShareURL, getModeNumber, parseQueryParams, restoreStateFromURL, updateURL } from './core/url-state.js';
     console.log('[APP] All imports successful');
 
@@ -1359,6 +1359,7 @@
     let timeAnalyticsPanel = null; // Teacher time analytics controller
     let settingsMediaController = null; // Settings and media modal controller
     let realtimeController = null; // Presence, WebRTC, and realtime asset controller
+    let cartridgeLoadingController = null; // Cartridge picker and loading overlay controller
     let pendingUrlState = null; // Parsed URL state, applied after the first cartridge load
     let requestedStartLevel = null; // URL-requested direct level link (?level=... or ?start=...)
     let ghostPanel = null; // Ghost panel instance for ghost mode features
@@ -2829,200 +2830,30 @@
         timeAnalyticsPanel.setPeriod(btn.dataset.period);
       });
     });
-
     // ==================== CARTRIDGE LOADING UI ====================
-    function showCartridgeDropdown() {
-      document.getElementById('cartridge-dropdown').classList.remove('hidden');
-      document.getElementById('cartridge-dropdown-backdrop').classList.remove('hidden');
-    }
-
-    function hideCartridgeDropdown() {
-      document.getElementById('cartridge-dropdown').classList.add('hidden');
-      document.getElementById('cartridge-dropdown-backdrop').classList.add('hidden');
-    }
-
-    function showCartridgeLoading(cartridgeName) {
-      const overlay = document.getElementById('cartridge-loading-overlay');
-      document.getElementById('cartridge-loading-name').textContent = cartridgeName;
-
-      // Reset all status indicators
-      ['manifest', 'contexts', 'generator', 'grading', 'ai'].forEach(id => {
-        document.getElementById(`status-${id}`).textContent = '○';
-        document.getElementById(`status-${id}`).className = 'w-5 h-5 flex items-center justify-center text-gray-400';
-      });
-      document.getElementById('cartridge-progress-bar').style.width = '0%';
-
-      overlay.classList.remove('hidden');
-
-      // Play boot chime
-      soundEngine.init();
-      soundEngine.bootChime();
-    }
-
-    function hideCartridgeLoading() {
-      document.getElementById('cartridge-loading-overlay').classList.add('hidden');
-    }
+    cartridgeLoadingController = new CartridgeLoadingController({
+      soundEngine,
+      getCurrentCartridgeId: () => currentCartridgeId,
+      setCurrentCartridgeId: (cartridgeId) => {
+        currentCartridgeId = cartridgeId;
+      },
+      onLoadCartridge: (cartridgeId) => loadCartridge(cartridgeId)
+    });
+    cartridgeLoadingController.installEventListeners();
 
     function updateCartridgeLoadingProgress(step, filename, status) {
-      const statusEl = document.getElementById(`status-${step}`);
-      if (!statusEl) return;
-
-      const progressBar = document.getElementById('cartridge-progress-bar');
-      const steps = ['manifest', 'contexts', 'generator', 'grading', 'ai'];
-      const stepIndex = steps.indexOf(step);
-
-      if (status === 'loading') {
-        statusEl.textContent = '⟳';
-        statusEl.className = 'w-5 h-5 flex items-center justify-center text-purple-500 animate-spin';
-      } else if (status === 'done') {
-        statusEl.textContent = '✓';
-        statusEl.className = 'w-5 h-5 flex items-center justify-center text-green-500 font-bold';
-        progressBar.style.width = `${((stepIndex + 1) / steps.length) * 100}%`;
-      } else if (status === 'skipped') {
-        statusEl.textContent = '–';
-        statusEl.className = 'w-5 h-5 flex items-center justify-center text-gray-400';
-        progressBar.style.width = `${((stepIndex + 1) / steps.length) * 100}%`;
-      } else if (status === 'error') {
-        statusEl.textContent = '✗';
-        statusEl.className = 'w-5 h-5 flex items-center justify-center text-red-500 font-bold';
-      }
-    }
-
-    // Cartridge slot button - toggle dropdown
-    document.getElementById('cartridge-slot-btn')?.addEventListener('click', () => {
-      const dropdown = document.getElementById('cartridge-dropdown');
-      if (dropdown.classList.contains('hidden')) {
-        showCartridgeDropdown();
-      } else {
-        hideCartridgeDropdown();
-      }
-    });
-
-    // Backdrop click closes dropdown
-    document.getElementById('cartridge-dropdown-backdrop')?.addEventListener('click', hideCartridgeDropdown);
-
-    // Subject color schemes - using full Tailwind class names for JIT compatibility
-    const subjectColors = {
-      'AP Statistics': {
-        header: 'text-purple-600',
-        btnHover: 'hover:bg-purple-50 hover:border-purple-300',
-        cartridge: 'from-purple-500 to-purple-700'
-      },
-      'Algebra 2': {
-        header: 'text-green-600',
-        btnHover: 'hover:bg-green-50 hover:border-green-300',
-        cartridge: 'from-green-500 to-green-700'
-      },
-      'default': {
-        header: 'text-blue-600',
-        btnHover: 'hover:bg-blue-50 hover:border-blue-300',
-        cartridge: 'from-blue-500 to-blue-700'
-      }
-    };
-
-    // Populate cartridge list from registry
-    async function populateCartridgeList() {
-      const loader = new CartridgeLoader({ basePath: '/cartridges' });
-      const grouped = await loader.getCartridgesBySubject();
-      const listEl = document.getElementById('cartridge-list');
-      const selectEl = document.getElementById('cartridge-select');
-
-      // Clear loading placeholder
-      listEl.innerHTML = '';
-      selectEl.innerHTML = '';
-
-      const listFragment = document.createDocumentFragment();
-      const selectFragment = document.createDocumentFragment();
-
-      // Build HTML for each subject group
-      for (const [subject, cartridges] of Object.entries(grouped)) {
-        const colors = subjectColors[subject] || subjectColors.default;
-
-        // Subject header
-        const header = document.createElement('div');
-        header.className = `text-xs font-bold ${colors.header} uppercase tracking-wide px-2 pt-1`;
-        header.textContent = subject;
-        listFragment.appendChild(header);
-
-        // Cartridge buttons
-        for (const cart of cartridges) {
-          const btn = document.createElement('button');
-          btn.className = `cartridge-option w-full flex items-center gap-3 p-2 rounded-lg ${colors.btnHover} transition-colors border-2 border-transparent`;
-          btn.dataset.cartridge = cart.id;
-          btn.innerHTML = `
-            <div class="w-10 h-14 bg-gradient-to-b ${colors.cartridge} rounded flex items-center justify-center text-white text-xs font-bold shadow">
-              ${cart.shortCode || cart.id.substring(0, 4).toUpperCase()}
-            </div>
-            <div class="text-left flex-1">
-              <div class="font-semibold text-gray-800 text-sm">${cart.name}</div>
-              <div class="text-xs text-gray-500">${cart.description || ''}</div>
-            </div>
-          `;
-          listFragment.appendChild(btn);
-
-          // Also add to hidden select
-          const option = document.createElement('option');
-          option.value = cart.id;
-          option.textContent = cart.name;
-          selectFragment.appendChild(option);
-        }
-      }
-
-      listEl.appendChild(listFragment);
-      selectEl.appendChild(selectFragment);
-
-      // Set up click handlers for the newly created buttons
-      setupCartridgeOptionListeners();
-    }
-
-    // Cartridge option click handlers (called after DOM is populated)
-    function setupCartridgeOptionListeners() {
-      document.querySelectorAll('.cartridge-option').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const cartridgeId = btn.dataset.cartridge;
-          if (cartridgeId && cartridgeId !== currentCartridgeId) {
-            hideCartridgeDropdown();
-            currentCartridgeId = cartridgeId;
-            localStorage.setItem('lastCartridgeId', cartridgeId);
-            document.getElementById('cartridge-select').value = cartridgeId;
-            loadCartridgeWithAnimation(cartridgeId);
-          } else {
-            hideCartridgeDropdown();
-          }
-        });
-      });
+      cartridgeLoadingController.updateLoadingProgress(step, filename, status);
     }
 
     async function loadCartridgeWithAnimation(cartridgeId) {
-      console.log(`[App] loadCartridgeWithAnimation called with: "${cartridgeId}"`);
-
-      // Get cartridge display name
-      const option = document.querySelector(`.cartridge-option[data-cartridge="${cartridgeId}"]`);
-      const displayName = option?.querySelector('.font-semibold')?.textContent || cartridgeId;
-
-      // Show loading overlay
-      showCartridgeLoading(displayName.substring(0, 8));
-
-      // Small delay for visual effect
-      await new Promise(r => setTimeout(r, 200));
-
-      // Load with progress
-      console.log(`[App] Calling loadCartridge("${cartridgeId}")...`);
-      await loadCartridge(cartridgeId);
-
-      // Update the header button
-      document.getElementById('current-cartridge-name').textContent = displayName;
-
-      // Hide loading after a brief moment
-      await new Promise(r => setTimeout(r, 300));
-      hideCartridgeLoading();
+      return cartridgeLoadingController.loadCartridgeWithAnimation(cartridgeId);
     }
 
     async function loadReviewProblemIntoWorkspace(review) {
       const targetCartridge = review.cartridge_id || 'lsrl-interpretation';
       if (currentCartridgeId !== targetCartridge) {
         await loadCartridge(targetCartridge);
-        document.getElementById('cartridge-select').value = targetCartridge;
+        cartridgeLoadingController.syncDisplayedCartridge(targetCartridge);
       }
 
       if (review.mode_id && platform.cartridgeLoader) {
@@ -3880,7 +3711,10 @@
         }
 
         document.getElementById('app-title').textContent = platform.currentCartridge?.manifest?.meta?.name || 'Driller';
-        document.getElementById('current-cartridge-name').textContent = platform.currentCartridge?.manifest?.meta?.name || cartridgeId;
+        cartridgeLoadingController.syncDisplayedCartridge(
+          cartridgeId,
+          platform.currentCartridge?.manifest?.meta?.name || cartridgeId
+        );
 
         // Ensure left pane is visible (graph visibility is handled per-problem in updateScenarioDisplay)
         document.getElementById('left-pane').classList.remove('hidden');
@@ -4518,7 +4352,7 @@
     });
 
     document.getElementById('cartridge-select').addEventListener('change', (e) => {
-      loadCartridge(e.target.value);
+      loadCartridgeWithAnimation(e.target.value);
     });
 
     // ==================== INIT ====================
@@ -4531,7 +4365,7 @@
       document.getElementById('ai-feedback-container').appendChild(aiFeedbackPanel);
 
       // Populate cartridge list from registry (auto-detects cartridges)
-      await populateCartridgeList();
+      await cartridgeLoadingController.populateCartridgeList();
 
       // Check URL parameters for cartridge selection
       // Supports: ?cartridge=sampling or ?c=sampling or ?c=exp (aliases)
@@ -4585,9 +4419,7 @@
       // Priority: URL param > saved preference > default
       let initialCartridge = null;
       if (urlCartridge) {
-        // Validate the URL cartridge exists
-        const option = document.querySelector(`.cartridge-option[data-cartridge="${urlCartridge}"]`);
-        if (option) {
+        if (cartridgeLoadingController.hasCartridge(urlCartridge)) {
           initialCartridge = urlCartridge;
           console.log(`[App] Cartridge from URL: ${urlCartridge}`);
         } else {
@@ -4606,12 +4438,7 @@
       // Update display and set current cartridge
       if (initialCartridge) {
         currentCartridgeId = initialCartridge;
-        const option = document.querySelector(`.cartridge-option[data-cartridge="${initialCartridge}"]`);
-        if (option) {
-          const displayName = option.querySelector('.font-semibold')?.textContent || initialCartridge;
-          document.getElementById('current-cartridge-name').textContent = displayName;
-          document.getElementById('cartridge-select').value = initialCartridge;
-        }
+        cartridgeLoadingController.syncDisplayedCartridge(initialCartridge);
       }
 
       // Store requested level from URL (applied after cartridge loads)
@@ -4739,6 +4566,7 @@
   </script>
 </body>
 </html>
+
 
 
 
