@@ -1039,6 +1039,9 @@
     import { RealtimeController } from './core/realtime-controller.js';
     import { CartridgeLoadingController } from './core/cartridge-loading.js';
     import { AnimationControls } from './core/animation-controls.js';
+    import { UsernameModal } from './core/username-modal.js';
+    import { AIAppealHandlers } from './core/ai-appeal.js';
+    import { ActionButtons } from './core/action-buttons.js';
     import { buildShareURL, getModeNumber, parseQueryParams, restoreStateFromURL, updateURL } from './core/url-state.js';
     console.log('[APP] All imports successful');
 
@@ -2204,259 +2207,34 @@
     }
 
     // ==================== USERNAME MODAL ====================
-    const usernameModal = {
-      isFirstVisit: true,
-      usersData: [], // Store users data for lookup
-
-      async show(isFirstVisit = false) {
-        this.isFirstVisit = isFirstVisit;
-        document.getElementById('username-modal').classList.remove('hidden');
-        document.getElementById('username-input').value = generateUsername();
-        document.getElementById('username-error').classList.add('hidden');
-
-        // Reset to sign-in view (primary)
-        document.getElementById('signin-section').classList.remove('hidden');
-        document.getElementById('new-user-section').classList.add('hidden');
-
-        // Clear previous inputs
-        document.getElementById('realname-input').value = '';
-        document.getElementById('password-input').value = '';
-        document.getElementById('existing-user-select').value = '';
-        document.getElementById('existing-password-input').value = '';
-        document.getElementById('existing-password-section').classList.add('hidden');
-        document.getElementById('teacher-password-section').classList.add('hidden');
-
-        // Show/hide close button based on first visit
-        const closeBtn = document.getElementById('close-username-modal');
-        if (isFirstVisit) {
-          closeBtn.classList.add('hidden');
-        } else {
-          closeBtn.classList.remove('hidden');
-        }
-
-        // Populate existing users dropdown
-        await this.populateExistingUsers();
-
-        // Focus the dropdown (primary action is sign-in now)
-        setTimeout(() => {
-          document.getElementById('existing-user-select').focus();
-        }, 100);
-      },
-
-      hide() {
-        document.getElementById('username-modal').classList.add('hidden');
-      },
-
-      showNewUserForm() {
-        document.getElementById('signin-section').classList.add('hidden');
-        document.getElementById('new-user-section').classList.remove('hidden');
-        document.getElementById('username-error').classList.add('hidden');
-        document.getElementById('username-input').value = generateUsername();
-        setTimeout(() => document.getElementById('realname-input').focus(), 50);
-      },
-
-      showSignInForm() {
-        document.getElementById('new-user-section').classList.add('hidden');
-        document.getElementById('signin-section').classList.remove('hidden');
-        document.getElementById('username-error').classList.add('hidden');
-        setTimeout(() => document.getElementById('existing-user-select').focus(), 50);
-      },
-
-      async populateExistingUsers() {
-        const select = document.getElementById('existing-user-select');
-        select.innerHTML = '<option value="">Select your name...</option>';
-
-        try {
-          const users = await userSystem.getUsers();
-          this.usersData = users; // Store for lookup
-
-          // Sort by real_name first, then username
-          users.sort((a, b) => {
-            const nameA = (a.real_name || a.username).toLowerCase();
-            const nameB = (b.real_name || b.username).toLowerCase();
-            return nameA.localeCompare(nameB);
-          });
-
-          for (const user of users) {
-            const option = document.createElement('option');
-            option.value = user.username;
-            // Show real name prominently, username in parentheses
-            option.textContent = user.real_name
-              ? `${user.real_name} (${user.username})`
-              : user.username;
-            select.appendChild(option);
-          }
-        } catch (err) {
-          console.warn('Could not load existing users:', err);
-        }
-      },
-
-      async signIn() {
-        const existingSelect = document.getElementById('existing-user-select');
-        const existingPassword = document.getElementById('existing-password-input');
-
-        if (!existingSelect.value) {
-          document.getElementById('username-error').textContent = 'Please select your name';
-          document.getElementById('username-error').classList.remove('hidden');
-          return;
-        }
-
-        const result = await userSystem.verifyUser(existingSelect.value, existingPassword.value);
-        if (result.error) {
-          document.getElementById('username-error').textContent = result.error;
-          document.getElementById('username-error').classList.remove('hidden');
-          return;
-        }
-
-        // Use real name from server response or fall back to stored data
-        const displayName = result.realName || this.usersData.find(u => u.username === existingSelect.value)?.real_name || existingSelect.value;
-
+    const usernameModal = new UsernameModal({
+      userSystem,
+      generateUsername,
+      async onSignIn({ username, displayName, password, isTeacher }) {
         document.getElementById('current-username').textContent = displayName;
-        wsClient.connect(existingSelect.value);
-        leaderboard.setCurrentUser(existingSelect.value);
-        timeTracker.start(existingSelect.value);
-        this.hide();
-        soundEngine.init();
-
-        // If user is a teacher, activate teacher mode
-        if (result.isTeacher) {
-          await activateTeacherMode(existingPassword.value, true);
-        }
-
-        await loadCartridge(currentCartridgeId);
-
-        // Sync local stars with server to fix any discrepancies
-        syncStarsWithServer(existingSelect.value);
-
-        // Initialize Ghost Panel for the signed-in user
-        try {
-          initGhostPanel();
-        } catch (err) {
-          console.warn('[Ghost Panel] Init failed after sign-in:', err);
-        }
-      },
-
-      async register() {
-        const username = document.getElementById('username-input').value.trim();
-        const realName = document.getElementById('realname-input').value.trim();
-        const password = document.getElementById('password-input').value;
-
-        if (!realName) {
-          document.getElementById('username-error').textContent = 'Please enter your name';
-          document.getElementById('username-error').classList.remove('hidden');
-          return;
-        }
-
-        if (!password) {
-          document.getElementById('username-error').textContent = 'Please choose a password';
-          document.getElementById('username-error').classList.remove('hidden');
-          return;
-        }
-
-        const result = await userSystem.createUser(username, realName, password);
-        if (result.error) {
-          document.getElementById('username-error').textContent = result.error;
-          document.getElementById('username-error').classList.remove('hidden');
-          return;
-        }
-
-        document.getElementById('current-username').textContent = realName || username;
         wsClient.connect(username);
         leaderboard.setCurrentUser(username);
         timeTracker.start(username);
-        this.hide();
+        soundEngine.init();
+        if (isTeacher) {
+          await activateTeacherMode(password, true);
+        }
+        await loadCartridge(currentCartridgeId);
+        syncStarsWithServer(username);
+        try { initGhostPanel(); } catch (err) { console.warn('[Ghost Panel] Init failed after sign-in:', err); }
+      },
+      async onRegister({ username, displayName }) {
+        document.getElementById('current-username').textContent = displayName;
+        wsClient.connect(username);
+        leaderboard.setCurrentUser(username);
+        timeTracker.start(username);
         soundEngine.init();
         await loadCartridge(currentCartridgeId);
-
-        // Sync local stars with server (likely empty for new users)
         syncStarsWithServer(username);
-
-        // Initialize Ghost Panel for the new user
-        try {
-          initGhostPanel();
-        } catch (err) {
-          console.warn('[Ghost Panel] Init failed after registration:', err);
-        }
-      }
-    };
-
-    // Toggle between sign-in and new user forms
-    document.getElementById('new-user-link').addEventListener('click', () => usernameModal.showNewUserForm());
-    document.getElementById('back-to-signin').addEventListener('click', () => usernameModal.showSignInForm());
-
-    // Existing user dropdown - show password field when selected and focus it
-    document.getElementById('existing-user-select').addEventListener('change', (e) => {
-      const passwordSection = document.getElementById('existing-password-section');
-      const passwordInput = document.getElementById('existing-password-input');
-      if (e.target.value) {
-        passwordSection.classList.remove('hidden');
-        // Focus password field after it becomes visible
-        setTimeout(() => passwordInput.focus(), 50);
-      } else {
-        passwordSection.classList.add('hidden');
+        try { initGhostPanel(); } catch (err) { console.warn('[Ghost Panel] Init failed after registration:', err); }
       }
     });
-
-    document.getElementById('regenerate-username').addEventListener('click', () => {
-      document.getElementById('username-input').value = generateUsername();
-    });
-
-    // Sign in and register button handlers
-    document.getElementById('signin-submit').addEventListener('click', () => usernameModal.signIn());
-    document.getElementById('register-submit').addEventListener('click', () => usernameModal.register());
-
-    document.getElementById('close-username-modal').addEventListener('click', () => usernameModal.hide());
-
-    document.getElementById('user-display').addEventListener('click', () => usernameModal.show(false));
-
-    // ==================== KEYBOARD SUPPORT FOR USERNAME MODAL ====================
-
-    // Enter key to submit from registration form fields
-    ['realname-input', 'password-input'].forEach(id => {
-      document.getElementById(id).addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          usernameModal.register();
-        }
-      });
-    });
-
-    // Enter key to submit from existing user password field
-    document.getElementById('existing-password-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        usernameModal.signIn();
-      }
-    });
-
-    // Enter key to submit from teacher password field
-    document.getElementById('teacher-password-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        document.getElementById('teacher-submit-btn').click();
-      }
-    });
-
-    // R key to regenerate username when focused on username field
-    document.getElementById('username-input').addEventListener('keydown', (e) => {
-      if (e.key === 'r' || e.key === 'R') {
-        e.preventDefault();
-        document.getElementById('username-input').value = generateUsername();
-      }
-    });
-
-    // Focus existing password when selecting from dropdown
-    document.getElementById('existing-user-select').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && e.target.value) {
-        e.preventDefault();
-        const passwordSection = document.getElementById('existing-password-section');
-        if (!passwordSection.classList.contains('hidden')) {
-          document.getElementById('existing-password-input').focus();
-        } else {
-          usernameModal.signIn();
-        }
-      }
-    });
+    usernameModal.initEventListeners();
 
     // ==================== GLOBAL ESCAPE KEY HANDLER ====================
     document.addEventListener('keydown', (e) => {
@@ -4097,192 +3875,33 @@
     animationControls.init();
 
     // ==================== ACTION BUTTONS ====================
-    document.getElementById('btn-grade').addEventListener('click', async () => {
-      soundEngine.init();
-      // Always use algorithm-only grading first
-      currentGradingLevel = 'algorithm';
-      updateGradingLevelIndicator('algorithm');
-      hideAllEscalationButtons();
-      await platform.grade({ useAI: false });
+    const actionButtons = new ActionButtons({
+      platform,
+      soundEngine,
+      setGradingLevel: (level) => { currentGradingLevel = level; },
+      updateGradingLevelIndicator,
+      hideAllEscalationButtons,
+      hideAIFeedbackPanel,
+      getAIFeedbackPanel: () => aiFeedbackPanel,
+      updateScenarioDisplay,
+      submitForTeacherReview,
+      clearPendingTeacherReview: () => { pendingTeacherReview = null; }
     });
-
-    // Request AI Review - escalate from algorithm to AI
-    document.getElementById('btn-ai-review').addEventListener('click', async () => {
-      const btn = document.getElementById('btn-ai-review');
-      btn.disabled = true;
-      btn.innerHTML = `
-        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        AI Reviewing...
-      `;
-
-      try {
-        currentGradingLevel = 'ai';
-        updateGradingLevelIndicator('ai');
-        // Re-grade with AI enabled
-        await platform.grade({ useAI: true });
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = `
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-          </svg>
-          Request AI Review
-        `;
-      }
-    });
-
-    document.getElementById('btn-try-again').addEventListener('click', () => {
-      document.getElementById('btn-try-again').classList.add('hidden');
-      document.getElementById('btn-grade').classList.remove('hidden');
-      hideAllEscalationButtons();
-      document.getElementById('grading-level-indicator').classList.add('hidden');
-      hideAIFeedbackPanel(aiFeedbackPanel); // v2.0.1
-
-      // Track retry as a penalty (like using a hint)
-      platform.useRetry();
-
-      // Clear feedback and re-enable inputs
-      platform.inputRenderer?.clearAllFeedback();
-      platform.inputRenderer?.enable();
-      clearTeacherReview();
-    });
-
-    document.getElementById('btn-next').addEventListener('click', async () => {
-      // Reset button visibility - show Grade, hide others (use classList for Tailwind)
-      document.getElementById('btn-next').classList.add('hidden');
-      document.getElementById('btn-try-again').classList.add('hidden');
-      document.getElementById('btn-grade').classList.remove('hidden');
-      hideAllEscalationButtons();
-      document.getElementById('grading-level-indicator').classList.add('hidden');
-      hideAIFeedbackPanel(aiFeedbackPanel); // v2.0.1
-      // Clear any leftover feedback before loading new problem
-      platform.inputRenderer?.clearAllFeedback();
-      await platform.loadProblem();
-      updateScenarioDisplay();
-      clearTeacherReview();
-    });
-
-    document.getElementById('btn-skip').addEventListener('click', async () => {
-      platform.inputRenderer?.clearAllFeedback();
-      hideAllEscalationButtons();
-      document.getElementById('grading-level-indicator').classList.add('hidden');
-      hideAIFeedbackPanel(aiFeedbackPanel); // v2.0.1
-      await platform.loadProblem();
-      updateScenarioDisplay();
-      clearTeacherReview();
-    });
-
-    document.getElementById('btn-teacher-review').addEventListener('click', submitForTeacherReview);
-
-    function clearTeacherReview() {
-      pendingTeacherReview = null;
-      document.getElementById('btn-teacher-review')?.classList.add('hidden');
-    }
+    actionButtons.init();
 
     // ==================== AI APPEAL HANDLERS ====================
-    // Show appeal input form when Appeal button is clicked
-    document.getElementById('btn-ai-appeal').addEventListener('click', () => {
-      document.getElementById('btn-ai-appeal').classList.add('hidden');
-      document.getElementById('ai-appeal-container').classList.remove('hidden');
-      document.getElementById('ai-appeal-input').focus();
+    const aiAppealHandlers = new AIAppealHandlers({
+      platform,
+      getLastGradingResults: () => lastGradingResults,
+      updateGradingLevelIndicator,
+      updateAIFeedbackPanel,
+      getAIFeedbackPanel: () => aiFeedbackPanel,
+      soundEngine,
+      celebration,
+      showEscalationButton,
+      hideAllEscalationButtons
     });
-
-    // Cancel appeal - hide form, show buttons again
-    document.getElementById('btn-cancel-appeal').addEventListener('click', () => {
-      document.getElementById('ai-appeal-container').classList.add('hidden');
-      document.getElementById('ai-appeal-input').value = '';
-      document.getElementById('btn-ai-appeal').classList.remove('hidden');
-    });
-
-    // Submit appeal to AI with follow-up question
-    document.getElementById('btn-submit-appeal').addEventListener('click', async () => {
-      const appealText = document.getElementById('ai-appeal-input').value.trim();
-      if (!appealText) {
-        document.getElementById('ai-appeal-input').classList.add('border-red-500');
-        document.getElementById('ai-appeal-input').placeholder = 'Please explain your reasoning...';
-        return;
-      }
-
-      const submitBtn = document.getElementById('btn-submit-appeal');
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `
-        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Reviewing Appeal...
-      `;
-
-      try {
-        // Send appeal to AI for re-evaluation
-        const result = await platform.submitAppeal(appealText, lastGradingResults);
-
-        // Update grading level indicator
-        updateGradingLevelIndicator('ai');
-        document.getElementById('grading-level-text').textContent = 'Graded by: AI (Appeal)';
-
-        // Clear appeal form
-        document.getElementById('ai-appeal-container').classList.add('hidden');
-        document.getElementById('ai-appeal-input').value = '';
-
-        // Display new feedback from appeal
-        if (result.success) {
-          // Update the feedback display with appeal response
-          platform.inputRenderer?.displayAppealResponse(result);
-
-          // v2.0.1: Update AI feedback panel with appeal results
-          if (result.fields) {
-            const fieldEntries = Object.entries(result.fields);
-            for (const [fieldId, fieldResult] of fieldEntries) {
-              if (fieldResult && fieldResult.score) {
-                const aiResponse = {
-                  _provider: fieldResult._provider || 'AI',
-                  _model: fieldResult._model,
-                  results: { [fieldId]: { score: fieldResult.score, feedback: fieldResult.feedback } }
-                };
-                updateAIFeedbackPanel(aiFeedbackPanel, aiResponse, null, { isAppeal: true });
-                break;
-              }
-            }
-          }
-
-          // If appeal was successful and all correct now, celebrate
-          if (result.allCorrect) {
-            const state = platform.getState();
-            // Use potentialStar which accounts for both hints AND retries
-            const starType = state.game.potentialStar || 'gold';
-            soundEngine.init();
-            soundEngine.starSound(starType);
-            celebration.celebrate(starType);
-
-            document.getElementById('btn-try-again').classList.add('hidden');
-            document.getElementById('btn-next').classList.remove('hidden');
-            hideAllEscalationButtons();
-          } else {
-            // Appeal reviewed but still not all correct - can still escalate to teacher
-            showEscalationButton('teacher');
-          }
-        } else {
-          // Appeal failed or error
-          showEscalationButton('teacher');
-        }
-      } catch (err) {
-        console.error('Appeal submission error:', err);
-        alert('Failed to submit appeal. You can request teacher review instead.');
-        showEscalationButton('teacher');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-          </svg>
-          Submit Appeal
-        `;
-      }
-    });
+    aiAppealHandlers.init();
 
     document.getElementById('cartridge-select').addEventListener('change', (e) => {
       loadCartridgeWithAnimation(e.target.value);
