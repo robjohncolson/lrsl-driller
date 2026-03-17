@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "typecheck:watch": "tsc --noEmit --watch"
   },
   "dependencies": {
     "three": "^0.159.0"
@@ -19,6 +21,7 @@
     "dexie": "^4.2.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
     "vite": "^5.4.0",
     "vitest": "^3.1.0",
     "ws": "^8.19.0"
