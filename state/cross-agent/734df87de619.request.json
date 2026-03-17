@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "734df87de619",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 180,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Agent C: Parallelize CartridgeLoader Network Requests\r\n\r\n## File to modify\r\n`platform/core/cartridge-loader.js`\r\n\r\n## Problem\r\nThe `load()` method makes 4-5 sequential network requests:\r\n```\r\nawait loadJSON(manifest.json)     \u2192 wait\r\nawait loadJSON(contexts.json)     \u2192 then wait\r\nawait loadModule(generator.js)    \u2192 then wait\r\nawait loadModule(grading-rules.js) \u2192 then wait\r\nawait loadText(ai-prompt.txt)     \u2192 then wait\r\n```\r\nEach takes ~50-100ms. Total: 200-500ms serialized when they could overlap.\r\n\r\n## Change\r\n\r\nThe manifest must load first (it tells us what other files to fetch). After that, contexts, generator, grading rules, and AI prompt can all load in parallel.\r\n\r\n**Find the `load()` method (starts around line 63). After the manifest is loaded and its progress callback fires, replace the sequential loads with a parallel block.**\r\n\r\n**Current pattern (sequential):**\r\n```javascript\r\n// Load manifest\r\nconst manifest = await this.loadJSON(`${cartridgePath}/manifest.json`);\r\n\r\n// Load contexts\r\nif (manifest.config?.contextsFile) {\r\n  this.contexts = await this.loadJSON(`${cartridgePath}/${manifest.config.contextsFile}`);\r\n} else if (manifest.config?.sharedContexts) {\r\n  this.contexts = await this.loadJSON(`${this.sharedPath}/contexts/${manifest.config.sharedContexts}.json`);\r\n}\r\n\r\n// Load generator\r\nconst generator = await this.loadModule(generatorPath);\r\n\r\n// Load grading rules\r\nif (manifest.grading?.rubricFile) { gradingRules = await ... }\r\n\r\n// Load AI prompt\r\nif (manifest.grading?.aiPromptFile) { aiPrompt = await ... }\r\n```\r\n\r\n**New pattern (parallel after manifest):**\r\n```javascript\r\n// Load manifest first (needed to know what else to fetch)\r\nprogress('manifest', 'manifest.json', 'loading');\r\nconst manifest = await this.loadJSON(`${cartridgePath}/manifest.json`);\r\nprogress('manifest', 'manifest.json', 'done');\r\n\r\n// Prepare parallel fetch promises\r\nconst contextPromise = (() => {\r\n  if (manifest.config?.contextsFile) {\r\n    const contextFile = manifest.config.contextsFile;\r\n    progress('contexts', contextFile, 'loading');\r\n    return this.loadJSON(`${cartridgePath}/${contextFile}`).then(r => {\r\n      progress('contexts', contextFile, 'done');\r\n      return r;\r\n    });\r\n  } else if (manifest.config?.sharedContexts) {\r\n    const contextFile = `${manifest.config.sharedContexts}.json`;\r\n    progress('contexts', contextFile, 'loading');\r\n    return this.loadJSON(`${this.sharedPath}/contexts/${contextFile}`).then(r => {\r\n      progress('contexts', contextFile, 'done');\r\n      return r;\r\n    });\r\n  }\r\n  progress('contexts', 'none', 'skipped');\r\n  return Promise.resolve(null);\r\n})();\r\n\r\nconst generatorPath = `${cartridgePath}/generator.js`;\r\nprogress('generator', 'generator.js', 'loading');\r\nconst generatorPromise = this.loadModule(generatorPath).then(r => {\r\n  console.log(`[CartridgeLoader] Generator loaded:`, r ? 'success' : 'null', 'Has generateProblem:', !!r?.generateProblem);\r\n  progress('generator', 'generator.js', 'done');\r\n  return r;\r\n});\r\n\r\nconst gradingPromise = (() => {\r\n  if (manifest.grading?.rubricFile) {\r\n    progress('grading', manifest.grading.rubricFile, 'loading');\r\n    const loadFn = manifest.grading.rubricFile.endsWith('.js')\r\n      ? this.loadModule(`${cartridgePath}/${manifest.grading.rubricFile}`)\r\n      : this.loadJSON(`${cartridgePath}/${manifest.grading.rubricFile}`);\r\n    return loadFn.then(r => {\r\n      progress('grading', manifest.grading.rubricFile, 'done');\r\n      return r;\r\n    });\r\n  }\r\n  progress('grading', 'none', 'skipped');\r\n  return Promise.resolve(null);\r\n})();\r\n\r\nconst aiPromptPromise = (() => {\r\n  if (manifest.grading?.aiPromptFile) {\r\n    progress('ai', manifest.grading.aiPromptFile, 'loading');\r\n    return this.loadText(`${cartridgePath}/${manifest.grading.aiPromptFile}`).then(r => {\r\n      progress('ai', manifest.grading.aiPromptFile, 'done');\r\n      return r;\r\n    });\r\n  }\r\n  progress('ai', 'none', 'skipped');\r\n  return Promise.resolve(null);\r\n})();\r\n\r\n// Execute all in parallel\r\nconst [contexts, generator, gradingRules, aiPrompt] = await Promise.all([\r\n  contextPromise,\r\n  generatorPromise,\r\n  gradingPromise,\r\n  aiPromptPromise\r\n]);\r\n\r\nthis.contexts = contexts;\r\n```\r\n\r\n**Then update the `this.loadedCartridge = { ... }` block below to use the local variables `contexts`, `generator`, `gradingRules`, `aiPrompt` from the destructured Promise.all result.**\r\n\r\n## Important\r\n- Keep all the `progress()` callbacks \u2014 they drive the loading UI\r\n- Keep the `console.log` for generator load success\r\n- The `this.contexts = contexts` assignment must still happen (other code reads it)\r\n- Error handling: the existing try/catch around the whole method still works\r\n\r\n## Verification\r\n- Build must succeed: `npm run build`\r\n- Load a cartridge \u2014 Network tab should show contexts + generator + grading loading simultaneously (not sequentially)\r\n- Cartridge should render correctly with all problems, grading, and AI prompts working",
+    "constraints": {
+      "owned_paths": [
+        "platform/core/cartridge-loader.js"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-11T14:04:53Z"
+}

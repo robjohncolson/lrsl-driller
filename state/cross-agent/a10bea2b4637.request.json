@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "a10bea2b4637",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 120,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "Edit the file scripts/upload-animations.mjs.\r\n\r\nReplace the entire findRenderedFile function (from line 161 \"function findRenderedFile(assetName) {\" through line 240 ending with the closing brace) with this new implementation:\r\n\r\nfunction findRenderedFile(assetName) {\r\n  const assetStem = assetName.replace(/\\.mp4$/i, \"\");\r\n  const mediaVideos = join(repoRoot, \"media\", \"videos\");\r\n\r\n  if (!existsSync(mediaVideos)) return null;\r\n\r\n  const dirPrefix = `apstat_${unit}${lesson}_`;\r\n  const sceneDirs = readdirSync(mediaVideos).filter((d) =>\r\n    d.startsWith(dirPrefix)\r\n  );\r\n  const qualities = [\"1080p60\", \"720p30\", \"480p15\"];\r\n\r\n  // Collect all rendered MP4s from matching directories\r\n  const allRendered = [];\r\n  for (const sceneDir of sceneDirs) {\r\n    for (const quality of qualities) {\r\n      const qualityDir = join(mediaVideos, sceneDir, quality);\r\n      if (!existsSync(qualityDir)) continue;\r\n\r\n      const mp4s = readdirSync(qualityDir).filter(\r\n        (f) => f.endsWith(\".mp4\") && !f.match(/^\\d{5,}/)\r\n      );\r\n      for (const mp4 of mp4s) {\r\n        allRendered.push({ name: mp4, stem: mp4.replace(/\\.mp4$/i, \"\"), dir: qualityDir });\r\n      }\r\n    }\r\n  }\r\n\r\n  // Priority 1: exact match\r\n  const exact = allRendered.find((r) => r.stem === assetStem);\r\n  if (exact) {\r\n    return { assetName, renderedPath: join(exact.dir, exact.name) };\r\n  }\r\n\r\n  // Priority 2: Scene-class-aware repair\r\n  const animationsDir = join(repoRoot, \"animations\");\r\n  if (existsSync(animationsDir)) {\r\n    const pyFiles = readdirSync(animationsDir).filter(\r\n      (f) => f.startsWith(dirPrefix) && f.endsWith(\".py\")\r\n    );\r\n\r\n    for (const pyFile of pyFiles) {\r\n      const content = readFileSync(join(animationsDir, pyFile), \"utf-8\");\r\n      const classMatches = [...content.matchAll(/class\\s+(\\w+)\\s*\\(\\s*Scene\\s*\\)/g)];\r\n\r\n      for (const cm of classMatches) {\r\n        const actualClass = cm[1];\r\n        const rendered = allRendered.find((r) => r.stem === actualClass);\r\n        if (rendered) {\r\n          console.log(\r\n            `  Scene-class repair: manifest expects \"${assetStem}\" but .py defines \"${actualClass}\" -- using ${rendered.name}`\r\n          );\r\n          return { assetName, renderedPath: join(rendered.dir, rendered.name) };\r\n        }\r\n      }\r\n    }\r\n  }\r\n\r\n  // Priority 3: single-file fallback\r\n  if (allRendered.length === 1) {\r\n    console.log(\r\n      `  Single-file fallback: using \"${allRendered[0].name}\" for \"${assetName}\"`\r\n    );\r\n    return { assetName, renderedPath: join(allRendered[0].dir, allRendered[0].name) };\r\n  }\r\n\r\n  return null;\r\n}\r\n\r\nIMPORTANT: readFileSync is already imported at line 1. The variables unit, lesson, repoRoot are module-level constants already available. Do NOT change any other functions in the file.",
+    "constraints": {
+      "owned_paths": [
+        "scripts/upload-animations.mjs"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-07T05:02:03Z"
+}

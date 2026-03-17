@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "187e82c54857",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 600,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Agent: Test Deep-Link Round-Trip\r\n\r\n## Phase\r\nP3-education-hardening | No dependencies | Working dir: `C:/Users/ColsonR/lrsl-driller`\r\n\r\n## Objective\r\nWrite Vitest tests for deep-link navigation, page refresh state restoration, and progression gating after deep-link entry.\r\n\r\n## Context: The Two Deep-Link Code Paths\r\n\r\n```\r\nPATH A: Direct Navigation (user pastes URL)\r\n  URL: ?cartridge=apstats-u5&mode=3\r\n    \u2193\r\n  window.onload / DOMContentLoaded\r\n    \u2193\r\n  parseQueryParams() \u2192 { cartridge: \"apstats-u5\", mode: 3 }\r\n    \u2193\r\n  loadCartridge(\"apstats-u5\")\r\n    \u251c\u2500\u2500 Fetch cartridges/registry.json\r\n    \u251c\u2500\u2500 Fetch cartridges/apstats-u5/manifest.json\r\n    \u251c\u2500\u2500 Fetch cartridges/apstats-u5/generator.js\r\n    \u251c\u2500\u2500 Fetch cartridges/apstats-u5/grading-rules.js\r\n    \u2514\u2500\u2500 setActiveMode(3) \u2192 generateProblem(3)\r\n\r\nPATH B: URL Restoration After Refresh\r\n  User is on mode 5, completed modes 1-4\r\n    \u2193\r\n  Page refresh (F5 / browser reload)\r\n    \u2193\r\n  URL still has: ?cartridge=apstats-u5&mode=5\r\n    \u2193\r\n  window.onload\r\n    \u2193\r\n  parseQueryParams() \u2192 { cartridge: \"apstats-u5\", mode: 5 }\r\n    \u2193\r\n  loadCartridge(\"apstats-u5\")\r\n    \u2193\r\n  restoreState() \u2190 THIS PATH WAS MISSED IN THE ORIGINAL FIX\r\n    \u251c\u2500\u2500 Read localStorage for progress data\r\n    \u251c\u2500\u2500 Verify modes 1-4 are completed\r\n    \u2514\u2500\u2500 setActiveMode(5)\r\n    \u2193\r\n  history.replaceState() \u2190 Updates URL without navigation\r\n```\r\n\r\n**The bug:** Original fix only covered Path A. Path B (URL restoration after refresh) used a different code path that didn't respect the deep-link mode parameter, sending students back to an earlier level.\r\n\r\n## Read First\r\n1. `platform/app.html` \u2014 search for `parseQueryParams`, `loadCartridge`, `restoreState`, `history.replaceState`\r\n2. `platform/core/game-engine.js` \u2014 `loadState()`, `checkUnlocks()`, mode progression\r\n3. `cartridges/apstats-u5-sampling-dist/manifest.json` \u2014 example manifest with `unlockedBy` chains\r\n4. Existing tests in `tests/` \u2014 avoid duplication\r\n\r\n## Owned Paths\r\n- `tests/deep-link-roundtrip.test.js`\r\n\r\n## Test Structure\r\n\r\n```javascript\r\n// tests/deep-link-roundtrip.test.js\r\nimport { describe, test, expect, beforeEach, vi } from 'vitest';\r\n\r\ndescribe('Deep-link: Path A \u2014 Direct Navigation', () => {\r\n  test('loads correct cartridge from URL params', () => {\r\n    // Set window.location.search = '?cartridge=apstats-u5&mode=3'\r\n    // Call init sequence\r\n    // Assert: active cartridge is apstats-u5, active mode is 3\r\n  });\r\n\r\n  test('loads mode 1 when no mode param specified', () => {\r\n    // URL: ?cartridge=apstats-u5 (no mode)\r\n    // Assert: defaults to mode 1 (first unlocked)\r\n  });\r\n\r\n  test('redirects to first locked prerequisite if mode is locked', () => {\r\n    // URL: ?cartridge=apstats-u5&mode=5\r\n    // localStorage: modes 1-2 completed, 3-4 not completed\r\n    // Manifest: mode 5 unlockedBy mode 4\r\n    // Assert: redirects to mode 3 (first incomplete prerequisite)\r\n  });\r\n});\r\n\r\ndescribe('Deep-link: Path B \u2014 URL Restoration After Refresh', () => {\r\n  test('preserves mode after page refresh', () => {\r\n    // Setup: user was on mode 5, modes 1-4 completed in localStorage\r\n    // Simulate: page refresh (clear runtime state, keep URL + localStorage)\r\n    // Call init sequence\r\n    // Assert: active mode is 5, NOT mode 1\r\n  });\r\n\r\n  test('preserves progress state after refresh', () => {\r\n    // Setup: mode 3 in progress, 2 questions answered\r\n    // Refresh\r\n    // Assert: mode 3 active, previous answers preserved\r\n  });\r\n\r\n  test('URL restoration respects progression gating', () => {\r\n    // Setup: URL says mode 5, but localStorage shows only modes 1-2 done\r\n    // (User manually edited URL)\r\n    // Assert: redirects to first locked prerequisite, not mode 5\r\n  });\r\n});\r\n\r\ndescribe('Deep-link: Progression After Deep-Link Entry', () => {\r\n  test('completing deep-linked mode advances to next', () => {\r\n    // Enter via deep-link to mode 5\r\n    // Complete mode 5\r\n    // Assert: advances to mode 6, NOT back to mode 1\r\n  });\r\n\r\n  test('completing last mode shows completion state', () => {\r\n    // Deep-link to last mode\r\n    // Complete it\r\n    // Assert: shows cartridge completion, not loop back\r\n  });\r\n\r\n  test('the 5-7 to 5-2 regression does not occur', () => {\r\n    // Bug repro: user completes level 5-7\r\n    // Assert: next level is 5-8 or completion, NOT 5-2\r\n  });\r\n});\r\n```\r\n\r\n## Verification\r\n```bash\r\nnpx vitest run tests/deep-link-roundtrip.test.js --reporter=verbose\r\n```",
+    "constraints": {
+      "owned_paths": [
+        "tests/deep-link-roundtrip.test.js"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-07T23:58:48Z"
+}

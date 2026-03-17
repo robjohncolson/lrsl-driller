@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "e81cbfd2ef37",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 180,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Agent A: app.html Performance Optimizations\r\n\r\n## File to modify\r\n`platform/app.html`\r\n\r\n## Changes (4 optimizations in one file)\r\n\r\n### 1. Dynamic-import GhostPanel (biggest win: ~500 KB)\r\n\r\nThe static import at the top pulls in Three.js (466 KB), maze/terrain renderers, battle viz, orbits lobby, and multiplayer client \u2014 all unused.\r\n\r\n**Find line ~1023:**\r\n```javascript\r\nimport { GhostPanel, createGhostButton } from './game/ghost-panel.js';\r\n```\r\n\r\n**Replace with:**\r\n```javascript\r\n// LAZY: GhostPanel imports Three.js (466KB) \u2014 only load if ghost button ever clicked\r\n// import { GhostPanel, createGhostButton } from './game/ghost-panel.js';\r\nlet GhostPanel = null;\r\n```\r\n\r\n**Then find `initGhostPanel()` function (line ~1425) and replace its body:**\r\n```javascript\r\nfunction initGhostPanel() {\r\n  // Ghost system disabled \u2014 no-op\r\n  return;\r\n}\r\n```\r\n\r\n**Then find `toggleGhostPanel()` function (line ~1470) and replace its body:**\r\n```javascript\r\nasync function toggleGhostPanel() {\r\n  // Ghost system disabled \u2014 no-op\r\n  return;\r\n}\r\n```\r\n\r\n**Then find `updateGhostPanelForCartridge()` function (line ~1498) and replace its body:**\r\n```javascript\r\nfunction updateGhostPanelForCartridge() {\r\n  // Ghost system disabled \u2014 no-op\r\n  return;\r\n}\r\n```\r\n\r\n### 2. Batch DOM creation in populateCartridgeList (line ~3567)\r\n\r\n**Find the function `populateCartridgeList()`. Inside, find the loop that creates buttons:**\r\n```javascript\r\nfor (const [subject, cartridges] of Object.entries(grouped)) {\r\n  // ...\r\n  listEl.appendChild(header);\r\n  for (const cart of cartridges) {\r\n    // ...\r\n    listEl.appendChild(btn);\r\n    // ...\r\n    selectEl.appendChild(option);\r\n  }\r\n}\r\n```\r\n\r\n**Replace with DocumentFragment batching. Wrap the entire loop body:**\r\n```javascript\r\nconst listFragment = document.createDocumentFragment();\r\nconst selectFragment = document.createDocumentFragment();\r\n\r\nfor (const [subject, cartridges] of Object.entries(grouped)) {\r\n  const colors = subjectColors[subject] || subjectColors.default;\r\n\r\n  const header = document.createElement('div');\r\n  header.className = `text-xs font-bold ${colors.header} uppercase tracking-wide px-2 pt-1`;\r\n  header.textContent = subject;\r\n  listFragment.appendChild(header);\r\n\r\n  for (const cart of cartridges) {\r\n    const btn = document.createElement('button');\r\n    btn.className = `cartridge-option w-full flex items-center gap-3 p-2 rounded-lg ${colors.btnHover} transition-colors border-2 border-transparent`;\r\n    btn.dataset.cartridge = cart.id;\r\n    btn.innerHTML = `\r\n      <div class=\"w-10 h-14 bg-gradient-to-b ${colors.cartridge} rounded flex items-center justify-center text-white text-xs font-bold shadow\">\r\n        ${cart.shortCode || cart.id.substring(0, 4).toUpperCase()}\r\n      </div>\r\n      <div class=\"text-left flex-1\">\r\n        <div class=\"font-semibold text-gray-800 text-sm\">${cart.name}</div>\r\n        <div class=\"text-xs text-gray-500\">${cart.description || ''}</div>\r\n      </div>\r\n    `;\r\n    listFragment.appendChild(btn);\r\n\r\n    const option = document.createElement('option');\r\n    option.value = cart.id;\r\n    option.textContent = cart.name;\r\n    selectFragment.appendChild(option);\r\n  }\r\n}\r\n\r\nlistEl.appendChild(listFragment);\r\nselectEl.appendChild(selectFragment);\r\n```\r\n\r\n### 3. Reduce server detection timeout (line ~1046)\r\n\r\n**Find:**\r\n```javascript\r\nconst timeout = setTimeout(() => controller.abort(), 2000);\r\n```\r\n\r\n**Replace with:**\r\n```javascript\r\nconst timeout = setTimeout(() => controller.abort(), 1000);\r\n```\r\n\r\n### 4. Preload registry.json\r\n\r\n**Find the `<head>` section (line ~3), add after the `<meta>` tags:**\r\n```html\r\n<link rel=\"preload\" href=\"/cartridges/registry.json\" as=\"fetch\" crossorigin>\r\n```\r\n\r\n## Verification\r\n- Build must succeed: `npm run build`\r\n- App should load without ghost panel, Three.js, or game mode code\r\n- Cartridge list should render in a single DOM operation\r\n- Server detection should timeout after 1s instead of 2s",
+    "constraints": {
+      "owned_paths": [
+        "platform/app.html"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-11T14:04:52Z"
+}

@@ -1,0 +1,20 @@
+{
+  "protocol": "cross-agent/v1",
+  "call_id": "a10bea2b4637",
+  "status": "failed",
+  "result": {
+    "summary": "Cross-agent runner failed unexpectedly",
+    "files_changed": [],
+    "answer": "",
+    "confidence": 0,
+    "follow_up_needed": true,
+    "notes": "path is on mount '\\\\\\\\.\\\\nul', start on mount 'C:'"
+  },
+  "execution": {
+    "duration_seconds": 0.0,
+    "tokens_used": null,
+    "errors": [
+      "Cross-agent runner failed unexpectedly"
+    ]
+  }
+}

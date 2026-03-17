@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "543e9d87af38",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 600,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Agent: Wire Grading Proxy into LRSL-Driller\r\n\r\n## Phase\r\nP5-infrastructure | Depends on: shared-grading-proxy | Working dir: `C:/Users/ColsonR/lrsl-driller`\r\n\r\n## Objective\r\nUpdate lrsl-driller to call the shared grading proxy instead of its own inline AI grading logic.\r\n\r\n## Dependencies\r\n- **shared-grading-proxy** must be deployed and accessible\r\n\r\n## Context: What Changes\r\n\r\nSame pattern as curriculum_render \u2014 Railway server becomes a thin proxy to the shared grading service. Client-side endpoints unchanged.\r\n\r\n```\r\nBEFORE:\r\n  platform/core/grading-engine.js \u2192 POST /api/ai/grade \u2192 railway-server/server.js \u2192 Groq/Gemini\r\nAFTER:\r\n  platform/core/grading-engine.js \u2192 POST /api/ai/grade \u2192 railway-server/server.js \u2192 shared-grading-proxy\r\n```\r\n\r\n## Read First\r\n1. `railway-server/server.js` \u2014 find AI grading endpoints\r\n2. `platform/core/grading-engine.js` \u2014 client-side grading (Tier 1 stays)\r\n3. `railway-server/prompt-utils.js` \u2014 prompt templating (may move to proxy)\r\n\r\n## Owned Paths\r\n- `platform/core/grading-engine.js`\r\n- `railway-server/server.js`\r\n\r\n## Implementation\r\nSame pattern as P5-02 (curriculum_render):\r\n1. Replace inline Groq/Gemini calls in server.js with fetch to grading proxy\r\n2. Add GRADING_PROXY_URL to .env\r\n3. Keep client-side keyword grading untouched\r\n4. Fallback to keyword score if proxy is down\r\n\r\n## Constraints\r\n- 1682+ tests must still pass\r\n- Client-side code unchanged (same /api/ai/grade endpoint)\r\n- Cartridge-specific `ai-grader-prompt.txt` templates must be forwarded to proxy as `rubric` field\r\n\r\n## Verification\r\n```bash\r\nnpm test  # All 1682+ tests pass\r\n```",
+    "constraints": {
+      "owned_paths": [
+        "railway-server/server.js"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-07T23:58:50Z"
+}

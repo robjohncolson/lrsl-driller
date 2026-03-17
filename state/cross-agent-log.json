@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "calls": [
+    {
+      "call_id": "a10bea2b4637",
+      "direction": "cc-to-codex",
+      "task_type": "implement",
+      "prompt_summary": "Edit the file scripts/upload-animations.mjs.\r\n\r\nReplace the entire findRenderedFile function (from l",
+      "status": "failed",
+      "duration_seconds": 0.0,
+      "timestamp": "2026-03-07T05:02:03Z",
+      "files_changed": [],
+      "depth": 0
+    },
+    {
+      "call_id": "62b7a0582e17",
+      "direction": "cc-to-codex",
+      "task_type": "implement",
+      "prompt_summary": "# Agent: Education Platform CLAUDE.md Rules\r\n\r\n## Phase\r\nP1-foundation | No dependencies | Working d",
+      "status": "failed",
+      "duration_seconds": 0.0,
+      "timestamp": "2026-03-07T23:59:07Z",
+      "files_changed": [],
+      "depth": 0
+    },
+    {
+      "call_id": "beb71f85300d",
+      "direction": "cc-to-codex",
+      "task_type": "implement",
+      "prompt_summary": "# Step 1: Force TensorFlow.js CPU Backend\r\n\r\n## File to modify\r\n`platform/core/ghost-engine.js`\r\n\r\n#",
+      "status": "completed",
+      "duration_seconds": 172.58,
+      "timestamp": "2026-03-11T12:40:26Z",
+      "files_changed": [
+        "platform/core/ghost-engine.js"
+      ],
+      "depth": 0
+    },
+    {
+      "call_id": "eff6848462ed",
+      "direction": "cc-to-codex",
+      "task_type": "implement",
+      "prompt_summary": "# Step 2: Disable Three.js Renderers + Game Mode UI in Ghost Panel\r\n\r\n## File to modify\r\n`platform/g",
+      "status": "timeout",
+      "duration_seconds": 180.049,
+      "timestamp": "2026-03-11T12:40:34Z",
+      "files_changed": [],
+      "depth": 0
+    },
+    {
+      "call_id": "a1406c7bd385",
+      "direction": "cc-to-codex",
+      "task_type": "implement",
+      "prompt_summary": "# Step 3: Disable Game Controller & Launchers in app.html\r\n\r\n## File to modify\r\n`platform/app.html`\r",
+      "status": "timeout",
+      "duration_seconds": 180.03,
+      "timestamp": "2026-03-11T12:40:36Z",
+      "files_changed": [],
+      "depth": 0
+    },
+    {
+      "call_id": "7e651668db3a",
+      "direction": "cc-to-codex",
+      "task_type": "investigate",
+      "prompt_summary": "Analyze the lrsl-driller app for performance and responsiveness improvements. The app is a math dril",
+      "status": "timeout",
+      "duration_seconds": 180.091,
+      "timestamp": "2026-03-11T13:25:37Z",
+      "files_changed": [],
+      "depth": 0
+    },
+    {
+      "call_id": "734df87de619",
+      "direction": "cc-to-codex",
+      "task_type": "implement",
+      "prompt_summary": "# Agent C: Parallelize CartridgeLoader Network Requests\r\n\r\n## File to modify\r\n`platform/core/cartrid",
+      "status": "timeout",
+      "duration_seconds": 180.073,
+      "timestamp": "2026-03-11T14:07:57Z",
+      "files_changed": [],
+      "depth": 0
+    },
+    {
+      "call_id": "e81cbfd2ef37",
+      "direction": "cc-to-codex",
+      "task_type": "implement",
+      "prompt_summary": "# Agent A: app.html Performance Optimizations\r\n\r\n## File to modify\r\n`platform/app.html`\r\n\r\n## Change",
+      "status": "failed",
+      "duration_seconds": 180.108,
+      "timestamp": "2026-03-11T14:07:57Z",
+      "files_changed": [],
+      "depth": 0
+    },
+    {
+      "call_id": "08705b863697",
+      "direction": "cc-to-codex",
+      "task_type": "implement",
+      "prompt_summary": "# Agent E: Vite manualChunks Config\r\n\r\n## File to modify\r\n`vite.config.js`\r\n\r\n## Change\r\n\r\nFind the ",
+      "status": "timeout",
+      "duration_seconds": 120.049,
+      "timestamp": "2026-03-11T14:28:37Z",
+      "files_changed": [],
+      "depth": 0
+    },
+    {
+      "call_id": "84802ea50eac",
+      "direction": "cc-to-codex",
+      "task_type": "implement",
+      "prompt_summary": "# Agent F: Dynamic Imports for WebRTC, P2P, SyncQueue, RosterModal\r\n\r\n## File to modify\r\n`platform/a",
+      "status": "timeout",
+      "duration_seconds": 180.049,
+      "timestamp": "2026-03-11T14:29:37Z",
+      "files_changed": [],
+      "depth": 0
+    }
+  ],
+  "summary": {
+    "total_calls": 10,
+    "cc_to_codex": 10,
+    "codex_to_cc": 0,
+    "completed": 1,
+    "failed": 9,
+    "refused": 0,
+    "avg_duration_seconds": 137.303
+  }
+}

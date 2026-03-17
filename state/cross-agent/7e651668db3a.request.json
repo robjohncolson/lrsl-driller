@@ -1,0 +1,29 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "7e651668db3a",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 180,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "investigate",
+    "prompt": "Analyze the lrsl-driller app for performance and responsiveness improvements. The app is a math drill/practice platform. We already disabled TF.js and game modes (Ghost Orbits/Trails/Blizzard) but the bundle is still large (574KB main + 466KB Three.js chunk).\n\nFocus on:\n1. What heavy code is still being imported but not used? (Three.js, game renderers, multiplayer, WebRTC)\n2. What blocks the critical rendering path on startup?\n3. What can be lazy-loaded or code-split?\n4. Are there unnecessary network requests on load?\n5. What DOM/rendering patterns are expensive?\n6. Are there opportunities to reduce bundle size significantly?\n7. Any synchronous bottlenecks in the problem generation/grading loop?\n\nCheck these key files:\n- platform/app.html (main entry, ~5700 lines)\n- platform/game/ghost-panel.js (still imports Three.js)\n- platform/core/graph-engine.js (76KB)\n- platform/core/input-renderer.js (23KB)\n- vite.config.js\n- package.json\n\nGive specific file:line references and concrete recommendations ranked by expected impact (high/medium/low).",
+    "constraints": {
+      "owned_paths": [],
+      "read_only": true,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "answer"
+  },
+  "created_at": "2026-03-11T13:22:31Z"
+}

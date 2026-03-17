@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "08705b863697",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 120,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Agent E: Vite manualChunks Config\r\n\r\n## File to modify\r\n`vite.config.js`\r\n\r\n## Change\r\n\r\nFind the `build` config block (line ~234):\r\n```javascript\r\nexport default defineConfig({\r\n  build: {\r\n    rollupOptions: {\r\n      input: {\r\n        main: 'index.html',\r\n        app: 'platform/app.html',\r\n        mathViz: 'standalone/math-viz/index.html'\r\n      }\r\n    }\r\n  },\r\n```\r\n\r\nAdd an `output` block with `manualChunks` inside `rollupOptions`:\r\n```javascript\r\nexport default defineConfig({\r\n  build: {\r\n    rollupOptions: {\r\n      input: {\r\n        main: 'index.html',\r\n        app: 'platform/app.html',\r\n        mathViz: 'standalone/math-viz/index.html'\r\n      },\r\n      output: {\r\n        manualChunks(id) {\r\n          if (id.includes('graph-engine')) {\r\n            return 'graph';\r\n          }\r\n        }\r\n      }\r\n    }\r\n  },\r\n```\r\n\r\nThat's it. The function checks each module ID during bundling and assigns matching\r\nmodules to named chunks. Vite automatically generates `<link rel=\"modulepreload\">`\r\nfor these chunks so the browser downloads them in parallel.\r\n\r\n## Why only graph-engine?\r\n- Radical games are already code-split via dynamic import (previous commit)\r\n- Ghost/game modules are tree-shaken (imports commented out)\r\n- WebRTC/P2P/Roster will be dynamically imported by Agent F (separate file)\r\n- graph-engine is the only large module (77KB source) that must stay static\r\n\r\n## Verification\r\n- `npm run build` succeeds\r\n- Output shows a separate `graph-*.js` chunk (~35KB)\r\n- Main `app-*.js` bundle is smaller than before",
+    "constraints": {
+      "owned_paths": [
+        "vite.config.js"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-11T14:26:36Z"
+}

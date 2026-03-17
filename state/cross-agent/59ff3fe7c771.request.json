@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "59ff3fe7c771",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 600,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Agent: Extract URL State Module\r\n\r\n## Phase\r\nP3-education-hardening | Depends on: test-deep-link-roundtrip | Working dir: `C:/Users/ColsonR/lrsl-driller`\r\n\r\n## Objective\r\nExtract URL state management from app.html (3600 lines) into a dedicated `platform/core/url-state.js` module with its own test file.\r\n\r\n## Dependencies\r\n- **test-deep-link-roundtrip** must be green first \u2014 the extracted module must pass existing tests\r\n\r\n## Context: What to Extract\r\n\r\nCurrently scattered across app.html:\r\n1. `parseQueryParams()` \u2014 reads URL search params\r\n2. `updateURL(cartridgeId, modeId)` \u2014 calls `history.replaceState()`\r\n3. `restoreStateFromURL()` \u2014 on page load, determines initial cartridge + mode\r\n4. Deep-link validation logic \u2014 checks if requested mode is unlocked\r\n5. URL parameter encoding/decoding for sharing\r\n\r\n## Dependency Awareness\r\n\r\n```\r\nurl-state.js (NEW \u2014 extracted module)\r\n  \u251c\u2500\u2500 READS FROM: window.location (URL), localStorage (progress)\r\n  \u251c\u2500\u2500 WRITES TO: window.history (replaceState), URL params\r\n  \u251c\u2500\u2500 CONSUMED BY: app.html init sequence, loadCartridge(), advanceToNextMode()\r\n  \u2514\u2500\u2500 DEPENDS ON: game-engine.js (checkUnlocks for validation)\r\n```\r\n\r\n**Critical constraint:** The init sequence in app.html calls these functions in a specific order:\r\n```\r\n1. parseQueryParams()        \u2190 url-state.js\r\n2. loadCartridge(id)         \u2190 app.html (uses url-state output)\r\n3. restoreStateFromURL()     \u2190 url-state.js\r\n4. setActiveMode(mode)       \u2190 game-engine.js (uses url-state output)\r\n```\r\nDo NOT change this order. The module must be a drop-in extraction.\r\n\r\n## Owned Paths\r\n- `platform/core/url-state.js`\r\n- `tests/core/url-state.test.js`\r\n\r\n## Implementation Sketch\r\n\r\n```javascript\r\n// platform/core/url-state.js\r\n\r\nexport function parseQueryParams() {\r\n  const params = new URLSearchParams(window.location.search);\r\n  return {\r\n    cartridge: params.get('cartridge'),\r\n    mode: params.get('mode') ? parseInt(params.get('mode')) : null,\r\n    // ... other params\r\n  };\r\n}\r\n\r\nexport function updateURL(cartridgeId, modeId) {\r\n  const url = new URL(window.location);\r\n  url.searchParams.set('cartridge', cartridgeId);\r\n  if (modeId != null) url.searchParams.set('mode', modeId);\r\n  history.replaceState({}, '', url);\r\n}\r\n\r\nexport function resolveInitialMode(requestedMode, unlockedModes, completedModes) {\r\n  // If requested mode is unlocked \u2192 use it\r\n  // If locked \u2192 find first incomplete prerequisite\r\n  // If no mode requested \u2192 first unlocked incomplete mode\r\n}\r\n\r\nexport function buildShareURL(cartridgeId, modeId) {\r\n  const url = new URL(window.location.origin + window.location.pathname);\r\n  url.searchParams.set('cartridge', cartridgeId);\r\n  url.searchParams.set('mode', modeId);\r\n  return url.toString();\r\n}\r\n```\r\n\r\n## Constraints\r\n- Pure extraction \u2014 do NOT add new features\r\n- Must pass all existing tests + new deep-link-roundtrip tests\r\n- app.html must import from this module (update script tag)\r\n- Do not break the init sequence order\r\n\r\n## Verification\r\n```bash\r\nnpx vitest run tests/core/url-state.test.js tests/deep-link-roundtrip.test.js --reporter=verbose\r\nnpm test  # Full suite must still pass\r\n```",
+    "constraints": {
+      "owned_paths": [
+        "tests/core/url-state.test.js"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-07T23:58:50Z"
+}

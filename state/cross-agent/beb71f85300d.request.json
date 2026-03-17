@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "beb71f85300d",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 180,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Step 1: Force TensorFlow.js CPU Backend\r\n\r\n## File to modify\r\n`platform/core/ghost-engine.js`\r\n\r\n## Problem\r\nTensorFlow.js defaults to WebGL backend for GPU acceleration. This creates a WebGL context that conflicts with Three.js and canvas renderers, causing \"object does not belong to this context\" errors and app freezes.\r\n\r\n## Changes Required\r\n\r\n### 1. In `ensureTensorFlowLoaded()` function (around line 317-360)\r\n\r\nAfter the line:\r\n```javascript\r\nGhostNetwork.initTensorFlow(window.tf);\r\ntfLoaded = true;\r\n```\r\n\r\nAdd immediately after `tfLoaded = true;`:\r\n```javascript\r\n// Force CPU backend to avoid WebGL context conflicts\r\n// Ghost network is only 516 params \u2014 CPU is more than adequate\r\ntry {\r\n  await window.tf.setBackend('cpu');\r\n  await window.tf.ready();\r\n  console.log('[Ghost] TensorFlow.js backend set to CPU (WebGL disabled)');\r\n} catch (backendErr) {\r\n  console.warn('[Ghost] Could not set CPU backend:', backendErr.message);\r\n}\r\n```\r\n\r\n### 2. In `init()` function (around line 36-45)\r\n\r\nAfter the line where `tfInstance` is checked and `tfLoaded` is set to true:\r\n```javascript\r\nif (tfInstance) {\r\n    GhostNetwork.initTensorFlow(tfInstance);\r\n    tfLoaded = true;\r\n```\r\n\r\nAdd after `tfLoaded = true;`:\r\n```javascript\r\n    // Force CPU backend to avoid WebGL context conflicts\r\n    if (tfInstance.setBackend) {\r\n      tfInstance.setBackend('cpu');\r\n      console.log('[Ghost] TensorFlow.js backend forced to CPU');\r\n    }\r\n```\r\n\r\n## Verification\r\n- The console should log `[Ghost] TensorFlow.js backend set to CPU (WebGL disabled)` when TF loads\r\n- No `gpgpu_util.js` WebGL errors should appear\r\n- Ghost training still works (proficiency updates after interactions)",
+    "constraints": {
+      "owned_paths": [
+        "platform/core/ghost-engine.js"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-11T12:37:30Z"
+}

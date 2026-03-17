@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "e39a267bfd77",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 600,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Agent: Education Platform CLAUDE.md Rules\r\n\r\n## Phase\r\nP1-foundation | No dependencies | Working dirs: lrsl-driller, curriculum_render, apstats-live-worksheet\r\n\r\n## Objective\r\nAppend project-specific rules to CLAUDE.md for each education repo, encoding the dependency knowledge that prevents recurring bugs.\r\n\r\n## Context: Cross-Repo Dependencies\r\n\r\n```\r\napstats-live-worksheet (content generation)\r\n  \u251c\u2500\u2500 Generates: worksheets (HTML), rubrics (JS), Blooket CSVs\r\n  \u251c\u2500\u2500 Creation order: transcript \u2192 rubric \u2192 worksheet \u2192 blooket\r\n  \u2514\u2500\u2500 CONSUMED BY: curriculum_render (grading rubrics), lrsl-driller (cartridge assets)\r\n\r\ncurriculum_render (delivery platform)\r\n  \u251c\u2500\u2500 index.html load order: CSS \u2192 Chart.js \u2192 Config \u2192 Core \u2192 Sprites \u2192 Grading \u2192 Init\r\n  \u251c\u2500\u2500 Storage: IndexedDB \u2192 localStorage \u2192 Supabase (3-tier fallback)\r\n  \u251c\u2500\u2500 Grading: keywords \u2192 Groq AI \u2192 appeal (AI can ONLY upgrade, never downgrade)\r\n  \u2514\u2500\u2500 Network: Turbo (Railway) \u2192 LAN (Qwen :8765) \u2192 Offline\r\n\r\nlrsl-driller (drill platform)\r\n  \u251c\u2500\u2500 Console-cartridge pattern: platform/core/ must NEVER import from cartridges/\r\n  \u251c\u2500\u2500 Cartridge contract: manifest.json, generator.js, grading-rules.js, ai-grader-prompt.txt\r\n  \u251c\u2500\u2500 Deep-link: test BOTH direct navigation AND URL restoration after refresh\r\n  \u2514\u2500\u2500 Progression: manifest \"unlockedBy\" chains \u2014 check before reordering modes\r\n```\r\n\r\n## Read First\r\n1. `C:/Users/ColsonR/lrsl-driller/CLAUDE.md` (existing)\r\n2. `C:/Users/ColsonR/curriculum_render/CLAUDE.md` (existing)\r\n3. `C:/Users/ColsonR/apstats-live-worksheet/CLAUDE.md` (existing)\r\n\r\n## Owned Paths (across 3 repos)\r\n- `C:/Users/ColsonR/lrsl-driller/CLAUDE.md`\r\n- `C:/Users/ColsonR/curriculum_render/CLAUDE.md`\r\n- `C:/Users/ColsonR/apstats-live-worksheet/CLAUDE.md`\r\n\r\n## Rules for lrsl-driller/CLAUDE.md\r\n\r\n```markdown\r\n## Driller Rules\r\n\r\n### Console-Cartridge Separation\r\nPlatform code (platform/core/) must NEVER import from cartridges/.\r\nCartridges expose only: manifest.json, generator.js, grading-rules.js, ai-grader-prompt.txt.\r\n\r\n### Deep-Link Testing (Two Paths)\r\nDeep-link URLs must be tested against BOTH:\r\n1. Direct navigation (user pastes URL) \u2192 loadCartridge() path\r\n2. URL restoration after page refresh \u2192 history.replaceState path\r\nThe 5-7\u21925-2 regression happened because only path 1 was fixed.\r\n\r\n### Progression Gating\r\nCheck manifest.json \"unlockedBy\" chains before modifying mode ordering.\r\nModes gate on gold star counts \u2014 verify the chain is still valid after changes.\r\n\r\n### Answer Flow Dependency Chain\r\nUser submits \u2192 gradeField() [keywords] \u2192 AI grading [Groq] \u2192 recordResult()\r\n\u2192 awardStar() \u2192 checkUnlocks() \u2192 generateProblem() [next]\r\nEach step DEPENDS on the previous. Do not reorder.\r\n\r\n### Tests\r\n1682+ tests \u2014 run `npm test` before committing.\r\n```\r\n\r\n## Rules for curriculum_render/CLAUDE.md\r\n\r\n```markdown\r\n## Curriculum Render Rules\r\n\r\n### Critical Load Order (index.html)\r\nPhase 1: CSS + Chart.js (render-blocking)\r\nPhase 2: CDN with timeouts (MathJax 3s, Font Awesome 2s, Supabase 2s)\r\nPhase 3: Config (supabase_config.js, railway_config.js)\r\nPhase 4: Core (charts.js, diagnostics, railway_client.js)\r\nPhase 5: Sprites (sheet \u2192 canvas \u2192 entities \u2192 manager) \u2014 SEQUENTIAL\r\nPhase 6: Grading (grading-engine.js, frq-grading-rules.js)\r\nDO NOT reorder these phases. Sprites depend on canvas_engine. Grading depends on sprites.\r\n\r\n### Storage Dependency Chain\r\nIndexedDB (primary) \u2192 localStorage (fallback) \u2192 Supabase (cloud sync)\r\nDualWriteAdapter handles migration. Outbox-based sync for failed saves.\r\nDo not remove localStorage writes \u2014 backward compat during transition.\r\n\r\n### AI Grading Invariant\r\nAI can ONLY upgrade scores (I\u2192P, P\u2192E, I\u2192E). NEVER downgrade.\r\nThis is enforced at: server.js appeal endpoint, grading-engine.js, and client-side.\r\nAll three must agree. Do not break this invariant.\r\n\r\n### Tests\r\n667+ Vitest tests \u2014 run `npm test` before committing.\r\n```\r\n\r\n## Rules for apstats-live-worksheet/CLAUDE.md\r\n\r\n```markdown\r\n## Lesson Pipeline Rules\r\n\r\n### Creation Dependency Order\r\ntranscript \u2192 rubric \u2192 worksheet \u2192 blooket \u2192 schoology\r\nEach step depends on the previous. Cannot skip.\r\n\r\n### Video Transcription Is DORMANT\r\nGemini 3.1 Pro has zero free quota. Use either:\r\n- Agent/scripts/aistudio-ingest.mjs (CDP \u2192 Google AI Studio)\r\n- video-ingest-whisper.mjs (Whisper, when implemented)\r\n\r\n### Worksheet Structure\r\nSelf-contained single HTML files. No build step. No external deps except CDN.\r\nRubrics are in ai-grading-prompts-u{N}-l{L}.js files.\r\nRubric schema: { questionText, expectedElements[], scoringGuide {E,P,I}, commonMistakes[] }\r\n```\r\n\r\n## Verification\r\n```bash\r\ngrep \"Console-Cartridge\" C:/Users/ColsonR/lrsl-driller/CLAUDE.md\r\ngrep \"Load Order\" C:/Users/ColsonR/curriculum_render/CLAUDE.md\r\ngrep \"DORMANT\" C:/Users/ColsonR/apstats-live-worksheet/CLAUDE.md\r\n```",
+    "constraints": {
+      "owned_paths": [
+        "CLAUDE.md"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-07T23:58:47Z"
+}

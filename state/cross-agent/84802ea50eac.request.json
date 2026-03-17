@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "84802ea50eac",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 180,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Agent F: Dynamic Imports for WebRTC, P2P, SyncQueue, RosterModal\r\n\r\n## File to modify\r\n`platform/app.html`\r\n\r\n## Problem\r\nFour modules (~46KB combined) are statically imported but only used conditionally:\r\n- WebRTCManager (14KB) \u2014 multiplayer only\r\n- P2PAssetTransfer (14KB) \u2014 multiplayer only\r\n- SyncQueue (12KB) \u2014 multiplayer only\r\n- RosterModal (20KB) \u2014 teacher only\r\n\r\n## Changes\r\n\r\n### 1. Remove static imports (lines ~1022, 1030-1031)\r\n\r\n**Find and comment out these lines:**\r\n```javascript\r\nimport { RosterModal } from './core/roster-modal.js';\r\n```\r\nand:\r\n```javascript\r\nimport { SyncQueue } from './core/sync-queue.js';\r\nimport { WebRTCManager } from './core/webrtc-manager.js';\r\n```\r\n\r\n**Replace with lazy declarations:**\r\n```javascript\r\n// Lazy-loaded: only used by teachers\r\n// import { RosterModal } from './core/roster-modal.js';\r\nlet RosterModal = null;\r\n\r\n// Lazy-loaded: only used for multiplayer\r\n// import { SyncQueue } from './core/sync-queue.js';\r\n// import { WebRTCManager } from './core/webrtc-manager.js';\r\nlet SyncQueue = null;\r\nlet WebRTCManager = null;\r\n```\r\n\r\nAlso comment out:\r\n```javascript\r\nimport { P2PAssetTransfer } from './core/p2p-asset-transfer.js';\r\n```\r\nAnd add:\r\n```javascript\r\n// Lazy-loaded: only used for multiplayer P2P\r\n// import { P2PAssetTransfer } from './core/p2p-asset-transfer.js';\r\nlet P2PAssetTransfer = null;\r\n```\r\n\r\n### 2. Lazy-load RosterModal where it's first used\r\n\r\n**Find the code around line ~3035 that creates the roster modal:**\r\n```javascript\r\nif (!rosterModal) {\r\n  rosterModal = new RosterModal({ serverUrl: SERVER_URL });\r\n}\r\n```\r\n\r\n**Replace with:**\r\n```javascript\r\nif (!rosterModal) {\r\n  if (!RosterModal) {\r\n    ({ RosterModal } = await import('./core/roster-modal.js'));\r\n  }\r\n  rosterModal = new RosterModal({ serverUrl: SERVER_URL });\r\n}\r\n```\r\n\r\nMake sure the enclosing function is `async`. Look at the function that contains this code \u2014 it's likely already async or inside an async handler.\r\n\r\n### 3. Lazy-load WebRTCManager where it's first used\r\n\r\n**Find the function `initWebRTCManager` (search for it). Inside, before `new WebRTCManager`, add the dynamic import:**\r\n```javascript\r\nif (!WebRTCManager) {\r\n  ({ WebRTCManager } = await import('./core/webrtc-manager.js'));\r\n}\r\n```\r\n\r\nMake sure the function is async.\r\n\r\n### 4. Lazy-load P2PAssetTransfer where it's first used\r\n\r\n**Find where P2PAssetTransfer is instantiated (line ~1244-1245):**\r\n```javascript\r\nif (connected && wsClient.currentUsername && !p2pAssetTransfer) {\r\n  p2pAssetTransfer = new P2PAssetTransfer(wsClient, assetCache, wsClient.currentUsername);\r\n```\r\n\r\n**Replace with:**\r\n```javascript\r\nif (connected && wsClient.currentUsername && !p2pAssetTransfer) {\r\n  if (!P2PAssetTransfer) {\r\n    ({ P2PAssetTransfer } = await import('./core/p2p-asset-transfer.js'));\r\n  }\r\n  p2pAssetTransfer = new P2PAssetTransfer(wsClient, assetCache, wsClient.currentUsername);\r\n```\r\n\r\nMake sure the enclosing function/callback is async.\r\n\r\n### 5. Lazy-load SyncQueue where it's first used\r\n\r\n**Find where SyncQueue is instantiated. Search for `new SyncQueue`. Before that line:**\r\n```javascript\r\nif (!SyncQueue) {\r\n  ({ SyncQueue } = await import('./core/sync-queue.js'));\r\n}\r\n```\r\n\r\n## Important Notes\r\n- The `({ ClassName } = await import(...))` pattern destructures the named export and assigns to the outer `let` variable. Subsequent calls skip the import.\r\n- Each enclosing function must be `async` for `await` to work. Most handlers in this app are already async.\r\n- AssetCache and AssetResolver are NOT changed \u2014 they're used at startup.\r\n\r\n## Verification\r\n- `npm run build` succeeds\r\n- App loads for a student \u2014 no WebRTC/P2P/Roster/SyncQueue in Network tab\r\n- Teacher mode still works (roster modal loads on demand)\r\n- Multiplayer still works (WebRTC loads when WS connects)",
+    "constraints": {
+      "owned_paths": [
+        "platform/app.html"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-11T14:26:37Z"
+}

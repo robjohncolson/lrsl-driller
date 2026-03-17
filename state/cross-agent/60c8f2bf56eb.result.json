@@ -1,0 +1,20 @@
+{
+  "protocol": "cross-agent/v1",
+  "call_id": "60c8f2bf56eb",
+  "status": "failed",
+  "result": {
+    "summary": "Cross-agent runner encountered an error",
+    "files_changed": [],
+    "answer": "",
+    "confidence": 0,
+    "follow_up_needed": true,
+    "notes": "[WinError 32] The process cannot access the file because it is being used by another process: 'C:\\\\Users\\\\ColsonR\\\\lrsl-driller\\\\state\\\\cross-agent-log.json.tmp' -> 'C:\\\\Users\\\\ColsonR\\\\lrsl-driller\\\\state\\\\cross-agent-log.json'"
+  },
+  "execution": {
+    "duration_seconds": 180.107,
+    "tokens_used": null,
+    "errors": [
+      "Cross-agent runner encountered an error"
+    ]
+  }
+}

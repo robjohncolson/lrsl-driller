@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "47ff6ef32539",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 600,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Agent: Test Progression Regression\r\n\r\n## Phase\r\nP3-education-hardening | No dependencies | Working dir: `C:/Users/ColsonR/lrsl-driller`\r\n\r\n## Objective\r\nWrite Vitest tests for level completion \u2192 next level advancement, specifically preventing the 5-7\u21925-2 regression.\r\n\r\n## Context: Progression Dependency Chain\r\n\r\n```\r\nUser completes a problem correctly\r\n  \u2193\r\ngameEngine.recordResult(fieldId, score, allFieldsCorrect=true)\r\n  \u2193\r\ncalculatePenalties(hintsUsed, retries)\r\n  \u2193\r\ngetStarType(penalties) \u2192 gold/silver/bronze/tin\r\n  \u2193\r\nawardStar(starType, currentTier)\r\n  \u251c\u2500\u2500 Increment starCounts[starType]\r\n  \u251c\u2500\u2500 Increment starsPerMode[modeId][starType]\r\n  \u2514\u2500\u2500 onStarEarned callback\r\n  \u2193\r\ncheckUnlocks(manifest.modes)\r\n  \u251c\u2500\u2500 For each locked mode:\r\n  \u2502   \u251c\u2500\u2500 Check unlockedBy field\r\n  \u2502   \u251c\u2500\u2500 If prerequisite mode has enough gold stars \u2192 UNLOCK\r\n  \u2502   \u2514\u2500\u2500 Else \u2192 remain locked\r\n  \u2514\u2500\u2500 Return newly unlocked modes\r\n  \u2193\r\nadvanceToNextMode()  \u2190 BUG LIVED HERE\r\n  \u251c\u2500\u2500 Find current mode index in modeOrder\r\n  \u251c\u2500\u2500 Next = modeOrder[currentIndex + 1]\r\n  \u2514\u2500\u2500 If next is unlocked \u2192 setActiveMode(next)\r\n      If next is locked \u2192 ???  \u2190 edge case\r\n```\r\n\r\n**The bug:** `advanceToNextMode()` used an incorrect index calculation that wrapped around to an earlier mode under certain conditions.\r\n\r\n## Read First\r\n1. `platform/core/game-engine.js` \u2014 `recordResult()`, `awardStar()`, `checkUnlocks()`, `advanceToNextMode()`\r\n2. `cartridges/apstats-u5-sampling-dist/manifest.json` \u2014 `modes[]` with `unlockedBy` fields\r\n3. `cartridges/registry.json` \u2014 all cartridge IDs\r\n\r\n## Owned Paths\r\n- `tests/progression-regression.test.js`\r\n\r\n## Test Structure\r\n\r\n```javascript\r\ndescribe('Progression: Star Award \u2192 Unlock \u2192 Advance', () => {\r\n  test('completing mode N advances to mode N+1', () => {\r\n    // For modes 1 through 7: complete each, verify next is N+1\r\n  });\r\n\r\n  test('completing last mode does not wrap to beginning', () => {\r\n    // Complete final mode \u2192 should show completion, not mode 1\r\n  });\r\n\r\n  test('5-7 completion advances to 5-8 not 5-2', () => {\r\n    // Specific regression test for the reported bug\r\n  });\r\n\r\n  test('unlock chain: mode 3 unlocks after mode 2 gold', () => {\r\n    // mode 3 has unlockedBy: \"mode-2\"\r\n    // Award gold on mode 2\r\n    // Assert: mode 3 now unlocked\r\n  });\r\n\r\n  test('advance skips locked modes to next unlocked', () => {\r\n    // mode 4 locked, mode 5 unlocked\r\n    // Complete mode 3\r\n    // Assert: advances to mode 5, not stuck on locked mode 4\r\n  });\r\n});\r\n\r\ndescribe('Progression: Edge Cases', () => {\r\n  test('tin star still counts for completion but not unlock', () => {\r\n    // Tin = 3+ penalties, still completes the problem\r\n    // But may not accumulate enough gold to unlock next tier\r\n  });\r\n\r\n  test('concurrent mode completions do not corrupt index', () => {\r\n    // Rapid submissions don't cause race condition in modeOrder index\r\n  });\r\n\r\n  test('cartridge switch preserves per-cartridge progress', () => {\r\n    // Switch from cartridge A to B and back\r\n    // Assert: A's progress unchanged\r\n  });\r\n});\r\n```\r\n\r\n## Verification\r\n```bash\r\nnpx vitest run tests/progression-regression.test.js --reporter=verbose\r\n```",
+    "constraints": {
+      "owned_paths": [
+        "tests/progression-regression.test.js"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-07T23:58:49Z"
+}

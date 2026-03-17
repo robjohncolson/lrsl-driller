@@ -1,0 +1,31 @@
+{
+  "envelope": {
+    "protocol": "cross-agent/v1",
+    "direction": "cc-to-codex",
+    "caller": "claude-code",
+    "call_id": "a1406c7bd385",
+    "depth": 0,
+    "max_depth": 1,
+    "timeout_seconds": 180,
+    "working_dir": "C:/Users/ColsonR/lrsl-driller",
+    "context": {
+      "parent_task": "",
+      "why_delegating": "",
+      "files_relevant": []
+    }
+  },
+  "payload": {
+    "task_type": "implement",
+    "prompt": "# Step 3: Disable Game Controller & Launchers in app.html\r\n\r\n## File to modify\r\n`platform/app.html`\r\n\r\n## Problem\r\nThe GhostOrbitsController import pulls in arena-mode.js, trails-mode.js, blizzard-mode.js, and ghost-orbits-renderer.js \u2014 all of which create canvas/WebGL contexts. Even if never launched, the import tree may trigger side effects.\r\n\r\n## Changes Required\r\n\r\n### 1. Comment out the GhostOrbitsController import (line ~1024)\r\n\r\nChange:\r\n```javascript\r\nimport { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';\r\n```\r\nTo:\r\n```javascript\r\n// DISABLED: Game modes cause WebGL context conflicts\r\n// import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';\r\nconst OrbitsGameState = { IDLE: 'idle', CONNECTING: 'connecting', COUNTDOWN: 'countdown', PLAYING: 'playing', ELIMINATED: 'eliminated', SPECTATING: 'spectating', ROUND_END: 'round_end', INTERMISSION: 'intermission' };\r\n```\r\n\r\n(We keep OrbitsGameState as a plain object so any references to it don't throw)\r\n\r\n### 2. Make `initGhostOrbits()` a no-op (line ~1536)\r\n\r\nReplace the function body:\r\n```javascript\r\nfunction initGhostOrbits(modeType = 'arena') {\r\n  console.log('[GhostOrbits] Game modes disabled to prevent WebGL context conflicts');\r\n  return null;\r\n}\r\n```\r\n\r\n### 3. Make `canEnterGhostOrbits()` return false (line ~1570)\r\n\r\nReplace:\r\n```javascript\r\nfunction canEnterGhostOrbits() {\r\n  return false; // Game modes disabled\r\n}\r\n```\r\n\r\n### 4. Make `launchGhostOrbits()` a no-op (line ~1581)\r\n\r\nReplace:\r\n```javascript\r\nasync function launchGhostOrbits() {\r\n  console.log('[GhostOrbits] Game modes disabled to prevent WebGL context conflicts');\r\n  return false;\r\n}\r\n```\r\n\r\n### 5. Keep the global exports (line ~1647)\r\nThese lines should stay as-is since ghost-panel.js calls them:\r\n```javascript\r\nwindow.launchGhostOrbits = launchGhostOrbits;\r\nwindow.canEnterGhostOrbits = canEnterGhostOrbits;\r\n```\r\n\r\n### 6. Keep `notifyGhostOrbitsGoldStar()` safe (line ~1632)\r\nIt already has a null guard (`if (ghostOrbitsController && ...)`), so it's safe with `ghostOrbitsController = null`.\r\n\r\n## Verification\r\n- App loads without importing game mode modules (check Network tab \u2014 no arena-mode.js, trails-mode.js, blizzard-mode.js)\r\n- `canEnterGhostOrbits()` returns false in console\r\n- No WebGL contexts created by game controllers\r\n- All other app functionality works (problems, ghost training, stars)",
+    "constraints": {
+      "owned_paths": [
+        "platform/app.html"
+      ],
+      "read_only": false,
+      "no_git_commits": true,
+      "max_files_changed": 10
+    },
+    "expected_output": "code-changes"
+  },
+  "created_at": "2026-03-11T12:37:34Z"
+}
