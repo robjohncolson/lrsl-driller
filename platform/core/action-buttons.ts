@@ -4,6 +4,7 @@
  *
  * Extracted from app.html (opportunistic extraction pass).
  */
+import type { DocumentLike, PlatformLike, SoundEngineLike, GradingLevel } from './types.ts';
 
 const AI_REVIEW_SPINNER = `
   <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -20,8 +21,34 @@ const AI_REVIEW_ICON = `
   Request AI Review
 `;
 
+export interface ActionButtonsConfig {
+  documentLike?: DocumentLike | null;
+  platform?: PlatformLike | null;
+  soundEngine?: SoundEngineLike | null;
+  setGradingLevel?: (level: GradingLevel) => void;
+  updateGradingLevelIndicator?: (level: GradingLevel) => void;
+  hideAllEscalationButtons?: () => void;
+  hideAIFeedbackPanel?: (panel: unknown) => void;
+  getAIFeedbackPanel?: () => unknown;
+  updateScenarioDisplay?: () => void;
+  submitForTeacherReview?: () => void;
+  clearPendingTeacherReview?: () => void;
+}
+
 export class ActionButtons {
-  constructor(config = {}) {
+  documentLike: DocumentLike | null;
+  platform: PlatformLike | null;
+  soundEngine: SoundEngineLike | null;
+  setGradingLevel: (level: GradingLevel) => void;
+  updateGradingLevelIndicator: (level: GradingLevel) => void;
+  hideAllEscalationButtons: () => void;
+  hideAIFeedbackPanel: (panel: unknown) => void;
+  getAIFeedbackPanel: () => unknown;
+  updateScenarioDisplay: () => void;
+  submitForTeacherReview: () => void;
+  clearPendingTeacherReview: () => void;
+
+  constructor(config: ActionButtonsConfig = {}) {
     this.documentLike = config.documentLike || globalThis.document || null;
     this.platform = config.platform || null;
     this.soundEngine = config.soundEngine || null;
@@ -35,17 +62,16 @@ export class ActionButtons {
     this.clearPendingTeacherReview = config.clearPendingTeacherReview || (() => {});
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  _clearTeacherReview() {
+  _clearTeacherReview(): void {
     this.clearPendingTeacherReview();
     this.getElement('btn-teacher-review')?.classList.add('hidden');
   }
 
-  init() {
-    // Grade button - algorithm-only first
+  init(): void {
     this.getElement('btn-grade')?.addEventListener('click', async () => {
       this.soundEngine?.init?.();
       this.setGradingLevel('algorithm');
@@ -54,9 +80,8 @@ export class ActionButtons {
       await this.platform?.grade?.({ useAI: false });
     });
 
-    // AI Review button - escalate from algorithm to AI
     this.getElement('btn-ai-review')?.addEventListener('click', async () => {
-      const btn = this.getElement('btn-ai-review');
+      const btn = this.getElement('btn-ai-review') as HTMLButtonElement | null;
       if (!btn) return;
       btn.disabled = true;
       btn.innerHTML = AI_REVIEW_SPINNER;
@@ -71,7 +96,6 @@ export class ActionButtons {
       }
     });
 
-    // Try Again button
     this.getElement('btn-try-again')?.addEventListener('click', () => {
       this.getElement('btn-try-again')?.classList.add('hidden');
       this.getElement('btn-grade')?.classList.remove('hidden');
@@ -85,7 +109,6 @@ export class ActionButtons {
       this._clearTeacherReview();
     });
 
-    // Next button
     this.getElement('btn-next')?.addEventListener('click', async () => {
       this.getElement('btn-next')?.classList.add('hidden');
       this.getElement('btn-try-again')?.classList.add('hidden');
@@ -99,7 +122,6 @@ export class ActionButtons {
       this._clearTeacherReview();
     });
 
-    // Skip button
     this.getElement('btn-skip')?.addEventListener('click', async () => {
       this.platform?.inputRenderer?.clearAllFeedback();
       this.hideAllEscalationButtons();
@@ -110,7 +132,6 @@ export class ActionButtons {
       this._clearTeacherReview();
     });
 
-    // Teacher Review button
     this.getElement('btn-teacher-review')?.addEventListener('click', () => {
       this.submitForTeacherReview();
     });

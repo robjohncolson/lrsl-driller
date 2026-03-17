@@ -3,8 +3,38 @@
  *
  * Extracted from app.html (opportunistic extraction pass).
  */
+import type { DocumentLike, UserSystemLike, UserInfo } from './types.ts';
+
+export interface SignInPayload {
+  username: string;
+  displayName: string;
+  password: string | undefined;
+  isTeacher: boolean;
+}
+
+export interface RegisterPayload {
+  username: string | undefined;
+  displayName: string;
+}
+
+export interface UsernameModalConfig {
+  documentLike?: DocumentLike | null;
+  userSystem?: UserSystemLike | null;
+  generateUsername?: () => string;
+  onSignIn?: (payload: SignInPayload) => void | Promise<void>;
+  onRegister?: (payload: RegisterPayload) => void | Promise<void>;
+}
+
 export class UsernameModal {
-  constructor(config = {}) {
+  documentLike: DocumentLike | null;
+  userSystem: UserSystemLike | null;
+  generateUsername: () => string;
+  onSignIn: (payload: SignInPayload) => void | Promise<void>;
+  onRegister: (payload: RegisterPayload) => void | Promise<void>;
+  isFirstVisit: boolean;
+  usersData: UserInfo[];
+
+  constructor(config: UsernameModalConfig = {}) {
     this.documentLike = config.documentLike || globalThis.document || null;
     this.userSystem = config.userSystem || null;
     this.generateUsername = config.generateUsername || (() => 'user-' + Math.random().toString(36).slice(2, 8));
@@ -15,14 +45,14 @@ export class UsernameModal {
     this.usersData = [];
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  async show(isFirstVisit = false) {
+  async show(isFirstVisit = false): Promise<void> {
     this.isFirstVisit = isFirstVisit;
     this.getElement('username-modal')?.classList.remove('hidden');
-    const usernameInput = this.getElement('username-input');
+    const usernameInput = this.getElement('username-input') as HTMLInputElement | null;
     if (usernameInput) usernameInput.value = this.generateUsername();
     this.getElement('username-error')?.classList.add('hidden');
 
@@ -31,13 +61,13 @@ export class UsernameModal {
     this.getElement('new-user-section')?.classList.add('hidden');
 
     // Clear previous inputs
-    const realname = this.getElement('realname-input');
+    const realname = this.getElement('realname-input') as HTMLInputElement | null;
     if (realname) realname.value = '';
-    const password = this.getElement('password-input');
+    const password = this.getElement('password-input') as HTMLInputElement | null;
     if (password) password.value = '';
-    const existingSelect = this.getElement('existing-user-select');
+    const existingSelect = this.getElement('existing-user-select') as HTMLSelectElement | null;
     if (existingSelect) existingSelect.value = '';
-    const existingPassword = this.getElement('existing-password-input');
+    const existingPassword = this.getElement('existing-password-input') as HTMLInputElement | null;
     if (existingPassword) existingPassword.value = '';
     this.getElement('existing-password-section')?.classList.add('hidden');
     this.getElement('teacher-password-section')?.classList.add('hidden');
@@ -57,31 +87,31 @@ export class UsernameModal {
 
     // Focus the dropdown (primary action is sign-in now)
     setTimeout(() => {
-      this.getElement('existing-user-select')?.focus();
+      (this.getElement('existing-user-select') as HTMLElement | null)?.focus();
     }, 100);
   }
 
-  hide() {
+  hide(): void {
     this.getElement('username-modal')?.classList.add('hidden');
   }
 
-  showNewUserForm() {
+  showNewUserForm(): void {
     this.getElement('signin-section')?.classList.add('hidden');
     this.getElement('new-user-section')?.classList.remove('hidden');
     this.getElement('username-error')?.classList.add('hidden');
-    const usernameInput = this.getElement('username-input');
+    const usernameInput = this.getElement('username-input') as HTMLInputElement | null;
     if (usernameInput) usernameInput.value = this.generateUsername();
-    setTimeout(() => this.getElement('realname-input')?.focus(), 50);
+    setTimeout(() => (this.getElement('realname-input') as HTMLElement | null)?.focus(), 50);
   }
 
-  showSignInForm() {
+  showSignInForm(): void {
     this.getElement('new-user-section')?.classList.add('hidden');
     this.getElement('signin-section')?.classList.remove('hidden');
     this.getElement('username-error')?.classList.add('hidden');
-    setTimeout(() => this.getElement('existing-user-select')?.focus(), 50);
+    setTimeout(() => (this.getElement('existing-user-select') as HTMLElement | null)?.focus(), 50);
   }
 
-  async populateExistingUsers() {
+  async populateExistingUsers(): Promise<void> {
     const select = this.getElement('existing-user-select');
     if (!select) return;
     select.innerHTML = '<option value="">Select your name...</option>';
@@ -91,7 +121,7 @@ export class UsernameModal {
       this.usersData = users;
 
       // Sort by real_name first, then username
-      users.sort((a, b) => {
+      users.sort((a: UserInfo, b: UserInfo) => {
         const nameA = (a.real_name || a.username).toLowerCase();
         const nameB = (b.real_name || b.username).toLowerCase();
         return nameA.localeCompare(nameB);
@@ -100,7 +130,7 @@ export class UsernameModal {
       for (const user of users) {
         const option = this.documentLike?.createElement?.('option');
         if (!option) break;
-        option.value = user.username;
+        (option as HTMLOptionElement).value = user.username;
         option.textContent = user.real_name
           ? `${user.real_name} (${user.username})`
           : user.username;
@@ -111,7 +141,7 @@ export class UsernameModal {
     }
   }
 
-  _showError(message) {
+  _showError(message: string): void {
     const errorEl = this.getElement('username-error');
     if (errorEl) {
       errorEl.textContent = message;
@@ -119,9 +149,9 @@ export class UsernameModal {
     }
   }
 
-  async signIn() {
-    const existingSelect = this.getElement('existing-user-select');
-    const existingPassword = this.getElement('existing-password-input');
+  async signIn(): Promise<void> {
+    const existingSelect = this.getElement('existing-user-select') as HTMLSelectElement | null;
+    const existingPassword = this.getElement('existing-password-input') as HTMLInputElement | null;
 
     if (!existingSelect?.value) {
       this._showError('Please select your name');
@@ -149,10 +179,10 @@ export class UsernameModal {
     });
   }
 
-  async register() {
-    const usernameInput = this.getElement('username-input');
-    const realNameInput = this.getElement('realname-input');
-    const passwordInput = this.getElement('password-input');
+  async register(): Promise<void> {
+    const usernameInput = this.getElement('username-input') as HTMLInputElement | null;
+    const realNameInput = this.getElement('realname-input') as HTMLInputElement | null;
+    const passwordInput = this.getElement('password-input') as HTMLInputElement | null;
 
     const username = usernameInput?.value?.trim();
     const realName = realNameInput?.value?.trim();
@@ -168,7 +198,7 @@ export class UsernameModal {
       return;
     }
 
-    const result = await this.userSystem?.createUser?.(username, realName, password);
+    const result = await this.userSystem?.createUser?.(username!, realName, password);
     if (result?.error) {
       this._showError(result.error);
       return;
@@ -178,20 +208,20 @@ export class UsernameModal {
 
     await this.onRegister({
       username,
-      displayName: realName || username
+      displayName: realName || username!
     });
   }
 
-  initEventListeners() {
+  initEventListeners(): void {
     // Toggle between sign-in and new user forms
     this.getElement('new-user-link')?.addEventListener('click', () => this.showNewUserForm());
     this.getElement('back-to-signin')?.addEventListener('click', () => this.showSignInForm());
 
     // Existing user dropdown - show password field when selected
-    this.getElement('existing-user-select')?.addEventListener('change', (e) => {
+    this.getElement('existing-user-select')?.addEventListener('change', (e: Event) => {
       const passwordSection = this.getElement('existing-password-section');
-      const passwordInput = this.getElement('existing-password-input');
-      if (e.target.value) {
+      const passwordInput = this.getElement('existing-password-input') as HTMLElement | null;
+      if ((e.target as HTMLSelectElement).value) {
         passwordSection?.classList.remove('hidden');
         setTimeout(() => passwordInput?.focus(), 50);
       } else {
@@ -200,7 +230,7 @@ export class UsernameModal {
     });
 
     this.getElement('regenerate-username')?.addEventListener('click', () => {
-      const input = this.getElement('username-input');
+      const input = this.getElement('username-input') as HTMLInputElement | null;
       if (input) input.value = this.generateUsername();
     });
 
@@ -215,11 +245,11 @@ export class UsernameModal {
     this._initKeyboardListeners();
   }
 
-  _initKeyboardListeners() {
+  _initKeyboardListeners(): void {
     // Enter key to submit from registration form fields
     ['realname-input', 'password-input'].forEach(id => {
-      this.getElement(id)?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+      this.getElement(id)?.addEventListener('keydown', (e: Event) => {
+        if ((e as KeyboardEvent).key === 'Enter') {
           e.preventDefault();
           this.register();
         }
@@ -227,33 +257,34 @@ export class UsernameModal {
     });
 
     // Enter key to submit from existing user password field
-    this.getElement('existing-password-input')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+    this.getElement('existing-password-input')?.addEventListener('keydown', (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Enter') {
         e.preventDefault();
         this.signIn();
       }
     });
 
     // Enter key to submit from teacher password field
-    this.getElement('teacher-password-input')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+    this.getElement('teacher-password-input')?.addEventListener('keydown', (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Enter') {
         e.preventDefault();
         this.getElement('teacher-submit-btn')?.click();
       }
     });
 
     // R key to regenerate username when focused on username field
-    this.getElement('username-input')?.addEventListener('keydown', (e) => {
-      if (e.key === 'r' || e.key === 'R') {
+    this.getElement('username-input')?.addEventListener('keydown', (e: Event) => {
+      if ((e as KeyboardEvent).key === 'r' || (e as KeyboardEvent).key === 'R') {
         e.preventDefault();
-        const input = this.getElement('username-input');
+        const input = this.getElement('username-input') as HTMLInputElement | null;
         if (input) input.value = this.generateUsername();
       }
     });
 
     // Focus existing password when selecting from dropdown
-    this.getElement('existing-user-select')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && e.target.value) {
+    this.getElement('existing-user-select')?.addEventListener('keydown', (e: Event) => {
+      const ke = e as KeyboardEvent;
+      if (ke.key === 'Enter' && (e.target as HTMLSelectElement).value) {
         e.preventDefault();
         const passwordSection = this.getElement('existing-password-section');
         if (passwordSection && !passwordSection.classList.contains('hidden')) {

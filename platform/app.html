@@ -1034,18 +1034,18 @@
     import { DEFAULT_SERVER_URL, detectNetworkConfig } from './core/network-config.js';
     import { TeacherModeController } from './core/teacher-mode.js';
     import { TeacherReviewPanel } from './core/teacher-review.js';
-    import { TimeAnalyticsPanel } from './core/time-analytics.js';
+    import { TimeAnalyticsPanel } from './core/time-analytics.ts';
     import { SettingsMediaController } from './core/settings-media.js';
     import { RealtimeController } from './core/realtime-controller.js';
     import { CartridgeLoadingController } from './core/cartridge-loading.js';
-    import { AnimationControls } from './core/animation-controls.js';
-    import { UsernameModal } from './core/username-modal.js';
-    import { AIAppealHandlers } from './core/ai-appeal.js';
-    import { ActionButtons } from './core/action-buttons.js';
-    import { GradingEscalation } from './core/grading-escalation.js';
-    import { initShareModal } from './core/share-modal.js';
-    import { ConsoleCommands } from './core/console-commands.js';
-    import { TeacherProgressionControls } from './core/teacher-progression.js';
+    import { AnimationControls } from './core/animation-controls.ts';
+    import { UsernameModal } from './core/username-modal.ts';
+    import { AIAppealHandlers } from './core/ai-appeal.ts';
+    import { ActionButtons } from './core/action-buttons.ts';
+    import { GradingEscalation } from './core/grading-escalation.ts';
+    import { initShareModal } from './core/share-modal.ts';
+    import { ConsoleCommands } from './core/console-commands.ts';
+    import { TeacherProgressionControls } from './core/teacher-progression.ts';
     import { buildShareURL, getModeNumber, parseQueryParams, restoreStateFromURL, updateURL } from './core/url-state.js';
     console.log('[APP] All imports successful');
 
@@ -3846,7 +3846,6 @@
   </script>
 </body>
 </html>
-
 
 
 

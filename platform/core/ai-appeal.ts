@@ -3,6 +3,7 @@
  *
  * Extracted from app.html (opportunistic extraction pass).
  */
+import type { DocumentLike, PlatformLike, GradingResults, SoundEngineLike, CelebrationLike, GradingLevel, EscalationLevel, StarType } from './types.ts';
 
 const SPINNER_SVG = `
   <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -19,8 +20,32 @@ const SUBMIT_ICON_SVG = `
   Submit Appeal
 `;
 
+export interface AIAppealConfig {
+  documentLike?: DocumentLike | null;
+  platform?: PlatformLike | null;
+  getLastGradingResults?: () => GradingResults | null;
+  updateGradingLevelIndicator?: (level: GradingLevel) => void;
+  updateAIFeedbackPanel?: (panel: unknown, response: unknown, extra: unknown, opts: { isAppeal: boolean }) => void;
+  getAIFeedbackPanel?: () => unknown;
+  soundEngine?: SoundEngineLike | null;
+  celebration?: CelebrationLike | null;
+  showEscalationButton?: (level: EscalationLevel) => void;
+  hideAllEscalationButtons?: () => void;
+}
+
 export class AIAppealHandlers {
-  constructor(config = {}) {
+  documentLike: DocumentLike | null;
+  platform: PlatformLike | null;
+  getLastGradingResults: () => GradingResults | null;
+  updateGradingLevelIndicator: (level: GradingLevel) => void;
+  updateAIFeedbackPanel: (panel: unknown, response: unknown, extra: unknown, opts: { isAppeal: boolean }) => void;
+  getAIFeedbackPanel: () => unknown;
+  soundEngine: SoundEngineLike | null;
+  celebration: CelebrationLike | null;
+  showEscalationButton: (level: EscalationLevel) => void;
+  hideAllEscalationButtons: () => void;
+
+  constructor(config: AIAppealConfig = {}) {
     this.documentLike = config.documentLike || globalThis.document || null;
     this.platform = config.platform || null;
     this.getLastGradingResults = config.getLastGradingResults || (() => null);
@@ -33,32 +58,29 @@ export class AIAppealHandlers {
     this.hideAllEscalationButtons = config.hideAllEscalationButtons || (() => {});
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  init() {
-    // Show appeal input form when Appeal button is clicked
+  init(): void {
     this.getElement('btn-ai-appeal')?.addEventListener('click', () => {
       this.getElement('btn-ai-appeal')?.classList.add('hidden');
       this.getElement('ai-appeal-container')?.classList.remove('hidden');
       this.getElement('ai-appeal-input')?.focus();
     });
 
-    // Cancel appeal - hide form, show buttons again
     this.getElement('btn-cancel-appeal')?.addEventListener('click', () => {
       this.getElement('ai-appeal-container')?.classList.add('hidden');
-      const input = this.getElement('ai-appeal-input');
+      const input = this.getElement('ai-appeal-input') as HTMLInputElement | null;
       if (input) input.value = '';
       this.getElement('btn-ai-appeal')?.classList.remove('hidden');
     });
 
-    // Submit appeal to AI with follow-up question
     this.getElement('btn-submit-appeal')?.addEventListener('click', () => this._submitAppeal());
   }
 
-  async _submitAppeal() {
-    const appealInput = this.getElement('ai-appeal-input');
+  async _submitAppeal(): Promise<void> {
+    const appealInput = this.getElement('ai-appeal-input') as HTMLInputElement | null;
     const appealText = appealInput?.value?.trim();
     if (!appealText) {
       appealInput?.classList.add('border-red-500');
@@ -66,7 +88,7 @@ export class AIAppealHandlers {
       return;
     }
 
-    const submitBtn = this.getElement('btn-submit-appeal');
+    const submitBtn = this.getElement('btn-submit-appeal') as HTMLButtonElement | null;
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.innerHTML = SPINNER_SVG;
@@ -75,19 +97,16 @@ export class AIAppealHandlers {
     try {
       const result = await this.platform?.submitAppeal?.(appealText, this.getLastGradingResults());
 
-      // Update grading level indicator
       this.updateGradingLevelIndicator('ai');
       const gradingText = this.getElement('grading-level-text');
       if (gradingText) gradingText.textContent = 'Graded by: AI (Appeal)';
 
-      // Clear appeal form
       this.getElement('ai-appeal-container')?.classList.add('hidden');
       if (appealInput) appealInput.value = '';
 
       if (result?.success) {
-        this.platform?.inputRenderer?.displayAppealResponse(result);
+        this.platform?.inputRenderer?.displayAppealResponse?.(result);
 
-        // Update AI feedback panel with appeal results
         if (result.fields) {
           const fieldEntries = Object.entries(result.fields);
           for (const [fieldId, fieldResult] of fieldEntries) {
@@ -103,10 +122,9 @@ export class AIAppealHandlers {
           }
         }
 
-        // If appeal was successful and all correct now, celebrate
         if (result.allCorrect) {
           const state = this.platform?.getState?.();
-          const starType = state?.game?.potentialStar || 'gold';
+          const starType: StarType = state?.game?.potentialStar || 'gold';
           this.soundEngine?.init?.();
           this.soundEngine?.starSound?.(starType);
           this.celebration?.celebrate?.(starType);

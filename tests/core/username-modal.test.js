@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { UsernameModal } from '../../platform/core/username-modal.js';
+import { UsernameModal } from '../../platform/core/username-modal.ts';
 
 function createClassList(initialClasses = []) {
   const classes = new Set(initialClasses);

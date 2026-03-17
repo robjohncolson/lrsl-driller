@@ -14,7 +14,7 @@ const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
 const teacherReviewPanelPath = join(process.cwd(), 'platform', 'core', 'teacher-review.js');
 const teacherReviewPanelContent = readFileSync(teacherReviewPanelPath, 'utf-8');
-const timeAnalyticsPanelPath = join(process.cwd(), 'platform', 'core', 'time-analytics.js');
+const timeAnalyticsPanelPath = join(process.cwd(), 'platform', 'core', 'time-analytics.ts');
 const timeAnalyticsPanelContent = readFileSync(timeAnalyticsPanelPath, 'utf-8');
 const panelModuleContent = [appHtmlContent, teacherReviewPanelContent, timeAnalyticsPanelContent].join('\n');
 

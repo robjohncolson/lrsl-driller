@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { TimeAnalyticsPanel } from '../../platform/core/time-analytics.js';
+import { TimeAnalyticsPanel } from '../../platform/core/time-analytics.ts';
 
 const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
@@ -79,7 +79,7 @@ function createController(overrides = {}) {
 
 describe('Time analytics panel extraction', () => {
   it('imports the shared time analytics panel module', () => {
-    expect(appHtmlContent).toContain("import { TimeAnalyticsPanel } from './core/time-analytics.js';");
+    expect(appHtmlContent).toContain("import { TimeAnalyticsPanel } from './core/time-analytics.ts';");
   });
 
   it('loads analytics data, updates summary stats, and renders the list', async () => {

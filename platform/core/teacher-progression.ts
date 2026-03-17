@@ -4,8 +4,36 @@
  *
  * Extracted from app.html (opportunistic extraction pass).
  */
+import type { DocumentLike, PlatformLike, UserSystemLike, CelebrationLike } from './types.ts';
+
+export interface TeacherProgressionConfig {
+  documentLike?: DocumentLike | null;
+  getPlatform?: () => PlatformLike | null;
+  getCartridgeId?: () => string | null;
+  getServerUrl?: () => string | null;
+  getTeacherPassword?: () => string | null;
+  getUserSystem?: () => UserSystemLike | null;
+  isTeacherModeActive?: () => boolean;
+  celebration?: CelebrationLike | null;
+  renderModeTabs?: () => void;
+  fetchFn?: typeof fetch;
+  confirmFn?: (message: string) => boolean;
+}
+
 export class TeacherProgressionControls {
-  constructor(config = {}) {
+  documentLike: DocumentLike | null;
+  getPlatform: () => PlatformLike | null;
+  getCartridgeId: () => string | null;
+  getServerUrl: () => string | null;
+  getTeacherPassword: () => string | null;
+  getUserSystem: () => UserSystemLike | null;
+  isTeacherModeActive: () => boolean;
+  celebration: CelebrationLike | null;
+  renderModeTabs: () => void;
+  fetchFn: typeof fetch;
+  confirmFn: (message: string) => boolean;
+
+  constructor(config: TeacherProgressionConfig = {}) {
     this.documentLike = config.documentLike || globalThis.document || null;
     this.getPlatform = config.getPlatform || (() => null);
     this.getCartridgeId = config.getCartridgeId || (() => null);
@@ -19,11 +47,11 @@ export class TeacherProgressionControls {
     this.confirmFn = config.confirmFn || globalThis.confirm?.bind(globalThis);
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  updateControls() {
+  updateControls(): void {
     const panel = this.getElement('teacher-progression-panel');
     if (!panel) return;
 
@@ -45,14 +73,15 @@ export class TeacherProgressionControls {
     const mode = modes.find(m => m.id === currentModeId);
     const modeName = mode?.name || currentModeId;
 
-    this.getElement('progression-level-name').textContent = modeName;
+    const levelName = this.getElement('progression-level-name');
+    if (levelName) levelName.textContent = modeName;
 
     const currentReq = platform.gameEngine.getRequiredGold(currentModeId);
     const hasOverride = platform.gameEngine.hasOverride(currentModeId);
     const manifestDefault = platform.gameEngine.getManifestDefault(currentModeId);
 
-    const goldInput = this.getElement('gold-req-input');
-    if (goldInput) goldInput.value = currentReq;
+    const goldInput = this.getElement('gold-req-input') as HTMLInputElement | null;
+    if (goldInput) goldInput.value = String(currentReq);
 
     const statusEl = this.getElement('progression-override-status');
     if (statusEl) {
@@ -65,14 +94,14 @@ export class TeacherProgressionControls {
     }
   }
 
-  async saveOverride() {
+  async saveOverride(): Promise<void> {
     const platform = this.getPlatform();
     const modeId = platform?.currentMode;
     const cartridgeId = this.getCartridgeId();
     if (!modeId || !cartridgeId) return;
 
-    const goldInput = this.getElement('gold-req-input');
-    const goldRequired = parseInt(goldInput?.value, 10);
+    const goldInput = this.getElement('gold-req-input') as HTMLInputElement | null;
+    const goldRequired = parseInt(goldInput?.value ?? '', 10);
 
     if (isNaN(goldRequired) || goldRequired < 1 || goldRequired > 10) {
       this.celebration?.showToast?.('Gold required must be between 1 and 10', 'error');
@@ -98,10 +127,10 @@ export class TeacherProgressionControls {
         throw new Error(err.error || 'Failed to save');
       }
 
-      platform.gameEngine.updateOverride(modeId, goldRequired);
+      platform!.gameEngine!.updateOverride(modeId, goldRequired);
       this.renderModeTabs();
 
-      const modeName = platform.currentCartridge?.manifest?.modes?.find(m => m.id === modeId)?.name || modeId;
+      const modeName = platform!.currentCartridge?.manifest?.modes?.find(m => m.id === modeId)?.name || modeId;
       this.celebration?.showToast?.(`${modeName} now requires ${goldRequired} gold star${goldRequired > 1 ? 's' : ''}`, 'success');
     } catch (err) {
       console.error('[Progression] Save error:', err);
@@ -109,7 +138,7 @@ export class TeacherProgressionControls {
     }
   }
 
-  async resetOverride() {
+  async resetOverride(): Promise<void> {
     const platform = this.getPlatform();
     const modeId = platform?.currentMode;
     const cartridgeId = this.getCartridgeId();
@@ -132,11 +161,11 @@ export class TeacherProgressionControls {
         throw new Error(err.error || 'Failed to reset');
       }
 
-      platform.gameEngine.removeOverride(modeId);
+      platform!.gameEngine!.removeOverride(modeId);
       this.renderModeTabs();
 
-      const manifestDefault = platform.gameEngine.getManifestDefault(modeId);
-      const modeName = platform.currentCartridge?.manifest?.modes?.find(m => m.id === modeId)?.name || modeId;
+      const manifestDefault = platform!.gameEngine!.getManifestDefault(modeId);
+      const modeName = platform!.currentCartridge?.manifest?.modes?.find(m => m.id === modeId)?.name || modeId;
       this.celebration?.showToast?.(`${modeName} reset to default (${manifestDefault} gold)`, 'success');
     } catch (err) {
       console.error('[Progression] Reset error:', err);
@@ -144,7 +173,7 @@ export class TeacherProgressionControls {
     }
   }
 
-  async resetAllOverrides() {
+  async resetAllOverrides(): Promise<void> {
     const platform = this.getPlatform();
     const cartridgeId = this.getCartridgeId();
     if (!cartridgeId) return;
@@ -152,7 +181,7 @@ export class TeacherProgressionControls {
     const modes = platform?.currentCartridge?.manifest?.modes;
     if (!modes?.length) return;
 
-    const modesWithOverrides = modes.filter(m => platform.gameEngine.hasOverride(m.id));
+    const modesWithOverrides = modes.filter(m => platform!.gameEngine!.hasOverride(m.id));
     if (modesWithOverrides.length === 0) {
       this.celebration?.showToast?.('No overrides to reset', 'info');
       return;
@@ -178,7 +207,7 @@ export class TeacherProgressionControls {
         });
 
         if (resp.ok) {
-          platform.gameEngine.removeOverride(mode.id);
+          platform!.gameEngine!.removeOverride(mode.id);
           resetCount++;
         }
       }
@@ -193,7 +222,7 @@ export class TeacherProgressionControls {
     }
   }
 
-  initEventListeners() {
+  initEventListeners(): void {
     this.getElement('save-gold-req-btn')?.addEventListener('click', () => this.saveOverride());
     this.getElement('reset-gold-req-btn')?.addEventListener('click', () => this.resetOverride());
     this.getElement('reset-all-overrides-btn')?.addEventListener('click', () => this.resetAllOverrides());

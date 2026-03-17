@@ -1,8 +1,46 @@
+/**
+ * Time Analytics Panel — teacher view of student time-on-task data.
+ *
+ * Extracted from app.html (Phase 2, seam 3).
+ */
+import type { DocumentLike } from './types.ts';
+
 const TIME_PERIOD_ACTIVE_CLASS = 'time-period-btn px-3 py-1 text-sm rounded-full bg-green-600 text-white';
 const TIME_PERIOD_INACTIVE_CLASS = 'time-period-btn px-3 py-1 text-sm rounded-full bg-white border border-gray-200 text-gray-600 hover:border-green-400';
 
+export type TimePeriod = 'today' | 'week' | 'month' | 'all';
+
+interface StudentTimeData {
+  username: string;
+  totalActiveMs: number;
+  sessionCount?: number;
+  problemsCompleted?: number;
+  problemsAttempted?: number;
+  lastActive?: string;
+}
+
+interface TimeAnalyticsResponse {
+  totalClassTime: number;
+  students?: StudentTimeData[];
+}
+
+export interface TimeAnalyticsConfig {
+  getServerUrl?: () => string | null;
+  getTeacherPassword?: () => string | null;
+  getAvatarForUsername?: (username: string) => string;
+  fetchFn?: typeof fetch;
+  documentLike?: DocumentLike | null;
+}
+
 export class TimeAnalyticsPanel {
-  constructor(config = {}) {
+  getServerUrl: () => string | null;
+  getTeacherPassword: () => string | null;
+  getAvatarForUsername: (username: string) => string;
+  fetchFn: typeof fetch;
+  documentLike: DocumentLike | null;
+  state: { currentTimePeriod: TimePeriod };
+
+  constructor(config: TimeAnalyticsConfig = {}) {
     this.getServerUrl = config.getServerUrl || (() => null);
     this.getTeacherPassword = config.getTeacherPassword || (() => null);
     this.getAvatarForUsername = config.getAvatarForUsername || (() => '?');
@@ -13,26 +51,26 @@ export class TimeAnalyticsPanel {
     };
   }
 
-  getElement(id) {
+  getElement(id: string): HTMLElement | null {
     return this.documentLike?.getElementById?.(id) || null;
   }
 
-  querySelectorAll(selector) {
+  querySelectorAll(selector: string): NodeListOf<HTMLElement> | HTMLElement[] {
     return this.documentLike?.querySelectorAll?.(selector) || [];
   }
 
-  openPanel() {
+  openPanel(): Promise<void> {
     this.getElement('time-analytics-panel')?.classList.remove('translate-x-full');
     this.getElement('time-analytics-backdrop')?.classList.remove('hidden');
     return this.loadTimeAnalytics();
   }
 
-  closePanel() {
+  closePanel(): void {
     this.getElement('time-analytics-panel')?.classList.add('translate-x-full');
     this.getElement('time-analytics-backdrop')?.classList.add('hidden');
   }
 
-  formatTimeDisplay(ms) {
+  formatTimeDisplay(ms: number): string {
     if (!ms || ms < 1000) return '0m';
 
     const seconds = Math.floor(ms / 1000);
@@ -48,7 +86,7 @@ export class TimeAnalyticsPanel {
     return `${seconds}s`;
   }
 
-  renderTimeAnalyticsList(students) {
+  renderTimeAnalyticsList(students: StudentTimeData[]): void {
     const list = this.getElement('time-analytics-list');
     if (!list) return;
 
@@ -85,7 +123,7 @@ export class TimeAnalyticsPanel {
     }).join('');
   }
 
-  async loadTimeAnalytics() {
+  async loadTimeAnalytics(): Promise<void> {
     const loading = this.getElement('time-analytics-loading');
     const list = this.getElement('time-analytics-list');
     const empty = this.getElement('time-analytics-empty');
@@ -103,13 +141,16 @@ export class TimeAnalyticsPanel {
         throw new Error('Failed to fetch time data');
       }
 
-      const data = await response.json();
+      const data: TimeAnalyticsResponse = await response.json();
       loading?.classList.add('hidden');
 
-      this.getElement('total-class-time').textContent = this.formatTimeDisplay(data.totalClassTime);
-      this.getElement('total-students-active').textContent = data.students?.length || 0;
-      const averageTime = data.students?.length > 0 ? data.totalClassTime / data.students.length : 0;
-      this.getElement('avg-time-per-student').textContent = this.formatTimeDisplay(averageTime);
+      const totalEl = this.getElement('total-class-time');
+      if (totalEl) totalEl.textContent = this.formatTimeDisplay(data.totalClassTime);
+      const studentsEl = this.getElement('total-students-active');
+      if (studentsEl) studentsEl.textContent = (data.students?.length || 0) as unknown as string;
+      const averageTime = data.students?.length ? data.totalClassTime / data.students.length : 0;
+      const avgEl = this.getElement('avg-time-per-student');
+      if (avgEl) avgEl.textContent = this.formatTimeDisplay(averageTime);
 
       if (!data.students || data.students.length === 0) {
         empty?.classList.remove('hidden');
@@ -121,18 +162,19 @@ export class TimeAnalyticsPanel {
       console.error('Failed to load time analytics:', err);
       loading?.classList.add('hidden');
       empty?.classList.remove('hidden');
-      const emptyText = empty?.querySelector?.('p');
+      const emptyText = (empty as HTMLElement | null)?.querySelector?.('p');
       if (emptyText) {
         emptyText.textContent = 'Failed to load time data.';
       }
     }
   }
 
-  setPeriod(period) {
+  setPeriod(period: TimePeriod): Promise<void> {
     this.state.currentTimePeriod = period;
 
-    this.querySelectorAll('.time-period-btn').forEach((button) => {
-      button.className = button.dataset.period === period
+    const buttons = this.querySelectorAll('.time-period-btn');
+    (buttons as NodeListOf<HTMLElement>).forEach((button: HTMLElement) => {
+      button.className = (button as HTMLElement & { dataset: DOMStringMap }).dataset.period === period
         ? TIME_PERIOD_ACTIVE_CLASS
         : TIME_PERIOD_INACTIVE_CLASS;
     });

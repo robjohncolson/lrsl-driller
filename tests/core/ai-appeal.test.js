@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { AIAppealHandlers } from '../../platform/core/ai-appeal.js';
+import { AIAppealHandlers } from '../../platform/core/ai-appeal.ts';
 
 function createClassList(initialClasses = []) {
   const classes = new Set(initialClasses);

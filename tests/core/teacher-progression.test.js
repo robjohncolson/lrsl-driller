@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { TeacherProgressionControls } from '../../platform/core/teacher-progression.js';
+import { TeacherProgressionControls } from '../../platform/core/teacher-progression.ts';
 
 function createClassList(initialClasses = []) {
   const classes = new Set(initialClasses);

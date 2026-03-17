@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { ActionButtons } from '../../platform/core/action-buttons.js';
+import { ActionButtons } from '../../platform/core/action-buttons.ts';
 
 function createClassList(initialClasses = []) {
   const classes = new Set(initialClasses);
