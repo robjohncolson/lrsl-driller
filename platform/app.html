@@ -1042,6 +1042,9 @@
     import { UsernameModal } from './core/username-modal.js';
     import { AIAppealHandlers } from './core/ai-appeal.js';
     import { ActionButtons } from './core/action-buttons.js';
+    import { GradingEscalation } from './core/grading-escalation.js';
+    import { initShareModal } from './core/share-modal.js';
+    import { ConsoleCommands } from './core/console-commands.js';
     import { buildShareURL, getModeNumber, parseQueryParams, restoreStateFromURL, updateURL } from './core/url-state.js';
     console.log('[APP] All imports successful');
 
@@ -2317,27 +2320,7 @@
     });
 
     // ==================== SHARE MODAL ====================
-    document.getElementById('share-btn').addEventListener('click', () => {
-      updateShareModalContents();
-      const modal = document.getElementById('share-modal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    });
-
-    document.getElementById('share-modal-close').addEventListener('click', () => {
-      const modal = document.getElementById('share-modal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    });
-
-    // Close share modal on backdrop click
-    document.getElementById('share-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'share-modal') {
-        const modal = document.getElementById('share-modal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
-    });
+    initShareModal({ updateShareModalContents });
 
     // ==================== LEVEL SELECTOR BAR ====================
     document.getElementById('level-current-btn')?.addEventListener('click', openLevelModal);
@@ -2405,43 +2388,10 @@
     let currentGradingLevel = 'algorithm'; // 'algorithm', 'ai', 'teacher'
     let lastGradingResults = null; // Store results for escalation
 
-    function updateGradingLevelIndicator(level) {
-      const indicator = document.getElementById('grading-level-indicator');
-      const text = document.getElementById('grading-level-text');
-
-      if (level === 'algorithm') {
-        text.textContent = 'Graded by: Algorithm';
-        text.className = 'text-gray-600';
-      } else if (level === 'ai') {
-        text.textContent = 'Graded by: AI';
-        text.className = 'text-indigo-600 font-medium';
-      } else if (level === 'teacher') {
-        text.textContent = 'Graded by: Teacher';
-        text.className = 'text-blue-600 font-medium';
-      }
-
-      indicator.classList.remove('hidden');
-    }
-
-    function hideAllEscalationButtons() {
-      document.getElementById('btn-ai-review').classList.add('hidden');
-      document.getElementById('btn-teacher-review').classList.add('hidden');
-      document.getElementById('btn-ai-appeal').classList.add('hidden');
-      document.getElementById('ai-appeal-container').classList.add('hidden');
-    }
-
-    function showEscalationButton(level) {
-      hideAllEscalationButtons();
-      if (level === 'ai') {
-        document.getElementById('btn-ai-review').classList.remove('hidden');
-      } else if (level === 'teacher') {
-        // Teacher review only shown after appeal or AI failure
-        document.getElementById('btn-teacher-review').classList.remove('hidden');
-      } else if (level === 'ai-appeal') {
-        // After AI grading, show ONLY appeal button (no teacher review yet)
-        document.getElementById('btn-ai-appeal').classList.remove('hidden');
-      }
-    }
+    const gradingEscalation = new GradingEscalation();
+    const updateGradingLevelIndicator = (level) => gradingEscalation.updateIndicator(level);
+    const hideAllEscalationButtons = () => gradingEscalation.hideAllButtons();
+    const showEscalationButton = (level) => gradingEscalation.showButton(level);
 
     // ==================== TEACHER LOGIN ====================
     async function ensureRosterModal() {
@@ -4049,70 +3999,11 @@
     }
 
     // ==================== CONSOLE COMMANDS ====================
-    // Reset progress for current cartridge (current user only - localStorage)
-    window.resetProgress = function() {
-      if (!platform?.gameEngine) {
-        console.error('No cartridge loaded. Load a cartridge first.');
-        return;
-      }
-      const cartridgeId = platform.currentCartridge?.manifest?.meta?.id || 'unknown';
-      const username = userSystem?.currentUser?.username || 'you';
-      if (!confirm(`Reset progress for "${cartridgeId}" (affects only ${username} on this browser)?\n\nThis cannot be undone.`)) {
-        console.log('Reset cancelled.');
-        return;
-      }
-      platform.gameEngine.resetProgress();
-      renderModeTabs();
-      console.log(`✓ Progress reset for "${cartridgeId}".`);
-      console.log(`  → Only Level 1 is now unlocked`);
-      console.log(`  → This only affects localStorage (your browser)`);
-      console.log(`  → Server leaderboard stats are NOT affected`);
-      console.log('Refresh the page to continue.');
-    };
-
-    // Clear all driller data (nuclear option)
-    window.resetAllProgress = function() {
-      if (!confirm('Reset ALL progress for ALL cartridges? This cannot be undone.')) {
-        console.log('Reset cancelled.');
-        return;
-      }
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('driller_'));
-      keys.forEach(k => localStorage.removeItem(k));
-      console.log(`✓ Cleared ${keys.length} saved items. Refresh the page to start fresh.`);
-    };
-
-    // Multiplayer server commands (for local LAN play)
-    window.setLocalServer = function(ip) {
-      const port = 3001;
-      const url = ip ? `ws://${ip}:${port}` : 'ws://localhost:3001';
-      localStorage.setItem('orbits_server_url', url);
-      console.log(`✓ Multiplayer server set to: ${url}`);
-      console.log('  Refresh the page, then open multiplayer to connect to the local server.');
-    };
-
-    window.setCloudServer = function() {
-      localStorage.setItem('orbits_server_url', 'cloud');
-      console.log('✓ Multiplayer server set to Railway (cloud)');
-      console.log('  This preference is saved. Auto-discovery will be skipped.');
-    };
-
-    window.getServerUrl = function() {
-      const saved = localStorage.getItem('orbits_server_url');
-      if (saved === 'cloud') {
-        console.log('Current server: Railway cloud (explicit preference)');
-      } else if (saved) {
-        console.log(`Current server: ${saved} (custom)`);
-      } else {
-        console.log('Current server: Auto-detect (local if available, otherwise Railway)');
-      }
-      return custom || 'wss://lrsl-driller-production.up.railway.app';
-    };
-    console.log('🎮 Console commands available:');
-    console.log('  resetProgress()    - Reset progress for current cartridge');
-    console.log('  resetAllProgress() - Reset ALL cartridge progress (nuclear option)');
-    console.log('  setLocalServer(ip) - Connect to local LAN server (e.g., setLocalServer("192.168.1.100"))');
-    console.log('  setCloudServer()   - Reset to Railway cloud server');
-    console.log('  getServerUrl()     - Show current multiplayer server');
+    new ConsoleCommands({
+      getPlatform: () => platform,
+      getUserSystem: () => userSystem,
+      renderModeTabs
+    }).init();
 
     init();
   </script>
