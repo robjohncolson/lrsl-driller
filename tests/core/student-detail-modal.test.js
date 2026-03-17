@@ -14,6 +14,9 @@ import { join } from 'path';
 // Read app.html content for static analysis
 const appHtmlPath = join(process.cwd(), 'platform', 'app.html');
 const appHtmlContent = readFileSync(appHtmlPath, 'utf-8');
+const realtimeControllerPath = join(process.cwd(), 'platform', 'core', 'realtime-controller.js');
+const realtimeControllerContent = readFileSync(realtimeControllerPath, 'utf-8');
+const realtimeSurfaceContent = [appHtmlContent, realtimeControllerContent].join('\n');
 
 describe('Student Detail Modal - HTML Structure', () => {
   describe('Modal Container', () => {
@@ -161,23 +164,19 @@ describe('Student Detail Modal - Event Handlers', () => {
 describe('Student Detail Modal - Teacher Access Control', () => {
   describe('Teacher-Only Username Click', () => {
     it('should check isTeacher before adding click handler', () => {
-      // The updateOnlineDisplay function should check teacher status
-      expect(appHtmlContent).toContain('isTeacher');
+      expect(realtimeSurfaceContent).toContain('isTeacher');
     });
 
     it('should add eye icon for teachers', () => {
-      // Teachers see an eye icon indicating clickable
-      expect(appHtmlContent).toContain('👁️');
+      expect(realtimeSurfaceContent).toContain('text-indigo-400 ml-auto');
     });
 
     it('should set cursor pointer class for teacher clicks', () => {
-      // Uses cursor-pointer CSS class in the template
-      expect(appHtmlContent).toContain('cursor-pointer');
+      expect(realtimeSurfaceContent).toContain('cursor-pointer');
     });
 
     it('should add click handler with openStudentDetail', () => {
-      // onclick calls openStudentDetail with the username
-      expect(appHtmlContent).toContain("openStudentDetail('${username}')");
+      expect(realtimeSurfaceContent).toContain("openStudentDetail('${username}')");
     });
   });
 });
@@ -285,3 +284,4 @@ describe('Student Detail Modal - Time Breakdown', () => {
     expect(appHtmlContent).toContain('id="time-breakdown-list"');
   });
 });
+

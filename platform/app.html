@@ -1030,9 +1030,6 @@
     // import { GhostOrbitsController, GameState as OrbitsGameState } from './game/ghost-orbits-controller.js';
     const OrbitsGameState = { IDLE: 'idle', CONNECTING: 'connecting', COUNTDOWN: 'countdown', PLAYING: 'playing', ELIMINATED: 'eliminated', SPECTATING: 'spectating', ROUND_END: 'round_end', INTERMISSION: 'intermission' };
     import { SyncQueue } from './core/sync-queue.js';
-    // Lazy-loaded: only used for multiplayer
-    // import { WebRTCManager } from './core/webrtc-manager.js';
-    let WebRTCManager = null;
     import { AssetCache } from './core/asset-cache.js';
     import { AssetResolver } from './core/asset-resolver.js';
     import { DEFAULT_SERVER_URL, detectNetworkConfig } from './core/network-config.js';
@@ -1040,9 +1037,7 @@
     import { TeacherReviewPanel } from './core/teacher-review.js';
     import { TimeAnalyticsPanel } from './core/time-analytics.js';
     import { SettingsMediaController } from './core/settings-media.js';
-    // Lazy-loaded: only used for multiplayer P2P
-    // import { P2PAssetTransfer } from './core/p2p-asset-transfer.js';
-    let P2PAssetTransfer = null;
+    import { RealtimeController } from './core/realtime-controller.js';
     import { buildShareURL, getModeNumber, parseQueryParams, restoreStateFromURL, updateURL } from './core/url-state.js';
     console.log('[APP] All imports successful');
 
@@ -1240,16 +1235,9 @@
 
     const wsClient = new WebSocketClient({
       serverUrl: SERVER_URL,
-      onPresenceChange: updateOnlineDisplay,
+      onPresenceChange: (users) => realtimeController?.updateOnlineDisplay(users),
       onConnectionChange: async (connected) => {
-        updateConnectionStatus(connected);
-        if (connected && wsClient.currentUsername && !p2pAssetTransfer) {
-          if (!P2PAssetTransfer) {
-            ({ P2PAssetTransfer } = await import('./core/p2p-asset-transfer.js'));
-          }
-          p2pAssetTransfer = new P2PAssetTransfer(wsClient, assetCache, wsClient.currentUsername);
-          assetResolver.setPeerManager(p2pAssetTransfer);
-        }
+        await realtimeController?.handleSocketConnectionChange(connected);
       },
       onClassTimeStart: (goal) => {
         classTime.setGoal(goal);
@@ -1261,14 +1249,10 @@
         hideClassTimeBanner();
       },
       onTeacherReviewSubmitted: (message) => {
-        // A student submitted work for review - alert the teacher!
-        if (isTeacherModeActive()) {
-          showTeacherAlert(message);
-        }
+        realtimeController?.handleTeacherReviewSubmitted(message);
       },
       onTeacherReviewCompleted: (message) => {
-        // Apply teacher's grades when review is completed for this student
-        applyTeacherGrades(message);
+        realtimeController?.handleTeacherReviewCompleted(message);
       },
       onGridMessage: (message) => {
         // v3.2: Handle progression override changes from teacher
@@ -1332,31 +1316,16 @@
         }
       },
       onWebRTCActivate: async (msg) => {
-        if (webrtcManager) return; // Already active
-        // Student: connect to teacher when activation is broadcast
-        if (!isTeacherModeActive() && userSystem.currentUser) {
-          await initWebRTCManager('student');
-          webrtcManager.connectToTeacher(msg.teacherUsername);
-        }
+        await realtimeController?.handleWebRTCActivate(msg);
       },
-      onWebRTCDeactivate: (msg) => {
-        if (!webrtcManager) return;
-        if (!isTeacherModeActive()) {
-          webrtcManager.disconnectFromTeacher();
-          webrtcManager.destroy();
-          webrtcManager = null;
-          updateWebRTCStatusUI();
-        }
+      onWebRTCDeactivate: () => {
+        realtimeController?.handleWebRTCDeactivate();
       },
       onWebRTCSignal: (msg) => {
-        if (webrtcManager) {
-          webrtcManager.handleSignalingMessage(msg);
-        }
+        realtimeController?.handleWebRTCSignal(msg);
       },
       onP2PAssetSignal: (msg) => {
-        if (p2pAssetTransfer) {
-          p2pAssetTransfer.handleSignalingMessage(msg);
-        }
+        realtimeController?.handleP2PAssetSignal(msg);
       }
     });
 
@@ -1373,16 +1342,12 @@
       _originalConnect(username);
     };
 
-    let webrtcManager = null;
-    const processedReviewIds = new Set(); // Deduplication for WebRTC + WS review grades
-
     // P2P Asset Delivery System
     const assetCache = new AssetCache();
     const assetResolver = new AssetResolver(assetCache, {
       useSupabase: localStorage.getItem('driller_useSupabaseVideos') === 'true'
     });
     assetResolver.setWebSocketClient(wsClient);
-    let p2pAssetTransfer = null; // Created after user identifies (needs username)
 
     let platform = null;
     let currentCartridgeId = localStorage.getItem('lastCartridgeId') || 'lsrl-interpretation';
@@ -1393,6 +1358,7 @@
     let teacherReviewPanel = null; // Teacher review panel controller
     let timeAnalyticsPanel = null; // Teacher time analytics controller
     let settingsMediaController = null; // Settings and media modal controller
+    let realtimeController = null; // Presence, WebRTC, and realtime asset controller
     let pendingUrlState = null; // Parsed URL state, applied after the first cartridge load
     let requestedStartLevel = null; // URL-requested direct level link (?level=... or ?start=...)
     let ghostPanel = null; // Ghost panel instance for ghost mode features
@@ -1404,6 +1370,20 @@
     function getTeacherPassword() {
       return teacherMode?.state.teacherPassword || null;
     }
+
+    realtimeController = new RealtimeController({
+      wsClient,
+      assetCache,
+      assetResolver,
+      userSystem,
+      celebration,
+      getAvatarForUsername,
+      isTeacherModeActive,
+      getCurrentUsername: () => userSystem.currentUser?.username || null,
+      showTeacherAlert: (message) => showTeacherAlert(message),
+      applyTeacherGrades: (message) => applyTeacherGrades(message)
+    });
+    realtimeController.installEventListeners();
 
     /**
      * Sync local star counts with server to fix any discrepancies
@@ -1742,42 +1722,6 @@
       document.getElementById('rank-points').textContent = `${points} pts`;
     }
 
-    function updateOnlineDisplay(users) {
-      document.getElementById('online-count').textContent = users.length;
-
-      const list = document.getElementById('online-list');
-      if (users.length === 0) {
-        list.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400 italic">No one else online</div>';
-      } else {
-        const isTeacher = userSystem.currentUser?.isTeacher;
-        list.innerHTML = users.map(username => {
-          const isYou = username === userSystem.currentUser?.username;
-          const avatar = getAvatarForUsername(username);
-          // Teachers can click on other users to see their details
-          const clickable = isTeacher && !isYou;
-          return `
-            <div class="px-3 py-1.5 flex items-center gap-2 ${isYou ? 'bg-purple-50' : 'hover:bg-gray-50'} ${clickable ? 'cursor-pointer' : ''}"
-                 ${clickable ? `onclick="openStudentDetail('${username}')"` : ''}>
-              <span class="text-lg">${avatar}</span>
-              <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span class="text-sm text-gray-700 ${clickable ? 'hover:text-indigo-600 hover:underline' : ''}">${username}</span>
-              ${isYou ? '<span class="text-xs text-purple-600 ml-auto">(you)</span>' : ''}
-              ${clickable ? '<span class="text-xs text-indigo-400 ml-auto">👁️</span>' : ''}
-            </div>
-          `;
-        }).join('');
-      }
-    }
-
-    function updateConnectionStatus(connected) {
-      const dot = document.getElementById('connection-dot');
-      if (connected) {
-        dot.className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
-      } else {
-        dot.className = 'w-2 h-2 bg-gray-400 rounded-full';
-      }
-    }
-
     // ========== Student Detail Modal (Teacher Only) ==========
 
     async function openStudentDetail(username) {
@@ -2033,15 +1977,6 @@
         return;
       }
 
-      // Deduplication: skip if already processed (WebRTC + WS may both deliver)
-      if (message.reviewId) {
-        if (processedReviewIds.has(message.reviewId)) {
-          console.log('Review already processed, skipping duplicate:', message.reviewId);
-          return;
-        }
-        processedReviewIds.add(message.reviewId);
-      }
-
       const grades = message.grades;
       console.log('Grades received:', JSON.stringify(grades));
       if (!grades) {
@@ -2239,19 +2174,12 @@
       }
 
       try {
-        // WebRTC fast path: send review submission instantly via data channel
-        if (webrtcManager && webrtcManager.isActive) {
-          // Find teacher peer (students have 1 connection to teacher)
-          const peers = webrtcManager.getConnectedPeers();
-          if (peers.length > 0) {
-            webrtcManager.sendTo(peers[0], 'review_submit', {
-              reviewData: pendingTeacherReview,
-              username: userSystem.currentUser?.username,
-              topic: pendingTeacherReview.cartridgeName,
-              cartridgeId: pendingTeacherReview.cartridgeId
-            });
-          }
-        }
+        realtimeController?.sendTeacherReviewSubmission({
+          reviewData: pendingTeacherReview,
+          username: userSystem.currentUser?.username,
+          topic: pendingTeacherReview.cartridgeName,
+          cartridgeId: pendingTeacherReview.cartridgeId
+        });
 
         // Always persist to server (Supabase)
         const response = await fetch(`${SERVER_URL}/api/teacher-review`, {
@@ -2819,23 +2747,12 @@
     document.getElementById('close-leaderboard').addEventListener('click', () => leaderboard.close());
     document.getElementById('leaderboard-backdrop').addEventListener('click', () => leaderboard.close());
 
-    // ==================== ONLINE DROPDOWN ====================
-    document.getElementById('online-btn').addEventListener('click', () => {
-      document.getElementById('online-dropdown').classList.toggle('hidden');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#online-indicator')) {
-        document.getElementById('online-dropdown').classList.add('hidden');
-      }
-    });
-
     // ==================== TEACHER REVIEW PANEL ====================
     teacherReviewPanel = new TeacherReviewPanel({
       getServerUrl: () => SERVER_URL,
       getTeacherPassword,
       isTeacherModeActive,
-      getWebRTCManager: () => webrtcManager,
+      getWebRTCManager: () => realtimeController?.getWebRTCManager() || null,
       celebration,
       playTeacherAlert: () => {
         soundEngine.init();
@@ -4498,98 +4415,6 @@
       document.getElementById('btn-teacher-review')?.classList.add('hidden');
     }
 
-    // ==================== WEBRTC FUNCTIONS ====================
-
-    async function initWebRTCManager(role) {
-      if (webrtcManager) {
-        webrtcManager.destroy();
-      }
-      if (!WebRTCManager) {
-        ({ WebRTCManager } = await import('./core/webrtc-manager.js'));
-      }
-      webrtcManager = new WebRTCManager({
-        wsClient,
-        role,
-        username: userSystem.currentUser?.username,
-        onMessage: handleWebRTCMessage,
-        onConnectionChange: (peerUsername, state) => {
-          console.log(`[WebRTC] ${peerUsername}: ${state}`);
-          updateWebRTCStatusUI();
-        },
-        onLatencyUpdate: (peerUsername, latencyMs) => {
-          updateWebRTCStatusUI();
-        }
-      });
-    }
-
-    function handleWebRTCMessage(fromUsername, type, payload, msgId) {
-      switch (type) {
-        case 'review_submit':
-          // Teacher receives student review submission via WebRTC (instant)
-          if (isTeacherModeActive()) {
-            showTeacherAlert({
-              username: payload.username,
-              topic: payload.topic
-            });
-          }
-          break;
-
-        case 'review_grade':
-          // Student receives teacher grade via WebRTC (instant)
-          if (payload.reviewId && processedReviewIds.has(payload.reviewId)) return;
-          if (payload.reviewId) processedReviewIds.add(payload.reviewId);
-          applyTeacherGrades({
-            username: userSystem.currentUser?.username,
-            grades: payload.grades,
-            feedback: payload.feedback
-          });
-          break;
-
-        case 'channel_ready':
-          console.log(`[WebRTC] Channel ready with ${fromUsername} (${payload.role})`);
-          break;
-      }
-    }
-
-    function updateWebRTCStatusUI() {
-      const dot = document.getElementById('webrtc-status-dot');
-      const panel = document.getElementById('webrtc-peer-list');
-      if (!dot) return;
-
-      if (!webrtcManager || !webrtcManager.isActive) {
-        dot.className = 'w-2 h-2 bg-gray-400 rounded-full';
-        if (panel) panel.innerHTML = '<p class="text-xs text-gray-400 italic">No connections</p>';
-        return;
-      }
-
-      const peers = webrtcManager.getConnectedPeers();
-      if (peers.length > 0) {
-        dot.className = 'w-2 h-2 bg-green-500 rounded-full';
-      } else {
-        dot.className = 'w-2 h-2 bg-yellow-500 rounded-full animate-pulse';
-      }
-
-      // Update peer list panel
-      if (panel) {
-        if (peers.length === 0) {
-          panel.innerHTML = '<p class="text-xs text-gray-400 italic">Waiting for connections...</p>';
-        } else {
-          panel.innerHTML = peers.map(p => {
-            const latency = webrtcManager.getLatency(p);
-            const latencyText = latency !== null ? `${latency}ms` : '...';
-            const latencyColor = latency !== null && latency < 50 ? 'text-green-600' : 'text-yellow-600';
-            return `<div class="flex items-center justify-between py-1 text-sm">
-              <span class="flex items-center gap-1">
-                <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                ${p}
-              </span>
-              <span class="${latencyColor} text-xs font-mono">${latencyText}</span>
-            </div>`;
-          }).join('');
-        }
-      }
-    }
-
     // ==================== AI APPEAL HANDLERS ====================
     // Show appeal input form when Appeal button is clicked
     document.getElementById('btn-ai-appeal').addEventListener('click', () => {
@@ -4903,51 +4728,6 @@
       }
       return custom || 'wss://lrsl-driller-production.up.railway.app';
     };
-
-    // ==================== WEBRTC EVENT LISTENERS ====================
-    document.getElementById('webrtc-toggle-btn')?.addEventListener('click', async () => {
-      if (!isTeacherModeActive()) return;
-
-      if (webrtcManager && webrtcManager.isActive) {
-        // Deactivate
-        webrtcManager.deactivate();
-        webrtcManager.destroy();
-        webrtcManager = null;
-        updateWebRTCStatusUI();
-        celebration.showToast('WebRTC direct connect disabled', 'info');
-      } else {
-        // Activate
-        await initWebRTCManager('teacher');
-        webrtcManager.activate();
-        updateWebRTCStatusUI();
-        celebration.showToast('WebRTC direct connect enabled', 'success');
-      }
-    });
-
-    // Toggle status panel on right-click or long-press
-    document.getElementById('webrtc-toggle-btn')?.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      const panel = document.getElementById('webrtc-status-panel');
-      if (panel) panel.classList.toggle('hidden');
-    });
-
-    document.getElementById('close-webrtc-panel')?.addEventListener('click', () => {
-      document.getElementById('webrtc-status-panel')?.classList.add('hidden');
-    });
-
-    // Cleanup WebRTC, P2P, and asset cache on page unload
-    window.addEventListener('beforeunload', () => {
-      if (webrtcManager) {
-        webrtcManager.destroy();
-        webrtcManager = null;
-      }
-      if (p2pAssetTransfer) {
-        p2pAssetTransfer.destroy();
-        p2pAssetTransfer = null;
-      }
-      assetCache.revokeBlobUrls();
-    });
-
     console.log('🎮 Console commands available:');
     console.log('  resetProgress()    - Reset progress for current cartridge');
     console.log('  resetAllProgress() - Reset ALL cartridge progress (nuclear option)');
@@ -4959,5 +4739,6 @@
   </script>
 </body>
 </html>
+
 
 
