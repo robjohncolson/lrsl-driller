@@ -39,6 +39,7 @@
     {
       "id": "l01-missing-table",
       "name": "Level 1: Missing Table Value",
+      "animation": "assets/InverseTableScene.mp4",
       "unlockedBy": "default",
       "layout": {
         "inputs": [
@@ -54,6 +55,7 @@
     {
       "id": "l02-equation-from-table",
       "name": "Level 2: Equation from a Table",
+      "animation": "assets/EquationFromTableScene.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -77,6 +79,7 @@
     {
       "id": "l03-application-model",
       "name": "Level 3: Inverse Variation Application",
+      "animation": "assets/InverseApplicationScene.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -94,6 +97,7 @@
     {
       "id": "l04-horizontal-asymptote",
       "name": "Level 4: Horizontal Asymptote",
+      "animation": "assets/HorizontalAsymptoteScene.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -117,6 +121,7 @@
     {
       "id": "l05-translate-parent",
       "name": "Level 5: Translate y = 1/x",
+      "animation": "assets/TranslateParentScene.mp4",
       "unlockedBy": {
         "gold": 1
       },
@@ -140,6 +145,7 @@
     {
       "id": "l06-translate-xy",
       "name": "Level 6: Translate xy = k",
+      "animation": "assets/TranslateXYScene.mp4",
       "unlockedBy": {
         "gold": 2
       },
