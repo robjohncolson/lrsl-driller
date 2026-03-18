@@ -163,7 +163,7 @@
   ],
   "grading": {
     "rubricFile": "grading-rules.js",
-    "aiPromptFile": null,
+    "aiPromptFile": "ai-grader-prompt.txt",
     "scoring": {
       "scale": [
         "E",
