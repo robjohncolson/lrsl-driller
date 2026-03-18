@@ -1,0 +1,250 @@
+{
+  "meta": {
+    "id": "a2t4l1-inverse-variation",
+    "name": "Inverse Variation and the Reciprocal Function",
+    "subject": "Algebra 2",
+    "description": "Assessment-aligned Unit 4 Lesson 1 drill: inverse variation, reciprocal function translations, and asymptotes."
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "HSA.CED.A.1",
+      "HSA.CED.A.2",
+      "HSF.IF.C.7.D",
+      "HSF.BF.B.3",
+      "MP.1",
+      "MP.2",
+      "MP.4"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      {
+        "label": "Level",
+        "value": "{{levelName}}"
+      },
+      {
+        "label": "Task",
+        "value": "{{problemText}}"
+      },
+      {
+        "label": "Given",
+        "value": "{{givenText}}"
+      }
+    ]
+  },
+  "modes": [
+    {
+      "id": "l01-missing-table",
+      "name": "Level 1: Missing Table Value",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "missingValue",
+            "type": "number",
+            "label": "Missing value",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-equation-from-table",
+      "name": "Level 2: Equation from a Table",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "equationChoice",
+            "type": "dropdown",
+            "label": "Choose the inverse-variation equation:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-application-model",
+      "name": "Level 3: Inverse Variation Application",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "applicationAnswer",
+            "type": "number",
+            "label": "Answer",
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-horizontal-asymptote",
+      "name": "Level 4: Horizontal Asymptote",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "horizontalAsymptote",
+            "type": "dropdown",
+            "label": "Choose the horizontal asymptote:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-translate-parent",
+      "name": "Level 5: Translate y = 1/x",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "translatedEquation",
+            "type": "dropdown",
+            "label": "Which equation matches the translation?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-translate-xy",
+      "name": "Level 6: Translate xy = k",
+      "unlockedBy": {
+        "gold": 2
+      },
+      "layout": {
+        "inputs": [
+          {
+            "id": "translatedVariationEquation",
+            "type": "dropdown",
+            "label": "Which equation represents the translated graph?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": null,
+    "scoring": {
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "missingValue": "In an inverse variation, x times y stays constant. Find k first, then divide k by the missing x-value.",
+      "equationChoice": "Inverse variation uses y = k/x, not y = kx. Check whether x times y stays constant in every column.",
+      "applicationAnswer": "Write the inverse-variation model first. Multiply the given pair to get k, then solve for the missing value. Round only if needed.",
+      "horizontalAsymptote": "For y = a/(x-h) + k, the horizontal asymptote is y = k.",
+      "translatedEquation": "Inside the denominator, the sign is opposite the horizontal shift. Outside the fraction, the sign matches the vertical shift.",
+      "translatedVariationEquation": "Treat xy = c like y = c/x. After translating, the form becomes y = k + c/(x-h)."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": [
+      "problem"
+    ],
+    "tiers": [
+      {
+        "id": "l01-missing-table",
+        "name": "01",
+        "unlockedBy": "default",
+        "celebrationMessage": "You can find a missing value from an inverse-variation table."
+      },
+      {
+        "id": "l02-equation-from-table",
+        "name": "02",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can match a table to y = k/x."
+      },
+      {
+        "id": "l03-application-model",
+        "name": "03",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can solve inverse-variation application problems."
+      },
+      {
+        "id": "l04-horizontal-asymptote",
+        "name": "04",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can read the horizontal asymptote from a translated reciprocal function."
+      },
+      {
+        "id": "l05-translate-parent",
+        "name": "05",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can translate the parent reciprocal function."
+      },
+      {
+        "id": "l06-translate-xy",
+        "name": "06",
+        "unlockedBy": {
+          "gold": 2
+        },
+        "celebrationMessage": "You can rewrite translated inverse-variation equations."
+      }
+    ]
+  }
+}

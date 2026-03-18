@@ -132,6 +132,13 @@
       "subject": "AP Statistics",
       "description": "Observed vs expected counts, chi-square contributions, and simulation-based interpretation for one-way categorical data",
       "shortCode": "U81"
+    },
+    {
+      "id": "a2t4l1-inverse-variation",
+      "name": "Inverse Variation & Reciprocal Function",
+      "subject": "Algebra 2",
+      "description": "Inverse variation, reciprocal function translations, and asymptotes",
+      "shortCode": "IVAR"
     }
   ]
 }
