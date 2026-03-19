@@ -1367,7 +1367,7 @@
     // P2P Asset Delivery System
     const assetCache = new AssetCache();
     const assetResolver = new AssetResolver(assetCache, {
-      useSupabase: localStorage.getItem('driller_useSupabaseVideos') === 'true'
+      useSupabase: localStorage.getItem('driller_useSupabaseVideos') !== 'false'
     });
     assetResolver.setWebSocketClient(wsClient);
     let p2pAssetTransfer = null; // Created after user identifies (needs username)
@@ -2919,7 +2919,7 @@
     const SUPABASE_VIDEO_BASE = 'https://hgvnytaqmuybzbotosyj.supabase.co/storage/v1/object/public/videos/animations';
 
     function initVideoSourceToggle() {
-      const useSupabase = localStorage.getItem('driller_useSupabaseVideos') === 'true';
+      const useSupabase = localStorage.getItem('driller_useSupabaseVideos') !== 'false';
       const videoSourceDot = document.getElementById('video-source-toggle-dot');
       const videoSourceLabel = document.getElementById('video-source-toggle-label');
       const videoSourceToggle = document.getElementById('video-source-toggle');
@@ -2992,7 +2992,7 @@
     function resolveVideoUrl(manifestPath, cartridgeId, forceLocal = false) {
       if (!manifestPath || !cartridgeId) return null;
 
-      const useSupabase = !forceLocal && localStorage.getItem('driller_useSupabaseVideos') === 'true';
+      const useSupabase = !forceLocal && localStorage.getItem('driller_useSupabaseVideos') !== 'false';
 
       if (useSupabase) {
         // Convert "assets/filename.mp4" to Supabase URL
