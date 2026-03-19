@@ -12,13 +12,20 @@ from manim import *
 
 class HorizontalAsymptoteScene(Scene):
     def construct(self):
-        # ── Scene 1: y = 1/x  and tracing x → ∞ ─────────────────────────
-        s1_title = Text("Parent Function: y = 1/x", font_size=40, weight=BOLD)
-        s1_title.to_edge(UP)
-        self.play(Write(s1_title))
+        self.scene_parent()
+        self.scene_shift()
+        self.scene_general_form()
+        self.scene_mistake()
+        self.scene_insight()
+
+    # ── Scene 1: y = 1/x with tracer → 0 (~12 s) ─────────────────────
+    def scene_parent(self):
+        title = Text("Parent Function: y = 1/x", font_size=40, weight=BOLD)
+        title.to_edge(UP)
+        self.play(Write(title))
         self.wait(0.3)
 
-        axes1 = Axes(
+        axes = Axes(
             x_range=[-8, 20, 2],
             y_range=[-3, 5, 1],
             x_length=9,
@@ -26,56 +33,56 @@ class HorizontalAsymptoteScene(Scene):
             axis_config={"include_numbers": True, "font_size": 22},
             tips=True,
         )
-        axes1.shift(DOWN * 0.4)
-        axes1_labels = axes1.get_axis_labels(x_label="x", y_label="y")
+        axes.shift(DOWN * 0.4)
+        labels = axes.get_axis_labels(x_label="x", y_label="y")
 
         # Plot y = 1/x (two branches, avoid x = 0)
-        curve_pos = axes1.plot(
+        curve_pos = axes.plot(
             lambda x: 1 / x, x_range=[0.15, 19, 0.05], color=YELLOW
         )
-        curve_neg = axes1.plot(
+        curve_neg = axes.plot(
             lambda x: 1 / x, x_range=[-8, -0.15, 0.05], color=YELLOW
         )
 
-        self.play(Create(axes1), Write(axes1_labels), run_time=1)
+        self.play(Create(axes), Write(labels), run_time=1)
         self.play(Create(curve_pos), Create(curve_neg), run_time=1.2)
         self.wait(0.3)
 
-        # Horizontal asymptote y = 0 (dashed)
-        ha_line_0 = DashedLine(
-            start=axes1.c2p(-8, 0),
-            end=axes1.c2p(20, 0),
+        # Horizontal asymptote y = 0 (dashed, BLUE)
+        ha_line = DashedLine(
+            start=axes.c2p(-8, 0),
+            end=axes.c2p(20, 0),
             color=BLUE,
             dash_length=0.12,
             stroke_width=3,
         )
-        ha_label_0 = MathTex("y = 0", font_size=30, color=BLUE)
-        ha_label_0.next_to(ha_line_0.get_end(), UP, buff=0.15)
-        self.play(Create(ha_line_0), Write(ha_label_0), run_time=0.8)
+        ha_label = MathTex("y = 0", font_size=30, color=BLUE)
+        ha_label.next_to(ha_line.get_end(), UP, buff=0.15)
+        self.play(Create(ha_line), Write(ha_label), run_time=0.8)
         self.wait(0.3)
 
-        # ValueTracker: dot traces curve x from 1 → 18
+        # ValueTracker: tracer dot follows curve from x = 1 → 18
         t = ValueTracker(1)
         dot = always_redraw(
             lambda: Dot(
-                axes1.c2p(t.get_value(), 1 / t.get_value()),
+                axes.c2p(t.get_value(), 1 / t.get_value()),
                 color=WHITE,
                 radius=0.08,
             )
         )
-        y_label = always_redraw(
+        y_readout = always_redraw(
             lambda: MathTex(
                 f"y = {1 / t.get_value():.3f}",
                 font_size=28,
                 color=WHITE,
             ).next_to(
-                axes1.c2p(t.get_value(), 1 / t.get_value()),
+                axes.c2p(t.get_value(), 1 / t.get_value()),
                 UR,
                 buff=0.15,
             )
         )
 
-        self.play(FadeIn(dot), FadeIn(y_label))
+        self.play(FadeIn(dot), FadeIn(y_readout))
         self.play(t.animate.set_value(18), run_time=4, rate_func=smooth)
         self.wait(0.3)
 
@@ -86,20 +93,23 @@ class HorizontalAsymptoteScene(Scene):
         self.play(Write(approach_text), run_time=0.8)
         self.wait(1)
 
-        # Fade Scene 1
-        s1_group = VGroup(
-            s1_title, axes1, axes1_labels, curve_pos, curve_neg,
-            ha_line_0, ha_label_0, dot, y_label, approach_text,
+        # Fade everything
+        self.play(
+            FadeOut(VGroup(
+                title, axes, labels, curve_pos, curve_neg,
+                ha_line, ha_label, dot, y_readout, approach_text,
+            )),
+            run_time=0.6,
         )
-        self.play(FadeOut(s1_group), run_time=0.6)
 
-        # ── Scene 2: y = 1/x + 3  (vertical shift) ──────────────────────
-        s2_title = Text("Shift Up: y = 1/x + 3", font_size=40, weight=BOLD)
-        s2_title.to_edge(UP)
-        self.play(Write(s2_title))
+    # ── Scene 2: Vertical shift y = 1/x + 3 (~10 s) ──────────────────
+    def scene_shift(self):
+        title = Text("Shift Up: y = 1/x + 3", font_size=40, weight=BOLD)
+        title.to_edge(UP)
+        self.play(Write(title))
         self.wait(0.3)
 
-        axes2 = Axes(
+        axes = Axes(
             x_range=[-8, 20, 2],
             y_range=[-2, 8, 1],
             x_length=9,
@@ -107,92 +117,95 @@ class HorizontalAsymptoteScene(Scene):
             axis_config={"include_numbers": True, "font_size": 22},
             tips=True,
         )
-        axes2.shift(DOWN * 0.4)
-        axes2_labels = axes2.get_axis_labels(x_label="x", y_label="y")
+        axes.shift(DOWN * 0.4)
+        labels = axes.get_axis_labels(x_label="x", y_label="y")
 
-        # Ghost of y = 1/x (dimmed)
-        ghost_pos = axes2.plot(
+        # Ghost of y = 1/x (dimmed to GREY)
+        ghost_pos = axes.plot(
             lambda x: 1 / x, x_range=[0.15, 19, 0.05],
-            color=YELLOW, stroke_opacity=0.25,
+            color=GREY, stroke_opacity=0.25,
         )
-        ghost_neg = axes2.plot(
+        ghost_neg = axes.plot(
             lambda x: 1 / x, x_range=[-8, -0.15, 0.05],
-            color=YELLOW, stroke_opacity=0.25,
+            color=GREY, stroke_opacity=0.25,
         )
 
-        # y = 1/x + 3
-        curve2_pos = axes2.plot(
+        # New curve: y = 1/x + 3
+        curve_pos = axes.plot(
             lambda x: 1 / x + 3, x_range=[0.15, 19, 0.05], color=YELLOW
         )
-        curve2_neg = axes2.plot(
+        curve_neg = axes.plot(
             lambda x: 1 / x + 3, x_range=[-8, -0.15, 0.05], color=YELLOW
         )
 
-        self.play(Create(axes2), Write(axes2_labels), run_time=0.8)
+        self.play(Create(axes), Write(labels), run_time=0.8)
         self.play(Create(ghost_pos), Create(ghost_neg), run_time=0.6)
 
-        # Animate the shift: show old dashed at y=0, then move to y=3
+        # Animate HA shifting from y = 0 to y = 3
         old_ha = DashedLine(
-            start=axes2.c2p(-8, 0), end=axes2.c2p(20, 0),
+            start=axes.c2p(-8, 0), end=axes.c2p(20, 0),
             color=BLUE, dash_length=0.12, stroke_width=3, stroke_opacity=0.4,
         )
         new_ha = DashedLine(
-            start=axes2.c2p(-8, 3), end=axes2.c2p(20, 3),
+            start=axes.c2p(-8, 3), end=axes.c2p(20, 3),
             color=BLUE, dash_length=0.12, stroke_width=3,
         )
-        ha_label_3 = MathTex("y = 3", font_size=32, color=BLUE)
-        ha_label_3.next_to(new_ha.get_end(), UP, buff=0.15)
+        ha_label = MathTex("y = 3", font_size=32, color=BLUE)
+        ha_label.next_to(new_ha.get_end(), UP, buff=0.15)
 
         self.play(Create(old_ha), run_time=0.4)
         self.play(
-            Create(curve2_pos), Create(curve2_neg),
+            Create(curve_pos), Create(curve_neg),
             ReplacementTransform(old_ha, new_ha),
             run_time=1.2,
         )
-        self.play(Write(ha_label_3), run_time=0.5)
+        self.play(Write(ha_label), run_time=0.5)
         self.wait(0.3)
 
         # Trace dot along y = 1/x + 3
-        t2 = ValueTracker(1)
-        dot2 = always_redraw(
+        t = ValueTracker(1)
+        dot = always_redraw(
             lambda: Dot(
-                axes2.c2p(t2.get_value(), 1 / t2.get_value() + 3),
+                axes.c2p(t.get_value(), 1 / t.get_value() + 3),
                 color=WHITE, radius=0.08,
             )
         )
-        y_label2 = always_redraw(
+        y_readout = always_redraw(
             lambda: MathTex(
-                f"y = {1 / t2.get_value() + 3:.3f}",
+                f"y = {1 / t.get_value() + 3:.3f}",
                 font_size=28, color=WHITE,
             ).next_to(
-                axes2.c2p(t2.get_value(), 1 / t2.get_value() + 3),
+                axes.c2p(t.get_value(), 1 / t.get_value() + 3),
                 UR, buff=0.15,
             )
         )
 
-        self.play(FadeIn(dot2), FadeIn(y_label2))
-        self.play(t2.animate.set_value(18), run_time=3.5, rate_func=smooth)
+        self.play(FadeIn(dot), FadeIn(y_readout))
+        self.play(t.animate.set_value(18), run_time=3.5, rate_func=smooth)
         self.wait(0.3)
 
         shift_insight = Text(
             'The +3 shifts the "landing level" to y = 3',
-            font_size=28, color=BLUE,
+            font_size=28, color=GREEN,
         )
         shift_insight.to_edge(DOWN, buff=0.35)
         self.play(Write(shift_insight), run_time=1)
         self.wait(1.2)
 
-        s2_group = VGroup(
-            s2_title, axes2, axes2_labels, ghost_pos, ghost_neg,
-            curve2_pos, curve2_neg, new_ha, ha_label_3,
-            dot2, y_label2, shift_insight,
+        self.play(
+            FadeOut(VGroup(
+                title, axes, labels, ghost_pos, ghost_neg,
+                curve_pos, curve_neg, new_ha, ha_label,
+                dot, y_readout, shift_insight,
+            )),
+            run_time=0.6,
         )
-        self.play(FadeOut(s2_group), run_time=0.6)
 
-        # ── Scene 3: General form — colour-coded ────────────────────────
-        s3_title = Text("General Form", font_size=40, weight=BOLD)
-        s3_title.to_edge(UP)
-        self.play(Write(s3_title))
+    # ── Scene 3: General form colour-coded (~10 s) ────────────────────
+    def scene_general_form(self):
+        title = Text("General Form", font_size=40, weight=BOLD)
+        title.to_edge(UP)
+        self.play(Write(title))
         self.wait(0.3)
 
         # y = a/(x - h) + k  with h in RED, k in BLUE
@@ -200,14 +213,14 @@ class HorizontalAsymptoteScene(Scene):
             r"y", r"=", r"\frac{a}{x - ", r"h", r"}", r"+", r"k",
             font_size=56,
         )
-        general[3].set_color(RED)      # h
-        general[6].set_color(BLUE)     # k
+        general[3].set_color(RED)   # h
+        general[6].set_color(BLUE)  # k
         general.move_to(UP * 1.5)
         self.play(Write(general), run_time=1.2)
         self.wait(0.5)
 
-        # Coordinate axes for illustration
-        axes3 = Axes(
+        # Example: y = 2/(x-3) + 4  on fresh axes
+        axes = Axes(
             x_range=[-4, 12, 2],
             y_range=[-3, 8, 1],
             x_length=7,
@@ -215,23 +228,22 @@ class HorizontalAsymptoteScene(Scene):
             axis_config={"include_numbers": True, "font_size": 20},
             tips=True,
         )
-        axes3.shift(DOWN * 1)
-        axes3_labels = axes3.get_axis_labels(x_label="x", y_label="y")
+        axes.shift(DOWN * 1)
+        labels = axes.get_axis_labels(x_label="x", y_label="y")
 
-        # Plot y = 2/(x-3) + 4  (h=3, k=4)
-        demo_pos = axes3.plot(
+        curve_pos = axes.plot(
             lambda x: 2 / (x - 3) + 4, x_range=[3.15, 11, 0.05], color=YELLOW,
         )
-        demo_neg = axes3.plot(
+        curve_neg = axes.plot(
             lambda x: 2 / (x - 3) + 4, x_range=[-4, 2.85, 0.05], color=YELLOW,
         )
 
-        self.play(Create(axes3), Write(axes3_labels), run_time=0.8)
-        self.play(Create(demo_pos), Create(demo_neg), run_time=0.8)
+        self.play(Create(axes), Write(labels), run_time=0.8)
+        self.play(Create(curve_pos), Create(curve_neg), run_time=0.8)
 
         # Vertical asymptote x = 3 (RED)
         va_line = DashedLine(
-            start=axes3.c2p(3, -3), end=axes3.c2p(3, 8),
+            start=axes.c2p(3, -3), end=axes.c2p(3, 8),
             color=RED, dash_length=0.12, stroke_width=3,
         )
         va_label = MathTex("x = h", font_size=28, color=RED)
@@ -239,7 +251,7 @@ class HorizontalAsymptoteScene(Scene):
 
         # Horizontal asymptote y = 4 (BLUE)
         ha_line = DashedLine(
-            start=axes3.c2p(-4, 4), end=axes3.c2p(12, 4),
+            start=axes.c2p(-4, 4), end=axes.c2p(12, 4),
             color=BLUE, dash_length=0.12, stroke_width=3,
         )
         ha_label = MathTex("y = k", font_size=28, color=BLUE)
@@ -252,14 +264,16 @@ class HorizontalAsymptoteScene(Scene):
         )
         self.wait(0.4)
 
-        # Arrows from equation parts to asymptote labels
+        # Arrows from equation parts to their asymptote labels
         h_arrow = Arrow(
             general[3].get_bottom(), va_label.get_top(),
-            color=RED, buff=0.15, stroke_width=3, max_tip_length_to_length_ratio=0.15,
+            color=RED, buff=0.15, stroke_width=3,
+            max_tip_length_to_length_ratio=0.15,
         )
         k_arrow = Arrow(
             general[6].get_bottom(), ha_label.get_left(),
-            color=BLUE, buff=0.15, stroke_width=3, max_tip_length_to_length_ratio=0.15,
+            color=BLUE, buff=0.15, stroke_width=3,
+            max_tip_length_to_length_ratio=0.15,
         )
         self.play(GrowArrow(h_arrow), GrowArrow(k_arrow), run_time=1)
 
@@ -270,21 +284,24 @@ class HorizontalAsymptoteScene(Scene):
         self.play(Write(h_note), Write(k_note), run_time=0.8)
         self.wait(1.5)
 
-        s3_group = VGroup(
-            s3_title, general, axes3, axes3_labels,
-            demo_pos, demo_neg, va_line, va_label,
-            ha_line, ha_label, h_arrow, k_arrow,
-            h_note, k_note,
+        self.play(
+            FadeOut(VGroup(
+                title, general, axes, labels,
+                curve_pos, curve_neg, va_line, va_label,
+                ha_line, ha_label, h_arrow, k_arrow,
+                h_note, k_note,
+            )),
+            run_time=0.6,
         )
-        self.play(FadeOut(s3_group), run_time=0.6)
 
-        # ── Scene 4: Common-mistake spotlight ────────────────────────────
-        s4_title = Text("Common Mistake Spotlight", font_size=40, weight=BOLD)
-        s4_title.to_edge(UP)
-        self.play(Write(s4_title))
+    # ── Scene 4: Common-mistake spotlight (~8 s) ──────────────────────
+    def scene_mistake(self):
+        title = Text("Common Mistake Spotlight", font_size=40, weight=BOLD)
+        title.to_edge(UP)
+        self.play(Write(title))
         self.wait(0.3)
 
-        # Show equation
+        # Show the equation
         eq = MathTex(
             r"y = \frac{2}{x + 5} - 4",
             font_size=52,
@@ -294,7 +311,7 @@ class HorizontalAsymptoteScene(Scene):
         self.wait(0.5)
 
         prompt = Text(
-            "What is the horizontal asymptote?",
+            "Horizontal asymptote?",
             font_size=30, color=YELLOW,
         )
         prompt.next_to(eq, DOWN, buff=0.5)
@@ -304,7 +321,7 @@ class HorizontalAsymptoteScene(Scene):
         # Wrong answer — crossed out
         wrong = MathTex(r"x = -5", font_size=44, color=RED)
         wrong.shift(DOWN * 0.4 + LEFT * 2.5)
-        wrong_label = Text("VERTICAL asymptote", font_size=22, color=RED)
+        wrong_label = Text("\u2190 VERTICAL", font_size=22, color=RED)
         wrong_label.next_to(wrong, DOWN, buff=0.2)
         self.play(Write(wrong), Write(wrong_label), run_time=0.8)
         self.wait(0.4)
@@ -313,10 +330,10 @@ class HorizontalAsymptoteScene(Scene):
         self.play(Create(cross), run_time=0.6)
         self.wait(0.5)
 
-        # Correct answer — boxed in green
+        # Correct answer — boxed in GREEN
         correct = MathTex(r"y = -4", font_size=44, color=GREEN)
         correct.shift(DOWN * 0.4 + RIGHT * 2.5)
-        correct_label = Text("HORIZONTAL asymptote", font_size=22, color=GREEN)
+        correct_label = Text("\u2190 HORIZONTAL", font_size=22, color=GREEN)
         correct_label.next_to(correct, DOWN, buff=0.2)
         self.play(Write(correct), Write(correct_label), run_time=0.8)
 
@@ -340,16 +357,18 @@ class HorizontalAsymptoteScene(Scene):
         self.play(Write(reason), run_time=0.8)
         self.wait(1.2)
 
-        # Fade Scene 4
-        s4_group = VGroup(
-            s4_title, eq, prompt,
-            wrong, wrong_label, cross,
-            correct, correct_label, correct_box, check,
-            reason,
+        self.play(
+            FadeOut(VGroup(
+                title, eq, prompt,
+                wrong, wrong_label, cross,
+                correct, correct_label, correct_box, check,
+                reason,
+            )),
+            run_time=0.6,
         )
-        self.play(FadeOut(s4_group), run_time=0.6)
 
-        # ── Final takeaway ───────────────────────────────────────────────
+    # ── Insight box (~4 s) ────────────────────────────────────────────
+    def scene_insight(self):
         takeaway_eq = MathTex(
             r"y = \frac{a}{x - h} + k",
             font_size=48,

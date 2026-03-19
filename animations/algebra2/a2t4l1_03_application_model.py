@@ -9,8 +9,15 @@ from manim import *
 
 class InverseApplicationScene(Scene):
     def construct(self):
-        # ── Scene 1: Present the problem visually ──────────────────────────
-        title = Text("Inverse Variation: Application", font_size=42)
+        self.scene_1_problem_setup()
+        self.scene_2_find_k()
+        self.scene_3_solve_unknown()
+        self.scene_4_hyperbola_graph()
+        self.scene_5_process_box()
+
+    # ── Scene 1: Problem Setup (~8 s) ────────────────────────────────
+    def scene_1_problem_setup(self):
+        title = Text("Inverse Variation Application", font_size=42)
         title.to_edge(UP)
         self.play(Write(title))
         self.wait(0.3)
@@ -25,52 +32,41 @@ class InverseApplicationScene(Scene):
         self.play(Write(problem), run_time=1.5)
         self.wait(0.5)
 
-        # Visual: 4 worker dots in BLUE
-        workers_label = Text("Workers", font_size=22, color=BLUE)
-        workers_label.shift(LEFT * 3.5 + DOWN * 0.3)
+        # Caption: reference to L01-L02
+        caption = Text(
+            "Recall: xy = k  and  y = k/x",
+            font_size=22,
+            color=GRAY,
+        )
+        caption.next_to(problem, DOWN, buff=0.3)
+        self.play(FadeIn(caption, shift=UP * 0.15), run_time=0.6)
+        self.wait(0.4)
 
+        # Visual: 4 worker dots in BLUE
         worker_dots = VGroup()
         for i in range(4):
             dot = Dot(radius=0.18, color=BLUE)
-            dot.shift(LEFT * 3.5 + DOWN * 1.0 + RIGHT * i * 0.6)
+            dot.shift(LEFT * 2.5 + DOWN * 0.8 + RIGHT * i * 0.7)
             worker_dots.add(dot)
 
-        w_count = MathTex(r"w = 4", font_size=34, color=BLUE)
-        w_count.next_to(worker_dots, DOWN, buff=0.3)
+        w_label = MathTex(r"w = 4", font_size=34, color=BLUE)
+        w_label.next_to(worker_dots, DOWN, buff=0.3)
 
-        # Visual: clock / time in YELLOW
-        time_label = Text("Time", font_size=22, color=YELLOW)
-        time_label.shift(RIGHT * 3 + DOWN * 0.3)
-
-        clock_circle = Circle(radius=0.6, color=YELLOW, stroke_width=2)
-        clock_circle.shift(RIGHT * 3 + DOWN * 1.2)
-        clock_hand = Line(
-            clock_circle.get_center(),
-            clock_circle.get_center() + UP * 0.45,
-            color=YELLOW,
-            stroke_width=3,
-        )
-        t_count = MathTex(r"t = 18 \text{ hrs}", font_size=34, color=YELLOW)
-        t_count.next_to(clock_circle, DOWN, buff=0.3)
+        # Time in YELLOW
+        t_label = MathTex(r"t = 18 \text{ hrs}", font_size=34, color=YELLOW)
+        t_label.shift(RIGHT * 2.5 + DOWN * 1.0)
 
         self.play(
-            Write(workers_label),
             LaggedStart(*[GrowFromCenter(d) for d in worker_dots], lag_ratio=0.15),
-            Write(w_count),
+            Write(w_label),
             run_time=1.2,
         )
-        self.play(
-            Write(time_label),
-            Create(clock_circle),
-            Create(clock_hand),
-            Write(t_count),
-            run_time=1.0,
-        )
-        self.wait(0.5)
+        self.play(Write(t_label), run_time=0.8)
+        self.wait(0.4)
 
-        # Insight arrow: More workers → Less time
-        insight = Text("More workers  →  Less time", font_size=28, color=GREEN)
-        insight.shift(DOWN * 2.8)
+        # Insight: More workers -> Less time
+        insight = Text("More workers  \u2192  Less time", font_size=28, color=GREEN)
+        insight.shift(DOWN * 2.5)
         arrow_up = MathTex(r"\uparrow", font_size=36, color=BLUE)
         arrow_down = MathTex(r"\downarrow", font_size=36, color=YELLOW)
         arrow_up.next_to(insight, LEFT, buff=0.3)
@@ -79,55 +75,45 @@ class InverseApplicationScene(Scene):
         self.play(Write(insight), Write(arrow_up), Write(arrow_down))
         self.wait(1.0)
 
-        # ── Scene 2: Set up the model ──────────────────────────────────────
-        self.play(
-            *[FadeOut(m) for m in [
-                problem, workers_label, worker_dots, w_count,
-                time_label, clock_circle, clock_hand, t_count,
-                insight, arrow_up, arrow_down,
-            ]],
-            run_time=0.8,
+        # Store for cleanup
+        self.title = title
+        self.scene_1_mobs = VGroup(
+            problem, caption, worker_dots, w_label,
+            t_label, insight, arrow_up, arrow_down,
         )
 
+    # ── Scene 2: Find k (~8 s) ───────────────────────────────────────
+    def scene_2_find_k(self):
+        self.play(FadeOut(self.scene_1_mobs), run_time=0.7)
+
         subtitle = Text("Step 1: Find the constant k", font_size=30, color=GREEN)
-        subtitle.next_to(title, DOWN, buff=0.5)
+        subtitle.next_to(self.title, DOWN, buff=0.5)
         self.play(Write(subtitle))
         self.wait(0.3)
 
-        # workers × hours = constant
-        model_text = MathTex(
-            r"\text{workers}", r"\times", r"\text{hours}", r"=", r"k",
-            font_size=38,
-        )
-        model_text[0].set_color(BLUE)
-        model_text[2].set_color(YELLOW)
-        model_text[4].set_color(GREEN)
-        model_text.shift(UP * 0.5)
-
-        self.play(Write(model_text), run_time=1.0)
+        # General model: w * t = k
+        model = MathTex(r"w", r"\cdot", r"t", r"=", r"k", font_size=42)
+        model[0].set_color(BLUE)
+        model[2].set_color(YELLOW)
+        model[4].set_color(GREEN)
+        model.shift(UP * 0.5)
+        self.play(Write(model), run_time=1.0)
         self.wait(0.5)
 
-        # Plug in known values
+        # Substitute known values
         plug_in = MathTex(r"4", r"\times", r"18", r"=", r"k", font_size=42)
         plug_in[0].set_color(BLUE)
         plug_in[2].set_color(YELLOW)
         plug_in[4].set_color(GREEN)
         plug_in.shift(DOWN * 0.3)
-
         self.play(Write(plug_in), run_time=0.8)
         self.wait(0.5)
 
-        # Calculate k
+        # Result: k = 72
         k_result = MathTex(r"k", r"=", r"72", font_size=48, color=GREEN)
         k_result.shift(DOWN * 1.3)
-
-        flash_rect = SurroundingRectangle(k_result, color=GREEN, buff=0.15)
-        self.play(Write(k_result), Create(flash_rect))
-        self.play(
-            flash_rect.animate.set_stroke(width=6),
-            rate_func=there_and_back,
-            run_time=0.6,
-        )
+        self.play(Write(k_result), run_time=0.7)
+        self.play(Circumscribe(k_result, color=GREEN, run_time=0.8))
         self.wait(0.3)
 
         # Write the equation
@@ -135,28 +121,22 @@ class InverseApplicationScene(Scene):
         equation[0].set_color(YELLOW)
         equation[2].set_color(GREEN)
         equation.shift(DOWN * 2.4)
-
         self.play(Write(equation), run_time=0.8)
         self.wait(1.0)
 
-        # ── Scene 3: Solve for the unknown ─────────────────────────────────
-        self.play(
-            *[FadeOut(m) for m in [
-                subtitle, model_text, plug_in, k_result, flash_rect, equation,
-            ]],
-            run_time=0.7,
-        )
+        # Store for cleanup
+        self.scene_2_mobs = VGroup(subtitle, model, plug_in, k_result, equation)
 
-        subtitle2 = Text("Step 2: Solve for the unknown", font_size=30, color=GOLD)
-        subtitle2.next_to(title, DOWN, buff=0.5)
-        self.play(Write(subtitle2))
+    # ── Scene 3: Solve for Unknown (~8 s) ─────────────────────────────
+    def scene_3_solve_unknown(self):
+        self.play(FadeOut(self.scene_2_mobs), run_time=0.7)
+
+        subtitle = Text("Step 2: Solve for the unknown", font_size=30, color=GOLD)
+        subtitle.next_to(self.title, DOWN, buff=0.5)
+        self.play(Write(subtitle))
         self.wait(0.3)
 
-        question = Text(
-            "How long for 6 workers?",
-            font_size=32,
-            color=WHITE,
-        )
+        question = Text("How long for 6 workers?", font_size=32, color=WHITE)
         question.shift(UP * 0.8)
         self.play(Write(question))
         self.wait(0.4)
@@ -174,7 +154,7 @@ class InverseApplicationScene(Scene):
         )
         self.wait(0.3)
 
-        # Computation step by step
+        # Step-by-step substitution
         step1 = MathTex(r"t", r"=", r"\frac{72}{w}", font_size=40)
         step1[0].set_color(YELLOW)
         step1[2].set_color(GREEN)
@@ -186,20 +166,20 @@ class InverseApplicationScene(Scene):
         step2[2][3].set_color(BLUE)      # "6"
         step2.shift(DOWN * 0.6)
 
-        step3 = MathTex(r"t", r"=", r"12", r"\text{ hours}", font_size=44)
-        step3[0].set_color(YELLOW)
-        step3[2].set_color(GOLD)
-        step3[3].set_color(GOLD)
-        step3.shift(DOWN * 1.5)
+        result = MathTex(r"t", r"=", r"12", r"\text{ hours}", font_size=44)
+        result[0].set_color(YELLOW)
+        result[2].set_color(GOLD)
+        result[3].set_color(GOLD)
+        result.shift(DOWN * 1.5)
 
         self.play(Write(step1), run_time=0.7)
         self.wait(0.4)
         self.play(TransformMatchingTex(step1, step2), run_time=0.8)
         self.wait(0.4)
-        self.play(Write(step3), run_time=0.8)
+        self.play(Write(result), run_time=0.8)
 
         # Highlight the answer
-        answer_box = SurroundingRectangle(step3, color=GOLD, buff=0.15)
+        answer_box = SurroundingRectangle(result, color=GOLD, buff=0.15)
         self.play(Create(answer_box))
         self.play(
             answer_box.animate.set_stroke(width=6),
@@ -208,55 +188,56 @@ class InverseApplicationScene(Scene):
         )
         self.wait(1.0)
 
-        # ── Scene 4: Hyperbola graph ──────────────────────────────────────
-        self.play(
-            *[FadeOut(m) for m in [
-                subtitle2, question, six_dots,
-                step2, step3, answer_box,
-            ]],
-            run_time=0.7,
+        # Store for cleanup
+        self.scene_3_mobs = VGroup(
+            subtitle, question, six_dots, step2, result, answer_box,
         )
 
+    # ── Scene 4: Hyperbola Graph (~10 s) ──────────────────────────────
+    def scene_4_hyperbola_graph(self):
+        self.play(FadeOut(self.scene_3_mobs), run_time=0.7)
+
         graph_title = Text("The Inverse Variation Curve", font_size=30)
-        graph_title.next_to(title, DOWN, buff=0.4)
+        graph_title.next_to(self.title, DOWN, buff=0.4)
         self.play(Write(graph_title))
 
         # Axes
         axes = Axes(
-            x_range=[0, 14, 2],
-            y_range=[0, 40, 5],
+            x_range=[0, 10, 1],
+            y_range=[0, 25, 5],
             x_length=6,
-            y_length=4,
+            y_length=4.5,
             axis_config={"include_numbers": True, "font_size": 22},
             tips=False,
         )
-        axes.shift(DOWN * 0.5)
+        axes.shift(DOWN * 0.4)
 
         x_label = axes.get_x_axis_label(
-            Text("Workers (w)", font_size=22, color=BLUE), edge=DOWN, direction=DOWN
+            Text("workers", font_size=22, color=BLUE), edge=DOWN, direction=DOWN
         )
         y_label = axes.get_y_axis_label(
-            Text("Hours (t)", font_size=22, color=YELLOW), edge=LEFT, direction=LEFT
+            Text("hours", font_size=22, color=YELLOW), edge=LEFT, direction=LEFT
         )
 
         self.play(Create(axes), Write(x_label), Write(y_label), run_time=1.2)
         self.wait(0.3)
 
-        # Plot t = 72/w for w in [2, 13]
+        # Plot t = 72/w for w in [3, 9]
         curve = axes.plot(
             lambda w: 72 / w,
-            x_range=[2, 13],
-            color=GREEN,
+            x_range=[3, 9],
+            color=YELLOW,
             stroke_width=3,
         )
         self.play(Create(curve), run_time=1.5)
         self.wait(0.3)
 
-        # Plot the two key points
+        # Point 1: (4, 18) in BLUE
         point1 = Dot(axes.c2p(4, 18), radius=0.1, color=BLUE)
         label1 = MathTex(r"(4, 18)", font_size=26, color=BLUE)
         label1.next_to(point1, UR, buff=0.15)
 
+        # Point 2: (6, 12) in GOLD
         point2 = Dot(axes.c2p(6, 12), radius=0.1, color=GOLD)
         label2 = MathTex(r"(6, 12)", font_size=26, color=GOLD)
         label2.next_to(point2, UR, buff=0.15)
@@ -266,7 +247,7 @@ class InverseApplicationScene(Scene):
         self.play(GrowFromCenter(point2), Write(label2))
         self.wait(0.5)
 
-        # Dashed lines from points to axes
+        # Dashed line projections from each point to axes
         dash1_x = DashedLine(
             axes.c2p(4, 0), axes.c2p(4, 18), color=BLUE, stroke_width=1.5
         )
@@ -285,26 +266,21 @@ class InverseApplicationScene(Scene):
             Create(dash2_x), Create(dash2_y),
             run_time=0.8,
         )
-        self.wait(0.8)
-
-        # Annotation: as w increases, t decreases
-        trend = Text("As workers ↑, time ↓ smoothly", font_size=22, color=GREEN)
-        trend.next_to(axes, DOWN, buff=0.6)
-        self.play(Write(trend))
         self.wait(1.0)
 
-        # ── Scene 5: Boxed process summary ────────────────────────────────
-        self.play(
-            *[FadeOut(m) for m in [
-                graph_title, axes, x_label, y_label, curve,
-                point1, label1, point2, label2,
-                dash1_x, dash1_y, dash2_x, dash2_y, trend,
-            ]],
-            run_time=0.7,
+        # Store for cleanup
+        self.scene_4_mobs = VGroup(
+            graph_title, axes, x_label, y_label, curve,
+            point1, label1, point2, label2,
+            dash1_x, dash1_y, dash2_x, dash2_y,
         )
 
+    # ── Scene 5: Boxed Process Summary (~4 s) ─────────────────────────
+    def scene_5_process_box(self):
+        self.play(FadeOut(self.scene_4_mobs), run_time=0.7)
+
         summary_title = Text("Solving Inverse Variation Problems", font_size=30)
-        summary_title.next_to(title, DOWN, buff=0.5)
+        summary_title.next_to(self.title, DOWN, buff=0.5)
         self.play(Write(summary_title))
         self.wait(0.3)
 
@@ -330,7 +306,9 @@ class InverseApplicationScene(Scene):
         process[1][4][0].set_color(GREEN)  # k in fraction
         process[1][4][2:].set_color(BLUE)  # x_2 in fraction
 
-        box = SurroundingRectangle(process, color=WHITE, buff=0.25, corner_radius=0.1)
+        box = SurroundingRectangle(
+            process, color=WHITE, buff=0.25, corner_radius=0.1
+        )
 
         self.play(Write(process[0]), run_time=1.0)
         self.wait(0.3)
@@ -340,7 +318,7 @@ class InverseApplicationScene(Scene):
 
         # Key reminder
         reminder = Text(
-            "The product x · y is always constant!",
+            "The product x \u00b7 y is always constant!",
             font_size=24,
             color=GREEN,
         )
