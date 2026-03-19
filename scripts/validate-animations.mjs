@@ -172,6 +172,10 @@ if (assetFiles.length === 0) {
   warn('No MP4 files found in assets/ — nothing to check');
 }
 
+// ─── Resolve ffprobe before duration/codec checks ────────────────────────────
+
+const ffprobeBin = resolveFfprobe();
+
 // ─── 3. Duration Check (Phase 6c) — requires ffprobe ────────────────────────
 
 console.log('\n--- Duration Check ---\n');
@@ -242,24 +246,43 @@ process.exit(errors > 0 ? 1 : 0);
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Check if ffprobe is available on PATH.
+ * Resolve the ffprobe binary path. Checks PATH first, then the known
+ * ffmpeg install location at C:\Users\ColsonR\ffmpeg\bin\.
  */
-function checkFfprobe() {
+function resolveFfprobe() {
+  // Try PATH first
   try {
     execSync('ffprobe -version', { stdio: 'pipe' });
-    return true;
-  } catch {
-    return false;
+    return 'ffprobe';
+  } catch { /* not on PATH */ }
+
+  // Try known local install
+  const localPath = 'C:\\Users\\ColsonR\\ffmpeg\\bin\\ffprobe.exe';
+  if (existsSync(localPath)) {
+    try {
+      execSync(`"${localPath}" -version`, { stdio: 'pipe' });
+      return `"${localPath}"`;
+    } catch { /* exists but broken */ }
   }
+
+  return null;
+}
+
+/**
+ * Check if ffprobe is available.
+ */
+function checkFfprobe() {
+  return ffprobeBin !== null;
 }
 
 /**
  * Get the duration of a video file in seconds. Returns null on failure.
  */
 function getDuration(filePath) {
+  if (!ffprobeBin) return null;
   try {
     const output = execSync(
-      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
+      `${ffprobeBin} -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
       { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
     );
     const seconds = parseFloat(output.trim());
@@ -274,9 +297,10 @@ function getDuration(filePath) {
  * Get the video codec name (e.g. "h264"). Returns null on failure.
  */
 function getVideoCodec(filePath) {
+  if (!ffprobeBin) return null;
   try {
     const output = execSync(
-      `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
+      `${ffprobeBin} -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
       { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
     );
     const codec = output.trim();
