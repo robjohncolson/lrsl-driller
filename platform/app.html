@@ -20,17 +20,17 @@
   <header class="bg-white shadow-md sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
       <!-- Left: Title + Cartridge Selector -->
-      <div class="flex items-center gap-3">
-        <h1 id="app-title" class="text-lg font-bold text-purple-700">Driller</h1>
+      <div class="flex items-center gap-3 min-w-0">
+        <h1 id="app-title" class="max-w-[150px] shrink-0 truncate text-lg font-bold text-purple-700">Driller</h1>
         <!-- Cartridge Slot Button -->
         <button id="cartridge-slot-btn" class="flex items-center gap-2 bg-gradient-to-b from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800 text-white pl-1 pr-3 py-1 rounded-lg border-2 border-gray-600 transition-all shadow-md" title="Change Cartridge">
           <!-- Mini cartridge icon -->
           <div class="w-6 h-8 bg-purple-500 rounded flex items-center justify-center border border-purple-400">
             <span class="text-[8px] font-bold">📦</span>
           </div>
-          <div class="text-left">
+          <div class="text-left min-w-0">
             <div class="text-[10px] text-gray-400 leading-none">CARTRIDGE</div>
-            <div id="current-cartridge-name" class="text-xs font-bold leading-tight">LSRL Interpretation</div>
+            <div id="current-cartridge-name" class="max-w-[200px] truncate text-xs font-bold leading-tight">LSRL Interpretation</div>
           </div>
           <span class="text-gray-400 text-xs">▼</span>
         </button>
@@ -316,7 +316,7 @@
   <div id="cartridge-dropdown-backdrop" class="fixed inset-0 z-40 hidden"></div>
 
   <!-- Main Content - Split Pane Layout -->
-  <main id="main-content" class="max-w-6xl mx-auto px-4 min-h-[calc(100vh-48px)] flex flex-col lg:flex-row gap-4 py-4">
+  <main id="main-content" class="max-w-6xl mx-auto px-4 min-h-[calc(100vh-80px)] flex flex-col lg:flex-row gap-4 py-4">
     <!-- Left Pane: Question (fixed, never scrolls) -->
     <div id="left-pane" class="lg:w-1/2 flex-shrink-0 flex flex-col gap-3 min-h-0 pr-1">
       <!-- Scenario Card -->
@@ -3200,7 +3200,7 @@
         { alias: 'prob', name: 'Probability & RVs' },
         { alias: 'u5', name: 'Sampling Distributions' },
         { alias: 'u6', name: 'Inference for Proportions' },
-        { alias: 'u7', name: 'Inference for Means (7.1-7.2)' },
+        { alias: 'u7', name: 'Inference for Means (7.1-7.9)' },
         { alias: 'div', name: 'Dividing Polynomials' }
       ];
 
@@ -3701,12 +3701,36 @@
       });
     }
 
+    function getCartridgeRegistryName(cartridgeId) {
+      if (!cartridgeId) {
+        return '';
+      }
+
+      const listOption = document.querySelector(`.cartridge-option[data-cartridge="${cartridgeId}"]`);
+      const listName = listOption?.querySelector('.font-semibold')?.textContent?.trim();
+      if (listName) {
+        return listName;
+      }
+
+      const selectOption = document.querySelector(`#cartridge-select option[value="${cartridgeId}"]`);
+      return selectOption?.textContent?.trim() || '';
+    }
+
+    function getCartridgeDisplayName(cartridgeId, fallbackName = '') {
+      return getCartridgeRegistryName(cartridgeId) || fallbackName || cartridgeId;
+    }
+
+    function updateHeaderCartridgeDisplay(cartridgeId, fallbackName = '') {
+      document.getElementById('app-title').textContent = 'Driller';
+      document.getElementById('current-cartridge-name').textContent =
+        getCartridgeDisplayName(cartridgeId, fallbackName);
+    }
+
     async function loadCartridgeWithAnimation(cartridgeId) {
       console.log(`[App] loadCartridgeWithAnimation called with: "${cartridgeId}"`);
 
       // Get cartridge display name
-      const option = document.querySelector(`.cartridge-option[data-cartridge="${cartridgeId}"]`);
-      const displayName = option?.querySelector('.font-semibold')?.textContent || cartridgeId;
+      const displayName = getCartridgeDisplayName(cartridgeId);
 
       // Show loading overlay
       showCartridgeLoading(displayName.substring(0, 8));
@@ -3717,9 +3741,6 @@
       // Load with progress
       console.log(`[App] Calling loadCartridge("${cartridgeId}")...`);
       await loadCartridge(cartridgeId);
-
-      // Update the header button
-      document.getElementById('current-cartridge-name').textContent = displayName;
 
       // Hide loading after a brief moment
       await new Promise(r => setTimeout(r, 300));
@@ -4849,8 +4870,7 @@
           }
         }
 
-        document.getElementById('app-title').textContent = platform.currentCartridge?.manifest?.meta?.name || 'Driller';
-        document.getElementById('current-cartridge-name').textContent = platform.currentCartridge?.manifest?.meta?.name || cartridgeId;
+        updateHeaderCartridgeDisplay(cartridgeId, platform.currentCartridge?.manifest?.meta?.name);
 
         // Ensure left pane is visible (graph visibility is handled per-problem in updateScenarioDisplay)
         document.getElementById('left-pane').classList.remove('hidden');
@@ -5668,8 +5688,7 @@
         currentCartridgeId = initialCartridge;
         const option = document.querySelector(`.cartridge-option[data-cartridge="${initialCartridge}"]`);
         if (option) {
-          const displayName = option.querySelector('.font-semibold')?.textContent || initialCartridge;
-          document.getElementById('current-cartridge-name').textContent = displayName;
+          updateHeaderCartridgeDisplay(initialCartridge);
           document.getElementById('cartridge-select').value = initialCartridge;
         }
       }

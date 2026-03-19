@@ -121,7 +121,7 @@
     },
     {
       "id": "apstats-u7-mean-ci",
-      "name": "Inference for Means (7.1-7.3)",
+      "name": "Inference for Means (7.1-7.9)",
       "subject": "AP Statistics",
       "description": "Significance-testing logic for mean differences, one-sample t-intervals, interpreting CIs, justifying claims, confidence level, and margin of error factors",
       "shortCode": "MCI"
