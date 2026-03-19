@@ -1,8 +1,9 @@
 # Create Animations
 
-Generate Manim math animations for a cartridge's challenging concepts and integrate them into the drill platform.
+Generate precise Manim math animations for a cartridge using the scene-spec pipeline.
 
-**This skill uses agent swarms for parallel execution.**
+**Spec**: `docs/ANIMATION-PRECISION-SPEC.md`
+**Reference**: `.claude/skills/math-to-manim/SKILL.md`
 
 ## Usage
 
@@ -10,129 +11,177 @@ Generate Manim math animations for a cartridge's challenging concepts and integr
 /create-animations <cartridge-id>
 ```
 
-**Arguments:**
-- `cartridge-id`: ID of an existing cartridge (e.g., `a2t3l3`, `graphing-polynomials`)
+## Pipeline Overview
 
-## What This Skill Does
+```
+Phase 1: Analysis + Fan-Out Table     (Explore agent)
+Phase 2: Scene Spec Generation         (Main agent, per mode)
+Phase 3: Verbose Prompt + Code Gen     (Parallel agent swarm)
+Phase 4: Smoke Render                  (Parallel background Bash)
+Phase 5: Full Render + Integration     (Parallel background Bash)
+Phase 6: Validation + Upload           (Sequential)
+```
 
-1. **Analyzes** the cartridge using an Explore agent
-2. **Creates** multiple Manim scripts in parallel using agent swarm
-3. **Renders** all animations in parallel using background tasks
-4. **Integrates** videos into the cartridge (assets folder, manifest updates)
+---
 
 ## Instructions for Claude
 
-When this skill is invoked, use **agent swarms** to parallelize work:
+### Phase 1: Analysis + Fan-Out Table
 
----
-
-### Phase 1: Analysis (Explore Agent)
-
-Spawn a single **Explore agent** to analyze the cartridge:
+Spawn a single **Explore agent** to analyze the cartridge and produce the fan-out table.
 
 ```
-Task tool:
+Agent tool:
   subagent_type: Explore
   prompt: |
-    Analyze the cartridge at cartridges/{cartridge-id}/ to identify concepts
-    that would benefit from Manim math animations.
+    Analyze the cartridge at cartridges/{cartridge-id}/ for animation.
 
     Read:
-    - cartridges/{cartridge-id}/manifest.json (modes, hints, progression)
-    - cartridges/{cartridge-id}/generator.js (problem types, scenarios)
+    - cartridges/{cartridge-id}/manifest.json (all modes, hints, progression)
+    - cartridges/{cartridge-id}/generator.js (problem banks, variable names, LaTeX)
+    - cartridges/{cartridge-id}/grading-rules.js (common mistakes from feedback)
 
-    Return a structured list of 3-6 animation concepts with:
-    1. Concept name (e.g., "Difference of Squares")
-    2. Why it needs animation (abstract, procedural, error-prone)
-    3. Animation type (area-model, step-by-step, pattern-building, error-analysis)
-    4. Which mode IDs should use this animation
-    5. Suggested filename (e.g., "difference_of_squares.py")
-    6. Main scene class name (e.g., "DifferenceOfSquares")
+    For each mode that would benefit from an animation, produce:
+
+    1. **Prerequisite tree** (max depth 3, max 8 nodes):
+       - Target concept for this mode
+       - Prerequisites (recursively: "what must students know BEFORE this?")
+       - Mark each as: scene (gets its own animation segment), caption (brief
+         text label within parent scene), or skip (too basic)
+       - Stop at foundation level for the subject (see manifest.meta.subject)
+
+    2. **Fan-out table row**:
+       - concept_name: string
+       - mode_id: exactly ONE mode ID (no sharing — each mode gets its own MP4)
+       - class_name: PascalCase (unique, will be the MP4 filename)
+       - asset_filename: {ClassName}.mp4
+       - key_latex: list of exact LaTeX strings from generator.js to use
+       - animation_type: "graph-trace" | "step-by-step" | "area-model" |
+         "pattern-building" | "error-analysis" | "translation"
+       - prerequisite_order: list of concept names from foundation to target
+
+    CRITICAL: Every mode_id must map to exactly one unique asset_filename.
+    No two modes may share an animation. This is enforced by the repo verifier.
+
+    Return the fan-out table as structured JSON.
 ```
 
-Wait for the Explore agent to return the concept list before proceeding.
+Wait for the Explore agent to return before proceeding.
 
 ---
 
-### Phase 2: Script Creation (Parallel Agents)
+### Phase 2: Scene Spec Generation
 
-**Spawn multiple general-purpose agents in parallel** - one for each animation concept. Send a **single message with multiple Task tool calls**:
+For each row in the fan-out table, the **main agent** generates a scene spec JSON
+following the schema in `docs/ANIMATION-PRECISION-SPEC.md`. This is the canonical
+source of truth for the animation.
+
+Key rules when building the scene spec:
+
+- **Coordinate space**: Every element must declare `"coordinate_space": "screen"`
+  or `"coordinate_space": "axes"`. Axes-space elements use `parent_axes` and the
+  code generator must use `axes.c2p()` / `axes.plot()`.
+- **Construction vocabulary**: Only use classes, animations, and methods from the
+  Allowed Construction Vocabulary in the spec.
+- **Color palette**: Use the standard palette from the spec (BLUE=x, YELLOW=y,
+  GREEN=k/correct, RED=error, GOLD=highlight, WHITE=axes, GREY=ghost).
+- **LaTeX**: Use exact strings from the generator's problem banks. Raw strings only.
+  No `\phantom`. Split MathTex args for color-coding.
+- **Timing**: Follow the timing guidelines. Total 30-50s per animation.
+- **One asset per mode**: `mode_id` is singular, not a list.
+
+The scene spec JSON does not need to be saved to disk. Pass it to the code
+generator agents in Phase 3.
+
+---
+
+### Phase 3: Verbose Prompt + Code Generation (Parallel Agents)
+
+For each scene spec, derive a verbose prompt (human-readable version of the spec)
+and spawn a code-generator agent. **All agents in one message for parallelism.**
 
 ```
-# In ONE message, spawn all script-writing agents in parallel:
+# In ONE message, spawn all code-gen agents in parallel:
 
-Task tool #1:
-  subagent_type: general-purpose
+Agent tool #1:
   description: "Create {concept1} animation"
   prompt: |
-    Create a Manim animation script for: {concept1}
+    Generate a ManimCE animation from this scene spec.
 
-    Animation type: {type1}
-    Target audience: High school {subject} students
+    ## Scene Spec (canonical — do not deviate)
+    {scene_spec_json_1}
 
-    Write to: animations/{filename1}.py
-    Main class: {ClassName1}
+    ## Code Generator Contract
+    1. MUST use every element with the specified manim_class, params, position, color.
+    2. MUST implement animations in order with specified run_time and rate_func.
+    3. MUST implement transition_out exactly (persist vs fade_out).
+    4. MUST NOT add elements, animations, or styling not in the spec.
+    5. For axes-space elements: use axes.c2p() for positions, axes.plot() for curves.
+    6. For screen-space elements: use position arrays or position_method.
+    7. All LaTeX in raw strings. No \phantom.
 
-    Requirements:
-    - Title at top, formula shown
-    - Step-by-step build (don't show everything at once)
-    - Color coding: BLUE, RED, GREEN, YELLOW for emphasis
-    - Use MathTex for formulas, Text for explanations
-    - Highlight key insights with Indicate or SurroundingRectangle
-    - End with boxed final answer
-    - Keep under 60 seconds
-    - Include docstring with run command
+    ## Output
+    Write to: animations/{subject}/{filename}.py
+    Class name: {ClassName}
+    Include docstring with: manim -qm --format=mp4 {filename}.py {ClassName}
 
-    Animation templates to follow:
-    [Include relevant template based on animation type]
+    ## Style
+    Write extremely easy to consume code. Optimize for readability.
+    Make the code skimmable. Avoid cleverness. Use early returns.
 
-Task tool #2:
-  subagent_type: general-purpose
+Agent tool #2:
   description: "Create {concept2} animation"
-  prompt: [similar structure for concept 2]
+  prompt: [same structure with scene_spec_json_2]
 
-Task tool #3:
-  subagent_type: general-purpose
-  description: "Create {concept3} animation"
-  prompt: [similar structure for concept 3]
-
-# ... continue for all concepts (typically 3-6 agents)
+# ... one agent per mode
 ```
 
-**IMPORTANT:** All Task tool calls must be in the **same message** to run in parallel.
+**IMPORTANT:** All Agent tool calls must be in the **same message** to run in parallel.
 
 ---
 
-### Phase 3: Rendering (Parallel Background Tasks)
+### Phase 4: Smoke Render
 
-After all scripts are created, **render all animations in parallel using background Bash tasks**:
+After all scripts are created, **smoke-render at low quality** to catch errors fast:
 
 ```
-# In ONE message, spawn all render tasks in background:
+# In ONE message, spawn all smoke renders in background:
 
 Bash tool #1:
-  command: cd animations && manim -qm --format=mp4 {filename1}.py {ClassName1}
+  command: |
+    export PATH="/c/Users/ColsonR/ffmpeg/bin:$PATH"
+    cd animations/{subject}
+    python -m manim -ql --format=mp4 {filename1}.py {ClassName1}
   run_in_background: true
-  description: "Render {concept1} animation"
+  timeout: 120000
+  description: "Smoke render {ClassName1}"
 
-Bash tool #2:
-  command: cd animations && manim -qm --format=mp4 {filename2}.py {ClassName2}
-  run_in_background: true
-  description: "Render {concept2} animation"
-
-Bash tool #3:
-  command: cd animations && manim -qm --format=mp4 {filename3}.py {ClassName3}
-  run_in_background: true
-  description: "Render {concept3} animation"
-
-# ... continue for all animations
+# ... one per animation
 ```
 
-Use `TaskOutput` to check on background task completion, or wait for notifications.
+If any smoke render fails, **fix the script and re-render** before proceeding.
+Do not skip to full render with broken scripts.
 
 ---
 
-### Phase 4: Integration (Sequential)
+### Phase 5: Full Render + Integration
+
+Once all smoke renders pass, do full quality renders in parallel:
+
+```
+# In ONE message, all full renders in background:
+
+Bash tool #1:
+  command: |
+    export PATH="/c/Users/ColsonR/ffmpeg/bin:$PATH"
+    cd animations/{subject}
+    python -m manim -qm --format=mp4 {filename1}.py {ClassName1}
+  run_in_background: true
+  timeout: 300000
+  description: "Render {ClassName1}"
+
+# ... one per animation
+```
 
 Once all renders complete:
 
@@ -141,173 +190,42 @@ Once all renders complete:
 mkdir -p cartridges/{cartridge-id}/assets
 ```
 
-2. **Copy all rendered videos** (can be parallel Bash calls):
+2. **Copy all rendered videos:**
 ```bash
-cp animations/media/videos/{filename1}/720p30/{ClassName1}.mp4 cartridges/{cartridge-id}/assets/
-cp animations/media/videos/{filename2}/720p30/{ClassName2}.mp4 cartridges/{cartridge-id}/assets/
-# ... etc
+cp animations/{subject}/media/videos/{filename}/720p30/{ClassName}.mp4 \
+   cartridges/{cartridge-id}/assets/
 ```
 
-3. **Update manifest.json** - Add `animation` field to each mode based on the mapping from Phase 1.
-
-4. **Report completion** with summary table:
-
-| Mode ID | Animation File | Concept |
-|---------|---------------|---------|
-| l01-... | ConceptA.mp4 | Description |
-| l02-... | ConceptA.mp4 | Same animation |
-| l05-... | ConceptB.mp4 | New concept |
+3. **Update manifest.json** — Add `"animation": "assets/{ClassName}.mp4"` to each
+   mode. Every mode gets a unique filename. No sharing.
 
 ---
 
-## Agent Prompts Reference
+### Phase 6: Validation + Upload
 
-### Explore Agent Prompt (Phase 1)
-```
-Analyze cartridge {id} for animation opportunities.
+Run the validator, then upload:
 
-Read manifest.json and generator.js. Identify 3-6 concepts that are:
-- Abstract (hard to visualize from text)
-- Procedural (multi-step processes)
-- Geometric (shapes, graphs, spatial)
-- Error-prone (common student mistakes shown in hints)
-
-For each concept, provide:
-1. concept_name: string
-2. reason: why it needs animation
-3. animation_type: "area-model" | "step-by-step" | "pattern-building" | "error-analysis"
-4. mode_ids: list of modes that should show this animation
-5. filename: snake_case.py
-6. class_name: PascalCase
-
-Return as structured JSON list.
+```bash
+# Validate manifest/asset alignment, file sizes, duration, codec
+node scripts/validate-animations.mjs --cartridge {cartridge-id}
 ```
 
-### Script Writer Agent Prompt (Phase 2)
-```
-Create Manim animation: {concept_name}
-Type: {animation_type}
-Subject: {subject} (high school level)
-Output: animations/{filename}
-Class: {class_name}
+If validation passes, upload to Supabase:
 
-Follow this template for {animation_type}:
-[Insert appropriate template]
-
-Design principles:
-- Title + formula at top
-- Build step by step with self.wait() pauses
-- Colors: BLUE (primary), RED (errors/subtract), GREEN (correct), YELLOW (highlight)
-- MathTex for math, Text for explanations
-- Indicate() for emphasis, SurroundingRectangle for boxing answers
-- 30-60 seconds total
-- Docstring with: manim -qm --format=mp4 {filename} {class_name}
-
-Write the complete Python file.
+```javascript
+// Upload each MP4 to the videos bucket
+// Object path: animations/{cartridge-id}/{ClassName}.mp4
+// See scripts/upload-animations.mjs for the upload pattern
 ```
 
----
+After upload, verify each public URL returns HTTP 200.
 
-## Animation Templates
+**Report completion** with summary table:
 
-### Area Model (for identities)
-```python
-"""
-{Identity Name}: Visual proof using area
-Run with: manim -qm --format=mp4 {file}.py {Class}
-"""
-from manim import *
-
-class {ClassName}(Scene):
-    def construct(self):
-        title = Text("{Title}", font_size=48)
-        title.to_edge(UP)
-        self.play(Write(title))
-
-        formula = MathTex("{formula}", font_size=36)
-        formula.next_to(title, DOWN)
-        self.play(Write(formula))
-        self.wait(1)
-
-        # Draw main square/rectangle
-        # Divide into regions
-        # Label each region
-        # Show sum = total area
-        # Box final identity
-
-        self.wait(2)
-```
-
-### Step-by-Step Procedure
-```python
-class {ClassName}(Scene):
-    def construct(self):
-        title = Text("{Title}", font_size=48)
-        title.to_edge(UP)
-        self.play(Write(title))
-
-        problem = MathTex("{problem}", font_size=32)
-        self.play(Write(problem))
-        self.wait(1)
-
-        # Step 1
-        step1 = VGroup(
-            Text("Step 1: {description}", font_size=28, color=YELLOW),
-            MathTex("{math}", font_size=28)
-        ).arrange(DOWN)
-        self.play(Write(step1))
-        self.wait(1)
-
-        # Step 2, 3, etc.
-        # Final answer with box
-
-        self.wait(2)
-```
-
-### Error Analysis
-```python
-class {ClassName}(Scene):
-    def construct(self):
-        title = Text("Common Error: {error_type}", font_size=40, color=RED)
-        title.to_edge(UP)
-        self.play(Write(title))
-
-        # Wrong approach (left side)
-        wrong_title = Text("WRONG", font_size=28, color=RED)
-        wrong = VGroup(
-            MathTex("{wrong_step1}"),
-            MathTex("{wrong_step2}"),
-            MathTex("{wrong_answer}", color=RED)
-        ).arrange(DOWN)
-        cross = Cross(wrong[-1], color=RED)
-
-        # Correct approach (right side)
-        correct_title = Text("CORRECT", font_size=28, color=GREEN)
-        correct = VGroup(
-            MathTex("{correct_step1}"),
-            MathTex("{correct_step2}"),
-            MathTex("{correct_answer}", color=GREEN)
-        ).arrange(DOWN)
-        box = SurroundingRectangle(correct[-1], color=GREEN)
-
-        # Animate both
-        self.wait(2)
-```
-
-### Pattern Building
-```python
-class {ClassName}(Scene):
-    def construct(self):
-        title = Text("{Title}", font_size=48)
-        title.to_edge(UP)
-        self.play(Write(title))
-
-        # Build pattern row by row / step by step
-        # Highlight the rule being discovered
-        # Show formula connection
-
-        self.wait(2)
-```
+| Mode ID | Animation File | Concept | Size | Duration |
+|---------|---------------|---------|------|----------|
+| l01-... | ConceptA.mp4 | Description | 636 KB | 32s |
+| l02-... | ConceptB.mp4 | Description | 1.1 MB | 41s |
 
 ---
 
@@ -315,35 +233,36 @@ class {ClassName}(Scene):
 
 | Phase | Agent Type | Parallelism | Purpose |
 |-------|-----------|-------------|---------|
-| 1. Analysis | Explore | Single | Identify concepts |
-| 2. Scripts | general-purpose | **Parallel swarm** (3-6 agents) | Write Manim files |
-| 3. Render | Bash (background) | **Parallel** | Generate MP4s |
-| 4. Integrate | Main agent | Sequential | Copy files, update manifest |
-
-**Expected speedup:** 3-6x faster than sequential execution for script creation and rendering.
-
----
-
-## Example Execution Flow
-
-```
-User: /create-animations a2t3l3
-
-Claude:
-1. [Spawns Explore agent] → Returns 5 concepts
-2. [Spawns 5 general-purpose agents IN PARALLEL] → All write scripts simultaneously
-3. [Spawns 5 background Bash tasks IN PARALLEL] → All render simultaneously
-4. [Copies videos, updates manifest]
-5. Reports completion with mode-to-animation mapping
-```
+| 1. Analysis | Explore | Single | Fan-out table + prerequisite trees |
+| 2. Scene Specs | Main agent | Sequential | Build canonical JSON specs |
+| 3. Code Gen | general-purpose | **Parallel swarm** | Translate specs to Python |
+| 4. Smoke Render | Bash (background) | **Parallel** | Catch errors fast (-ql) |
+| 5. Full Render | Bash (background) | **Parallel** | Generate final MP4s (-qm) |
+| 6. Validate | Main agent | Sequential | Check + upload |
 
 ---
 
-## File Sizes
+## Key Constraints
 
-Target file sizes for web delivery:
-- 30-second animation at 720p30: ~500KB - 1.5MB
-- Keep total cartridge animations under 10MB
+- **One unique MP4 per mode.** No sharing. Enforced by `scripts/verify-cartridges.mjs`.
+- **Scene spec is source of truth.** Code must not deviate from the spec.
+- **Coordinate space explicit.** Axes-space uses `axes.c2p()`, screen-space uses arrays.
+- **No `\phantom`** in MathTex. ManimCE 0.18.x bug. Use `Text("")` instead.
+- **ffmpeg must be in PATH**: `export PATH="/c/Users/ColsonR/ffmpeg/bin:$PATH"`
+- **File size limit**: Each MP4 <= 2 MB at 720p30.
+- **Duration**: 30-50s target, 20-60s hard bounds.
+
+## Color Palette
+
+| Role | Constant | Usage |
+|------|----------|-------|
+| x-values, horizontal asymptotes | `BLUE` | Inputs, domain |
+| y-values, curves | `YELLOW` | Outputs, range |
+| Constants, correct | `GREEN` | k, verified |
+| Errors, vertical asymptotes | `RED` | Mistakes |
+| Highlights, answers | `GOLD` | Key insights |
+| Axes, labels | `WHITE` | Structure |
+| De-emphasized | `GREY` | Ghost/old |
 
 ## Platform Integration
 
