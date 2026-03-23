@@ -32,7 +32,7 @@ export function gradeField(fieldId, answer, context) {
   const expObj = getExpectedObj(context, fieldId);
   const expected = expObj.value;
 
-  const openResponseFields = new Set(["textAnswer", "explanation", "alternativeText"]);
+  const openResponseFields = new Set(["textAnswer", "explanation", "alternativeText", "conclusionText", "contributionText"]);
 
   if (isBlank(answer)) {
     if (openResponseFields.has(fieldId)) {
@@ -334,6 +334,97 @@ export function gradeField(fieldId, answer, context) {
     return {
       score: "I",
       feedback: "State the alternative in words: the distribution is not as specified, or at least one proportion differs."
+    };
+  }
+
+  // ============ 8.3 GRADING RULES ============
+
+  if (fieldId === "dfChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. Degrees of freedom = number of categories minus 1."
+      };
+    }
+    const studentVal = parseInt(answer, 10);
+    const expectedVal = parseInt(expected, 10);
+    if (!Number.isNaN(studentVal) && Math.abs(studentVal - expectedVal) === 1) {
+      return {
+        score: "P",
+        feedback: "Close. Remember: df = (number of categories) minus 1, not the sample size or the number of categories itself."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The degrees of freedom is ${expected}. ${context.dfExplanation || ""}`
+    };
+  }
+
+  if (fieldId === "decisionChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct decision. Now explain your reasoning using the p-value and significance level."
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. The correct decision is: ${expected}. Compare the p-value to α.`
+    };
+  }
+
+  if (fieldId === "conclusionText") {
+    const keywords = context.keywords || [];
+    const matchCount = keywordMatchCount(answer, keywords);
+    const mentionsDecision = containsAny(answer, ["reject", "fail to reject"]);
+    const mentionsPValue = containsAny(answer, ["p-value", "p value", "0.0"]);
+    const mentionsEvidence = containsAny(answer, ["convincing evidence", "evidence", "conclude"]);
+    const mentionsContext = containsAny(answer, ["distribution", "not as specified", "differs", "model"]);
+
+    if (matchCount >= 3 && mentionsDecision && mentionsEvidence) {
+      return {
+        score: "E",
+        feedback: "Excellent. You stated the decision, referenced the p-value, and included context."
+      };
+    }
+    if ((matchCount >= 2 && mentionsDecision) || (mentionsPValue && mentionsContext)) {
+      return {
+        score: "P",
+        feedback: "Partially correct. Include the decision (reject or fail to reject), mention the p-value vs α comparison, and state the conclusion in context."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Your conclusion should state the decision, compare p-value to α, and describe the evidence in context."
+    };
+  }
+
+  if (fieldId === "contributionText") {
+    const keywords = context.expectedKeywords || [];
+    const matchCount = keywordMatchCount(answer, keywords);
+    const mentionsLargest = containsAny(answer, ["largest", "biggest", "greatest", "most"]);
+    const mentionsCategory = context.largestLabel
+      ? containsAny(answer, [context.largestLabel])
+      : false;
+    const mentionsContext = containsAny(answer, [
+      "farthest", "discrepancy", "differ", "expected", "predicted", "model"
+    ]);
+
+    if (matchCount >= 3 && mentionsLargest && mentionsContext) {
+      return {
+        score: "E",
+        feedback: "Strong answer. You identified the largest contribution and explained what it reveals about the data."
+      };
+    }
+    if ((matchCount >= 2 && mentionsLargest) || (mentionsCategory && mentionsContext)) {
+      return {
+        score: "P",
+        feedback: "Partially correct. Name the category with the largest contribution and explain why that category's count was farthest from what the model predicted."
+      };
+    }
+    return {
+      score: "I",
+      feedback: "Identify which category has the largest chi-square contribution and explain what that means about the observed vs expected counts."
     };
   }
 

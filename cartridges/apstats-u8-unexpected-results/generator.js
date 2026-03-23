@@ -398,6 +398,248 @@ const level8Scenarios = [
   }
 ];
 
+// ============ 8.3 SCENARIO BANKS ============
+
+const level10Scenarios = [
+  {
+    desc: "A random sample of 40 predatory lending businesses is classified by income bracket. The null proportions are 0.452, 0.292, and 0.256. Find the expected count for the first category.",
+    n: 40,
+    proportions: [0.452, 0.292, 0.256],
+    labels: ["< $50K", "$50K–$100K", "≥ $100K"],
+    focusIndex: 0,
+    correct: 18.08
+  },
+  {
+    desc: "A random sample of 100 Battleship players picks one of four quadrants. The null model says each quadrant has probability 0.25. Find the expected count for Quadrant A.",
+    n: 100,
+    proportions: [0.25, 0.25, 0.25, 0.25],
+    labels: ["Quadrant A", "Quadrant B", "Quadrant C", "Quadrant D"],
+    focusIndex: 0,
+    correct: 25
+  },
+  {
+    desc: "A cereal company checks prize types in 80 randomly selected boxes. The claimed proportions are 0.30, 0.25, 0.25, and 0.20. Find the expected count for prize type D.",
+    n: 80,
+    proportions: [0.30, 0.25, 0.25, 0.20],
+    labels: ["Type A", "Type B", "Type C", "Type D"],
+    focusIndex: 3,
+    correct: 16
+  },
+  {
+    desc: "A school surveys 120 students about five lunch options. The district model gives proportions 0.18, 0.22, 0.20, 0.25, and 0.15. Find the expected count for option B.",
+    n: 120,
+    proportions: [0.18, 0.22, 0.20, 0.25, 0.15],
+    labels: ["Option A", "Option B", "Option C", "Option D", "Option E"],
+    focusIndex: 1,
+    correct: 26.4
+  },
+  {
+    desc: "A wildlife study records habitat zones for 60 randomly observed turtles. Past years give proportions 0.35, 0.25, 0.25, and 0.15. Find the expected count for Zone C.",
+    n: 60,
+    proportions: [0.35, 0.25, 0.25, 0.15],
+    labels: ["Zone A", "Zone B", "Zone C", "Zone D"],
+    focusIndex: 2,
+    correct: 15
+  },
+  {
+    desc: "A random sample of 200 voters is classified by party. The null proportions are 0.40, 0.35, and 0.25. Find the expected count for Independents.",
+    n: 200,
+    proportions: [0.40, 0.35, 0.25],
+    labels: ["Democrat", "Republican", "Independent"],
+    focusIndex: 2,
+    correct: 50
+  }
+];
+
+const level11Scenarios = [
+  {
+    desc: "A fair 6-sided die is rolled 60 times. The observed counts are 8, 12, 14, 7, 11, 8. Each expected count is 10. Compute the chi-square test statistic.",
+    observed: [8, 12, 14, 7, 11, 8],
+    expected: [10, 10, 10, 10, 10, 10],
+    correct: 4.0
+  },
+  {
+    desc: "A random sample of 100 Battleship players targets four quadrants. The observed counts are 16, 22, 33, 29 and expected counts are 25 each. Compute the chi-square test statistic.",
+    observed: [16, 22, 33, 29],
+    expected: [25, 25, 25, 25],
+    correct: 6.96
+  },
+  {
+    desc: "Predatory lending: observed counts are 22, 13, 5 for three income brackets. Expected counts are 18.08, 11.68, 10.24. Compute the chi-square test statistic.",
+    observed: [22, 13, 5],
+    expected: [18.08, 11.68, 10.24],
+    correct: 3.58
+  },
+  {
+    desc: "A fair 4-color spinner is spun 80 times. The observed counts are 24, 18, 22, 16. Expected count is 20 for each color. Compute the chi-square test statistic.",
+    observed: [24, 18, 22, 16],
+    expected: [20, 20, 20, 20],
+    correct: 2.0
+  },
+  {
+    desc: "Cereal prizes: observed counts are 28, 17, 21, 14 across four types. Expected counts are 24, 20, 20, 16. Compute the chi-square test statistic.",
+    observed: [28, 17, 21, 14],
+    expected: [24, 20, 20, 16],
+    correct: 1.47
+  },
+  {
+    desc: "A bag of candy has 5 colors. A sample of 150 gives observed counts 35, 28, 32, 25, 30. Expected count is 30 for each. Compute the chi-square test statistic.",
+    observed: [35, 28, 32, 25, 30],
+    expected: [30, 30, 30, 30, 30],
+    correct: 1.67
+  }
+];
+
+const level12Scenarios = [
+  {
+    desc: "A chi-square goodness-of-fit test compares observed counts across 3 categories. What are the degrees of freedom?",
+    categories: 3,
+    correct: "2",
+    wrong: ["1", "3", "0"],
+    explanation: "Degrees of freedom = number of categories minus 1 = 3 - 1 = 2."
+  },
+  {
+    desc: "A chi-square goodness-of-fit test compares observed counts across 4 quadrants. What are the degrees of freedom?",
+    categories: 4,
+    correct: "3",
+    wrong: ["2", "4", "1"],
+    explanation: "Degrees of freedom = 4 - 1 = 3."
+  },
+  {
+    desc: "A chi-square goodness-of-fit test compares observed counts across 6 faces of a die. What are the degrees of freedom?",
+    categories: 6,
+    correct: "5",
+    wrong: ["4", "6", "3"],
+    explanation: "Degrees of freedom = 6 - 1 = 5."
+  },
+  {
+    desc: "A chi-square goodness-of-fit test compares observed counts across 5 lunch options. What are the degrees of freedom?",
+    categories: 5,
+    correct: "4",
+    wrong: ["3", "5", "2"],
+    explanation: "Degrees of freedom = 5 - 1 = 4."
+  },
+  {
+    desc: "A chi-square goodness-of-fit test compares observed counts across 8 sections of a spinner. What are the degrees of freedom?",
+    categories: 8,
+    correct: "7",
+    wrong: ["6", "8", "4"],
+    explanation: "Degrees of freedom = 8 - 1 = 7."
+  },
+  {
+    desc: "A chi-square goodness-of-fit test compares observed counts across 2 categories (heads/tails). What are the degrees of freedom?",
+    categories: 2,
+    correct: "1",
+    wrong: ["0", "2", "3"],
+    explanation: "Degrees of freedom = 2 - 1 = 1."
+  }
+];
+
+const level13Scenarios = [
+  {
+    desc: "A chi-square GOF test gives p-value = 0.0208 with α = 0.05. What is the correct decision?",
+    pValue: 0.0208,
+    alpha: 0.05,
+    correctChoice: "Reject H₀",
+    expectedReasoning: "Since the p-value (0.0208) is less than α (0.05), we reject the null hypothesis. There is convincing evidence that the distribution is not as specified.",
+    keywords: ["reject", "less than", "convincing evidence", "not as specified"],
+    context: "income-bracket distribution"
+  },
+  {
+    desc: "A chi-square GOF test gives p-value = 0.142 with α = 0.05. What is the correct decision?",
+    pValue: 0.142,
+    alpha: 0.05,
+    correctChoice: "Fail to reject H₀",
+    expectedReasoning: "Since the p-value (0.142) is greater than α (0.05), we fail to reject the null hypothesis. There is not convincing evidence that the distribution differs from the model.",
+    keywords: ["fail to reject", "greater than", "not convincing", "model"],
+    context: "quadrant distribution"
+  },
+  {
+    desc: "A chi-square GOF test gives p-value = 0.003 with α = 0.01. What is the correct decision?",
+    pValue: 0.003,
+    alpha: 0.01,
+    correctChoice: "Reject H₀",
+    expectedReasoning: "Since the p-value (0.003) is less than α (0.01), we reject the null hypothesis. There is convincing evidence that the distribution is not as specified.",
+    keywords: ["reject", "less than", "convincing evidence", "not as specified"],
+    context: "color distribution"
+  },
+  {
+    desc: "A chi-square GOF test gives p-value = 0.078 with α = 0.05. What is the correct decision?",
+    pValue: 0.078,
+    alpha: 0.05,
+    correctChoice: "Fail to reject H₀",
+    expectedReasoning: "Since the p-value (0.078) is greater than α (0.05), we fail to reject the null hypothesis. There is not convincing evidence that the distribution differs from what was claimed.",
+    keywords: ["fail to reject", "greater than", "not convincing", "claimed"],
+    context: "prize distribution"
+  },
+  {
+    desc: "A chi-square GOF test gives p-value = 0.047 with α = 0.05. What is the correct decision?",
+    pValue: 0.047,
+    alpha: 0.05,
+    correctChoice: "Reject H₀",
+    expectedReasoning: "Since the p-value (0.047) is less than α (0.05), we reject the null hypothesis. There is convincing evidence that the distribution is not as specified by the null model.",
+    keywords: ["reject", "less than", "convincing evidence", "null model"],
+    context: "lunch option distribution"
+  },
+  {
+    desc: "A chi-square GOF test gives p-value = 0.512 with α = 0.10. What is the correct decision?",
+    pValue: 0.512,
+    alpha: 0.10,
+    correctChoice: "Fail to reject H₀",
+    expectedReasoning: "Since the p-value (0.512) is much greater than α (0.10), we fail to reject the null hypothesis. There is not convincing evidence that the distribution differs from the model.",
+    keywords: ["fail to reject", "greater than", "not convincing", "model"],
+    context: "habitat zone distribution"
+  }
+];
+
+const level14Scenarios = [
+  {
+    desc: "In a chi-square GOF test for predatory lending across three income brackets, the contributions are 0.85, 0.15, and 2.68. Which category has the largest discrepancy from the model?",
+    contributions: [0.85, 0.15, 2.68],
+    labels: ["< $50K", "$50K–$100K", "≥ $100K"],
+    largestLabel: "≥ $100K",
+    largestValue: 2.68,
+    answer: "The ≥ $100K bracket has the largest contribution (2.68), meaning the observed count was farthest from what the model predicted for that bracket. This suggests businesses are concentrated less in high-income areas than expected.",
+    keywords: ["largest", "contribution", "farthest", "expected", "high-income"]
+  },
+  {
+    desc: "Battleship quadrant contributions are 3.24, 0.36, 2.56, and 0.64. Which quadrant shows the greatest discrepancy?",
+    contributions: [3.24, 0.36, 2.56, 0.64],
+    labels: ["Quadrant A", "Quadrant B", "Quadrant C", "Quadrant D"],
+    largestLabel: "Quadrant A",
+    largestValue: 3.24,
+    answer: "Quadrant A has the largest contribution (3.24), meaning the observed count in Quadrant A was farthest from what the no-preference model predicted. Players targeted Quadrant A less or more than expected.",
+    keywords: ["largest", "contribution", "quadrant a", "farthest", "predicted"]
+  },
+  {
+    desc: "A candy color test has contributions: 0.83, 0.13, 0.13, 0.83, and 0.00. Which color has the greatest discrepancy?",
+    contributions: [0.83, 0.13, 0.13, 0.83, 0.00],
+    labels: ["Red", "Blue", "Green", "Yellow", "Orange"],
+    largestLabel: "Red or Yellow",
+    largestValue: 0.83,
+    answer: "Red and Yellow are tied for the largest contribution (0.83). These colors have the greatest discrepancy from the expected count, meaning the factory may be producing these colors in different proportions than claimed.",
+    keywords: ["largest", "contribution", "discrepancy", "expected", "proportions"]
+  },
+  {
+    desc: "Lunch option contributions are 0.20, 1.85, 0.00, 0.42, and 0.60. Which option shows the greatest discrepancy from the district model?",
+    contributions: [0.20, 1.85, 0.00, 0.42, 0.60],
+    labels: ["Option A", "Option B", "Option C", "Option D", "Option E"],
+    largestLabel: "Option B",
+    largestValue: 1.85,
+    answer: "Option B has the largest contribution (1.85), meaning the observed count for Option B was farthest from what the district model predicted. Student preferences for this option differ most from the model.",
+    keywords: ["largest", "contribution", "option b", "farthest", "predicted", "differ"]
+  },
+  {
+    desc: "A die fairness test has contributions: 0.40, 0.40, 1.60, 0.90, 0.10, and 0.40. Which face shows the greatest discrepancy?",
+    contributions: [0.40, 0.40, 1.60, 0.90, 0.10, 0.40],
+    labels: ["Face 1", "Face 2", "Face 3", "Face 4", "Face 5", "Face 6"],
+    largestLabel: "Face 3",
+    largestValue: 1.60,
+    answer: "Face 3 has the largest contribution (1.60), meaning the observed count for Face 3 was farthest from the expected count of a fair die. This face appeared more or less often than random variation alone would predict.",
+    keywords: ["largest", "contribution", "face 3", "farthest", "expected", "fair"]
+  }
+];
+
 const level9Scenarios = [
   {
     desc: "A random sample of 40 predatory lending businesses is compared to null proportions 0.452, 0.292, and 0.256. There are far more than 400 such businesses in Dallas. Which statement about the conditions is correct?",
@@ -692,6 +934,131 @@ export function generateProblem(modeId, contextFromFile, mode) {
         optC: options[2],
         optD: options[3],
         conditionExplanation: scen.explanation
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ============ 8.3 LEVELS ============
+
+  if (modeId === "l10-expected-from-proportions") {
+    const scen = drawFromBag("level10", level10Scenarios);
+    const label = scen.labels[scen.focusIndex];
+    const proportion = scen.proportions[scen.focusIndex];
+
+    answers = {
+      numericAnswer: {
+        value: scen.correct,
+        tolerance: 0.02
+      }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 10: Topic 8.3 Expected Counts",
+        problemText: `Calculate the expected count for ${label}`,
+        givenText: `${scen.desc}\n\nNull proportion for ${label} = ${proportion}, sample size n = ${scen.n}. Use: Expected = proportion × n.`
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l11-chi-square-statistic") {
+    const scen = drawFromBag("level11", level11Scenarios);
+    const tableRows = scen.observed.map((obs, i) => `Observed=${obs}, Expected=${scen.expected[i]}`).join("; ");
+
+    answers = {
+      numericAnswer: {
+        value: scen.correct,
+        tolerance: 0.05
+      }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 11: Chi-Square Statistic",
+        problemText: "Compute the chi-square test statistic",
+        givenText: `${scen.desc}\n\nData: ${tableRows}.\n\nSum all contributions: Σ (Observed − Expected)² / Expected.`
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l12-degrees-of-freedom") {
+    const scen = drawFromBag("level12", level12Scenarios);
+    const options = shuffle([scen.correct, ...scen.wrong]);
+
+    answers = {
+      dfChoice: { value: scen.correct }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 12: Degrees of Freedom",
+        problemText: "Find the degrees of freedom",
+        givenText: scen.desc,
+        optA: options[0],
+        optB: options[1],
+        optC: options[2],
+        optD: options[3],
+        dfExplanation: scen.explanation
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l13-pvalue-decision") {
+    const scen = drawFromBag("level13", level13Scenarios);
+
+    answers = {
+      decisionChoice: { value: scen.correctChoice },
+      conclusionText: { value: scen.expectedReasoning }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 13: P-Value Decision",
+        problemText: "Compare the p-value to α and state your decision",
+        givenText: scen.desc,
+        expectedReasoning: scen.expectedReasoning,
+        keywords: scen.keywords,
+        decisionContext: scen.context
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l14-largest-contribution") {
+    const scen = drawFromBag("level14", level14Scenarios);
+
+    answers = {
+      contributionText: { value: scen.answer }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 14: Largest Contribution",
+        problemText: "Identify the largest contribution and explain what it reveals",
+        givenText: scen.desc,
+        expectedKeywords: scen.keywords,
+        contributionLabels: scen.labels,
+        contributionValues: scen.contributions,
+        largestLabel: scen.largestLabel
       },
       answers
     );

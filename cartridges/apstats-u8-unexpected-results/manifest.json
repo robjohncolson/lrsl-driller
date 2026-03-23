@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u8-unexpected-results",
-    "name": "Introducing Statistics and Setting Up a Chi-Square Goodness of Fit Test (8.1-8.2)",
+    "name": "Chi-Square Goodness of Fit (8.1-8.3)",
     "subject": "AP Statistics",
-    "description": "Practice observed vs expected counts, chi-square contributions, simulation-based interpretation, hypotheses, procedure identification, and condition checks for Topics 8.1-8.2."
+    "description": "Practice observed vs expected counts, chi-square contributions, simulation-based interpretation, hypotheses, conditions, test statistic calculation, p-value decisions, and largest contribution analysis for Topics 8.1-8.3."
   },
 
   "config": {
@@ -12,7 +12,12 @@
       "APSTAT-8.1-OBSERVED-EXPECTED",
       "APSTAT-8.1-EXPECTED-COUNTS",
       "APSTAT-8.1-CHI-SQUARE",
-      "APSTAT-8.1-SIMULATION-INTERPRETATION"
+      "APSTAT-8.1-SIMULATION-INTERPRETATION",
+      "APSTAT-8.3-EXPECTED-FROM-PROPORTIONS",
+      "APSTAT-8.3-CHI-SQUARE-STATISTIC",
+      "APSTAT-8.3-DEGREES-OF-FREEDOM",
+      "APSTAT-8.3-PVALUE-DECISION",
+      "APSTAT-8.3-LARGEST-CONTRIBUTION"
     ]
   },
 
@@ -189,6 +194,99 @@
           }
         ]
       }
+    },
+    {
+      "id": "l10-expected-from-proportions",
+      "name": "8.3a: Expected Counts from Proportions",
+      "unlockedBy": { "gold": 3 },
+      "animation": null,
+      "layout": {
+        "inputs": [
+          {
+            "id": "numericAnswer",
+            "type": "number",
+            "label": "Calculate the expected count:",
+            "min": 0,
+            "max": 500,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l11-chi-square-statistic",
+      "name": "8.3b: Compute Chi-Square Statistic",
+      "unlockedBy": { "gold": 3 },
+      "animation": null,
+      "layout": {
+        "inputs": [
+          {
+            "id": "numericAnswer",
+            "type": "number",
+            "label": "Calculate the chi-square test statistic:",
+            "min": 0,
+            "max": 200,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l12-degrees-of-freedom",
+      "name": "8.3c: Degrees of Freedom",
+      "unlockedBy": { "gold": 3 },
+      "animation": null,
+      "layout": {
+        "inputs": [
+          {
+            "id": "dfChoice",
+            "type": "dropdown",
+            "label": "Choose the degrees of freedom:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l13-pvalue-decision",
+      "name": "8.3d: P-Value Decision",
+      "unlockedBy": { "gold": 3 },
+      "animation": null,
+      "layout": {
+        "inputs": [
+          {
+            "id": "decisionChoice",
+            "type": "choice",
+            "label": "What is the correct decision?",
+            "options": ["Reject H₀", "Fail to reject H₀"]
+          },
+          {
+            "id": "conclusionText",
+            "type": "textarea",
+            "label": "State the conclusion in context:",
+            "rows": 3,
+            "placeholder": "Compare p-value to α and state your conclusion..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l14-largest-contribution",
+      "name": "8.3e: Largest Contribution",
+      "unlockedBy": { "gold": 3 },
+      "animation": null,
+      "layout": {
+        "inputs": [
+          {
+            "id": "contributionText",
+            "type": "textarea",
+            "label": "Identify the largest contribution and explain what it reveals:",
+            "rows": 4,
+            "placeholder": "Which category has the largest contribution? What does that tell you?"
+          }
+        ]
+      }
     }
   ],
 
@@ -216,7 +314,11 @@
       "procedureChoice": "Hint for Level 6: Use a chi-square goodness-of-fit test when one random sample and one categorical variable are compared to specified proportions.",
       "nullChoice": "Hint for Level 7: The null hypothesis states equality using population proportions, not sample proportions.",
       "alternativeText": "Hint for Level 8: State the alternative in words. Say the distribution is not as specified, or that at least one proportion differs.",
-      "conditionsChoice": "Hint for Level 9: Check randomness, the 10 percent condition, and whether every expected count is greater than 5."
+      "conditionsChoice": "Hint for Level 9: Check randomness, the 10 percent condition, and whether every expected count is greater than 5.",
+      "dfChoice": "Hint for Level 12: Degrees of freedom = number of categories minus 1. It does NOT depend on sample size.",
+      "decisionChoice": "Hint for Level 13: If p-value ≤ α, reject H₀. If p-value > α, fail to reject H₀.",
+      "conclusionText": "Hint for Level 13: State the decision, compare p-value to α, and describe the evidence about the distribution in context.",
+      "contributionText": "Hint for Level 14: The largest contribution is the biggest value of (Observed − Expected)² / Expected. Explain what that category's discrepancy means in context."
     },
     "penalty": {
       "0": "gold",
@@ -283,6 +385,36 @@
         "name": "09",
         "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Excellent. You can verify the conditions for a chi-square goodness-of-fit test."
+      },
+      {
+        "id": "l10-expected-from-proportions",
+        "name": "10",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Nice work! You can compute expected counts from null proportions and sample size."
+      },
+      {
+        "id": "l11-chi-square-statistic",
+        "name": "11",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Strong calculation! You can compute the full chi-square test statistic."
+      },
+      {
+        "id": "l12-degrees-of-freedom",
+        "name": "12",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Good. You know that df = categories minus 1."
+      },
+      {
+        "id": "l13-pvalue-decision",
+        "name": "13",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Excellent! You can compare a p-value to α and state the correct decision."
+      },
+      {
+        "id": "l14-largest-contribution",
+        "name": "14",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Outstanding! You can identify the largest contribution and explain what it reveals about the data."
       }
     ]
   }
