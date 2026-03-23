@@ -296,7 +296,7 @@
       "id": "l15-two-way-table-totals",
       "name": "8.4a: Two-Way Table Totals",
       "unlockedBy": { "gold": 3 },
-      "animation": null,
+      "animation": "assets/TwoWayTableLayout.mp4",
       "layout": {
         "inputs": [
           {
@@ -314,7 +314,7 @@
       "id": "l16-expected-count-formula",
       "name": "8.4b: Expected Count Formula",
       "unlockedBy": { "gold": 3 },
-      "animation": null,
+      "animation": "assets/ExpectedCountFormula.mp4",
       "layout": {
         "inputs": [
           {
@@ -332,7 +332,7 @@
       "id": "l17-subtraction-shortcut",
       "name": "8.4c: Subtraction Shortcut",
       "unlockedBy": { "gold": 3 },
-      "animation": null,
+      "animation": "assets/SubtractionShortcut.mp4",
       "layout": {
         "inputs": [
           {
@@ -350,7 +350,7 @@
       "id": "l18-interpret-expected-counts",
       "name": "8.4d: Interpret Expected Counts",
       "unlockedBy": { "gold": 3 },
-      "animation": null,
+      "animation": "assets/NoAssociationMeaning.mp4",
       "layout": {
         "inputs": [
           {
