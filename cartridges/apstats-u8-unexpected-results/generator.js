@@ -640,6 +640,218 @@ const level14Scenarios = [
   }
 ];
 
+// ============ 8.4 SCENARIO BANKS ============
+
+const level15Scenarios = [
+  {
+    desc: "A random sample of parents was surveyed about school type in 2019 and 2020.",
+    table: {
+      rowVar: "School Type", colVar: "Year",
+      rows: ["Public", "Private", "Home"],
+      cols: ["2019", "2020"],
+      data: [[266, 163], [16, 21], [38, 30]],
+      rowTotals: [429, 37, 68],
+      colTotals: [320, 214],
+      tableTotal: 534
+    },
+    question: "What is the row total for Public?",
+    correct: 429
+  },
+  {
+    desc: "A random sample of parents was surveyed about school type in 2019 and 2020.",
+    table: {
+      rowVar: "School Type", colVar: "Year",
+      rows: ["Public", "Private", "Home"],
+      cols: ["2019", "2020"],
+      data: [[266, 163], [16, 21], [38, 30]],
+      rowTotals: [429, 37, 68],
+      colTotals: [320, 214],
+      tableTotal: 534
+    },
+    question: "What is the column total for 2019?",
+    correct: 320
+  },
+  {
+    desc: "A random sample of 2000 adults was classified by education level and employment status.",
+    table: {
+      rowVar: "Employment", colVar: "Education",
+      rows: ["Employed", "Unemployed"],
+      cols: ["No HS Diploma", "HS No College", "HS Some College"],
+      data: [[206, 548, 1186], [14, 22, 24]],
+      rowTotals: [1940, 60],
+      colTotals: [220, 570, 1210],
+      tableTotal: 2000
+    },
+    question: "What is the table total?",
+    correct: 2000
+  },
+  {
+    desc: "A random sample of 2000 adults was classified by education level and employment status.",
+    table: {
+      rowVar: "Employment", colVar: "Education",
+      rows: ["Employed", "Unemployed"],
+      cols: ["No HS Diploma", "HS No College", "HS Some College"],
+      data: [[206, 548, 1186], [14, 22, 24]],
+      rowTotals: [1940, 60],
+      colTotals: [220, 570, 1210],
+      tableTotal: 2000
+    },
+    question: "What is the row total for Employed?",
+    correct: 1940
+  },
+  {
+    desc: "Students were surveyed about their preferred study method and grade level.",
+    table: {
+      rowVar: "Study Method", colVar: "Grade",
+      rows: ["Alone", "Group", "Tutoring"],
+      cols: ["9th", "10th", "11th", "12th"],
+      data: [[30, 25, 20, 15], [10, 15, 25, 30], [10, 10, 5, 5]],
+      rowTotals: [90, 80, 30],
+      colTotals: [50, 50, 50, 50],
+      tableTotal: 200
+    },
+    question: "What is the column total for 11th grade?",
+    correct: 50
+  },
+  {
+    desc: "Students were surveyed about their preferred study method and grade level.",
+    table: {
+      rowVar: "Study Method", colVar: "Grade",
+      rows: ["Alone", "Group", "Tutoring"],
+      cols: ["9th", "10th", "11th", "12th"],
+      data: [[30, 25, 20, 15], [10, 15, 25, 30], [10, 10, 5, 5]],
+      rowTotals: [90, 80, 30],
+      colTotals: [50, 50, 50, 50],
+      tableTotal: 200
+    },
+    question: "What is the row total for Group study?",
+    correct: 80
+  }
+];
+
+const level16Scenarios = [
+  {
+    desc: "School type by year: row totals are Public=429, Private=37, Home=68. Column totals are 2019=320, 2020=214. Table total=534. Find the expected count for Public in 2019.",
+    rowTotal: 429, colTotal: 320, tableTotal: 534,
+    cell: "Public, 2019",
+    correct: 257.08
+  },
+  {
+    desc: "School type by year: row totals are Public=429, Private=37, Home=68. Column totals are 2019=320, 2020=214. Table total=534. Find the expected count for Private in 2019.",
+    rowTotal: 37, colTotal: 320, tableTotal: 534,
+    cell: "Private, 2019",
+    correct: 22.17
+  },
+  {
+    desc: "Employment by education: row totals are Employed=1940, Unemployed=60. Column totals are No HS=220, HS No College=570, HS Some College=1210. Table total=2000. Find the expected count for Employed with No HS Diploma.",
+    rowTotal: 1940, colTotal: 220, tableTotal: 2000,
+    cell: "Employed, No HS Diploma",
+    correct: 213.4
+  },
+  {
+    desc: "Employment by education: row totals are Employed=1940, Unemployed=60. Column totals are No HS=220, HS No College=570, HS Some College=1210. Table total=2000. Find the expected count for Employed with HS No College.",
+    rowTotal: 1940, colTotal: 570, tableTotal: 2000,
+    cell: "Employed, HS No College",
+    correct: 552.9
+  },
+  {
+    desc: "Employment by education: row totals are Employed=1940, Unemployed=60. Column totals are No HS=220, HS No College=570, HS Some College=1210. Table total=2000. Find the expected count for Unemployed with No HS Diploma.",
+    rowTotal: 60, colTotal: 220, tableTotal: 2000,
+    cell: "Unemployed, No HS Diploma",
+    correct: 6.6
+  },
+  {
+    desc: "Study method by grade: row totals are Alone=90, Group=80, Tutoring=30. Column totals are all 50. Table total=200. Find the expected count for Alone in 9th grade.",
+    rowTotal: 90, colTotal: 50, tableTotal: 200,
+    cell: "Alone, 9th grade",
+    correct: 22.5
+  },
+  {
+    desc: "Study method by grade: row totals are Alone=90, Group=80, Tutoring=30. Column totals are all 50. Table total=200. Find the expected count for Group in 10th grade.",
+    rowTotal: 80, colTotal: 50, tableTotal: 200,
+    cell: "Group, 10th grade",
+    correct: 20.0
+  },
+  {
+    desc: "Study method by grade: row totals are Alone=90, Group=80, Tutoring=30. Column totals are all 50. Table total=200. Find the expected count for Tutoring in 12th grade.",
+    rowTotal: 30, colTotal: 50, tableTotal: 200,
+    cell: "Tutoring, 12th grade",
+    correct: 7.5
+  }
+];
+
+const level17Scenarios = [
+  {
+    desc: "School type by year. Column total for 2019 is 320. You already know expected counts of 257.1 (Public) and 22.2 (Private). Use subtraction to find the expected count for Home in 2019.",
+    colTotal: 320, knownExpected: [257.1, 22.2],
+    cell: "Home, 2019",
+    correct: 40.7
+  },
+  {
+    desc: "School type by year. Row total for Public is 429. Expected count for Public in 2019 is 257.1. Use subtraction to find the expected count for Public in 2020.",
+    colTotal: 429, knownExpected: [257.1],
+    cell: "Public, 2020",
+    correct: 171.9
+  },
+  {
+    desc: "Employment by education. Column total for No HS Diploma is 220. Expected count for Employed is 213.4. Use subtraction to find the expected count for Unemployed with No HS Diploma.",
+    colTotal: 220, knownExpected: [213.4],
+    cell: "Unemployed, No HS Diploma",
+    correct: 6.6
+  },
+  {
+    desc: "Employment by education. Row total for Employed is 1940. Expected counts already found: 213.4 (No HS) and 552.9 (HS No College). Use subtraction to find the expected count for Employed with HS Some College.",
+    colTotal: 1940, knownExpected: [213.4, 552.9],
+    cell: "Employed, HS Some College",
+    correct: 1173.7
+  },
+  {
+    desc: "Study method by grade. Column total for 9th grade is 50. Expected counts: 22.5 (Alone) and 20.0 (Group). Use subtraction to find the expected count for Tutoring in 9th grade.",
+    colTotal: 50, knownExpected: [22.5, 20.0],
+    cell: "Tutoring, 9th grade",
+    correct: 7.5
+  },
+  {
+    desc: "Study method by grade. Row total for Alone is 90. Expected count for Alone in 9th grade is 22.5. Use subtraction to find the expected count for Alone in the remaining three grades combined.",
+    colTotal: 90, knownExpected: [22.5],
+    cell: "Alone, remaining grades",
+    correct: 67.5
+  }
+];
+
+const level18Scenarios = [
+  {
+    desc: "In a two-way table, expected counts are calculated under what assumption?",
+    answer: "Expected counts assume there is no relationship (no association) between the two categorical variables.",
+    keywords: ["no relationship", "no association", "categorical", "variables", "independent"]
+  },
+  {
+    desc: "A researcher finds the expected count for Public school in 2019 is 257.1, but the observed count is 266. What does this comparison tell us?",
+    answer: "The observed count is higher than expected, which means more parents reported public school in 2019 than we would expect if school type and year were unrelated.",
+    keywords: ["higher", "expected", "observed", "unrelated", "more"]
+  },
+  {
+    desc: "Why do expected counts in a two-way table use the formula (row total × column total) / table total instead of just dividing the table total equally among all cells?",
+    answer: "The formula accounts for the different row and column totals. Equal division would ignore that some categories are more common than others overall.",
+    keywords: ["row total", "column total", "different", "common", "proportions"]
+  },
+  {
+    desc: "If expected counts and observed counts are very close in every cell of a two-way table, what does that suggest about the relationship between the two variables?",
+    answer: "It suggests there is no significant relationship between the two variables — the data are consistent with no association.",
+    keywords: ["no relationship", "no association", "consistent", "close", "variables"]
+  },
+  {
+    desc: "In the school type example, the overall proportion attending public school is 429/534 = 0.8034. How is this proportion used in calculating expected counts?",
+    answer: "This proportion is multiplied by each column total to find the expected number of public school students in that column, assuming the proportion is the same for both years.",
+    keywords: ["proportion", "column total", "multiplied", "same", "both"]
+  },
+  {
+    desc: "A student says expected counts for the totals row and totals column should also be calculated. Is this correct? Why or why not?",
+    answer: "No. Expected counts are only calculated for individual cells. The row totals, column totals, and table total stay the same — they are fixed by the observed data.",
+    keywords: ["individual cells", "totals", "fixed", "same", "observed"]
+  }
+];
+
 const level9Scenarios = [
   {
     desc: "A random sample of 40 predatory lending businesses is compared to null proportions 0.452, 0.292, and 0.256. There are far more than 400 such businesses in Dallas. Which statement about the conditions is correct?",
@@ -1059,6 +1271,101 @@ export function generateProblem(modeId, contextFromFile, mode) {
         contributionLabels: scen.labels,
         contributionValues: scen.contributions,
         largestLabel: scen.largestLabel
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ============ 8.4 LEVELS ============
+
+  if (modeId === "l15-two-way-table-totals") {
+    const scen = drawFromBag("level15", level15Scenarios);
+    const t = scen.table;
+    const tableStr = `${t.rowVar} (rows: ${t.rows.join(", ")}) by ${t.colVar} (columns: ${t.cols.join(", ")}).\nData: ${t.rows.map((r, i) => `${r}: [${t.data[i].join(", ")}]`).join("; ")}.`;
+
+    answers = {
+      numericAnswer: {
+        value: scen.correct,
+        tolerance: 0.5
+      }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 15: Topic 8.4 Two-Way Table Totals",
+        problemText: scen.question,
+        givenText: `${scen.desc}\n\n${tableStr}`
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l16-expected-count-formula") {
+    const scen = drawFromBag("level16", level16Scenarios);
+
+    answers = {
+      numericAnswer: {
+        value: scen.correct,
+        tolerance: 0.15
+      }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 16: Expected Count Formula",
+        problemText: `Calculate the expected count for ${scen.cell}`,
+        givenText: `${scen.desc}\n\nUse: expected count = (row total × column total) / table total = (${scen.rowTotal} × ${scen.colTotal}) / ${scen.tableTotal}.`
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l17-subtraction-shortcut") {
+    const scen = drawFromBag("level17", level17Scenarios);
+    const knownStr = scen.knownExpected.join(" + ");
+
+    answers = {
+      numericAnswer: {
+        value: scen.correct,
+        tolerance: 0.15
+      }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 17: Subtraction Shortcut",
+        problemText: `Find the expected count for ${scen.cell} using subtraction`,
+        givenText: `${scen.desc}\n\nTotal = ${scen.colTotal}. Known expected counts: ${knownStr}. Subtract to find the remaining expected count.`
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l18-interpret-expected-counts") {
+    const scen = drawFromBag("level18", level18Scenarios);
+
+    answers = {
+      textAnswer: { value: scen.answer }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 18: Interpret Expected Counts",
+        problemText: "Explain in one or two sentences",
+        givenText: scen.desc,
+        expectedKeywords: scen.keywords
       },
       answers
     );
