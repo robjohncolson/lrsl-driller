@@ -640,6 +640,175 @@ const level14Scenarios = [
   }
 ];
 
+// ============ 8.5 SCENARIO BANKS ============
+
+const level19Scenarios = [
+  {
+    desc: "A random sample of parents in 2019 and a separate random sample in 2020 were each asked what type of school their children attended. Researchers want to test if the distribution of school type differs between years.",
+    correct: "Chi-square test for homogeneity",
+    wrong: ["Chi-square test for independence", "Chi-square goodness-of-fit test", "Two-proportion z test"],
+    explanation: "Two separate random samples from different populations (years), comparing the distribution of one categorical variable → homogeneity."
+  },
+  {
+    desc: "A single random sample of 2000 adults was classified by education level and employment status. Researchers want to determine if there is an association between the two variables.",
+    correct: "Chi-square test for independence",
+    wrong: ["Chi-square test for homogeneity", "Chi-square goodness-of-fit test", "Two-sample t test"],
+    explanation: "One random sample, two categorical variables recorded on each individual → independence."
+  },
+  {
+    desc: "Random samples of voters from three different states were asked whether they supported a policy. Researchers want to compare the distribution of support across states.",
+    correct: "Chi-square test for homogeneity",
+    wrong: ["Chi-square test for independence", "Chi-square goodness-of-fit test", "One-proportion z test"],
+    explanation: "Separate random samples from multiple populations (states), one categorical variable → homogeneity."
+  },
+  {
+    desc: "A random sample of 500 high school students was surveyed about their grade level and whether they own a car. Researchers want to test whether car ownership is related to grade level.",
+    correct: "Chi-square test for independence",
+    wrong: ["Chi-square test for homogeneity", "Chi-square goodness-of-fit test", "Two-proportion z test"],
+    explanation: "One random sample, two categorical variables (grade level and car ownership) → independence."
+  },
+  {
+    desc: "Separate random samples of men and women were asked about their preferred social media platform. Researchers want to compare the distribution of platform preference between genders.",
+    correct: "Chi-square test for homogeneity",
+    wrong: ["Chi-square test for independence", "Chi-square goodness-of-fit test", "Two-sample t test"],
+    explanation: "Separate random samples from two populations (men and women), one categorical variable → homogeneity."
+  },
+  {
+    desc: "A random sample of 300 hospital patients was classified by insurance type and satisfaction level. Researchers want to know if satisfaction is associated with insurance type.",
+    correct: "Chi-square test for independence",
+    wrong: ["Chi-square test for homogeneity", "Chi-square goodness-of-fit test", "One-proportion z test"],
+    explanation: "One random sample, two categorical variables (insurance type and satisfaction) → independence."
+  }
+];
+
+const level20Scenarios = [
+  {
+    desc: "School type by year: researchers want to test if the distribution of school type differs between 2019 and 2020.",
+    testType: "homogeneity",
+    correct: "H₀: There is no difference in the distribution of school types between 2019 and 2020.",
+    wrong: [
+      "H₀: There is an association between school type and year.",
+      "H₀: The proportion of public school students is the same in both years.",
+      "Hₐ: There is no difference in the distribution of school types between 2019 and 2020."
+    ],
+    explanation: "Homogeneity null hypothesis states no difference in distributions across populations."
+  },
+  {
+    desc: "Education and employment: researchers want to test if there is an association between education level and employment status.",
+    testType: "independence",
+    correct: "H₀: There is no association between education level and employment status.",
+    wrong: [
+      "H₀: There is an association between education level and employment status.",
+      "H₀: The distribution of education level is the same for employed and unemployed adults.",
+      "Hₐ: There is no association between education level and employment status."
+    ],
+    explanation: "Independence null hypothesis states no association between the two categorical variables."
+  },
+  {
+    desc: "Voter support across three states: researchers want to compare the distribution of support.",
+    testType: "homogeneity",
+    correct: "H₀: There is no difference in the distribution of policy support across the three states.",
+    wrong: [
+      "H₀: There is an association between state and policy support.",
+      "Hₐ: There is no difference in the distribution of policy support across the three states.",
+      "H₀: The proportion supporting the policy is 0.50 in each state."
+    ],
+    explanation: "Homogeneity null hypothesis states the distribution is the same across all populations."
+  },
+  {
+    desc: "Grade level and car ownership: researchers want to test whether car ownership is related to grade level.",
+    testType: "independence",
+    correct: "H₀: There is no association between grade level and car ownership.",
+    wrong: [
+      "Hₐ: There is no association between grade level and car ownership.",
+      "H₀: The distribution of car ownership is the same for all grade levels.",
+      "H₀: The proportion of car owners is greater for 12th graders than 9th graders."
+    ],
+    explanation: "Independence null hypothesis states no association between the two variables in the population."
+  }
+];
+
+const level21Scenarios = [
+  {
+    desc: "School type by year. Two independent random samples: 320 parents in 2019 and 214 in 2020. There are millions of parents in each year. Expected counts: 257.1, 171.9, 22.0, 14.8, 40.7, 27.3. Are all conditions met?",
+    correct: "Yes. Two independent random samples, both sample sizes are ≤ 10% of the population, and all expected counts are greater than 5.",
+    wrong: [
+      "No. The expected count of 14.8 is below 5.",
+      "No. The sample sizes are more than 10% of the population.",
+      "No. A chi-square test requires equal sample sizes from each population."
+    ],
+    explanation: "All three conditions are satisfied: random samples, 10% rule met, and smallest expected count is 14.8 > 5."
+  },
+  {
+    desc: "A single random sample of 2000 adults classified by education and employment. Population of all adults is well over 20,000. Expected counts: 213.4, 552.9, 1173.7, 6.6, 17.1, 36.3. Are all conditions met?",
+    correct: "Yes. Single random sample, 2000 is ≤ 10% of the population, and all expected counts are greater than 5.",
+    wrong: [
+      "No. The expected count of 6.6 is below 5.",
+      "No. A single random sample cannot be used for a chi-square test.",
+      "No. The sample size must be less than 1000 for chi-square tests."
+    ],
+    explanation: "All conditions are met: random sample, 10% rule satisfied, smallest expected count is 6.6 > 5."
+  },
+  {
+    desc: "A convenience sample of 150 shoppers at a mall was classified by age group and purchase type. Expected counts: 12.5, 37.5, 25.0, 12.5, 37.5, 25.0. Are all conditions met?",
+    correct: "No. The data were not collected using a random sample.",
+    wrong: [
+      "Yes. All expected counts are greater than 5.",
+      "No. The expected count of 12.5 is below 5.",
+      "No. The sample size is too small."
+    ],
+    explanation: "The randomness condition fails because a convenience sample is not a random sample."
+  },
+  {
+    desc: "Random samples of 80 freshmen and 60 sophomores from a school of 200 students total. Students were asked about lunch preference. Expected counts: 28, 32, 20, 21, 24, 15. Are all conditions met?",
+    correct: "No. The combined sample size (140) is more than 10% of the population (200).",
+    wrong: [
+      "Yes. The data are from random samples and all expected counts are above 5.",
+      "No. All expected counts must be above 10, not 5.",
+      "No. A chi-square test cannot be used with only two groups."
+    ],
+    explanation: "The 10% condition fails because 80 > 20 (10% of 200) and 60 > 20."
+  },
+  {
+    desc: "A random sample of 40 patients classified by treatment group and outcome. Expected counts: 8.0, 12.0, 2.0, 3.0, 6.0, 9.0. Are all conditions met?",
+    correct: "No. The expected counts of 2.0 and 3.0 are not greater than 5.",
+    wrong: [
+      "Yes. The sample is random and 40 is a reasonable sample size.",
+      "No. The sample size must be at least 100.",
+      "No. Chi-square tests cannot be used for medical studies."
+    ],
+    explanation: "The large counts condition fails because expected counts of 2.0 and 3.0 are below 5."
+  }
+];
+
+const level22Scenarios = [
+  {
+    desc: "For a chi-square test for homogeneity, how must the data be collected?",
+    answer: "The data must come from independent random samples from each population, or from a randomized experiment.",
+    keywords: ["independent", "random samples", "each population", "randomized experiment"]
+  },
+  {
+    desc: "For a chi-square test for independence, how must the data be collected?",
+    answer: "The data must come from a single random sample, with two categorical variables recorded for each individual.",
+    keywords: ["single", "random sample", "two", "categorical", "variables"]
+  },
+  {
+    desc: "What is the difference between the null hypothesis for a homogeneity test and an independence test?",
+    answer: "Homogeneity tests whether the distribution of one variable is the same across populations. Independence tests whether two variables are associated within one population.",
+    keywords: ["distribution", "same", "populations", "association", "two variables"]
+  },
+  {
+    desc: "Why must all expected counts be greater than 5 for a chi-square test?",
+    answer: "The chi-square distribution is a good approximation for the sampling distribution only when expected counts are large enough. Small expected counts make the approximation unreliable.",
+    keywords: ["approximation", "sampling distribution", "large enough", "unreliable", "chi-square"]
+  },
+  {
+    desc: "A student checks the 10% condition by verifying that the sample size is less than 10% of the population. Why is this condition necessary?",
+    answer: "When sampling without replacement, the observations need to be approximately independent. If the sample is too large relative to the population, the observations are no longer independent.",
+    keywords: ["without replacement", "independent", "approximately", "too large", "population"]
+  }
+];
+
 // ============ 8.4 SCENARIO BANKS ============
 
 const level15Scenarios = [
@@ -1271,6 +1440,107 @@ export function generateProblem(modeId, contextFromFile, mode) {
         contributionLabels: scen.labels,
         contributionValues: scen.contributions,
         largestLabel: scen.largestLabel
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ============ 8.5 LEVELS ============
+
+  if (modeId === "l19-identify-test-type") {
+    const scen = drawFromBag("level19", level19Scenarios);
+    const options = shuffle([scen.correct, ...scen.wrong]);
+
+    answers = {
+      testTypeChoice: { value: scen.correct }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 19: Topic 8.5 Identify Test Type",
+        problemText: "Which chi-square test is appropriate?",
+        givenText: scen.desc,
+        optA: options[0],
+        optB: options[1],
+        optC: options[2],
+        optD: options[3],
+        testTypeExplanation: scen.explanation
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l20-state-hypotheses") {
+    const scen = drawFromBag("level20", level20Scenarios);
+    const options = shuffle([scen.correct, ...scen.wrong]);
+
+    answers = {
+      hypothesisChoice: { value: scen.correct }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 20: State Hypotheses",
+        problemText: "Choose the correct null hypothesis",
+        givenText: scen.desc,
+        optA: options[0],
+        optB: options[1],
+        optC: options[2],
+        optD: options[3],
+        hypothesisExplanation: scen.explanation
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l21-check-conditions") {
+    const scen = drawFromBag("level21", level21Scenarios);
+    const options = shuffle([scen.correct, ...scen.wrong]);
+
+    answers = {
+      conditionsChoice: { value: scen.correct }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 21: Check Conditions",
+        problemText: "Decide whether all conditions are met",
+        givenText: scen.desc,
+        optA: options[0],
+        optB: options[1],
+        optC: options[2],
+        optD: options[3],
+        conditionExplanation: scen.explanation
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l22-explain-conditions") {
+    const scen = drawFromBag("level22", level22Scenarios);
+
+    answers = {
+      textAnswer: { value: scen.answer }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 22: Explain Conditions",
+        problemText: "Explain in one or two sentences",
+        givenText: scen.desc,
+        expectedKeywords: scen.keywords
       },
       answers
     );

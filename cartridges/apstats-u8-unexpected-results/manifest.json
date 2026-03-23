@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u8-unexpected-results",
-    "name": "Chi-Square Tests (8.1-8.4)",
+    "name": "Chi-Square Tests (8.1-8.5)",
     "subject": "AP Statistics",
-    "description": "Practice observed vs expected counts, chi-square contributions, simulation-based interpretation, hypotheses, conditions, test statistic calculation, p-value decisions, largest contribution analysis, and expected counts in two-way tables for Topics 8.1-8.4."
+    "description": "Practice observed vs expected counts, chi-square contributions, simulation-based interpretation, hypotheses, conditions, test statistic calculation, p-value decisions, largest contribution analysis, expected counts in two-way tables, and setting up homogeneity/independence tests for Topics 8.1-8.5."
   },
 
   "config": {
@@ -21,7 +21,11 @@
       "APSTAT-8.4-TWO-WAY-TABLE-TOTALS",
       "APSTAT-8.4-EXPECTED-COUNT-FORMULA",
       "APSTAT-8.4-SUBTRACTION-SHORTCUT",
-      "APSTAT-8.4-INTERPRET-EXPECTED"
+      "APSTAT-8.4-INTERPRET-EXPECTED",
+      "APSTAT-8.5-IDENTIFY-TEST-TYPE",
+      "APSTAT-8.5-STATE-HYPOTHESES",
+      "APSTAT-8.5-CHECK-CONDITIONS",
+      "APSTAT-8.5-EXPLAIN-CONDITIONS"
     ]
   },
 
@@ -361,6 +365,73 @@
           }
         ]
       }
+    },
+    {
+      "id": "l19-identify-test-type",
+      "name": "8.5a: Identify Test Type",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/HomogeneityVsIndependence.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "testTypeChoice",
+            "type": "dropdown",
+            "label": "Which chi-square test is appropriate?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l20-state-hypotheses",
+      "name": "8.5b: State Hypotheses",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/StateHypotheses.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "hypothesisChoice",
+            "type": "dropdown",
+            "label": "Choose the correct null hypothesis:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l21-check-conditions",
+      "name": "8.5c: Check Conditions",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/CheckConditions.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "conditionsChoice",
+            "type": "dropdown",
+            "label": "Are all conditions met?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l22-explain-conditions",
+      "name": "8.5d: Explain Conditions",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/IdentifyTestType.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "textAnswer",
+            "type": "text",
+            "label": "Enter your answer:",
+            "placeholder": "Give a short statistical explanation..."
+          }
+        ]
+      }
     }
   ],
 
@@ -519,6 +590,30 @@
         "name": "18",
         "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Excellent! You understand that expected counts assume no association between the two categorical variables."
+      },
+      {
+        "id": "l19-identify-test-type",
+        "name": "19",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Great! You can distinguish between chi-square tests for homogeneity and independence."
+      },
+      {
+        "id": "l20-state-hypotheses",
+        "name": "20",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Good work! You can state the correct null hypothesis for each test type."
+      },
+      {
+        "id": "l21-check-conditions",
+        "name": "21",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Strong! You can verify all three conditions for a chi-square test."
+      },
+      {
+        "id": "l22-explain-conditions",
+        "name": "22",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Excellent! You can explain the reasoning behind each condition."
       }
     ]
   }

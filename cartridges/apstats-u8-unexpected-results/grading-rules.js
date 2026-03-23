@@ -337,6 +337,46 @@ export function gradeField(fieldId, answer, context) {
     };
   }
 
+  // ============ 8.5 GRADING RULES ============
+
+  if (fieldId === "testTypeChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. You identified the right chi-square test based on how the data were collected."
+      };
+    }
+    if (containsAny(answer, ["chi-square"])) {
+      return {
+        score: "P",
+        feedback: `Close — it is a chi-square test, but the correct type is: ${expected}. ${context.testTypeExplanation || ""}`
+      };
+    }
+    return {
+      score: "I",
+      feedback: `Incorrect. ${context.testTypeExplanation || `The correct test is: ${expected}.`}`
+    };
+  }
+
+  if (fieldId === "hypothesisChoice") {
+    if (studentNorm === expectedNorm) {
+      return {
+        score: "E",
+        feedback: "Correct. You identified the appropriate null hypothesis."
+      };
+    }
+    if (containsAny(answer, ["hₐ", "ha:", "there is a", "there is an association"]) && !containsAny(answer, ["no difference", "no association"])) {
+      return {
+        score: "I",
+        feedback: "That looks like an alternative hypothesis. The null hypothesis should state no difference or no association."
+      };
+    }
+    return {
+      score: "I",
+      feedback: context.hypothesisExplanation || `Incorrect. The correct null hypothesis is: ${expected}.`
+    };
+  }
+
   // ============ 8.3 GRADING RULES ============
 
   if (fieldId === "dfChoice") {
