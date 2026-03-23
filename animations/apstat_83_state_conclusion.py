@@ -35,8 +35,8 @@ class ChiSquareConclusionInContext(Scene):
         )
         p_box.set_fill(BLUE_3B1B, opacity=0.1)
         p_text = Text("p = 0.0208", font_size=30, color=WHITE, weight=BOLD)
-        p_group = VGroup(p_box, p_text).arrange_in_grid(1, 1)
         p_text.move_to(p_box.get_center())
+        p_group = VGroup(p_box, p_text)
         p_group.shift(LEFT * 2.4 + UP * 1.0)
 
         alpha_box = RoundedRectangle(
