@@ -1,0 +1,183 @@
+{
+  "meta": {
+    "id": "apstats-u9-regression-slopes",
+    "name": "Inference for Slopes (9.1-9.5)",
+    "subject": "AP Statistics",
+    "description": "Unit 9 practice covering population vs sample regression models, sampling variability of slopes, simulation-based inference for regression slopes, and drawing conclusions from simulated sampling distributions for Topics 9.1-9.5."
+  },
+
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "APSTAT-9.1-POPULATION-VS-SAMPLE-MODEL",
+      "APSTAT-9.1-PARAMETER-VS-STATISTIC",
+      "APSTAT-9.1-SAMPLING-VARIABILITY-SLOPE",
+      "APSTAT-9.1-SAMPLING-DISTRIBUTION-MEANING",
+      "APSTAT-9.1-SIMULATION-UNUSUAL-SLOPE",
+      "APSTAT-9.1-SIMULATION-CONSISTENT-SLOPE",
+      "APSTAT-9.1-CONCLUSION-MODEL-INVALID",
+      "APSTAT-9.1-CONCLUSION-MODEL-VALID"
+    ]
+  },
+
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      { "label": "Level", "value": "{{levelName}}" },
+      { "label": "Task", "value": "{{problemText}}" },
+      { "label": "Given", "value": "{{givenText}}" }
+    ]
+  },
+
+  "modes": [
+    {
+      "id": "l01-population-vs-sample",
+      "name": "9.1a: Population Model vs Sample Line",
+      "unlockedBy": "default",
+      "animation": "assets/PopulationVsSample.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "choiceAnswer",
+            "type": "choice",
+            "label": "Select the correct answer:",
+            "options": [
+              "Population regression model",
+              "Sample regression line",
+              "Both",
+              "Neither"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-sampling-variability-slope",
+      "name": "9.1b: Sampling Variability of Slopes",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/SamplingVariability.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "choiceAnswer",
+            "type": "choice",
+            "label": "Select the best answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-simulation-logic",
+      "name": "9.1c: Is the Observed Slope Unusual?",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/SimulatedDistribution.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "unusualChoice",
+            "type": "choice",
+            "label": "Is the observed slope unusual given the simulated distribution?",
+            "options": ["Yes, it is unusual", "No, it is consistent"]
+          },
+          {
+            "id": "dropdownReason",
+            "type": "dropdown",
+            "label": "Why?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select the best reason..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-conclusion-from-simulation",
+      "name": "9.1d: Conclusion from Simulation",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/SimulationConclusion.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "validityChoice",
+            "type": "choice",
+            "label": "Is the population model still valid?",
+            "options": ["Yes, the model is still valid", "No, the model is no longer valid"]
+          },
+          {
+            "id": "explanationText",
+            "type": "textarea",
+            "label": "Explain your reasoning:",
+            "rows": 4,
+            "placeholder": "Use the simulation results to justify whether the population model is still valid..."
+          }
+        ]
+      }
+    }
+  ],
+
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+
+  "hints": {
+    "perField": {
+      "choiceAnswer": "Hint: The population regression model uses all data (true parameters beta_0 and beta_1). The sample regression line uses a subset (estimates b_0 and b_1).",
+      "unusualChoice": "Hint: Compare the observed slope to the center and spread of the simulated sampling distribution. Is it inside the bulk of the distribution or far out in a tail?",
+      "dropdownReason": "Hint: Think about where the observed slope falls relative to the simulated slopes. Is it near the center or in the tails?",
+      "validityChoice": "Hint: If the observed slope is far from what the simulation produces under the population model, that model may no longer be valid.",
+      "explanationText": "Hint: Mention the simulated distribution center, where the observed slope falls, the estimated probability, and what that implies about the model."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": ["problem"],
+    "tiers": [
+      {
+        "id": "l01-population-vs-sample",
+        "name": "01",
+        "unlockedBy": "default",
+        "celebrationMessage": "Great start! You can distinguish population models from sample regression lines."
+      },
+      {
+        "id": "l02-sampling-variability-slope",
+        "name": "02",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Nice work! You understand that sample slopes vary from sample to sample."
+      },
+      {
+        "id": "l03-simulation-logic",
+        "name": "03",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Strong reasoning! You can determine whether an observed slope is unusual using a simulated distribution."
+      },
+      {
+        "id": "l04-conclusion-from-simulation",
+        "name": "04",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Excellent! You can draw valid conclusions about population models from simulation results."
+      }
+    ]
+  }
+}

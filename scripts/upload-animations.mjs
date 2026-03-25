@@ -24,6 +24,8 @@ import { parseArgs } from "node:util";
 const CARTRIDGE_MAP = {
   "5": "apstats-u5-sampling-dist",
   "6": "apstats-u6-inference-prop",
+  "8": "apstats-u8-unexpected-results",
+  "9": "apstats-u9-regression-slopes",
 };
 
 // ---------------------------------------------------------------------------
