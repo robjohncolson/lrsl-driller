@@ -328,6 +328,375 @@ const level4Scenarios = [
   }
 ];
 
+// ============ LEVEL 5: CONDITIONS FOR INFERENCE (LINER) ============
+
+const level5Scenarios = [
+  {
+    stem: "A scatterplot of x vs y shows a clear curved pattern, and the residual plot confirms a U-shaped trend. Which LINER condition is violated?",
+    options: [
+      "Linear — the relationship is not linear",
+      "Independent — the observations are not independent",
+      "Normal — the y-values are not normally distributed for each x",
+      "Equal SD — the spread of y changes across x"
+    ],
+    correctIndex: 0,
+    explanation: "A curved residual plot means the Linear condition is not met."
+  },
+  {
+    stem: "A researcher surveys 200 students at a university with 1,500 total students. She uses regression to predict GPA from study hours. Which condition should she check with the 10% rule?",
+    options: [
+      "Independent — n should be less than 10% of the population",
+      "Linear — the scatterplot must be straight",
+      "Normal — residuals must be normally distributed",
+      "Random — the sample must be randomly selected"
+    ],
+    correctIndex: 0,
+    explanation: "The 10% condition checks Independence: 200 is more than 10% of 1,500, so independence may be violated."
+  },
+  {
+    stem: "A histogram of the residuals from a regression is strongly skewed right. Which LINER condition is most directly in question?",
+    options: [
+      "Normal — the residuals should be approximately normal",
+      "Linear — the relationship must be linear",
+      "Equal SD — the spread must be constant",
+      "Random — the data must come from a random process"
+    ],
+    correctIndex: 0,
+    explanation: "Skewed residuals suggest the Normal condition may not be met."
+  },
+  {
+    stem: "A residual plot shows a fan shape: residuals are tightly clustered for small x values but widely spread for large x values. Which LINER condition fails?",
+    options: [
+      "Equal SD — the standard deviation of y is not the same for all x",
+      "Linear — the relationship is curved",
+      "Independent — the observations affect each other",
+      "Normal — the residuals are not normal"
+    ],
+    correctIndex: 0,
+    explanation: "A fan-shaped residual plot indicates non-constant variance (Equal SD condition fails)."
+  },
+  {
+    stem: "A study collects data from all students who volunteered to participate, rather than using a random sample. Which LINER condition is most at risk?",
+    options: [
+      "Random — data do not come from a random sample or experiment",
+      "Linear — the scatterplot might be curved",
+      "Normal — residuals might be skewed",
+      "Independent — volunteers may influence each other"
+    ],
+    correctIndex: 0,
+    explanation: "Volunteer (convenience) sampling violates the Random condition."
+  },
+  {
+    stem: "Which condition requires that for any given value of x, the distribution of y-values follows a bell-shaped pattern?",
+    options: [
+      "Normal — y-values are normally distributed for each x",
+      "Linear — the overall trend is a straight line",
+      "Equal SD — the spread is constant across x",
+      "Independent — observations don't influence each other"
+    ],
+    correctIndex: 0,
+    explanation: "The Normal condition states that for each x, the y-values are normally distributed."
+  },
+  {
+    stem: "A scientist measures the blood pressure of 50 patients at a hospital. The patients were selected using a random number generator from a list of 3,000 patients. Which LINER condition does this most directly support?",
+    options: [
+      "Random — data come from a random sample",
+      "Linear — the scatterplot is linear",
+      "Equal SD — the spread is constant",
+      "Normal — the residuals are approximately normal"
+    ],
+    correctIndex: 0,
+    explanation: "Using a random number generator to select subjects satisfies the Random condition."
+  },
+  {
+    stem: "A regression analysis uses 15 data points from a population of 120. A classmate says the 10% condition is satisfied because 15 < 12. Is the classmate correct?",
+    options: [
+      "No — 10% of 120 is 12, and 15 > 12, so the condition is NOT satisfied",
+      "Yes — 15 is close enough to 12 to satisfy the condition",
+      "No — the 10% condition requires n > 10% of the population",
+      "Yes — 15 is small enough to treat observations as independent"
+    ],
+    correctIndex: 0,
+    explanation: "Since 15 > 12 (which is 10% of 120), the 10% condition for independence is not satisfied."
+  }
+];
+
+// ============ LEVEL 6: SAMPLING DISTRIBUTION OF SLOPE ============
+
+const level6Scenarios = [
+  {
+    stem: "The sampling distribution of b₁ is centered at which value?",
+    options: [
+      "β₁, the true population slope",
+      "0, because the null hypothesis assumes no relationship",
+      "b₁, the sample slope",
+      "The sample mean of y"
+    ],
+    correctIndex: 0,
+    explanation: "The sampling distribution of b₁ is centered at the true population slope β₁ (b₁ is an unbiased estimator)."
+  },
+  {
+    stem: "Which of the following would DECREASE the standard deviation of the sampling distribution of b₁?",
+    options: [
+      "Increasing the sample size n",
+      "Decreasing the sample size n",
+      "Increasing the population standard deviation σ",
+      "Decreasing the spread of x-values"
+    ],
+    correctIndex: 0,
+    explanation: "Larger n appears in the denominator of SD(b₁) = σ / (sₓ × √(n−1)), so increasing n decreases the SD."
+  },
+  {
+    stem: "The standard deviation of the sampling distribution of b₁ is σ / (sₓ × √(n−1)). If the spread of x-values (sₓ) increases, what happens to SD(b₁)?",
+    options: [
+      "SD(b₁) decreases — more spread in x gives a more precise slope estimate",
+      "SD(b₁) increases — more spread in x adds more variability",
+      "SD(b₁) stays the same — sₓ does not affect the slope precision",
+      "SD(b₁) becomes zero — perfect precision"
+    ],
+    correctIndex: 0,
+    explanation: "sₓ is in the denominator, so larger sₓ means smaller SD(b₁) and a more precise estimate."
+  },
+  {
+    stem: "When the LINER conditions are met, the shape of the sampling distribution of b₁ is approximately:",
+    options: [
+      "Normal",
+      "Skewed right",
+      "Uniform",
+      "Bimodal"
+    ],
+    correctIndex: 0,
+    explanation: "When conditions are satisfied, the sampling distribution of b₁ is approximately Normal."
+  },
+  {
+    stem: "A researcher wants a more precise estimate of the population slope. Which strategy would help MOST?",
+    options: [
+      "Collect more data points (increase n) with a wide range of x-values",
+      "Use fewer data points to reduce noise",
+      "Restrict the range of x-values to a narrow interval",
+      "Use a population with larger σ (more residual variability)"
+    ],
+    correctIndex: 0,
+    explanation: "Increasing n and increasing sₓ (wider x-range) both reduce SD(b₁), giving a more precise slope estimate."
+  },
+  {
+    stem: "If σ (the population SD of residuals) is large, what effect does this have on the sampling distribution of b₁?",
+    options: [
+      "The distribution is wider — more scatter in residuals means less precision in estimating the slope",
+      "The distribution is narrower — large σ helps stabilize the slope",
+      "No effect — σ does not appear in the formula for SD(b₁)",
+      "The distribution shifts to the right"
+    ],
+    correctIndex: 0,
+    explanation: "σ is in the numerator of SD(b₁) = σ / (sₓ × √(n−1)), so larger σ means wider distribution."
+  },
+  {
+    stem: "In practice, we don't know σ. What do we use instead to estimate SD(b₁)?",
+    options: [
+      "s, the standard deviation of the residuals, giving SE(b₁) = s / (sₓ × √(n−1))",
+      "The sample standard deviation of y, sᵧ",
+      "The sample mean of the residuals",
+      "The population standard deviation of x"
+    ],
+    correctIndex: 0,
+    explanation: "We replace σ with s (the residual SD) to get the standard error SE(b₁)."
+  },
+  {
+    stem: "Two studies estimate the slope of the same population regression. Study A uses n = 25 and Study B uses n = 100. How do their sampling distributions compare?",
+    options: [
+      "Both are centered at β₁, but Study B's distribution is narrower",
+      "Study A's distribution is centered at a different value than Study B's",
+      "Both have the same spread because they estimate the same slope",
+      "Study A's distribution is narrower because smaller samples are simpler"
+    ],
+    correctIndex: 0,
+    explanation: "Both are centered at β₁, but larger n (Study B) gives a narrower (more precise) sampling distribution."
+  }
+];
+
+// ============ LEVEL 7: STANDARD ERROR OF SLOPE ============
+
+const level7Scenarios = [
+  {
+    context: "Regression output for predicting weight (lbs) from height (in):\nPredictor    Coef      SE Coef    T       P\nConstant    -150.23    18.410    -8.16   0.000\nHeight        4.82      0.257     18.75  0.000\ns = 12.47   R-sq = 78.1%   n = 102",
+    question: "What is SE(b₁)?",
+    answer: 0.257,
+    tolerance: 0.001,
+    explanation: "SE(b₁) is the SE Coef value in the predictor (Height) row: 0.257."
+  },
+  {
+    context: "Regression output for predicting exam score from hours studied:\nPredictor       Coef      SE Coef    T       P\nConstant        45.20      3.180    14.21   0.000\nHoursStudied     5.68      0.842     6.75   0.000\ns = 8.93   R-sq = 64.2%   n = 28",
+    question: "What is the sample slope b₁?",
+    answer: 5.68,
+    tolerance: 0.01,
+    explanation: "b₁ is the Coef value in the predictor (HoursStudied) row: 5.68."
+  },
+  {
+    context: "Regression output for predicting rent ($) from apartment size (sqft):\nPredictor    Coef      SE Coef    T       P\nConstant     212.50    45.300     4.69   0.000\nSize           1.34      0.038    35.26   0.000\ns = 98.72   R-sq = 91.3%   n = 120",
+    question: "What is SE(b₁)?",
+    answer: 0.038,
+    tolerance: 0.001,
+    explanation: "SE(b₁) is the SE Coef value in the Size row: 0.038."
+  },
+  {
+    context: "Regression output for predicting fuel efficiency (mpg) from weight (1000 lbs):\nPredictor    Coef      SE Coef    T       P\nConstant     48.73      1.976    24.66   0.000\nWeight       -8.14      0.631   -12.90   0.000\ns = 4.15   R-sq = 82.7%   n = 38",
+    question: "What is the standard deviation of the residuals (s)?",
+    answer: 4.15,
+    tolerance: 0.01,
+    explanation: "s is the standard deviation of the residuals, shown below the table: s = 4.15."
+  },
+  {
+    context: "A regression has s = 15.6, sₓ = 4.2, and n = 50. Calculate SE(b₁) using the formula SE(b₁) = s / (sₓ × √(n−1)).",
+    question: "What is SE(b₁)? Round to 3 decimal places.",
+    answer: 0.531,
+    tolerance: 0.002,
+    explanation: "SE(b₁) = 15.6 / (4.2 × √49) = 15.6 / (4.2 × 7) = 15.6 / 29.4 = 0.531."
+  },
+  {
+    context: "A regression has s = 22.0, sₓ = 10.0, and n = 26. Calculate SE(b₁) using the formula SE(b₁) = s / (sₓ × √(n−1)).",
+    question: "What is SE(b₁)? Round to 3 decimal places.",
+    answer: 0.440,
+    tolerance: 0.002,
+    explanation: "SE(b₁) = 22.0 / (10.0 × √25) = 22.0 / (10.0 × 5) = 22.0 / 50.0 = 0.440."
+  },
+  {
+    context: "Regression output for predicting marathon time (min) from training miles per week:\nPredictor       Coef      SE Coef    T       P\nConstant       305.40     12.800   23.86   0.000\nTrainingMiles   -1.92      0.185  -10.38   0.000\ns = 18.34   R-sq = 73.0%   n = 42",
+    question: "What is SE(b₁)?",
+    answer: 0.185,
+    tolerance: 0.001,
+    explanation: "SE(b₁) is the SE Coef value in the TrainingMiles row: 0.185."
+  },
+  {
+    context: "A regression has s = 6.3, sₓ = 3.0, and n = 37. Calculate SE(b₁) using the formula SE(b₁) = s / (sₓ × √(n−1)).",
+    question: "What is SE(b₁)? Round to 3 decimal places.",
+    answer: 0.350,
+    tolerance: 0.002,
+    explanation: "SE(b₁) = 6.3 / (3.0 × √36) = 6.3 / (3.0 × 6) = 6.3 / 18.0 = 0.350."
+  }
+];
+
+// ============ LEVEL 8: CONFIDENCE INTERVAL FOR SLOPE ============
+
+// t* values for common confidence levels and df values (approximate)
+const tStarTable = {
+  // df: { 90%, 95%, 99% }
+  18: { 90: 1.734, 95: 2.101, 99: 2.878 },
+  23: { 90: 1.714, 95: 2.069, 99: 2.807 },
+  28: { 90: 1.701, 95: 2.048, 99: 2.763 },
+  33: { 90: 1.692, 95: 2.035, 99: 2.733 },
+  38: { 90: 1.686, 95: 2.024, 99: 2.712 },
+  48: { 90: 1.677, 95: 2.011, 99: 2.682 },
+  58: { 90: 1.672, 95: 2.002, 99: 2.663 },
+  98: { 90: 1.661, 95: 1.984, 99: 2.627 }
+};
+
+const level8Scenarios = [
+  {
+    contextName: "Old Faithful eruptions",
+    xVar: "eruption duration (min)",
+    yVar: "interval to next eruption (min)",
+    b1: 13.29,
+    se: 0.340,
+    n: 30,
+    df: 28,
+    confLevel: 95,
+    tStar: 2.048,
+    units: "minutes per minute of duration",
+    keywords: ["confident", "true slope", "between", "interval", "duration", "eruption"]
+  },
+  {
+    contextName: "student study habits",
+    xVar: "hours studied",
+    yVar: "exam score (points)",
+    b1: 5.68,
+    se: 0.842,
+    n: 25,
+    df: 23,
+    confLevel: 95,
+    tStar: 2.069,
+    units: "points per hour studied",
+    keywords: ["confident", "true slope", "between", "score", "study", "hours"]
+  },
+  {
+    contextName: "apartment rental prices",
+    xVar: "apartment size (sqft)",
+    yVar: "monthly rent ($)",
+    b1: 1.34,
+    se: 0.038,
+    n: 50,
+    df: 48,
+    confLevel: 90,
+    tStar: 1.677,
+    units: "dollars per square foot",
+    keywords: ["confident", "true slope", "between", "rent", "size", "square"]
+  },
+  {
+    contextName: "car fuel efficiency",
+    xVar: "weight (1000 lbs)",
+    yVar: "fuel efficiency (mpg)",
+    b1: -8.14,
+    se: 0.631,
+    n: 35,
+    df: 33,
+    confLevel: 95,
+    tStar: 2.035,
+    units: "mpg per 1000 lbs",
+    keywords: ["confident", "true slope", "between", "mpg", "weight", "fuel"]
+  },
+  {
+    contextName: "marathon training",
+    xVar: "training miles per week",
+    yVar: "marathon finish time (min)",
+    b1: -1.92,
+    se: 0.185,
+    n: 40,
+    df: 38,
+    confLevel: 99,
+    tStar: 2.712,
+    units: "minutes per training mile",
+    keywords: ["confident", "true slope", "between", "marathon", "training", "time"]
+  },
+  {
+    contextName: "plant growth experiment",
+    xVar: "sunlight hours per day",
+    yVar: "plant height (cm)",
+    b1: 2.45,
+    se: 0.312,
+    n: 20,
+    df: 18,
+    confLevel: 95,
+    tStar: 2.101,
+    units: "cm per hour of sunlight",
+    keywords: ["confident", "true slope", "between", "height", "sunlight", "plant"]
+  },
+  {
+    contextName: "ice cream sales",
+    xVar: "daily high temperature (F)",
+    yVar: "ice cream sales ($)",
+    b1: 3.72,
+    se: 0.445,
+    n: 60,
+    df: 58,
+    confLevel: 90,
+    tStar: 1.672,
+    units: "dollars per degree Fahrenheit",
+    keywords: ["confident", "true slope", "between", "sales", "temperature", "ice cream"]
+  },
+  {
+    contextName: "commute times",
+    xVar: "distance from work (miles)",
+    yVar: "commute time (minutes)",
+    b1: 2.15,
+    se: 0.198,
+    n: 100,
+    df: 98,
+    confLevel: 95,
+    tStar: 1.984,
+    units: "minutes per mile",
+    keywords: ["confident", "true slope", "between", "commute", "distance", "time"]
+  }
+];
+
 // ============ GENERATOR FUNCTIONS ============
 
 function generateLevel1() {
@@ -415,6 +784,97 @@ function generateLevel4() {
   );
 }
 
+function generateLevel5() {
+  const scenario = drawFromBag("level5", level5Scenarios);
+  const options = shuffle([...scenario.options]);
+  const correctLabel = scenario.options[scenario.correctIndex];
+
+  return withAnswerContext(
+    {
+      levelName: "9.2a: Conditions for Regression Inference (LINER)",
+      problemText: scenario.stem,
+      givenText: "Identify which LINER condition is described or violated.",
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      explanation: scenario.explanation
+    },
+    {
+      conditionChoice: { value: correctLabel }
+    }
+  );
+}
+
+function generateLevel6() {
+  const scenario = drawFromBag("level6", level6Scenarios);
+  const options = shuffle([...scenario.options]);
+  const correctLabel = scenario.options[scenario.correctIndex];
+
+  return withAnswerContext(
+    {
+      levelName: "9.2b: Sampling Distribution of b\u2081",
+      problemText: scenario.stem,
+      givenText: "Think about the center, shape, and spread of the sampling distribution of the sample slope.",
+      optA: options[0],
+      optB: options[1],
+      optC: options[2],
+      optD: options[3],
+      explanation: scenario.explanation
+    },
+    {
+      sdSlopeChoice: { value: correctLabel }
+    }
+  );
+}
+
+function generateLevel7() {
+  const scenario = drawFromBag("level7", level7Scenarios);
+
+  return withAnswerContext(
+    {
+      levelName: "9.2c: Standard Error of the Slope",
+      problemText: scenario.question,
+      givenText: scenario.context,
+      explanation: scenario.explanation
+    },
+    {
+      numericAnswer: { value: scenario.answer, tolerance: scenario.tolerance }
+    }
+  );
+}
+
+function generateLevel8() {
+  const scenario = drawFromBag("level8", level8Scenarios);
+  const me = roundTo(scenario.tStar * scenario.se, 3);
+  const lower = roundTo(scenario.b1 - me, 3);
+  const upper = roundTo(scenario.b1 + me, 3);
+
+  return withAnswerContext(
+    {
+      levelName: "9.2d: Confidence Interval for the Slope",
+      problemText: `Construct a ${scenario.confLevel}% confidence interval for the true slope of the regression model predicting ${scenario.yVar} from ${scenario.xVar} (${scenario.contextName}).`,
+      givenText: `b\u2081 = ${scenario.b1}, SE(b\u2081) = ${scenario.se}, n = ${scenario.n}, df = ${scenario.df}, t* = ${scenario.tStar}`,
+      contextName: scenario.contextName,
+      xVar: scenario.xVar,
+      yVar: scenario.yVar,
+      confLevel: scenario.confLevel,
+      b1: scenario.b1,
+      se: scenario.se,
+      tStar: scenario.tStar,
+      units: scenario.units,
+      keywords: scenario.keywords,
+      expectedKeywords: scenario.keywords,
+      explanation: `${scenario.confLevel}% CI: ${scenario.b1} \u00b1 ${scenario.tStar} \u00d7 ${scenario.se} = (${lower}, ${upper})`
+    },
+    {
+      lowerBound: { value: lower, tolerance: 0.05 },
+      upperBound: { value: upper, tolerance: 0.05 },
+      interpretText: { value: `We are ${scenario.confLevel}% confident that the true slope is between ${lower} and ${upper} ${scenario.units}.` }
+    }
+  );
+}
+
 // ============ MAIN DISPATCHER ============
 
 export function generate(modeId) {
@@ -427,6 +887,14 @@ export function generate(modeId) {
       return generateLevel3();
     case "l04-conclusion-from-simulation":
       return generateLevel4();
+    case "l05-conditions-for-inference":
+      return generateLevel5();
+    case "l06-sampling-distribution-slope":
+      return generateLevel6();
+    case "l07-standard-error-slope":
+      return generateLevel7();
+    case "l08-confidence-interval-slope":
+      return generateLevel8();
     default:
       return generateLevel1();
   }

@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u9-regression-slopes",
-    "name": "Inference for Slopes (9.1-9.5)",
+    "name": "Inference for Slopes (9.1-9.2)",
     "subject": "AP Statistics",
-    "description": "Unit 9 practice covering population vs sample regression models, sampling variability of slopes, simulation-based inference for regression slopes, and drawing conclusions from simulated sampling distributions for Topics 9.1-9.5."
+    "description": "Unit 9 practice covering population vs sample regression models, sampling variability of slopes, simulation-based inference, conditions for regression inference (LINEAR), sampling distribution of b1, reading regression output, and constructing/interpreting confidence intervals for the slope."
   },
 
   "config": {
@@ -16,7 +16,11 @@
       "APSTAT-9.1-SIMULATION-UNUSUAL-SLOPE",
       "APSTAT-9.1-SIMULATION-CONSISTENT-SLOPE",
       "APSTAT-9.1-CONCLUSION-MODEL-INVALID",
-      "APSTAT-9.1-CONCLUSION-MODEL-VALID"
+      "APSTAT-9.1-CONCLUSION-MODEL-VALID",
+      "APSTAT-9.2-CONDITIONS-LINER",
+      "APSTAT-9.2-SAMPLING-DIST-SLOPE",
+      "APSTAT-9.2-STANDARD-ERROR-SLOPE",
+      "APSTAT-9.2-CONFIDENCE-INTERVAL-SLOPE"
     ]
   },
 
@@ -118,6 +122,93 @@
           }
         ]
       }
+    },
+    {
+      "id": "l05-conditions-for-inference",
+      "name": "9.2a: Conditions for Regression Inference (LINER)",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/ConditionsLINER.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "conditionChoice",
+            "type": "choice",
+            "label": "Select the correct answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-sampling-distribution-slope",
+      "name": "9.2b: Sampling Distribution of b\u2081",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/SamplingDistSlope.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "sdSlopeChoice",
+            "type": "choice",
+            "label": "Select the best answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l07-standard-error-slope",
+      "name": "9.2c: Standard Error of the Slope",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/ReadingOutput.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "numericAnswer",
+            "type": "number",
+            "label": "Enter your answer:",
+            "placeholder": "Round to 3 decimal places..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l08-confidence-interval-slope",
+      "name": "9.2d: Confidence Interval for the Slope",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/ConfidenceInterval.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "lowerBound",
+            "type": "number",
+            "label": "Lower bound of CI:",
+            "placeholder": "Round to 3 decimal places..."
+          },
+          {
+            "id": "upperBound",
+            "type": "number",
+            "label": "Upper bound of CI:",
+            "placeholder": "Round to 3 decimal places..."
+          },
+          {
+            "id": "interpretText",
+            "type": "textarea",
+            "label": "Interpret the interval in context:",
+            "rows": 3,
+            "placeholder": "We are __% confident that the true slope..."
+          }
+        ]
+      }
     }
   ],
 
@@ -140,7 +231,13 @@
       "unusualChoice": "Hint: Compare the observed slope to the center and spread of the simulated sampling distribution. Is it inside the bulk of the distribution or far out in a tail?",
       "dropdownReason": "Hint: Think about where the observed slope falls relative to the simulated slopes. Is it near the center or in the tails?",
       "validityChoice": "Hint: If the observed slope is far from what the simulation produces under the population model, that model may no longer be valid.",
-      "explanationText": "Hint: Mention the simulated distribution center, where the observed slope falls, the estimated probability, and what that implies about the model."
+      "explanationText": "Hint: Mention the simulated distribution center, where the observed slope falls, the estimated probability, and what that implies about the model.",
+      "conditionChoice": "Hint: The five conditions spell LINER: Linear, Independent, Normal, Equal SD, Random. Match the scenario to the condition it describes or violates.",
+      "sdSlopeChoice": "Hint: The sampling distribution of b\u2081 is centered at \u03b2\u2081, approximately Normal, with SD = \u03c3 / (s\u2093 \u00d7 \u221a(n\u22121)).",
+      "numericAnswer": "Hint: Read the SE Coef value from the predictor row of the regression output. Remember SE(b\u2081) = s / (s\u2093 \u00d7 \u221a(n\u22121)).",
+      "lowerBound": "Hint: Lower bound = b\u2081 \u2212 t* \u00d7 SE(b\u2081). Use df = n \u2212 2 for the t* critical value.",
+      "upperBound": "Hint: Upper bound = b\u2081 + t* \u00d7 SE(b\u2081). Use df = n \u2212 2 for the t* critical value.",
+      "interpretText": "Hint: 'We are C% confident that the true slope of the population regression model relating [x] to [y] is between [lower] and [upper] [units].'"
     },
     "penalty": {
       "0": "gold",
@@ -177,6 +274,30 @@
         "name": "04",
         "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Excellent! You can draw valid conclusions about population models from simulation results."
+      },
+      {
+        "id": "l05-conditions-for-inference",
+        "name": "05",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Well done! You know the LINER conditions for regression inference."
+      },
+      {
+        "id": "l06-sampling-distribution-slope",
+        "name": "06",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Great work! You understand the sampling distribution of the sample slope b\u2081."
+      },
+      {
+        "id": "l07-standard-error-slope",
+        "name": "07",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Nice! You can read and use the standard error of the slope from regression output."
+      },
+      {
+        "id": "l08-confidence-interval-slope",
+        "name": "08",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Outstanding! You can construct and interpret a confidence interval for the slope."
       }
     ]
   }
