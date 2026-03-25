@@ -1,9 +1,9 @@
 {
   "meta": {
     "id": "apstats-u8-unexpected-results",
-    "name": "Chi-Square Tests (8.1-8.5)",
+    "name": "Chi-Square Tests (8.1-8.6)",
     "subject": "AP Statistics",
-    "description": "Practice observed vs expected counts, chi-square contributions, simulation-based interpretation, hypotheses, conditions, test statistic calculation, p-value decisions, largest contribution analysis, expected counts in two-way tables, and setting up homogeneity/independence tests for Topics 8.1-8.5."
+    "description": "Complete Unit 8 practice covering chi-square GOF, expected counts in two-way tables, homogeneity vs independence, test statistics, p-values, conclusions, and contribution analysis for Topics 8.1-8.6."
   },
 
   "config": {
@@ -25,7 +25,11 @@
       "APSTAT-8.5-IDENTIFY-TEST-TYPE",
       "APSTAT-8.5-STATE-HYPOTHESES",
       "APSTAT-8.5-CHECK-CONDITIONS",
-      "APSTAT-8.5-EXPLAIN-CONDITIONS"
+      "APSTAT-8.5-EXPLAIN-CONDITIONS",
+      "APSTAT-8.6-CHI-SQUARE-TWOWAY",
+      "APSTAT-8.6-DF-TWOWAY",
+      "APSTAT-8.6-PVALUE-CONCLUSION-TWOWAY",
+      "APSTAT-8.6-LARGEST-CONTRIBUTION-TWOWAY"
     ]
   },
 
@@ -432,6 +436,81 @@
           }
         ]
       }
+    },
+    {
+      "id": "l23-chi-square-twoway",
+      "name": "8.6a: Chi-Square Statistic (Two-Way)",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/ChiSquareStatisticTwoWay.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "numericAnswer",
+            "type": "number",
+            "label": "Calculate the chi-square test statistic:",
+            "min": 0,
+            "max": 200,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "l24-df-twoway",
+      "name": "8.6b: Degrees of Freedom (Two-Way)",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/DegreesOfFreedomTwoWay.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "dfChoice",
+            "type": "dropdown",
+            "label": "Choose the degrees of freedom:",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l25-pvalue-conclusion-twoway",
+      "name": "8.6c: P-Value and Conclusion",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/PValueAndConclusion.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "decisionChoice",
+            "type": "choice",
+            "label": "What is the correct decision?",
+            "options": ["Reject H₀", "Fail to reject H₀"]
+          },
+          {
+            "id": "conclusionText",
+            "type": "textarea",
+            "label": "State the conclusion in context:",
+            "rows": 3,
+            "placeholder": "Compare p-value to α and state your conclusion..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l26-largest-contribution-twoway",
+      "name": "8.6d: Largest Contribution (Two-Way)",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/LargestContributionTwoWay.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "contributionText",
+            "type": "textarea",
+            "label": "Identify the largest contribution and explain what it reveals:",
+            "rows": 4,
+            "placeholder": "Which cell has the largest contribution? What does that tell you?"
+          }
+        ]
+      }
     }
   ],
 
@@ -614,6 +693,30 @@
         "name": "22",
         "unlockedBy": { "gold": 3 },
         "celebrationMessage": "Excellent! You can explain the reasoning behind each condition."
+      },
+      {
+        "id": "l23-chi-square-twoway",
+        "name": "23",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Strong! You can compute the chi-square statistic for a two-way table."
+      },
+      {
+        "id": "l24-df-twoway",
+        "name": "24",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Good! You know df = (rows-1)(columns-1) for two-way tables."
+      },
+      {
+        "id": "l25-pvalue-conclusion-twoway",
+        "name": "25",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Excellent! You can state a conclusion for a chi-square homogeneity or independence test."
+      },
+      {
+        "id": "l26-largest-contribution-twoway",
+        "name": "26",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Outstanding! You completed all of Unit 8! You can identify which cells drive significant chi-square results."
       }
     ]
   }

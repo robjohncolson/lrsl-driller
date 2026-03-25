@@ -640,6 +640,136 @@ const level14Scenarios = [
   }
 ];
 
+// ============ 8.6 SCENARIO BANKS ============
+
+const level23Scenarios = [
+  {
+    desc: "School type by year (3×2 table). Observed: [266,163,16,21,38,30]. Expected: [257.1,171.9,22.2,14.8,40.7,27.3]. Compute the chi-square test statistic.",
+    observed: [266, 163, 16, 21, 38, 30],
+    expected: [257.1, 171.9, 22.2, 14.8, 40.7, 27.3],
+    correct: 7.75
+  },
+  {
+    desc: "Employment by education (2×3 table). Observed: [206,548,1186,14,22,24]. Expected: [213.4,552.9,1173.7,6.6,17.1,36.3]. Compute the chi-square test statistic.",
+    observed: [206, 548, 1186, 14, 22, 24],
+    expected: [213.4, 552.9, 1173.7, 6.6, 17.1, 36.3],
+    correct: 16.27
+  },
+  {
+    desc: "Gender by music preference (2×4 table). Observed: [40,30,20,10,25,35,25,15]. Expected: [32.5,32.5,22.5,12.5,32.5,32.5,22.5,12.5]. Compute the chi-square test statistic.",
+    observed: [40, 30, 20, 10, 25, 35, 25, 15],
+    expected: [32.5, 32.5, 22.5, 12.5, 32.5, 32.5, 22.5, 12.5],
+    correct: 5.85
+  },
+  {
+    desc: "Treatment by outcome (2×2 table). Observed: [45,15,30,30]. Expected: [37.5,22.5,37.5,22.5]. Compute the chi-square test statistic.",
+    observed: [45, 15, 30, 30],
+    expected: [37.5, 22.5, 37.5, 22.5],
+    correct: 6.67
+  }
+];
+
+const level24Scenarios = [
+  {
+    desc: "A two-way table has 3 rows and 2 columns. What are the degrees of freedom?",
+    rows: 3, cols: 2,
+    correct: "2",
+    wrong: ["1", "3", "5"],
+    explanation: "df = (3-1)(2-1) = (2)(1) = 2."
+  },
+  {
+    desc: "A two-way table has 2 rows and 3 columns. What are the degrees of freedom?",
+    rows: 2, cols: 3,
+    correct: "2",
+    wrong: ["1", "3", "5"],
+    explanation: "df = (2-1)(3-1) = (1)(2) = 2."
+  },
+  {
+    desc: "A two-way table has 4 rows and 3 columns. What are the degrees of freedom?",
+    rows: 4, cols: 3,
+    correct: "6",
+    wrong: ["3", "7", "11"],
+    explanation: "df = (4-1)(3-1) = (3)(2) = 6."
+  },
+  {
+    desc: "A two-way table has 2 rows and 2 columns. What are the degrees of freedom?",
+    rows: 2, cols: 2,
+    correct: "1",
+    wrong: ["2", "3", "0"],
+    explanation: "df = (2-1)(2-1) = (1)(1) = 1."
+  },
+  {
+    desc: "A two-way table has 5 rows and 2 columns. What are the degrees of freedom?",
+    rows: 5, cols: 2,
+    correct: "4",
+    wrong: ["3", "5", "9"],
+    explanation: "df = (5-1)(2-1) = (4)(1) = 4."
+  },
+  {
+    desc: "A two-way table has 3 rows and 4 columns. What are the degrees of freedom?",
+    rows: 3, cols: 4,
+    correct: "6",
+    wrong: ["3", "5", "11"],
+    explanation: "df = (3-1)(4-1) = (2)(3) = 6."
+  }
+];
+
+const level25Scenarios = [
+  {
+    desc: "A chi-square test for homogeneity gives χ² = 7.746 with df = 2. The p-value is 0.0208 and α = 0.05. What is the correct decision and conclusion?",
+    correctChoice: "Reject H₀",
+    expectedReasoning: "Since the p-value (0.0208) is less than α (0.05), we reject H₀. There is convincing evidence that the distribution of school types differs between 2019 and 2020.",
+    keywords: ["reject", "less than", "convincing evidence", "distribution", "differs"],
+    context: "school type distribution"
+  },
+  {
+    desc: "A chi-square test for independence gives χ² = 16.27 with df = 2. The p-value is 0.0003 and α = 0.05. What is the correct decision and conclusion?",
+    correctChoice: "Reject H₀",
+    expectedReasoning: "Since the p-value (0.0003) is less than α (0.05), we reject H₀. There is convincing evidence of an association between education level and employment status.",
+    keywords: ["reject", "less than", "convincing evidence", "association"],
+    context: "education and employment"
+  },
+  {
+    desc: "A chi-square test for homogeneity gives χ² = 3.21 with df = 3. The p-value is 0.361 and α = 0.05. What is the correct decision and conclusion?",
+    correctChoice: "Fail to reject H₀",
+    expectedReasoning: "Since the p-value (0.361) is greater than α (0.05), we fail to reject H₀. There is not convincing evidence that the distributions differ across populations.",
+    keywords: ["fail to reject", "greater than", "not convincing", "distributions"],
+    context: "music preference by gender"
+  },
+  {
+    desc: "A chi-square test for independence gives χ² = 6.67 with df = 1. The p-value is 0.010 and α = 0.01. What is the correct decision and conclusion?",
+    correctChoice: "Fail to reject H₀",
+    expectedReasoning: "Since the p-value (0.010) is equal to α (0.01) but not less than α, we fail to reject H₀. There is not convincing evidence of an association between treatment and outcome.",
+    keywords: ["fail to reject", "not less than", "not convincing", "association"],
+    context: "treatment and outcome"
+  },
+  {
+    desc: "A chi-square test for independence gives χ² = 12.4 with df = 4. The p-value is 0.015 and α = 0.05. What is the correct decision and conclusion?",
+    correctChoice: "Reject H₀",
+    expectedReasoning: "Since the p-value (0.015) is less than α (0.05), we reject H₀. There is convincing evidence of an association between the two variables.",
+    keywords: ["reject", "less than", "convincing evidence", "association"],
+    context: "two categorical variables"
+  }
+];
+
+const level26Scenarios = [
+  {
+    desc: "In the school type test, the cell contributions are: Public/2019=0.31, Public/2020=0.46, Private/2019=1.73, Private/2020=2.60, Home/2019=0.18, Home/2020=0.27. Which cell has the largest contribution and what does it reveal?",
+    answer: "Private/2020 has the largest contribution (2.60). This means the observed count of private school students in 2020 was farthest from what we would expect if the distribution were the same in both years. More students attended private school in 2020 than the homogeneity model predicted.",
+    keywords: ["private", "2020", "largest", "contribution", "farthest", "expected", "more"]
+  },
+  {
+    desc: "In the employment test, the cell contributions are: Employed/NoHS=0.26, Employed/HSNoCollege=0.04, Employed/HSSomeCollege=0.13, Unemployed/NoHS=8.29, Unemployed/HSNoCollege=1.40, Unemployed/HSSomeCollege=4.17. Which cell has the largest contribution?",
+    answer: "Unemployed/No HS Diploma has the largest contribution (8.29). This means the observed count of unemployed adults without a high school diploma was much higher than expected under the independence model, suggesting education level and unemployment are associated.",
+    keywords: ["unemployed", "no hs", "largest", "8.29", "higher", "expected", "associated"]
+  },
+  {
+    desc: "After rejecting H₀ in a chi-square test, why is it important to examine which cells had the largest contributions to the test statistic?",
+    answer: "The largest contributions identify which categories drove the significant result. The overall test tells you there is a difference, but the contributions tell you where the biggest discrepancies between observed and expected counts are.",
+    keywords: ["categories", "drove", "significant", "where", "discrepancies", "observed", "expected"]
+  }
+];
+
 // ============ 8.5 SCENARIO BANKS ============
 
 const level19Scenarios = [
@@ -1440,6 +1570,103 @@ export function generateProblem(modeId, contextFromFile, mode) {
         contributionLabels: scen.labels,
         contributionValues: scen.contributions,
         largestLabel: scen.largestLabel
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  // ============ 8.6 LEVELS ============
+
+  if (modeId === "l23-chi-square-twoway") {
+    const scen = drawFromBag("level23", level23Scenarios);
+    const tableRows = scen.observed.map((obs, i) => `O=${obs}, E=${scen.expected[i]}`).join("; ");
+
+    answers = {
+      numericAnswer: {
+        value: scen.correct,
+        tolerance: 0.1
+      }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 23: Topic 8.6 Chi-Square Statistic",
+        problemText: "Compute the chi-square test statistic for this two-way table",
+        givenText: `${scen.desc}\n\nData: ${tableRows}.\n\nSum all contributions: Σ (O − E)² / E.`
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l24-df-twoway") {
+    const scen = drawFromBag("level24", level24Scenarios);
+    const options = shuffle([scen.correct, ...scen.wrong]);
+
+    answers = {
+      dfChoice: { value: scen.correct }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 24: Degrees of Freedom (Two-Way)",
+        problemText: "Find the degrees of freedom",
+        givenText: scen.desc,
+        optA: options[0],
+        optB: options[1],
+        optC: options[2],
+        optD: options[3],
+        dfExplanation: scen.explanation
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l25-pvalue-conclusion-twoway") {
+    const scen = drawFromBag("level25", level25Scenarios);
+
+    answers = {
+      decisionChoice: { value: scen.correctChoice },
+      conclusionText: { value: scen.expectedReasoning }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 25: P-Value Decision (Two-Way)",
+        problemText: "Compare the p-value to α and state your decision and conclusion",
+        givenText: scen.desc,
+        expectedReasoning: scen.expectedReasoning,
+        keywords: scen.keywords,
+        decisionContext: scen.context
+      },
+      answers
+    );
+
+    scenario = scen.desc;
+    return { context, graphConfig, answers, scenario };
+  }
+
+  if (modeId === "l26-largest-contribution-twoway") {
+    const scen = drawFromBag("level26", level26Scenarios);
+
+    answers = {
+      contributionText: { value: scen.answer }
+    };
+
+    context = withAnswerContext(
+      {
+        levelName: "Level 26: Largest Contribution (Two-Way)",
+        problemText: "Identify the largest contribution and explain what it reveals",
+        givenText: scen.desc,
+        expectedKeywords: scen.keywords
       },
       answers
     );
