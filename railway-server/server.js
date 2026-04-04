@@ -665,6 +665,54 @@ app.get('/api/progress/cartridge/:username/:cartridgeId', async (req, res) => {
 });
 
 // ============================================
+// CARTRIDGE LEADERBOARD (batch — one query instead of N)
+// ============================================
+
+app.get('/api/progress/leaderboard/:cartridgeId', async (req, res) => {
+  try {
+    const { cartridgeId } = req.params;
+
+    // 1. Fetch all progress rows for this cartridge in one query
+    const { data: progress, error } = await supabase
+      .from('user_progress')
+      .select('username, gold_stars, silver_stars, bronze_stars, tin_stars, mode_progress, updated_at')
+      .eq('cartridge_id', cartridgeId);
+
+    if (error) throw error;
+    if (!progress || progress.length === 0) return res.json([]);
+
+    // 2. Batch fetch user metadata (real_name) — chunks of 100
+    const usernames = [...new Set(progress.map(p => p.username))];
+    const usersMap = {};
+    for (let i = 0; i < usernames.length; i += 100) {
+      const batch = usernames.slice(i, i + 100);
+      const { data: users } = await supabase
+        .from('users')
+        .select('username, real_name')
+        .in('username', batch);
+      if (users) users.forEach(u => { usersMap[u.username] = u.real_name || ''; });
+    }
+
+    // 3. Build response matching client expectations
+    const rows = progress.map(p => {
+      const mp = p.mode_progress || {};
+      return {
+        username: p.username,
+        real_name: usersMap[p.username] || '',
+        gold_stars: p.gold_stars || 0,
+        silver_stars: p.silver_stars || 0,
+        high_score: mp.highScore || 0
+      };
+    });
+
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /api/progress/leaderboard error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // LEADERBOARD ENDPOINT
 // ============================================
 
