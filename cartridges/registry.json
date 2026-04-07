@@ -57,6 +57,13 @@
       "shortCode": "IDENT"
     },
     {
+      "id": "a2t3l5",
+      "name": "Zeros of Polynomial Functions",
+      "subject": "Algebra 2",
+      "description": "Find zeros, multiplicity, sign charts, polynomial equations/inequalities, complex expressions, transformations",
+      "shortCode": "ZERO"
+    },
+    {
       "id": "a2t3l3-quiz",
       "name": "3-3 Quiz Prep: Cubes & Binomial Expansion",
       "subject": "Algebra 2",

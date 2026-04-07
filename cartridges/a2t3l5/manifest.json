@@ -1,0 +1,479 @@
+{
+  "meta": {
+    "id": "a2t3l5",
+    "name": "Zeros of Polynomial Functions",
+    "subject": "Algebra 2",
+    "description": "Find zeros, multiplicity, sign charts, polynomial equations and inequalities, complex expressions, and cubic transformations."
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "A-APR.B.3",
+      "F-IF.C.7c",
+      "F-IF.B.4",
+      "N-CN.C.9",
+      "F-BF.B.3",
+      "MP.1",
+      "MP.2",
+      "MP.7",
+      "MP.8"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": [
+      {
+        "label": "Level",
+        "value": "{{levelName}}"
+      },
+      {
+        "label": "Task",
+        "value": "{{problemText}}"
+      },
+      {
+        "label": "Given",
+        "value": "{{givenText}}"
+      }
+    ]
+  },
+  "modes": [
+    {
+      "id": "l01-vocab-basics",
+      "name": "Level 1: Zeros & Multiplicity Vocabulary",
+      "unlockedBy": "default",
+      "animation": "assets/ZeroMultVocab.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "vocabAnswer",
+            "type": "choice",
+            "label": "Choose the best answer:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l02-zero-from-factor",
+      "name": "Level 2: Factor to Zero",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/FactorToZero.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "zeroChoice",
+            "type": "choice",
+            "label": "Which x-value makes the factor equal to zero?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l03-multiplicity-id",
+      "name": "Level 3: Multiplicity Identification",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/MultiplicityID.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "multChoice",
+            "type": "choice",
+            "label": "What is the multiplicity of the given zero?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l04-cross-or-touch",
+      "name": "Level 4: Cross or Touch?",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/CrossOrTouch.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "crossTouch",
+            "type": "choice",
+            "label": "What does the graph do at that zero?",
+            "options": [
+              "{{optA}}",
+              "{{optB}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l05-factor-find-zeros",
+      "name": "Level 5: Factor to Find All Zeros",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/FactorFindZeros.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "zerosText",
+            "type": "text",
+            "label": "Enter all real zeros:",
+            "placeholder": "Example: -3, 0, 1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l06-multiplicity-report",
+      "name": "Level 6: Full Zero Report",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/ZeroReportTable.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "reportText",
+            "type": "text",
+            "label": "Report every real zero with multiplicity and behavior:",
+            "placeholder": "Example: (-2, 3, cross); (1, 2, touch)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l07-sign-chart",
+      "name": "Level 7: Sign Charts & Intervals",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/SignChartBuilder.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "intervalText",
+            "type": "text",
+            "label": "Write the solution in interval notation:",
+            "placeholder": "Example: (-3, 0) U (4, inf)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l08-complex-vs-real",
+      "name": "Level 8: Real or Complex Zeros?",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/RealVsComplex.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "complexType",
+            "type": "choice",
+            "label": "Choose the correct classification:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l09-complex-squaring",
+      "name": "Level 9: Simplify (a + bi)^2",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/ComplexSquareFOIL.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "complexResult",
+            "type": "text",
+            "label": "Write the answer in a + bi form:",
+            "placeholder": "Example: -16 + 30i"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l10-equation-rewrite",
+      "name": "Level 10: Solve by Rewriting to 0",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/RewriteToZero.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "solutionsText",
+            "type": "text",
+            "label": "Enter all real solutions:",
+            "placeholder": "Example: -5, -1, 2"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l11-inequality",
+      "name": "Level 11: Solve Polynomial Inequalities",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/InequalityIntervals.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "inequalityText",
+            "type": "text",
+            "label": "Give the solution set in interval notation:",
+            "placeholder": "Example: (-2, 0) U (2, inf)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l12-transformations",
+      "name": "Level 12: Identify Cubic Transformations",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/CubicTransforms.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "transformChoice",
+            "type": "dropdown",
+            "label": "Choose the correct transformation description:",
+            "options": [
+              "{{optA}}",
+              "{{optB}}",
+              "{{optC}}",
+              "{{optD}}"
+            ],
+            "placeholder": "Select..."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l13-sketch-justification",
+      "name": "Level 13: Explain a Sketch from Factors",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/SketchFromFactors.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "sketchExplain",
+            "type": "textarea",
+            "label": "Explain your sketch reasoning:",
+            "rows": 5,
+            "placeholder": "Explain zeros, multiplicities, cross/touch behavior, sign reasoning, and the final interval conclusion."
+          }
+        ]
+      }
+    },
+    {
+      "id": "l14-error-capstone",
+      "name": "Level 14: Error Analysis Capstone",
+      "unlockedBy": {
+        "gold": 1
+      },
+      "animation": "assets/SpotTheError.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "errorExplain",
+            "type": "textarea",
+            "label": "Identify the error and give the corrected work:",
+            "rows": 5,
+            "placeholder": "1) Identify the error. 2) Explain why it is wrong. 3) Give the corrected answer."
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": [
+        "E",
+        "P",
+        "I"
+      ],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "vocabAnswer": "A zero is an x-value that makes f(x) = 0, where the graph meets the x-axis. Multiplicity comes from the exponent on a repeated factor.",
+      "zeroChoice": "Set the factor equal to zero and solve. For (x - a) = 0, x = a. For (x + a) = 0, x = -a.",
+      "multChoice": "Multiplicity is the exponent on the factor. In (x - a)^k, the zero x = a has multiplicity k.",
+      "crossTouch": "Odd multiplicity means the graph crosses the x-axis. Even multiplicity means it touches and turns around.",
+      "zerosText": "Step 1: factor out the GCF. Step 2: factor the remaining quadratic. Step 3: set each factor equal to zero.",
+      "reportText": "For each factor (x - a)^k: the zero is x = a, the multiplicity is k, odd k means cross, and even k means touch.",
+      "intervalText": "Use the zeros to split the number line. Test one point in each interval. Even multiplicity does not flip the sign.",
+      "complexType": "Compute the discriminant b^2 - 4ac. Negative means complex zeros; zero or positive means real zeros.",
+      "complexResult": "Use FOIL: (a + bi)^2 = a^2 + 2abi + b^2i^2. Replace i^2 with -1, then combine real and imaginary parts.",
+      "solutionsText": "Move everything to one side so the equation equals zero, combine like terms, factor, then use the Zero-Product Property.",
+      "inequalityText": "Factor first, find the critical points, and test intervals. Strict inequalities use parentheses; non-strict inequalities include zeros with brackets or braces.",
+      "transformChoice": "Compare the function to x^3 piece by piece: the number in front changes vertical stretch or reflection, inside parentheses changes horizontal shift, and the outside constant changes vertical shift.",
+      "sketchExplain": "Steps: 1) list the zeros, 2) give multiplicity and cross/touch behavior, 3) use a sign chart or test points, 4) state where the polynomial is positive or negative.",
+      "errorExplain": "Read the student work line by line. Check the factor signs, multiplicities, cross/touch rule, sign chart, endpoint inclusion, complex arithmetic, or transformation language."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "streaksPerField": false,
+    "streakFields": [
+      "problem"
+    ],
+    "tiers": [
+      {
+        "id": "l01-vocab-basics",
+        "name": "01",
+        "unlockedBy": "default",
+        "celebrationMessage": "Vocabulary locked in. Next: turn factors into zeros."
+      },
+      {
+        "id": "l02-zero-from-factor",
+        "name": "02",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "You can solve factors for zeros. Next: read multiplicity from factored form."
+      },
+      {
+        "id": "l03-multiplicity-id",
+        "name": "03",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Multiplicity recognized. Next: connect parity to graph behavior."
+      },
+      {
+        "id": "l04-cross-or-touch",
+        "name": "04",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Cross vs touch is clear. Next: factor to find every real zero."
+      },
+      {
+        "id": "l05-factor-find-zeros",
+        "name": "05",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "All real zeros found. Next: write the full multiplicity report."
+      },
+      {
+        "id": "l06-multiplicity-report",
+        "name": "06",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Nice report. Next: use sign charts to find positive and negative intervals."
+      },
+      {
+        "id": "l07-sign-chart",
+        "name": "07",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Intervals are under control. Next: decide when zeros are real or complex."
+      },
+      {
+        "id": "l08-complex-vs-real",
+        "name": "08",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Real vs complex is sorted out. Next: simplify complex squares."
+      },
+      {
+        "id": "l09-complex-squaring",
+        "name": "09",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Complex arithmetic checked. Next: solve equations by rewriting to zero."
+      },
+      {
+        "id": "l10-equation-rewrite",
+        "name": "10",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Equation rewriting works. Next: solve polynomial inequalities with intervals."
+      },
+      {
+        "id": "l11-inequality",
+        "name": "11",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Inequalities solved. Next: describe cubic transformations."
+      },
+      {
+        "id": "l12-transformations",
+        "name": "12",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Transformations identified. Next: justify a sketch from factors."
+      },
+      {
+        "id": "l13-sketch-justification",
+        "name": "13",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Sketch reasoning is solid. Final challenge: error analysis."
+      },
+      {
+        "id": "l14-error-capstone",
+        "name": "14",
+        "unlockedBy": {
+          "gold": 1
+        },
+        "celebrationMessage": "Capstone complete. You can analyze zeros, multiplicity, intervals, and common errors."
+      }
+    ]
+  }
+}
