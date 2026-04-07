@@ -1,41 +1,72 @@
 """
+L01 — Zeros & Multiplicity Vocabulary
+Covers the key vocab terms tested in this level: zero/root, multiplicity,
+end behavior, Zero-Product Property, and interval notation.
+
 Run with:
 manim -qm --format=mp4 a01_zero_mult_vocab.py ZeroMultVocab
 """
 from manim import *
-from common import ACCENT, BG, INK, POS, SOFT, footer_note, setup_scene, simple_axes
+from common import ACCENT, BG, INK, MUTED, NEG, POS, SOFT, footer_note, setup_scene, simple_axes
 
 
 class ZeroMultVocab(Scene):
     def construct(self):
-        setup_scene(self, "Zeros and Multiplicity")
+        setup_scene(self, "Key Vocabulary")
 
-        zero_card = RoundedRectangle(width=2.8, height=1.1, corner_radius=0.18, color=ACCENT).set_fill(BG, opacity=1)
-        zero_text = Text("Zero", font_size=28, color=INK)
-        zero_group = VGroup(zero_card, zero_text).shift(LEFT * 3 + UP * 1.1)
+        # ── Card 1: Zero ──
+        zero_card = RoundedRectangle(width=5.4, height=0.9, corner_radius=0.14, color=ACCENT)
+        zero_card.set_fill(BG, opacity=1)
+        zero_label = Text("Zero (root)", font_size=26, weight=BOLD, color=ACCENT)
+        zero_def = Text("The x-value where f(x) = 0", font_size=22, color=INK)
+        zero_row = VGroup(zero_label, zero_def).arrange(RIGHT, buff=0.4)
+        zero_row.move_to(zero_card)
+        zero_group = VGroup(zero_card, zero_row)
 
-        mult_card = RoundedRectangle(width=3.2, height=1.1, corner_radius=0.18, color=SOFT).set_fill(BG, opacity=1)
-        mult_text = Text("Multiplicity", font_size=28, color=INK)
-        mult_group = VGroup(mult_card, mult_text).shift(RIGHT * 2.8 + UP * 1.1)
+        # ── Card 2: Multiplicity ──
+        mult_card = RoundedRectangle(width=5.4, height=0.9, corner_radius=0.14, color=SOFT)
+        mult_card.set_fill(BG, opacity=1)
+        mult_label = Text("Multiplicity", font_size=26, weight=BOLD, color=SOFT)
+        mult_def = MathTex(r"(x-a)^k \;\Rightarrow\; k", font_size=28, color=INK)
+        mult_row = VGroup(mult_label, mult_def).arrange(RIGHT, buff=0.4)
+        mult_row.move_to(mult_card)
+        mult_group = VGroup(mult_card, mult_row)
 
-        self.play(FadeIn(zero_group), FadeIn(mult_group))
+        # ── Card 3: End behavior ──
+        end_card = RoundedRectangle(width=5.4, height=0.9, corner_radius=0.14, color=POS)
+        end_card.set_fill(BG, opacity=1)
+        end_label = Text("End behavior", font_size=26, weight=BOLD, color=POS)
+        end_def = MathTex(r"x\to\pm\infty", font_size=28, color=INK)
+        end_row = VGroup(end_label, end_def).arrange(RIGHT, buff=0.4)
+        end_row.move_to(end_card)
+        end_group = VGroup(end_card, end_row)
 
-        axes = simple_axes()
-        axes.shift(DOWN * 0.7)
-        graph = axes.plot(lambda x: 0.25 * (x - 1) ** 2 * (x + 2), color=POS, x_range=[-3.5, 3.2])
-        intercept = Dot(axes.c2p(-2, 0), color=ACCENT)
-        touch = Dot(axes.c2p(1, 0), color=SOFT)
-        self.play(Create(axes), Create(graph))
-        self.play(FadeIn(intercept), FadeIn(touch))
+        # ── Card 4: Zero-Product Property ──
+        zpp_card = RoundedRectangle(width=5.4, height=0.9, corner_radius=0.14, color=NEG)
+        zpp_card.set_fill(BG, opacity=1)
+        zpp_label = Text("Zero-Product", font_size=26, weight=BOLD, color=NEG)
+        zpp_def = MathTex(r"ab=0 \;\Rightarrow\; a=0 \text{ or } b=0", font_size=26, color=INK)
+        zpp_row = VGroup(zpp_label, zpp_def).arrange(RIGHT, buff=0.4)
+        zpp_row.move_to(zpp_card)
+        zpp_group = VGroup(zpp_card, zpp_row)
 
-        zero_def = MathTex(r"f(x)=0", font_size=34, color=ACCENT).next_to(zero_group, DOWN, buff=0.35)
-        mult_def = MathTex(r"(x-a)^k", font_size=34, color=SOFT).next_to(mult_group, DOWN, buff=0.35)
-        self.play(Write(zero_def), Write(mult_def))
+        # ── Card 5: Interval notation ──
+        int_card = RoundedRectangle(width=5.4, height=0.9, corner_radius=0.14, color=MUTED)
+        int_card.set_fill(BG, opacity=1)
+        int_label = Text("Interval notation", font_size=26, weight=BOLD, color=MUTED)
+        int_def = MathTex(r"(-2,0)\cup(2,\infty)", font_size=28, color=INK)
+        int_row = VGroup(int_label, int_def).arrange(RIGHT, buff=0.4)
+        int_row.move_to(int_card)
+        int_group = VGroup(int_card, int_row)
 
-        intercept_label = Text("x-intercept", font_size=22, color=ACCENT).next_to(intercept, DOWN, buff=0.2)
-        exponent_label = Text("repeated factor exponent", font_size=20, color=SOFT).next_to(mult_def, DOWN, buff=0.2)
-        self.play(FadeIn(intercept_label), FadeIn(exponent_label))
+        cards = VGroup(zero_group, mult_group, end_group, zpp_group, int_group)
+        cards.arrange(DOWN, buff=0.22)
+        cards.shift(DOWN * 0.15)
 
-        self.play(Indicate(mult_def[0][-1], color=SOFT), Indicate(touch, color=SOFT))
-        self.add(footer_note("Zero means an x-value where the graph meets the x-axis."))
+        for card in cards:
+            self.play(FadeIn(card, shift=RIGHT * 0.3), run_time=0.5)
+
+        self.play(*[Indicate(cards[i][0], color=ACCENT) for i in range(5)], run_time=0.8)
+
+        self.add(footer_note("These terms appear throughout every level of this lesson."))
         self.wait(2)
