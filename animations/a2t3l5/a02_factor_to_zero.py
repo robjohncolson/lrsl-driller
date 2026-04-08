@@ -15,42 +15,58 @@ class FactorToZero(Scene):
     def construct(self):
         setup_scene(self, "Factor → Zero")
 
-        # Each row: factor on left, arrow, solution on right
         pairs = [
-            (r"(x - 5)", r"x - 5 = 0", r"x = 5"),
-            (r"(x + 3)", r"x + 3 = 0", r"x = -3"),
-            (r"(2x - 4)", r"2x - 4 = 0", r"x = 2"),
+            (
+                MathTex(r"(x-5)=0", font_size=34, color=INK),
+                MathTex(r"x=5", font_size=34, color=ACCENT),
+                Text("Undo -5 by adding 5.", font_size=20, color=ACCENT)
+            ),
+            (
+                MathTex(r"(x+3)=0", font_size=34, color=INK),
+                MathTex(r"x+3=0\Rightarrow x=-3", font_size=34, color=SOFT),
+                Text("The sign flips because you subtract 3.", font_size=20, color=SOFT)
+            ),
+            (
+                VGroup(
+                    MathTex(r"(2x-4)=0", font_size=34, color=INK),
+                    MathTex(r"2x=4", font_size=34, color=POS),
+                    MathTex(r"x=2", font_size=34, color=POS)
+                ).arrange(RIGHT, buff=0.28),
+                Text("First isolate 2x, then divide by 2.", font_size=20, color=POS),
+                None
+            ),
+            (
+                VGroup(
+                    MathTex(r"(3x-1)=0", font_size=34, color=INK),
+                    MathTex(r"3x=1", font_size=34, color=NEG),
+                    MathTex(r"x=\frac{1}{3}", font_size=34, color=NEG)
+                ).arrange(RIGHT, buff=0.28),
+                Text("Fraction answers happen when the coefficient stays.", font_size=20, color=NEG),
+                None
+            ),
         ]
-        colors = [ACCENT, SOFT, POS]
 
         rows = VGroup()
-        for i, (factor, equation, solution) in enumerate(pairs):
-            factor_tex = MathTex(factor, font_size=38, color=INK)
-            arrow = MathTex(r"\Rightarrow", font_size=34, color=colors[i])
-            eq_tex = MathTex(equation, font_size=34, color=colors[i])
-            arrow2 = MathTex(r"\Rightarrow", font_size=34, color=colors[i])
-            sol_tex = MathTex(solution, font_size=38, color=colors[i])
-            row = VGroup(factor_tex, arrow, eq_tex, arrow2, sol_tex).arrange(RIGHT, buff=0.25)
+        for first, second, third in pairs:
+            pieces = [first]
+            if second is not None:
+                pieces.append(second)
+            if third is not None:
+                pieces.append(third)
+            row = VGroup(*pieces).arrange(DOWN, aligned_edge=LEFT, buff=0.16)
             rows.add(row)
 
-        rows.arrange(DOWN, buff=0.55)
-        rows.shift(UP * 0.1)
+        rows.arrange(DOWN, aligned_edge=LEFT, buff=0.42).shift(UP * 0.2)
 
-        # Animate each row one at a time
-        for i, row in enumerate(rows):
-            # Show factor
-            self.play(Write(row[0]), run_time=0.5)
-            # Show "set = 0" step
-            self.play(FadeIn(row[1]), Write(row[2]), run_time=0.6)
-            # Show solution
-            self.play(FadeIn(row[3]), Write(row[4]), run_time=0.6)
-            # Brief highlight on the solution
-            self.play(Indicate(row[4], color=colors[i]), run_time=0.4)
+        for row in rows:
+            self.play(FadeIn(row[0], shift=RIGHT * 0.15), run_time=0.4)
+            for piece in row[1:]:
+                self.play(FadeIn(piece, shift=DOWN * 0.1), run_time=0.45)
+            self.play(Indicate(row[0], color=ACCENT), run_time=0.3)
 
-        # Callout for the coefficient case
-        brace = Brace(rows[2][2], DOWN, color=NEG)
-        note = Text("Divide both sides by 2!", font_size=22, color=NEG).next_to(brace, DOWN, buff=0.15)
-        self.play(GrowFromCenter(brace), FadeIn(note))
+        divide_note = Text("If the factor starts with 2x or 3x, divide by that coefficient.", font_size=22, color=NEG)
+        divide_note.next_to(rows[-1], DOWN, buff=0.28, aligned_edge=LEFT)
+        self.play(FadeIn(divide_note, shift=UP * 0.1))
 
-        self.add(footer_note("Set the factor = 0 and solve. Watch for coefficients!"))
+        self.add(footer_note("Set the factor equal to 0, undo + or -, then divide if needed."))
         self.wait(2)

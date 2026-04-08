@@ -1,7 +1,7 @@
 """
 L01 — Zeros & Multiplicity Vocabulary
-Covers the key vocab terms tested in this level: zero/root, multiplicity,
-end behavior, Zero-Product Property, and interval notation.
+Covers the key vocab terms tested in this level and adds a tiny visual to
+every card so students can connect the vocabulary to a graph or equation.
 
 Run with:
 manim -qm --format=mp4 a01_zero_mult_vocab.py ZeroMultVocab
@@ -14,59 +14,102 @@ class ZeroMultVocab(Scene):
     def construct(self):
         setup_scene(self, "Key Vocabulary")
 
-        # ── Card 1: Zero ──
-        zero_card = RoundedRectangle(width=5.4, height=0.9, corner_radius=0.14, color=ACCENT)
-        zero_card.set_fill(BG, opacity=1)
-        zero_label = Text("Zero (root)", font_size=26, weight=BOLD, color=ACCENT)
-        zero_def = Text("The x-value where f(x) = 0", font_size=22, color=INK)
-        zero_row = VGroup(zero_label, zero_def).arrange(RIGHT, buff=0.4)
-        zero_row.move_to(zero_card)
-        zero_group = VGroup(zero_card, zero_row)
+        def tiny_axes():
+            return Axes(
+                x_range=[-2, 2, 1],
+                y_range=[-2, 2, 1],
+                x_length=2.1,
+                y_length=1.5,
+                axis_config={"color": INK, "stroke_width": 2},
+                tips=False
+            )
 
-        # ── Card 2: Multiplicity ──
-        mult_card = RoundedRectangle(width=5.4, height=0.9, corner_radius=0.14, color=SOFT)
-        mult_card.set_fill(BG, opacity=1)
-        mult_label = Text("Multiplicity", font_size=26, weight=BOLD, color=SOFT)
-        mult_def = MathTex(r"(x-a)^k \;\Rightarrow\; k", font_size=28, color=INK)
-        mult_row = VGroup(mult_label, mult_def).arrange(RIGHT, buff=0.4)
-        mult_row.move_to(mult_card)
-        mult_group = VGroup(mult_card, mult_row)
+        def build_visual(kind, color):
+            if kind == "zero":
+                axes = tiny_axes().scale(0.42)
+                graph = axes.plot(lambda x: x - 0.4, color=color, x_range=[-1.6, 1.6])
+                dot = Dot(axes.c2p(0.4, 0), color=ACCENT, radius=0.05)
+                return VGroup(axes, graph, dot)
 
-        # ── Card 3: End behavior ──
-        end_card = RoundedRectangle(width=5.4, height=0.9, corner_radius=0.14, color=POS)
-        end_card.set_fill(BG, opacity=1)
-        end_label = Text("End behavior", font_size=26, weight=BOLD, color=POS)
-        end_def = MathTex(r"x\to\pm\infty", font_size=28, color=INK)
-        end_row = VGroup(end_label, end_def).arrange(RIGHT, buff=0.4)
-        end_row.move_to(end_card)
-        end_group = VGroup(end_card, end_row)
+            if kind == "multiplicity":
+                return VGroup(
+                    MathTex(r"(x-1)^3", font_size=26, color=INK),
+                    Text("repeat 3 times", font_size=15, color=color)
+                ).arrange(DOWN, buff=0.08)
 
-        # ── Card 4: Zero-Product Property ──
-        zpp_card = RoundedRectangle(width=5.4, height=0.9, corner_radius=0.14, color=NEG)
-        zpp_card.set_fill(BG, opacity=1)
-        zpp_label = Text("Zero-Product", font_size=26, weight=BOLD, color=NEG)
-        zpp_def = MathTex(r"ab=0 \;\Rightarrow\; a=0 \text{ or } b=0", font_size=26, color=INK)
-        zpp_row = VGroup(zpp_label, zpp_def).arrange(RIGHT, buff=0.4)
-        zpp_row.move_to(zpp_card)
-        zpp_group = VGroup(zpp_card, zpp_row)
+            if kind == "end":
+                axes = tiny_axes().scale(0.42)
+                graph = axes.plot(lambda x: 0.35 * x ** 2 - 1, color=color, x_range=[-1.5, 1.5])
+                arrows = VGroup(
+                    Arrow(axes.c2p(-1.4, -0.3), axes.c2p(-1.4, 0.6), buff=0, color=color, stroke_width=4),
+                    Arrow(axes.c2p(1.4, -0.3), axes.c2p(1.4, 0.6), buff=0, color=color, stroke_width=4)
+                )
+                return VGroup(axes, graph, arrows)
 
-        # ── Card 5: Interval notation ──
-        int_card = RoundedRectangle(width=5.4, height=0.9, corner_radius=0.14, color=MUTED)
-        int_card.set_fill(BG, opacity=1)
-        int_label = Text("Interval notation", font_size=26, weight=BOLD, color=MUTED)
-        int_def = MathTex(r"(-2,0)\cup(2,\infty)", font_size=28, color=INK)
-        int_row = VGroup(int_label, int_def).arrange(RIGHT, buff=0.4)
-        int_row.move_to(int_card)
-        int_group = VGroup(int_card, int_row)
+            if kind == "product":
+                return MathTex(r"ab=0\Rightarrow a=0\ \text{or}\ b=0", font_size=24, color=INK)
 
-        cards = VGroup(zero_group, mult_group, end_group, zpp_group, int_group)
-        cards.arrange(DOWN, buff=0.22)
-        cards.shift(DOWN * 0.15)
+            if kind == "interval":
+                line = NumberLine(x_range=[-2, 2, 1], length=2.4, color=INK, include_numbers=False)
+                segment = Line(line.n2p(-1.1), line.n2p(1.2), color=color, stroke_width=5)
+                left = Circle(radius=0.09, color=color).move_to(line.n2p(-1.1))
+                right = Dot(line.n2p(1.2), color=color, radius=0.07)
+                return VGroup(line, segment, left, right)
+
+            if kind == "cross-touch":
+                left_axes = tiny_axes().scale(0.24)
+                right_axes = tiny_axes().scale(0.24)
+                left_graph = left_axes.plot(lambda x: (x - 0.4) ** 3, color=POS, x_range=[-1.3, 1.2])
+                right_graph = right_axes.plot(lambda x: 0.9 * (x - 0.4) ** 2 - 0.1, color=NEG, x_range=[-1.3, 1.2])
+                pair = VGroup(
+                    VGroup(left_axes, left_graph),
+                    VGroup(right_axes, right_graph)
+                ).arrange(RIGHT, buff=0.25)
+                return pair
+
+            degree = VGroup(
+                Text("degree 3", font_size=18, color=color, weight=BOLD),
+                MathTex(r"x(x-2)(x+1)", font_size=24, color=INK),
+                Text("3 zeros total", font_size=15, color=INK)
+            ).arrange(DOWN, buff=0.08)
+            return degree
+
+        def build_card(title, body, color, kind):
+            frame = RoundedRectangle(width=5.8, height=1.65, corner_radius=0.16, color=color)
+            frame.set_fill(BG, opacity=1)
+            label = Text(title, font_size=24, weight=BOLD, color=color)
+            body_text = Text(body, font_size=16, color=INK, line_spacing=0.88)
+            body_text.scale_to_fit_width(3.35)
+            text_block = VGroup(label, body_text).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
+            visual = build_visual(kind, color)
+            visual.scale_to_fit_width(1.55)
+            content = VGroup(text_block, visual).arrange(RIGHT, buff=0.28, aligned_edge=UP)
+            content.move_to(frame)
+            return VGroup(frame, content)
+
+        cards = [
+            build_card("Zero (root)", "x-value where the graph hits\nthe x-axis", ACCENT, "zero"),
+            build_card("Multiplicity", "Exponent on a repeated\nfactor", SOFT, "multiplicity"),
+            build_card("End Behavior", "What the graph does far\nleft and far right", POS, "end"),
+            build_card("Zero-Product", "If a product is 0, at least\none factor is 0", NEG, "product"),
+            build_card("Interval Notation", "Parentheses exclude.\nBrackets include.", MUTED, "interval"),
+            build_card("Cross vs Touch", "Odd crosses.\nEven touches.", ACCENT, "cross-touch"),
+            build_card("Degree Rule", "Degree n means n zeros,\ncounting multiplicity.", POS, "degree"),
+        ]
+
+        left_col = VGroup(cards[0], cards[2], cards[4], cards[6]).arrange(DOWN, buff=0.22)
+        right_col = VGroup(cards[1], cards[3], cards[5]).arrange(DOWN, buff=0.22)
+        board = VGroup(left_col, right_col).arrange(RIGHT, buff=0.28, aligned_edge=UP)
+        board.scale(0.96).shift(DOWN * 0.18)
 
         for card in cards:
-            self.play(FadeIn(card, shift=RIGHT * 0.3), run_time=0.5)
+            self.play(FadeIn(card, shift=RIGHT * 0.2), run_time=0.35)
 
-        self.play(*[Indicate(cards[i][0], color=ACCENT) for i in range(5)], run_time=0.8)
+        self.play(
+            Indicate(cards[5][0], color=ACCENT),
+            Indicate(cards[6][0], color=POS),
+            run_time=0.8
+        )
 
-        self.add(footer_note("These terms appear throughout every level of this lesson."))
+        self.add(footer_note("Every card pairs the word with a tiny graph or algebra visual."))
         self.wait(2)
