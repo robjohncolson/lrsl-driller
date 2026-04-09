@@ -9,7 +9,7 @@ Run with:
 manim -qm --format=mp4 a08_real_vs_complex.py RealVsComplex
 """
 from manim import *
-from common import ACCENT, INK, MUTED, NEG, POS, SOFT, footer_note, setup_scene, simple_axes
+from common import ACCENT, BG, INK, MUTED, NEG, POS, SOFT, footer_note, setup_scene, simple_axes
 
 
 class RealVsComplex(Scene):

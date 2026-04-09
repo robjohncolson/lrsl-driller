@@ -3,7 +3,7 @@ Run with:
 manim -qm --format=mp4 a05_factor_find_zeros.py FactorFindZeros
 """
 from manim import *
-from common import ACCENT, INK, POS, setup_scene
+from common import ACCENT, INK, NEG, POS, SOFT, setup_scene
 
 
 class FactorFindZeros(Scene):
