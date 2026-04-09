@@ -6,7 +6,7 @@
  * across page reloads (degrades gracefully to memory-only).
  */
 
-const CACHE_NAME = 'driller-assets-v1';
+const CACHE_NAME = 'driller-assets-v2';
 
 export class AssetCache {
   constructor() {
