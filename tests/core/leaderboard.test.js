@@ -34,11 +34,12 @@ function aggregateUserStats(progressRecords) {
 
 /**
  * Format and sort leaderboard entries
+ * Note: real_name removed in v4.2 (privacy hardening) — leaderboard rows
+ * expose username only; row shape otherwise unchanged.
  */
-function formatLeaderboard(userStats, usersMap = {}) {
+function formatLeaderboard(userStats) {
   const leaderboard = Object.entries(userStats).map(([username, stats]) => ({
     username,
-    real_name: usersMap[username] || null,
     gold: stats.gold,
     silver: stats.silver,
     bronze: stats.bronze,
@@ -222,27 +223,28 @@ describe('Leaderboard Aggregation', () => {
     });
   });
 
-  // ==================== REAL NAME MAPPING ====================
-  describe('Real Name Display', () => {
-    it('includes real name when available', () => {
+  // ==================== PRIVACY (v4.2 hardening) ====================
+  describe('Privacy: real_name excluded', () => {
+    it('does NOT include real_name in leaderboard rows', () => {
       const userStats = {
         user1: { gold: 1, silver: 0, bronze: 0, tin: 0, weighted_score: 4 }
       };
-      const usersMap = { user1: 'John Doe' };
 
-      const leaderboard = formatLeaderboard(userStats, usersMap);
+      const leaderboard = formatLeaderboard(userStats);
 
-      expect(leaderboard[0].real_name).toBe('John Doe');
+      expect(leaderboard[0]).not.toHaveProperty('real_name');
     });
 
-    it('shows null when real name not available', () => {
+    it('rows expose only username and star/score fields', () => {
       const userStats = {
         user1: { gold: 1, silver: 0, bronze: 0, tin: 0, weighted_score: 4 }
       };
 
-      const leaderboard = formatLeaderboard(userStats, {});
+      const leaderboard = formatLeaderboard(userStats);
 
-      expect(leaderboard[0].real_name).toBe(null);
+      expect(Object.keys(leaderboard[0]).sort()).toEqual(
+        ['bronze', 'gold', 'silver', 'tin', 'username', 'weighted_score']
+      );
     });
   });
 

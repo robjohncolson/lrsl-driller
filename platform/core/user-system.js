@@ -108,7 +108,7 @@ export function getRankProgress(stars) {
 export class UserSystem {
   constructor(config = {}) {
     this.serverUrl = config.serverUrl || null;
-    this.teacherPassword = config.teacherPassword || 'stats123';
+    this.teacherPassword = config.teacherPassword || null;
     this.currentUser = null;
     this.isTeacherMode = false;
     this.db = null;
@@ -206,13 +206,16 @@ export class UserSystem {
 
   /**
    * Set user identity
+   * Never persists the password — any previously stored identity that
+   * contained a password self-cleans on the next write.
    */
   async setIdentity(identity) {
-    this.currentUser = identity;
+    const { password, ...persisted } = identity || {};
+    this.currentUser = persisted;
     if (this.db) {
-      await this.db.meta.put({ key: 'identity', value: identity });
+      await this.db.meta.put({ key: 'identity', value: persisted });
     } else {
-      localStorage.setItem('userIdentity', JSON.stringify(identity));
+      localStorage.setItem('userIdentity', JSON.stringify(persisted));
     }
     this.onUserChange(this.currentUser);
   }
@@ -234,12 +237,15 @@ export class UserSystem {
           return { error: result.error };
         }
       } catch (err) {
+        // Server unreachable: fail closed. With server-side auto-create removed,
+        // a local-only account could never sync — better to refuse signup.
         console.warn('Server user creation failed:', err);
+        return { error: 'Server unreachable — try again later' };
       }
     }
 
-    // Set local identity
-    await this.setIdentity({ username, realName, password });
+    // Set local identity (password is never persisted)
+    await this.setIdentity({ username, realName });
     return { success: true };
   }
 
@@ -257,17 +263,19 @@ export class UserSystem {
           body: JSON.stringify({ username, password })
         });
         serverResult = await response.json();
-        if (!serverResult.valid) {
-          return { error: serverResult.error || 'Invalid credentials' };
-        }
       } catch (err) {
+        // Server unreachable: do NOT fall through to an offline login
         console.warn('Server verification failed:', err);
+        return { valid: false, error: 'Server unreachable — try again later' };
+      }
+      if (!serverResult?.valid) {
+        return { valid: false, error: serverResult?.error || 'Invalid credentials' };
       }
     }
 
-    // Store identity with real name from server
+    // Store identity with real name from server (password is never persisted)
     const realName = serverResult?.real_name || null;
-    await this.setIdentity({ username, password, realName });
+    await this.setIdentity({ username, realName });
 
     return {
       valid: true,
@@ -294,7 +302,7 @@ export class UserSystem {
    * Enter teacher mode
    */
   enterTeacherMode(password) {
-    if (password === this.teacherPassword) {
+    if (this.teacherPassword && password === this.teacherPassword) {
       this.isTeacherMode = true;
       return true;
     }

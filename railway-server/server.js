@@ -3,6 +3,7 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const { WebSocketServer } = require('ws');
 const http = require('http');
+const crypto = require('crypto');
 const { buildCartridgePrompt } = require('./prompt-utils.js');
 const { ArenaManager, ARENA_CONFIG, RoundState } = require('./ghost-orbits-manager.js');
 const { OrbitsMultiplayerManager, MULTIPLAYER_CONFIG } = require('./ghost-orbits-multiplayer-manager.js');
@@ -14,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 // Use service role key to bypass RLS for server-side writes
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || 'stats123';
+const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD;
 const GRADING_PROXY_URL = process.env.GRADING_PROXY_URL || 'https://shared-grading-proxy-production.up.railway.app';
 const GRADING_PROXY_TIMEOUT_MS = 35000;
 
@@ -24,6 +25,11 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY/SUPABASE_ANON_KEY environment variables');
+  process.exit(1);
+}
+
+if (!TEACHER_PASSWORD) {
+  console.error('Missing TEACHER_PASSWORD environment variable. Set TEACHER_PASSWORD before starting the server (no default fallback).');
   process.exit(1);
 }
 
@@ -44,6 +50,85 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ============================================
+// TEACHER PASSWORD CHECK (timing-safe)
+// ============================================
+// All teacher-password comparisons go through this helper.
+// Hash both sides so buffers are equal length, then compare timing-safe.
+function isTeacherPassword(candidate) {
+  if (typeof candidate !== 'string' || candidate.length === 0) return false;
+  const candidateHash = crypto.createHash('sha256').update(candidate).digest();
+  const expectedHash = crypto.createHash('sha256').update(TEACHER_PASSWORD).digest();
+  return crypto.timingSafeEqual(candidateHash, expectedHash);
+}
+
+// ============================================
+// RATE LIMITING (in-memory fixed window, no deps)
+// ============================================
+const RATE_WINDOW_MS = 60000; // 1-minute fixed windows
+const rateWindows = new Map(); // "bucket:ip" -> { windowStart, count }
+
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    // Last entry is appended by Railway's proxy; earlier entries are client-supplied and spoofable.
+    const parts = forwarded.split(',');
+    return parts[parts.length - 1].trim();
+  }
+  return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+function makeRateLimiter(bucket, maxPerWindow) {
+  return (req, res, next) => {
+    const key = `${bucket}:${getClientIp(req)}`;
+    const now = Date.now();
+    let entry = rateWindows.get(key);
+    if (!entry || now - entry.windowStart >= RATE_WINDOW_MS) {
+      entry = { windowStart: now, count: 0 };
+      rateWindows.set(key, entry);
+    }
+    entry.count++;
+    if (entry.count > maxPerWindow) {
+      return res.status(429).json({ error: 'Rate limited' });
+    }
+    next();
+  };
+}
+
+// 300/min/IP: a full classroom shares one school NAT IP (~30 students × ~4-5 writes/min
+// at peak drilling, plus tmux-trainer traffic from the same IP), so 60 was not enough.
+const mutatingLimiter = makeRateLimiter('mutate', 300);
+const aiGradeLimiter = makeRateLimiter('ai-grade', 20); // 20 req/min per IP for AI grading routes
+
+// Read-only auth checks (whole classes log in within the same minute) and the AI routes
+// (which have their own tighter bucket) are exempt from the shared mutating bucket.
+const MUTATE_LIMIT_EXEMPT = new Set([
+  '/api/users/verify',
+  '/api/auth/teacher',
+  '/api/ai/grade',
+  '/api/ai/grade-paragraph',
+  '/api/ai/appeal'
+]);
+
+// Apply the mutating-route limiter to all POST/PUT/PATCH/DELETE requests
+app.use((req, res, next) => {
+  if ((req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE')
+      && !MUTATE_LIMIT_EXEMPT.has(req.path)) {
+    return mutatingLimiter(req, res, next);
+  }
+  next();
+});
+
+// Periodically prune expired rate-limit windows
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateWindows) {
+    if (now - entry.windowStart >= RATE_WINDOW_MS) {
+      rateWindows.delete(key);
+    }
+  }
+}, RATE_WINDOW_MS);
 
 // ============================================
 // HTTP SERVER + WEBSOCKET SETUP
@@ -114,7 +199,7 @@ console.log('[Ghost Orbits] Multiplayer manager initialized');
 // ============================================
 // VERSION - Update this when deploying new versions
 // ============================================
-const CURRENT_VERSION = '4.1.0';
+const CURRENT_VERSION = '4.2.0';
 
 // Health check
 app.get('/', (req, res) => {
@@ -134,16 +219,17 @@ app.get('/api/version', (req, res) => {
 // ============================================
 
 // Get all usernames (for dropdown)
+// Returns [{username}] only — no real_name/class_period (dormant hardening)
 app.get('/api/users', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('username, real_name, class_period')
+      .select('username')
       .eq('user_type', 'student')
       .order('username');
 
     if (error) throw error;
-    res.json(data);
+    res.json((data || []).map(u => ({ username: u.username })));
   } catch (err) {
     console.error('GET /api/users error:', err);
     res.status(500).json({ error: err.message });
@@ -266,8 +352,8 @@ app.post('/api/auth/teacher', async (req, res) => {
   try {
     const { password } = req.body;
 
-    // Check against environment variable (with fallback)
-    if (password !== TEACHER_PASSWORD) {
+    // Check against environment variable (timing-safe, no fallback)
+    if (!isTeacherPassword(password)) {
       return res.json({ valid: false, error: 'Invalid teacher password' });
     }
 
@@ -309,26 +395,20 @@ app.post('/api/progress', async (req, res) => {
       return res.status(400).json({ error: 'Username and scenario_topic required' });
     }
 
-    // Ensure user exists (auto-create if not) to prevent foreign key errors
-    const { data: existingUser } = await supabase
+    // Reject unknown users (auto-create removed while dormant)
+    const { data: existingUser, error: userLookupError } = await supabase
       .from('users')
       .select('username')
       .eq('username', username)
       .single();
 
+    // PGRST116 = no rows: genuinely unknown. Any other error is transient —
+    // return 500 so clients retry instead of dead-lettering as "unknown user".
+    if (userLookupError && userLookupError.code !== 'PGRST116') {
+      return res.status(500).json({ error: 'User lookup failed' });
+    }
     if (!existingUser) {
-      // Auto-create user with default password
-      const { error: createError } = await supabase
-        .from('users')
-        .insert({
-          username,
-          password: 'auto-created',
-          user_type: 'student'
-        });
-
-      if (createError && !createError.message.includes('duplicate')) {
-        console.warn('Auto-create user warning:', createError);
-      }
+      return res.status(404).json({ error: 'Unknown user' });
     }
 
     // v1.4: Use new scoring config
@@ -576,25 +656,20 @@ app.post('/api/progress/cartridge-sync', async (req, res) => {
       return res.status(400).json({ error: 'Missing username or cartridgeId' });
     }
 
-    // Ensure user exists (auto-create if not)
-    const { data: existingUser } = await supabase
+    // Reject unknown users (auto-create removed while dormant)
+    const { data: existingUser, error: userLookupError } = await supabase
       .from('users')
       .select('username')
       .eq('username', username)
       .single();
 
+    // PGRST116 = no rows: genuinely unknown. Any other error is transient —
+    // return 500 so clients retry instead of dead-lettering as "unknown user".
+    if (userLookupError && userLookupError.code !== 'PGRST116') {
+      return res.status(500).json({ error: 'User lookup failed' });
+    }
     if (!existingUser) {
-      const { error: createError } = await supabase
-        .from('users')
-        .insert({
-          username,
-          password: 'auto-created',
-          user_type: 'student'
-        });
-
-      if (createError && !createError.message.includes('duplicate')) {
-        console.warn('Auto-create user warning:', createError);
-      }
+      return res.status(404).json({ error: 'Unknown user' });
     }
 
     // Upsert into user_progress table
@@ -681,24 +756,11 @@ app.get('/api/progress/leaderboard/:cartridgeId', async (req, res) => {
     if (error) throw error;
     if (!progress || progress.length === 0) return res.json([]);
 
-    // 2. Batch fetch user metadata (real_name) — chunks of 100
-    const usernames = [...new Set(progress.map(p => p.username))];
-    const usersMap = {};
-    for (let i = 0; i < usernames.length; i += 100) {
-      const batch = usernames.slice(i, i + 100);
-      const { data: users } = await supabase
-        .from('users')
-        .select('username, real_name')
-        .in('username', batch);
-      if (users) users.forEach(u => { usersMap[u.username] = u.real_name || ''; });
-    }
-
-    // 3. Build response matching client expectations
+    // 2. Build response matching client expectations (real_name removed — dormant hardening)
     const rows = progress.map(p => {
       const mp = p.mode_progress || {};
       return {
         username: p.username,
-        real_name: usersMap[p.username] || '',
         gold_stars: p.gold_stars || 0,
         silver_stars: p.silver_stars || 0,
         high_score: mp.highScore || 0
@@ -758,24 +820,9 @@ app.get('/api/leaderboard', async (req, res) => {
       }
     }
 
-    // Get user real names
-    const usernames = Object.keys(userStats);
-    let usersMap = {};
-    if (usernames.length > 0) {
-      const { data: users } = await supabase
-        .from('users')
-        .select('username, real_name')
-        .in('username', usernames);
-
-      for (const u of users || []) {
-        usersMap[u.username] = u.real_name;
-      }
-    }
-
-    // Format leaderboard
+    // Format leaderboard (real_name removed — dormant hardening)
     const leaderboard = Object.entries(userStats).map(([username, stats]) => ({
       username,
-      real_name: usersMap[username] || null,
       gold: stats.gold,
       silver: stats.silver,
       bronze: stats.bronze,
@@ -834,7 +881,7 @@ app.get('/api/leaderboard/unified', async (req, res) => {
       playerMap.set(p.username, existing);
     }
 
-    // 3. Get all real names and class periods
+    // 3. Get class periods (real_name removed — dormant hardening)
     const usernames = [...playerMap.keys()];
     let usersMap = {};
     if (usernames.length > 0) {
@@ -843,10 +890,10 @@ app.get('/api/leaderboard/unified', async (req, res) => {
         const batch = usernames.slice(i, i + batchSize);
         const { data: users } = await supabase
           .from('users')
-          .select('username, real_name, class_period')
+          .select('username, class_period')
           .in('username', batch);
         for (const u of users || []) {
-          usersMap[u.username] = { real_name: u.real_name, class_period: u.class_period };
+          usersMap[u.username] = { class_period: u.class_period };
         }
       }
     }
@@ -855,7 +902,6 @@ app.get('/api/leaderboard/unified', async (req, res) => {
     const leaderboard = [...playerMap.entries()]
       .map(([username, data]) => ({
         username,
-        real_name: usersMap[username]?.real_name || null,
         class_period: usersMap[username]?.class_period || null,
         weighted_score: Math.round((data.points || 0) * 10) / 10,
         gold: data.gold || 0,
@@ -1887,6 +1933,11 @@ app.get('/api/ai/status', async (req, res) => {
 
 // Contribute API key to pool
 app.post('/api/ai/contribute-key', async (req, res) => {
+  // Mothballed: key contributions are disabled while the platform is dormant.
+  // Route kept so clients get a clear 410 instead of a 404. Code below is dormant.
+  return res.status(410).json({ error: 'Key contributions disabled while dormant' });
+
+  // eslint-disable-next-line no-unreachable
   try {
     const { provider, apiKey, username } = req.body;
 
@@ -1939,7 +1990,7 @@ app.post('/api/ai/contribute-key', async (req, res) => {
 });
 
 // Grade 3-part answers
-app.post('/api/ai/grade', async (req, res) => {
+app.post('/api/ai/grade', aiGradeLimiter, async (req, res) => {
   try {
     const { scenario, answers, aiPromptTemplate, cartridgeId } = req.body;
 
@@ -1961,7 +2012,7 @@ app.post('/api/ai/grade', async (req, res) => {
 });
 
 // Grade paragraph
-app.post('/api/ai/grade-paragraph', async (req, res) => {
+app.post('/api/ai/grade-paragraph', aiGradeLimiter, async (req, res) => {
   try {
     const { scenario, paragraph, cartridgeId } = req.body;
 
@@ -2009,7 +2060,7 @@ app.post('/api/ai/grade-paragraph', async (req, res) => {
 // AI APPEAL ENDPOINT
 // ============================================
 
-app.post('/api/ai/appeal', async (req, res) => {
+app.post('/api/ai/appeal', aiGradeLimiter, async (req, res) => {
   try {
     const { scenario, answers, appealText, previousResults, aiPromptTemplate, cartridgeId } = req.body;
 
@@ -2159,7 +2210,7 @@ app.get('/api/teacher-review', async (req, res) => {
   try {
     const password = req.headers['x-teacher-password'];
 
-    if (password !== TEACHER_PASSWORD) {
+    if (!isTeacherPassword(password)) {
       return res.status(401).json({ error: 'Teacher password required' });
     }
 
@@ -2214,7 +2265,7 @@ app.put('/api/teacher-review/:id', async (req, res) => {
     const password = req.headers['x-teacher-password'];
     const { grades, feedback, teacher_notes } = req.body;
 
-    if (password !== TEACHER_PASSWORD) {
+    if (!isTeacherPassword(password)) {
       return res.status(401).json({ error: 'Teacher password required' });
     }
 
@@ -2253,9 +2304,15 @@ app.put('/api/teacher-review/:id', async (req, res) => {
   }
 });
 
-// Get reviews for a specific student
+// Get reviews for a specific student (teacher only)
 app.get('/api/teacher-review/student/:username', async (req, res) => {
   try {
+    const password = req.headers['x-teacher-password'];
+
+    if (!isTeacherPassword(password)) {
+      return res.status(401).json({ error: 'Teacher password required' });
+    }
+
     const { username } = req.params;
 
     const { data, error } = await supabase
@@ -2364,9 +2421,15 @@ app.post('/api/time-tracking/problem', async (req, res) => {
   }
 });
 
-// Get time stats for a user (teacher or self)
+// Get time stats for a user (teacher only)
 app.get('/api/time-tracking/user/:username', async (req, res) => {
   try {
+    const password = req.headers['x-teacher-password'];
+
+    if (!isTeacherPassword(password)) {
+      return res.status(401).json({ error: 'Teacher password required' });
+    }
+
     const { username } = req.params;
     const period = req.query.period || 'all'; // today, week, all
 
@@ -2446,7 +2509,7 @@ app.get('/api/time-tracking/class-summary', async (req, res) => {
   try {
     const password = req.headers['x-teacher-password'];
 
-    if (password !== TEACHER_PASSWORD) {
+    if (!isTeacherPassword(password)) {
       return res.status(401).json({ error: 'Teacher password required' });
     }
 
@@ -2535,7 +2598,7 @@ app.get('/api/roster', async (req, res) => {
   try {
     const password = req.headers['x-teacher-password'];
 
-    if (password !== TEACHER_PASSWORD) {
+    if (!isTeacherPassword(password)) {
       return res.status(401).json({ error: 'Teacher authentication required' });
     }
 
@@ -2561,7 +2624,7 @@ app.put('/api/roster/:username', async (req, res) => {
     const { username } = req.params;
     const { real_name, class_period } = req.body;
 
-    if (password !== TEACHER_PASSWORD) {
+    if (!isTeacherPassword(password)) {
       return res.status(401).json({ error: 'Teacher authentication required' });
     }
 
@@ -2608,7 +2671,7 @@ app.post('/api/roster/bulk-assign', async (req, res) => {
     const password = req.headers['x-teacher-password'];
     const { assignments } = req.body; // Array of { username, class_period, real_name? }
 
-    if (password !== TEACHER_PASSWORD) {
+    if (!isTeacherPassword(password)) {
       return res.status(401).json({ error: 'Teacher authentication required' });
     }
 
@@ -2704,7 +2767,7 @@ app.put('/api/progression-overrides/:cartridgeId/:modeId', async (req, res) => {
     const { goldRequired, password, gameId = 'default', username } = req.body;
 
     // Verify teacher password
-    if (password !== TEACHER_PASSWORD) {
+    if (!isTeacherPassword(password)) {
       return res.status(401).json({ error: 'Teacher authentication required' });
     }
 
@@ -2754,7 +2817,7 @@ app.delete('/api/progression-overrides/:cartridgeId/:modeId', async (req, res) =
     const { password, gameId = 'default' } = req.body;
 
     // Verify teacher password
-    if (password !== TEACHER_PASSWORD) {
+    if (!isTeacherPassword(password)) {
       return res.status(401).json({ error: 'Teacher authentication required' });
     }
 
@@ -2789,7 +2852,7 @@ app.delete('/api/progression-overrides/:cartridgeId', async (req, res) => {
     const { password, gameId = 'default' } = req.body;
 
     // Verify teacher password
-    if (password !== TEACHER_PASSWORD) {
+    if (!isTeacherPassword(password)) {
       return res.status(401).json({ error: 'Teacher authentication required' });
     }
 
@@ -2802,8 +2865,8 @@ app.delete('/api/progression-overrides/:cartridgeId', async (req, res) => {
 
     if (error) throw error;
 
-    // Broadcast to connected clients
-    broadcastToCartridge(cartridgeId, {
+    // Broadcast to connected clients (same mechanism as the sibling override routes)
+    broadcast({
       type: 'progression_overrides_cleared',
       cartridgeId
     });
@@ -3665,7 +3728,11 @@ wss.on('connection', (ws) => {
           break;
 
         case 'class_time_start':
-          // Teacher started class time - broadcast to all
+          // Teacher started class time - requires teacher password
+          if (!isTeacherPassword(message.teacherPassword)) {
+            ws.send(JSON.stringify({ type: 'error', code: 'TEACHER_AUTH_REQUIRED', message: 'Invalid teacher password' }));
+            break;
+          }
           console.log('Class time started by:', clients.get(ws)?.username);
           broadcast({
             type: 'class_time_start',
@@ -3674,7 +3741,11 @@ wss.on('connection', (ws) => {
           break;
 
         case 'class_time_end':
-          // Teacher ended class time - broadcast to all
+          // Teacher ended class time - requires teacher password
+          if (!isTeacherPassword(message.teacherPassword)) {
+            ws.send(JSON.stringify({ type: 'error', code: 'TEACHER_AUTH_REQUIRED', message: 'Invalid teacher password' }));
+            break;
+          }
           console.log('Class time ended. Stars earned:', message.stars);
           broadcast({
             type: 'class_time_end',
@@ -3688,7 +3759,11 @@ wss.on('connection', (ws) => {
         // ============================================
 
         case 'webrtc_activate': {
-          // Teacher activates WebRTC mode - broadcast to all connected clients
+          // Teacher activates WebRTC mode - requires teacher password
+          if (!isTeacherPassword(message.teacherPassword)) {
+            ws.send(JSON.stringify({ type: 'error', code: 'TEACHER_AUTH_REQUIRED', message: 'Invalid teacher password' }));
+            break;
+          }
           const activateClient = clients.get(ws);
           console.log(`[WebRTC] Activated by ${activateClient?.username}`);
           broadcast({
@@ -3699,7 +3774,11 @@ wss.on('connection', (ws) => {
         }
 
         case 'webrtc_deactivate': {
-          // Teacher deactivates WebRTC mode - broadcast to all
+          // Teacher deactivates WebRTC mode - requires teacher password
+          if (!isTeacherPassword(message.teacherPassword)) {
+            ws.send(JSON.stringify({ type: 'error', code: 'TEACHER_AUTH_REQUIRED', message: 'Invalid teacher password' }));
+            break;
+          }
           const deactivateClient = clients.get(ws);
           console.log(`[WebRTC] Deactivated by ${deactivateClient?.username}`);
           broadcast({
@@ -4269,7 +4348,7 @@ app.post('/api/ghost-orbits/:cartridgeId/:periodId/earned-star', (req, res) => {
 app.delete('/api/ghost-orbits/:cartridgeId/:periodId', (req, res) => {
   const password = req.headers['x-teacher-password'];
 
-  if (password !== TEACHER_PASSWORD) {
+  if (!isTeacherPassword(password)) {
     return res.status(401).json({ error: 'Teacher authentication required' });
   }
 

@@ -42,7 +42,8 @@ export class WebRTCManager {
     this._active = true;
     this.wsClient.send({
       type: 'webrtc_activate',
-      teacherUsername: this.username
+      teacherUsername: this.username,
+      teacherPassword: this.wsClient.teacherPassword || ''
     });
   }
 
@@ -57,7 +58,8 @@ export class WebRTCManager {
     this._peers.clear();
     this.wsClient.send({
       type: 'webrtc_deactivate',
-      teacherUsername: this.username
+      teacherUsername: this.username,
+      teacherPassword: this.wsClient.teacherPassword || ''
     });
   }
 

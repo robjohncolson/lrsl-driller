@@ -116,7 +116,8 @@ describe('WebRTCManager', () => {
       expect(mgr.isActive).toBe(true);
       expect(ws.send).toHaveBeenCalledWith({
         type: 'webrtc_activate',
-        teacherUsername: 'mrsmith'
+        teacherUsername: 'mrsmith',
+        teacherPassword: ''
       });
     });
 
@@ -138,7 +139,8 @@ describe('WebRTCManager', () => {
       expect(mgr.isActive).toBe(false);
       expect(ws.send).toHaveBeenCalledWith({
         type: 'webrtc_deactivate',
-        teacherUsername: 'mrsmith'
+        teacherUsername: 'mrsmith',
+        teacherPassword: ''
       });
       expect(mgr.getConnectedPeers()).toEqual([]);
     });

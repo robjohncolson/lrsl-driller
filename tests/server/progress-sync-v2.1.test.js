@@ -5,10 +5,19 @@
  * and unified leaderboard integration with user_progress table
  *
  * Run with: npx vitest run tests/server/progress-sync-v2.1.test.js
+ *
+ * Note: These tests run against a local server by default
+ * (http://localhost:3000). Set SERVER_URL (or legacy TEST_SERVER_URL)
+ * to test against a different server. Never points at production by default.
+ * If no server is listening, the network-dependent suites are skipped;
+ * pure schema/unit suites always run.
  */
 import { describe, it, expect } from 'vitest';
 
-const SERVER_URL = process.env.TEST_SERVER_URL || 'https://lrsl-driller-production.up.railway.app';
+const SERVER_URL = process.env.SERVER_URL || process.env.TEST_SERVER_URL || 'http://localhost:3000';
+
+// Reachability probe: skip network-dependent suites cleanly when no server is up
+const serverUp = await fetch(SERVER_URL).then(() => true).catch(() => false);
 
 // Helper to make API requests
 async function api(path, options = {}) {
@@ -20,6 +29,18 @@ async function api(path, options = {}) {
     status: response.status,
     data: await response.json().catch(() => null)
   };
+}
+
+// POST /api/progress and /api/progress/cartridge-sync no longer auto-create
+// unknown users (hardened: 404 'Unknown user'). Tests must create their
+// test-prefixed user first via POST /api/users.
+async function createTestUser(username) {
+  const { status } = await api('/api/users', {
+    method: 'POST',
+    body: JSON.stringify({ username, password: 'test-password-123' })
+  });
+  // 200 = created, 409 = already exists (both fine for test setup)
+  return status === 200 || status === 201 || status === 409;
 }
 
 // Check if endpoint is deployed before running server tests
@@ -40,7 +61,7 @@ async function checkEndpointDeployed() {
   return endpointDeployed;
 }
 
-describe('Progress Cartridge Sync API (v2.1)', () => {
+describe.skipIf(!serverUp)('Progress Cartridge Sync API (v2.1)', () => {
   // ==================== ENDPOINT EXISTENCE ====================
   describe('Endpoint Availability', () => {
     it('POST /api/progress/cartridge-sync endpoint exists (skip if not deployed)', async () => {
@@ -116,6 +137,27 @@ describe('Progress Cartridge Sync API (v2.1)', () => {
       expect(status).toBe(400);
       expect(data.error).toContain('Missing');
     });
+
+    it('returns 404 Unknown user for unknown username (auto-create removed)', async () => {
+      const deployed = await checkEndpointDeployed();
+      if (!deployed) {
+        console.log('Skipping: endpoint not deployed');
+        return;
+      }
+
+      const { status, data } = await api('/api/progress/cartridge-sync', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: `test-unknown-${Date.now()}`,
+          cartridgeId: 'test-cartridge',
+          stars: { gold: 1, silver: 0, bronze: 0, tin: 0 },
+          modeProgress: {}
+        })
+      });
+
+      expect(status).toBe(404);
+      expect(data.error).toBe('Unknown user');
+    });
   });
 
   // ==================== RESPONSE FORMAT ====================
@@ -129,6 +171,13 @@ describe('Progress Cartridge Sync API (v2.1)', () => {
 
       // Use a test user to avoid polluting real data
       const testUsername = `test-sync-${Date.now()}`;
+
+      // User must exist first (auto-create removed; unknown user => 404)
+      const userCreated = await createTestUser(testUsername);
+      if (!userCreated) {
+        console.log('Skipping: unable to create test user');
+        return;
+      }
 
       const { status, data } = await api('/api/progress/cartridge-sync', {
         method: 'POST',
@@ -239,7 +288,7 @@ describe('Cartridge Sync Request Payload', () => {
 });
 
 // ==================== UNIFIED LEADERBOARD ====================
-describe('Unified Leaderboard with user_progress (v2.1)', () => {
+describe.skipIf(!serverUp)('Unified Leaderboard with user_progress (v2.1)', () => {
   describe('Endpoint Response', () => {
     it('GET /api/leaderboard/unified returns array', async () => {
       const { status, data } = await api('/api/leaderboard/unified');
@@ -260,7 +309,8 @@ describe('Unified Leaderboard with user_progress (v2.1)', () => {
         expect(entry).toHaveProperty('bronze');
         expect(entry).toHaveProperty('tin');
         // Note: territories removed in v4.0 (Grid Wars replaced by CTF)
-        // Note: class_period added in v4.1 for roster management
+        // Note: real_name removed in v4.2 (privacy hardening)
+        expect(entry).not.toHaveProperty('real_name');
       }
     });
 

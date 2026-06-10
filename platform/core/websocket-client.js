@@ -157,12 +157,21 @@ export class WebSocketClient {
   }
 
   /**
+   * Set the in-memory teacher password used to authorize teacher-only
+   * WS messages (class time, WebRTC activation). Never persisted.
+   */
+  setTeacherPassword(password) {
+    this.teacherPassword = password;
+  }
+
+  /**
    * Notify server of class time start (teacher only)
    */
   notifyClassTimeStart(goal) {
     this.send({
       type: 'class_time_start',
-      goal
+      goal,
+      teacherPassword: this.teacherPassword || ''
     });
   }
 
@@ -171,7 +180,8 @@ export class WebSocketClient {
    */
   notifyClassTimeEnd() {
     this.send({
-      type: 'class_time_end'
+      type: 'class_time_end',
+      teacherPassword: this.teacherPassword || ''
     });
   }
 

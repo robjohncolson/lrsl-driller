@@ -260,22 +260,21 @@ describe('a2t3l3 Grading Rules', () => {
     });
 
     // -- Difference of Cubes --
-    // BUG DOCUMENTED: normalizeMath strips parens, so "(x-6)(x^2+6x+36)"
-    // becomes "x-6x^2+6x+36". The forbidden token "-6x" falsely matches
-    // as a substring of "x-6x^2", grading the correct answer as P not E.
-    // This affects ALL cube factoring scenarios where the linear factor's
-    // negative term concatenates with the quadratic factor's leading term.
-    describe('Difference of Cubes: x^3 − 216 (BUG: token false positive)', () => {
+    // REGRESSION GUARD (bug fixed): normalizeMath used to strip parens, so
+    // "(x-6)(x^2+6x+36)" became "x-6x^2+6x+36" and the forbidden token "-6x"
+    // falsely matched as a substring of "x-6x^2", grading the correct answer
+    // as P instead of E. The grader now handles this correctly; this suite
+    // guards against the token false positive returning.
+    describe('Difference of Cubes: x^3 − 216 (regression: token false positive)', () => {
       const baseCtx = {
         answers: { factorAnswer: { value: '(x − 6)(x^2 + 6x + 36)' } },
         factorRequiredTokens: ['x-6', 'x^2', '6x', '36'],
         factorForbiddenTokens: ['x+6', 'x^2-6x', '-6x']
       };
 
-      it('BUG: correct answer falsely triggers forbidden "-6x" → grades P instead of E', () => {
+      it('correct answer no longer trips forbidden "-6x" false positive → grades E', () => {
         const result = gradeField('factorAnswer', '(x - 6)(x^2 + 6x + 36)', baseCtx);
-        // Once fixed, this should be 'E'
-        expect(result.score).toBe('P');
+        expect(result.score).toBe('E');
       });
 
       it('grades sign error in middle term as P or I (common cube mistake)', () => {

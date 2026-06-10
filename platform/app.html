@@ -1033,7 +1033,7 @@
     // ==================== CONFIGURATION ====================
     let SERVER_URL = 'https://lrsl-driller-production.up.railway.app';
     let SIGNALING_URL = null; // Set after server detection
-    const CLIENT_VERSION = '0.0.1';
+    const CLIENT_VERSION = '4.2.0';
 
     // Server detection: try Railway first, fall back to local dev signaling
     let _serverDetected = false;
@@ -1912,9 +1912,12 @@
 
       try {
         // Fetch progress and time data in parallel
+        // (time-tracking/user is teacher-gated on the server; this modal is teacher-only)
         const [progressRes, timeRes] = await Promise.all([
           fetch(`${SERVER_URL}/api/progress/${username}`),
-          fetch(`${SERVER_URL}/api/time-tracking/user/${username}`)
+          fetch(`${SERVER_URL}/api/time-tracking/user/${username}`, {
+            headers: { 'x-teacher-password': teacherPassword || '' }
+          })
         ]);
 
         if (!progressRes.ok || !timeRes.ok) {
@@ -2451,20 +2454,16 @@
           const users = await userSystem.getUsers();
           this.usersData = users; // Store for lookup
 
-          // Sort by real_name first, then username
-          users.sort((a, b) => {
-            const nameA = (a.real_name || a.username).toLowerCase();
-            const nameB = (b.real_name || b.username).toLowerCase();
-            return nameA.localeCompare(nameB);
-          });
+          // GET /api/users returns [{username}] only — sort and label by username
+          users.sort((a, b) =>
+            (a.username || '').toLowerCase().localeCompare((b.username || '').toLowerCase())
+          );
 
           for (const user of users) {
+            if (!user.username) continue;
             const option = document.createElement('option');
             option.value = user.username;
-            // Show real name prominently, username in parentheses
-            option.textContent = user.real_name
-              ? `${user.real_name} (${user.username})`
-              : user.username;
+            option.textContent = user.username;
             select.appendChild(option);
           }
         } catch (err) {
@@ -2490,7 +2489,7 @@
         }
 
         // Use real name from server response or fall back to stored data
-        const displayName = result.realName || this.usersData.find(u => u.username === existingSelect.value)?.real_name || existingSelect.value;
+        const displayName = result.realName || existingSelect.value;
 
         document.getElementById('current-username').textContent = displayName;
         wsClient.connect(existingSelect.value);
@@ -3130,9 +3129,11 @@
     async function activateTeacherMode(password, showToast = true) {
       isTeacher = true;
       teacherPassword = password;
+      wsClient.setTeacherPassword(password);
 
-      // Persist to userSystem (uses IndexedDB with localStorage fallback)
-      await userSystem.setMeta('teacherMode', { enabled: true, password });
+      // Persist enabled flag only — the teacher password is never persisted,
+      // so teacher mode must be re-entered after a page reload.
+      await userSystem.setMeta('teacherMode', { enabled: true });
 
       document.getElementById('teacher-badge').classList.remove('hidden');
 
@@ -3211,22 +3212,14 @@
       shortcutsSection.classList.remove('hidden');
     }
 
-    // Check for persisted teacher mode on page load
+    // The teacher password is no longer persisted, so teacher mode is never
+    // auto-reactivated on page load — the teacher re-types the password after
+    // a reload. This also scrubs any password stored by older client versions.
     async function checkTeacherModePersistence() {
       try {
         const savedTeacher = await userSystem.getMeta('teacherMode');
-        if (savedTeacher?.enabled && savedTeacher?.password) {
-          // Verify password is still valid with server
-          const response = await fetch(`${SERVER_URL}/api/auth/teacher`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: savedTeacher.password })
-          });
-          const result = await response.json();
-          if (result.valid) {
-            await activateTeacherMode(savedTeacher.password, false);
-            return true;
-          }
+        if (savedTeacher && savedTeacher.password !== undefined) {
+          await userSystem.setMeta('teacherMode', { enabled: !!savedTeacher.enabled });
         }
       } catch (err) {
         console.warn('Could not check teacher persistence:', err);
@@ -3321,9 +3314,9 @@
 
       try {
         const url = `${SERVER_URL}/api/teacher-review?status=${currentReviewFilter}`;
-        console.log('Fetching reviews from:', url, 'with password:', teacherPassword);
+        console.log('Fetching reviews from:', url);
         const response = await fetch(url, {
-          headers: { 'x-teacher-password': teacherPassword || 'stats123' }
+          headers: { 'x-teacher-password': teacherPassword || '' }
         });
 
         console.log('Response status:', response.status);
@@ -3449,7 +3442,7 @@
 
       try {
         const response = await fetch(`${SERVER_URL}/api/time-tracking/class-summary?period=${currentTimePeriod}`, {
-          headers: { 'x-teacher-password': teacherPassword || 'stats123' }
+          headers: { 'x-teacher-password': teacherPassword || '' }
         });
 
         if (!response.ok) throw new Error('Failed to fetch time data');
@@ -3934,7 +3927,7 @@
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'x-teacher-password': teacherPassword || 'stats123'
+            'x-teacher-password': teacherPassword || ''
           },
           body: JSON.stringify({ grades })
         });
@@ -4672,7 +4665,7 @@
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
-                  'x-teacher-password': teacherPassword || 'stats123'
+                  'x-teacher-password': teacherPassword || ''
                 },
                 body: JSON.stringify({ grades })
               })

@@ -1,15 +1,20 @@
 /**
  * Server API Integration Tests
- * Tests the Railway server endpoints to prevent regression
+ * Tests the server endpoints to prevent regression
  *
  * Run with: npm test -- tests/server/api.test.js
  *
- * Note: These tests run against the production server by default.
- * Set TEST_SERVER_URL env var to test against a different server.
+ * Note: These tests run against a local server by default
+ * (http://localhost:3000). Set SERVER_URL (or legacy TEST_SERVER_URL)
+ * to test against a different server. Never points at production by default.
+ * If no server is listening, the network-dependent suites are skipped.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 
-const SERVER_URL = process.env.TEST_SERVER_URL || 'https://lrsl-driller-production.up.railway.app';
+const SERVER_URL = process.env.SERVER_URL || process.env.TEST_SERVER_URL || 'http://localhost:3000';
+
+// Reachability probe: skip network-dependent suites cleanly when no server is up
+const serverUp = await fetch(SERVER_URL).then(() => true).catch(() => false);
 
 // Helper to make API requests
 async function api(path, options = {}) {
@@ -23,7 +28,7 @@ async function api(path, options = {}) {
   };
 }
 
-describe('Server API', () => {
+describe.skipIf(!serverUp)('Server API', () => {
   // ==================== HEALTH CHECK ====================
   describe('Health Check', () => {
     it('GET / returns status ok', async () => {
@@ -88,6 +93,14 @@ describe('Server API', () => {
       }
     });
 
+    it('leaderboard entries do NOT expose real_name (privacy hardening)', async () => {
+      const { data } = await api('/api/leaderboard?limit=5');
+
+      for (const entry of data) {
+        expect(entry).not.toHaveProperty('real_name');
+      }
+    });
+
     it('respects limit parameter', async () => {
       const { data } = await api('/api/leaderboard?limit=3');
 
@@ -148,6 +161,15 @@ describe('Server API', () => {
 
       if (data.length > 0) {
         expect(data[0]).toHaveProperty('username');
+      }
+    });
+
+    it('users do NOT expose real_name or class_period (privacy hardening)', async () => {
+      const { data } = await api('/api/users');
+
+      for (const user of data) {
+        expect(user).not.toHaveProperty('real_name');
+        expect(user).not.toHaveProperty('class_period');
       }
     });
   });

@@ -4,13 +4,17 @@
  *
  * Run with: npm test -- tests/server/progress-restore.test.js
  *
- * Note: These tests run against the production server by default.
- * The endpoint must be deployed for these tests to pass.
- * Set TEST_SERVER_URL env var to test against a local server.
+ * Note: These tests run against a local server by default
+ * (http://localhost:3000). Set SERVER_URL (or legacy TEST_SERVER_URL)
+ * to test against a different server. Never points at production by default.
+ * If no server is listening, the network-dependent suites are skipped.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 
-const SERVER_URL = process.env.TEST_SERVER_URL || 'https://lrsl-driller-production.up.railway.app';
+const SERVER_URL = process.env.SERVER_URL || process.env.TEST_SERVER_URL || 'http://localhost:3000';
+
+// Reachability probe: skip network-dependent suites cleanly when no server is up
+const serverUp = await fetch(SERVER_URL).then(() => true).catch(() => false);
 
 async function api(path, options = {}) {
   const response = await fetch(`${SERVER_URL}${path}`, {
@@ -21,6 +25,18 @@ async function api(path, options = {}) {
     status: response.status,
     data: await response.json().catch(() => null)
   };
+}
+
+// POST /api/progress and /api/progress/cartridge-sync no longer auto-create
+// unknown users (hardened: 404 'Unknown user'). Tests must create their
+// test-prefixed user first via POST /api/users.
+async function createTestUser(username) {
+  const { status } = await api('/api/users', {
+    method: 'POST',
+    body: JSON.stringify({ username, password: 'test-password-123' })
+  });
+  // 200 = created, 409 = already exists (both fine for test setup)
+  return status === 200 || status === 201 || status === 409;
 }
 
 // Check if the endpoint exists on the server
@@ -36,7 +52,7 @@ async function endpointExists() {
   }
 }
 
-describe('Progress Restore Endpoint', () => {
+describe.skipIf(!serverUp)('Progress Restore Endpoint', () => {
   let endpointDeployed = false;
 
   beforeAll(async () => {
@@ -82,6 +98,13 @@ describe('Progress Restore Endpoint', () => {
       const testUsername = `test_restore_${Date.now()}`;
       const testCartridge = 'polynomial';
 
+      // User must exist first (auto-create removed; unknown user => 404)
+      const userCreated = await createTestUser(testUsername);
+      if (!userCreated) {
+        console.log('Skipping: unable to create test user');
+        return;
+      }
+
       // Sync test progress
       const syncResult = await api('/api/progress/cartridge-sync', {
         method: 'POST',
@@ -117,6 +140,13 @@ describe('Progress Restore Endpoint', () => {
       const testUsername = `test_timestamp_${Date.now()}`;
       const testCartridge = 'polynomial';
 
+      // User must exist first (auto-create removed; unknown user => 404)
+      const userCreated = await createTestUser(testUsername);
+      if (!userCreated) {
+        console.log('Skipping: unable to create test user');
+        return;
+      }
+
       // Sync test progress
       const syncResult = await api('/api/progress/cartridge-sync', {
         method: 'POST',
@@ -151,6 +181,13 @@ describe('Progress Restore Endpoint', () => {
         'l01-basics': { gold: 3, silver: 0, bronze: 1, tin: 0 },
         'l02-advanced': { gold: 1, silver: 2, bronze: 0, tin: 0 }
       };
+
+      // User must exist first (auto-create removed; unknown user => 404)
+      const userCreated = await createTestUser(testUsername);
+      if (!userCreated) {
+        console.log('Skipping: unable to create test user');
+        return;
+      }
 
       // Sync test progress with mode data
       const syncResult = await api('/api/progress/cartridge-sync', {
