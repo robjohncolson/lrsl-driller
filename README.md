@@ -1,5 +1,19 @@
 # Driller Platform
 
+> ## ⚠️ STATUS: DORMANT BACKUP (since 2026-06-10)
+>
+> This app is **not in active use**. It is held as a dormant backup for SY26-27 and will only be
+> revived mid-year if students' understanding is lacking. Last active term ended with the 2026 AP exam.
+>
+> - **To revive it**: follow [`REVIVAL_SPEC.md`](./REVIVAL_SPEC.md) — a self-sufficient, ~1-day checklist
+>   (roster sign-in, Desk ledger bridge, cartridge subset).
+> - **What was done at mothball time**: see [`MOTHBALL_HARDENING_SPEC.md`](./MOTHBALL_HARDENING_SPEC.md)
+>   (security hardening, users-table cleanup, baseline pinning, accepted risks incl. plaintext passwords by decision).
+> - **The backend is still LIVE** (`lrsl-driller-production.up.railway.app`) because tmux-trainer and the
+>   follow-alongs apps depend on it until their roster migrations ship. **Railway auto-deploys `main`** —
+>   never push server changes to main without running the suite against a local server first.
+> - Do not mistake this repo for an active product; nothing below this banner has been re-validated since mothball.
+
 **A subject-agnostic drill/quiz platform for teachers.** Create interactive practice exercises for any topic - from AP Statistics to Algebra to anything you teach.
 
 > Think of it like a game console: the platform is the console, lessons are cartridges. Swap cartridges, keep the same powerful engine.
