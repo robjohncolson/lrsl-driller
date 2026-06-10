@@ -1,0 +1,161 @@
+{
+  "meta": {
+    "id": "apstats-u9-carrying-out-slope-tests",
+    "name": "Carrying Out a Test for the Slope (9.5)",
+    "subject": "AP Statistics",
+    "description": "Practice computing the slope-test statistic, setting up the p-value, interpreting the p-value, stating a conclusion, and comparing evidence strength for tests about the slope of a regression model."
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "APSTAT-9.5-CALCULATE-TEST-STATISTIC",
+      "APSTAT-9.5-SET-UP-P-VALUE",
+      "APSTAT-9.5-INTERPRET-P-VALUE",
+      "APSTAT-9.5-STATE-CONCLUSION",
+      "APSTAT-9.5-COMPARE-EVIDENCE-STRENGTH"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": []
+  },
+  "modes": [
+    {
+      "id": "l95-calculate-test-statistic",
+      "name": "9.5a: Calculate the t Statistic",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "test_statistic_choice",
+            "type": "choice",
+            "label": "Which calculation gives the correct test statistic?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l95-set-up-p-value",
+      "name": "9.5b: Set Up the p-value",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "p_value_setup_choice",
+            "type": "choice",
+            "label": "Which setup gives the correct p-value?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l95-interpret-p-value",
+      "name": "9.5c: Interpret the p-value",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "p_value_interpretation_choice",
+            "type": "choice",
+            "label": "Which interpretation of the p-value is correct?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l95-state-conclusion",
+      "name": "9.5d: State the Conclusion",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "conclusion_choice",
+            "type": "choice",
+            "label": "Which conclusion is correct?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "l95-compare-evidence-strength",
+      "name": "9.5e: Compare Evidence Strength",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "strength_comparison_choice",
+            "type": "choice",
+            "label": "Which comparison of evidence strength is correct?",
+            "options": ["{{optA}}", "{{optB}}", "{{optC}}", "{{optD}}"]
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "test_statistic_choice": "Subtract the null slope first, then divide by the standard error of the slope. For a slope test, use t = (b - beta_0) / SE_b, and in these lesson cases beta_0 = 0.",
+      "p_value_setup_choice": "Use a t-distribution with df = n - 2, then match the shaded tail area to the alternative hypothesis. One-sided alternatives use one tail; a two-sided alternative uses both tails.",
+      "p_value_interpretation_choice": "A correct interpretation assumes H0 is true and describes getting evidence this strong or stronger by chance alone. Include the correct tail wording for one-sided vs two-sided.",
+      "conclusion_choice": "If p-value <= alpha, reject H0. If p-value > alpha, fail to reject H0. The last sentence should describe whether there is convincing statistical evidence for the alternative in context.",
+      "strength_comparison_choice": "Stronger evidence for a linear relationship comes from a smaller p-value or a t statistic farther from 0."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "tiers": [
+      {
+        "id": "l95-calculate-test-statistic",
+        "name": "9.5a",
+        "unlockedBy": "default",
+        "celebrationMessage": "Test statistic calculations mastered!"
+      },
+      {
+        "id": "l95-set-up-p-value",
+        "name": "9.5b",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "You can set up the p-value for a slope test!"
+      },
+      {
+        "id": "l95-interpret-p-value",
+        "name": "9.5c",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "p-value interpretation mastered!"
+      },
+      {
+        "id": "l95-state-conclusion",
+        "name": "9.5d",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "You can state conclusions for slope tests in context!"
+      },
+      {
+        "id": "l95-compare-evidence-strength",
+        "name": "9.5e",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "TOPIC 9.5 COMPLETE! You can carry out a test for the slope of a regression model!"
+      }
+    ]
+  }
+}

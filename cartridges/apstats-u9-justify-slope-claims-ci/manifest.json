@@ -1,0 +1,156 @@
+{
+  "meta": {
+    "id": "apstats-u9-justify-slope-claims-ci",
+    "name": "Justifying Slope Claims with Confidence Intervals (9.3)",
+    "subject": "AP Statistics",
+    "description": "Topic 9.3 practice interpreting a confidence interval for the slope of a population regression line, interpreting the confidence level, using whether 0 is in the interval to judge evidence of a linear relationship, and deciding whether a claimed slope value is plausible."
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "APSTAT-9.3-INTERPRET-CI-SLOPE",
+      "APSTAT-9.3-INTERPRET-CONFIDENCE-LEVEL",
+      "APSTAT-9.3-JUDGE-LINEAR-CLAIM",
+      "APSTAT-9.3-EVALUATE-SLOPE-CLAIM"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": []
+  },
+  "modes": [
+    {
+      "id": "l93-interpret-slope-ci",
+      "name": "9.3a: Interpret the Slope CI",
+      "unlockedBy": "default",
+      "animation": "assets/InterpretingCIForSlope.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "ci_interpretation",
+            "type": "text",
+            "label": "Interval interpretation",
+            "placeholder": "Write the confidence interval interpretation"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l93-interpret-confidence-level",
+      "name": "9.3b: Interpret the Confidence Level",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/ThreeIntervalsCompared.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "confidence_level_meaning",
+            "type": "text",
+            "label": "Confidence level meaning",
+            "placeholder": "Describe what 95% confidence means"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l93-judge-linear-relationship",
+      "name": "9.3c: Judge Linear Evidence with the CI",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/DoesZeroMatter.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "linear_claim_choice",
+            "type": "text",
+            "label": "Conclusion",
+            "placeholder": "Enter a letter or the conclusion text"
+          },
+          {
+            "id": "linear_claim_reason",
+            "type": "text",
+            "label": "Justification",
+            "placeholder": "Explain using the interval"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l93-evaluate-specific-slope-claim",
+      "name": "9.3d: Evaluate a Claimed Slope Value",
+      "unlockedBy": { "gold": 3 },
+      "animation": "assets/RealEstateCalculation.mp4",
+      "layout": {
+        "inputs": [
+          {
+            "id": "slope_claim_choice",
+            "type": "text",
+            "label": "Claim verdict",
+            "placeholder": "Enter a letter or the conclusion text"
+          },
+          {
+            "id": "slope_claim_reason",
+            "type": "text",
+            "label": "Justification",
+            "placeholder": "Explain whether the claimed slope is plausible"
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "ci_interpretation": "Say, 'We are 95% confident...' and identify the slope of the population regression line in context.",
+      "confidence_level_meaning": "Think repeated random sampling: about 95% of those intervals would capture the true slope.",
+      "linear_claim_choice": "Check whether 0 is inside the interval and whether the interval is all positive or all negative.",
+      "linear_claim_reason": "Explain your conclusion by saying whether 0 is a plausible slope and what sign the interval values have.",
+      "slope_claim_choice": "A claimed slope is plausible if it falls inside the confidence interval.",
+      "slope_claim_reason": "Justify your answer by stating whether the claimed slope value is contained in the interval."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "tiers": [
+      {
+        "id": "l93-interpret-slope-ci",
+        "name": "9.3a",
+        "unlockedBy": "default",
+        "celebrationMessage": "You can interpret a confidence interval for slope in context!"
+      },
+      {
+        "id": "l93-interpret-confidence-level",
+        "name": "9.3b",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Confidence level interpretation mastered!"
+      },
+      {
+        "id": "l93-judge-linear-relationship",
+        "name": "9.3c",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "You can judge linear evidence with a confidence interval!"
+      },
+      {
+        "id": "l93-evaluate-specific-slope-claim",
+        "name": "9.3d",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "TOPIC 9.3 COMPLETE! You can evaluate claims about the slope with a confidence interval!"
+      }
+    ]
+  }
+}

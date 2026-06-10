@@ -135,9 +135,9 @@
     },
     {
       "id": "apstats-u8-unexpected-results",
-      "name": "Introducing Statistics: Are My Results Unexpected? (8.1)",
+      "name": "Chi-Square Tests (8.1-8.6)",
       "subject": "AP Statistics",
-      "description": "Observed vs expected counts, chi-square contributions, and simulation-based interpretation for one-way categorical data",
+      "description": "Chi-square GOF, expected counts in two-way tables, homogeneity vs independence, test statistics, p-values, conclusions, and contribution analysis",
       "shortCode": "U81"
     },
     {
@@ -146,6 +146,41 @@
       "subject": "Algebra 2",
       "description": "Inverse variation, reciprocal function translations, and asymptotes",
       "shortCode": "IVAR"
+    },
+    {
+      "id": "apstats-u9-regression-slopes",
+      "name": "Inference for Slopes (9.1-9.2)",
+      "subject": "AP Statistics",
+      "description": "Population vs sample regression models, sampling variability of slopes, simulation-based inference, LINEAR conditions, sampling distribution of b1, reading regression output, confidence intervals for slope",
+      "shortCode": "SLP"
+    },
+    {
+      "id": "apstats-u9-justify-slope-claims-ci",
+      "name": "Justifying Slope Claims with Confidence Intervals (9.3)",
+      "subject": "AP Statistics",
+      "description": "Interpreting a confidence interval for slope in context, interpreting the confidence level, using whether 0 is in the interval to judge linear evidence, evaluating claimed slope values",
+      "shortCode": "U93"
+    },
+    {
+      "id": "apstats-u9-setting-up-slope-tests",
+      "name": "Setting Up a Test for the Slope (9.4)",
+      "subject": "AP Statistics",
+      "description": "Stating the null hypothesis and defining beta in context, choosing the alternative hypothesis and sidedness, identifying the t-test for slope, checking conditions",
+      "shortCode": "U94"
+    },
+    {
+      "id": "apstats-u9-carrying-out-slope-tests",
+      "name": "Carrying Out a Test for the Slope (9.5)",
+      "subject": "AP Statistics",
+      "description": "Slope-test statistic, p-value setup and interpretation, conclusions in context, and comparing evidence strength",
+      "shortCode": "U95"
+    },
+    {
+      "id": "apstats-u1-categorical-tables",
+      "name": "Representing Categorical Variables with Tables (1.3)",
+      "subject": "AP Statistics",
+      "description": "Identifying individuals and categorical variables, building frequency counts, converting to relative frequencies, judging claims supported by tables",
+      "shortCode": "U13"
     }
   ]
 }

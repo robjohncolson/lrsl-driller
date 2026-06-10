@@ -1,0 +1,159 @@
+{
+  "meta": {
+    "id": "apstats-u9-setting-up-slope-tests",
+    "name": "Setting Up a Test for the Slope (9.4)",
+    "subject": "AP Statistics",
+    "description": "Topic 9.4 practice stating the null hypothesis for a slope test, defining beta in context, choosing the correct alternative hypothesis and its sidedness, identifying the t-test for slope, and checking the conditions for the test."
+  },
+  "config": {
+    "contextsFile": null,
+    "skills": [
+      "APSTAT-9.4-STATE-NULL-HYPOTHESIS",
+      "APSTAT-9.4-CHOOSE-ALTERNATIVE-HYPOTHESIS",
+      "APSTAT-9.4-IDENTIFY-TEST-PROCEDURE",
+      "APSTAT-9.4-CHECK-CONDITIONS"
+    ]
+  },
+  "display": {
+    "showGraph": false,
+    "graphType": null,
+    "infoPanel": []
+  },
+  "modes": [
+    {
+      "id": "l94-state-null-hypothesis",
+      "name": "9.4a: State the Null Hypothesis",
+      "unlockedBy": "default",
+      "layout": {
+        "inputs": [
+          {
+            "id": "null_hypothesis",
+            "type": "text",
+            "label": "Null hypothesis",
+            "placeholder": "Write H0"
+          },
+          {
+            "id": "parameter_definition",
+            "type": "text",
+            "label": "Define beta",
+            "placeholder": "Define the parameter in context"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l94-choose-alternative-hypothesis",
+      "name": "9.4b: Choose the Alternative Hypothesis",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "alternative_choice",
+            "type": "text",
+            "label": "Alternative hypothesis",
+            "placeholder": "Enter a letter or the hypothesis"
+          },
+          {
+            "id": "sidedness_label",
+            "type": "text",
+            "label": "One-sided or two-sided?",
+            "placeholder": "Name the sidedness"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l94-identify-test-procedure",
+      "name": "9.4c: Identify the t-Test for Slope",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "test_procedure",
+            "type": "text",
+            "label": "Test procedure",
+            "placeholder": "Enter a letter or the procedure name"
+          }
+        ]
+      }
+    },
+    {
+      "id": "l94-check-slope-test-conditions",
+      "name": "9.4d: Check Conditions for the Slope Test",
+      "unlockedBy": { "gold": 3 },
+      "layout": {
+        "inputs": [
+          {
+            "id": "condition_verdict",
+            "type": "text",
+            "label": "Condition verdict",
+            "placeholder": "Enter a letter or the conclusion text"
+          },
+          {
+            "id": "condition_explanation",
+            "type": "text",
+            "label": "Condition explanation",
+            "placeholder": "Explain which condition is supported or fails"
+          }
+        ]
+      }
+    }
+  ],
+  "grading": {
+    "rubricFile": "grading-rules.js",
+    "aiPromptFile": "ai-grader-prompt.txt",
+    "scoring": {
+      "scale": ["E", "P", "I"],
+      "meanings": {
+        "E": "Essentially Correct",
+        "P": "Partially Correct",
+        "I": "Incorrect"
+      }
+    }
+  },
+  "hints": {
+    "perField": {
+      "null_hypothesis": "For a test of no linear relationship, the null is H0: beta = 0.",
+      "parameter_definition": "Define beta as the slope of the population regression line for predicting y from x in the scenario.",
+      "alternative_choice": "Match the wording of the research question to beta > 0, beta < 0, or beta != 0.",
+      "sidedness_label": "Greater than or less than is one-sided. Not equal to is two-sided.",
+      "test_procedure": "A significance test about the slope of a population regression line uses a t-test for slope.",
+      "condition_verdict": "Use the plot evidence and the data collection description to decide whether all conditions are met or which one fails.",
+      "condition_explanation": "Mention the specific condition and the evidence, such as curved residuals, fan-shaped spread, skewed residuals, or lack of random sampling."
+    },
+    "penalty": {
+      "0": "gold",
+      "1": "silver",
+      "2": "bronze",
+      "3": "tin"
+    }
+  },
+  "progression": {
+    "tiers": [
+      {
+        "id": "l94-state-null-hypothesis",
+        "name": "9.4a",
+        "unlockedBy": "default",
+        "celebrationMessage": "You can state H0 and define beta in context!"
+      },
+      {
+        "id": "l94-choose-alternative-hypothesis",
+        "name": "9.4b",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "Alternative hypotheses and sidedness mastered!"
+      },
+      {
+        "id": "l94-identify-test-procedure",
+        "name": "9.4c",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "You can name the t-test for slope!"
+      },
+      {
+        "id": "l94-check-slope-test-conditions",
+        "name": "9.4d",
+        "unlockedBy": { "gold": 3 },
+        "celebrationMessage": "TOPIC 9.4 COMPLETE! You can set up a test for the slope of a regression model!"
+      }
+    ]
+  }
+}
